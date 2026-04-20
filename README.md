@@ -2,9 +2,11 @@
 
 A music practice tool I built for my own daily practice. Most modes are things I actually use; a few are experiments I haven't bothered to delete.
 
+I've mainly uploaded this as a backup as the project is getting pretty big.
+
 ## What it does
 
-**Ear training (Spatial audiation)** — The mode I rely on most. Instead of the usual drill-and-response format, it plays audio and you play it back on your keyboard. I think drill-and-response is a weak way to train your ear, and tying the training to your instrument builds real visualization. This also has the strongest microtonal ear training I know of (said plainly, not as a brag).
+**Ear training (Spatial audiation)** — The mode I rely on most. Instead of the usual drill-and-response format, it plays audio and you play it back on your keyboard. I think drill-and-response is a weak way to train your ear, and tying the training to your instrument builds real visualization. 
 
 **Drum patterns (Fine Ostinato)** — The other one I use every day. Inspired by Universal Functions, Chaffee patterns, and New Breed concepts. Pick a beat, work through permutations.
 
@@ -22,6 +24,7 @@ A music practice tool I built for my own daily practice. Most modes are things I
 
 ## Other modes (varying quality)
 
-Drum accents, piano / Lumatone / guitar views, melodic cells, konnakol drills, transcriptions, chord charts, drill & response, harmony workshop, temperament explorer, independence drills, phrase decomposition.
+Drum accents, piano / Lumatone / guitar views, melodic cells, konnakol drills, transcriptions, chord charts, drill \& response, harmony workshop, temperament explorer, independence drills, phrase decomposition.
 
 Some are genuinely useful. Some are nonsense I haven't removed. Take what helps.
+
