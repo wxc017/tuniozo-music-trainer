@@ -1,6 +1,5 @@
 (Warning: AI-assisted program) I wish I had the time to code the majority of this myself, but I have other responsibilities.
 
-I've uploaded this mainly as a backup, just in case I lose the files on my computer. I'm constantly updating and refining so this version will quickly be outdated. 
 
 A music practice tool with harmonic lattice, microtonal ear training, drum ostinatos, drum accents, piano/lumatone/guitar views, melodic cells, melodic patterns, konnakol drills, transcriptions, chord charts, drill & response, harmony workshop, temperament explorer, independence drills, and phrase decomposition.
 
@@ -14,4 +13,3 @@ Coolest of all, there are day-to-day practice logs that allow you to import stuf
 
 Lots of cool stuff in this, but also a lot of absolutely nonsensical modes. There are some modes I want to delete but have just been too lazy to.
 
-If you see this and are interested, have fun! If you see a bug or want a cool feature, just message me. 
