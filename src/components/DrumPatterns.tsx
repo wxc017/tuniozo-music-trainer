@@ -55,114 +55,6 @@ const VOICE_BTN = [
 ] as const;
 type VoiceBtnId = typeof VOICE_BTN[number]["id"];
 
-// ── Rudiment presets (multi-grid) ──────────────────────────────────────────
-// Each entry maps to voice perm IDs: O, S, B (null = voice unused).
-// Perm ID format: "family-slots" where family = note count, slots = beat positions.
-// Labels use single-letter voice codes: O (ostinato / hi-hat), S (snare), B (bass).
-// The `grid` field says which grid this rudiment is authored for.  Omit for
-// 16th (the default for the original paradiddles).
-interface Paradiddle {
-  label: string;        // e.g. "OSOO", "SSBB"
-  group: string;        // grouping label ("O+S", "blocks", etc.)
-  O: string | null;     // ostinato perm ID
-  S: string | null;     // snare perm ID
-  B: string | null;     // bass perm ID
-  oCount: number;       // ostinato family (note count)
-  sCount: number;       // snare family
-  bCount: number;       // bass family
-  grid?: GridType;      // grid this rudiment targets; defaults to "16th"
-}
-
-const PARADIDDLES: Paradiddle[] = [
-  // ── 16th grid (4 slots/beat) ─────────────────────────────────────────────
-  // O+S paradiddles
-  { label: "OSOO", group: "O+S", O: "3-023", S: "1-1",  B: null,   oCount: 3, sCount: 1, bCount: 1 },
-  { label: "OSSO", group: "O+S", O: "2-03",  S: "2-12", B: null,   oCount: 2, sCount: 2, bCount: 1 },
-  { label: "OOSO", group: "O+S", O: "3-013", S: "1-2",  B: null,   oCount: 3, sCount: 1, bCount: 1 },
-  // S+O inversions
-  { label: "SOSS", group: "S+O", O: "1-1",   S: "3-023", B: null,  oCount: 1, sCount: 3, bCount: 1 },
-  { label: "SSOS", group: "S+O", O: "1-2",   S: "3-013", B: null,  oCount: 1, sCount: 3, bCount: 1 },
-  { label: "SOOS", group: "S+O", O: "2-12",  S: "2-03",  B: null,  oCount: 2, sCount: 2, bCount: 1 },
-  // B+S paradiddles
-  { label: "BSSB", group: "B+S", O: null,    S: "2-12",  B: "2-03",  oCount: 1, sCount: 2, bCount: 2 },
-  { label: "BSBB", group: "B+S", O: null,    S: "1-1",   B: "3-023", oCount: 1, sCount: 1, bCount: 3 },
-  { label: "BBSB", group: "B+S", O: null,    S: "1-2",   B: "3-013", oCount: 1, sCount: 1, bCount: 3 },
-  // S+B paradiddles
-  { label: "SBSS", group: "S+B", O: null,    S: "3-023", B: "1-1",   oCount: 1, sCount: 3, bCount: 1 },
-  { label: "SBBS", group: "S+B", O: null,    S: "2-03",  B: "2-12",  oCount: 1, sCount: 2, bCount: 2 },
-  { label: "SSBS", group: "S+B", O: null,    S: "3-013", B: "1-2",   oCount: 1, sCount: 3, bCount: 1 },
-  // ── Block rudiments (16th) — voice alternates in halves, not paradiddle-style ──
-  { label: "SSBB", group: "blocks", O: null,    S: "2-01", B: "2-23",  oCount: 1, sCount: 2, bCount: 2 },
-  { label: "BBSS", group: "blocks", O: null,    S: "2-23", B: "2-01",  oCount: 1, sCount: 2, bCount: 2 },
-  { label: "OSBB", group: "blocks", O: "1-0",   S: "1-1",  B: "2-23",  oCount: 1, sCount: 1, bCount: 2 },
-  { label: "SOBB", group: "blocks", O: "1-1",   S: "1-0",  B: "2-23",  oCount: 1, sCount: 1, bCount: 2 },
-  { label: "BOSS", group: "blocks", O: "1-1",   S: "2-23", B: "1-0",   oCount: 1, sCount: 2, bCount: 1 },
-  { label: "OOSS", group: "blocks", O: "2-01",  S: "2-23", B: null,    oCount: 2, sCount: 2, bCount: 1 },
-  { label: "SSOO", group: "blocks", O: "2-23",  S: "2-01", B: null,    oCount: 2, sCount: 2, bCount: 1 },
-  // ── Alternating rudiments (16th) — every-other-slot voice swap ───────────
-  { label: "BSBS", group: "alt",    O: null,    S: "2-13", B: "2-02",  oCount: 1, sCount: 2, bCount: 2 },
-  { label: "SBSB", group: "alt",    O: null,    S: "2-02", B: "2-13",  oCount: 1, sCount: 2, bCount: 2 },
-  { label: "SBOB", group: "alt",    O: "1-2",   S: "1-0",  B: "2-13",  oCount: 1, sCount: 1, bCount: 2 },
-  { label: "OBSB", group: "alt",    O: "1-0",   S: "1-2",  B: "2-13",  oCount: 1, sCount: 1, bCount: 2 },
-
-  // ── Triplet grid (3 slots/beat) ──────────────────────────────────────────
-  // 3-slot rudiments — compressed paradiddle-family voicings on triplets.
-  // O+S
-  { label: "OSS", group: "O+S", O: "1-0",  S: "2-12", B: null,  oCount: 1, sCount: 2, bCount: 1, grid: "triplet" },
-  { label: "OSO", group: "O+S", O: "2-02", S: "1-1",  B: null,  oCount: 2, sCount: 1, bCount: 1, grid: "triplet" },
-  { label: "OOS", group: "O+S", O: "2-01", S: "1-2",  B: null,  oCount: 2, sCount: 1, bCount: 1, grid: "triplet" },
-  // S+O
-  { label: "SOO", group: "S+O", O: "2-12", S: "1-0",  B: null,  oCount: 2, sCount: 1, bCount: 1, grid: "triplet" },
-  { label: "SOS", group: "S+O", O: "1-1",  S: "2-02", B: null,  oCount: 1, sCount: 2, bCount: 1, grid: "triplet" },
-  { label: "SSO", group: "S+O", O: "1-2",  S: "2-01", B: null,  oCount: 1, sCount: 2, bCount: 1, grid: "triplet" },
-  // B+S
-  { label: "BSS", group: "B+S", O: null,   S: "2-12", B: "1-0", oCount: 1, sCount: 2, bCount: 1, grid: "triplet" },
-  { label: "BBS", group: "B+S", O: null,   S: "1-2",  B: "2-01",oCount: 1, sCount: 1, bCount: 2, grid: "triplet" },
-  { label: "BSB", group: "B+S", O: null,   S: "1-1",  B: "2-02",oCount: 1, sCount: 1, bCount: 2, grid: "triplet" },
-  // S+B
-  { label: "SBB", group: "S+B", O: null,   S: "1-0",  B: "2-12",oCount: 1, sCount: 1, bCount: 2, grid: "triplet" },
-  { label: "SSB", group: "S+B", O: null,   S: "2-01", B: "1-2", oCount: 1, sCount: 2, bCount: 1, grid: "triplet" },
-  { label: "SBS", group: "S+B", O: null,   S: "2-02", B: "1-1", oCount: 1, sCount: 2, bCount: 1, grid: "triplet" },
-
-  // ── 32nd grid (8 slots/beat) — doubled rudiments ─────────────────────────
-  // O+S paradiddles (doubled)
-  { label: "OOSSOOOO", group: "O+S", O: "6-014567", S: "2-23", B: null, oCount: 6, sCount: 2, bCount: 1, grid: "32nd" },
-  { label: "OOSSSSOO", group: "O+S", O: "4-0167",   S: "4-2345",B: null, oCount: 4, sCount: 4, bCount: 1, grid: "32nd" },
-  { label: "OOOOSSOO", group: "O+S", O: "6-012367", S: "2-45",  B: null, oCount: 6, sCount: 2, bCount: 1, grid: "32nd" },
-  // S+O inversions
-  { label: "SSOOSSSS", group: "S+O", O: "2-23",     S: "6-014567", B: null, oCount: 2, sCount: 6, bCount: 1, grid: "32nd" },
-  { label: "SSSSOOSS", group: "S+O", O: "2-45",     S: "6-012367", B: null, oCount: 2, sCount: 6, bCount: 1, grid: "32nd" },
-  { label: "SSOOOOSS", group: "S+O", O: "4-2345",   S: "4-0167",   B: null, oCount: 4, sCount: 4, bCount: 1, grid: "32nd" },
-  // ── Block rudiments (32nd) ───────────────────────────────────────────────
-  { label: "SSSSBBBB", group: "blocks", O: null,   S: "4-0123", B: "4-4567", oCount: 1, sCount: 4, bCount: 4, grid: "32nd" },
-  { label: "BBBBSSSS", group: "blocks", O: null,   S: "4-4567", B: "4-0123", oCount: 1, sCount: 4, bCount: 4, grid: "32nd" },
-  { label: "OOSSBBBB", group: "blocks", O: "2-01", S: "2-23",   B: "4-4567", oCount: 2, sCount: 2, bCount: 4, grid: "32nd" },
-  { label: "SSOOBBBB", group: "blocks", O: "2-23", S: "2-01",   B: "4-4567", oCount: 2, sCount: 2, bCount: 4, grid: "32nd" },
-  { label: "BBOOSSSS", group: "blocks", O: "2-23", S: "4-4567", B: "2-01",   oCount: 2, sCount: 4, bCount: 2, grid: "32nd" },
-  { label: "OOOOSSSS", group: "blocks", O: "4-0123", S: "4-4567", B: null,   oCount: 4, sCount: 4, bCount: 1, grid: "32nd" },
-  { label: "SSSSOOOO", group: "blocks", O: "4-4567", S: "4-0123", B: null,   oCount: 4, sCount: 4, bCount: 1, grid: "32nd" },
-  // ── Alternating rudiments (32nd) — doubled every-other-slot voice swap ──
-  { label: "BBSSBBSS", group: "alt",    O: null,    S: "4-2367", B: "4-0145", oCount: 1, sCount: 4, bCount: 4, grid: "32nd" },
-  { label: "SSBBSSBB", group: "alt",    O: null,    S: "4-0145", B: "4-2367", oCount: 1, sCount: 4, bCount: 4, grid: "32nd" },
-  { label: "SSBBOOBB", group: "alt",    O: "2-45",  S: "2-01",   B: "4-2367", oCount: 2, sCount: 2, bCount: 4, grid: "32nd" },
-  { label: "OOBBSSBB", group: "alt",    O: "2-01",  S: "2-45",   B: "4-2367", oCount: 2, sCount: 2, bCount: 4, grid: "32nd" },
-];
-
-/** All rudiments that target the given grid (treating missing grid as "16th"). */
-function rudimentsForGrid(grid: GridType): Paradiddle[] {
-  return PARADIDDLES.filter(p => (p.grid ?? "16th") === grid);
-}
-
-/** Unique groups (in declaration order) for the given grid. */
-function rudimentGroupsForGrid(grid: GridType): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const p of rudimentsForGrid(grid)) {
-    if (!seen.has(p.group)) { seen.add(p.group); out.push(p.group); }
-  }
-  return out;
-}
-
 // ── Helper: DrumMeasure → StripMeasureData (for quickmark previews) ─────────
 
 function measureToStripData(m: DrumMeasure, grid: GridType): StripMeasureData {
@@ -721,11 +613,10 @@ function PermPanel({
 
 // ── Pool preset save/load bar ─────────────────────────────────────────────
 
-function PoolPresetBar({ voiceKey, poolIds, onLoad, grid }: {
+function PoolPresetBar({ voiceKey, poolIds, onLoad }: {
   voiceKey: string;
   poolIds: string[];
   onLoad: (ids: string[]) => void;
-  grid: GridType;
 }) {
   const [presets, setPresets] = useState<PoolPreset[]>(() => loadPoolPresets());
   const [name, setName] = useState("");
@@ -757,34 +648,8 @@ function PoolPresetBar({ voiceKey, poolIds, onLoad, grid }: {
     setEditingId(p.id);        // mark as editing
   };
 
-  // Rudiment preset: all perm IDs used by rudiments on THIS grid for this voice.
-  // Filtering by grid matters now that rudiments exist for triplet and 32nd too —
-  // otherwise we'd try to load 16th-grid perm IDs into a triplet measure.
-  const paradiddlePermIds = (() => {
-    const key = voiceKey as "O" | "S" | "B";
-    if (key !== "O" && key !== "S" && key !== "B") return [] as string[];
-    const set = new Set<string>();
-    for (const pd of rudimentsForGrid(grid)) {
-      const id = pd[key];
-      if (id) set.add(id);
-    }
-    return [...set];
-  })();
-
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap", marginBottom: 4 }}>
-      {paradiddlePermIds.length > 0 && (
-        <button
-          onClick={() => onLoad(paradiddlePermIds)}
-          title={`Rudiments (${paradiddlePermIds.length} perms)`}
-          style={{
-            padding: "1px 6px", borderRadius: 3, fontSize: 8, fontWeight: 700, cursor: "pointer",
-            border: "1px solid #a878c8",
-            background: "#1a0f20",
-            color: "#c898e8",
-            letterSpacing: 0.5,
-          }}>R</button>
-      )}
       {matching.map(p => (
         <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 0 }}>
           <button onClick={() => onLoad(p.permIds)}
@@ -932,7 +797,6 @@ function SimplePermPanel({
       {/* ── Permutation pool checklist ── */}
       <PoolPresetBar
         voiceKey={voice}
-        grid={grid}
         poolIds={[...topPoolIds]}
         onLoad={(ids) => { if (onSetPool) onSetPool(measureIdx, voice, ids); }}
       />
@@ -983,7 +847,6 @@ function SimplePermPanel({
           </div>
           <PoolPresetBar
             voiceKey={voice === "G" ? "G-dbl" : "O-open"}
-            grid={grid}
             poolIds={[...secondPoolIds]}
             onLoad={(ids) => { if (onSetSecondPool) onSetSecondPool(measureIdx, voice, ids); }}
           />
@@ -1149,7 +1012,6 @@ function MeasureStrip({
   openPanels, onTogglePanel, onLockToggle,
   phraseBreaks, barsPerRow, permOriginalCount,
   indexOffset = 0,
-  paraOpenPanels, onTogglePara, measureParadiddle,
   onAccentToggle,
 }: {
   measures:      DrumMeasure[];
@@ -1168,9 +1030,6 @@ function MeasureStrip({
   barsPerRow?:   number;
   permOriginalCount?: number | null;
   indexOffset?:  number;
-  paraOpenPanels?: Set<number>;
-  onTogglePara?: (idx: number) => void;
-  measureParadiddle?: Record<number, string[]>;
   onAccentToggle?: (measureIdx: number, slot: number) => void;
 }) {
   const stripContainerRef = useRef<HTMLDivElement>(null);
@@ -1362,26 +1221,6 @@ function MeasureStrip({
                               </button>
                             );
                           })}
-                          {/* Rudiment toggle (shown for grids with authored rudiments) */}
-                          {rudimentsForGrid(grid).length > 0 && onTogglePara && (() => {
-                            const paraIsOpen = paraOpenPanels?.has(globalI);
-                            const hasPara = !!(measureParadiddle?.[globalI]?.length);
-                            return (
-                              <button
-                                title="Rudiment presets"
-                                onClick={() => onTogglePara(globalI)}
-                                style={{
-                                  ...BTN, marginLeft: 2,
-                                  border: `1.5px solid ${paraIsOpen ? "#c8aa5088" : hasPara ? "#c8aa5044" : "#252525"}`,
-                                  background: paraIsOpen ? "#c8aa5022" : hasPara ? "#c8aa5011" : "#111",
-                                  color: paraIsOpen || hasPara ? "#c8aa50" : "#555",
-                                  cursor: isLocked ? "default" : "pointer",
-                                  fontWeight: 700, fontSize: 9,
-                                }}>
-                                R
-                              </button>
-                            );
-                          })()}
                         </div>
                         </>)}
                       </div>
@@ -1837,10 +1676,6 @@ export default function DrumPatterns({
     setPermOriginalCount(qm.permOriginalCount);
     setPhraseBreaks([]);
     setSelectedIdx(null);
-    // Sync paradiddle state from measure data
-    const paraState: Record<number, string[]> = {};
-    ms.forEach((m, i) => { if (m.paradiddlePool?.length) paraState[i] = m.paradiddlePool; });
-    setMeasureParadiddle(paraState);
   }, []);
 
   const deleteQuickmark = useCallback((id: string) => {
@@ -1897,56 +1732,6 @@ export default function DrumPatterns({
       return v && typeof v === "object" ? v : {};
     } catch { return {}; }
   });
-
-  // ── Paradiddle preset application ────────────────────────────────────────
-  // Build-row paradiddle (sets voice rows directly)
-  const applyParadiddle = useCallback((p: Paradiddle) => {
-    setWOPermId(p.O);
-    setWSPermId(p.S);
-    setWBPermId(p.B);
-    setOCount(p.oCount);
-    setSCount(p.sCount);
-    setBCount(p.bCount);
-  }, []);
-
-  // Per-measure paradiddle pool: maps measure index → array of selected paradiddle labels
-  const [measureParadiddle, setMeasureParadiddle] = useState<Record<number, string[]>>({});
-  // Which measures have the paradiddle panel open
-  const [paraOpenPanels, setParaOpenPanels] = useState<Set<number>>(new Set());
-
-  const handleTogglePara = useCallback((idx: number) => {
-    setParaOpenPanels(prev => {
-      const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx); else next.add(idx);
-      return next;
-    });
-  }, []);
-
-  // Toggle a paradiddle in/out of a measure's pool (multi-select)
-  const toggleParadiddleOnMeasure = useCallback((idx: number, p: Paradiddle) => {
-    setMeasureParadiddle(prev => {
-      const cur = prev[idx] ?? [];
-      const next = cur.includes(p.label) ? cur.filter(l => l !== p.label) : [...cur, p.label];
-      return { ...prev, [idx]: next };
-    });
-    // Only store the paradiddle pool on the measure — never change the active perms
-    setMeasures(prev => prev.map((m, i) => {
-      if (i !== idx) return m;
-      const updatedLabels = (measureParadiddle[idx] ?? []).includes(p.label)
-        ? (measureParadiddle[idx] ?? []).filter(l => l !== p.label)
-        : [...(measureParadiddle[idx] ?? []), p.label];
-      return { ...m, paradiddlePool: updatedLabels.length ? updatedLabels : undefined };
-    }));
-  }, [measureParadiddle]);
-
-  // Clear all paradiddles from a measure (unlocks O/S/B)
-  const clearParadiddleFromMeasure = useCallback((idx: number) => {
-    setMeasureParadiddle(prev => ({ ...prev, [idx]: [] }));
-    setMeasures(prev => prev.map((m, i) => {
-      if (i !== idx) return m;
-      return { ...m, paradiddlePool: undefined };
-    }));
-  }, []);
 
   // ── Playback refs (avoid stale closures in setInterval) ─────────────────
   const intervalRef              = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -2424,9 +2209,8 @@ export default function DrumPatterns({
     // Build per-measure voice pool info for Cartesian product.
     // Ghost doubles and ostinato opens are treated as independent axes
     // so they permute separately from the main voice hits.
-    // Paradiddles are a linked axis — each paradiddle sets O+S+B atomically.
-    type VoiceBtnIdExt = VoiceBtnId | "G-dbl" | "O-open" | "paradiddle";
-    type VoicePool = { voice: VoiceBtnIdExt; pool: Permutation[]; paradiddleLabels?: string[] };
+    type VoiceBtnIdExt = VoiceBtnId | "G-dbl" | "O-open";
+    type VoicePool = { voice: VoiceBtnIdExt; pool: Permutation[] };
     const measureVoicePools: VoicePool[][] = origMeasures.map((m, i) => {
       if (m.rotationLocked) return [];
       // Collect voices that have explicit pools set
@@ -2442,20 +2226,8 @@ export default function DrumPatterns({
         : (measureVoice[i]?.length ? measureVoice[i] : [] as VoiceBtnId[]);
       const voicesToRotate = [...new Set([...baseVoices, ...explicitVoices])];
 
-      // When paradiddles are active, S/B/O are managed by the linked paradiddle axis
-      const hasParadiddles = Array.isArray(m.paradiddlePool) && m.paradiddlePool.length > 0;
-      const paraLockedVoices: Set<VoiceBtnId> = new Set();
-      if (hasParadiddles) {
-        for (const lbl of m.paradiddlePool!) {
-          const pd = PARADIDDLES.find(x => x.label === lbl);
-          if (pd) { if (pd.O) paraLockedVoices.add("O"); if (pd.S) paraLockedVoices.add("S"); if (pd.B) paraLockedVoices.add("B"); }
-        }
-      }
-
       const pools: VoicePool[] = [];
       for (const voice of voicesToRotate) {
-        // Skip voices managed by paradiddle pool
-        if (paraLockedVoices.has(voice)) continue;
         const explicitIds = getExplicitPool(m, voice);
         // Only permute voices with explicit pools — without one, the voice
         // keeps its current pattern unchanged across permutations.
@@ -2489,19 +2261,6 @@ export default function DrumPatterns({
           .map(id => ps.find(p => p.id === id))
           .filter((p): p is Permutation => !!p);
         if (openPool.length > 0) pools.push({ voice: "O-open", pool: openPool });
-      }
-
-      // Paradiddle pool as linked axis — each entry applies O+S+B atomically.
-      // Uses a synthetic Permutation per paradiddle (label stored, applied via withVoicePerm).
-      if (Array.isArray(m.paradiddlePool) && m.paradiddlePool.length > 0) {
-        // Create a synthetic perm for each paradiddle label so the Cartesian product treats it as one axis
-        const paraPool: Permutation[] = m.paradiddlePool.map((lbl, idx) => ({
-          id: `para-${idx}`,
-          family: 0,
-          label: lbl,
-          beatSlots: [],
-        }));
-        pools.push({ voice: "paradiddle", pool: paraPool, paradiddleLabels: m.paradiddlePool });
       }
 
       return pools;
@@ -2592,44 +2351,32 @@ export default function DrumPatterns({
           const { voice, pool: effectivePool } = pools[v];
           const idx = voiceIndices[v];
 
-          if (voice === "paradiddle") {
-            // Linked axis: apply O+S+B from the paradiddle atomically
-            const paraIdx = mode === "rnd" ? Math.floor(Math.random() * effectivePool.length) : idx;
-            const paraLabel = effectivePool[paraIdx % effectivePool.length].label;
-            const pd = PARADIDDLES.find(x => x.label === paraLabel);
-            if (pd) {
-              if (pd.S) next = withVoicePerm(next, "S", pd.S);
-              if (pd.B) next = withVoicePerm(next, "B", pd.B);
-              if (pd.O) next = withVoicePerm(next, "O", pd.O);
+          let curPermId: string;
+          if (mode === "rnd") {
+            curPermId = effectivePool[Math.floor(Math.random() * effectivePool.length)].id;
+          } else if (mode === "custom") {
+            const seq = getCustomSeq(measureOrder[i] ?? {}, ps);
+            if (seq.length === 0) {
+              curPermId = getVoicePermId(m, voice) ?? ps[0]?.id ?? "";
+            } else {
+              curPermId = seq[idx % seq.length];
             }
           } else {
-            let curPermId: string;
-            if (mode === "rnd") {
-              curPermId = effectivePool[Math.floor(Math.random() * effectivePool.length)].id;
-            } else if (mode === "custom") {
-              const seq = getCustomSeq(measureOrder[i] ?? {}, ps);
-              if (seq.length === 0) {
-                curPermId = getVoicePermId(m, voice) ?? ps[0]?.id ?? "";
-              } else {
-                curPermId = seq[idx % seq.length];
-              }
-            } else {
-              // sequential — direct index into pool
-              curPermId = effectivePool[idx].id;
-            }
-            // Handle merged ghost+double axis: dbl:-prefixed IDs go to G-dbl voice
-            if (voice === "G" && curPermId.startsWith("dbl:")) {
-              const realId = curPermId.slice(4);
-              next = withVoicePerm(next, "G-dbl", realId);
-              // Clear the normal ghost perm so only the double plays
-              next = withVoicePerm(next, "G", "");
-            } else if (voice === "G") {
-              next = withVoicePerm(next, "G", curPermId);
-              // Clear ghost-double so only the normal ghost plays
-              next = withVoicePerm(next, "G-dbl", "");
-            } else {
-              next = withVoicePerm(next, voice, curPermId);
-            }
+            // sequential — direct index into pool
+            curPermId = effectivePool[idx].id;
+          }
+          // Handle merged ghost+double axis: dbl:-prefixed IDs go to G-dbl voice
+          if (voice === "G" && curPermId.startsWith("dbl:")) {
+            const realId = curPermId.slice(4);
+            next = withVoicePerm(next, "G-dbl", realId);
+            // Clear the normal ghost perm so only the double plays
+            next = withVoicePerm(next, "G", "");
+          } else if (voice === "G") {
+            next = withVoicePerm(next, "G", curPermId);
+            // Clear ghost-double so only the normal ghost plays
+            next = withVoicePerm(next, "G-dbl", "");
+          } else {
+            next = withVoicePerm(next, voice, curPermId);
           }
         }
 
@@ -3543,49 +3290,6 @@ export default function DrumPatterns({
           grid={grid}
         />
 
-        {/* Rudiment presets (shown for grids that have authored rudiments) */}
-        {rudimentsForGrid(grid).length > 0 && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "6px 12px", borderBottom: "1px solid #181818",
-            minHeight: 52,
-          }}>
-            <div style={{ width: 62, flexShrink: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#666", letterSpacing: 1 }}>R</div>
-              <div style={{ fontSize: 8, color: "#3a3a3a", marginTop: 1 }}>Rudiments</div>
-            </div>
-            <div style={{ display: "flex", gap: 12, flex: 1, flexWrap: "wrap", alignItems: "center" }}>
-              {rudimentGroupsForGrid(grid).map(group => (
-                <div key={group} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span style={{ fontSize: 8, color: "#333", fontWeight: 700, letterSpacing: 1, marginRight: 2 }}>{group}</span>
-                  {rudimentsForGrid(grid).filter(p => p.group === group).map(p => {
-                    const chars = p.label.split("");
-                    const isActive = p.O === wOPermId && p.S === wSPermId && p.B === wBPermId;
-                    return (
-                      <button key={p.label} onClick={() => applyParadiddle(p)}
-                        title={p.label}
-                        style={{
-                          display: "flex", gap: 1, padding: "3px 5px", borderRadius: 3,
-                          border: `1px solid ${isActive ? "#9395ea55" : "#1a1a1a"}`,
-                          background: isActive ? "#1a1a2e" : "#0a0a0a",
-                          cursor: "pointer", fontSize: 10, fontWeight: 700, fontFamily: "monospace",
-                          letterSpacing: 1,
-                        }}>
-                        {chars.map((ch, i) => (
-                          <span key={i} style={{
-                            color: ch === "O" ? "#c8aa50"
-                              : ch === "S" ? "#9999ee"
-                              : "#e06060",
-                          }}>{ch}</span>
-                        ))}
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>}
 
       {/* ══ SECTION 2: BEAT PREVIEW (ostinato mode) ═════════════════ */}
@@ -4461,14 +4165,11 @@ export default function DrumPatterns({
                   onLockToggle={handleLockToggle}
                   phraseBreaks={[]}
                   permOriginalCount={permOriginalCount}
-                  paraOpenPanels={paraOpenPanels}
-                  onTogglePara={handleTogglePara}
-                  measureParadiddle={measureParadiddle}
                   onAccentToggle={handleAccentToggle}
                 />
 
                 {/* ── Rotation panels — directly below source phrase ── */}
-                {(openPanels.size > 0 || paraOpenPanels.size > 0) && (() => {
+                {openPanels.size > 0 && (() => {
                   const origRows = buildRows(origMeasures, []);
                   const panelMaxSegs = origRows.reduce((mx, r) => Math.max(mx, r.length), 1);
                   const panelGapTotal = Math.max(0, panelMaxSegs - 1) * PHRASE_GAP;
@@ -4476,7 +4177,7 @@ export default function DrumPatterns({
                     ? Math.max(120, Math.floor((composedStripW - STRIP_CLEF_EXTRA - panelGapTotal) / BARS_PER_ROW))
                     : STRIP_MEASURE_W;
                   return origRows.map((row, rowIdx) => {
-                    const hasOpen = row.some(seg => seg.indices.some(i => openPanels.has(i) || paraOpenPanels.has(i)));
+                    const hasOpen = row.some(seg => seg.indices.some(i => openPanels.has(i)));
                     if (!hasOpen) return null;
                     return (
                       <div key={`panel-row-${rowIdx}`} style={{ display: "flex", padding: "4px 0 0" }}>
@@ -4489,60 +4190,6 @@ export default function DrumPatterns({
                                 const w = relI === 0 ? panelMeasureW + clefExtra : panelMeasureW;
                                 return (
                                   <div key={absI} style={{ width: w, flexShrink: 0, padding: "0 2px", boxSizing: "border-box" }}>
-                                    {/* Paradiddle multi-select panel */}
-                                    {paraOpenPanels.has(absI) && measures[absI] && grid === "16th" && (
-                                      <div style={{
-                                        background: "#0e0e0e", border: "1px solid #252525", borderRadius: 6,
-                                        padding: "6px 8px", width: "100%", boxSizing: "border-box",
-                                        marginBottom: openPanels.has(absI) ? 4 : 0,
-                                      }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-                                          <span style={{ fontSize: 10, fontWeight: 700, color: "#c8aa50", letterSpacing: 1 }}>P</span>
-                                          <span style={{ fontSize: 9, color: "#555" }}>
-                                            M{absI + 1} Rudiments
-                                            {(measureParadiddle[absI]?.length ?? 0) > 0 && (
-                                              <span style={{ color: "#c8aa50", marginLeft: 4 }}>({measureParadiddle[absI]!.length})</span>
-                                            )}
-                                          </span>
-                                          {(measureParadiddle[absI]?.length ?? 0) > 0 && (
-                                            <button onClick={() => clearParadiddleFromMeasure(absI)}
-                                              style={{ marginLeft: "auto", fontSize: 8, color: "#555", background: "none", border: "1px solid #2a2a2a", borderRadius: 3, padding: "1px 6px", cursor: "pointer" }}>
-                                              clear
-                                            </button>
-                                          )}
-                                        </div>
-                                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                          {rudimentGroupsForGrid(grid).map(group => (
-                                            <div key={group} style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
-                                              <span style={{ fontSize: 7, color: "#333", fontWeight: 700, letterSpacing: 1, width: 24, flexShrink: 0 }}>{group}</span>
-                                              {rudimentsForGrid(grid).filter(p => p.group === group).map(p => {
-                                                const isActive = (measureParadiddle[absI] ?? []).includes(p.label);
-                                                const chars = p.label.split("");
-                                                return (
-                                                  <button key={p.label} onClick={() => toggleParadiddleOnMeasure(absI, p)}
-                                                    title={p.label}
-                                                    style={{
-                                                      display: "flex", gap: 0, padding: "2px 4px", borderRadius: 3,
-                                                      border: `1px solid ${isActive ? "#c8aa5066" : "#1a1a1a"}`,
-                                                      background: isActive ? "#c8aa5018" : "#0a0a0a",
-                                                      cursor: "pointer", fontSize: 9, fontWeight: 700, fontFamily: "monospace",
-                                                      letterSpacing: 0.5,
-                                                    }}>
-                                                    {chars.map((ch, ci) => (
-                                                      <span key={ci} style={{
-                                                        color: ch === "O" ? (isActive ? "#c8aa50" : "#c8aa5066")
-                                                          : ch === "S" ? (isActive ? "#9999ee" : "#9999ee66")
-                                                          : (isActive ? "#e06060" : "#e0606066"),
-                                                      }}>{ch}</span>
-                                                    ))}
-                                                  </button>
-                                                );
-                                              })}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
                                     {openPanels.has(absI) && measures[absI] ? (
                                       betaPlayRotation ? (
                                         <PermPanel
@@ -4563,55 +4210,28 @@ export default function DrumPatterns({
                                           onClose={() => setOpenPanels(prev => { const next = new Set(prev); next.delete(absI); return next; })}
                                         />
                                       ) : (() => {
-                                        const paraLabels = measureParadiddle[absI] ?? [];
-                                        const lockedVoices = new Set<VoiceBtnId>();
-                                        for (const lbl of paraLabels) {
-                                          const pd = PARADIDDLES.find(p => p.label === lbl);
-                                          if (pd) { if (pd.O) lockedVoices.add("O"); if (pd.S) lockedVoices.add("S"); if (pd.B) lockedVoices.add("B"); }
-                                        }
                                         const voices: VoiceBtnId[] = measureVoice[absI]?.length ? measureVoice[absI] : ["S"];
                                         return (
                                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                          {voices.map(v => {
-                                            if (lockedVoices.has(v)) {
-                                              const voiceColor = VOICE_BTN.find(vb => vb.id === v)?.color ?? "#888";
-                                              return (
-                                                <div key={v} style={{
-                                                  background: "#0e0e0e", border: "1px solid #252525", borderRadius: 6,
-                                                  padding: "6px 8px", width: "100%", boxSizing: "border-box", opacity: 0.4,
-                                                }}>
-                                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                                    <span style={{
-                                                      fontSize: 10, fontWeight: 700, color: voiceColor, letterSpacing: 1,
-                                                      padding: "1px 5px", border: `1px solid ${voiceColor}44`, borderRadius: 3, background: `${voiceColor}11`,
-                                                    }}>
-                                                      {VOICE_BTN.find(vb => vb.id === v)?.title ?? v}
-                                                    </span>
-                                                    <span style={{ fontSize: 9, color: "#444" }}>locked by rudiment</span>
-                                                  </div>
-                                                </div>
-                                              );
-                                            }
-                                            return (
-                                              <SimplePermPanel
-                                                key={v}
-                                                measureIdx={absI}
-                                                measures={measures}
-                                                grid={grid}
-                                                voice={v}
-                                                onSelectPerm={handleSimplePermSelect}
-                                                onToggleOpen={handleSimpleOpenToggle}
-                                                onToggleDouble={handleSimpleDoubleToggle}
-                                                onSelectGhostDoublePerm={handleGhostDoublePermSelect}
-                                                onSelectOstinatoOpenPerm={handleOstinatoOpenPermSelect}
-                                                onTogglePool={handleTogglePool}
-                                                onToggleSecondPool={handleToggleSecondPool}
-                                                onSetPool={handleSetPool}
-                                                onSetSecondPool={handleSetSecondPool}
-                                                onClose={() => setOpenPanels(prev => { const next = new Set(prev); next.delete(absI); return next; })}
-                                              />
-                                            );
-                                          })}
+                                          {voices.map(v => (
+                                            <SimplePermPanel
+                                              key={v}
+                                              measureIdx={absI}
+                                              measures={measures}
+                                              grid={grid}
+                                              voice={v}
+                                              onSelectPerm={handleSimplePermSelect}
+                                              onToggleOpen={handleSimpleOpenToggle}
+                                              onToggleDouble={handleSimpleDoubleToggle}
+                                              onSelectGhostDoublePerm={handleGhostDoublePermSelect}
+                                              onSelectOstinatoOpenPerm={handleOstinatoOpenPermSelect}
+                                              onTogglePool={handleTogglePool}
+                                              onToggleSecondPool={handleToggleSecondPool}
+                                              onSetPool={handleSetPool}
+                                              onSetSecondPool={handleSetSecondPool}
+                                              onClose={() => setOpenPanels(prev => { const next = new Set(prev); next.delete(absI); return next; })}
+                                            />
+                                          ))}
                                         </div>);
                                       })()
                                     ) : null}

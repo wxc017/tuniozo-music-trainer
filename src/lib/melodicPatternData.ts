@@ -1378,8 +1378,8 @@ export function randomMelodyWithAngularity(
         if (pc === target) continue;
         const distUp = ((pc - target) % edo + edo) % edo;
         const distDown = ((target - pc) % edo + edo) % edo;
-        if (distUp > 0 && distUp <= Math.ceil(edo / 4)) above.push(pc);
-        if (distDown > 0 && distDown <= Math.ceil(edo / 4)) below.push(pc);
+        if (distUp > 0 && distUp <= edo / 2) above.push(pc);
+        if (distDown > 0 && distDown <= edo / 2) below.push(pc);
       }
       above.sort((a, b) => ((a - target) % edo + edo) % edo - ((b - target) % edo + edo) % edo);
       below.sort((a, b) => ((target - a) % edo + edo) % edo - ((target - b) % edo + edo) % edo);
@@ -1525,9 +1525,11 @@ export function randomMelodyWithAngularity(
       while (pcs.length < length) {
         // Anchor
         if (pcs.length < length) pcs.push(anchor);
-        // Step away to a neighbor (prefer tense)
-        const { above, below } = neighborsOf(anchor, decorPool.length > 0 ? decorPool : scaleSteps);
-        const neighbors = [...above.slice(0, 2), ...below.slice(0, 2)];
+        // Step away to the immediate upper or lower scale neighbor
+        const { above, below } = neighborsOf(anchor, scaleSteps);
+        const neighbors: number[] = [];
+        if (above.length > 0) neighbors.push(above[0]);
+        if (below.length > 0) neighbors.push(below[0]);
         if (neighbors.length > 0 && pcs.length < length) {
           pcs.push(neighbors[Math.floor(Math.random() * neighbors.length)]);
         }

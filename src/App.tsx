@@ -47,7 +47,7 @@ import { useLS, lsSet, getKnownOptions, localToday } from "@/lib/storage";
 import { recordAnswer, getDayTotals, accuracy, setImportBias, getImportBias, clearImportBias, removeSlotAnswers } from "@/lib/stats";
 import { getSavedToken, downloadSync, uploadSync, clearToken } from "@/lib/googleDrive";
 import { buildSyncPayload, restoreFromSyncPayload } from "@/lib/syncData";
-import { getEDOIntervals, getLayoutFile, pcToNoteNameWithEnharmonic } from "@/lib/edoData";
+import { getEDOIntervals, getLayoutFile, pcToNoteNameWithEnharmonic, formatHalfAccidentals } from "@/lib/edoData";
 import {
   PracticeLogEntry,
   PracticeRating,
@@ -592,7 +592,7 @@ export default function App() {
                   onChange={e => setTonicPc(Number(e.target.value))}
                   className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
                   {Array.from({ length: edo }, (_, i) => (
-                    <option key={i} value={i}>{pcToNoteNameWithEnharmonic(i, edo)}</option>
+                    <option key={i} value={i}>{formatHalfAccidentals(pcToNoteNameWithEnharmonic(i, edo))}</option>
                   ))}
                 </select>
               </div>

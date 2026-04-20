@@ -95,6 +95,10 @@ export interface VocalSlot {
   posInGroup: number;
   /** When true: render as a rest, no audio played, no syllable vocalized. */
   isRest?: boolean;
+  /** When true: render/play this slot as two notes of half the slot's duration
+   *  (e.g. a 16th becomes two 32nds, an 8th of a triplet becomes two 16ths).
+   *  Both sub-notes inherit the slot's voice; only the first carries the accent. */
+  isSplit?: boolean;
 }
 
 export interface VocalGroup {
@@ -877,6 +881,54 @@ export function applyGrooveVoicing(
  * Run this AFTER voicing (applyGrooveVoicing or enforceMusicalConstraints)
  * so voice assignments are final.
  */
+/**
+ * Randomly mark a subset of non-rest slots as split so they render/play as two
+ * half-duration notes.
+ *
+ * `allowedGroupSizes` restricts which base subdivisions are eligible for splits.
+ *   - {4}: only 16th groups split (→ 32nd pairs)
+ *   - {3}: only triplet groups split (→ 16th pairs within the triplet bracket)
+ *   - {3, 4}: both
+ * An empty set disables splits entirely.
+ *
+ * Rules:
+ *   - Skip rests (nothing to split).
+ *   - Groups with size ≥ 8 never split (no 64th-note support in the renderer).
+ *   - Groups with size ≤ 1 never split (not musically useful here).
+ *   - Don't split two adjacent slots (keeps the groove legible).
+ *   - Cap: ≤ 40% of a group's slots split, so the group still reads as its
+ *     base subdivision.
+ */
+export function applySplits(
+  pattern: VocalPattern,
+  allowedGroupSizes: ReadonlySet<number>,
+  probability = 0.25,
+): VocalPattern {
+  if (probability <= 0 || allowedGroupSizes.size === 0) return pattern;
+  const groups = pattern.groups.map(grp => {
+    if (grp.size >= 8 || grp.size <= 1) return grp;
+    if (!allowedGroupSizes.has(grp.size)) return grp;
+    const maxSplits = Math.max(1, Math.floor(grp.size * 0.4));
+    let splits = 0;
+    let prevSplit = false;
+    const slots = grp.slots.map((s): VocalSlot => {
+      if (s.isRest || splits >= maxSplits || prevSplit) {
+        prevSplit = false;
+        return s;
+      }
+      if (Math.random() < probability) {
+        splits++;
+        prevSplit = true;
+        return { ...s, isSplit: true };
+      }
+      prevSplit = false;
+      return s;
+    });
+    return { ...grp, slots };
+  });
+  return { ...pattern, groups };
+}
+
 export function applySpace(pattern: VocalPattern): VocalPattern {
   const flat: { g: number; s: number; slot: VocalSlot }[] = [];
   pattern.groups.forEach((grp, gi) =>
@@ -1417,12 +1469,31 @@ export function flattenForPlayback(
     const slotDuration = groupDuration / group.size;
 
     for (let si = 0; si < group.slots.length; si++) {
-      events.push({
-        slot: group.slots[si],
-        groupIdx: gi,
-        globalIdx,
-        timeOffset,
-      });
+      const slot = group.slots[si];
+      if (slot.isSplit && !slot.isRest) {
+        // Emit two events at half spacing. The second event is unaccented
+        // regardless of the original slot's accent (the accent belongs to
+        // the downbeat of the split).
+        events.push({
+          slot,
+          groupIdx: gi,
+          globalIdx,
+          timeOffset,
+        });
+        events.push({
+          slot: { ...slot, isAccent: false },
+          groupIdx: gi,
+          globalIdx,
+          timeOffset: timeOffset + slotDuration / 2,
+        });
+      } else {
+        events.push({
+          slot,
+          groupIdx: gi,
+          globalIdx,
+          timeOffset,
+        });
+      }
       timeOffset += slotDuration;
       globalIdx++;
     }

@@ -893,6 +893,20 @@ const DEGREE_TO_LETTER: Record<string, string> = {
   "1": "C", "2": "D", "3": "E", "4": "F", "5": "G", "6": "A", "7": "B",
 };
 
+/**
+ * Replace double-sharps/double-flats with half-sharp (𝄲) / half-flat (𝄳) glyphs.
+ * Why: in 31-EDO displays, "##"/"bb" (and their 𝄪/𝄫 forms) read as visual clutter;
+ * the half accidentals compress to a single glyph. Applied at display sites only —
+ * parsing code still sees the raw ASCII form.
+ */
+export function formatHalfAccidentals(s: string): string {
+  return s
+    .replace(/##/g, "𝄲")
+    .replace(/bb/g, "𝄳")
+    .replace(/𝄪/g, "𝄲")
+    .replace(/𝄫/g, "𝄳");
+}
+
 const _pcNoteNamesCache: Record<number, string[]> = {};
 
 /**

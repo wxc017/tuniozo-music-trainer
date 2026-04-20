@@ -284,7 +284,6 @@ export interface DrumMeasure {
   doubleSlots?: number[];         // legacy
   customSnareHits?: number[];
   customBassHits?: number[];
-  paradiddlePool?: string[];      // linked paradiddle labels — each permuted as an atomic unit (sets O+S+B together)
   rotationLocked?: boolean;       // when true, rotation engine skips this measure
   accentSlots?: boolean[];        // length = total subdivisions (e.g. 16 for 16th grid); true = accent at that slot
 }

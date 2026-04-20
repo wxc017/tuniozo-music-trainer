@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLS } from "@/lib/storage";
 import { audioEngine } from "@/lib/audioEngine";
-import { getEdoChordTypes, getLayoutFile, getFullDegreeNames, getAvailableThirdQualities, getAvailableSeventhQualities, pcToNoteName, pcToNoteNameWithEnharmonic, getDegreeMap } from "@/lib/edoData";
+import { getEdoChordTypes, getLayoutFile, getFullDegreeNames, getAvailableThirdQualities, getAvailableSeventhQualities, pcToNoteName, pcToNoteNameWithEnharmonic, getDegreeMap, formatHalfAccidentals } from "@/lib/edoData";
+import { renderAccidentals } from "@/lib/accidentalDisplay";
 import { computeLayout, type LayoutResult } from "@/lib/lumatoneLayout";
 import { ALL_VOICING_PATTERNS, VOICING_PATTERN_GROUPS, generateFunctionalLoop, PATTERN_SCALE_FAMILIES, getScaleDiatonicSteps } from "@/lib/musicTheory";
 import LumatoneKeyboard from "@/components/LumatoneKeyboard";
@@ -932,6 +933,24 @@ export default function MelodicPatterns() {
     return new Set(absPitches);
   }, []);
 
+  // Click a scale-degree cell: highlight that pitch class across every octave
+  // on the visualizer and sound the note in the reference octave (abs = pc).
+  const previewPc = useCallback((pc: number) => {
+    const normPc = ((pc % edo) + edo) % edo;
+    const abs: number[] = [];
+    if (layout) {
+      for (const k of layout.keys) {
+        if (((k.pitch % edo) + edo) % edo === normPc) abs.push(k.pitch);
+      }
+    }
+    setActivePcs(new Set(abs));
+    void (async () => {
+      if (!audioEngine.isReady()) await audioEngine.init(edo);
+      else audioEngine.resume();
+      audioEngine.playNote(normPc, edo, 0.8, 0.7);
+    })();
+  }, [edo, layout]);
+
   // Compute per-note timing gaps from rhythm data or equal spacing
   const getNoteGapsMs = useCallback((noteCount: number): number[] => {
     if (rhythmTiming && rhythmTiming.durations.length === noteCount) {
@@ -1445,7 +1464,7 @@ export default function MelodicPatterns() {
           <select value={tonicRoot} onChange={e => setTonicRoot(Number(e.target.value))}
             className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-white focus:outline-none">
             {Array.from({ length: edo }, (_, i) => (
-              <option key={i} value={i}>{pcToNoteNameWithEnharmonic(i, edo)}</option>
+              <option key={i} value={i}>{formatHalfAccidentals(pcToNoteNameWithEnharmonic(i, edo))}</option>
             ))}
           </select>
         </div>
@@ -1813,12 +1832,12 @@ export default function MelodicPatterns() {
               <div className="text-center cursor-pointer mb-3"
                 onClick={e => { e.stopPropagation(); setActivePcs(pitchesToHighlight(seg.chordPcs.map(s => s + (3 - 4) * edo))); }}>
                 <div className="text-[18px] font-bold leading-tight hover:opacity-80 transition-colors"
-                  style={{ color: "#c8a0e0" }}>{romanParts.roman}</div>
+                  style={{ color: "#c8a0e0" }}>{renderAccidentals(romanParts.roman)}</div>
                 <div className="text-[10px] text-[#666] mt-0.5">{romanParts.chordType}</div>
                 <div className="flex gap-1 mt-1 justify-center flex-wrap">
                   {seg.chordPcs.map((pc, j) => (
                     <span key={j} className="text-[9px] px-1 py-0.5 rounded bg-[#1a1a1a] text-[#666] border border-[#1e1e1e]">
-                      {degreeName(pc, edo)}
+                      {renderAccidentals(degreeName(pc, edo))}
                     </span>
                   ))}
                 </div>
@@ -1897,7 +1916,7 @@ export default function MelodicPatterns() {
                       const octLabel = oct > 0 ? ` +${oct}` : oct < 0 ? ` ${oct}` : "";
                       return (
                         <div key={j} className="flex flex-col items-center cursor-pointer"
-                          onClick={e => { e.stopPropagation(); setActivePcs(pitchesToHighlight([absPitch])); }}>
+                          onClick={e => { e.stopPropagation(); previewPc(pc); }}>
                           {j > 0 ? (
                             <span className="text-[8px] text-[#444] mb-0.5">
                               {intervals[j - 1] > 0 ? "+" : ""}{intervals[j - 1]}
@@ -1908,17 +1927,17 @@ export default function MelodicPatterns() {
                           {/* Scale degree relative to tonic — colored by category */}
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border hover:brightness-125 transition-all"
                             style={{ width: 36, height: 24, borderColor: catColor + "80", backgroundColor: catColor + "15", color: catColor }}>
-                            {degreeName(((pc - tonicRoot) % edo + edo) % edo, edo)}{octLabel && <span className="text-[8px] ml-0.5 opacity-70">{octLabel}</span>}
+                            {renderAccidentals(degreeName(((pc - tonicRoot) % edo + edo) % edo, edo))}{octLabel && <span className="text-[8px] ml-0.5 opacity-70">{octLabel}</span>}
                           </span>
                           {/* Extension name relative to chord root — colored by chord function */}
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all"
                             style={{ width: 36, height: 24, borderColor: chordCatColor + "40", backgroundColor: chordCatColor + "08", color: chordCatColor + "99" }}>
-                            {extName}
+                            {renderAccidentals(extName)}
                           </span>
                           {/* Note name */}
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all"
                             style={{ width: 36, height: 24, borderColor: "#9a7ac040", backgroundColor: "#9a7ac008", color: "#9a7ac099" }}>
-                            {pcToNoteName(pc, edo)}
+                            {renderAccidentals(pcToNoteName(pc, edo))}
                           </span>
                         </div>
                       );
@@ -1944,10 +1963,10 @@ export default function MelodicPatterns() {
                         const octLabelV = octV > 0 ? ` +${octV}` : octV < 0 ? ` ${octV}` : "";
                         return (
                           <div key={j} className="flex flex-col items-center cursor-pointer"
-                            onClick={e => { e.stopPropagation(); setActivePcs(pitchesToHighlight([absPitch])); }}>
+                            onClick={e => { e.stopPropagation(); previewPc(pcV); }}>
                             <span className="w-12 h-7 flex items-center justify-center rounded text-[10px] font-bold border hover:brightness-125 transition-all"
                               style={{ borderColor: catColorV + "60", backgroundColor: catColorV + "10", color: catColorV + "cc" }}>
-                              {degreeName(pcV, edo)}{octLabelV && <span className="text-[9px] ml-0.5 opacity-70">{octLabelV}</span>}
+                              {renderAccidentals(degreeName(pcV, edo))}{octLabelV && <span className="text-[9px] ml-0.5 opacity-70">{octLabelV}</span>}
                             </span>
                           </div>
                         );
@@ -1967,10 +1986,6 @@ export default function MelodicPatterns() {
                   title={isLocked ? "Unlock" : "Lock"}>
                   {isLocked ? "🔒" : "🔓"}
                 </button>
-                <button onClick={async () => { setActiveSegment(i); await playSegment(seg); }}
-                  className="px-1.5 py-0.5 text-[9px] rounded bg-[#1a2a1a] border border-[#2a4a2a] text-[#5a8a5a] hover:text-[#7aaa7a] transition-colors">▶</button>
-                <button onClick={async () => { setActiveSegment(i); await playMelodyOnly(seg); }}
-                  className="px-1.5 py-0.5 text-[9px] rounded bg-[#111] border border-[#2a2a2a] text-[#888] hover:text-white transition-colors" title="Melody only">♪</button>
                 <button onClick={e => {
                   e.stopPropagation();
                   const asIntervals = drillAddressing === "interval";
@@ -2515,7 +2530,7 @@ function PatternDrillSection({
                     backgroundColor: checked ? info.color + "25" : "transparent",
                     color: checked ? "#fff" : "#888",
                   }}>
-                  {rc.roman}
+                  {renderAccidentals(rc.roman)}
                 </button>
               );
             };
@@ -2649,11 +2664,11 @@ function PatternDrillSection({
 
                 {/* Chord name — top, prominent */}
                 <div className="text-center mb-3">
-                  <div className="text-[18px] font-bold leading-tight" style={{ color: "#c8a0e0" }}>{seg.roman}</div>
+                  <div className="text-[18px] font-bold leading-tight" style={{ color: "#c8a0e0" }}>{renderAccidentals(seg.roman)}</div>
                   <div className="flex gap-1 mt-1 justify-center flex-wrap">
                     {seg.chordPcs.map((pc, j) => (
                       <span key={j} className="text-[9px] px-1 py-0.5 rounded bg-[#1a1a1a] text-[#666] border border-[#1e1e1e]">
-                        {degreeName(((pc - tonicRoot) % edo + edo) % edo, edo)}
+                        {renderAccidentals(degreeName(((pc - tonicRoot) % edo + edo) % edo, edo))}
                       </span>
                     ))}
                   </div>
@@ -2695,15 +2710,15 @@ function PatternDrillSection({
                           )}
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border hover:brightness-125 transition-all"
                             style={{ width: 36, height: 24, borderColor: catColor + "80", backgroundColor: catColor + "15", color: catColor }}>
-                            {degreeName(((pc - tonicRoot) % edo + edo) % edo, edo)}{octLabel && <span className="text-[8px] ml-0.5 opacity-70">{octLabel}</span>}
+                            {renderAccidentals(degreeName(((pc - tonicRoot) % edo + edo) % edo, edo))}{octLabel && <span className="text-[8px] ml-0.5 opacity-70">{octLabel}</span>}
                           </span>
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all"
                             style={{ width: 36, height: 24, borderColor: chordCatColor + "40", backgroundColor: chordCatColor + "08", color: chordCatColor + "99" }}>
-                            {extName}
+                            {renderAccidentals(extName)}
                           </span>
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all"
                             style={{ width: 36, height: 24, borderColor: "#9a7ac040", backgroundColor: "#9a7ac008", color: "#9a7ac099" }}>
-                            {pcToNoteName(pc, edo)}
+                            {renderAccidentals(pcToNoteName(pc, edo))}
                           </span>
                         </div>
                       );
@@ -2874,14 +2889,16 @@ function ChordBrowser({
                 </span>
 
                 {/* Roman numeral */}
-                <span className="text-sm font-bold text-white w-16 flex-shrink-0">{c.roman}</span>
+                <span className="text-sm font-bold text-white w-16 flex-shrink-0">{renderAccidentals(c.roman)}</span>
 
                 {/* Chord type name */}
                 <span className="text-[11px] text-[#888] flex-1 truncate">{c.name}</span>
 
                 {/* PCs */}
-                <span className="text-[9px] text-[#555] flex-shrink-0">
-                  {c.chordPcs.map(pc => degreeName(pc, edo)).join(" ")}
+                <span className="text-[9px] text-[#555] flex-shrink-0 inline-flex gap-1">
+                  {c.chordPcs.map((pc, j) => (
+                    <span key={j}>{renderAccidentals(degreeName(pc, edo))}</span>
+                  ))}
                 </span>
               </button>
             );

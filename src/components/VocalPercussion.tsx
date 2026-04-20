@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
-  type DrumVoice, type VocalPattern, type VocalSlot, type VoicingMode,
+  type DrumVoice, type VocalPattern, type VocalSlot,
   VOICE_LABELS, VOICE_COLORS, VOICE_SHORT,
   generateVocalPattern, generateFromGrouping, generatePulseGrouping,
-  applyGrooveVoicing, applySpace,
+  applyGrooveVoicing, applySplits,
   flattenForPlayback, type PlaybackResult,
   scheduleDrumHit, schedulePulseClick, parseGrouping,
 } from "@/lib/vocalPercussionData";
@@ -51,30 +51,58 @@ function tryConsolidatedDuration(units: number, baseDuration: string): string | 
   return map[totalUnits] ?? null;
 }
 
+/** Half a VexFlow duration string for rendering split slots. "8"→"16", "16"→"32". */
+function halfDuration(d: string): string {
+  if (d === "q") return "8";
+  if (d === "8") return "16";
+  if (d === "16") return "32";
+  return d; // "32" can't be halved in the current renderer (no 64th support)
+}
+
 /** For non-tuplet groups, absorb trailing rests into the preceding note's duration
  *  (so `Bum + 3 sixteenth rests` becomes a single quarter `Bum`), and merge runs
  *  of leading rests into single longer rests. Tuplet groups MUST be left untouched
  *  since their timing depends on uniform notes inside the bracket — consolidating
  *  a triplet's trailing rests into a lengthened note would make the VexFlow Tuplet
  *  bracket span one note with a duration that doesn't fit the subdivision, producing
- *  a malformed bracket glyph. */
+ *  a malformed bracket glyph.
+ *
+ *  Split slots (slot.isSplit = true) emit two half-duration notes in place of
+ *  one, regardless of tuplet vs non-tuplet — the two halves still fit inside
+ *  the slot's allotted time. */
 function consolidateSlots(slots: VocalSlot[], baseDuration: string, isTuplet = false): KonnakolNote[] {
+  const emitSplitPair = (slot: VocalSlot, dur: string): KonnakolNote[] => {
+    const half = halfDuration(dur);
+    const noteColor = invertHex(VOICE_COLORS[slot.voice]);
+    return [
+      { syllable: "", noteType: "normal" as const, accent: slot.isAccent, duration: half, noteColor },
+      { syllable: "", noteType: "normal" as const, accent: false, duration: half, noteColor },
+    ];
+  };
+
   if (isTuplet) {
     // Emit every slot at the base duration; rests stay as rests, notes stay as notes.
-    // The tuplet bracket relies on uniform note count matching the subdivision.
-    return slots.map(slot => {
+    // Split slots become two half-duration notes at the same tuplet position.
+    const out: KonnakolNote[] = [];
+    for (const slot of slots) {
       if (slot.isRest) {
-        return { syllable: "", noteType: "rest" as const, accent: false, duration: baseDuration };
+        out.push({ syllable: "", noteType: "rest" as const, accent: false, duration: baseDuration });
+        continue;
+      }
+      if (slot.isSplit) {
+        out.push(...emitSplitPair(slot, baseDuration));
+        continue;
       }
       const noteColor = invertHex(VOICE_COLORS[slot.voice]);
-      return {
+      out.push({
         syllable: "",
         noteType: "normal" as const,
         accent: slot.isAccent,
         duration: baseDuration,
         noteColor,
-      };
-    });
+      });
+    }
+    return out;
   }
   const out: KonnakolNote[] = [];
   let i = 0;
@@ -96,6 +124,11 @@ function consolidateSlots(slots: VocalSlot[], baseDuration: string, isTuplet = f
         }
       }
       i += n;
+    } else if (slot.isSplit) {
+      // Split slot: emit two half-duration notes, don't absorb trailing rests
+      // (the split consumes the slot's full duration).
+      out.push(...emitSplitPair(slot, baseDuration));
+      i += 1;
     } else {
       // Note: absorb any trailing rests into its duration
       let trailingRests = 0;
@@ -360,7 +393,7 @@ import type { GroupingMode } from "@/lib/groupingSelector";
 
 /* ── Constants ────────────────────────────────────────────────────────────── */
 
-const ALL_VOICES: DrumVoice[] = ["kick", "snare", "ghost", "hat", "tom"];
+const ALL_VOICES: DrumVoice[] = ["kick", "snare", "hat"];
 const GROUPING_MODES: { value: GroupingMode; label: string; color: string }[] = [
   { value: "musical", label: "Musical", color: "#60c0a0" },
   { value: "awkward", label: "Awkward", color: "#e09060" },
@@ -699,8 +732,8 @@ export default function VocalPercussion() {
   const [groupingMode, setGroupingMode] = useState<GroupingMode>("musical");
   const [groupingInput, setGroupingInput] = useState("");
   const [useCustomGrouping, setUseCustomGrouping] = useState(false);
-  const [enabledVoices, setEnabledVoices] = useState<DrumVoice[]>([...ALL_VOICES]);
-  const [allowedSubdivisions, setAllowedSubdivisions] = useState<number[]>([2, 3, 4, 5, 6, 7]);
+  const [enabledVoices, setEnabledVoices] = useState<DrumVoice[]>(["kick", "snare"]);
+  const [allowedSubdivisions, setAllowedSubdivisions] = useState<number[]>([3, 4, 5, 6, 7]);
   const [bpm, setBpm] = useState(80);
 
   // ── Mode toggles ──────────────────────────────────────────────────────
@@ -713,10 +746,10 @@ export default function VocalPercussion() {
   const [sixteenthMode, setSixteenthMode] = useState(false);
   const [accentMode, setAccentMode] = useState<AccentMode>("first");
   const [accentEvery, setAccentEvery] = useState(3);
-  // Space: single on/off toggle, applies to both voicing modes.  Runs
-  // applySpace as a post-voicing pass — see its doc for the theoretical basis.
-  const [spaceEnabled, setSpaceEnabled] = useState(false);
-  const [voicingMode, setVoicingMode] = useState<VoicingMode>("linear");
+  // 32nds: when on, occasionally splits a 16th-group slot into two 32nds.
+  const [splits32Enabled, setSplits32Enabled] = useState(false);
+  // 16th in triplets: splits a triplet 8th into two 16ths within the triplet.
+  const [splitsTriplet16Enabled, setSplitsTriplet16Enabled] = useState(false);
   // splitMode controls what drives the cycle length:
   //   "beats"  → numBeats × subdivision (per-beat density picked from allowedSubdivisions)
   //   "pulses" → exactly numPulses slots, partitioned into groups whose sizes are
@@ -797,9 +830,6 @@ export default function VocalPercussion() {
       return picker(SUBDIV_LABELS[chosen], numBeats, [], prevGroupingsRef.current);
     };
 
-    // Always generate on a full grid; space is applied structurally post-voicing
-    // via applySpace so the result has visible, deliberate silence (not a
-    // density-sprinkled rest mask) and the tuplet brackets stay intact.
     if (grouping) {
       pat = generateFromGrouping(grouping, enabledVoices, 0);
     } else if (splitMode === "pulses") {
@@ -829,32 +859,25 @@ export default function VocalPercussion() {
       pat = applyAccentMode(pat, accentMode, accentEvery);
     }
 
-    // Both voicing modes run through the same accent-driven musical engine
-    // (K/S anchors on accents, context-weighted interior moves from GROOVE_MOVES,
-    // 2-slot max same-voice run). The sticking-based voicing the generator
-    // originally assigned is discarded — stickings are limb patterns, not voice
-    // patterns, so the R/L/K → hat/ghost/kick mapping can't produce coherent
-    // musical vocabulary on its own. The voicing engine does.
-    //
-    // The only difference between modes is syllable visibility:
-    //   - groove:  hat syllable is suppressed → staff reads as K/S/G punctuation
-    //              over an implied hi-hat ostinato (performance view).
-    //   - linear:  every slot shows its syllable including hats → the full
-    //              spoken vocabulary (sight-reading / learning view).
+    // Accent-driven musical voicing: K/S anchors on accents, context-weighted
+    // interior moves from GROOVE_MOVES, 2-slot max same-voice run. Every slot
+    // shows its syllable (the spoken vocabulary for sight-reading).
     pat = applyGrooveVoicing(pat, enabledVoices, {
-      suppressHat: voicingMode === "groove",
+      suppressHat: false,
     });
 
-    // Space applies to both modes — see applySpace for the theoretical basis.
-    if (spaceEnabled) {
-      pat = applySpace(pat);
+    const splitSizes = new Set<number>();
+    if (splits32Enabled) splitSizes.add(4);
+    if (splitsTriplet16Enabled) splitSizes.add(3);
+    if (splitSizes.size > 0) {
+      pat = applySplits(pat, splitSizes);
     }
 
     setPattern(pat);
     setHistory(prev => [...prev, pat]);
     setHistoryIdx(prev => prev + 1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numBeats, numPulses, splitMode, groupingMode, useCustomGrouping, groupingInput, enabledVoices, allowedSubdivisions, spaceEnabled, effectiveSixteenthMode, accentMode, accentEvery, voicingMode]);
+  }, [numBeats, numPulses, splitMode, groupingMode, useCustomGrouping, groupingInput, enabledVoices, allowedSubdivisions, splits32Enabled, splitsTriplet16Enabled, effectiveSixteenthMode, accentMode, accentEvery]);
 
   // ── Playback ───────────────────────────────────────────────────────────
   const stopAll = useCallback(() => {
@@ -1106,11 +1129,11 @@ export default function VocalPercussion() {
           {/* Notes per beat (per-beat density). Each beat uses one of the checked values. */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{ fontSize: 10, color: "#555", fontWeight: 700, letterSpacing: 1 }}>NOTES / BEAT</span>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3 }}>
-              {[2, 3, 4, 5, 6, 7, 8].map(n => {
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 3 }}>
+              {[3, 4, 5, 6, 7, 8].map(n => {
                 const on = allowedSubdivisions.includes(n);
                 const labels: Record<number, string> = {
-                  2: "8th", 3: "trip", 4: "16th", 5: "quin", 6: "sex", 7: "sep", 8: "32nd",
+                  3: "trip", 4: "16th", 5: "quin", 6: "sex", 7: "sep", 8: "32nd",
                 };
                 return (
                   <button key={n} onClick={() => {
@@ -1269,39 +1292,40 @@ export default function VocalPercussion() {
               )}
             </div>
 
-            {/* Voicing mode — Linear drumming vs. Groove templates (backbeat + syncopation) */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <span style={{ fontSize: 10, color: "#555", fontWeight: 700, letterSpacing: 1 }}>VOICING</span>
-              <div style={{ display: "flex", gap: 3 }}>
-                {([
-                  { v: "linear" as VoicingMode, label: "Linear", title: "Linear drumming — one voice per slot, distributed across K/S/G/H via stickings" },
-                  { v: "groove" as VoicingMode, label: "Groove", title: "Backbeat-oriented grooves with syncopation + ghost notes; uniform symmetrical subdivision. Hat stays implied (syllables hidden)." },
-                ]).map(m => {
-                  const on = voicingMode === m.v;
-                  return (
-                    <button key={m.v} onClick={() => setVoicingMode(m.v)} title={m.title} style={{
-                      flex: 1, height: 22, borderRadius: 4, fontSize: 10, fontWeight: 700,
-                      border: `1.5px solid ${on ? "#60c0a0" : "#222"}`,
-                      background: on ? "#60c0a022" : "#111",
-                      color: on ? "#60c0a0" : "#444", cursor: "pointer",
-                    }}>{m.label}</button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Space — single on/off toggle for both voicing modes. Applies
-                theoretically-grounded silence placement (Chapin / Chaffee /
-                Chester / Garibaldi) via applySpace. */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <span style={{ fontSize: 10, color: "#555", fontWeight: 700, letterSpacing: 1 }}>SPACE</span>
-              <button onClick={() => setSpaceEnabled(v => !v)} style={{
-                height: 22, borderRadius: 4, fontSize: 9, fontWeight: 700,
-                border: `1.5px solid ${spaceEnabled ? "#e06060" : "#222"}`,
-                background: spaceEnabled ? "#e0606022" : "#111",
-                color: spaceEnabled ? "#e06060" : "#444", cursor: "pointer",
-              }}>{spaceEnabled ? "on" : "off"}</button>
-            </div>
+            {/* Splits: optionally halve some notes into the next finer
+                subdivision. Each toggle is greyed out when its base subdivision
+                isn't in the NOTES/BEAT selection. */}
+            {(() => {
+              const canSplit32 = allowedSubdivisions.includes(4);
+              const canSplitTrip16 = allowedSubdivisions.includes(3);
+              const on32 = splits32Enabled && canSplit32;
+              const onTrip16 = splitsTriplet16Enabled && canSplitTrip16;
+              const btn = (label: string, title: string, on: boolean, enabled: boolean, toggle: () => void) => (
+                <button
+                  key={label}
+                  onClick={enabled ? toggle : undefined}
+                  disabled={!enabled}
+                  title={enabled ? title : `${title} — enable ${label === "32nd" ? "16th" : "triplet"} in NOTES/BEAT to use.`}
+                  style={{
+                    flex: 1, height: 22, borderRadius: 4, fontSize: 9, fontWeight: 700,
+                    border: `1.5px solid ${on ? "#9999ee" : enabled ? "#222" : "#181818"}`,
+                    background: on ? "#9999ee22" : "#111",
+                    color: on ? "#9999ee" : enabled ? "#444" : "#2a2a2a",
+                    cursor: enabled ? "pointer" : "not-allowed",
+                    opacity: enabled ? 1 : 0.5,
+                  }}
+                >{label}</button>
+              );
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: 10, color: "#555", fontWeight: 700, letterSpacing: 1 }}>SPLITS</span>
+                  <div style={{ display: "flex", gap: 3 }}>
+                    {btn("32nd", "Split 16ths into 32nd pairs", on32, canSplit32, () => setSplits32Enabled(v => !v))}
+                    {btn("16 trip", "Split triplet 8ths into 16th pairs", onTrip16, canSplitTrip16, () => setSplitsTriplet16Enabled(v => !v))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Voice muting */}
             {pattern && (
@@ -1403,7 +1427,6 @@ export default function VocalPercussion() {
               const preview = [
                 `${pattern.grouping.length} beats · ${pattern.totalSlots} notes`,
                 `Grid: ${gridDesc}`,
-                `Voicing: ${voicingMode}`,
                 `Accent: ${accentMode}${accentMode === "repeat" ? ` (every ${accentEvery})` : ""}`,
                 `BPM ${bpm}`,
                 `Voices: ${voiceStr}`,
@@ -1417,13 +1440,13 @@ export default function VocalPercussion() {
                   enabledVoices,
                   allowedSubdivisions,
                   bpm,
-                  voicingMode,
                   accentMode,
                   accentEvery,
                   counterpoint,
                   numPulses,
                   sixteenthMode,
-                  spaceEnabled,
+                  splits32Enabled,
+                  splitsTriplet16Enabled,
                 },
                 canRestore: false,
               };
@@ -1445,7 +1468,7 @@ export default function VocalPercussion() {
                 activeSlot={activeSlot}
                 mutedVoices={mutedVoices}
                 numPulses={null}
-                sixteenthMode={effectiveSixteenthMode || voicingMode === "groove" || splitMode === "pulses"}
+                sixteenthMode={effectiveSixteenthMode || splitMode === "pulses"}
               />
             </div>
           ) : (

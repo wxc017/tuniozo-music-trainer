@@ -260,7 +260,29 @@ const MUSIC_DATA_KEYS = new Set([
   "lt_accent_log",
 ]);
 
-export function exportMusicData(): void {
+// ── gzip helpers (browser-native CompressionStream) ─────────────────────
+
+async function gzipText(text: string): Promise<Uint8Array> {
+  const blob = new Blob([text]);
+  const cs = new CompressionStream("gzip");
+  const stream = blob.stream().pipeThrough(cs);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function gunzipBytes(bytes: Uint8Array): Promise<string> {
+  const blob = new Blob([bytes]);
+  const ds = new DecompressionStream("gzip");
+  const stream = blob.stream().pipeThrough(ds);
+  const buf = await new Response(stream).arrayBuffer();
+  return new TextDecoder().decode(buf);
+}
+
+// Gzip magic bytes: 1f 8b
+function looksGzipped(bytes: Uint8Array): boolean {
+  return bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+}
+
+export async function exportMusicData(): Promise<void> {
   const data: Record<string, string> = {};
   for (const key of MUSIC_DATA_KEYS) {
     let val = localStorage.getItem(key);
@@ -271,38 +293,63 @@ export function exportMusicData(): void {
     data[key] = val;
   }
   const json = JSON.stringify({ version: 1, type: "music-data", exported: new Date().toISOString(), data });
-  const blob = new Blob([json], { type: "application/json" });
+  const gz = await gzipText(json);
+  const blob = new Blob([gz], { type: "application/gzip" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `lumatone_music_${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `lumatone_music_${new Date().toISOString().slice(0, 10)}.json.gz`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
-export function importMusicData(json: string): { ok: boolean; error?: string } {
+/** Accepts gzipped bytes (ArrayBuffer) or raw JSON text. */
+export async function importMusicData(input: ArrayBuffer | string): Promise<{ ok: boolean; error?: string }> {
+  let json: string;
   try {
-    const clean = json.replace(/^\uFEFF/, "").trim();
-    if (!clean) return { ok: false, error: "File is empty." };
-    const parsed = JSON.parse(clean);
-    if (!parsed?.data || typeof parsed.data !== "object") {
-      return { ok: false, error: "Invalid music data file format." };
+    if (typeof input === "string") {
+      json = input.replace(/^\uFEFF/, "").trim();
+    } else {
+      const bytes = new Uint8Array(input);
+      if (looksGzipped(bytes)) {
+        json = (await gunzipBytes(bytes)).replace(/^\uFEFF/, "").trim();
+      } else {
+        json = new TextDecoder().decode(bytes).replace(/^\uFEFF/, "").trim();
+      }
     }
-    const entries = Object.entries(parsed.data) as [string, string][];
-    const validEntries = entries.filter(([k]) => MUSIC_DATA_KEYS.has(k) || isExportKey(k));
-    if (!validEntries.length) return { ok: false, error: "No music data found in file." };
-    for (const [k, v] of validEntries) {
+    if (!json) return { ok: false, error: "File is empty." };
+  } catch (e) {
+    return { ok: false, error: `Could not read file: ${(e as Error).message.slice(0, 80)}` };
+  }
+  let parsed: any;
+  try {
+    parsed = JSON.parse(json);
+  } catch (e) {
+    return { ok: false, error: `Could not parse JSON: ${(e as Error).message.slice(0, 80)}` };
+  }
+  if (!parsed?.data || typeof parsed.data !== "object") {
+    return { ok: false, error: "Invalid saved data file format." };
+  }
+  const entries = Object.entries(parsed.data) as [string, string][];
+  const validEntries = entries.filter(([k]) => MUSIC_DATA_KEYS.has(k) || isExportKey(k));
+  if (!validEntries.length) return { ok: false, error: "No saved data found in file." };
+  const skipped: string[] = [];
+  for (const [k, v] of validEntries) {
+    try {
       if (k === "lt_practice_log") {
-        // Merge practice log: import new entries without duplicating existing ones
-        mergePracticeLog(v);
+        if (!mergePracticeLog(v)) skipped.push(k);
       } else {
         localStorage.setItem(k, v);
       }
+    } catch (e) {
+      if (e instanceof Error && e.name === "QuotaExceededError") skipped.push(k);
+      else throw e;
     }
-    return { ok: true };
-  } catch {
-    return { ok: false, error: "Could not parse file." };
   }
+  if (skipped.length) {
+    return { ok: false, error: `Browser storage quota exceeded. Skipped: ${skipped.join(", ")}.` };
+  }
+  return { ok: true };
 }
 
 /** Merge imported practice log entries into existing log, deduplicating by entry id.

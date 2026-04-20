@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { exportData, importData, exportMusicData, importMusicData, getMusicDataSummary, exportAcademicData, importAcademicData, getAcademicDataSummary } from "@/lib/storage";
+import { exportMusicData, importMusicData, getMusicDataSummary, exportAcademicData, importAcademicData, getAcademicDataSummary } from "@/lib/storage";
 import { isGoogleDriveAvailable, requestAccessToken, uploadSync, downloadSync, getSyncInfo, getSavedToken, clearToken } from "@/lib/googleDrive";
 import { buildSyncPayload, restoreFromSyncPayload } from "@/lib/syncData";
 
@@ -108,51 +108,29 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
     flash("Signed out of Google Drive");
   };
 
-  const handleExport = () => {
-    exportData();
-    flash("Exported!");
-  };
-
-  const handleMusicExport = () => {
-    exportMusicData();
-    flash("Music data exported!");
-  };
-
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const result = importData(text);
-      if (result.ok) {
-        onDataImported();
-        flash("Imported! Reloading…");
-        setTimeout(() => window.location.reload(), 800);
-      } else {
-        flash(result.error ?? "Import failed");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
+  const handleMusicExport = async () => {
+    flash("Exporting…");
+    await exportMusicData();
+    flash("Saved data exported!");
   };
 
   const handleMusicImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const result = importMusicData(text);
+    reader.onload = async (ev) => {
+      const buf = ev.target?.result as ArrayBuffer | string;
+      const result = await importMusicData(buf);
       if (result.ok) {
         onDataImported();
-        flash("Music data imported! Reloading…");
+        flash("Saved data imported! Reloading…");
         setTimeout(() => window.location.reload(), 800);
       } else {
         flash(result.error ?? "Import failed");
       }
     };
-    reader.readAsText(file);
+    // Read as ArrayBuffer so gzip-compressed files can be decompressed binary
+    reader.readAsArrayBuffer(file);
     e.target.value = "";
   };
 
@@ -273,9 +251,9 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
             </div>
           )}
 
-          {/* Music Data section */}
+          {/* Saved Data section */}
           <div>
-            <h3 className="text-xs font-semibold text-[#e87010] uppercase tracking-widest mb-3">Music Data</h3>
+            <h3 className="text-xs font-semibold text-[#e87010] uppercase tracking-widest mb-3">Saved Data</h3>
             <div className="space-y-2">
               <div className="px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-[#666]">
@@ -295,8 +273,8 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
               >
                 <span className="text-base">↓</span>
                 <div>
-                  <div className="font-medium">Export Music Data</div>
-                  <div className="text-xs text-[#555]">Transcriptions, chord charts, practice log, exercises</div>
+                  <div className="font-medium">Export All Data</div>
+                  <div className="text-xs text-[#555]">Saved data: transcriptions, chord charts, practice log, exercises</div>
                 </div>
               </button>
               <button
@@ -305,11 +283,11 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
               >
                 <span className="text-base">↑</span>
                 <div>
-                  <div className="font-medium">Import Music Data</div>
-                  <div className="text-xs text-[#555]">Restore transcriptions, charts, and logs from backup</div>
+                  <div className="font-medium">Import All Data</div>
+                  <div className="text-xs text-[#555]">Restore saved data from a backup file</div>
                 </div>
               </button>
-              <input ref={musicImportRef} type="file" accept=".json" onChange={handleMusicImportFile} className="hidden" />
+              <input ref={musicImportRef} type="file" accept=".json,.gz,.json.gz" onChange={handleMusicImportFile} className="hidden" />
             </div>
           </div>
 
@@ -353,34 +331,7 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
             </div>
           </div>)}
 
-          {/* Data section */}
-          <div>
-            <h3 className="text-xs font-semibold text-[#888] uppercase tracking-widest mb-3">All Data</h3>
-            <div className="space-y-2">
-              <button
-                onClick={handleExport}
-                className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors text-left"
-              >
-                <span className="text-base">↓</span>
-                <div>
-                  <div className="font-medium">Export Everything</div>
-                  <div className="text-xs text-[#555]">All settings, stats, presets, and music data as JSON</div>
-                </div>
-              </button>
-              <button
-                onClick={() => importRef.current?.click()}
-                className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors text-left"
-              >
-                <span className="text-base">↑</span>
-                <div>
-                  <div className="font-medium">Import Everything</div>
-                  <div className="text-xs text-[#555]">Restore from a full backup JSON file</div>
-                </div>
-              </button>
-              <input ref={importRef} type="file" accept=".json" onChange={handleImportFile} className="hidden" />
-            </div>
-            {msg && <p className="text-xs text-[#7173e6] mt-2">{msg}</p>}
-          </div>
+          {msg && <p className="text-xs text-[#7173e6]">{msg}</p>}
         </div>
       </div>
     </div>
