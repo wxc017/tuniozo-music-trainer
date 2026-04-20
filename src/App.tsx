@@ -24,9 +24,9 @@ import NoteEntryMode from "@/components/NoteEntryMode";
 import PhraseDecomposition from "@/components/PhraseDecomposition";
 // Academic mode components — gitignored, only present in local dev
 const academicModules = import.meta.glob([
-  "@/components/ReadingWorkflo*.tsx",
-  "@/components/NoteWritin*.tsx",
-  "@/components/SimpleDo*.tsx",
+  "./components/ReadingWorkflo*.tsx",
+  "./components/NoteWritin*.tsx",
+  "./components/SimpleDo*.tsx",
 ]);
 import LatticeView from "@/components/LatticeView";
 import IntervalBrowser from "@/components/IntervalBrowser";
