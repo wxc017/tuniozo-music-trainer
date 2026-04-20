@@ -1,6 +1,6 @@
 **Warning: AI-assisted program.** I wish I'd written more of this myself, but I have other responsibilities.
 
-A music practice tool I built for my own daily practice. Most modes are things I actually use; a few are experiments I haven't bothered to delete.
+A music practice tool I built for my own daily practice. A few modes I use every day; most are experiments I haven't bothered to delete.
 
 I've mainly uploaded this as a backup as the project is getting pretty big.
 
