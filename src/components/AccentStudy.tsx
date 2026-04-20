@@ -959,6 +959,19 @@ export default function AccentStudy({
   accentSelectedIdx: number | null;
   setAccentSelectedIdx: (i: number | null) => void;
 }) {
+  // Lazy-load ComposedStudyBrowser — private file, gitignored.
+  // Only appears in local dev; absent on public GitHub builds.
+  const [ComposedBrowser, setComposedBrowser] = useState<React.ComponentType<{
+    onImportMeasures: (measures: AccentMeasureData[], mode: "phrase" | "line", grid: AccentSubdivision) => void;
+  }> | null>(null);
+  useEffect(() => {
+    const loaders = import.meta.glob("./ComposedStudyBrowser.tsx");
+    const loader = loaders["./ComposedStudyBrowser.tsx"];
+    if (loader) {
+      loader().then((m: any) => setComposedBrowser(() => m.default)).catch(() => {});
+    }
+  }, []);
+  const [accentTab, setAccentTab] = useState<"generator" | "composed">("generator");
   const [beats, setBeats] = useState<AccentBeatCount>(4);
   const [patternMode, setPatternMode] = useState<"musical" | "awkward" | "both">("musical");
   const [startMode, setStartMode] = useState<StartMode>("accent");
@@ -1341,6 +1354,27 @@ export default function AccentStudy({
     setShowLog(false);
   };
 
+  // Stable import handler — uses refs to avoid stale closures
+  const gridRef = useRef(accentGrid);
+  gridRef.current = accentGrid;
+  const handleComposedImport = useCallback((measures: AccentMeasureData[], mode: "phrase" | "line", grid: AccentSubdivision) => {
+    const hasGridDependent = accentMeasures.some(m => !m.beatSubdivs || m.beatSubdivs.length === 0);
+    if (grid !== gridRef.current && !hasGridDependent) setAccentGrid(grid);
+    const autoSplit = measures.length > 2;
+    const phraseId  = autoSplit ? `p${Date.now()}_${Math.random().toString(36).slice(2, 7)}` : undefined;
+    const incoming = measures.map((m, i) => {
+      const isFirstOfImport = i === 0;
+      const startsNewPair   = i > 0 && i % 2 === 0;
+      const shouldBreak     =
+        (mode === "line" && isFirstOfImport) ||
+        (autoSplit && startsNewPair);
+      const out: AccentMeasureData = shouldBreak ? { ...m, lineBreak: true as const } : { ...m };
+      if (phraseId) out.phraseId = phraseId;
+      return out;
+    });
+    setAccentMeasures(prev => [...prev, ...incoming]);
+  }, [accentMeasures, setAccentGrid, setAccentMeasures]);
+
   const accentColor = "#c8aa50";
 
   return (
@@ -1378,7 +1412,35 @@ export default function AccentStudy({
           Accent Study
         </span>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        {ComposedBrowser && (
+          <div style={{ display: "flex", gap: 2, marginRight: 8 }}>
+            {(["generator", "composed"] as const).map(tab => {
+              const isActive = accentTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setAccentTab(tab)}
+                  style={{
+                    padding: "2px 8px",
+                    borderRadius: 3,
+                    border: isActive ? `1px solid ${accentColor}66` : "1px solid #1a1a1a",
+                    background: isActive ? accentColor + "15" : "transparent",
+                    color: isActive ? accentColor : "#444",
+                    fontSize: 9,
+                    fontWeight: isActive ? 700 : 400,
+                    cursor: "pointer",
+                    textTransform: "capitalize",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {tab}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 4, ...(ComposedBrowser && accentTab !== "generator" ? { display: "none" } : {}) }}>
           <label style={{ fontSize: 10, color: "#444" }}>Grid</label>
           <select
             value={accentGrid}
@@ -1401,7 +1463,7 @@ export default function AccentStudy({
           </select>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, ...(ComposedBrowser && accentTab !== "generator" ? { display: "none" } : {}) }}>
           <label style={{ fontSize: 10, color: "#444" }}>Beats</label>
           {([1, 2, 3, 4, 5, 6, 7, 8] as AccentBeatCount[]).map((n) => (
             <button
@@ -1427,12 +1489,19 @@ export default function AccentStudy({
         {/* Save/Load bar removed */}
       </div>
 
+      {/* ── Composed tab (only if private file is present) ── */}
+      {ComposedBrowser && accentTab === "composed" && (
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "8px 12px" }}>
+          <ComposedBrowser onImportMeasures={handleComposedImport} />
+        </div>
+      )}
+
       {/* ── Generator ── */}
       <div
         style={{
           flex: 1,
           minHeight: 0,
-          display: "flex",
+          display: ComposedBrowser && accentTab !== "generator" ? "none" : "flex",
           gap: 8,
           padding: "8px 12px",
           overflow: "hidden",

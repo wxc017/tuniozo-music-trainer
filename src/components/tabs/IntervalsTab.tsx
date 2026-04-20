@@ -112,7 +112,18 @@ export default function IntervalsTab({
 
     playCounter.current++;
     const opts = getOptionStats();
-    const count = Math.min(numNotes, 6);
+    // Non-sequential styles fix the interval count (root + N intervals):
+    //   Dyad     → 1 interval  (2-note sonority)
+    //   Trichord → 2 intervals (3-note sonority)
+    //   Random   → 2 intervals (the frame splitter spreads them into 2-/3-
+    //              note sub-sonorities at random)
+    //  Sequential keeps the user-picked numNotes.
+    const styleForced =
+      playStyle === "Dyad (2 at once)"     ? 1 :
+      playStyle === "Trichord (3 at once)" ? 2 :
+      playStyle === "Random (2–3 at once)" ? 2 :
+      null;
+    const count = Math.min(styleForced ?? numNotes, 6);
     const notes: {note: number; label: string}[] = [];
     const steps: number[] = [];
     for (let i = 0; i < count; i++) {
@@ -141,17 +152,13 @@ export default function IntervalsTab({
       return [notes.map(x => x.note)];
     }
     if (style === "Trichord (3 at once)") {
-      const frames: number[][] = [];
-      for (let i = 0; i + 1 < notes.length; i += 2) {
-        const frame = [...new Set([root, notes[i].note, notes[i+1].note])];
-        frames.push(frame);
-      }
-      // Handle odd remaining note
-      if (notes.length % 2 === 1) {
-        frames.push([root, notes[notes.length - 1].note]);
-      }
-      if (!frames.length) frames.push([...new Set([root, ...notes.map(x => x.note)])]);
-      return frames;
+      // One sonority: root + every interval note stacked.  With #Notes=2
+      // (the normal trichord count) you get a three-note chord in a single
+      // frame.  Higher #Notes still collapses to one frame so "trichord"
+      // literally means "one simultaneous stack" — pick a bigger #Notes
+      // value if you want a thicker chord, or switch to Sequential / Dyad
+      // / Random to spread the pitches in time.
+      return [[...new Set([root, ...notes.map(x => x.note)])]];
     }
     if (style === "Random (2–3 at once)") {
       const frames: number[][] = [];
@@ -235,14 +242,31 @@ export default function IntervalsTab({
       <div className="flex flex-wrap gap-4 items-end">
         <div>
           <label className="text-xs text-[#888] block mb-1"># Notes</label>
-          <div className="flex gap-1">
-            {[1,2,3,4,5,6].map(n => (
-              <button key={n} onClick={() => setNumNotes(n)}
-                className={`w-8 h-8 rounded text-xs font-medium ${numNotes===n?"bg-[#7173e6] text-white":"bg-[#1e1e1e] text-[#888] hover:bg-[#2a2a2a] border border-[#333]"}`}>
-                {n}
-              </button>
-            ))}
-          </div>
+          {(() => {
+            // Only Sequential honors the user's # Notes pick — the other
+            // styles imply a fixed sonority size (Dyad = 2, Trichord = 3,
+            // Random = 2 stacked with random frame splits).  Grey the
+            // buttons out in those cases so the picker isn't misleading.
+            const disabled = playStyle !== "Sequential";
+            return (
+              <div className="flex gap-1" title={disabled ? `${playStyle} uses a fixed sonority size` : undefined}>
+                {[1,2,3,4,5,6].map(n => (
+                  <button key={n}
+                    onClick={() => { if (!disabled) setNumNotes(n); }}
+                    disabled={disabled}
+                    className={`w-8 h-8 rounded text-xs font-medium transition-colors ${
+                      disabled
+                        ? "bg-[#141414] text-[#444] border border-[#222] cursor-not-allowed"
+                        : numNotes === n
+                          ? "bg-[#7173e6] text-white"
+                          : "bg-[#1e1e1e] text-[#888] hover:bg-[#2a2a2a] border border-[#333]"
+                    }`}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
         </div>
         <div>
           <label className="text-xs text-[#888] block mb-1">Play Style</label>

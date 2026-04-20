@@ -6,6 +6,7 @@ release/
 .env.local
 .DS_Store
 Thumbs.db
-scripts/__pycache__/
-scripts/folk_songs_cache/
-scripts/folk_songs_output/
+
+# Private / copyrighted content — local dev only, never push
+src/components/ComposedStudyBrowser.tsx
+src/lib/composedStudies.ts

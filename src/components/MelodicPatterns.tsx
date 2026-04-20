@@ -138,33 +138,133 @@ const DRILL_CATEGORY_INFO: Record<DrillChordCategory, { label: string; color: st
 const XEN_STABLE_FAMILIES = new Set(["xen_submin", "xen_neutral", "xen_supermaj", "xen_clmin", "xen_clmaj"]);
 const XEN_TENSE_FAMILIES  = new Set(["xen_min", "xen_maj"]);
 
-/** Classify a drill chord into one of the six drill categories.  Returns
- *  null when the chord is non-diatonic-under-this-mode and doesn't match
- *  any of the chromatic / xen categories (safety net — shouldn't happen
- *  in practice). */
-function classifyDrillChord(
-  c: DrillChord,
+/** True when a PC-offset (relative to tonic) lands on a 12-EDO semitone
+ *  within half an EDO step.  Used to split "modal interchange" (chromatic
+ *  but 12-EDO) from "microtonal" (xenharmonic). */
+function is12EdoChromatic(relStep: number, edo: number): boolean {
+  const cents = (relStep / edo) * 1200;
+  const nearestSemitone = Math.round(cents / 100);
+  const halfEdoStep = (1200 / edo) / 2;
+  return Math.abs(cents - nearestSemitone * 100) <= halfEdoStep + 1e-9;
+}
+
+/** Build the full six-category chord palette from scratch, given the
+ *  active scale.  Replaces the old hand-authored `getDrillChordPalette`
+ *  groupings — every category is now recomputed from the scale, so
+ *  changing mode reshapes Diatonic, Modal Interchange, Secondary Dominant,
+ *  TT, Microtonal Stable AND Microtonal Tense.
+ *
+ *  Priority (first-match wins across categories):
+ *    Diatonic          — every chord PC is in the scale
+ *    Secondary Dominant — dom7 rooted a P5 below a non-tonic scale degree
+ *    TT                 — dom7 rooted a tritone from the Sec Dom root
+ *    Modal Interchange  — all non-scale PCs land on 12-EDO semitones AND
+ *                         the chord type isn't xenharmonic
+ *    Microtonal Stable  — at least one non-scale PC is an 11-/9-/7-limit
+ *                         JI consonance (isStableMicro); no micro-tense PCs
+ *    Microtonal Tense   — at least one non-scale PC is off the JI grid
+ *                         (Pythagorean 32/27, 81/64, or higher-limit slop)
+ */
+function buildScaleAwareDrillPalette(
   edo: number,
-  scalePcs: number[],
   tonicRoot: number,
-): DrillChordCategory | null {
-  if (c.group === "modal")     return "modal";
-  if (c.group === "secondary") return "secdom";
-  if (c.group === "tritone")   return "tritone";
-  if (c.group === "xen") {
-    const fam = xenFamily(c.chordTypeId, edo);
-    if (fam && XEN_STABLE_FAMILIES.has(fam)) return "xen-stable";
-    if (fam && XEN_TENSE_FAMILIES.has(fam))  return "xen-tense";
-    return null;
-  }
-  // Everything else (diatonic-major / diatonic-minor / harmonic-min /
-  // melodic-min) routes through the active-mode filter: if every PC is
-  // in the scale, it's Diatonic-to-this-mode; otherwise it's hidden
-  // (picking Dorian hides I, V7, iii, etc. that don't belong).
+  scalePcs: number[],
+  chordTypes: ReturnType<typeof getEdoChordTypes>,
+): Record<DrillChordCategory, DrillChord[]> {
   const scaleSet = new Set(scalePcs);
-  const absRoot = ((c.root + tonicRoot) % edo + edo) % edo;
-  const allIn = c.steps.every(s => scaleSet.has(((s + absRoot) % edo + edo) % edo));
-  return allIn ? "diatonic" : null;
+  const scaleDegsRel = scalePcs.map(pc => ((pc - tonicRoot) % edo + edo) % edo).sort((a, b) => a - b);
+  const dm = getDegreeMap(edo);
+  const P5 = dm["5"] ?? Math.round(edo * 7 / 12);
+  const TT = Math.round(edo / 2);
+
+  const cats: Record<DrillChordCategory, DrillChord[]> = {
+    "diatonic": [], "modal": [], "secdom": [], "tritone": [], "xen-stable": [], "xen-tense": [],
+  };
+  const seen = new Set<string>();
+
+  const push = (cat: DrillChordCategory, absRoot: number, type: ReturnType<typeof getEdoChordTypes>[number], romanOverride?: string) => {
+    const absPcs = type.steps.map(s => ((absRoot + s) % edo + edo) % edo);
+    const key = absPcs.slice().sort((a, b) => a - b).join(",") + "|" + type.id;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const relRoot = ((absRoot - tonicRoot) % edo + edo) % edo;
+    const relPcs = absPcs.map(pc => ((pc - tonicRoot) % edo + edo) % edo);
+    const roman = romanOverride ?? toRomanNumeral(edo, relRoot, type.abbr, relPcs);
+    cats[cat].push({ roman, root: relRoot, steps: type.steps, chordTypeId: type.id, group: cat });
+  };
+
+  // ── 1. Diatonic: chord types rooted on scale degrees whose PCs all lie
+  //   in the scale.  This is the "all-in-scale" test from the old classifier,
+  //   now applied to every chord type rather than only the curated palette.
+  for (const root of scalePcs) {
+    for (const type of chordTypes) {
+      const absPcs = type.steps.map(s => ((root + s) % edo + edo) % edo);
+      if (absPcs.every(pc => scaleSet.has(pc))) {
+        push("diatonic", root, type);
+      }
+    }
+  }
+
+  // ── 2. Secondary Dominant + TT: for each non-tonic scale degree, a
+  //   dom7 rooted a P5 below it (that's "V of D"), and its tritone sub.
+  const dom7 = chordTypes.find(c => c.id === "dom7");
+  const romanForDeg = (degRel: number): string => {
+    const idx = scaleDegsRel.indexOf(degRel);
+    const romanNums = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii"];
+    return idx >= 0 && idx < romanNums.length ? romanNums[idx] : "?";
+  };
+  if (dom7) {
+    for (const degRel of scaleDegsRel) {
+      if (degRel === 0) continue; // V of tonic is just V — lives in Diatonic
+      const targetPc = (tonicRoot + degRel) % edo;
+      const secRoot  = ((targetPc + P5) % edo + edo) % edo;
+      push("secdom",  secRoot, dom7, `V/${romanForDeg(degRel)}`);
+      const ttRoot   = ((secRoot + TT) % edo + edo) % edo;
+      push("tritone", ttRoot, dom7, `TT/${romanForDeg(degRel)}`);
+    }
+  }
+
+  // ── 3. Modal Interchange: every chord-type × every 12-EDO chromatic
+  //   root whose non-scale PCs all land on 12-EDO semitones.  This lets
+  //   bIIImaj7 / bVImaj7 / bVIImaj7 / iv / bII etc. materialize without
+  //   being hand-authored.  Xen chord types are skipped (they live in the
+  //   Microtonal buckets).
+  for (let root = 0; root < edo; root++) {
+    const rootRel = ((root - tonicRoot) % edo + edo) % edo;
+    if (!is12EdoChromatic(rootRel, edo)) continue;
+    for (const type of chordTypes) {
+      if (xenFamily(type.id, edo)) continue;
+      const absPcs = type.steps.map(s => ((root + s) % edo + edo) % edo);
+      if (absPcs.every(pc => scaleSet.has(pc))) continue; // already Diatonic
+      const nonScaleRels = absPcs
+        .filter(pc => !scaleSet.has(pc))
+        .map(pc => ((pc - tonicRoot) % edo + edo) % edo);
+      if (nonScaleRels.every(r => is12EdoChromatic(r, edo))) {
+        push("modal", root, type);
+      }
+    }
+  }
+
+  // ── 4. Microtonal Stable / Tense: every chord-type × every EDO root.
+  //   Stability is decided per non-scale PC via isStableMicro (same
+  //   classifier used by classifyNoteCategory in chords-fixed / melody-
+  //   fixed modes).  A chord lands in Tense as soon as any non-scale PC
+  //   is neither 12-chromatic nor a stable JI consonance.
+  for (let root = 0; root < edo; root++) {
+    for (const type of chordTypes) {
+      const absPcs = type.steps.map(s => ((root + s) % edo + edo) % edo);
+      if (absPcs.every(pc => scaleSet.has(pc))) continue;
+      const nonScaleRels = absPcs
+        .filter(pc => !scaleSet.has(pc))
+        .map(pc => ((pc - tonicRoot) % edo + edo) % edo);
+      const anyTense = nonScaleRels.some(r => !is12EdoChromatic(r, edo) && !isStableMicro(r, edo));
+      const anyMicro = nonScaleRels.some(r => !is12EdoChromatic(r, edo));
+      if (!anyMicro && !xenFamily(type.id, edo)) continue; // already Modal or Diatonic
+      push(anyTense ? "xen-tense" : "xen-stable", root, type);
+    }
+  }
+
+  return cats;
 }
 
 /** Build the active scale's pitch classes given a tonic + family/mode. */
@@ -2157,6 +2257,9 @@ function PatternDrillSection({
     () => getScalePcs(edo, tonicRoot, drillScaleFamily, drillScaleMode),
     [edo, tonicRoot, drillScaleFamily, drillScaleMode],
   );
+  // All chord types available in the active EDO — reused by the scale-aware
+  // palette builder so every mode change reshapes the full chord pool.
+  const drillChordTypes = useMemo(() => getEdoChordTypes(edo), [edo]);
 
   // Get active permutations.  Permutation keys encode order:
   //   original, retrograde, rotate{i} (i = 1..N-1), swap{i} (swap positions i and i+1, i = 0..N-2).
@@ -2389,18 +2492,12 @@ function PatternDrillSection({
       {/* Chord progression picker */}
       <div className="bg-[#111] border border-[#1e1e1e] rounded-lg p-3 space-y-3">
         <div className="text-[10px] text-[#aa66aa] uppercase tracking-wider font-medium">Chord Progression</div>
-        {/* 6-category taxonomy — Diatonic is filtered by the active Scale/Mode,
-            the other five categories are orthogonal.  Each chord chip is a
-            toggle that adds/removes the chord from the progression pool. */}
+        {/* 6-category taxonomy — the entire palette is rebuilt per scale.
+            Changing Ionian → Dorian → Phrygian Dominant reshapes not just
+            Diatonic but also Modal Interchange, Secondary Dominant, TT,
+            Microtonal Stable, and Microtonal Tense. */}
         {(() => {
-          // Classify every palette chord once per render.
-          const byCat: Record<DrillChordCategory, DrillChord[]> = {
-            "diatonic": [], "modal": [], "secdom": [], "tritone": [], "xen-stable": [], "xen-tense": [],
-          };
-          for (const rc of romanChords) {
-            const cat = classifyDrillChord(rc, edo, activeScalePcs, tonicRoot);
-            if (cat) byCat[cat].push(rc);
-          }
+          const byCat = buildScaleAwareDrillPalette(edo, tonicRoot, activeScalePcs, drillChordTypes);
           const CAT_ORDER: DrillChordCategory[] = ["diatonic", "modal", "secdom", "tritone", "xen-stable", "xen-tense"];
           return CAT_ORDER.map(cat => {
             const chords = byCat[cat];
