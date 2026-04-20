@@ -1,15 +1,27 @@
-(Warning: AI-assisted program) I wish I had the time to code the majority of this myself, but I have other responsibilities.
+**Warning: AI-assisted program.** I wish I'd written more of this myself, but I have other responsibilities.
 
+A music practice tool I built for my own daily practice. Most modes are things I actually use; a few are experiments I haven't bothered to delete.
 
-A music practice tool with harmonic lattice, microtonal ear training, drum ostinatos, drum accents, piano/lumatone/guitar views, melodic cells, melodic patterns, konnakol drills, transcriptions, chord charts, drill & response, harmony workshop, temperament explorer, independence drills, and phrase decomposition.
+## What it does
 
-This is a practice tool AI and I have made for myself. A handful of these modes I use on a daily basis in my practice. The spatial audiation (ear training) is especially useful. However, it is not in a format most are used to. It plays you audio and you have to play it back on your keyboard, no drill & response. Drill & response is not good for ear training, and tying all your training to your instrument will increase your instrument visualization abilities. Drum patterns is also another mode I use every day; it is inspired by universal functions, Chaffee patterns, and new breed concepts. You can select a drum beat and work through different permutations. Accent studies is great material for some fill work. Melodic patterns is also great, it uses Markov chains to find progressions that fit musical melodies, and it covers the majority of the cells you will ever encounter. Further, there is a drill section that will take a pattern and put it over any chord progression you would like.
+**Ear training (Spatial audiation)** — The mode I rely on most. Instead of the usual drill-and-response format, it plays audio and you play it back on your keyboard. I think drill-and-response is a weak way to train your ear, and tying the training to your instrument builds real visualization. This also has the strongest microtonal ear training I know of (said plainly, not as a brag).
 
-The spatial audiation mode and melodic patterns have microtonal capabilities, in a non-arrogant manner. This is likely the most powerful ear training in terms of microtonal capabilities currently.
+**Drum patterns (Fine Ostinato)** — The other one I use every day. Inspired by Universal Functions, Chaffee patterns, and New Breed concepts. Pick a beat, work through permutations.
 
-The harmonic lattice is also cool to deal with; it uses monzo notation and supports up to prime 127. To account for the different dimensions these lattices mathematically need to sit in, we just consider a separate dimension an angle.
+**Drum Patterns (Pattern Ostinato)** — I watched one Matt Gartska drum clinic and made this gamemode the next day, essentially just patterns over ostinatos.
 
-Coolest of all, there are day-to-day practice logs that allow you to import stuff you worked on previously.
+**Drum Patterns (Accent Studies)** — Great material to work with for fills.
 
-Lots of cool stuff in this, but also a lot of absolutely nonsensical modes. There are some modes I want to delete but have just been too lazy to.
+**Melodic patterns** — Uses Markov chains to generate progressions that fit musical melodies. Covers most of the cells you'll ever run into. There's also a drill section that maps a pattern over any chord progression.
 
+**Vocal Percussion** — I stumbled upon a video of Tigran splitting a 15 and 17 and tried to think of a way to systematize it. One of my nonsensical modes.
+
+**Harmonic lattice** — Monzo notation, supports up to prime 127. Since the lattices geometrically need to live in higher dimensions, extra primes are shown as angles rather than axes.
+
+**Practice log** — Day-to-day logs you can import from, so you can pick up sessions where you left off.
+
+## Other modes (varying quality)
+
+Drum accents, piano / Lumatone / guitar views, melodic cells, konnakol drills, transcriptions, chord charts, drill & response, harmony workshop, temperament explorer, independence drills, phrase decomposition.
+
+Some are genuinely useful. Some are nonsense I haven't removed. Take what helps.
