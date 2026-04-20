@@ -217,30 +217,88 @@ export const CYCLE_RATIOS: CycleRatio[] = [
 
 // ── Syllable Selection Per Group Size ─────────────────────────────────────────
 
-// Slot-indexed syllables for each gati (per-beat subdivision count).
-// `size` is the number of equal slots in one beat — e.g. 4 = chaturasra
-// (four 16ths), 3 = tisra (triplet), 5 = khanda (quintuplet), etc.
-// Each array entry is the syllable for a note whose START slot equals its
-// index. A composition like [2,1,1] (1 eighth + 2 sixteenths) picks slots
-// 0, 2, 3 and reads ["ta","ta","ke"] — which is the correct konnakol
-// spoken form. Picking by slot position (instead of by sequential note
-// index) is what makes compound rhythms come out right.
+// Base syllables are the "all equal notes" version for each subdivision
+// (i.e. the composition [1,1,...,1] of length `size`). Source: Wheels
+// Within Wheels 2.0, Partitions page, "in N" top-row first measure.
+// Non-uniform compositions are handled by COMPOSITION_SYLLABLES below.
 export function getSyllablesForSize(size: number): string[] {
   switch (size) {
     case 1: return ["ta"];
-    case 2: return ["ta", "ka"];
-    case 3: return ["ta", "ki", "ta"];                        // tisra
-    case 4: return ["ta", "dim", "ta", "ke"];                 // chaturasra
-    case 5: return ["ta", "ka", "ta", "ki", "ta"];            // khanda
-    case 6: return ["ta", "ki", "ta", "ta", "ki", "ta"];      // two tisras
-    case 7: return ["ta", "ki", "ta", "ta", "ka", "di", "mi"]; // misra
-    case 8: return ["ta", "dim", "ta", "ke", "ta", "dim", "ta", "ke"]; // two chaturasras
+    case 2: return ["ta", "ke"];
+    case 3: return ["ta", "ki", "te"];
+    case 4: return ["ta", "ke", "di", "mi"];
+    case 5: return ["ta", "di", "ghi", "na", "ton"];
+    case 6: return ["ta", "ke", "di", "mi", "ta", "ke"];
+    case 7: return ["ta", "ke", "ta", "di", "ghi", "na", "ton"];
+    case 8: return ["ta", "ke", "di", "mi", "ta", "ke", "ja", "nu"];
     default: {
-      // For uncommon sizes, tile the chaturasra pattern with a "ta" anchor.
-      const base = ["ta", "dim", "ta", "ke"];
+      const base = ["ta", "ke", "di", "mi", "ta", "ki", "te", "dim", "ke", "ta", "di", "ghi", "na", "ton"];
       return Array.from({ length: size }, (_, i) => base[i % base.length]);
     }
   }
+}
+
+// Per-composition syllable map, transcribed from "Wheels Within Wheels 2.0"
+// Partitions pages (in 3 through in 8). When a composition appears here,
+// compositionToSingleGroupPerm uses the mapped syllables verbatim. When it
+// does not (or for sizes not yet covered), the logic falls back to
+// slot-indexed base syllables.
+//
+// Keys are the composition's parts joined with "," — e.g. [1,2,1] is "1,2,1".
+// Values are one syllable per **note** (not per slot); for sizes 3 and 4
+// every part emits exactly one note, so count of syllables = count of parts.
+// Sizes 5+ may contain parts of 5/7 slots that emit a tie-continuation; the
+// current map covers sizes 3 and 4 (no ties). For sizes 5–8, extend this
+// map by reading the PDF's partition chart top-to-bottom, left-to-right.
+const COMPOSITION_SYLLABLES: Record<number, Record<string, string[]>> = {
+  3: {
+    "3":     ["ta"],
+    "2,1":   ["ta", "ke"],
+    "1,2":   ["ta", "dim"],
+    "1,1,1": ["ta", "ki", "te"],
+  },
+  4: {
+    "4":       ["ta"],
+    "3,1":     ["ta", "ke"],
+    "1,3":     ["ta", "dim"],
+    "2,2":     ["ta", "ke"],
+    "2,1,1":   ["ta", "ta", "ke"],
+    "1,2,1":   ["ta", "dim", "ke"],
+    "1,1,2":   ["ta", "ke", "dim"],
+    "1,1,1,1": ["ta", "ke", "di", "mi"],
+  },
+  5: {
+    "5":         ["ta"],
+    "4,1":       ["ta", "ke"],
+    "1,4":       ["ta", "dim"],
+    "3,2":       ["ta", "dim"],
+    "2,3":       ["ta", "dim"],
+    "3,1,1":     ["ta", "dim", "ke"],
+    "1,3,1":     ["ta", "dim", "ke"],
+    "1,1,3":     ["ta", "ke", "dim"],
+    "2,2,1":     ["ta", "ke", "dim"],
+    "2,1,2":     ["ta", "ke", "dim"],
+    "1,2,2":     ["ta", "ke", "dim"],
+    "2,1,1,1":   ["ta", "ta", "ki", "te"],
+    "1,2,1,1":   ["ta", "dim", "ta", "ke"],
+    "1,1,2,1":   ["ta", "ke", "dim", "ke"],
+    "1,1,1,2":   ["ta", "ki", "te", "dim"],
+    "1,1,1,1,1": ["ta", "di", "ghi", "na", "ton"],
+  },
+  6: {
+    // Row 1 (6- and 5-part compositions) — confirmed from PDF.
+    "1,1,1,1,1,1": ["ta", "ke", "di", "mi", "ta", "ke"],
+    "2,1,1,1,1":   ["ta", "ta", "ke", "di", "mi"],
+    "1,2,1,1,1":   ["ta", "dim", "ta", "ki", "te"],
+    "1,1,2,1,1":   ["ta", "ke", "dim", "ta", "ke"],
+    "1,1,1,2,1":   ["ta", "ki", "te", "dim", "ke"],
+    "1,1,1,1,2":   ["ta", "ke", "di", "mi", "dim"],
+  },
+};
+
+function mappedCompositionSyllables(comp: number[], size: number): string[] | null {
+  const key = comp.join(",");
+  return COMPOSITION_SYLLABLES[size]?.[key] ?? null;
 }
 
 // ── Accent Permutations (sub-groupings) per group size ───────────────────────
@@ -557,17 +615,24 @@ function partToNoteEntries(slots: number, syl: string): PermNoteEntry[] {
   }
 }
 
-// Converts one ordered composition to a single-group Permutation. The first
-// note of each part gets the syllable at its start slot; any tie-continuation
-// emitted by partToNoteEntries (5-slot → q+16th, 7-slot → q.+8th) gets the
-// syllable at the slot where the continuation begins — so every notated
-// note ends up with a label instead of the tied 16th/8th rendering blank.
+// Converts one ordered composition to a single-group Permutation.
+//
+// First tries COMPOSITION_SYLLABLES for an explicit transcription from the
+// Wheels Within Wheels partition chart. If present, each part's principal
+// note takes the next mapped syllable. Parts of 5/7 slots emit a tied
+// continuation whose syllable is read at the continuation's start slot
+// from the base table (same fallback the un-mapped path uses).
+//
+// When the composition isn't in the map, every note's syllable comes from
+// the base table indexed by its start slot.
 function compositionToSingleGroupPerm(comp: number[], x: number): Permutation {
   const baseSyls = getSyllablesForSize(x);
+  const mapped = mappedCompositionSyllables(comp, x);
   const allNotes: PermNoteEntry[] = [];
   let cursor = 0;
+  let partIdx = 0;
   for (const part of comp) {
-    const syl = baseSyls[cursor] ?? "";
+    const syl = mapped ? (mapped[partIdx] ?? "") : (baseSyls[cursor] ?? "");
     const entries = partToNoteEntries(part, syl);
     // partToNoteEntries emits a tie continuation at slot offset 4 (for part 5)
     // or 6 (for part 7). Give that continuation the syllable at its own slot.
@@ -575,6 +640,7 @@ function compositionToSingleGroupPerm(comp: number[], x: number): Permutation {
     else if (part === 7 && entries[1]) entries[1].syl = baseSyls[cursor + 6] ?? "";
     allNotes.push(...entries);
     cursor += part;
+    partIdx++;
   }
   return [{ notes: allNotes }];
 }

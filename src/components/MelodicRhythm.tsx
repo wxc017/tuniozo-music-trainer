@@ -102,7 +102,11 @@ function splitAtBeats(
 
 // ── Build proper note/rest sequence from hit positions ────────────────────
 
-const SN_KEY  = "b/4";
+// Chord notes sit in the space just above the visible center line (stems up);
+// melody notes sit in the space just below (stems down). Separating pitch
+// placement keeps coincident chord+melody noteheads from stacking.
+const CHORD_KEY  = "c/5";
+const MELODY_KEY = "a/4";
 const REST_KEY = "b/4";
 
 interface BuildVoiceResult {
@@ -115,7 +119,9 @@ function buildVoice(
   totalSlots: number,
   beatSize: number,
   bottom: number = 4,
+  stemDir: 1 | -1 = 1,
 ): BuildVoiceResult {
+  const NOTE_KEY = stemDir === 1 ? CHORD_KEY : MELODY_KEY;
   const sorted = [...hits].sort((a, b) => a - b);
   const notes: StaveNote[] = [];
   const ties: [number, number][] = [];
@@ -130,7 +136,7 @@ function buildVoice(
       const restDurs = splitAtBeats(cursor, pos - cursor, beatSize, bottom);
       for (const dur of restDurs) {
         const rn = new StaveNote({
-          keys: [REST_KEY], duration: dur + "r", stemDirection: 1,
+          keys: [REST_KEY], duration: dur + "r", stemDirection: stemDir,
         } as StaveNoteStruct);
         if (dur.includes("d")) Dot.buildAndAttach([rn], { all: true });
         notes.push(rn);
@@ -141,7 +147,7 @@ function buildVoice(
     const durParts = splitAtBeats(pos, nextPos - pos, beatSize, bottom);
     // First part is the actual note
     const sn = new StaveNote({
-      keys: [SN_KEY], duration: durParts[0], stemDirection: 1,
+      keys: [NOTE_KEY], duration: durParts[0], stemDirection: stemDir,
     } as StaveNoteStruct);
     if (durParts[0].includes("d")) Dot.buildAndAttach([sn], { all: true });
     notes.push(sn);
@@ -149,7 +155,7 @@ function buildVoice(
     for (let d = 1; d < durParts.length; d++) {
       const prevIdx = notes.length - 1;
       const tiedNote = new StaveNote({
-        keys: [SN_KEY], duration: durParts[d], stemDirection: 1,
+        keys: [NOTE_KEY], duration: durParts[d], stemDirection: stemDir,
       } as StaveNoteStruct);
       if (durParts[d].includes("d")) Dot.buildAndAttach([tiedNote], { all: true });
       notes.push(tiedNote);
@@ -164,7 +170,7 @@ function buildVoice(
     const restDurs = splitAtBeats(cursor, totalSlots - cursor, beatSize, bottom);
     for (const dur of restDurs) {
       const rn = new StaveNote({
-        keys: [REST_KEY], duration: dur + "r", stemDirection: 1,
+        keys: [REST_KEY], duration: dur + "r", stemDirection: stemDir,
       } as StaveNoteStruct);
       if (dur.includes("d")) Dot.buildAndAttach([rn], { all: true });
       notes.push(rn);
@@ -175,15 +181,21 @@ function buildVoice(
 }
 
 function buildBeams(notes: StaveNote[], beatSize: number): Beam[] {
-  const nonRests = notes.filter(n => !n.isRest());
+  // Pass the full note list (rests included): VexFlow's generateBeams
+  // uses cumulative ticks to align groups to beat boundaries, so removing
+  // rests desyncs the tick math and beams end up spanning beat lines.
+  // With beamRests:false (default), rests also break beams at their
+  // actual positions, which is the musically correct behavior.
   if (beatSize === 2 || beatSize === 4) {
-    return Beam.generateBeams(nonRests, { maintainStemDirections: true, flatBeams: true });
+    return Beam.generateBeams(notes, { maintainStemDirections: true, flatBeams: true });
   }
+  // Triplet grid: walk notes in order, grouping consecutive beamable
+  // non-rest notes up to `beatSize` (3) per group. Rests and non-beamable
+  // durations close the current group so they break beams at the right spot.
   const BEAMABLE = new Set(["8", "16", "32"]);
-  const beamable = nonRests.filter(n => BEAMABLE.has(n.getDuration()));
   const beams: Beam[] = [];
-  for (let i = 0; i < beamable.length; i += beatSize) {
-    const group = beamable.slice(i, i + beatSize);
+  let group: StaveNote[] = [];
+  const flush = () => {
     if (group.length >= 2) {
       try {
         const beam = new Beam(group, false);
@@ -191,7 +203,17 @@ function buildBeams(notes: StaveNote[], beatSize: number): Beam[] {
         beams.push(beam);
       } catch { /* skip */ }
     }
+    group = [];
+  };
+  for (const n of notes) {
+    if (n.isRest() || !BEAMABLE.has(n.getDuration())) {
+      flush();
+      continue;
+    }
+    group.push(n);
+    if (group.length >= beatSize) flush();
   }
+  flush();
   return beams;
 }
 
@@ -210,8 +232,8 @@ function voiceTimeSig(beatSize: number, totalSlots: number, bottom: number = 4):
 }
 
 // ── VexFlow dual-rhythm renderer ──────────────────────────────────────────
-// Both staves render into a single SVG with ONE shared Formatter so that
-// chord and melody notes at the same tick position land at the same X.
+// Chord and melody share ONE stave with two voices (chord stems up, melody
+// stems down) so their tick positions can never drift apart visually.
 
 function drawTupletsForBuild(
   ctx: ReturnType<Renderer["getContext"]>,
@@ -262,10 +284,8 @@ function VexDualRhythm({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const LANE_HEIGHT = 90;
-  const CHORD_Y = -5;
-  const MELODY_Y = CHORD_Y + LANE_HEIGHT;
-  const height = LANE_HEIGHT * 2;
+  const STAVE_Y = 10;
+  const height = 110;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -280,28 +300,23 @@ function VexDualRhythm({
 
       const staveW = width - 16;
 
-      const makeStave = (y: number) => {
-        const stave = new Stave(8, y, staveW);
-        stave.setConfigForLines([
-          { visible: false },
-          { visible: false },
-          { visible: true },
-          { visible: false },
-          { visible: false },
-        ]);
-        stave.setBegBarType(Barline.type.NONE);
-        stave.addTimeSignature(timeSigDisplay);
-        stave.setEndBarType(Barline.type.END);
-        return stave;
-      };
+      const stave = new Stave(8, STAVE_Y, staveW);
+      stave.setConfigForLines([
+        { visible: false },
+        { visible: false },
+        { visible: true },
+        { visible: false },
+        { visible: false },
+      ]);
+      stave.setBegBarType(Barline.type.NONE);
+      stave.addTimeSignature(timeSigDisplay);
+      stave.setEndBarType(Barline.type.END);
+      stave.setContext(ctx).draw();
 
-      const chordStave = makeStave(CHORD_Y);
-      const melodyStave = makeStave(MELODY_Y);
-      chordStave.setContext(ctx).draw();
-      melodyStave.setContext(ctx).draw();
-
-      const chordBuild = buildVoice(chordHits, totalSlots, beatSize, bottom);
-      const melodyBuild = buildVoice(melodyHits, totalSlots, beatSize, bottom);
+      // Chord voice: stems up (above the line). Melody voice: stems down
+      // (below the line). Co-located on the same stave so ticks can't drift.
+      const chordBuild = buildVoice(chordHits, totalSlots, beatSize, bottom, 1);
+      const melodyBuild = buildVoice(melodyHits, totalSlots, beatSize, bottom, -1);
 
       if (chordBuild.notes.length === 0 && melodyBuild.notes.length === 0) {
         applyWhite(el);
@@ -326,16 +341,12 @@ function VexDualRhythm({
       const melodyBeams = buildBeams(melodyBuild.notes, beatSize);
 
       const fmtW = staveW - 44;
-      // softmaxFactor=1 with globalSoftmax gives strictly tick-proportional
-      // spacing across both voices — beat-N in one voice lands at the same X
-      // as beat-N in the other voice, without manually overriding x_shift
-      // (which desyncs beams and ties from their notes).
       new Formatter({ softmaxFactor: 1, globalSoftmax: true })
         .joinVoices([chordVoice, melodyVoice])
         .format([chordVoice, melodyVoice], fmtW);
 
-      chordVoice.draw(ctx, chordStave);
-      melodyVoice.draw(ctx, melodyStave);
+      chordVoice.draw(ctx, stave);
+      melodyVoice.draw(ctx, stave);
 
       chordBeams.forEach(b => b.setContext(ctx).draw());
       melodyBeams.forEach(b => b.setContext(ctx).draw());
@@ -364,23 +375,13 @@ function VexDualRhythm({
     } catch (err) {
       console.warn("VexDualRhythm render error:", err);
     }
-  }, [chordHits, melodyHits, totalSlots, beatSize, bottom, width, height, timeSigDisplay, CHORD_Y, MELODY_Y]);
+  }, [chordHits, melodyHits, totalSlots, beatSize, bottom, width, height, timeSigDisplay, STAVE_Y]);
 
   return (
-    <div className="flex items-start gap-2">
-      <div className="flex flex-col flex-shrink-0 w-14">
-        <span
-          className="text-[10px] uppercase tracking-wider font-bold text-right flex items-center justify-end"
-          style={{ color: "#c8aa50", height: LANE_HEIGHT }}
-        >
-          Chord
-        </span>
-        <span
-          className="text-[10px] uppercase tracking-wider font-bold text-right flex items-center justify-end"
-          style={{ color: "#9999ee", height: LANE_HEIGHT }}
-        >
-          Melody
-        </span>
+    <div className="flex items-center gap-2">
+      <div className="flex flex-col flex-shrink-0 w-14 text-[9px] uppercase tracking-wider font-bold text-right leading-tight">
+        <span style={{ color: "#c8aa50" }}>Chord ↑</span>
+        <span style={{ color: "#9999ee" }}>Melody ↓</span>
       </div>
       <div ref={containerRef}
         style={{ width, height, overflow: "visible", display: "block", flexShrink: 0 }} />

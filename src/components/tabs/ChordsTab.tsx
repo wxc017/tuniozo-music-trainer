@@ -10,7 +10,6 @@ import {
   getAllChordsForEdo, generateFunctionalLoop,
   triadQuality, describeChord, intervalLabel, randomChoice, shuffle,
   ALL_VOICING_PATTERNS, VOICING_PATTERN_GROUPS, applyVoicingPattern,
-  scoreVoiceLeading,
   generateBassLine, generateMelodyLine,
   checkLowIntervalLimits, formatLilWarnings,
   type LilWarning,
@@ -74,7 +73,10 @@ export default function ChordsTab({
   );
   const [regMode, setRegMode] = useLS<string>("lt_crd_regMode", "Fixed Register");
   const [extTendency, setExtTendency] = useLS<string>("lt_crd_extTend", "Any");
-  const [checkedExts, setCheckedExts] = useLS<Set<string>>("lt_crd_exts", new Set(["7th"]));
+  // "7th" is intentionally excluded from the extension UI — the 7th is
+  // already carried by seventh-chord voicing patterns (1 3 5 7, etc.).
+  // Default is empty so nothing is added on top of the triad/7th voicing.
+  const [checkedExts, setCheckedExts] = useLS<Set<string>>("lt_crd_exts", new Set());
   const [checkedExtCounts, setCheckedExtCounts] = useLS<Set<number>>("lt_crd_extCounts", new Set([0, 1]));
   const [checkedPatterns, setCheckedPatterns] = useLS<Set<string>>("lt_crd_vpatterns", new Set(["t-135"]));
   const [checkedChordTypes, setCheckedChordTypes] = useLS<Set<string>>("lt_crd_chordTypes",
@@ -323,6 +325,7 @@ export default function ChordsTab({
     const root = shape[0];
     const rels = shape.map(s => ((s - root) % edo + edo) % edo).sort((a, b) => a - b);
     const chordThird   = rels.length >= 2 ? rels[1] : -1;
+    const chordFifth   = rels.length >= 3 ? rels[2] : null;
     const chordSeventh = rels.length >= 4 ? rels[3] : null;
     const { m3: minThird, M3: majThird, m7: min7th, M7: maj7th, M2, P4, A1 } = getChordShapes(edo);
     const dim7 = min7th - A1;
@@ -350,6 +353,7 @@ export default function ChordsTab({
     return edoChordTypes.filter(t => {
       if (!checkedChordTypes.has(t.id)) return false;
       const tThird   = t.third;
+      const tFifth   = t.steps.length >= 3 ? t.steps[2] : null;
       const tSeventh = t.category === "seventh" ? t.steps[3] : null;
       const t3rdStd  = isStdThird(tThird);
       const t7thStd  = tSeventh === null ? true : isStd7th(tSeventh);
@@ -368,6 +372,10 @@ export default function ChordsTab({
           if (tThird === M2 || tThird === P4) return tSeventh === null;
           const thirdMatches = tThird === chordThird;
           if (!thirdMatches) return false;
+          // Require the 5th to match too — otherwise "Diminished" matches
+          // vi (same m3, different 5th) and "Augmented" matches IV, producing
+          // non-diatonic chord qualities.
+          if (chordFifth !== null && tFifth !== null && tFifth !== chordFifth) return false;
           if (chordSeventh === null) {
             if (tSeventh === null) return true;
             // Scale-degree root: require the exact diatonic 7th for the key
@@ -446,7 +454,28 @@ export default function ChordsTab({
     // Target note count is drawn from what the selected patterns support
     const validCounts = Array.from(patternNoteCounts);
     const targetNotes = randomChoice(validCounts);
-    const k_ext = Math.max(0, targetNotes - 3);
+
+    // If the selected voicing pattern expects a 7th (≥4 notes) but the applied
+    // chord type is a triad (only the user's triad-types are checked), auto-
+    // extend with the diatonic 7th so the "1 3 5 7" voicing actually has a 7th
+    // to voice. In non-diatonic modes fall back to a plain minor 7th.
+    if (targetNotes >= 4 && shape.length === 3) {
+      const rootPc = ((shape[0] % edo) + edo) % edo;
+      let seventhInterval: number | null = null;
+      if (chordTypeMode === "diatonic" && diatonicScaleRoots) {
+        const idx = diatonicScaleRoots.indexOf(rootPc);
+        if (idx >= 0) {
+          const seventhRootPc = diatonicScaleRoots[(idx + 6) % diatonicScaleRoots.length];
+          seventhInterval = ((seventhRootPc - rootPc) % edo + edo) % edo;
+        }
+      }
+      if (seventhInterval === null) {
+        seventhInterval = getChordShapes(edo).m7;
+      }
+      shape = [...shape, shape[0] + seventhInterval];
+    }
+
+    const k_ext = Math.max(0, targetNotes - shape.length);
 
     const scalePcs = new Set<number>();
     const checkedRomans = Array.from(checkedChords).filter(r => currentChordMap[r]);
@@ -472,6 +501,8 @@ export default function ChordsTab({
     const buildExtPool = (strict: boolean): number[] => {
       const pool: number[] = [];
       for (const lbl of checkedExts) {
+        // 7th is carried by seventh-chord voicings, not as a generic ext.
+        if (lbl === "7th") continue;
         for (const s of getExtLabelToSteps(edo)[lbl] ?? []) {
           if (strict && matchedType && (matchedType.stable.length > 0 || matchedType.avoid.length > 0)) {
             const relPc = ((s) % edo + edo) % edo;
@@ -518,35 +549,100 @@ export default function ChordsTab({
       return clampToLayout(voiced);
     };
 
+    // Absolute pitch range the chord's ROOT must sit within. Other voices
+    // (e.g. the 5 in a "5 7 1 3" inversion) may fall below or above this
+    // range — only the root is gated. Range is measured from the *tonic's*
+    // octaves (lowestOct..highestOct) so "Exercise Range 3–4" means the
+    // tonic spans C3–C4 and every chord's root must fall inside that same
+    // absolute window (e.g. V's root must be G3, not G4 which would be
+    // above C4).
+    const rootTargetPc = ((tonicPc + rootStep) % edo + edo) % edo;
+    const lowestRootAbs  = tonicPc + (lowestOct  - 4) * edo;
+    const highestRootAbs = tonicPc + (highestOct - 4) * edo;
+    const rootInRange = (voicing: number[]): boolean => {
+      for (const n of voicing) {
+        if (((n % edo) + edo) % edo !== rootTargetPc) continue;
+        if (n >= lowestRootAbs && n <= highestRootAbs) return true;
+      }
+      return false;
+    };
+    // Bass gate: the LOWEST note of the voicing must also sit inside the
+    // exercise range. A voicing that cleared rootInRange but whose bass
+    // sits below (e.g. an inversion that dropped the 5 an octave) is
+    // rejected so voice-leading search skips it and tries the next candidate.
+    const bassInRange = (voicing: number[]): boolean => {
+      if (voicing.length === 0) return false;
+      const low = Math.min(...voicing);
+      return low >= lowestRootAbs && low <= highestRootAbs;
+    };
+
     let chordAbs: number[];
+    // Search oct over a wider window than the user's range. The oct param
+    // is the octave WE ANCHOR THE ROOT AT WHEN BUILDING CONTENT, but
+    // applyVoicingPattern may push the actual root up for inversion
+    // patterns (e.g. "5 1 3 7" lands the root one octave above its
+    // content root). We overshoot both ends and then filter to keep only
+    // candidates whose realized root lands inside the user's range.
+    const searchLo = lowestOct - 2;
+    const searchHi = highestOct + 2;
     if (prevChord && prevChord.length > 0) {
-      // ── Voice-leading search: enumerate every (octave, pattern) candidate
-      //   from the user's allowed patterns, score each via scoreVoiceLeading
-      //   (smooth motion, common tones, voice-count match, bass leap), keep
-      //   the lowest-scoring candidate.  Ties broken by random shuffle so
-      //   the loop doesn't lock onto the same exact voicing every iteration.
-      const scored: { voicing: number[]; score: number }[] = [];
-      for (let oct = lowestOct; oct <= highestOct; oct++) {
+      // Voice-leading by minimum total movement: for every (octave, pattern)
+      // candidate that keeps the root in range, measure how far each of its
+      // notes is from the nearest note in the previous chord and sum. The
+      // candidate with the smallest sum wins — this naturally rewards common
+      // tones (distance 0), stepwise motion, and penalizes leaps, without a
+      // hand-tuned multi-criterion score.
+      const distToPrev = (cand: number[]): number => {
+        let total = 0;
+        for (const n of cand) {
+          let min = Infinity;
+          for (const p of prevChord) {
+            const d = Math.abs(n - p);
+            if (d < min) min = d;
+          }
+          total += min;
+        }
+        return total;
+      };
+      const scored: { voicing: number[]; dist: number }[] = [];
+      for (let oct = searchLo; oct <= searchHi; oct++) {
         for (const pat of compatPatterns) {
           const cand = buildVoicing(oct, pat);
           if (cand.length === 0) continue;
-          scored.push({ voicing: cand, score: scoreVoiceLeading(cand, prevChord, edo) });
+          if (!rootInRange(cand)) continue;
+          if (!bassInRange(cand)) continue;
+          scored.push({ voicing: cand, dist: distToPrev(cand) });
         }
       }
       if (scored.length === 0) {
         chordAbs = buildVoicing(refOctave, randomChoice(compatPatterns));
       } else {
-        scored.sort((a, b) => a.score - b.score);
-        // Pick from the top 3 (or fewer) so repeats vary.
-        const top = scored.slice(0, Math.min(3, scored.length));
-        chordAbs = randomChoice(top).voicing;
+        const minDist = scored.reduce((m, s) => Math.min(m, s.dist), Infinity);
+        // Pick randomly among candidates tied at the minimum so loops don't
+        // lock onto one exact voicing every iteration.
+        const best = scored.filter(s => s.dist === minDist);
+        chordAbs = randomChoice(best).voicing;
       }
     } else {
-      chordAbs = buildVoicing(refOctave, randomChoice(compatPatterns));
+      // No previous chord: still enforce root-in-range AND bass-in-range
+      // so the very first chord also sits inside the exercise window.
+      const candidates: number[][] = [];
+      for (let oct = searchLo; oct <= searchHi; oct++) {
+        for (const pat of compatPatterns) {
+          const cand = buildVoicing(oct, pat);
+          if (cand.length === 0) continue;
+          if (!rootInRange(cand)) continue;
+          if (!bassInRange(cand)) continue;
+          candidates.push(cand);
+        }
+      }
+      chordAbs = candidates.length > 0
+        ? randomChoice(candidates)
+        : buildVoicing(refOctave, randomChoice(compatPatterns));
     }
 
     return { chordAbs, voicingType: "pattern", quality: triadQuality(shape, edo), appliedShape: [...shape] };
-  }, [section, checkedPatterns, patternNoteCounts, checkedChords, checkedExts, extTendency, regMode, edo, tonicPc, lowestOct, highestOct, clampToLayout, getCompatibleTypes, applyChordType, edoChordTypes]);
+  }, [section, checkedPatterns, patternNoteCounts, checkedChords, checkedExts, extTendency, regMode, edo, tonicPc, lowestOct, highestOct, clampToLayout, getCompatibleTypes, applyChordType, edoChordTypes, chordTypeMode, diatonicScaleRoots]);
 
   // ── Isolated Chords: buildAndPlayFrames ─────────────────────────────
 
@@ -558,7 +654,6 @@ export default function ChordsTab({
     const validCounts = Array.from(patternNoteCounts);
     if (validCounts.length === 0) return; // no patterns selected
     const targetNotes = randomChoice(validCounts);
-    const k_ext = Math.max(0, targetNotes - 3);
 
     const scalePcs = new Set<number>();
     const checkedRomans = Array.from(checkedChords).filter(r => currentChordMap[r]);
@@ -598,6 +693,23 @@ export default function ChordsTab({
         shape = applyChordType(shape, chosenType);
       }
 
+      // Match the voicing pattern's note count. If the pattern expects a 7th
+      // (≥4 notes) but only triad types are checked, auto-extend with the
+      // diatonic 7th so the voicing pattern can actually fit the chord.
+      if (targetNotes >= 4 && shape.length === 3) {
+        const rootPc = ((shape[0] % edo) + edo) % edo;
+        let seventhInterval: number | null = null;
+        if (chordTypeMode === "diatonic" && diatonicScaleRoots) {
+          const idx = diatonicScaleRoots.indexOf(rootPc);
+          if (idx >= 0) {
+            const seventhRootPc = diatonicScaleRoots[(idx + 6) % diatonicScaleRoots.length];
+            seventhInterval = ((seventhRootPc - rootPc) % edo + edo) % edo;
+          }
+        }
+        if (seventhInterval === null) seventhInterval = getChordShapes(edo).m7;
+        shape = [...shape, shape[0] + seventhInterval];
+      }
+
       const rootStep = shape[0];
 
       // Pick a random octave for the root within the register
@@ -617,6 +729,7 @@ export default function ChordsTab({
       const buildExtPool = (strict: boolean): number[] => {
         const pool: number[] = [];
         for (const lbl of checkedExts) {
+          if (lbl === "7th") continue;
           for (const s of getExtLabelToSteps(edo)[lbl] ?? []) {
             if (strict && matchedType && (matchedType.stable.length > 0 || matchedType.avoid.length > 0)) {
               const relPc = ((s) % edo + edo) % edo;
@@ -635,6 +748,9 @@ export default function ChordsTab({
       let extStepPool = buildExtPool(true);
       if (extStepPool.length === 0 && extTendency !== "Any") extStepPool = buildExtPool(false);
 
+      // Per-chord k_ext so the auto-7th (if added) doesn't double up on
+      // the target note count.
+      const k_ext = Math.max(0, targetNotes - chordAbs.length);
       if (k_ext > 0 && extStepPool.length > 0) {
         const existing = new Set(chordAbs);
         const candidates = extStepPool.map(s => rootAbs + s).filter(n => !existing.has(n));
@@ -1446,7 +1562,11 @@ function VoicingControls({ regMode, setRegMode, compact }: {
   );
 }
 
-const EXT_COUNTS = [0, 1, 2, 3, 4];
+// 7th is omitted here — the 7th of a chord is already expressed via the
+// seventh-chord voicing patterns (1 3 5 7, etc.), so exposing it as a
+// generic extension would add it twice.
+const EXTENSION_LABELS_UI = ["2nd", "4th", "6th", "9th", "11th", "13th"];
+const EXT_COUNTS = [1, 2, 3, 4];
 
 function ExtensionControls({ extTendency, setExtTendency, checkedExts, setCheckedExts, checkedExtCounts, setCheckedExtCounts, toggleSet }: {
   extTendency: string; setExtTendency: (v: string) => void;
@@ -1471,7 +1591,7 @@ function ExtensionControls({ extTendency, setExtTendency, checkedExts, setChecke
       <div>
         <p className="text-xs text-[#888] mb-1.5">EXTENSIONS</p>
         <div className="grid grid-cols-2 gap-1">
-          {EXTENSION_LABELS.map(lbl => (
+          {EXTENSION_LABELS_UI.map(lbl => (
             <label key={lbl} className="flex items-center gap-1.5 text-xs cursor-pointer text-[#aaa] hover:text-white">
               <input type="checkbox" checked={checkedExts.has(lbl)}
                 onChange={() => setCheckedExts(toggleSet(checkedExts, lbl))}

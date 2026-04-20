@@ -105,8 +105,10 @@ export const ALL_VOICING_PATTERNS: VoicingPattern[] = [
   // Sevenths
   { id: "7-3715",    label: "3 7 1 5",           group: "1st Inversion",  order: [1,3,0,2], spread: false, minNotes: 4 },
   { id: "7-3157",    label: "3 1 5 7",           group: "1st Inversion",  order: [1,0,2,3], spread: false, minNotes: 4 },
+  { id: "7-3571",    label: "3 5 7 1",           group: "1st Inversion",  order: [1,2,3,0], spread: false, minNotes: 4 },
   { id: "7-3715s",   label: "3 7 1 5 (spread)",  group: "1st Inversion",  order: [1,3,0,2], spread: true,  minNotes: 4 },
   { id: "7-3157s",   label: "3 1 5 7 (spread)",  group: "1st Inversion",  order: [1,0,2,3], spread: true,  minNotes: 4 },
+  { id: "7-3571s",   label: "3 5 7 1 (spread)",  group: "1st Inversion",  order: [1,2,3,0], spread: true,  minNotes: 4 },
 
   // ── 2nd Inversion (bass = 5) ──────────────────────────────────────
   // Triads
@@ -116,7 +118,9 @@ export const ALL_VOICING_PATTERNS: VoicingPattern[] = [
   { id: "t-531s",    label: "5 3 1 (spread)",  group: "2nd Inversion",  order: [2,1,0], spread: true,  minNotes: 3, maxNotes: 3 },
   // Sevenths
   { id: "7-5137",    label: "5 1 3 7",           group: "2nd Inversion",  order: [2,0,1,3], spread: false, minNotes: 4 },
+  { id: "7-5713",    label: "5 7 1 3",           group: "2nd Inversion",  order: [2,3,0,1], spread: false, minNotes: 4 },
   { id: "7-5137s",   label: "5 1 3 7 (spread)",  group: "2nd Inversion",  order: [2,0,1,3], spread: true,  minNotes: 4 },
+  { id: "7-5713s",   label: "5 7 1 3 (spread)",  group: "2nd Inversion",  order: [2,3,0,1], spread: true,  minNotes: 4 },
 
   // ── 3rd Inversion (bass = 7) ──────────────────────────────────────
   { id: "7-7135",    label: "7 1 3 5",           group: "3rd Inversion",  order: [3,0,1,2], spread: false, minNotes: 4 },
@@ -164,34 +168,29 @@ export const ALL_VOICING_PATTERNS: VoicingPattern[] = [
 export const VOICING_PATTERN_GROUPS: string[] = [...new Set(ALL_VOICING_PATTERNS.map(p => p.group))];
 
 /** Apply a specific voicing pattern to a chord.
- *  `chord` is in closed position (sorted ascending), `edo` = steps per octave.
- *  The pattern's `order` array reorders the chord degrees from bottom to top,
- *  ensuring each successive note is higher than the previous (adding octaves as needed).
- *  `spread` raises every other inner note by one octave. */
+ *  `chord` may include extensions (9/11/13) already placed an octave above
+ *  the triad, so the input is sorted by PITCH (not folded to pitch classes) —
+ *  folding would collapse a 9th down into a 2nd inside the root octave.
+ *  The pattern's `order` array reorders the pitch-sorted chord tones from
+ *  bottom to top, raising octaves as needed to keep each note above the
+ *  previous. `spread` raises every other inner note by one octave. */
 export function applyVoicingPattern(chord: number[], edo: number, pattern: VoicingPattern): number[] {
   const n = chord.length;
   if (n === 0) return [];
 
-  // Get pitch classes relative to bass
-  const bass = Math.min(...chord);
-  const pcs = chord.map(note => ((note - bass) % edo + edo) % edo);
-  // Map each index to its pitch class
-  const uniqueSorted = [...new Set(pcs)].sort((a, b) => a - b);
-
-  // Build the ordered notes according to the pattern
-  const order = pattern.order.filter(idx => idx < n);
+  // Sort by absolute pitch so extensions (input at bass+edo+pc) retain the
+  // octave displacement that distinguishes a 9th from a 2nd, an 11th from
+  // a 4th, etc. The pattern's indices then map to the intended slots
+  // (root / 3 / 5 / 7-or-extension) by ascending pitch order.
+  const sorted = [...chord].sort((a, b) => a - b);
+  const order = pattern.order.filter(idx => idx < sorted.length);
   if (order.length === 0) return chord;
 
   const result: number[] = [];
-  // Start from the bass note of the lowest-ordered degree
-  const firstPc = uniqueSorted[order[0]] ?? 0;
-  let floor = bass + firstPc;
-  result.push(floor);
+  result.push(sorted[order[0]]);
 
   for (let i = 1; i < order.length; i++) {
-    const pc = uniqueSorted[order[i]] ?? 0;
-    // Find the next occurrence of this pitch class above the previous note
-    let note = bass + pc;
+    let note = sorted[order[i]];
     while (note <= result[result.length - 1]) note += edo;
     result.push(note);
   }
