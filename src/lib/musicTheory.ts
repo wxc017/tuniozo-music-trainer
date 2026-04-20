@@ -1997,6 +1997,57 @@ function voiceLeadTo(pc: number, prev: number, tonicPc: number, edo: number): nu
 }
 
 /**
+ * Voice-leading checklist — score how well `curr` voice-leads from `prev`.
+ * Lower is smoother. Used by the looping mode to pick the best (octave,
+ * voicing pattern) combination from the user's allowed-patterns set.
+ *
+ * Criteria (additively combined):
+ *   1. Sum of squared sorted-pair voice motion — a single big leap costs
+ *      more than several small steps (encourages stepwise motion).
+ *   2. Common-tone bonus — every preserved exact pitch shaves 4 from the
+ *      score (≈ a 2-semitone equivalent move), tilting toward voicings
+ *      that retain shared tones at the same octave.
+ *   3. Voice-count penalty — adding or dropping voices vs prev costs 6
+ *      per voice difference, biasing toward consistent texture density.
+ *   4. Bass-leap penalty — bass motion beyond a P5 (7 EDO steps) adds 8,
+ *      since bass jumps tend to fragment a progression more than upper-
+ *      voice leaps.
+ *
+ * Returns 0 if either chord is empty (no voice-leading possible).
+ */
+export function scoreVoiceLeading(curr: number[], prev: number[], edo: number): number {
+  if (prev.length === 0 || curr.length === 0) return 0;
+
+  const sortedCurr = [...curr].sort((a, b) => a - b);
+  const sortedPrev = [...prev].sort((a, b) => a - b);
+  const minLen = Math.min(sortedCurr.length, sortedPrev.length);
+
+  let score = 0;
+
+  // 1. Sum of squared voice motion (sorted-pair matching).
+  for (let i = 0; i < minLen; i++) {
+    const motion = Math.abs(sortedCurr[i] - sortedPrev[i]);
+    score += motion * motion;
+  }
+
+  // 2. Common-tone bonus.
+  const prevSet = new Set(sortedPrev);
+  for (const n of sortedCurr) {
+    if (prevSet.has(n)) score -= 4;
+  }
+
+  // 3. Voice-count mismatch penalty.
+  score += Math.abs(sortedCurr.length - sortedPrev.length) * 6;
+
+  // 4. Bass-leap penalty (motion beyond a P5).
+  const bassMove = Math.abs(sortedCurr[0] - sortedPrev[0]);
+  const p5Steps = Math.round(edo * 7 / 12);
+  if (bassMove > p5Steps) score += 8;
+
+  return score;
+}
+
+/**
  * Generate a bass line from the applied chord shapes.
  *
  * @param appliedShapes - One shape per chord (post applyChordType), relative steps from tonic

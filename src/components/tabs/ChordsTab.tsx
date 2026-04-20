@@ -10,6 +10,7 @@ import {
   getAllChordsForEdo, generateFunctionalLoop,
   triadQuality, describeChord, intervalLabel, randomChoice, shuffle,
   ALL_VOICING_PATTERNS, VOICING_PATTERN_GROUPS, applyVoicingPattern,
+  scoreVoiceLeading,
   generateBassLine, generateMelodyLine,
   checkLowIntervalLimits, formatLilWarnings,
   type LilWarning,
@@ -429,7 +430,7 @@ export default function ChordsTab({
     return counts;
   }, [checkedPatterns]);
 
-  const voiceChord = useCallback((rn: string, stepsOverride: number[] | null, currentChordMap: Record<string, number[]>) => {
+  const voiceChord = useCallback((rn: string, stepsOverride: number[] | null, currentChordMap: Record<string, number[]>, prevChord: number[] | null = null) => {
     // No voicing patterns selected → nothing to play
     if (patternNoteCounts.size === 0) return null;
 
@@ -455,10 +456,11 @@ export default function ChordsTab({
 
     const rootStep = shape[0];
 
-    // Pick a random octave for the root within the register
-    const octave = lowestOct + Math.floor(Math.random() * (highestOct - lowestOct + 1));
-    const rootAbs = tonicPc + (octave - 4) * edo + rootStep;
-    let chordAbs = shape.map(s => rootAbs + (s - rootStep));
+    // Pick a "reference" octave to build the chord content (extension picking
+    // uses absolute-pitch dedup, so we need a concrete octave for that step).
+    const refOctave = lowestOct + Math.floor(Math.random() * (highestOct - lowestOct + 1));
+    const refRootAbs = tonicPc + (refOctave - 4) * edo + rootStep;
+    let chordAbsRef = shape.map(s => refRootAbs + (s - rootStep));
 
     // Find the matching chord type for per-type stable/avoid filtering
     const chordRels = shape.map(s => ((s - rootStep) % edo + edo) % edo).sort((a, b) => a - b);
@@ -489,25 +491,59 @@ export default function ChordsTab({
     if (extStepPool.length === 0 && extTendency !== "Any") extStepPool = buildExtPool(false);
 
     if (k_ext > 0 && extStepPool.length > 0) {
-      const existing = new Set(chordAbs);
-      const candidates = extStepPool.map(s => rootAbs + s).filter(n => !existing.has(n));
+      const existing = new Set(chordAbsRef);
+      const candidates = extStepPool.map(s => refRootAbs + s).filter(n => !existing.has(n));
       shuffle(candidates);
-      chordAbs = [...chordAbs, ...candidates.slice(0, k_ext)].sort((a, b) => a - b);
+      chordAbsRef = [...chordAbsRef, ...candidates.slice(0, k_ext)].sort((a, b) => a - b);
     }
 
-    if (chordAbs.length > targetNotes) {
-      chordAbs = chordAbs.slice(0, targetNotes);
+    if (chordAbsRef.length > targetNotes) {
+      chordAbsRef = chordAbsRef.slice(0, targetNotes);
     }
 
     // Must match a selected voicing pattern — no fallback
-    const nNotes = chordAbs.length;
+    const nNotes = chordAbsRef.length;
     const compatPatterns = ALL_VOICING_PATTERNS.filter(p =>
       checkedPatterns.has(p.id) && nNotes >= p.minNotes && (!p.maxNotes || nNotes <= p.maxNotes)
     );
     if (compatPatterns.length === 0) return null;
 
-    chordAbs = applyVoicingPattern(chordAbs, edo, randomChoice(compatPatterns));
-    chordAbs = clampToLayout(chordAbs);
+    // Capture chord content as steps relative to the reference root, so we
+    // can re-realize it at any candidate octave during voice-leading search.
+    const relSteps = chordAbsRef.map(n => n - refRootAbs);
+    const buildVoicing = (oct: number, pattern: typeof ALL_VOICING_PATTERNS[number]): number[] => {
+      const rootAbs = tonicPc + (oct - 4) * edo + rootStep;
+      const content = relSteps.map(s => rootAbs + s).sort((a, b) => a - b);
+      const voiced = applyVoicingPattern(content, edo, pattern);
+      return clampToLayout(voiced);
+    };
+
+    let chordAbs: number[];
+    if (prevChord && prevChord.length > 0) {
+      // ── Voice-leading search: enumerate every (octave, pattern) candidate
+      //   from the user's allowed patterns, score each via scoreVoiceLeading
+      //   (smooth motion, common tones, voice-count match, bass leap), keep
+      //   the lowest-scoring candidate.  Ties broken by random shuffle so
+      //   the loop doesn't lock onto the same exact voicing every iteration.
+      const scored: { voicing: number[]; score: number }[] = [];
+      for (let oct = lowestOct; oct <= highestOct; oct++) {
+        for (const pat of compatPatterns) {
+          const cand = buildVoicing(oct, pat);
+          if (cand.length === 0) continue;
+          scored.push({ voicing: cand, score: scoreVoiceLeading(cand, prevChord, edo) });
+        }
+      }
+      if (scored.length === 0) {
+        chordAbs = buildVoicing(refOctave, randomChoice(compatPatterns));
+      } else {
+        scored.sort((a, b) => a.score - b.score);
+        // Pick from the top 3 (or fewer) so repeats vary.
+        const top = scored.slice(0, Math.min(3, scored.length));
+        chordAbs = randomChoice(top).voicing;
+      }
+    } else {
+      chordAbs = buildVoicing(refOctave, randomChoice(compatPatterns));
+    }
 
     return { chordAbs, voicingType: "pattern", quality: triadQuality(shape, edo), appliedShape: [...shape] };
   }, [section, checkedPatterns, patternNoteCounts, checkedChords, checkedExts, extTendency, regMode, edo, tonicPc, lowestOct, highestOct, clampToLayout, getCompatibleTypes, applyChordType, edoChordTypes]);
@@ -730,10 +766,14 @@ export default function ChordsTab({
   const buildLoopFrames = useCallback((progression: string[]): { chords: number[][]; bass: number[][]; melody: number[][]; appliedShapes: (number[] | null)[] } => {
     const chords: number[][] = [];
     const appliedShapes: (number[] | null)[] = [];
+    // Thread each chord's voicing into the next so voiceChord can run its
+    // voice-leading checklist against the previous chord's actual pitches.
+    let prevVoicing: number[] | null = null;
     for (const rn of progression) {
-      const result = voiceChord(rn, null, chordMap);
+      const result = voiceChord(rn, null, chordMap, prevVoicing);
       chords.push(result ? result.chordAbs : []);
       appliedShapes.push(result ? result.appliedShape : null);
+      if (result && result.chordAbs.length > 0) prevVoicing = result.chordAbs;
     }
     const midOct = Math.floor((lowestOct + highestOct) / 2);
     // Always generate all voices so Show Answer has complete info;

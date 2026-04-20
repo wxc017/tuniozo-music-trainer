@@ -833,7 +833,12 @@ export default function VocalPercussion() {
     if (grouping) {
       pat = generateFromGrouping(grouping, enabledVoices, 0);
     } else if (splitMode === "pulses") {
-      const g = generatePulseGrouping(numPulses, allowedSubdivisions, groupingMode, prevGroupingsRef.current);
+      // In pulse mode, group sizes come from NOTES/BEAT by default. When
+      // "16th groups" is on, use the mixed 3/4/5/6/7 palette instead so the
+      // partitioner can actually vary group sizes (otherwise a single NOTES/
+      // BEAT value like 4 forces every generate to the same 4+4+…+remainder).
+      const groupPalette = effectiveSixteenthMode ? [3, 4, 5, 6, 7] : allowedSubdivisions;
+      const g = generatePulseGrouping(numPulses, groupPalette, groupingMode, prevGroupingsRef.current);
       pat = generateFromGrouping(g, enabledVoices, 0);
       prevGroupingsRef.current.push(g);
       if (prevGroupingsRef.current.length > 20) prevGroupingsRef.current.shift();

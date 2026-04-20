@@ -209,32 +209,63 @@ function voiceTimeSig(beatSize: number, totalSlots: number, bottom: number = 4):
   return { numBeats: Math.max(1, numBeats), beatValue: 4 };
 }
 
-// ── VexFlow snare line component ──────────────────────────────────────────
+// ── VexFlow dual-rhythm renderer ──────────────────────────────────────────
+// Both staves render into a single SVG with ONE shared Formatter so that
+// chord and melody notes at the same tick position land at the same X.
 
-function VexSnareLine({
-  hits,
+function drawTupletsForBuild(
+  ctx: ReturnType<Renderer["getContext"]>,
+  build: BuildVoiceResult,
+  totalSlots: number,
+) {
+  const numBeatsLocal = Math.floor(totalSlots / 3);
+  let noteIdx = 0;
+  for (let b = 0; b < numBeatsLocal; b++) {
+    const beatNotes: StaveNote[] = [];
+    let slotsConsumed = 0;
+    while (noteIdx < build.notes.length && slotsConsumed < 3) {
+      beatNotes.push(build.notes[noteIdx]);
+      const dur = build.notes[noteIdx].getDuration().replace("r", "").replace("d", "");
+      const isDotted = build.notes[noteIdx].getDuration().includes("d");
+      let durSlots = dur === "4" ? 3 : dur === "8" ? 1 : dur === "2" ? 6 : dur === "16" ? 1 : 1;
+      if (isDotted) durSlots = Math.floor(durSlots * 1.5);
+      slotsConsumed += durSlots;
+      noteIdx++;
+    }
+    if (beatNotes.length >= 2 && beatNotes.some(n => !n.isRest())) {
+      try {
+        new Tuplet(beatNotes, {
+          numNotes: 3, notesOccupied: 2,
+          bracketed: true, ratioed: false, location: 1,
+        }).setContext(ctx).draw();
+      } catch { /* skip */ }
+    }
+  }
+}
+
+function VexDualRhythm({
+  chordHits,
+  melodyHits,
   totalSlots,
   beatSize,
   bottom,
-  label,
-  labelColor,
   width,
-  height,
   timeSigDisplay,
-  showTimeSig,
 }: {
-  hits: number[];
+  chordHits: number[];
+  melodyHits: number[];
   totalSlots: number;
   beatSize: number;
   bottom: number;
-  label: string;
-  labelColor: string;
   width: number;
-  height: number;
-  timeSigDisplay?: string;
-  showTimeSig?: boolean;
+  timeSigDisplay: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const LANE_HEIGHT = 90;
+  const CHORD_Y = -5;
+  const MELODY_Y = CHORD_Y + LANE_HEIGHT;
+  const height = LANE_HEIGHT * 2;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -247,89 +278,110 @@ function VexSnareLine({
       const ctx = renderer.getContext();
       ctx.setFont("Arial", 10);
 
-      const staveY = -5;
       const staveW = width - 16;
-      const stave = new Stave(8, staveY, staveW);
-      // Use 5 lines but hide all except the middle one — this keeps VexFlow's
-      // time-signature centred correctly (it assumes a 5-line staff).
-      stave.setConfigForLines([
-        { visible: false }, // line 0
-        { visible: false }, // line 1
-        { visible: true },  // line 2 — the single visible line
-        { visible: false }, // line 3
-        { visible: false }, // line 4
-      ]);
-      stave.setBegBarType(Barline.type.NONE);
-      if (showTimeSig && timeSigDisplay) {
+
+      const makeStave = (y: number) => {
+        const stave = new Stave(8, y, staveW);
+        stave.setConfigForLines([
+          { visible: false },
+          { visible: false },
+          { visible: true },
+          { visible: false },
+          { visible: false },
+        ]);
+        stave.setBegBarType(Barline.type.NONE);
         stave.addTimeSignature(timeSigDisplay);
+        stave.setEndBarType(Barline.type.END);
+        return stave;
+      };
+
+      const chordStave = makeStave(CHORD_Y);
+      const melodyStave = makeStave(MELODY_Y);
+      chordStave.setContext(ctx).draw();
+      melodyStave.setContext(ctx).draw();
+
+      const chordBuild = buildVoice(chordHits, totalSlots, beatSize, bottom);
+      const melodyBuild = buildVoice(melodyHits, totalSlots, beatSize, bottom);
+
+      if (chordBuild.notes.length === 0 && melodyBuild.notes.length === 0) {
+        applyWhite(el);
+        return;
       }
-      stave.setEndBarType(Barline.type.END);
-      stave.setContext(ctx).draw();
-
-
-      const { notes, ties } = buildVoice(hits, totalSlots, beatSize, bottom);
-      if (notes.length === 0) { applyWhite(el); return; }
 
       const { numBeats, beatValue } = voiceTimeSig(beatSize, totalSlots, bottom);
-      const voice = new Voice({ numBeats, beatValue });
-      (voice as unknown as { setMode(m: number): void }).setMode(2);
-      voice.addTickables(notes);
 
-      const beams = buildBeams(notes, beatSize);
-      const fmtW = staveW - (showTimeSig ? 44 : 16);
-      new Formatter().joinVoices([voice]).format([voice], fmtW);
-      voice.draw(ctx, stave);
-      beams.forEach(b => b.setContext(ctx).draw());
+      const makeVoice = (notes: StaveNote[]) => {
+        const v = new Voice({ numBeats, beatValue });
+        (v as unknown as { setMode(m: number): void }).setMode(2);
+        v.addTickables(notes);
+        return v;
+      };
 
-      // Draw ties between split-duration note pairs
-      for (const [fromIdx, toIdx] of ties) {
-        try {
-          new StaveTie({
-            firstNote: notes[fromIdx],
-            lastNote: notes[toIdx],
-            firstIndices: [0],
-            lastIndices: [0],
-          } as ConstructorParameters<typeof StaveTie>[0]).setContext(ctx).draw();
-        } catch { /* skip */ }
-      }
+      const chordVoice = makeVoice(chordBuild.notes);
+      const melodyVoice = makeVoice(melodyBuild.notes);
 
-      // Draw triplet brackets when on a triplet grid.
-      if (beatSize === 3) {
-        const numBeatsLocal = Math.floor(totalSlots / 3);
-        let noteIdx = 0;
-        for (let b = 0; b < numBeatsLocal; b++) {
-          const beatNotes: StaveNote[] = [];
-          let slotsConsumed = 0;
-          while (noteIdx < notes.length && slotsConsumed < 3) {
-            beatNotes.push(notes[noteIdx]);
-            const dur = notes[noteIdx].getDuration().replace("r", "").replace("d", "");
-            const isDotted = notes[noteIdx].getDuration().includes("d");
-            let durSlots = dur === "4" ? 3 : dur === "8" ? 1 : dur === "2" ? 6 : dur === "16" ? 1 : 1;
-            if (isDotted) durSlots = Math.floor(durSlots * 1.5);
-            slotsConsumed += durSlots;
-            noteIdx++;
-          }
-          if (beatNotes.length >= 2 && beatNotes.some(n => !n.isRest())) {
-            try {
-              new Tuplet(beatNotes, {
-                numNotes: 3, notesOccupied: 2,
-                bracketed: true, ratioed: false, location: 1,
-              }).setContext(ctx).draw();
-            } catch { /* skip */ }
-          }
+      // Build beams BEFORE drawing voices: the Beam constructor calls
+      // setBeam() on each note, which suppresses the note's flag at draw time.
+      const chordBeams = buildBeams(chordBuild.notes, beatSize);
+      const melodyBeams = buildBeams(melodyBuild.notes, beatSize);
+
+      const fmtW = staveW - 44;
+      // softmaxFactor=1 with globalSoftmax gives strictly tick-proportional
+      // spacing across both voices — beat-N in one voice lands at the same X
+      // as beat-N in the other voice, without manually overriding x_shift
+      // (which desyncs beams and ties from their notes).
+      new Formatter({ softmaxFactor: 1, globalSoftmax: true })
+        .joinVoices([chordVoice, melodyVoice])
+        .format([chordVoice, melodyVoice], fmtW);
+
+      chordVoice.draw(ctx, chordStave);
+      melodyVoice.draw(ctx, melodyStave);
+
+      chordBeams.forEach(b => b.setContext(ctx).draw());
+      melodyBeams.forEach(b => b.setContext(ctx).draw());
+
+      const drawTies = (build: BuildVoiceResult) => {
+        for (const [fromIdx, toIdx] of build.ties) {
+          try {
+            new StaveTie({
+              firstNote: build.notes[fromIdx],
+              lastNote: build.notes[toIdx],
+              firstIndices: [0],
+              lastIndices: [0],
+            } as ConstructorParameters<typeof StaveTie>[0]).setContext(ctx).draw();
+          } catch { /* skip */ }
         }
+      };
+      drawTies(chordBuild);
+      drawTies(melodyBuild);
+
+      if (beatSize === 3) {
+        drawTupletsForBuild(ctx, chordBuild, totalSlots);
+        drawTupletsForBuild(ctx, melodyBuild, totalSlots);
       }
 
       applyWhite(el);
     } catch (err) {
-      console.warn("VexSnareLine render error:", err);
+      console.warn("VexDualRhythm render error:", err);
     }
-  }, [hits, totalSlots, beatSize, bottom, width, height, timeSigDisplay, showTimeSig]);
+  }, [chordHits, melodyHits, totalSlots, beatSize, bottom, width, height, timeSigDisplay, CHORD_Y, MELODY_Y]);
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-[10px] uppercase tracking-wider font-bold flex-shrink-0 w-14 text-right"
-        style={{ color: labelColor }}>{label}</span>
+    <div className="flex items-start gap-2">
+      <div className="flex flex-col flex-shrink-0 w-14">
+        <span
+          className="text-[10px] uppercase tracking-wider font-bold text-right flex items-center justify-end"
+          style={{ color: "#c8aa50", height: LANE_HEIGHT }}
+        >
+          Chord
+        </span>
+        <span
+          className="text-[10px] uppercase tracking-wider font-bold text-right flex items-center justify-end"
+          style={{ color: "#9999ee", height: LANE_HEIGHT }}
+        >
+          Melody
+        </span>
+      </div>
       <div ref={containerRef}
         style={{ width, height, overflow: "visible", display: "block", flexShrink: 0 }} />
     </div>
@@ -433,7 +485,6 @@ export default function MelodicRhythm({ melodyNoteCount, onMetricWeights, onRhyt
 
   // Scale width by beats (not raw slots) so /8 and /4 look proportional
   const staveWidth = Math.max(350, Math.min(900, beats * 80 + 100));
-  const staveHeight = 90;
 
   return (
     <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg p-3 space-y-3">
@@ -488,31 +539,16 @@ export default function MelodicRhythm({ melodyNoteCount, onMetricWeights, onRhyt
         </div>
       </div>
 
-      {/* Two snare lines */}
-      <div className="space-y-0 overflow-x-auto">
-        <VexSnareLine
-          hits={rhythm.chordHits}
+      {/* Shared-formatter dual-lane rhythm — aligned per tick */}
+      <div className="overflow-x-auto">
+        <VexDualRhythm
+          chordHits={rhythm.chordHits}
+          melodyHits={rhythm.melodyHits}
           totalSlots={rhythm.totalSlots}
           beatSize={rhythm.beatSize}
           bottom={rhythm.bottom}
-          label="Chord"
-          labelColor="#c8aa50"
           width={staveWidth}
-          height={staveHeight}
           timeSigDisplay={timeSigDisplay}
-          showTimeSig
-        />
-        <VexSnareLine
-          hits={rhythm.melodyHits}
-          totalSlots={rhythm.totalSlots}
-          beatSize={rhythm.beatSize}
-          bottom={rhythm.bottom}
-          label="Melody"
-          labelColor="#9999ee"
-          width={staveWidth}
-          height={staveHeight}
-          timeSigDisplay={timeSigDisplay}
-          showTimeSig
         />
       </div>
 

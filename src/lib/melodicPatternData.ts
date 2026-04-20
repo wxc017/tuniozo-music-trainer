@@ -467,48 +467,38 @@ export const VOCAB_REQUIRED_CATS: Record<MelodicVocab, NoteCategory[]> = {
 };
 
 /**
- * JI ratios that are consonant despite being "microtonal" (2+ accidentals in
- * diatonic naming).  Grouped by odd-limit — the standard measure of
- * consonance in just intonation theory (Partch, Tenney, Erlich).
+ * Stable microtonal intervals = the N-odd-limit tonality diamond (Partch).
+ * An interval is stable when it's within half an EDO step of a ratio a/b
+ * where max(oddPart(a), oddPart(b)) ≤ MAX_ODD_LIMIT.
  *
- * 7-limit (septimal): The next consonance frontier beyond 5-limit.  These
- * intervals appear naturally in the harmonic series (partials 7, 9, 14) and
- * are sung without effort in barbershop harmony and blues.
- *   8/7   231.17¢  septimal whole tone
- *   7/6   266.87¢  subminor third
- *   9/7   435.08¢  supermajor third
- *   7/5   582.51¢  septimal tritone (lesser)
- *   10/7  617.49¢  septimal tritone (greater)
- *   14/9  764.92¢  subminor sixth
- *   12/7  933.13¢  supermajor sixth
- *   7/4   968.83¢  harmonic seventh
- *
- * 11-limit (undecimal): "Neutral" intervals — neither major nor minor.
- * More exotic but perceptually stable, with a distinctive floating quality.
- *   12/11 150.64¢  neutral second
- *   11/9  347.41¢  neutral third
- *   11/8  551.32¢  undecimal tritone
- *   16/11 648.68¢  undecimal diminished fifth
- *   18/11 852.59¢  neutral sixth
- *   11/6  1049.36¢ neutral seventh
- *
- * Anything with 2+ accidentals that does NOT approximate one of these within
- * half an EDO step is classified as "tense microtonal."
+ * Why odd-limit, not prime-limit: Partch's framework tracks dyad roughness,
+ * which scales with odd numbers. 81/64 is 3-prime-limit but 81-odd-limit —
+ * correctly tense. 21/16 is 7-prime-limit but 21-odd-limit — also tense at
+ * N=11. Bump MAX_ODD_LIMIT to 13/15 to admit tridecimals; drop to 7 to
+ * exclude the undecimal neutrals (11/9, 11/8, …).
  */
-const STABLE_MICRO_CENTS: number[] = [
-  // 7-limit (septimal consonances)
-  231.17,  266.87,  435.08,  582.51,
-  617.49,  764.92,  933.13,  968.83,
-  // 11-limit (neutral/undecimal consonances)
-  150.64,  347.41,  551.32,  648.68,
-  852.59,  1049.36,
-  // 9-limit (important in 41-EDO where these fall on double-accidental steps)
-  182.40,   // 10/9   minor whole tone
-  1017.60,  // 9/5    complement (minor 7th)
-  // Septimal compound intervals (7×3 — stable in septimal harmony, prominent in 41-EDO)
-  470.78,   // 21/16  septimal sub-fourth
-  729.22,   // 32/21  septimal super-fifth
-];
+const MAX_ODD_LIMIT = 11;
+
+function buildTonalityDiamond(N: number): number[] {
+  const seen = new Set<string>();
+  const cents: number[] = [];
+  for (let a = 1; a <= N; a += 2) {
+    for (let b = 1; b <= N; b += 2) {
+      if (a === b) continue;
+      let r = a / b;
+      while (r >= 2) r /= 2;
+      while (r < 1)  r *= 2;
+      const c = 1200 * Math.log2(r);
+      const key = c.toFixed(3);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      cents.push(c);
+    }
+  }
+  return cents.sort((a, b) => a - b);
+}
+
+const STABLE_MICRO_CENTS: number[] = buildTonalityDiamond(MAX_ODD_LIMIT);
 
 export function isStableMicro(relStep: number, edo: number): boolean {
   const cents = (relStep / edo) * 1200;
@@ -748,18 +738,37 @@ export function degreeName(pc: number, edo: number): string {
 /**
  * Name an interval relative to a chord root using extension/tension names.
  * 2→9, 4→11, 6→13 (with accidentals), chord-tone degrees (1,3,5,7) stay as-is.
+ * Microtonal 3rds/7ths spelled on an even base ("bb4", "#2", "b4", "#6", "##6")
+ * are labeled sub3/neu3/sup3/sub7/neu7 instead of dragged into tension names.
  */
 export function chordExtensionName(relPc: number, edo: number): string {
   const raw = degreeName(relPc, edo);
-  // Extract accidentals and base degree number
-  const acc = raw.replace(/[0-9]/g, "");  // e.g. "#", "b", "bb"
-  const deg = raw.replace(/[^0-9]/g, ""); // e.g. "6", "2"
+  const m = raw.match(/^([#b]*)(\d+)$/);
+  if (!m) return raw;
+  const acc = m[1];
+  const deg = parseInt(m[2]);
+  // Microtonal chord tones spell onto an even base (2/4/6) but the effective
+  // pitch hovers around an odd chord-tone position (3/7). Label by flavor
+  // (sub/neu/sup) rather than dragging into tension territory ("#9", "bb11",
+  // "##6"). 5ths skipped — "sub5"/"sup5" aren't common terminology.
+  if (acc.length > 0 && (deg === 2 || deg === 4 || deg === 6)) {
+    const sharps = (acc.match(/#/g) || []).length;
+    const flats  = (acc.match(/b/g) || []).length;
+    const effDeg = deg + 0.5 * sharps - 0.5 * flats;
+    const odd = (deg === 6) ? 7 : 3;
+    if (Math.abs(effDeg - odd) <= 0.5) {
+      const delta = effDeg - odd;
+      if (delta < -0.25) return `sub${odd}`;
+      if (delta > 0.25)  return `sup${odd}`;
+      return `neu${odd}`;
+    }
+  }
   switch (deg) {
-    case "1": return acc ? acc + "R" : "R";
-    case "2": return acc + "9";
-    case "4": return acc + "11";
-    case "6": return acc + "13";
-    default:  return raw; // 3, 5, 7 stay as chord-tone names
+    case 1: return acc ? acc + "R" : "R";
+    case 2: return acc + "9";
+    case 4: return acc + "11";
+    case 6: return acc + "13";
+    default: return raw; // 3, 5, 7 stay as chord-tone names
   }
 }
 

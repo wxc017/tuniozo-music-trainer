@@ -41,7 +41,6 @@ import {
   generateCounterpoint,
   generateMultiTonicProgression,
   type MultiTonicCycle,
-  getDrillChordPalette,
   type DrillChord,
   xenFamily,
   isStableMicro,
@@ -149,22 +148,68 @@ function is12EdoChromatic(relStep: number, edo: number): boolean {
   return Math.abs(cents - nearestSemitone * 100) <= halfEdoStep + 1e-9;
 }
 
+/** Curated modal-interchange palette.  Each entry is a (relative degree,
+ *  chord-type id) pair that practitioners actually borrow when stepping
+ *  outside the active mode — Picardy I, Neapolitan bII, Lydian II, bIII /
+ *  iv / v / bVI / bVII from minor, #IV° from Lydian, vii°7 from harmonic
+ *  minor, etc.  The diatonic-skip in buildScaleAwareDrillPalette filters
+ *  out whichever entries already belong to the current mode, so the SAME
+ *  list works for both Ionian (surfaces bIII, iv, v, bVI, bVII…) and
+ *  Aeolian (surfaces I, IV, II, vii°7…) tonics. */
+const BORROWED_CHORDS: { degRel: string; types: string[] }[] = [
+  { degRel: "1",  types: ["maj"] },                          // Picardy III (in minor)
+  { degRel: "b2", types: ["maj", "maj7"] },                  // Neapolitan (Phrygian)
+  { degRel: "2",  types: ["maj", "dom7"] },                  // Lydian II / V/V flavor
+  { degRel: "b3", types: ["maj", "maj7"] },                  // bIII (Aeolian)
+  { degRel: "3",  types: ["maj"] },                          // III (harmonic minor mediant)
+  { degRel: "4",  types: ["min", "min7"] },                  // iv (Aeolian / Dorian)
+  { degRel: "#4", types: ["dim", "halfdim7", "dim7"] },      // #IV° (Lydian / sec dim)
+  { degRel: "5",  types: ["min", "min7"] },                  // v (Aeolian)
+  { degRel: "b6", types: ["maj", "maj7"] },                  // bVI (Aeolian)
+  { degRel: "6",  types: ["maj"] },                          // VI (Dorian)
+  { degRel: "b7", types: ["maj", "maj7", "dom7"] },          // bVII (Mixolydian / Aeolian)
+  { degRel: "7",  types: ["dim7"] },                         // vii°7 (harmonic minor)
+];
+
+/** Curated microtonal palette.  Restricts the Microtonal Stable / Tense
+ *  buckets to triads + the signature 7th of each xen family — drops the
+ *  long-tail voicings (sup_clm7, neu_maj6, …) that nobody actually uses.
+ *  Combined with a "scale-degree roots only" loop, this keeps the bucket
+ *  to a few dozen chords instead of hundreds. */
+const CURATED_MICRO_TYPES = new Set([
+  // Subminor (7/6) — bluesy
+  "submin", "submin_h7", "submin_m7", "submin_sm7",
+  // Neutral (11/9) — Arabic / Persian neutral
+  "neutral", "neu_n7",
+  // Supermajor (9/7) — bright xen
+  "supermaj", "sup_sup7", "sup_h7",
+  // Just minor (6/5) / major (5/4)
+  "clmin", "clmin_clm7",
+  "clmaj", "clmaj_clM7",
+  // Pythagorean min (32/27) / maj (81/64) — only distinct in non-12 EDOs
+  "min", "min_m7",
+  "maj", "maj_M7",
+  // Harmonic 7th over a regular major triad — blues dominant
+  "harm7",
+]);
+
 /** Build the full six-category chord palette from scratch, given the
- *  active scale.  Replaces the old hand-authored `getDrillChordPalette`
- *  groupings — every category is now recomputed from the scale, so
- *  changing mode reshapes Diatonic, Modal Interchange, Secondary Dominant,
- *  TT, Microtonal Stable AND Microtonal Tense.
+ *  active scale.  Diatonic + Sec Dom + TT are derived mechanically from
+ *  the scale; Modal Interchange and the Microtonal buckets are restricted
+ *  to curated allowlists (BORROWED_CHORDS, CURATED_MICRO_TYPES) — without
+ *  the curation each mode would surface hundreds of unused combinations.
  *
- *  Priority (first-match wins across categories):
- *    Diatonic          — every chord PC is in the scale
+ *  Categories (first-match-by-key wins via `seen`):
+ *    Diatonic           — every chord PC is in the scale
  *    Secondary Dominant — dom7 rooted a P5 below a non-tonic scale degree
  *    TT                 — dom7 rooted a tritone from the Sec Dom root
- *    Modal Interchange  — all non-scale PCs land on 12-EDO semitones AND
- *                         the chord type isn't xenharmonic
- *    Microtonal Stable  — at least one non-scale PC is an 11-/9-/7-limit
- *                         JI consonance (isStableMicro); no micro-tense PCs
- *    Microtonal Tense   — at least one non-scale PC is off the JI grid
- *                         (Pythagorean 32/27, 81/64, or higher-limit slop)
+ *    Modal Interchange  — (degree, type) pair from BORROWED_CHORDS that
+ *                         isn't already diatonic
+ *    Microtonal Stable  — chord rooted on a scale degree, type in
+ *                         CURATED_MICRO_TYPES, all non-scale PCs are
+ *                         11-/9-/7-/5-limit JI consonances (isStableMicro)
+ *    Microtonal Tense   — same restriction, but at least one non-scale PC
+ *                         falls off the JI grid (Pythagorean 32/27, 81/64)
  */
 function buildScaleAwareDrillPalette(
   edo: number,
@@ -225,34 +270,31 @@ function buildScaleAwareDrillPalette(
     }
   }
 
-  // ── 3. Modal Interchange: every chord-type × every 12-EDO chromatic
-  //   root whose non-scale PCs all land on 12-EDO semitones.  This lets
-  //   bIIImaj7 / bVImaj7 / bVIImaj7 / iv / bII etc. materialize without
-  //   being hand-authored.  Xen chord types are skipped (they live in the
-  //   Microtonal buckets).
-  for (let root = 0; root < edo; root++) {
-    const rootRel = ((root - tonicRoot) % edo + edo) % edo;
-    if (!is12EdoChromatic(rootRel, edo)) continue;
-    for (const type of chordTypes) {
-      if (xenFamily(type.id, edo)) continue;
-      const absPcs = type.steps.map(s => ((root + s) % edo + edo) % edo);
+  // ── 3. Modal Interchange: curated allowlist of borrowed (degree, type)
+  //   pairs from BORROWED_CHORDS.  The diatonic-skip naturally hides any
+  //   pair that's already in the active mode, so the same fixed list works
+  //   across every tonic — Ionian surfaces bIII / iv / v / bVI / bVII etc.,
+  //   Aeolian surfaces I (Picardy) / IV / II / vii°7 etc.
+  for (const { degRel, types } of BORROWED_CHORDS) {
+    const step = dm[degRel];
+    if (step == null) continue;
+    const absRoot = ((tonicRoot + step) % edo + edo) % edo;
+    for (const typeId of types) {
+      const type = chordTypes.find(c => c.id === typeId);
+      if (!type) continue; // chord type not available in this EDO
+      const absPcs = type.steps.map(s => ((absRoot + s) % edo + edo) % edo);
       if (absPcs.every(pc => scaleSet.has(pc))) continue; // already Diatonic
-      const nonScaleRels = absPcs
-        .filter(pc => !scaleSet.has(pc))
-        .map(pc => ((pc - tonicRoot) % edo + edo) % edo);
-      if (nonScaleRels.every(r => is12EdoChromatic(r, edo))) {
-        push("modal", root, type);
-      }
+      push("modal", absRoot, type);
     }
   }
 
-  // ── 4. Microtonal Stable / Tense: every chord-type × every EDO root.
-  //   Stability is decided per non-scale PC via isStableMicro (same
-  //   classifier used by classifyNoteCategory in chords-fixed / melody-
-  //   fixed modes).  A chord lands in Tense as soon as any non-scale PC
-  //   is neither 12-chromatic nor a stable JI consonance.
-  for (let root = 0; root < edo; root++) {
-    for (const type of chordTypes) {
+  // ── 4. Microtonal Stable / Tense: only roots on active scale degrees,
+  //   only chord types from the per-family CURATED_MICRO_TYPES allowlist.
+  //   Tense vs Stable still decided per non-scale PC via isStableMicro
+  //   (Pythagorean 32/27, 81/64 → Tense; 7/6, 11/9, 9/7, 5/4, 6/5 → Stable).
+  const microTypes = chordTypes.filter(t => CURATED_MICRO_TYPES.has(t.id));
+  for (const root of scalePcs) {
+    for (const type of microTypes) {
       const absPcs = type.steps.map(s => ((root + s) % edo + edo) % edo);
       if (absPcs.every(pc => scaleSet.has(pc))) continue;
       const nonScaleRels = absPcs
@@ -321,12 +363,36 @@ function degreeToPc(
 ): number {
   const { deg, cat, rel } = note;
 
-  // ct: snap to the chord tone at this degree
+  // ct: snap to the chord tone at this degree.
+  // First pass — exact baseDeg name match (picks up "b3" / "#5" / "bb7" etc.).
+  // Second pass — microtonal qualities spell their thirds/sevenths with double
+  // accidentals that carry the *adjacent* baseDeg: a neutral third is "##2",
+  // a supermajor 7th is "##6". For odd degrees (1/3/5/7) fall back to the
+  // tertian chord-index — but require the step's effective degree (baseDeg +
+  // 0.5 × sharps − 0.5 × flats) to be within ½ of the pattern degree, so
+  // a sus4 "4" doesn't get grabbed by pattern "3".
   if (cat === "ct") {
-    for (const step of chordSteps) {
+    const parse = (step: number) => {
       const name = degreeName(step, edo);
-      const baseDeg = parseInt(name.replace(/[^0-9]/g, ""));
-      if (baseDeg === deg) return ((chordRoot + step) % edo + edo) % edo;
+      const m = name.match(/^([#b]*)(\d+)$/);
+      if (!m) return null;
+      const sharps = (m[1].match(/#/g) || []).length;
+      const flats  = (m[1].match(/b/g) || []).length;
+      const baseDeg = parseInt(m[2]);
+      return { baseDeg, effDeg: baseDeg + 0.5 * sharps - 0.5 * flats };
+    };
+    for (const step of chordSteps) {
+      const p = parse(step);
+      if (p && p.baseDeg === deg) return ((chordRoot + step) % edo + edo) % edo;
+    }
+    if (deg === 1 || deg === 3 || deg === 5 || deg === 7) {
+      const idx = (deg - 1) / 2;
+      if (idx < chordSteps.length) {
+        const p = parse(chordSteps[idx]);
+        if (p && Math.abs(p.effDeg - deg) <= 0.5) {
+          return ((chordRoot + chordSteps[idx]) % edo + edo) % edo;
+        }
+      }
     }
     // chord doesn't have this degree — fall through to diatonic
   }
@@ -471,50 +537,38 @@ const CAT_COLOR: Record<NoteCategory, string> = {
 
 /** Format a PatternNote for text display / input.
  *
- *   "2_0"   — degree 2, natural (tracks whatever the current mode puts on 2)
- *   "3_0"   — degree 3, natural
- *   "b3_-"  — degree 3, flattened one step from the mode's natural 3
- *   "#4_+"  — degree 4, raised one step
+ *   "2"   — degree 2, natural (tracks whatever the current mode puts on 2)
+ *   "b3"  — degree 3, flattened one step from the mode's natural 3
+ *   "#4"  — degree 4, raised one step
  *
- *  Chord-tone (ct) and diatonic categories always show "_0" — the pitch is
- *  tentative to the active tonality/mode.  Chromatic / micro / microTense
- *  notes carry an accidental-offset suffix derived from the stored `rel`.
  *  Interval-chain mode stays as signed step counts ("+4 +3 -2"). */
 function formatNote(n: PatternNote, edo?: number): string {
   // Interval-chain mode — unchanged.
   if (n.intervalChain != null) {
     return n.intervalChain >= 0 ? `+${n.intervalChain}` : `${n.intervalChain}`;
   }
-  // ct / diatonic: in-mode, show degree_0.
+  // ct / diatonic: in-mode, bare degree.
   if (n.cat === "ct" || n.cat === "diatonic") {
-    return `${n.deg}_0`;
+    return `${n.deg}`;
   }
-  // Chromatic / micro / microTense: we have an explicit `rel` EDO step.
-  // Display as the signed degree name ("b3", "#4") with a compact suffix
-  // indicating direction ("_-" flat, "_+" sharp, "_0" if somehow natural).
+  // Chromatic / micro / microTense: derive signed degree name ("b3", "#4")
+  // from the stored `rel` EDO step.
   if (n.rel != null && edo) {
     const fullName = degreeName(n.rel, edo);           // e.g. "b3", "#4", "3"
     const digitMatch = fullName.match(/(\d+)$/);
     const digit = digitMatch ? digitMatch[1] : String(n.deg);
-    if (fullName.includes("b")) return `b${digit}_-`;
-    if (fullName.includes("#")) return `#${digit}_+`;
-    return `${digit}_0`;
+    if (fullName.includes("b")) return `b${digit}`;
+    if (fullName.includes("#")) return `#${digit}`;
+    return `${digit}`;
   }
-  // Fallback — no `rel` stored, just show the degree with a _0 tag.
-  return `${n.deg}_0`;
+  return `${n.deg}`;
 }
 
-/** Display the formatted note as JSX with the trailing _0 / _- / _+ tag
- *  rendered as an actual subscript (no literal underscore).  Chips call
- *  this; the input box / saved snapshots keep the plain-text form so the
- *  round-trip to parsePatternInput stays clean. */
+/** Display the formatted note as JSX. Same as the text form — the prior
+ *  "_0 / _- / _+" subscript tag was removed since the accidental prefix
+ *  (b/#) already conveys the offset. */
 function formatNoteJsx(n: PatternNote, edo?: number): React.ReactNode {
-  const str = formatNote(n, edo);
-  const m = str.match(/^(.*)_([-+0])$/);
-  if (!m) return str;
-  const [, head, tag] = m;
-  const sym = tag === "-" ? "♭" : tag === "+" ? "♯" : "0";
-  return (<>{head}<sub style={{ fontSize: "0.7em", opacity: 0.7 }}>{sym}</sub></>);
+  return formatNote(n, edo);
 }
 
 /** Parse pattern input: "R 3 5 3" or "MTS:bb4 c:2 R" or "+4 +3 -2" → PatternNote[].
@@ -792,7 +846,6 @@ export default function MelodicPatterns() {
   const drillScaleMode   = scaleMode;
   const setDrillScaleFamily = setScaleFamily;
   const setDrillScaleMode   = setScaleMode;
-  const romanChords = useMemo(() => getDrillChordPalette(edo), [edo]);
   const playTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const visualizerRef = useRef<HTMLDivElement>(null);
   const [visualizerVisible, setVisualizerVisible] = useState(true);
@@ -949,6 +1002,20 @@ export default function MelodicPatterns() {
       else audioEngine.resume();
       audioEngine.playNote(normPc, edo, 0.8, 0.7);
     })();
+  }, [edo, layout]);
+
+  // Silent variant — highlight only, no audio. Used by the pattern-drill
+  // section so clicking a degree shows it on the visualizer without
+  // triggering playback.
+  const previewPcSilent = useCallback((pc: number) => {
+    const normPc = ((pc % edo) + edo) % edo;
+    const abs: number[] = [];
+    if (layout) {
+      for (const k of layout.keys) {
+        if (((k.pitch % edo) + edo) % edo === normPc) abs.push(k.pitch);
+      }
+    }
+    setActivePcs(new Set(abs));
   }, [edo, layout]);
 
   // Compute per-note timing gaps from rhythm data or equal spacing
@@ -1439,14 +1506,12 @@ export default function MelodicPatterns() {
         </button>
       </div>
 
-      {/* Lumatone visualizer (hidden in pattern-drill mode) */}
-      {pipeline !== "pattern-drill" && (
-        <div ref={visualizerRef}>
-          {layout && (
-            <LumatoneKeyboard layout={layout} highlightedPitches={highlightedPitches} />
-          )}
-        </div>
-      )}
+      {/* Lumatone visualizer */}
+      <div ref={visualizerRef}>
+        {layout && (
+          <LumatoneKeyboard layout={layout} highlightedPitches={highlightedPitches} />
+        )}
+      </div>
 
       {/* ═══ Exploration pipelines (melody-first / chords-first) ═══ */}
       {pipeline !== "pattern-drill" && (<>
@@ -1892,7 +1957,7 @@ export default function MelodicPatterns() {
                       );
                     })()}
                   </div>
-                  <div className="flex items-start gap-1" style={{ overflowX: "auto" }}>
+                  <div className="flex items-start gap-1 min-w-0">
                     {/* Row labels */}
                     <div className="flex flex-col items-end mr-0.5 flex-shrink-0" style={{ minWidth: 24 }}>
                       <span className="text-[8px] mb-0.5">&nbsp;</span>
@@ -1915,7 +1980,7 @@ export default function MelodicPatterns() {
                         : /[#b]/.test(extName) ? "#c06090" : "#c8aa50";
                       const octLabel = oct > 0 ? ` +${oct}` : oct < 0 ? ` ${oct}` : "";
                       return (
-                        <div key={j} className="flex flex-col items-center cursor-pointer"
+                        <div key={j} className="flex flex-col items-center cursor-pointer flex-1 min-w-0"
                           onClick={e => { e.stopPropagation(); previewPc(pc); }}>
                           {j > 0 ? (
                             <span className="text-[8px] text-[#444] mb-0.5">
@@ -1925,24 +1990,24 @@ export default function MelodicPatterns() {
                             <span className="text-[8px] mb-0.5">&nbsp;</span>
                           )}
                           {/* Scale degree relative to tonic — colored by category */}
-                          <span className="flex items-center justify-center rounded text-[9px] font-bold border hover:brightness-125 transition-all"
-                            style={{ width: 36, height: 24, borderColor: catColor + "80", backgroundColor: catColor + "15", color: catColor }}>
+                          <span className="flex items-center justify-center rounded text-[9px] font-bold border hover:brightness-125 transition-all w-full overflow-hidden"
+                            style={{ height: 24, borderColor: catColor + "80", backgroundColor: catColor + "15", color: catColor }}>
                             {renderAccidentals(degreeName(((pc - tonicRoot) % edo + edo) % edo, edo))}{octLabel && <span className="text-[8px] ml-0.5 opacity-70">{octLabel}</span>}
                           </span>
                           {/* Extension name relative to chord root — colored by chord function */}
-                          <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all"
-                            style={{ width: 36, height: 24, borderColor: chordCatColor + "40", backgroundColor: chordCatColor + "08", color: chordCatColor + "99" }}>
+                          <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all w-full overflow-hidden"
+                            style={{ height: 24, borderColor: chordCatColor + "40", backgroundColor: chordCatColor + "08", color: chordCatColor + "99" }}>
                             {renderAccidentals(extName)}
                           </span>
                           {/* Note name */}
-                          <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all"
-                            style={{ width: 36, height: 24, borderColor: "#9a7ac040", backgroundColor: "#9a7ac008", color: "#9a7ac099" }}>
+                          <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all w-full overflow-hidden"
+                            style={{ height: 24, borderColor: "#9a7ac040", backgroundColor: "#9a7ac008", color: "#9a7ac099" }}>
                             {renderAccidentals(pcToNoteName(pc, edo))}
                           </span>
                         </div>
                       );
                     })}
-                    <span className="text-[10px] text-[#444] self-end ml-1 font-mono">{contour}</span>
+                    <span className="text-[10px] text-[#444] self-end ml-1 font-mono flex-shrink-0">{contour}</span>
                   </div>
                   {/* Counterpoint voices (voice 1 = melody shown above, then voice 2→3→4) */}
                   {([
@@ -2100,7 +2165,6 @@ export default function MelodicPatterns() {
           edo={edo}
           tonicRoot={tonicRoot}
           tonality={tonality === "both" ? "major" : tonality}
-          romanChords={romanChords}
           drillAddressing={drillAddressing}
           setDrillAddressing={setDrillAddressing}
           drillPattern={drillPattern}
@@ -2119,15 +2183,9 @@ export default function MelodicPatterns() {
           setDrillScaleMode={setDrillScaleMode}
           savedPatterns={savedPatterns}
           setSavedPatterns={setSavedPatterns}
-          playbackSpeed={playbackSpeed}
-          setPlaybackSpeed={setPlaybackSpeed}
-          isPlaying={isPlaying}
-          setIsPlaying={setIsPlaying}
-          playSegment={playSegment}
-          scheduleHighlights={scheduleHighlights}
-          ensureAudio={ensureAudio}
           handleMetricWeights={handleMetricWeights}
           handleRhythmTiming={handleRhythmTiming}
+          previewPc={previewPcSilent}
         />
       )}
       </div>{/* end space-y-5 */}
@@ -2151,8 +2209,8 @@ export default function MelodicPatterns() {
           onClose={() => setChordBrowserIdx(null)}
         />
       )}
-      {/* Floating visualizer — shown whenever the inline one is scrolled out of view (hidden in pattern-drill mode) */}
-      {pipeline !== "pattern-drill" && layout && !visualizerVisible && (
+      {/* Floating visualizer — shown whenever the inline one is scrolled out of view */}
+      {layout && !visualizerVisible && (
         <div className="fixed bottom-4 right-4 z-40 bg-[#0d0d0d]/95 border border-[#2a2a2a] rounded-xl shadow-2xl p-2"
           style={{ width: "min(45vw, 520px)" }}>
           <LumatoneKeyboard layout={layout} highlightedPitches={highlightedPitches} />
@@ -2165,7 +2223,7 @@ export default function MelodicPatterns() {
 // ── Pattern Drill Section ─────────────────────────────────────────────
 
 function PatternDrillSection({
-  edo, tonicRoot, tonality, romanChords,
+  edo, tonicRoot, tonality,
   drillAddressing, setDrillAddressing,
   drillPattern, drillPatternInput, setDrillPatternInput, setDrillPattern,
   drillChords, drillChordInput, setDrillChordInput, setDrillChords,
@@ -2173,15 +2231,12 @@ function PatternDrillSection({
   drillScaleFamily, setDrillScaleFamily,
   drillScaleMode, setDrillScaleMode,
   savedPatterns, setSavedPatterns,
-  playbackSpeed, setPlaybackSpeed,
-  isPlaying, setIsPlaying,
-  playSegment, scheduleHighlights, ensureAudio,
   handleMetricWeights, handleRhythmTiming,
+  previewPc,
 }: {
   edo: number;
   tonicRoot: number;
   tonality: Tonality;
-  romanChords: DrillChord[];
   drillAddressing: "degree" | "interval";
   setDrillAddressing: (v: "degree" | "interval") => void;
   drillPattern: PatternNote[];
@@ -2200,15 +2255,9 @@ function PatternDrillSection({
   setDrillScaleMode: (v: string) => void;
   savedPatterns: { name: string; pattern: PatternNote[] }[];
   setSavedPatterns: (v: { name: string; pattern: PatternNote[] }[]) => void;
-  playbackSpeed: number;
-  setPlaybackSpeed: (v: number) => void;
-  isPlaying: boolean;
-  setIsPlaying: (v: boolean) => void;
-  playSegment: (seg: SegmentState) => Promise<void>;
-  scheduleHighlights: (seg: SegmentState, melodyOnly: boolean, chordDelay?: number) => void;
-  ensureAudio: () => Promise<void>;
   handleMetricWeights: (weights: number[]) => void;
   handleRhythmTiming: (data: RhythmTimingData) => void;
+  previewPc: (pc: number) => void;
 }) {
   const [saveNameInput, setSaveNameInput] = useState("");
   const [checkedChords, setCheckedChords] = useState<Set<string>>(new Set());
@@ -2235,27 +2284,25 @@ function PatternDrillSection({
     setDrillChords(drillChords.filter((_, i) => i !== idx));
   }, [drillChords, setDrillChords]);
 
-  // Tritone substitution: replace the chord at `idx` with a chord of the
-  // SAME type whose root is a tritone (edo/2) away.  Preference order
-  // when picking the substitute: (a) exact same chordTypeId at tt-root,
-  // (b) same root + dom7 if the source is a dom7-family, (c) any chord
-  // at tt-root, (d) leave unchanged.  Matches the 2026 Course's
-  // "tritone sub transformation" and "diminished enharmonic equivalence"
-  // idioms — for dim7 types the tt-sub is the same pitch-class set under
-  // a different spelling, which the palette exposes as a distinct roman.
-  const applyTritoneSub = useCallback((idx: number) => {
-    const cur = drillChords[idx];
-    if (!cur) return;
-    const src = romanChords.find(c => c.roman === cur);
-    if (!src) return;
-    const TT = Math.round(edo / 2);
-    const ttRoot = ((src.root + TT) % edo + edo) % edo;
-    const pick = romanChords.find(c => c.root === ttRoot && c.chordTypeId === src.chordTypeId)
-              ?? romanChords.find(c => c.root === ttRoot && c.chordTypeId === "dom7")
-              ?? romanChords.find(c => c.root === ttRoot);
-    if (!pick) return;
-    setDrillChords(drillChords.map((c, i) => (i === idx ? pick.roman : c)));
-  }, [drillChords, romanChords, edo, setDrillChords]);
+  // Scale PCs for the active mode — drives degree resolution in realizePattern.
+  const activeScalePcs = useMemo(
+    () => getScalePcs(edo, tonicRoot, drillScaleFamily, drillScaleMode),
+    [edo, tonicRoot, drillScaleFamily, drillScaleMode],
+  );
+  // All chord types available in the active EDO — reused by the scale-aware
+  // palette builder so every mode change reshapes the full chord pool.
+  const drillChordTypes = useMemo(() => getEdoChordTypes(edo), [edo]);
+
+  // Flattened scale-aware palette: every chord the UI shows (diatonic + modal
+  // interchange + sec dom + TT + microtonal stable/tense).  Used wherever the
+  // drill section needs to look up a chord by its roman numeral or by (root,
+  // type) — TT substitution, input validation, and Randomize's fallback pool.
+  // Drives microtonal chords into Randomize that the legacy hand-authored
+  // palette excluded.
+  const romanChords = useMemo(() => {
+    const byCat = buildScaleAwareDrillPalette(edo, tonicRoot, activeScalePcs, drillChordTypes);
+    return Object.values(byCat).flat();
+  }, [edo, tonicRoot, activeScalePcs, drillChordTypes]);
 
   // Resolve roman numeral to chord data
   const resolveChord = useCallback((roman: string) => {
@@ -2266,15 +2313,6 @@ function PatternDrillSection({
     const pcs = steps.map(s => ((s + root) % edo + edo) % edo);
     return { roman, root, steps, pcs };
   }, [romanChords, tonicRoot, edo]);
-
-  // Scale PCs for the active mode — drives degree resolution in realizePattern.
-  const activeScalePcs = useMemo(
-    () => getScalePcs(edo, tonicRoot, drillScaleFamily, drillScaleMode),
-    [edo, tonicRoot, drillScaleFamily, drillScaleMode],
-  );
-  // All chord types available in the active EDO — reused by the scale-aware
-  // palette builder so every mode change reshapes the full chord pool.
-  const drillChordTypes = useMemo(() => getEdoChordTypes(edo), [edo]);
 
   // Get active permutations.  Permutation keys encode order:
   //   original, retrograde, rotate{i} (i = 1..N-1), swap{i} (swap positions i and i+1, i = 0..N-2).
@@ -2317,25 +2355,6 @@ function PatternDrillSection({
     }
     return segs;
   }, [drillChords, activePerms, resolveChord, edo, tonicRoot, tonality, activeScalePcs]);
-
-  // Play all drill segments
-  const playAll = useCallback(async () => {
-    if (drillSegments.length === 0) return;
-    await ensureAudio();
-    setIsPlaying(true);
-    const chordDelay = Math.max(600, playbackSpeed * 1.5);
-    const melodyMs = drillPattern.length * playbackSpeed;
-    const segDuration = chordDelay + melodyMs + 300;
-    for (let i = 0; i < drillSegments.length; i++) {
-      const seg = drillSegments[i];
-      const t = i * segDuration;
-      setTimeout(() => {
-        const asSeg: SegmentState = { chordPcs: seg.chordPcs, root: seg.root, chordTypeId: "", melody: seg.melody };
-        playSegment(asSeg);
-      }, t);
-    }
-    setTimeout(() => setIsPlaying(false), drillSegments.length * segDuration);
-  }, [drillSegments, playbackSpeed, drillPattern.length, playSegment, ensureAudio, setIsPlaying]);
 
   // Save the current pattern.  If the input box has unapplied edits we
   // parse + apply them first — otherwise clicking Save right after typing
@@ -2380,21 +2399,9 @@ function PatternDrillSection({
         </div>
       </div>
 
-      {/* Speed + Scale / Mode — the scale/mode picker is the same state as
-          the main settings row above; changing it here updates it there too
-          and vice-versa. */}
+      {/* Scale / Mode — same state as the main settings row above; changing
+          it here updates it there too and vice-versa. */}
       <div className="flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="block text-[10px] text-[#666] uppercase tracking-wider mb-1">Speed</label>
-          <select value={playbackSpeed} onChange={e => setPlaybackSpeed(Number(e.target.value))}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-white focus:outline-none">
-            <option value={250}>Very Fast</option>
-            <option value={400}>Fast</option>
-            <option value={600}>Medium</option>
-            <option value={900}>Slow</option>
-            <option value={1200}>Very Slow</option>
-          </select>
-        </div>
         <div>
           <label className="block text-[10px] text-[#666] uppercase tracking-wider mb-1">Scale / Mode</label>
           <select
@@ -2586,10 +2593,6 @@ function PatternDrillSection({
                   <span className="px-2 py-1 text-xs font-bold rounded border border-[#aa66aa40] bg-[#aa66aa15] text-[#cc88cc]">
                     {ch}
                   </span>
-                  <button
-                    onClick={() => applyTritoneSub(i)}
-                    title="Tritone substitution — replace with the chord a tritone away"
-                    className="text-[9px] text-[#6a8acc] hover:text-[#8aaaee] font-mono px-1 ml-0.5 border border-[#2a3a5a] rounded hover:border-[#6a8acc] transition-colors">TT</button>
                   <button onClick={() => removeChord(i)}
                     className="text-[9px] text-[#444] hover:text-[#e06060] px-0.5 ml-0.5">✕</button>
                   {i < drillChords.length - 1 && <span className="text-[#333] mx-0.5">→</span>}
@@ -2679,7 +2682,7 @@ function PatternDrillSection({
 
                 {/* Melody */}
                 <div className="min-w-0">
-                  <div className="flex items-start gap-1" style={{ overflowX: "auto" }}>
+                  <div className="flex items-start gap-1 min-w-0">
                     {/* Row labels */}
                     <div className="flex flex-col items-end mr-0.5 flex-shrink-0" style={{ minWidth: 24 }}>
                       <span className="text-[8px] mb-0.5">&nbsp;</span>
@@ -2700,7 +2703,8 @@ function PatternDrillSection({
                         : /[#b]/.test(extName) ? "#c06090" : "#c8aa50";
                       const octLabel = oct > 0 ? ` +${oct}` : oct < 0 ? ` ${oct}` : "";
                       return (
-                        <div key={j} className="flex flex-col items-center">
+                        <div key={j} className="flex flex-col items-center flex-1 min-w-0 cursor-pointer"
+                          onClick={e => { e.stopPropagation(); previewPc(pc); }}>
                           {j > 0 ? (
                             <span className="text-[8px] text-[#444] mb-0.5">
                               {intervals[j - 1] > 0 ? "+" : ""}{intervals[j - 1]}
@@ -2708,16 +2712,16 @@ function PatternDrillSection({
                           ) : (
                             <span className="text-[8px] mb-0.5">&nbsp;</span>
                           )}
-                          <span className="flex items-center justify-center rounded text-[9px] font-bold border hover:brightness-125 transition-all"
-                            style={{ width: 36, height: 24, borderColor: catColor + "80", backgroundColor: catColor + "15", color: catColor }}>
+                          <span className="flex items-center justify-center rounded text-[9px] font-bold border hover:brightness-125 transition-all w-full overflow-hidden"
+                            style={{ height: 24, borderColor: catColor + "80", backgroundColor: catColor + "15", color: catColor }}>
                             {renderAccidentals(degreeName(((pc - tonicRoot) % edo + edo) % edo, edo))}{octLabel && <span className="text-[8px] ml-0.5 opacity-70">{octLabel}</span>}
                           </span>
-                          <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all"
-                            style={{ width: 36, height: 24, borderColor: chordCatColor + "40", backgroundColor: chordCatColor + "08", color: chordCatColor + "99" }}>
+                          <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all w-full overflow-hidden"
+                            style={{ height: 24, borderColor: chordCatColor + "40", backgroundColor: chordCatColor + "08", color: chordCatColor + "99" }}>
                             {renderAccidentals(extName)}
                           </span>
-                          <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all"
-                            style={{ width: 36, height: 24, borderColor: "#9a7ac040", backgroundColor: "#9a7ac008", color: "#9a7ac099" }}>
+                          <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all w-full overflow-hidden"
+                            style={{ height: 24, borderColor: "#9a7ac040", backgroundColor: "#9a7ac008", color: "#9a7ac099" }}>
                             {renderAccidentals(pcToNoteName(pc, edo))}
                           </span>
                         </div>
@@ -2727,14 +2731,6 @@ function PatternDrillSection({
                   </div>
                 </div>
 
-                {/* Action buttons */}
-                <div className="flex gap-1 mt-2 justify-center">
-                  <button onClick={async () => {
-                    const asSeg: SegmentState = { chordPcs: seg.chordPcs, root: seg.root, chordTypeId: "", melody: seg.melody };
-                    await playSegment(asSeg);
-                  }}
-                    className="px-2 py-1 text-[10px] rounded bg-[#1a2a1a] border border-[#2a4a2a] text-[#5a8a5a] hover:text-[#7aaa7a] transition-colors">▶</button>
-                </div>
               </div>
             );
           })}
@@ -2749,17 +2745,8 @@ function PatternDrillSection({
         <MelodicRhythm melodyNoteCount={drillPattern.length} onMetricWeights={handleMetricWeights} onRhythmTiming={handleRhythmTiming} />
       </div>
 
-      {/* Play All */}
       {drillSegments.length > 0 && (
         <div className="flex items-center justify-center gap-3">
-          <button onClick={playAll}
-            className={`px-5 py-2.5 text-xs rounded border transition-colors ${
-              isPlaying
-                ? "bg-[#2a2a3a] border-[#aa66aa] text-[#cc88cc]"
-                : "bg-[#2a1a2a] border-[#5a3a5a] text-[#aa66aa] hover:bg-[#3a2a3a] hover:text-[#cc88cc]"
-            }`}>
-            {isPlaying ? "Playing..." : "▶ Play All"}
-          </button>
           <span className="text-[9px] text-[#444]">{drillSegments.length} segments</span>
         </div>
       )}
