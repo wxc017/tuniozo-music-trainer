@@ -1,0 +1,2400 @@
+# Vocal-percussion generator — full mode-matrix samples
+# Corpus target: 1500 samples spread across 294 configs
+# 7 beat-counts × 7 subdivisions × 2 voicing × 3 accent = 294 configs
+# Per-config target is rebalanced on the fly (ceiling=48):
+# configs that cap out early forward their unused budget to the rest.
+# beats ∈ {2,3,4,5,6,7,8}, grouping = [N × beats] for subdivision N
+# Uppercase = accent, lowercase = non-accent, '.' = rest
+# K=kick, S=snare, G=ghost, H=hat
+#
+# Per sample: the left column shows the accent-phrase grouping
+# (what the listener hears) — differs from the subdivision when
+# accent mode ≠ 'first'.
+
+── beats=2 · subdivision=2 · voicing=linear · accent=first ────────────
+  001  [2+2           ]  Kg Sg
+  002  [2+2           ]  Kh Sg
+  003  [2+2           ]  Sg Kh
+  004  [2+2           ]  Kg Kh
+  005  [2+2           ]  Kh Kg
+  006  [2+2           ]  Sg Kg
+  (worst same-voice run in this block: 1)
+
+── beats=2 · subdivision=2 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [4             ]  Kh hg
+  002  [4             ]  Kh gg
+  003  [4             ]  Kg hk
+  004  [4             ]  Kk hk
+  005  [4             ]  Kg kh
+  006  [4             ]  Sk hh
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=2 · voicing=linear · accent=groupings ────────────
+  001  [2+2           ]  Kg Sg
+  002  [2+2           ]  Kg Sk
+  003  [2+2           ]  Sg Kg
+  004  [2+2           ]  Kg Hk
+  005  [2+2           ]  Sk Sk
+  006  [2+2           ]  Kh Hg
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=2 · voicing=groove · accent=first ────────────
+  001  [2+2           ]  Kk Sk
+  002  [2+2           ]  Kg Sk
+  003  [2+2           ]  Kg Sg
+  004  [2+2           ]  Kk Sg
+  (only 4 distinct variants reachable after 120 attempts — target was 6)
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=2 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [4             ]  Kg gk
+  002  [4             ]  Kg tk
+  003  [4             ]  Kg tg
+  004  [4             ]  Kt kk
+  005  [4             ]  Kh gk
+  006  [4             ]  Kh tk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=2 · voicing=groove · accent=groupings ────────────
+  001  [2+2           ]  Kg Sk
+  002  [2+2           ]  Kg Sg
+  003  [2+2           ]  Kk Sk
+  004  [2+2           ]  Kk Sg
+  (only 4 distinct variants reachable after 120 attempts — target was 6)
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=3 · voicing=linear · accent=first ────────────
+  001  [3+3           ]  Khg Khh
+  002  [3+3           ]  Kkh Hkh
+  003  [3+3           ]  K.g Hkh
+  004  [3+3           ]  K.k Hkg
+  005  [3+3           ]  K.g Kgk
+  006  [3+3           ]  Kgk Hkh
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=3 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+1           ]  Kgk hhS
+  002  [5+1           ]  Khg khK
+  003  [5+1           ]  Kkg khH
+  004  [5+1           ]  Kh. .gH
+  005  [5+1           ]  Khk khS
+  006  [5+1           ]  Kh. hgK
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=3 · voicing=linear · accent=groupings ────────────
+  001  [2+2+2         ]  KhK hKk
+  002  [3+3           ]  K.k Hgh
+  003  [2+2+2         ]  KgK hHk
+  004  [2+2+2         ]  KgS hSg
+  005  [3+3           ]  K.g Hkk
+  006  [3+3           ]  Khk Kgk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=3 · voicing=groove · accent=first ────────────
+  001  [3+3           ]  K.g Skk
+  002  [3+3           ]  K.g Shk
+  003  [3+3           ]  Khg Sgk
+  004  [3+3           ]  K.g Sgk
+  005  [3+3           ]  K.k Stk
+  006  [3+3           ]  Khk Sgk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=3 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+1           ]  Kgk hkS
+  002  [5+1           ]  Kg. kgS
+  003  [5+1           ]  Kkg ghS
+  004  [5+1           ]  Ktk ggS
+  005  [5+1           ]  Kg. tgS
+  006  [5+1           ]  Kgk kgS
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=3 · voicing=groove · accent=groupings ────────────
+  001  [3+3           ]  K.g Skg
+  002  [3+3           ]  Kkg Sgk
+  003  [2+2+2         ]  KgS kKh
+  004  [3+3           ]  Ktg Skk
+  005  [2+2+2         ]  KgS gKk
+  006  [2+2+2         ]  KgS kKg
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=4 · voicing=linear · accent=first ────────────
+  001  [4+4           ]  Khhk Hggh
+  002  [4+4           ]  Khhk Hkgg
+  003  [4+4           ]  Kkgg Hkhg
+  004  [4+4           ]  Kkgh Kggh
+  005  [4+4           ]  Kgkh Khkg
+  006  [4+4           ]  Khgh Hghg
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=4 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+3           ]  Kkgh kKhg
+  002  [5+3           ]  Kghg hSkh
+  003  [5+3           ]  Kg.. kHgk
+  004  [5+3           ]  Kgk. hSkg
+  005  [5+3           ]  Kg.k hSgh
+  006  [5+3           ]  Kg.k kSgh
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=4 · voicing=linear · accent=groupings ────────────
+  001  [4+4           ]  Kk.g Hkhg
+  002  [4+2+2         ]  Kk.h KgKg
+  003  [4+2+2         ]  Khkh KgHk
+  004  [4+4           ]  Kk.h Kkgh
+  005  [3+2+3         ]  KhhS hKhk
+  006  [4+4           ]  Kgkh Kggk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=4 · voicing=groove · accent=first ────────────
+  001  [4+4           ]  Kg.h Sghk
+  002  [4+4           ]  Kg.t Sgkk
+  003  [4+4           ]  Kg.g Skkg
+  004  [4+4           ]  Kgkg Sttk
+  005  [4+4           ]  Kggk Sghk
+  006  [4+4           ]  Kkgg Skhk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=4 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+3           ]  Khkk gSgk
+  002  [5+3           ]  Kk.g hStk
+  003  [5+3           ]  Kg.t gSgk
+  004  [5+3           ]  Kg.t gShk
+  005  [5+3           ]  Khgk gSgk
+  006  [5+3           ]  Ktgg hSgg
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=4 · voicing=groove · accent=groupings ────────────
+  001  [5+3           ]  Kktt gSkk
+  002  [3+2+3         ]  K.gS kKgg
+  003  [3+3+2         ]  KkgS tgKk
+  004  [4+4           ]  Khkg Sttk
+  005  [4+4           ]  Kttg Shtk
+  006  [2+2+2+2       ]  KgSk KgSg
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=5 · voicing=linear · accent=first ────────────
+  001  [5+5           ]  Kkgkh Hkkgg
+  002  [5+5           ]  Kk..h Kgghk
+  003  [5+5           ]  Kg..k Khggh
+  004  [5+5           ]  Kk.hg Khgkh
+  005  [5+5           ]  Kg..k Hghkk
+  006  [5+5           ]  Kkgkg Hkhgh
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=5 · voicing=linear · accent=repeat (every=7) ────────────
+  001  [7+3           ]  Kghgh hkShg
+  002  [7+3           ]  Kgh.k khHgh
+  003  [7+3           ]  Khhg. khKgg
+  004  [7+3           ]  Kghgh kgSkh
+  005  [7+3           ]  Khg.. kgKgh
+  006  [7+3           ]  Khh.g .kKhg
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=5 · voicing=linear · accent=groupings ────────────
+  001  [2+4+4         ]  KhSgk hSghg
+  002  [3+2+3+2       ]  KkhKg K.gHg
+  003  [5+5           ]  Kgghg Hkgkg
+  004  [2+2+2+2+2     ]  KhShS kHgSk
+  005  [4+3+3         ]  KhghS .gShg
+  006  [2+2+2+2+2     ]  KhSkH hKkSg
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=5 · voicing=groove · accent=first ────────────
+  001  [5+5           ]  Kg.tg Skggk
+  002  [5+5           ]  Kgttg Shggk
+  003  [5+5           ]  Kgkkg Sttkk
+  004  [5+5           ]  Kgghg Sgkkg
+  005  [5+5           ]  Ktkgg Sgghk
+  006  [5+5           ]  Kg.kg Sktkk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=5 · voicing=groove · accent=repeat (every=7) ────────────
+  001  [7+3           ]  Kthg. tgShk
+  002  [7+3           ]  Kttgg .kShg
+  003  [7+3           ]  Kgkgt ggStg
+  004  [7+3           ]  Khggt tgSkk
+  005  [7+3           ]  Khgtt ggSgk
+  006  [7+3           ]  Kggkk hgSkg
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=5 · voicing=groove · accent=groupings ────────────
+  001  [4+2+2+2       ]  KggkS kKgSk
+  002  [2+6+2         ]  KgSgk kgkKh
+  003  [4+4+2         ]  KhtgS kktKk
+  004  [4+2+2+2       ]  KhtgS gKgSg
+  005  [2+6+2         ]  KkSgg h.kKh
+  006  [2+2+2+4       ]  KgSkK gSggk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=6 · voicing=linear · accent=first ────────────
+  001  [6+6           ]  Kgkgkh Kghkgh
+  002  [6+6           ]  Kkh..g Hhkhkg
+  003  [6+6           ]  Kgkhhg Kghgkh
+  004  [6+6           ]  Khk..g Khkghh
+  005  [6+6           ]  Kkg..g Khhggk
+  006  [6+6           ]  Kkghgg Khhggh
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=6 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+2         ]  Kkh.kS k..kHh
+  002  [5+5+2         ]  KhkkhK k.hkHg
+  003  [5+5+2         ]  Kg..gS hhkkSk
+  004  [5+5+2         ]  Kk.hkH hgkgHg
+  005  [5+5+2         ]  Kh.kgS h..kHg
+  006  [5+5+2         ]  Kk.hkK h.khSh
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=6 · voicing=linear · accent=groupings ────────────
+  001  [2+3+3+2+2     ]  KhKkgS .gHgKk
+  002  [5+2+5         ]  Kk..hK hKkgkg
+  003  [4+2+2+2+2     ]  Kk.hKh HgKgHg
+  004  [3+2+3+2+2     ]  KkgShS kgKhSh
+  005  [3+6+3         ]  KkhHkh .ghHgg
+  006  [2+4+4+2       ]  KhShkh HggkHg
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=6 · voicing=groove · accent=first ────────────
+  001  [6+6           ]  Ktthgg Sggkgg
+  002  [6+6           ]  Kkg.kg Sgttgk
+  003  [6+6           ]  Kgghgg Skkgtk
+  004  [6+6           ]  Kggktg Sgkgtk
+  005  [6+6           ]  Kgghtg Skgkkg
+  006  [6+6           ]  Kgg.kg Sggtkg
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=6 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+2         ]  KttggS kkgkKh
+  002  [5+5+2         ]  Kh..gS kkgkKh
+  003  [5+5+2         ]  KgkkgS gt.kKg
+  004  [5+5+2         ]  KgkkgS k.gkKh
+  005  [5+5+2         ]  Kt.kgS ktgkKh
+  006  [5+5+2         ]  Kk..gS kgkgKg
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=6 · voicing=groove · accent=groupings ────────────
+  001  [2+2+3+3+2     ]  KkSkK. gSkgKg
+  002  [2+3+3+2+2     ]  KgS.kK tgSkKh
+  003  [2+2+3+3+2     ]  KgSkKt gSkhKk
+  004  [2+2+3+2+3     ]  KgSkKh gSkKhk
+  005  [6+6           ]  Kgkg.h Sgkkgk
+  006  [3+2+2+2+3     ]  KtgSkK gSgKtk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=7 · voicing=linear · accent=first ────────────
+  001  [7+7           ]  Khkkgkg Hkhggkk
+  002  [7+7           ]  Kkh..kh Hghkhkh
+  003  [7+7           ]  Kghk.kh Hkkhghg
+  004  [7+7           ]  Kghkk.h Hgkhghg
+  005  [7+7           ]  Kgk.hkk Hkghkhg
+  006  [7+7           ]  Khgk..k Hhkhggk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=7 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+4         ]  KhkkhSg ..kHhgk
+  002  [5+5+4         ]  Kg..gKk hkgKhkh
+  003  [5+5+4         ]  KggkhSg kggHhgh
+  004  [5+5+4         ]  Khk.hSh k.hKkhg
+  005  [5+5+4         ]  Kk..gHg .khShhg
+  006  [5+5+4         ]  Khk.hKh k.hKhgk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=7 · voicing=linear · accent=groupings ────────────
+  001  [2+6+2+2+2     ]  KhHkkgh kHgHgKh
+  002  [5+5+4         ]  Kk..hSh ..kKggk
+  003  [4+4+2+4       ]  Kg.gHg. hKhShhk
+  004  [2+2+2+4+4     ]  KkSkShS hkhKhhg
+  005  [2+4+4+2+2     ]  KhShkhH tghSkHk
+  006  [2+6+6         ]  KgKgkkg hKhkhhg
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=7 · voicing=groove · accent=first ────────────
+  001  [7+7           ]  Kkgkk.g Sggkhgk
+  002  [7+7           ]  Kgkk.gg Skkgkgk
+  003  [7+7           ]  Kkgh.gh Skkhghk
+  004  [7+7           ]  Kgkkggt Sggkggk
+  005  [7+7           ]  Ktktk.g Sgghkgk
+  006  [7+7           ]  Kggt.kg Stkkggk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=7 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+4         ]  Kg..gSh hkhKggk
+  002  [5+5+4         ]  KhggkSk kgkKggk
+  003  [5+5+4         ]  KggtgSg h.gKggk
+  004  [5+5+4         ]  KhhggSk khkKhtk
+  005  [5+5+4         ]  KgghgSt t.kKhgk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=7 · voicing=groove · accent=groupings ────────────
+  001  [4+4+4+2       ]  Kg.hSkh gKg.hSk
+  002  [2+2+2+2+6     ]  KgSkKgS kKhthhk
+  003  [2+2+5+5       ]  KgSkKgk kgSggtk
+  004  [4+3+4+3       ]  KtkgSkh KgkgStk
+  005  [3+3+3+5       ]  K.gStgK .gSgtgk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=8 · voicing=linear · accent=first ────────────
+  001  [8+8           ]  Khhkhghk Kghghkgk
+  002  [8+8           ]  Kghkgk.h Kkhhghgk
+  003  [8+8           ]  Kgkh..kh Kgghghkk
+  004  [8+8           ]  Kggkhk.h Hkhghkhh
+  005  [8+8           ]  Khhk.kgk Hgkhkgkh
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=8 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+1       ]  KkhkhKg. .gHkhhgH
+  002  [5+5+5+1       ]  Kgk.hSkh khKgkhhK
+  003  [5+5+5+1       ]  Kgg.kKg. .gSkgkkH
+  004  [5+5+5+1       ]  Khk.gKkh hgHk..hH
+  005  [5+5+5+1       ]  Kgh.gHgk hkKhghgH
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=8 · voicing=linear · accent=groupings ────────────
+  001  [2+3+2+2+6+1   ]  KgS.kSgK hKghkkgH
+  002  [6+2+2+6       ]  KhghhgKh KhKkghhk
+  003  [6+4+6         ]  Khgk.kSh .gHkhhgh
+  004  [6+4+6         ]  KhhghgSk hkHggkgh
+  005  [4+2+3+6+1     ]  KgghKhSk hSgk.hkH
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=8 · voicing=groove · accent=first ────────────
+  001  [8+8           ]  Kgghttgg Sggkkggk
+  002  [8+8           ]  Ktgk..hk Skgghgkg
+  003  [8+8           ]  Kggk.hgg Sghkgghk
+  004  [8+8           ]  Kkhg.t.g Skkggkkg
+  005  [8+8           ]  Kggk...g Sgghgghk
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=8 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+1       ]  KhgghSg. .kKh..hS
+  002  [5+5+5+1       ]  Kg.kgSkk ggKg..gS
+  003  [5+5+5+1       ]  Kg.kgSg. tgKgktgS
+  004  [5+5+5+1       ]  KgkkgSkk gkKgktgS
+  005  [5+5+5+1       ]  KgkkgSkk gkKgkkgS
+  (worst same-voice run in this block: 2)
+
+── beats=2 · subdivision=8 · voicing=groove · accent=groupings ────────────
+  001  [5+5+6         ]  Kg.kgSk. gkKgtthk
+  002  [5+3+2+6       ]  Kg.kgS.k KgSkkggk
+  003  [4+5+2+5       ]  KgkgSt.t kKgSghtk
+  004  [4+2+2+2+6     ]  Kh.gSkKg SkKgtgkk
+  005  [6+6+4         ]  KkhkkgSg gkkhKggk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=2 · voicing=linear · accent=first ────────────
+  001  [2+2+2         ]  Kh Sg Hh
+  002  [2+2+2         ]  Sg Hg Sk
+  003  [2+2+2         ]  Kk Sg Sg
+  004  [2+2+2         ]  Sk Hg Hg
+  005  [2+2+2         ]  Kh Sg Sg
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=2 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+1           ]  Kg gk gS
+  002  [5+1           ]  Kh hg kH
+  003  [5+1           ]  Kh kg kS
+  004  [5+1           ]  Kg gk hS
+  005  [5+1           ]  Sk kg kS
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=2 · voicing=linear · accent=groupings ────────────
+  001  [3+3           ]  Kh kH hg
+  002  [2+2+2         ]  Kg Hg Hk
+  003  [2+2+2         ]  Kh Kh Kg
+  004  [3+3           ]  Kk gS gg
+  005  [3+3           ]  K. hK hk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=2 · voicing=groove · accent=first ────────────
+  001  [2+2+2         ]  Kg Sg Kk
+  002  [2+2+2         ]  Kg Sk Kh
+  003  [2+2+2         ]  Kk Sk Kh
+  004  [2+2+2         ]  Kg Sk Kg
+  005  [2+2+2         ]  Kg Sg Kg
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=2 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+1           ]  Kg gt gS
+  002  [5+1           ]  Kh .k gS
+  003  [5+1           ]  Kg tg gS
+  004  [5+1           ]  Kg gh gS
+  005  [5+1           ]  Kg kk gS
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=2 · voicing=groove · accent=groupings ────────────
+  001  [3+3           ]  Kh kS kk
+  002  [3+3           ]  Kk gS hk
+  003  [3+3           ]  Kg kS kk
+  004  [2+2+2         ]  Kg Sk Kh
+  005  [3+3           ]  Kg gS kk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=3 · voicing=linear · accent=first ────────────
+  001  [3+3+3         ]  K.k H.g Kkh
+  002  [3+3+3         ]  K.k Hkh Hgk
+  003  [3+3+3         ]  Kkg Kkh Htg
+  004  [3+3+3         ]  Khk Kgh Kkg
+  005  [3+3+3         ]  K.g Hkh Khg
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=3 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+4           ]  Kh. kgS hkg
+  002  [5+4           ]  Khk .kH khh
+  003  [5+4           ]  Kk. .gK hkg
+  004  [5+4           ]  Kkh kgH kkh
+  005  [5+4           ]  Kkg hkH hkg
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=3 · voicing=linear · accent=groupings ────────────
+  001  [2+2+2+3       ]  KhK kHg Khg
+  002  [3+3+3         ]  Kkh Kgh Hgk
+  003  [3+2+2+2       ]  Kgk HkK hKg
+  004  [2+2+2+3       ]  KgK kSh Kgg
+  005  [3+6           ]  Kgk Khg hkk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=3 · voicing=groove · accent=first ────────────
+  001  [3+3+3         ]  Kgg S.k Kgk
+  002  [3+3+3         ]  Kkg Skh Kgk
+  003  [3+3+3         ]  Kgg Sgk Kgk
+  004  [3+3+3         ]  Ktg Skh Kgk
+  005  [3+3+3         ]  K.g Sgk Khg
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=3 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+4           ]  Kg. .gS ttk
+  002  [5+4           ]  Khk tgS hgk
+  003  [5+4           ]  Kgk tkS thk
+  004  [5+4           ]  Kg. kgS ghk
+  005  [5+4           ]  Ktt kgS ghk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=3 · voicing=groove · accent=groupings ────────────
+  001  [2+3+2+2       ]  KgS tkK gSk
+  002  [5+2+2         ]  Kgg hgS kKh
+  003  [3+2+2+2       ]  Kgg SkK gSk
+  004  [3+3+3         ]  Ktg S.g Kgk
+  005  [2+2+2+3       ]  KgS kKg Sgk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=4 · voicing=linear · accent=first ────────────
+  001  [4+4+4         ]  Khkh Kkgg Khgh
+  002  [4+4+4         ]  Khgk Kghh Kggk
+  003  [4+4+4         ]  Kk.h Kk.h Khkh
+  004  [4+4+4         ]  Kgkh Hkgk Kghk
+  005  [4+4+4         ]  Kh.g Hkkg Hkkh
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=4 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+2         ]  Kkhk kHhk kgSh
+  002  [5+5+2         ]  Khkg kHhg .hKk
+  003  [5+5+2         ]  Kgkh kKhg kgHk
+  004  [5+5+2         ]  Kgk. hSgk .gKh
+  005  [5+5+2         ]  Kk.h kShk kgHg
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=4 · voicing=linear · accent=groupings ────────────
+  001  [2+2+4+4       ]  KkHk Hg.h Khgg
+  002  [6+6           ]  Khkk .gHg hhkk
+  003  [3+2+2+2+3     ]  K.gH kSgK kSkg
+  004  [6+6           ]  Kkg. khSg khgk
+  005  [2+3+3+2+2     ]  KgHh kH.k KgKg
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=4 · voicing=groove · accent=first ────────────
+  001  [4+4+4         ]  Kggk Stkh Kkgk
+  002  [4+4+4         ]  Kg.k Sg.k Ktgg
+  003  [4+4+4         ]  Kg.h Skkh Kggk
+  004  [4+4+4         ]  Kktg Skgk Kgkg
+  005  [4+4+4         ]  Kggt Shkh Khkk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=4 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+2         ]  Khkt gSkk gkKh
+  002  [5+5+2         ]  Kg.. gSg. hkKh
+  003  [5+5+2         ]  Kgk. gSgg hkKh
+  004  [5+5+2         ]  Kgtt gSgk hkKh
+  005  [5+5+2         ]  Kk.g kSkg .kKh
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=4 · voicing=groove · accent=groupings ────────────
+  001  [4+2+2+2+2     ]  Kttg SkKg SkKh
+  002  [2+3+2+2+3     ]  KgS. kKgS kKgk
+  003  [3+2+3+2+2     ]  KgkS kK.g SkKh
+  004  [4+2+2+4       ]  Kg.t SkKg Sttk
+  005  [3+2+3+2+2     ]  KgkS kKgk SkKh
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=5 · voicing=linear · accent=first ────────────
+  001  [5+5+5         ]  Khgkg Kh.gh Hghkh
+  002  [5+5+5         ]  Kg..h Hg.kh Khggk
+  003  [5+5+5         ]  Kk..h Khkgk Hhghg
+  004  [5+5+5         ]  Khk.g Hkhkg Hkgkk
+  005  [5+5+5         ]  Kgkhg Kgk.h Hghgh
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=5 · voicing=linear · accent=repeat (every=7) ────────────
+  001  [7+7+1         ]  Kgk.. .kShg k.khS
+  002  [7+7+1         ]  Kgk.. khHkh ht.kK
+  003  [7+7+1         ]  Kkhgg kgShk khghH
+  004  [7+7+1         ]  Kgg.k hkKgh .t.hS
+  005  [7+7+1         ]  Kgkhg hkKhg .kggK
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=5 · voicing=linear · accent=groupings ────────────
+  001  [4+3+4+4       ]  KhggH .gShk hHgkg
+  002  [2+3+3+5+2     ]  KgH.k HkkHk .kgHk
+  003  [4+3+5+3       ]  KhgkK hhSgk khShh
+  004  [5+5+5         ]  Kg.kk Hg..k Kgghh
+  005  [5+2+4+4       ]  Kgkgk HkKgg hSkhk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=5 · voicing=groove · accent=first ────────────
+  001  [5+5+5         ]  Kggtk Sk.kh Kggtk
+  002  [5+5+5         ]  Kgkkg Sk.gk Kgkkg
+  003  [5+5+5         ]  Kg..g St.gk Ktkkh
+  004  [5+5+5         ]  Kgkkg Skkgk Khgkk
+  005  [5+5+5         ]  Kgkkg Sg..k Kggkk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=5 · voicing=groove · accent=repeat (every=7) ────────────
+  001  [7+7+1         ]  Kgtgk tgSkg .kgkK
+  002  [7+7+1         ]  Kggk. ghSkg ttgkK
+  003  [7+7+1         ]  Kttgt kgSkk ghhkK
+  004  [7+7+1         ]  Kgtg. .kSkh kkgkK
+  005  [7+7+1         ]  Kggk. hgSkk gkkhK
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=5 · voicing=groove · accent=groupings ────────────
+  001  [2+5+5+3       ]  KgSgk gkKgk tgSkk
+  002  [2+4+2+5+2     ]  KgStk hKgSk kgkKh
+  003  [3+2+4+2+4     ]  KggSk KhkgS gKggk
+  004  [3+5+5+2       ]  KtgSg ..kKh kggSk
+  005  [3+5+5+2       ]  K.gSk kgkKg hggSg
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=6 · voicing=linear · accent=first ────────────
+  001  [6+6+6         ]  Khhggh Khk.kg Hhghgk
+  002  [6+6+6         ]  Khk.kh Hkgkhg Kkhhgg
+  003  [6+6+6         ]  Khkgkk Hgkkhk Hggkgg
+  004  [6+6+6         ]  Kgh.kh Hgkk.g Khhghk
+  005  [6+6+6         ]  Kkhhgh Khhg.g Hgghhk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=6 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+3       ]  Kh.kgS kk.hSg k.kHgg
+  002  [5+5+5+3       ]  KghghH kk.hHg ..kShg
+  003  [5+5+5+3       ]  Kgk.gS hk.kSg k.hShg
+  004  [5+5+5+3       ]  KhgkhH k..gKg hkkSgh
+  005  [5+5+5+3       ]  Khk.kH k.hkKh hkgHgk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=6 · voicing=linear · accent=groupings ────────────
+  001  [6+2+3+5+2     ]  Khkgkh HkShgS h.khSk
+  002  [2+2+6+2+6     ]  KgHkSh k..hHk Hghkgg
+  003  [2+5+4+4+3     ]  KhKgkk hSgkhS hkgSkg
+  004  [6+5+3+4       ]  Khghgg Hk.gkK hkShkg
+  005  [2+3+2+2+6+3   ]  KkHkgS kShKhg kkhHgh
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=6 · voicing=groove · accent=first ────────────
+  001  [6+6+6         ]  Kggthg Sgkttk Kggkkg
+  002  [6+6+6         ]  Kggtgg Sgkkgk Khggtk
+  003  [6+6+6         ]  Kktt.g Skgghk Khgtkk
+  004  [6+6+6         ]  Kttk.g Shkggk Kggttk
+  005  [6+6+6         ]  Kgkk.g Skttgk Kgghgk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=6 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+3       ]  KgkkgS kgkhKt t.gSkk
+  002  [5+5+5+3       ]  Ktt.gS tkkgKt t.gSgg
+  003  [5+5+5+3       ]  KhkkgS gkkgKh kkgStk
+  004  [5+5+5+3       ]  KgkkgS k.hkKg kkgStk
+  005  [5+5+5+3       ]  Kg.kgS kgkhKg .kgSgk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=6 · voicing=groove · accent=groupings ────────────
+  001  [6+2+5+5       ]  Kggh.g SkKggt gSktgk
+  002  [6+2+3+4+3     ]  Ktt.kg SkK.gS g.kKgk
+  003  [2+3+4+4+5     ]  KgS.kK h.gSgg kKgghg
+  004  [2+2+5+4+5     ]  KgSgKg hgkSkh kKggtk
+  005  [5+5+6+2       ]  KhtkgS kkhkKg hhggSk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=7 · voicing=linear · accent=first ────────────
+  001  [7+7+7         ]  Kgkhkkg Hkhkgkg Hhkkggk
+  002  [7+7+7         ]  Kkghgkh Hkgkkhg Khkkhgg
+  003  [7+7+7         ]  Kgk..gk Hkg.kgh Khkhhgg
+  004  [7+7+7         ]  Kkg.hkk Hghkh.g Hgkkggh
+  005  [7+7+7         ]  Khg...k Khk..gg Hkgkkgg
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=7 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+1     ]  KhgkhSg hkgKkhg kHk.khS
+  002  [5+5+5+5+1     ]  KhhgkHg .khSkgk hHk..kS
+  003  [5+5+5+5+1     ]  KghggHh g.kKhk. hHk.khK
+  004  [5+5+5+5+1     ]  Kh.khHk hkkHhkg hSkghgK
+  005  [5+5+5+5+1     ]  KghkhHg k.gShkh kKgh.gH
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=7 · voicing=linear · accent=groupings ────────────
+  001  [6+2+5+4+4     ]  Khkk.hK kHg..gS hkgShhk
+  002  [5+6+6+4       ]  KggkhSh k.kgHhg .kkSgkh
+  003  [6+6+2+4+3     ]  Khgk.gH hk.hgSh Kg.hShk
+  004  [5+4+5+2+5     ]  KhghgHh ghKgk.k HhShkkg
+  005  [4+3+4+4+6     ]  KghhK.k Hg.kKgk kSghggk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=7 · voicing=groove · accent=first ────────────
+  001  [7+7+7         ]  Kggk..h Skkhkkg Kggkktk
+  002  [7+7+7         ]  Kttgkkg Skhggkh Kgkkggk
+  003  [7+7+7         ]  Kggkggt Sgkhkhk Khggktk
+  004  [7+7+7         ]  Khk...g Sggkkgk Kgktggk
+  005  [7+7+7         ]  Kgg.tkg Shggkkg Kggkkgk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=7 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+1     ]  KggkgSh ghkKgtk gSht.kK
+  002  [5+5+5+5+1     ]  KgkkgSg khkKgkk gSkkhkK
+  003  [5+5+5+5+1     ]  Kh..hSk ktkKhgh gSkktkK
+  004  [5+5+5+5+1     ]  Kh.kgSt thkKh.k gStkhkK
+  005  [5+5+5+5+1     ]  KttkgSg t.kKttk gSgtgkK
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=7 · voicing=groove · accent=groupings ────────────
+  001  [4+4+5+5+3     ]  KgtgSg. kKtk.kS tt.kKgk
+  002  [5+5+5+6       ]  Kt..hSt kktKt.. hSgkggk
+  003  [2+3+6+6+4     ]  KgS.kKg gt.gSkk .gkKhtk
+  004  [6+3+3+3+6     ]  KgktggS .kKggSk hKgkktk
+  005  [6+3+4+6+2     ]  KgghtgS khKggtS ggkktKg
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=8 · voicing=linear · accent=first ────────────
+  001  [8+8+8         ]  Kghgk.kh Khgkghkk Hgkkgghh
+  002  [8+8+8         ]  Khghghkh Hgkh.kkh Hkgkhghh
+  003  [8+8+8         ]  Khkgh.kh Hghkkhgh Hgkgkhkh
+  004  [8+8+8         ]  Khhkk.gk Hgghkh.h Khkhhggk
+  005  [8+8+8         ]  Kkhkhh.k Hgkkgkhg Hkkgghkh
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=8 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+4     ]  KggkhKh. khShghhK hkkgKghh
+  002  [5+5+5+5+4     ]  Kk.hkSkh kgHgkggK k..hSghk
+  003  [5+5+5+5+4     ]  Kg.khKkh hkHg..kH hgkgHkgh
+  004  [5+5+5+5+4     ]  KgkgkKh. .kHg.khH khhkKhgk
+  005  [5+5+5+5+4     ]  KggkgHhk .hSghgkH kg.hHgkk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=8 · voicing=linear · accent=groupings ────────────
+  001  [4+7+2+6+5     ]  KgkgHggh hggKkShh ghkHhgkh
+  002  [8+8+8         ]  Kkhh.k.h Kkhhgkhk Kgghhghk
+  003  [6+5+3+4+6     ]  Kkh..gHk ..gHggHh tgHkggkh
+  004  [2+5+2+3+2+7+3 ]  KhKgkggH hSgkSgHh tg.kkSgh
+  005  [4+7+4+7+2     ]  Kk.hSkgh khgKhkgK kgkghhSk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=8 · voicing=groove · accent=first ────────────
+  001  [8+8+8         ]  Khggkggh Sgtggthk Kgkghkhg
+  002  [8+8+8         ]  Kgkgk.gg Skkgghtk Kggkktgg
+  003  [8+8+8         ]  Kgghgh.g Skggkktk Khghkkhk
+  004  [8+8+8         ]  Kghggktg Sggttgtk Kttggttk
+  005  [8+8+8         ]  Kgkttkkg Sttkgttk Kggkktgk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=8 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+4     ]  Kh..gSkk gkKhhggS kkgkKggk
+  002  [5+5+5+5+4     ]  Kg..gSkk gkKg..gS kkgkKggk
+  003  [5+5+5+5+4     ]  KgkggSkk hkKgkggS kkhkKgkk
+  004  [5+5+5+5+4     ]  Kk..hSgk kgKk..hS gkkgKggk
+  005  [5+5+5+5+4     ]  Kg..kSk. gkKgghkS kkgkKggk
+  (worst same-voice run in this block: 2)
+
+── beats=3 · subdivision=8 · voicing=groove · accent=groupings ────────────
+  001  [7+3+7+7       ]  KggtgghS gkKggtgg hSgkkggk
+  002  [4+3+6+8+3     ]  KgkgSgkK ggktgSgk g.kkgKgk
+  003  [4+2+6+8+4     ]  KgtgSkKg g.tgSkkg g.khKgkk
+  004  [3+5+3+4+4+5   ]  KtgSkttk KtgSg.kK ttgSkkgk
+  005  [7+3+6+8       ]  Khggt.kS kgKgt.kg Sgghggtk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=2 · voicing=linear · accent=first ────────────
+  001  [2+2+2+2       ]  Kh Hg Sg Hg
+  002  [2+2+2+2       ]  Kg Sg Hg Hk
+  003  [2+2+2+2       ]  Kh Sk Kh Hk
+  004  [2+2+2+2       ]  Kh Kg Sk Hk
+  005  [2+2+2+2       ]  Kh Hg Kg Sk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=2 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+3           ]  Kh .. hS gk
+  002  [5+3           ]  Sk .. kH hg
+  003  [5+3           ]  Kh kg hH kh
+  004  [5+3           ]  Kh gg kS kg
+  005  [5+3           ]  Kh hg hS hk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=2 · voicing=linear · accent=groupings ────────────
+  001  [2+3+3         ]  Kh K. kH hg
+  002  [4+4           ]  Kg .t Hk gg
+  003  [2+2+2+2       ]  Kk Sg Hg Sk
+  004  [4+2+2         ]  Kg hg Hg Hh
+  005  [2+4+2         ]  Sk Kh hg Hh
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=2 · voicing=groove · accent=first ────────────
+  001  [2+2+2+2       ]  Kg Sk Kg Sk
+  002  [2+2+2+2       ]  Kk Sk Kh Sk
+  003  [2+2+2+2       ]  Kg Sk Kh Sk
+  004  [2+2+2+2       ]  Kg Sg Kg Sk
+  005  [2+2+2+2       ]  Kg Sg Kg Sg
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=2 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+3           ]  Kh kk gS kk
+  002  [5+3           ]  Kg .k gS gk
+  003  [5+3           ]  Kt tg kS gk
+  004  [5+3           ]  Kg .k gS tk
+  005  [5+3           ]  Kg .. gS hk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=2 · voicing=groove · accent=groupings ────────────
+  001  [2+3+3         ]  Kg St kK hk
+  002  [5+3           ]  Kg gk gS hg
+  003  [4+2+2         ]  Kh .g Sk Kh
+  004  [4+4           ]  Kg tg St tk
+  005  [2+2+2+2       ]  Kg Sk Kg Sg
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=3 · voicing=linear · accent=first ────────────
+  001  [3+3+3+3       ]  Khg Hkg K.h Kgg
+  002  [3+3+3+3       ]  Kkg K.g Hkg Kgk
+  003  [3+3+3+3       ]  K.g H.g Hgg Khh
+  004  [3+3+3+3       ]  Kgg Kkg Kgk Kgg
+  005  [3+3+3+3       ]  K.h Khh Kgk Hkk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=3 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+2         ]  Kgg kgK hgk hKg
+  002  [5+5+2         ]  Kgk .gK khg kSg
+  003  [5+5+2         ]  Kg. .gH k.. gHg
+  004  [5+5+2         ]  Kkg kgK k.g kSg
+  005  [5+5+2         ]  Kg. kkS khk hKh
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=3 · voicing=linear · accent=groupings ────────────
+  001  [2+2+2+3+3     ]  KhK kSh H.g Hkg
+  002  [2+2+2+3+3     ]  KgS kHk Kgh Htg
+  003  [3+3+2+2+2     ]  Kgk K.g HkH kHg
+  004  [6+6           ]  Kgk hkh Htg hgg
+  005  [2+2+3+2+3     ]  KkH kKg kHg Hkg
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=3 · voicing=groove · accent=first ────────────
+  001  [3+3+3+3       ]  Kgg Sgk Kgg Skk
+  002  [3+3+3+3       ]  K.k Sgk Khk Shk
+  003  [3+3+3+3       ]  K.g Stk K.g Sgk
+  004  [3+3+3+3       ]  Ktg S.k Ktg Shk
+  005  [3+3+3+3       ]  K.g Skg Kgg Stk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=3 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+2         ]  Ktk tgS kgt kKh
+  002  [5+5+2         ]  Kgh .gS k.g kKh
+  003  [5+5+2         ]  Kgk .gS kkt kKh
+  004  [5+5+2         ]  Kgg kgS h.t kKg
+  005  [5+5+2         ]  Kgh ggS tt. kKh
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=3 · voicing=groove · accent=groupings ────────────
+  001  [2+3+2+3+2     ]  KgS tkK gSk hKk
+  002  [6+2+2+2       ]  Kgg h.g SkK gSk
+  003  [2+2+2+2+4     ]  KgS kKg SkK ggk
+  004  [2+2+2+3+3     ]  KgS kKg Skh Kgk
+  005  [3+3+2+2+2     ]  K.g Skh KgS kKh
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=4 · voicing=linear · accent=first ────────────
+  001  [4+4+4+4       ]  Kh.g Hk.g Khkg Kghk
+  002  [4+4+4+4       ]  Khkh Kgkg Khgk Hkgk
+  003  [4+4+4+4       ]  Kkhg Hg.k Kgkh Khgh
+  004  [4+4+4+4       ]  Kghk Hk.h Hggh Khhg
+  005  [4+4+4+4       ]  Khkh Khgg Kg.k Kghh
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=4 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+1       ]  Kghk hKgg hgHk kghS
+  002  [5+5+5+1       ]  Kkgh gHg. .gHk hkkH
+  003  [5+5+5+1       ]  Khgk hSkk hkSh hggK
+  004  [5+5+5+1       ]  Kkgg kShg kkHh g.kK
+  005  [5+5+5+1       ]  Kggk hKh. .gKh kkhH
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=4 · voicing=linear · accent=groupings ────────────
+  001  [5+2+4+5       ]  Khgh kSgH h.gK hkkh
+  002  [6+6+4         ]  Kggk khSg khkg Hggk
+  003  [6+3+5+2       ]  Kkgg hkS. hKkg khKh
+  004  [5+4+3+4       ]  Kk.. gHkk hK.g Hgkk
+  005  [4+2+3+4+3     ]  Khkk HkK. hSg. kHkg
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=4 · voicing=groove · accent=first ────────────
+  001  [4+4+4+4       ]  Kgtg Skgk Kgkg Sgtk
+  002  [4+4+4+4       ]  Kgkg Skkh Kg.h Sgkk
+  003  [4+4+4+4       ]  Kggk Sgtk Khgk Sggk
+  004  [4+4+4+4       ]  Kgkg Sg.k Kgkg Sgkk
+  005  [4+4+4+4       ]  Kttg Sg.k Kttg Sgkk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=4 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+1       ]  Kg.t kSkk gkKh .tkS
+  002  [5+5+5+1       ]  Kgk. gSgg tkKg k.gS
+  003  [5+5+5+1       ]  Kgh. gSgt tkKg hggS
+  004  [5+5+5+1       ]  Kgk. kStg gkKg khkS
+  005  [5+5+5+1       ]  Kktk gSgg hkKh tkgS
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=4 · voicing=groove · accent=groupings ────────────
+  001  [4+4+4+4       ]  Kk.g Skgk Kh.g Skgk
+  002  [2+3+4+5+2     ]  KgSk hKgt kSgk kgKk
+  003  [3+3+5+5       ]  KhgS .kKh ..tS kkhk
+  004  [4+5+3+4       ]  Kgtg Sttg kK.g Sggk
+  005  [3+2+2+5+4     ]  K.gS gKgS gkkg Khgk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=5 · voicing=linear · accent=first ────────────
+  001  [5+5+5+5       ]  Kghkg Hg..k Hhkkg Hgghk
+  002  [5+5+5+5       ]  Kkhkg Hkk.h Khk.h Kgghh
+  003  [5+5+5+5       ]  Kkhkk Hghkk Hg.kk Hkhgg
+  004  [5+5+5+5       ]  Khkgk Hhkkg Hkkgh Hkggh
+  005  [5+5+5+5       ]  Khkkg Hghgk Hgh.k Hghhk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=5 · voicing=linear · accent=repeat (every=7) ────────────
+  001  [7+7+6         ]  Kkhg. hkHkg khghH gkhkg
+  002  [7+7+6         ]  Kgkhg khSkg k..hH tgkgk
+  003  [7+7+6         ]  Kkgk. .gKhk khkhS hgkgk
+  004  [7+7+6         ]  Khkhg kgKgh k.kgS kkhkh
+  005  [7+7+6         ]  Kgg.k hkSgk .hkkS kggkh
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=5 · voicing=linear · accent=groupings ────────────
+  001  [6+2+5+6+1     ]  Khhg. hKhKh hghKg k..gS
+  002  [2+6+5+3+4     ]  KgHkh kkgHg hgkSk hShgg
+  003  [2+2+2+4+5+5   ]  KgHgK hSkgk Kgghg Kghhg
+  004  [4+3+4+2+3+4   ]  KhkhS kgSkh hKgK. kSkgh
+  005  [3+6+4+3+4     ]  KgkKg hk.kS kkgH. kHhgk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=5 · voicing=groove · accent=first ────────────
+  001  [5+5+5+5       ]  Kg..g Stkgk Kgghg Sgkgk
+  002  [5+5+5+5       ]  Kgk.g Sktkg Kgkgg Skktg
+  003  [5+5+5+5       ]  Kg..g Sgkkg Kgghg Sgkkt
+  004  [5+5+5+5       ]  Kg.kg Skkhk Ktt.g Sggtk
+  005  [5+5+5+5       ]  Ktkkg Shktk Ktkkg Skkgk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=5 · voicing=groove · accent=repeat (every=7) ────────────
+  001  [7+7+6         ]  Kkggk gkSgk kggkK hggtk
+  002  [7+7+6         ]  Kkghk .gSgh gghkK gghtk
+  003  [7+7+6         ]  Kgghg hgSkk ggkhK gttkk
+  004  [7+7+6         ]  Ktggh kkSkh ggtgK gkktk
+  005  [7+7+6         ]  Kkggk ggSht t.gkK hgtkk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=5 · voicing=groove · accent=groupings ────────────
+  001  [3+3+3+4+2+5   ]  K.gS. kK.gS g.kKg Skkgk
+  002  [2+2+5+5+6     ]  KkSkK g..gS tt.kK gkkgk
+  003  [4+4+3+4+5     ]  KgghS ggkK. gSggk Khthk
+  004  [3+6+4+2+5     ]  KtgSk k.gkK h.gSk Kttkk
+  005  [3+4+4+6+3     ]  K.gSg gkKgk gSgtk kgKkt
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=6 · voicing=linear · accent=first ────────────
+  001  [6+6+6+6       ]  Kgkg.k Hkhkkh Htg..k Hkkggk
+  002  [6+6+6+6       ]  Kkgh.g Kghkhg Hkhhgh Khkgkh
+  003  [6+6+6+6       ]  Khkk.g Hkg..h Kkhghh Khhkgk
+  004  [6+6+6+6       ]  Khghhk Hkkghk Hghgkh Khgkgh
+  005  [6+6+6+6       ]  Kgk.kg Hhkkhk Hkg..k Kggkgg
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=6 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+4     ]  KhkhkK hkkhSg k.gHkg kkHhgg
+  002  [5+5+5+5+4     ]  KhkhkK g..gKh k.kHhg .gHghk
+  003  [5+5+5+5+4     ]  KkhhgK hghkHk khhKh. tgSkhk
+  004  [5+5+5+5+4     ]  Kg.kkS khggKh .tgShk khSghg
+  005  [5+5+5+5+4     ]  Kh.khH gk.hSh kkhSk. .gShhk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=6 · voicing=linear · accent=groupings ────────────
+  001  [8+7+3+6       ]  Khkhgh hgSghk hkhS.g Kkhkhg
+  002  [8+7+4+5       ]  Kkhk.. .gHkh. k.kSh. kHkhkg
+  003  [4+6+5+2+7     ]  KkgkKh h.ghKk ..hKkS khkhkg
+  004  [7+8+7+2       ]  Kghkgg hSkgkk hkgKgh ..khHk
+  005  [4+4+8+8       ]  KkhgSh .gSkgk k.hhSk hkhhkk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=6 · voicing=groove · accent=first ────────────
+  001  [6+6+6+6       ]  Kgtt.g Sgkkgk Kgtt.g Sghtkk
+  002  [6+6+6+6       ]  Kgtggk Sggkkg Kggh.h Shghgk
+  003  [6+6+6+6       ]  Kttkhg Skk.gk Kttk.g Shkkhk
+  004  [6+6+6+6       ]  Khgghg Sthkgk Khgghg Skkgkg
+  005  [6+6+6+6       ]  Kktt.g Stt..k Khtt.g Sttggk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=6 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+4     ]  KkhggS kktkKh gghSkk tkKhgk
+  002  [5+5+5+5+4     ]  Ktt.gS ggkhKt t.gSg. khKtgk
+  003  [5+5+5+5+4     ]  KgkkgS ggkhKg hkgSgg khKggk
+  004  [5+5+5+5+4     ]  KtggtS t.khKh ..tSt. .kKhkk
+  005  [5+5+5+5+4     ]  KgghgS hkkgKg ..gShk kgKgkk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=6 · voicing=groove · accent=groupings ────────────
+  001  [5+3+3+8+5     ]  Kh..tS tkKtkS gghkkh kKttkk
+  002  [3+6+6+8+1     ]  K.gSgg kkgKgg k.gSgt ggkkgK
+  003  [7+8+7+2       ]  Kgk... gSkggh ggkKhg kt.gSk
+  004  [4+2+2+6+5+5   ]  Kg.gSk KgShhg gkKhkk gSktgk
+  005  [3+3+3+5+7+3   ]  K.gSkh KhgSkt tkKtgk ktgSkg
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=7 · voicing=linear · accent=first ────────────
+  001  [7+7+7+7       ]  Kghkhkk Hkhgghk Khgghhg Hkggkgh
+  002  [7+7+7+7       ]  Kgkggkg Hhkh..k Khhkkhg Khgghhg
+  003  [7+7+7+7       ]  Kkhggkg Kgh...k Khg.gkg Kghhghg
+  004  [7+7+7+7       ]  Khggkgh Hkggkgh Htgk.hg Kghhghk
+  005  [7+7+7+7       ]  Khgk.kg Hhk.khk Hkhkkgh Hgkggkh
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=7 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+3   ]  Kg..hSh hkgHgkh kHgkggK khhkHgh
+  002  [5+5+5+5+5+3   ]  KhhgkKg .khSk.g kKhk.gH kk.gHkh
+  003  [5+5+5+5+5+3   ]  KhhkhHk ..kShhk kSh.khH kh.gKgk
+  004  [5+5+5+5+5+3   ]  Kk.ggKh khgHg.. hSk..gH k..gHgk
+  005  [5+5+5+5+5+3   ]  Kk..hSk k.gSkk. hHgkhkK g..kShh
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=7 · voicing=linear · accent=groupings ────────────
+  001  [5+6+7+8+2     ]  KhhggKg k..gHhg hkghHkk hgk.gKg
+  002  [2+6+2+7+4+7   ]  KhKghkk hKkHhgg hghSg.k Hkkgkgg
+  003  [5+4+8+5+6     ]  Kk.ghSh hgHhghk .hkShgk hKghkgg
+  004  [5+2+2+5+5+8+1 ]  Kg.kgSh HgShkkh HtgkkHg kh.khkS
+  005  [8+8+7+5       ]  Kgkh... kShhgh. .kShk.. hkKhghk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=7 · voicing=groove · accent=first ────────────
+  001  [7+7+7+7       ]  Kggk.tg Skk..hk Kgkkhtg Sggkggk
+  002  [7+7+7+7       ]  Kkggthg Sgttggk Khggthg Skgghtk
+  003  [7+7+7+7       ]  Kgkkggk Shgh..k Kgkt.gk Sgthggk
+  004  [7+7+7+7       ]  Kggk.gh Sttgkkg Kggkggh Stkkggk
+  005  [7+7+7+7       ]  Kgkkggt Sggttgk Kgkk..t Sggtggk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=7 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+3   ]  KgkgkSk kgkKgkg kSkkgkK gkgkSgk
+  002  [5+5+5+5+5+3   ]  KgkkgSk .tkKgkk gSk.tkK gtkgStk
+  003  [5+5+5+5+5+3   ]  KggkgSg kgkKg.k gSgttkK g.kgSkk
+  004  [5+5+5+5+5+3   ]  Ktk.gSk kgkKtkh gSg..kK t..hStk
+  005  [5+5+5+5+5+3   ]  Kg.tgSg ktkKgkt gSgktkK ggtgShk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=7 · voicing=groove · accent=groupings ────────────
+  001  [5+8+6+4+5     ]  Kkg.hSk ggkktkK ggtggSk kgKggkk
+  002  [6+8+3+4+7     ]  KgghggS kkgtkkg KtgSg.k Khgkkgk
+  003  [3+8+4+4+5+4   ]  KtgSggh k.gkKtk gSghkKh ..hSkkg
+  004  [5+7+6+3+7     ]  KgktgSk gkkgkKg ghtgS.k Kgghgkk
+  005  [6+2+8+8+4     ]  Kkg.kgS kKgghgk kgStggh ghkKggk
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=8 · voicing=linear · accent=first ────────────
+  001  [8+8+8+8       ]  Khhghkgk Hkgghkkh Hghkhggh Hkghkgkh
+  002  [8+8+8+8       ]  Khghk..k Hgkggk.h Khkh...k Hkhhggkh
+  003  [8+8+8+8       ]  Khgghgkh Kgghgkhk Khkh...k Hhkkhgkh
+  004  [8+8+8+8       ]  Kkhh.k.k Hkgkghkh Hgkh..gh Hgghgkkh
+  005  [8+8+8+8       ]  Kkhghkgh Hkkgh.gh Hgghhg.g Hkghgghh
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=8 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+2 ]  KkghkHg. .kSh.ghH ghghKgk. hShkkgHh
+  002  [5+5+5+5+5+5+2 ]  Kkh.kHhk kgSkhghK hkkgKg.. kHgkggHk
+  003  [5+5+5+5+5+5+2 ]  Kgk.gShk hgKh.khH khhgHkhk kHgkkhSk
+  004  [5+5+5+5+5+5+2 ]  KgkhgSh. tgSkhghH kkghSh.k hSh.khKh
+  005  [5+5+5+5+5+5+2 ]  Khk.gHhk kgSh..kK gh.gKhgk hHghhgKh
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=8 · voicing=linear · accent=groupings ────────────
+  001  [7+8+4+3+2+8   ]  KkghgghH khg..kgK kghHkhSk Hkgghkkh
+  002  [4+3+3+4+6+7+5 ]  KkghSkhH khKhkhSk khkgSkhk ..gKggkh
+  003  [7+8+7+3+7     ]  Kkgk..kH hkhghhgH hg.kghS. kShgkhgk
+  004  [5+3+2+7+4+8+3 ]  KkgkgHkh HgHhg.hh gKg.kHgh kgkghHgk
+  005  [7+3+5+6+2+7+2 ]  KhhkkghK khKhkhgK hgk.kSkH hk...gHh
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=8 · voicing=groove · accent=first ────────────
+  001  [8+8+8+8       ]  Kgghkgtk Sgkkggkh Kttkk.gh Sggthgkk
+  002  [8+8+8+8       ]  Kggk.gkg Sgktkktk Kggk..kg Skkgkggk
+  003  [8+8+8+8       ]  Khkkgkkg Sgkt..kh Khkkgkkg Skggtkgk
+  004  [8+8+8+8       ]  Kgkkg.kg Sggkkgkh Kgkkh.kg Sggkkggh
+  005  [8+8+8+8       ]  Kkggh..h Sgghkghk Khggh..h Shkggkkt
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=8 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+2 ]  KggkgStg gkKggtgS kgkhKg.t gSg.khKk
+  002  [5+5+5+5+5+5+2 ]  Kgh.gSgk khKgtggS gkkhKghg gSgkkhKg
+  003  [5+5+5+5+5+5+2 ]  Kgh.gSgk gkKg.kgS kggkKggh gSkg.kKh
+  004  [5+5+5+5+5+5+2 ]  KggtgSg. .kKg..kS gghkKggh kSg..kKh
+  005  [5+5+5+5+5+5+2 ]  KggkgSkg gkKg.kgS k.gkKg.k gSg..kKh
+  (worst same-voice run in this block: 2)
+
+── beats=4 · subdivision=8 · voicing=groove · accent=groupings ────────────
+  001  [2+3+8+2+7+4+6 ]  KgSkhKtg tgttgSgK ggtthgSh khKgkkgk
+  002  [3+3+3+2+3+6+4+8]  K.gSgkK. gSkK.gSg gtkhKghg Stgkkggk
+  003  [6+5+3+2+3+7+6 ]  Kgg.kgSg gkhKhgSk KhgSkkgg hkKhgkhk
+  004  [8+7+5+4+8     ]  Kggttggk Sggk.gkK ggkgSkkg Kttkgtkk
+  005  [2+5+8+6+8+3   ]  KgSkgtkK hggt.ghS kgkgkKhg gt.ghSkg
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=2 · voicing=linear · accent=first ────────────
+  001  [2+2+2+2+2     ]  Kg Hh Kh Kh Hk
+  002  [2+2+2+2+2     ]  Kh Hg Kg Hg Sk
+  003  [2+2+2+2+2     ]  Kh Kh Hk Hk Kh
+  004  [2+2+2+2+2     ]  Kk Hh Sg Kh Hg
+  005  [2+2+2+2+2     ]  Kk Sg Kg Hh Sg
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=2 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5           ]  Kg gh kH gk kh
+  002  [5+5           ]  Kg kh hK kh hg
+  003  [5+5           ]  Kk .. hS gk hh
+  004  [5+5           ]  Sk .. gK gg hk
+  005  [5+5           ]  Sg .k kH hg hh
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=2 · voicing=linear · accent=groupings ────────────
+  001  [5+5           ]  Kh .. hS kg gh
+  002  [2+3+3+2       ]  Kh Ht gS kg Sk
+  003  [2+4+2+2       ]  Kh Hg .h Sg Hg
+  004  [3+2+3+2       ]  Kk hK hS hg Hg
+  005  [2+2+3+3       ]  Sg Hh K. hK gk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=2 · voicing=groove · accent=first ────────────
+  001  [2+2+2+2+2     ]  Kg Sg Kg Sg Kk
+  002  [2+2+2+2+2     ]  Kg Sg Kg Sg Kg
+  003  [2+2+2+2+2     ]  Kg Sk Kg Sk Kh
+  004  [2+2+2+2+2     ]  Kg Sk Kg Sk Kg
+  005  [2+2+2+2+2     ]  Kg Sk Kg Sg Kk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=2 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5           ]  Kg .k gS tt kg
+  002  [5+5           ]  Kt .. gS kk gk
+  003  [5+5           ]  Kg .. gS gg kk
+  004  [5+5           ]  Kk tt gS kk gk
+  005  [5+5           ]  Kg .t gS gk hk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=2 · voicing=groove · accent=groupings ────────────
+  001  [3+4+3         ]  Kk gS gk hK gk
+  002  [2+3+3+2       ]  Kg Sg kK gk Sk
+  003  [2+4+4         ]  Kg Sg tk Kg tk
+  004  [4+2+4         ]  Kg kg Sk Kt tk
+  005  [4+2+2+2       ]  Kg .t Sk Kg Sk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=3 · voicing=linear · accent=first ────────────
+  001  [3+3+3+3+3     ]  Kkh Hkh K.h K.g Hkh
+  002  [3+3+3+3+3     ]  Kkg Kkh Khg Hhk Khg
+  003  [3+3+3+3+3     ]  K.h Hkg K.h Kkg Hgk
+  004  [3+3+3+3+3     ]  Kkg Hhg Hgk K.g Kgg
+  005  [3+3+3+3+3     ]  K.g Hkh Kkh Htg Hkh
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=3 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5         ]  Kg. khH gk. hSh hkk
+  002  [5+5+5         ]  Kh. kgK h.. hKk hgg
+  003  [5+5+5         ]  Kgk kgS hkk gHk khh
+  004  [5+5+5         ]  Kgh hgH hkk hSg hkk
+  005  [5+5+5         ]  Kkg khK khk kSk khg
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=3 · voicing=linear · accent=groupings ────────────
+  001  [2+5+3+5       ]  KkS kgk kS. hSh kkg
+  002  [5+5+5         ]  Khh kkH k.. hHk hhk
+  003  [5+2+3+5       ]  Kkg kgK hH. kSg hgg
+  004  [2+5+2+3+3     ]  KgH kk. hKh Hkg Hhk
+  005  [3+3+3+4+2     ]  Khh K.h Kkh Hgk hKg
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=3 · voicing=groove · accent=first ────────────
+  001  [3+3+3+3+3     ]  Ktg S.k Ktg Stk Kgk
+  002  [3+3+3+3+3     ]  Kgg S.k Kgg S.k Khg
+  003  [3+3+3+3+3     ]  K.k Stg Khk S.g Khk
+  004  [3+3+3+3+3     ]  Khg S.k K.g Shk Kgh
+  005  [3+3+3+3+3     ]  Kgg Sgk K.g S.k Kgk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=3 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5         ]  Kgg kgS kkh kKh ggk
+  002  [5+5+5         ]  Kg. kgS kkg kKg kkg
+  003  [5+5+5         ]  Kgg hgS kk. gKg ghk
+  004  [5+5+5         ]  Kk. .tS kkt gKg ghk
+  005  [5+5+5         ]  Khg gtS kkg kKt hgk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=3 · voicing=groove · accent=groupings ────────────
+  001  [5+5+5         ]  Kgg kgS ggh kKg ttk
+  002  [4+3+5+3       ]  Kg. gSk hKg ..g Sgk
+  003  [2+4+2+5+2     ]  KgS gkh KgS hkg kKh
+  004  [3+3+2+4+3     ]  K.g Sgk KgS ggk Kgk
+  005  [4+4+3+4       ]  Kg. tSg tkK gkS ggk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=4 · voicing=linear · accent=first ────────────
+  001  [4+4+4+4+4     ]  Khhk Hkgk Kg.h Khkg Kkgg
+  002  [4+4+4+4+4     ]  Kkgk Kh.g Hg.k Hkhg Khgk
+  003  [4+4+4+4+4     ]  Kkgh Kg.h Kghg Hkkg Hkhg
+  004  [4+4+4+4+4     ]  Kgkh Kgkg Hh.g Hhkg Hkgh
+  005  [4+4+4+4+4     ]  Kh.h Khgh Hg.h Kk.g Hghg
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=4 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5       ]  Kg.. kSk. .gSg khkH hgkg
+  002  [5+5+5+5       ]  Kggh hKhg kgHg hkgH khgh
+  003  [5+5+5+5       ]  Kk.h kHgh hgSk k.gS hgkg
+  004  [5+5+5+5       ]  Kghg kKhg .hKg k.hS khgg
+  005  [5+5+5+5       ]  Kg.. gKhk kgKh k.gH khhk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=4 · voicing=linear · accent=groupings ────────────
+  001  [5+4+2+2+5+2   ]  Kh.g kHkh kSkH kHhg .kKg
+  002  [4+2+4+3+5+2   ]  Kh.k HkSg .kSk hSk. kgKg
+  003  [5+6+6+3       ]  Kkgh kSgh ..gK hkkg kHhg
+  004  [5+3+6+6       ]  Kg.. gSkg Hgh. kgSk hgkk
+  005  [5+4+3+5+3     ]  Kh.k kSh. hKkg Hk.. kHgg
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=4 · voicing=groove · accent=first ────────────
+  001  [4+4+4+4+4     ]  Kt.g Skgk Kttg Skkh Kkhk
+  002  [4+4+4+4+4     ]  Kttk Sktg Kgtk Sg.k Khgk
+  003  [4+4+4+4+4     ]  Kg.h Stkh Kkgg Stkh Kttg
+  004  [4+4+4+4+4     ]  Kg.k Skkg Kh.k Skkg Kggk
+  005  [4+4+4+4+4     ]  Kgkg St.g Kgkg Sttg Kkgk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=4 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5       ]  Khtt gSgk khKg htgS ggtk
+  002  [5+5+5+5       ]  Kg.. gSkt tkKt .kkS ttgk
+  003  [5+5+5+5       ]  Kg.k gSkk gkKg tkgS kkgk
+  004  [5+5+5+5       ]  Ktkg gSk. tgKt ..gS kgkk
+  005  [5+5+5+5       ]  Kkht gSgk kgKk .tgS kkgk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=4 · voicing=groove · accent=groupings ────────────
+  001  [4+4+4+5+3     ]  Kk.g Skkg Kg.h Skkg kKgk
+  002  [2+4+5+6+3     ]  KgSk tkKg .tgS ggkg kKtk
+  003  [2+2+5+6+5     ]  KgSk Kttg gSkk ggkK tggk
+  004  [2+4+3+2+5+4   ]  KgSh gkKh kSkK tkkg Stkk
+  005  [5+5+3+4+3     ]  Kkgk gSg. .gK. gSgg kKgk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=5 · voicing=linear · accent=first ────────────
+  001  [5+5+5+5+5     ]  Kghgh Hkh.k Khhgh Hghhg Hghgk
+  002  [5+5+5+5+5     ]  Kg..g Kghgh Kh..g Hkk.h Htggk
+  003  [5+5+5+5+5     ]  Khk.g Hkgkk Hkgkk Hg.kh Hkhgk
+  004  [5+5+5+5+5     ]  Kgk.k Hgkhk Khkkh Hg..k Kggkh
+  005  [5+5+5+5+5     ]  Khk.g Hghhg Kh.kh Hg.kg Khgkg
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=5 · voicing=linear · accent=repeat (every=7) ────────────
+  001  [7+7+7+4       ]  Kkhgg khKhh khkgK hghk. hShkg
+  002  [7+7+7+4       ]  Kgkhg .hSgk hkghK kghg. hKghg
+  003  [7+7+7+4       ]  Khhgk khKgg hg.kK hhkgk kHhkh
+  004  [7+7+7+4       ]  Kgkg. hkKgk hgghS hg..k hSkgk
+  005  [7+7+7+4       ]  Khhgk khKgk hhgkS hk... kHkgk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=5 · voicing=linear · accent=groupings ────────────
+  001  [8+5+3+8+1     ]  Kgkhg kggHh kghSh hKhkg kk.hS
+  002  [5+2+8+8+2     ]  Kgkhk KgHhg hghgg Kghgg hkhHk
+  003  [3+4+8+6+4     ]  KghHk .gKhg khghg Khg.k hShgh
+  004  [8+4+3+5+5     ]  Kgghk k.hSh khShk Kgk.g Khhgk
+  005  [3+8+7+7       ]  K.kHk hkgkk hShgg hkgSk hghkk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=5 · voicing=groove · accent=first ────────────
+  001  [5+5+5+5+5     ]  Kgktg Sghtk Kgktg Sghtk Kggtk
+  002  [5+5+5+5+5     ]  Kg.tg Stkkg Kgttg Stkkg Kgghk
+  003  [5+5+5+5+5     ]  Kg.kg Skkgk Kggkg Sg.kh Kgktk
+  004  [5+5+5+5+5     ]  Kttgk Sgttk Kttgk Sgttk Kgkkg
+  005  [5+5+5+5+5     ]  Kkhkg Sk.tg Kkhkg Sk.tg Khggk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=5 · voicing=groove · accent=repeat (every=7) ────────────
+  001  [7+7+7+4       ]  Kgght tgSgt .ktgK kttkg gSghk
+  002  [7+7+7+4       ]  Kggkg hkSgh kk.gK ggk.h kSggk
+  003  [7+7+7+4       ]  Kgghg tgSgg h..gK gh..t gSggk
+  004  [7+7+7+4       ]  Kgkk. gkSkk ..hkK gkkgg kSghk
+  005  [7+7+7+4       ]  Kthg. hgSkk g.tkK ttggh gSkkg
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=5 · voicing=groove · accent=groupings ────────────
+  001  [3+6+2+8+6     ]  KkgSg ghgkK gSggh .kgkK hgkkg
+  002  [7+8+3+7       ]  Kggkg kgSgg thggk KtgSk gghkg
+  003  [3+3+8+8+3     ]  KkgSk hKggt gttgS kkg.k gkKgh
+  004  [2+5+4+7+7     ]  KgSg. khKgg hSgkk .gkKg ttggk
+  005  [3+5+7+7+3     ]  KkgSk khkKg ghkgg Sggkk gkKhg
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=6 · voicing=linear · accent=first ────────────
+  001  [6+6+6+6+6     ]  Kkhghg Kkg..g Hghkkh Khkghk Hhkhhk
+  002  [6+6+6+6+6     ]  Kgh.gh Htgh.k Kggh.k Hhk..g Khgkgg
+  003  [6+6+6+6+6     ]  Khhghg Hgkgkg Hgkhgk Hhkkhg Kkhgkh
+  004  [6+6+6+6+6     ]  Kkh..g Hkghhg Hkgk.g Hkg.kk Hgkhhg
+  005  [6+6+6+6+6     ]  Khgkhk Hhk..g Hkghgk Hkh.kh Khkghk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=6 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5   ]  KkgkhS k..gKg k.hKhh khKh.h kShggh
+  002  [5+5+5+5+5+5   ]  Kgk.hK khkkHg .khKg. .gHkgk hKhkgh
+  003  [5+5+5+5+5+5   ]  KghhkK hggkHk ..gSkk hhKhgg kHgkgg
+  004  [5+5+5+5+5+5   ]  KkghkH k..kHg hhkSkk hgShhk hKhhgg
+  005  [5+5+5+5+5+5   ]  KhkggH hkkhHk hghHg. .kHhgk hHghhk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=6 · voicing=linear · accent=groupings ────────────
+  001  [3+2+2+8+6+2+7 ]  KkhSgK hHkhhk k.hKhh t.kHhK hkkhgg
+  002  [6+8+5+4+7     ]  Khk..g Hggkhk kgKhgg kSg.kH kghhkh
+  003  [4+6+6+6+8     ]  KkhgHk k..gKg kggkSh hkghSk hhgghg
+  004  [7+4+6+4+3+6   ]  Khg..g hKg.kH hk..hS kggHgk Khkkhh
+  005  [3+7+7+2+2+6+3 ]  KghShk hkhgHk khhghH kSgKgg k.gKgh
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=6 · voicing=groove · accent=first ────────────
+  001  [6+6+6+6+6     ]  Kgkggh Sggkkg Kgk..h Sgkk.g Khgkkt
+  002  [6+6+6+6+6     ]  Ktgktg Skgkgk Ktgktg Skgkgk Khgtgk
+  003  [6+6+6+6+6     ]  Kktthk Sttkgk Kght.g Stt..k Kggkkh
+  004  [6+6+6+6+6     ]  Kghk.g Skhghk Kghk.g Skhggk Kgtktk
+  005  [6+6+6+6+6     ]  Kggkkg Sttg.k Kttkkg Sggkkg Ktghgg
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=6 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5   ]  KggkgS gktgKg .kgSkk tgKk.h kSkggk
+  002  [5+5+5+5+5+5   ]  KgkkgS kktgKg kkgSkt tgKgkk gSgkgk
+  003  [5+5+5+5+5+5   ]  Kkt.kS khkhKk ggkSkh khKtgg hSgkkg
+  004  [5+5+5+5+5+5   ]  Kg.tgS g..kKg .kgSgg .kKt.k gShggk
+  005  [5+5+5+5+5+5   ]  KgghgS ggkhKg ..gSg. khKg.h gSgghk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=6 · voicing=groove · accent=groupings ────────────
+  001  [7+5+2+8+8     ]  Ktt.kk gSh..k KgShkg gt.kKg ghgtgg
+  002  [8+5+3+7+7     ]  Kggk.. kgSkgg hKkgSk ktktkK tkkgkk
+  003  [3+5+3+3+8+8   ]  K.kSgg khK.gS gkKhtt ggkgSg gkkggk
+  004  [2+3+5+8+5+7   ]  KgSkhK tk.gSt kk..hg KtkggS kgkktk
+  005  [7+7+4+3+5+4   ]  Khgkgg tSkkgk tkKg.g SggKgt .gSggk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=7 · voicing=linear · accent=first ────────────
+  001  [7+7+7+7+7     ]  Kkgh.gh Hkhk..g Hgh.khg Khg.kgh Hgkghhk
+  002  [7+7+7+7+7     ]  Kkh...g Khg.k.g Kkhggkh Kgkg..g Khhggkg
+  003  [7+7+7+7+7     ]  Khkhgkg Hkhk.kg Khhkgkg Kkhghkg Hkkhgkh
+  004  [7+7+7+7+7     ]  Khg..gk Hkgh..k Hhkkggk Khgh..g Hghhghg
+  005  [7+7+7+7+7     ]  Kgh.k.g Khg..kg Hhk..kh Kkggh.g Hkkgghk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=7 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5 ]  KhggkHk k.hKk.. gKgk.gK k.gkKg. .gKghkh
+  002  [5+5+5+5+5+5+5 ]  KhkkgHg hkkShk. hSgkkgK hk.kHhk hkKghgg
+  003  [5+5+5+5+5+5+5 ]  KgkggKk hkkSk.. hSgk.kH hkkhShk hkKhgkh
+  004  [5+5+5+5+5+5+5 ]  KhgkhSh .khSk.k hHk..gK kgkhHg. .kSkhkg
+  005  [5+5+5+5+5+5+5 ]  KghhkSh .kgKg.k hKhghgS k..hHkg hhShgkk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=7 · voicing=linear · accent=groupings ────────────
+  001  [3+4+7+7+2+5+7 ]  K.gHkkh Hgk...k Hggkkhk KhSh..k Hkhggkh
+  002  [5+5+2+3+4+7+6+3]  Kh..kSk kghHkHg kHk.hSh hk.hgSh hk.gHgh
+  003  [8+8+7+5+7     ]  Khgkhkg kHhgkhk hhShghk hkSghkk Hghgkgk
+  004  [6+4+5+2+2+6+6+4]  KgkghkK g.gSk.k hHkShSg hgghHgk khhKkhh
+  005  [4+3+3+8+7+8+2 ]  Kk.gKgk H.hSkkg .kghHkg .khkHhg k..kgHh
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=7 · voicing=groove · accent=first ────────────
+  001  [7+7+7+7+7     ]  Ktkggkg Sggkkgk Ktkggkg Sggkkgk Kttgttk
+  002  [7+7+7+7+7     ]  Kkg.kgg Shk.kgk Kgtggkg Shk.kgk Kgkkggk
+  003  [7+7+7+7+7     ]  Kgktk.g Skk.ghk Kgktk.g Skkgkgk Kgkkgkg
+  004  [7+7+7+7+7     ]  Kghgghg Sgkkggk Kghg..g Sgkk.gk Khkgkkh
+  005  [7+7+7+7+7     ]  Ktggkkg Skkt.gk Kgghggh Skkthgk Kgkgkkt
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=7 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5 ]  KttggSk kgkKtt. gShkgkK ttggSkg hgKgkkt
+  002  [5+5+5+5+5+5+5 ]  Ktt.gSh ghkKttg gSkgkhK ttggSkk .gKttgk
+  003  [5+5+5+5+5+5+5 ]  KgkkgSt tkhKgkk gSttkhK gktgStt khKgghk
+  004  [5+5+5+5+5+5+5 ]  KgkkgSt t.kKgkk gStt.kK gkkgStt .kKgghg
+  005  [5+5+5+5+5+5+5 ]  KgkkgSg ghkKhkk gSg..kK hkkgSgg .kKgghg
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=7 · voicing=groove · accent=groupings ────────────
+  001  [6+3+2+8+4+5+7 ]  Khg..gS khKgSgg kkttkKt tgSgkkh Kkgghgk
+  002  [2+5+6+6+7+6+3 ]  KgSkktk KtkggkS kt..kKg gh.gkSk tggkKgk
+  003  [3+8+5+3+8+8   ]  KtkSggk kggkKgg tgShkKt gtk..hS kgkgtkk
+  004  [7+2+4+4+7+8+3 ]  Kgkkgtg SgKghgS hkhKggh ..hSkkg hgghKgk
+  005  [7+4+7+7+2+8   ]  Kggkgkg SkgkKgg kgkgStg k.kgKgS tkkggtk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=8 · voicing=linear · accent=first ────────────
+  001  [8+8+8+8+8     ]  Khkg..kk Hggkk.hg Hkhghgkh Hghk..kh Khkhgkhk
+  002  [8+8+8+8+8     ]  Kkgkhkgh Hkggkghh Khgh..kk Hghg..kh Khhkkhgk
+  003  [8+8+8+8+8     ]  Kgkhgkgh Hgkk.hkh Kkhk..hk Khkhhgkh Khgghkgk
+  004  [8+8+8+8+8     ]  Kgghhkkh Hgkhhkhh Khgg..kh Khgkk.gk Hkggkghh
+  005  [8+8+8+8+8     ]  Kggkg..k Hhghkkgh Khkh.gkh Kghhgkgk Hhggkgkh
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=8 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5]  Kgg.hShk .gKhkkhH gk.gKhk. kHhkhgHk hkgHgkkh
+  002  [5+5+5+5+5+5+5+5]  Kh.khShk .kShk.gH hgghKggh hShkhgKh kkhShkhk
+  003  [5+5+5+5+5+5+5+5]  KkhhkHg. .gHkghgH hgkhKg.. kHhk.gHk khhKggkk
+  004  [5+5+5+5+5+5+5+5]  KgkhhKhh gkHh.kkH kgghShgk kHg.hgHk k.hSghgk
+  005  [5+5+5+5+5+5+5+5]  KkhhgKk. .gKh.hkH h.kgKg.. kHhg.hSk .ghKhgkh
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=8 · voicing=linear · accent=groupings ────────────
+  001  [5+8+4+5+4+6+8 ]  Kh..kHgk kghhgHgk hSkhkkSh .gKkhkgh Kghkghgk
+  002  [3+5+6+7+8+5+6 ]  KhhKhg.k Kghk.gHk h.khgHgh hkghkHk. .kHhkgkh
+  003  [6+5+7+4+3+3+5+7]  Kkhg.hSh k.hKhg.k khHkhkSk kS.hSkhk hHkhgkgh
+  004  [5+8+8+8+4+7   ]  Kgk.hSkh ht.hgSkh k...kHhk khhkhSkk hSgkkgkh
+  005  [8+5+2+5+6+8+6 ]  Kghg...k HgkhkHkH khkkShhk .gKghkhh khShgkgk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=8 · voicing=groove · accent=first ────────────
+  001  [8+8+8+8+8     ]  Kgkktggh Sgghh..k Kgkktggh Sgghhggk Kggkkgkk
+  002  [8+8+8+8+8     ]  Kggkg..g Shkgkkhk Kggkgghg Shkgkkhk Kggkggkk
+  003  [8+8+8+8+8     ]  Kkgk...k Sgghkktk Kgghttkg Skggk.hk Khgghttk
+  004  [8+8+8+8+8     ]  Kgghkggh Sttghggh Kgghk..h Sttgh.gh Ktggtggk
+  005  [8+8+8+8+8     ]  Kggkkttg Sggh..kh Kggttggk Sgghg.kh Kggtggkk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=8 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5]  KggtgSgg khKg.tgS gtkhKg.. gSk.gkKg ghgShggk
+  002  [5+5+5+5+5+5+5+5]  KgttgSgk ktKgttgS gkktKggh kSgkktKg ..kSggtk
+  003  [5+5+5+5+5+5+5+5]  KggtkSgg khKg.tkS gkkhKggt kSg.khKg .tkSggkg
+  004  [5+5+5+5+5+5+5+5]  Kkt.gSkg khKktggS k.khKkt. gSk.khKk tggShggk
+  005  [5+5+5+5+5+5+5+5]  Kg..kSgt tkKgghkS ktgkKg.. kSktgkKg ..kSkgkk
+  (worst same-voice run in this block: 2)
+
+── beats=5 · subdivision=8 · voicing=groove · accent=groupings ────────────
+  001  [6+4+7+3+8+4+8 ]  KggkkgSk kgKgkktg gS.kKghh ttggSkkg Khkhkggk
+  002  [7+5+8+6+7+7   ]  KkthkggS g.tkKggt tk.gSght tkKhthkg gShhgghk
+  003  [4+5+3+4+7+5+5+7]  KtggSttk hK.gSkkt Kghkt.kS kkgkKgkk gSkkhgkk
+  004  [8+5+6+7+8+6   ]  Khggk..t SgkgkKgg ktgSthgk kgKhggkg gtSkktkk
+  005  [6+8+7+4+8+7   ]  KgghkgSg kk.tkhKg kgkggSg. kKgkkgkg gSkkggkk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=2 · voicing=linear · accent=first ────────────
+  001  [2+2+2+2+2+2   ]  Kk Sk Sk Sk Kg Sg
+  002  [2+2+2+2+2+2   ]  Kh Kh Hg Kg Sk Sk
+  003  [2+2+2+2+2+2   ]  Sg Sk Kh Hg Hh Sg
+  004  [2+2+2+2+2+2   ]  Kh Kg Hg Hg Hk Sk
+  005  [2+2+2+2+2+2   ]  Kg Hg Hg Hg Hk Sk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=2 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+2         ]  Kg g. kS hg kg Kg
+  002  [5+5+2         ]  Kg .k gK hg hg Kh
+  003  [5+5+2         ]  Sg hg gS g. .h Sg
+  004  [5+5+2         ]  Sg .. hK k. .t Hh
+  005  [5+5+2         ]  Sg hg hH kg hg Kg
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=2 · voicing=linear · accent=groupings ────────────
+  001  [2+4+2+2+2     ]  Sg Hh kg Hg Sk Hk
+  002  [4+2+2+4       ]  Kk gk Hg Hh Kg hh
+  003  [6+3+3         ]  Kh k. .t Hk hH gk
+  004  [2+6+2+2       ]  Kh Hg hg .g Kh Kh
+  005  [2+4+2+2+2     ]  Kg Hk kg Sk Hh Kg
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=2 · voicing=groove · accent=first ────────────
+  001  [2+2+2+2+2+2   ]  Kg Sg Kg Sg Kg Sk
+  002  [2+2+2+2+2+2   ]  Kg Sg Kg Sg Kg Sg
+  003  [2+2+2+2+2+2   ]  Kg Sk Kg Sk Kg Sk
+  004  [2+2+2+2+2+2   ]  Kg Sg Kg Sk Kg Sk
+  005  [2+2+2+2+2+2   ]  Kg Sk Kg Sg Kg Sg
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=2 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+2         ]  Kg gk gS hg gk Kh
+  002  [5+5+2         ]  Kg tt gS kk gk Kh
+  003  [5+5+2         ]  Kt tg gS hh gk Kh
+  004  [5+5+2         ]  Kg ht gS kk hk Kg
+  005  [5+5+2         ]  Kt tg gS g. .k Kh
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=2 · voicing=groove · accent=groupings ────────────
+  001  [3+3+3+3       ]  K. gS kg K. gS gk
+  002  [2+3+2+2+3     ]  Kg S. kK gS kK gk
+  003  [4+2+2+4       ]  Kg .g Sk Kg Sh gk
+  004  [6+6           ]  Kg gk kg Sg gk gk
+  005  [3+3+2+2+2     ]  K. gS hg Kg Sk Kg
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=3 · voicing=linear · accent=first ────────────
+  001  [3+3+3+3+3+3   ]  K.h Hgh Khk Hkk Hkg Hgh
+  002  [3+3+3+3+3+3   ]  Khg Hkg Hkg K.h Hkh Hkg
+  003  [3+3+3+3+3+3   ]  Khk K.g Hgk Hhg Hgh Hgk
+  004  [3+3+3+3+3+3   ]  K.h K.h Kkh H.g Hhg Hgh
+  005  [3+3+3+3+3+3   ]  Kgk Khk K.h Kgk Hhk Khg
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=3 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+3       ]  Khk .kS hk. kSh hgk Hgh
+  002  [5+5+5+3       ]  Kg. kgS h.. kSk khg Hkh
+  003  [5+5+5+3       ]  Kgk khS h.. kHh .kg Hgg
+  004  [5+5+5+3       ]  Khk hkK hgk hSk k.g Kgg
+  005  [5+5+5+3       ]  Kkh hgK h.. kHk kgk Kgg
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=3 · voicing=linear · accent=groupings ────────────
+  001  [4+2+5+3+4     ]  Khk hKg Kkh kgS khS kkh
+  002  [5+4+2+3+4     ]  Kgk kgS k.g KgH .gS hgg
+  003  [4+4+2+5+3     ]  Khg hHk kgK kSg kkg Kkh
+  004  [4+2+3+5+4     ]  Kg. kKg H.g Kg. kkS khk
+  005  [4+4+2+3+5     ]  Kgh kHg .gH kHk hSh khk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=3 · voicing=groove · accent=first ────────────
+  001  [3+3+3+3+3+3   ]  K.g S.k K.g S.k K.g Skk
+  002  [3+3+3+3+3+3   ]  Kgg Skh K.g Skh Kgg Shk
+  003  [3+3+3+3+3+3   ]  Khg S.k K.g S.k Ktg Sgk
+  004  [3+3+3+3+3+3   ]  K.g S.k Kgg Sgk K.g Skk
+  005  [3+3+3+3+3+3   ]  Ktg Sgk Ktg Sgk Ktg Sgk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=3 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+3       ]  Kg. tgS kgk hKg .tg Skk
+  002  [5+5+5+3       ]  Kgk kgS ggt gKk hkg Shk
+  003  [5+5+5+3       ]  Kg. kgS g.t gKg gkg Skk
+  004  [5+5+5+3       ]  Kgg hgS g.k hKg ghg Sgk
+  005  [5+5+5+3       ]  Kg. tgS g.k hKg .tg Shk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=3 · voicing=groove · accent=groupings ────────────
+  001  [5+5+6+2       ]  Kg. kgS g.t gKh g.. gSk
+  002  [5+4+6+3       ]  Kg. tgS g.k Khg ..k Skk
+  003  [3+4+2+2+4+3   ]  K.g Sg. kKg SkK htk Sgk
+  004  [6+4+3+5       ]  Kgg k.g Stk hKg gSk ggk
+  005  [5+6+3+4       ]  Ktg kgS gkg gkK .gS kkt
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=4 · voicing=linear · accent=first ────────────
+  001  [4+4+4+4+4+4   ]  Khgg Kghk Kgkh Hkgk Kh.g Kkhg
+  002  [4+4+4+4+4+4   ]  Kh.k Khgg Kh.g Hghk Khhk Hhgg
+  003  [4+4+4+4+4+4   ]  Kgkk Hghk Hhkg Kg.g Hhgk Khgh
+  004  [4+4+4+4+4+4   ]  Kg.k Hgkh Kk.h Kkgg Kgkg Hhgk
+  005  [4+4+4+4+4+4   ]  Kh.k Kgkg Khkg Hkhk Kh.k Hhkg
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=4 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+4     ]  Kk.g kKgh hgSk hkkS hggh Kghg
+  002  [5+5+5+5+4     ]  Kgkk hKh. khHk hkkS hkgk Kgkh
+  003  [5+5+5+5+4     ]  Kg.. gSgh hgHg ..hK hhkh Kkgg
+  004  [5+5+5+5+4     ]  Kg.k hKkg khSg khhK kgkh Hkhk
+  005  [5+5+5+5+4     ]  Kkhg kHk. .kHg k.kH hk.k Hkgg
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=4 · voicing=linear · accent=groupings ────────────
+  001  [6+4+3+4+7     ]  Khgk hkKg hhSk kShh kHgk khgg
+  002  [2+2+3+2+4+6+5 ]  KhKh H.kK gHhk hShg hkhS kggk
+  003  [7+3+2+7+5     ]  Kkh. .gkS kkHh Kgk. .kgK hhgg
+  004  [4+6+3+8+3     ]  Khgg Kghg kgK. hKhk hk.k hKhg
+  005  [2+2+4+5+8+3   ]  KhSg Kh.g Kk.h kHgg hkgh hShk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=4 · voicing=groove · accent=first ────────────
+  001  [4+4+4+4+4+4   ]  Khkg Shkh Khkg Shgk Khkg Skkh
+  002  [4+4+4+4+4+4   ]  Kk.g Skkt Kkgg Sggk Khgg Shhk
+  003  [4+4+4+4+4+4   ]  Kggk Skkg Kggk Skkg Kg.k Skkg
+  004  [4+4+4+4+4+4   ]  Kk.g Sh.k Kg.t Sh.k Kggt Sggk
+  005  [4+4+4+4+4+4   ]  Kggh Skkh Kg.h Skkh Kggh Shkk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=4 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+4     ]  Kgkg gSg. .kKg k.gS tg.k Kggk
+  002  [5+5+5+5+4     ]  Kg.. gSkk hkKg thgS kkhk Kttk
+  003  [5+5+5+5+4     ]  Kg.k gSk. hkKh k.gS k.kh Kggk
+  004  [5+5+5+5+4     ]  Kggk gSh. .kKg gkgS hg.k Khgk
+  005  [5+5+5+5+4     ]  Kggt kSgg khKg .tkS ggtk Kggk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=4 · voicing=groove · accent=groupings ────────────
+  001  [6+5+3+4+6     ]  Ktgt tgSk ktkK .gSg .hKt tkgk
+  002  [5+6+8+5       ]  Kgkh gSgh kkgK kgkg ghgS gktk
+  003  [8+3+4+5+4     ]  Kghg ghgk SgkK h.gS gkkg Kgkk
+  004  [8+6+4+6       ]  Kggk kggh Sgkg tgKg .hSk kggk
+  005  [6+8+5+5       ]  Kggt .gSg kgkk gkKt gkgS ggkg
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=5 · voicing=linear · accent=first ────────────
+  001  [5+5+5+5+5+5   ]  Khkgg Hk.gk Kh..g Hk.gk Kg..k Hggkk
+  002  [5+5+5+5+5+5   ]  Kk.hk Hg..k Kghkg Khkhk Hkhhk Hggkg
+  003  [5+5+5+5+5+5   ]  Khk.k Hg..k Kh..k Kg.kh Khhgh Kgkgh
+  004  [5+5+5+5+5+5   ]  Kk.hk Hk..k Hg.hg Kh..h Kg.kg Hhgkg
+  005  [5+5+5+5+5+5   ]  Khkgg Hggkg Hg..k Khg.g Hk..h Khghk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=5 · voicing=linear · accent=repeat (every=7) ────────────
+  001  [7+7+7+7+2     ]  Kkghg kkSgh khkgH hkkgk hSkhk hhkSk
+  002  [7+7+7+7+2     ]  Kkhgk khHkh ht.gK kghhg kHkhk .kgKh
+  003  [7+7+7+7+2     ]  Kkg.g hkHkh .kgkS hhkhk kHhk. khkKg
+  004  [7+7+7+7+2     ]  Kgkh. tgShk k..gH kghhk hKggh h.gHg
+  005  [7+7+7+7+2     ]  Kkghk hhKkg hkhkS kghkh gHkh. kkgSh
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=5 · voicing=linear · accent=groupings ────────────
+  001  [8+3+5+8+6     ]  Kkgg. .tgKk hKhgh hSghg hgkgH kgkgg
+  002  [4+5+6+7+8     ]  Kg.kS k..hK kg.kh Kgkg. .gKgh kgghk
+  003  [8+2+5+5+5+5   ]  Khghg hghSk Hhkkg Hg.kg Khk.g Hhkhk
+  004  [4+6+5+3+6+6   ]  Kk.hS khghg Hhghk KhgKg k..gH hgkkg
+  005  [7+6+8+4+5     ]  Khkkg khKhg k.kHh kgk.. gHkhg Khhkg
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=5 · voicing=groove · accent=first ────────────
+  001  [5+5+5+5+5+5   ]  Kg.kg Sgkhk Kghkg Sgkhk Kg.kg Stggk
+  002  [5+5+5+5+5+5   ]  Kg..k Sgkkt Kg..k Sgkkt Kg.hk Sgkkg
+  003  [5+5+5+5+5+5   ]  Kgghg Sk.gk Kgghg Sgghk Kt..h Sgkgk
+  004  [5+5+5+5+5+5   ]  Kttkg Skkgk Kg..k Skkgk Kgghk Sgkkg
+  005  [5+5+5+5+5+5   ]  Kggkk Shtkg Kkttk Shtkg Kk.tk Shggk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=5 · voicing=groove · accent=repeat (every=7) ────────────
+  001  [7+7+7+7+2     ]  Khght tgSgg kkgkK hgk.k gSggk kgkKg
+  002  [7+7+7+7+2     ]  Khggt .gSgk ..hkK gkgkk gSkk. .hkKh
+  003  [7+7+7+7+2     ]  Khkk. .hSgg kkgkK hkkg. hSggk kgkKh
+  004  [7+7+7+7+2     ]  Kggtk kgSgg kkgkK hgtkk gSggk kgkKh
+  005  [7+7+7+7+2     ]  Kggkt tgSgg kkgkK ggktt gSggk kgkKh
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=5 · voicing=groove · accent=groupings ────────────
+  001  [6+3+7+2+7+5   ]  Kgkg. gS.kK gtt.. gSkKg gkk.g Skkgk
+  002  [5+6+8+7+4     ]  Kht.g Stkkt kKggh g.tgS ggk.g kKhgk
+  003  [3+8+3+3+2+5+6 ]  KggSk ght.. kK.gS .kKgS hggkK hkhgk
+  004  [7+8+3+8+4     ]  Kgtkk .gSgg kkgkh KkgSt tkk.g kKggk
+  005  [3+7+3+8+7+2   ]  KtgSk t..tk KtgSk ggkkg kKtkk ..hSk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=6 · voicing=linear · accent=first ────────────
+  001  [6+6+6+6+6+6   ]  Kgkghk Khkkgg Hhk.hk Kghhgh Khghhk Khkhgg
+  002  [6+6+6+6+6+6   ]  Khk.kg Khkk.h Khghgk Khhggk Hggkgk Khgkgg
+  003  [6+6+6+6+6+6   ]  Kgkkgg Hgkhkg Hggh.k Khgg.k Hkgkgk Kghggh
+  004  [6+6+6+6+6+6   ]  Khk..h Kgg.kg Khhkgh Hkkh.g Hkggkh Kgkghh
+  005  [6+6+6+6+6+6   ]  Kggh.k Kghk.h Hgkhkh Hkk..g Hkg.kk Hgghkk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=6 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+1]  Kg.kkH ht.hHg hkkHk. khKg.. hKghkg Hhk.hS
+  002  [5+5+5+5+5+5+5+1]  Kk.hkK hghhSg khgKhk hgHhgg kKghgg HkkhkS
+  003  [5+5+5+5+5+5+5+1]  Khk.hH gk.gKk hggKhg khHg.. kKhgkg HkgkkS
+  004  [5+5+5+5+5+5+5+1]  Kgk.gS hkhhSh hkgSk. .gSh.. kHgghg Kgk.hH
+  005  [5+5+5+5+5+5+5+1]  KhkghK hk.hHk hggKhk hgHk.. hSk.gk KghhgS
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=6 · voicing=linear · accent=groupings ────────────
+  001  [6+4+5+6+5+7+3 ]  Khg..k KhkkSg ..gKgg hkkSk. .gKgkg hghKhk
+  002  [8+6+3+2+8+7+2 ]  Kgkh.. khKhhg hhSkhS kHkhgk h.hKgg h.hkKg
+  003  [7+3+2+3+6+7+8 ]  Kgkhgh kKghSg HkhHgh hgkHgg hgkgHg kkhkgg
+  004  [2+6+8+7+4+2+7 ]  KgKhgh kgShkh kgghSk kghkgS hgkHhK hhgkhk
+  005  [6+2+3+8+8+5+4 ]  Kgkk.h HkHgkS khgkhk kSgkg. k.kSgh hkShhk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=6 · voicing=groove · accent=first ────────────
+  001  [6+6+6+6+6+6   ]  Kgkk.g Sgk.tk Khgttg Sgghtk Khgttg Sgghgk
+  002  [6+6+6+6+6+6   ]  Kgkk.g Sggkkg Kghk.g Sggkkg Kghk.g Sgtgkk
+  003  [6+6+6+6+6+6   ]  Kggttg Skgghk Kggttg Skgghk Kggttg Sggthk
+  004  [6+6+6+6+6+6   ]  Kgkktg Skkg.k Kgkktg Sgt.tk Kgkktg Sggkgk
+  005  [6+6+6+6+6+6   ]  Ktkk.g Skttkh Ktkk.g Skttkh Ktkk.g Shkkgk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=6 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+1]  Kgt.gS g..kKg t.gSg. .kKgkh gSgghk KhthgS
+  002  [5+5+5+5+5+5+5+1]  KgkkgS ggkhKg kkgSg. khKg.t gSgt.k Kg.tgS
+  003  [5+5+5+5+5+5+5+1]  KtkkgS gghkKt kkgSgk hkKg.. gSgghk Kg..gS
+  004  [5+5+5+5+5+5+5+1]  KgttgS g..gKg ttgSgt .gKg.k gSkkgk Kg..gS
+  005  [5+5+5+5+5+5+5+1]  KkgkgS httgKk gkgSht tgKkhk gSkk.g KkgkgS
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=6 · voicing=groove · accent=groupings ────────────
+  001  [2+7+4+5+2+4+6+6]  KkSgtg gkhKg. hSkkgk KhSg.k Kggtgg Skkghk
+  002  [7+7+2+5+8+7   ]  Kggkgg hSkkg. hkKgSg .khKgg ttkkgS gttghk
+  003  [7+5+7+5+4+8   ]  Kggkkg gSg.kh Kggkkg gSghkh KhtgSk kgghkk
+  004  [8+7+5+5+4+7   ]  Kggtgt ggSkkt tgkKt. ggSgtt gKgkgS ghkttk
+  005  [4+7+8+4+2+4+7 ]  Kg.gSt kkggkK htkkgg kSkkgK gSk.gK ghghgk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=7 · voicing=linear · accent=first ────────────
+  001  [7+7+7+7+7+7   ]  Kghk.gg Kkhgghg Hkgkgkg Khg..kh Khk..hg Kkhkhgg
+  002  [7+7+7+7+7+7   ]  Khg..hk Hgkgkkh Kgkghhg Hkh.k.h Hkghk.k Hgghkgg
+  003  [7+7+7+7+7+7   ]  Khgk..g Hkg..kg Khg.kgk Khkhggk Khk...g Hkhkhgk
+  004  [7+7+7+7+7+7   ]  Khkk.gk Khg..hg Hkggkhg Hgh.khk Hghkgkg Hggkghk
+  005  [7+7+7+7+7+7   ]  Kgghghk Khgk.kg Hkg.k.g Khh.kgg Hkghhkh Khghhgg
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=7 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+2]  KhkhgHk k.gHg.k hKh..kH hg.gKgk .gHgk.g Kh..gKg
+  002  [5+5+5+5+5+5+5+5+2]  Kkg.hSk h.hSghk hKhk.gS hk.gKgk .gKhk.k HhkghKg
+  003  [5+5+5+5+5+5+5+5+2]  KhgkhSg khhShgg kHkggkH kk.gHhg hgHh.gh Hg.khSg
+  004  [5+5+5+5+5+5+5+5+2]  KhgkhKh hghSg.. kHhg.gH hghkHk. .kSgkgk Hh.khHk
+  005  [5+5+5+5+5+5+5+5+2]  Kk..hSh htgShkk hKh..hS h.khKhk .kShkkg HhkkgHg
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=7 · voicing=linear · accent=groupings ────────────
+  001  [5+6+6+4+7+2+8+4]  KhgkgHk hgkgSkk ..hSkkh Hgkgkkh HgHghg. k.gHhgg
+  002  [4+5+6+6+5+3+7+6]  KhghHkk .hHgkkh kHggk.g KkhkgS. kShghk. hShgghk
+  003  [2+2+4+7+7+5+8+7]  KgKgHgg kHgghk. kSkh..g hKhkggK hkhgkkg Kkhghhg
+  004  [8+3+7+4+6+8+6 ]  Khhgk.k hS.kKgk kghkShg hHghkkg Hghgkgk hKggkhg
+  005  [6+3+6+7+5+3+5+7]  KhghkgK hhSkg.g hKhhkhk hKh..kS kgShk.g Hkgkggh
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=7 · voicing=groove · accent=first ────────────
+  001  [7+7+7+7+7+7   ]  Kthkkgg Sggttkh Kkhkkgg Sggttkh Kggt.gh Skkhghk
+  002  [7+7+7+7+7+7   ]  Kthhggk Sggtggk Kthhk.k Sktkkgk Kthh..k Sggthkk
+  003  [7+7+7+7+7+7   ]  Kttg..g Sggh..k Kttg..g Sggh..k Kttg..g Skkthgk
+  004  [7+7+7+7+7+7   ]  Kkggtkg Sth..hk Khggtkg Sthgghk Khtgtkg Sggkktk
+  005  [7+7+7+7+7+7   ]  Kttg.kg Sgkt..k Kttgghg Sgkt.hk Khtg.kg Sggtthk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=7 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+2]  Kt..hSt tkhKtgg hSttkhK tgghStt khKttkg SgtkhKk
+  002  [5+5+5+5+5+5+5+5+2]  Kg.kgSk tkhKggk gSk.khK g.kgSgt khKg.kg SgkkgKk
+  003  [5+5+5+5+5+5+5+5+2]  Khk.gSg kkgKhkt gSgkkgK ggtgSgk kgKhgtg SgtkgKk
+  004  [5+5+5+5+5+5+5+5+2]  Kh..hSk .kgKhgg hSkgkgK k.ghSkg kgKhggh SktkhKk
+  005  [5+5+5+5+5+5+5+5+2]  KgttgSg gkhKgkt gSg.tkK gttgSgg khKgttg Sh..hKk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=7 · voicing=groove · accent=groupings ────────────
+  001  [3+8+8+8+4+3+8 ]  KhgSttg gkgkKgg kkggtSt tggkgkK gghS.kK gktthkk
+  002  [8+7+6+7+7+7   ]  Ktkggk. gSgth.. kKgttgg Sgt...k Kggkttg Sghgghk
+  003  [4+7+3+2+8+5+5+8]  Kg.kSkk gkkgK.g SgKgkk. .hkSkk. gKgkkgS kkgtthk
+  004  [8+7+2+3+7+5+6+4]  Kgghk.g tSgg.kg kKgStkK gh..kgS tkkgKgg t.gSkkg
+  005  [7+7+3+7+5+7+6 ]  Kghtggh Sgttkkt K.gStkg ghkKtt. gSggkth kKhgkgk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=8 · voicing=linear · accent=first ────────────
+  001  [8+8+8+8+8+8   ]  Kgkh.k.h Kkhkghgk Hkkhgk.g Hhkh..gh Hghgh.kh Hkgkhhgh
+  002  [8+8+8+8+8+8   ]  Khhgkggk Khgkhkgk Hggh..kh Khhk.gkk Hgkh.kkh Hkhhggkh
+  003  [8+8+8+8+8+8   ]  Khggkkhk Kggh.gkk Hggk.khg Hhghhgkh Khkhkghk Hhgkkhgh
+  004  [8+8+8+8+8+8   ]  Kghkhggk Khkg..hk Kgkhhggk Kghgkghk Kghghhgk Khggkggk
+  005  [8+8+8+8+8+8   ]  Kkgkkhgh Hgkgkggh Hkgh...h Kkhhgkgk Kgkghghk Hkhkkhgh
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=8 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+5+3]  KkhgkSgk hgHkkhkH kk.hHg.k hSkg.hKh kghHk.gk HhkghSkh
+  002  [5+5+5+5+5+5+5+5+5+3]  Kk..hSg. .gKg..kH k..hSk.k hHkhgkSh hghSghkh Ht.kgSkh
+  003  [5+5+5+5+5+5+5+5+5+3]  Kgk.gHhk khHkgkhK k..gSkgk kHh.khHk kghKg..k HghhkKgh
+  004  [5+5+5+5+5+5+5+5+5+3]  Kg..kKgh hgHghkkH kghgHhgk hHkkgkSh htgSk..h KkhkgHgk
+  005  [5+5+5+5+5+5+5+5+5+3]  KhhkgSkk hhKk..gH h.kgShgh hShggkKh hkhShkhg Hg.kgShh
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=8 · voicing=linear · accent=groupings ────────────
+  001  [5+7+8+3+8+5+5+7]  Kh.hkKhk k.ggHggk k.hkS.gK hgkhkkgH hkhgSkgh kKhghghk
+  002  [3+8+5+7+6+6+7+6]  KhkHkhgh kghSkghk Hgkh..kH hg.khSgh .kkShhkh hkHkgkgh
+  003  [6+7+5+4+6+6+8+6]  Khg..kHk kh.khKgk khHkghSk h.kgShgh hkHghkhh ghShkgkh
+  004  [5+6+7+8+7+4+6+5]  Kk..hHkh ..kSkhg. .gKkhhkh kkHgg..k kHhkgKhk kghSghkk
+  005  [6+6+6+6+8+7+4+5]  KhkkghKh khghSghk khKkhghk Khkhgkhk HkghghgH hgkShghh
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=8 · voicing=groove · accent=first ────────────
+  001  [8+8+8+8+8+8   ]  Kggkgghk Sgttkggk Ktgkgghk Sgttk.gk Kggk...k Stgghggk
+  002  [8+8+8+8+8+8   ]  Kggkhktg Skgktggk Ktgkhktg Skgkt.gk Kggthktg Sgghgkkg
+  003  [8+8+8+8+8+8   ]  Kggtt..k Sggk..kh Kgtgh..h Sggkkgkh Kgtghg.h Skhkggkk
+  004  [8+8+8+8+8+8   ]  Kttkkttg Skhkggkg Kttkk.tg Skhk..kg Kttkkttg Sgghkkgk
+  005  [8+8+8+8+8+8   ]  Kttgtktk Skttgkgk Kttkgkkg Shggkkhk Kttkgkkg Sttggktk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=8 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+5+3]  Kg.hkSkg gkKgghkS k.gkKggh kSkggkKg ghkSkggk Kg..kSgk
+  002  [5+5+5+5+5+5+5+5+5+3]  Kg.kgStt kgKggkgS ttkgKg.k gSk.gkKg ttgSkggk KgghgSkg
+  003  [5+5+5+5+5+5+5+5+5+3]  KgghgSg. tkKt..hS g.tkKhgg hSghtkKg ghgSgghg Kgh.gSgk
+  004  [5+5+5+5+5+5+5+5+5+3]  KgghgShg tkKg..gS h.tkKg.. gShgtkKg ghgSh.tk Kh..gSgk
+  005  [5+5+5+5+5+5+5+5+5+3]  KkhkgSkk tkKghkgS kktkKggk gSkktkKg .kgSkhgk KggkgSgk
+  (worst same-voice run in this block: 2)
+
+── beats=6 · subdivision=8 · voicing=groove · accent=groupings ────────────
+  001  [4+8+5+8+4+6+7+6]  KttgSkkg ghtkKgk. kSttgktk gKttgSgg kgkKgh.. tkSkgghk
+  002  [5+8+6+8+8+7+6 ]  KggtgSgk gthgkKgg kkgSgkgt ..kKgkgt htgSkggk gkKggthk
+  003  [8+7+5+6+7+4+3+8]  Kgghgkkg SktkggkK hggtSkkh kgKgtt.. hSgkhKkg Sttkkggk
+  004  [8+4+8+6+2+8+5+7]  Khkk.gkg SkkhKhkk g.kgSgk. gkKgSkkg .kgkKghg gSggkgtk
+  005  [6+3+4+8+8+6+7+6]  Ktt..kSk gKhkgSgt tgkkgKgg h...kSkt ..kKtkkg kgStgghk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=2 · voicing=linear · accent=first ────────────
+  001  [2+2+2+2+2+2+2 ]  Kh Kg Hh Sk Hk Sk Hh
+  002  [2+2+2+2+2+2+2 ]  Kg Hg Kg Kh Kg Kh Hk
+  003  [2+2+2+2+2+2+2 ]  Kk Hh Sk Hk Kh Kg Hk
+  004  [2+2+2+2+2+2+2 ]  Kh Kg Sk Sg Sg Sg Sg
+  005  [2+2+2+2+2+2+2 ]  Kh Kh Sg Kh Hg Sg Sg
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=2 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+4         ]  Kk .. gS h. .k Sg kg
+  002  [5+5+4         ]  Kh .k hH g. .g Hk hg
+  003  [5+5+4         ]  Kh hg hK hh kg Hg hk
+  004  [5+5+4         ]  Sg h. kS kg .g Hh gh
+  005  [5+5+4         ]  Kh hk gS h. kh Kh hg
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=2 · voicing=linear · accent=groupings ────────────
+  001  [3+3+3+2+3     ]  K. gK .g S. gS kH hg
+  002  [3+3+3+2+3     ]  K. hS .g Hk hH gS hh
+  003  [2+6+6         ]  Kh Ht gg hg Kg hk kh
+  004  [3+3+3+2+3     ]  Kk gK hk S. kH gH kh
+  005  [6+6+2         ]  Kh gk hk Sk g. kh Kh
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=2 · voicing=groove · accent=first ────────────
+  001  [2+2+2+2+2+2+2 ]  Kg Sk Kg Sk Kg Sk Kg
+  002  [2+2+2+2+2+2+2 ]  Kg Sk Kg Sk Kg Sg Kk
+  003  [2+2+2+2+2+2+2 ]  Kg Sk Kg Sk Kg Sk Kh
+  004  [2+2+2+2+2+2+2 ]  Kg Sg Kg Sg Kg Sg Kk
+  005  [2+2+2+2+2+2+2 ]  Kg Sg Kg Sg Kg Sk Kh
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=2 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+4         ]  Kk .t gS gg kh Kg gk
+  002  [5+5+4         ]  Kt .t gS tk hk Kg tk
+  003  [5+5+4         ]  Kg kk gS kk .g Kt tg
+  004  [5+5+4         ]  Kg kt gS kk tg Kg kk
+  005  [5+5+4         ]  Kt k. gS gk kg Kg gk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=2 · voicing=groove · accent=groupings ────────────
+  001  [2+4+4+2+2     ]  Kk Sh kh Kg kg Sk Kh
+  002  [4+4+4+2       ]  Kg .h Sk kg Kg .h Sk
+  003  [3+3+3+2+3     ]  K. gS kh Kt gS kK tk
+  004  [5+5+2+2       ]  Kg kk gS gk gk Kg Sg
+  005  [2+4+2+4+2     ]  Kg St gk Kg St gk Kh
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=3 · voicing=linear · accent=first ────────────
+  001  [3+3+3+3+3+3+3 ]  Kkg H.g Khk K.h Hgh Hgk Khh
+  002  [3+3+3+3+3+3+3 ]  Kkh H.k Hkh K.g Hgg K.h Khg
+  003  [3+3+3+3+3+3+3 ]  Kkg Hgg H.k H.g K.h Hgg Kgh
+  004  [3+3+3+3+3+3+3 ]  Kkg Hkh Htg Kkh Kgh Kkh Hgk
+  005  [3+3+3+3+3+3+3 ]  K.k H.g Kgk Khg Kgg Kkh Htg
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=3 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+1     ]  Kk. hhS kh. gKg k.g Hgg kgS
+  002  [5+5+5+5+1     ]  Kgg khS kkg kKg kkg Hgg hhK
+  003  [5+5+5+5+1     ]  Kg. .gK hg. hSh hgh Hkk hhS
+  004  [5+5+5+5+1     ]  Khg hhS kgg kSk k.g Kgk .gH
+  005  [5+5+5+5+1     ]  Khk kgS k.h gHg k.g Khh kkH
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=3 · voicing=linear · accent=groupings ────────────
+  001  [2+5+5+4+5     ]  KhK hkk hKg k.k Hh. kHh khk
+  002  [4+2+4+6+5     ]  Khk kSk Khg hHk kgk kHk khh
+  003  [3+4+5+3+6     ]  Kgg Khk hHk khk Hgg Kkg hkg
+  004  [4+5+4+4+4     ]  Kg. kSk k.h Htg hKh kkH khg
+  005  [4+2+6+4+5     ]  Kg. kKh Khg k.g Hkk gHg khh
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=3 · voicing=groove · accent=first ────────────
+  001  [3+3+3+3+3+3+3 ]  Khg Stg Kkg Stg Khg Stg Kgk
+  002  [3+3+3+3+3+3+3 ]  K.g Skh Khg Skh K.g Skh Kgk
+  003  [3+3+3+3+3+3+3 ]  K.g Stg K.g Skg Kgg Stg Ktk
+  004  [3+3+3+3+3+3+3 ]  Kgg Sgk K.g Skh Kgg Skh Kgk
+  005  [3+3+3+3+3+3+3 ]  Kkg S.k Khg S.g Kkg Skg Khk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=3 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+1     ]  Kgg tgS kkg kKg gtg Skt gkK
+  002  [5+5+5+5+1     ]  Kgk .gS kkh gKg kkg Skk tgK
+  003  [5+5+5+5+1     ]  Khk kgS kkh gKh kkg Skk .gK
+  004  [5+5+5+5+1     ]  Kh. .tS g.. kKg g.t Sg. .kK
+  005  [5+5+5+5+1     ]  Kgt kgS ggh kKg h.g Sg. hkK
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=3 · voicing=groove · accent=groupings ────────────
+  001  [5+2+4+3+3+4   ]  Ktk .gS kKg gtS .kK .gS kkg
+  002  [5+6+2+4+4     ]  Kkg .hS gkg tkK gSg khK ggk
+  003  [2+6+2+3+2+6   ]  KkS ggk ktK kSt kKh Sgg hgk
+  004  [3+5+6+2+5     ]  Ktg Skk gkK hg. kgS kKg kkg
+  005  [3+5+4+3+6     ]  K.g Sh. .kK gkg S.k Ktt kkg
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=4 · voicing=linear · accent=first ────────────
+  001  [4+4+4+4+4+4+4 ]  Kkgk Hg.k Khgg Kg.g Hg.k Hhkk Hkhk
+  002  [4+4+4+4+4+4+4 ]  Kk.g Kghg Kk.g Khgk Kg.h Kg.h Kkhh
+  003  [4+4+4+4+4+4+4 ]  Kg.k Hg.h Ht.k Hkkg Hg.k Khgk Hkhg
+  004  [4+4+4+4+4+4+4 ]  Kk.h Kh.g Khkh Hkhk Kghh Kk.g Hgkk
+  005  [4+4+4+4+4+4+4 ]  Kh.g Hgkh Hkgg Kg.k Kghk Hgkh Khkg
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=4 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+3   ]  Kgk. hSgh khKg kghH khhk Hgkg kSgk
+  002  [5+5+5+5+5+3   ]  Khgh kShg hhKg hkhK hhgg Khgh hSgh
+  003  [5+5+5+5+5+3   ]  Kghg hKkh kgKg k.gH hkhk Hg.. hKgh
+  004  [5+5+5+5+5+3   ]  Kk.g kKgg kkSh .kgS khhk Kg.k kHkg
+  005  [5+5+5+5+5+3   ]  Khgh kSgk kgSk ..gS hghg Hhgk kHkg
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=4 · voicing=linear · accent=groupings ────────────
+  001  [3+2+2+5+5+8+3 ]  KkhS hHgK h.kk Hk.k hKgg k..g hShk
+  002  [4+3+6+6+5+4   ]  Khkh KhkH kh.. kShk .khK h.kh Kggh
+  003  [8+4+6+4+6     ]  Kkgg k..g Kkhh Khh. kkHg kkSg hghk
+  004  [7+7+2+8+4     ]  Khkk ..gH hkgg khSh Hkkg kg.k Kghk
+  005  [7+3+6+2+3+7   ]  Kkhh gkhS .gKh k..g HkK. hSkg kghh
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=4 · voicing=groove · accent=first ────────────
+  001  [4+4+4+4+4+4+4 ]  Kggh Skkg Kgth Sktg Kg.h Skkg Kggk
+  002  [4+4+4+4+4+4+4 ]  Kggh Sgkh Kggk Skkt Kg.k Skkt Kkgk
+  003  [4+4+4+4+4+4+4 ]  Kkgg Skkh Ktgg Skkh Kttg Skkh Kkgk
+  004  [4+4+4+4+4+4+4 ]  Kg.t Shkh Kk.g Shkh Kk.g Shkh Kghg
+  005  [4+4+4+4+4+4+4 ]  Kggt Sttg Kg.t Sttg Kgkt Sghk Khtg
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=4 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+3   ]  Kgk. gSkt gkKg kggS ktgk Kgk. gSkk
+  002  [5+5+5+5+5+3   ]  Kg.. gSg. tgKg ghgS ggtg Kggh gSgk
+  003  [5+5+5+5+5+3   ]  Kgtt gSg. kgKg ttgS hgkg Kgtt gSkk
+  004  [5+5+5+5+5+3   ]  Kggk gSgk kgKg kkgS gk.g Kgkk gShk
+  005  [5+5+5+5+5+3   ]  Ktkt gStt .kKt ktgS tt.k Ktkt gSgk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=4 · voicing=groove · accent=groupings ────────────
+  001  [2+2+3+8+3+5+5 ]  KkSk KtgS gkh. .tgK tgSk ktkK ghgk
+  002  [4+4+4+3+8+5   ]  Kgkg Skgk Kgkg SkhK gkgk ggkS ktgg
+  003  [3+8+6+5+6     ]  K.gS gkhg kgkK gk.. kSt. .kKg ghgk
+  004  [5+2+8+7+6     ]  Khkk gSkK ghgt gtgS kkgh gkKg ghgk
+  005  [8+7+4+4+5     ]  Kgkk ggtg Sgkk .tkK gtgS g.kK gkgk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=5 · voicing=linear · accent=first ────────────
+  001  [5+5+5+5+5+5+5 ]  Kh.kk Hkhkh Hgkgk Kghkh Hghkg Hh.kk Hkghk
+  002  [5+5+5+5+5+5+5 ]  Khkhk Hhggk Kghhg Hhk.k Hgkhg Hgk.g Hghkk
+  003  [5+5+5+5+5+5+5 ]  Kkhgg Hkhkh Kk..g Hh.gk Kh.kh Khkhg Khhkg
+  004  [5+5+5+5+5+5+5 ]  Kghhg Kh.kh Kgk.g Hk..g Hk.kg Hgkgk Kgghh
+  005  [5+5+5+5+5+5+5 ]  Kkhhg Hg.kk Hkk.g Hgkhg Kggkg Hggkh Khgkg
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=5 · voicing=linear · accent=repeat (every=7) ────────────
+  001  [7+7+7+7+7     ]  Kggkg hgSkk ghghH gkhkh hKggk ..hHk kgghg
+  002  [7+7+7+7+7     ]  Kkg.k hkShk ..khK hghkh hSkgg hhgHk kghgh
+  003  [7+7+7+7+7     ]  Khkkh khSkg hghkS hkkhk hKghg hkgKg hhgkk
+  004  [7+7+7+7+7     ]  Kghkk ghKgk .khkK hkkgk kHhgk .kgHk hgkhk
+  005  [7+7+7+7+7     ]  Khg.k kgHhg kkhkS hgkkg kHkkg hhgHk khgkg
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=5 · voicing=linear · accent=groupings ────────────
+  001  [4+5+5+3+7+4+7 ]  KkgkS kghgK k..gK kgHkg khgkS k.gHg hkgkg
+  002  [8+4+2+4+4+6+7 ]  Kkggh kghSg kgHhK hgkSh kkHhg k.hKh khkhk
+  003  [3+6+3+8+4+3+8 ]  KhkHg k.kgH .kHkg hkhkk HkggH .gSkg hhkhk
+  004  [2+4+6+7+5+3+8 ]  KgKh. kHhg. kkShh gkhkK hg.hS .gHhk hhkkg
+  005  [3+3+5+7+8+8+1 ]  KkgSh kShk. gHgkg kgkHg hkgkg hSkhk k..gS
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=5 · voicing=groove · accent=first ────────────
+  001  [5+5+5+5+5+5+5 ]  Kk..h Sgkgk Kgt.g Sgkgk Kggtg Sgkgk Kgkkg
+  002  [5+5+5+5+5+5+5 ]  Kkhkg Sggkh Kkgkg Sg.kh Kkhkg Sh..g Kgghk
+  003  [5+5+5+5+5+5+5 ]  Kk..g Sgkgk Kghgg Sgkgk Kht.k Skkgk Ktkkh
+  004  [5+5+5+5+5+5+5 ]  Kttgg Sg..k Ktt.g Sg..k Ktt.g Sg..k Khgkk
+  005  [5+5+5+5+5+5+5 ]  Kg.tg Sgghk Khgtg Sg..k Kggtg Sk.gk Kgtkk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=5 · voicing=groove · accent=repeat (every=7) ────────────
+  001  [7+7+7+7+7     ]  Kghgg hgSgk gghgK gtggh kSgtg ghgKt kkhgk
+  002  [7+7+7+7+7     ]  Kggk. .gSgg k.gkK ggkk. gStgg kkgKh kkggk
+  003  [7+7+7+7+7     ]  Kghgg tgSgg kkhgK hhg.t gSggk khgKt ghkkt
+  004  [7+7+7+7+7     ]  Kggkg tgSkg .ttkK ghk.t gSkgg ttkKh tkktg
+  005  [7+7+7+7+7     ]  Kgttg tgSkk gkktK gttgt gShgg h.kKh kkggk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=5 · voicing=groove · accent=groupings ────────────
+  001  [6+6+8+6+8+1   ]  Kkgt. gSggk kgKhg kk.tk Sggkk gKhgk kgtkS
+  002  [3+3+4+4+4+2+7+8]  KkgSk hKgtk SgkhK gtkSk Kgth. kgSkk hgghk
+  003  [7+2+6+2+2+4+5+7]  Khggt ggSgK ggttg SgKgS ktkKg .kgSk kgghk
+  004  [7+8+5+8+7     ]  Khttk ggSkk ghttk Kggkg Skkg. ttkKg gkgkk
+  005  [4+6+6+2+8+7+2 ]  KgkgS gghkh Kggt. gSkKh ttgkk gSkkt tkhKk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=6 · voicing=linear · accent=first ────────────
+  001  [6+6+6+6+6+6+6 ]  Kgkkgk Khghgg Hhgk.g Hhk.kg Hhkkgk Hhkkhk Hkghhk
+  002  [6+6+6+6+6+6+6 ]  Kkh.kh Khghgk Hgk.kh Kghkgg Hhkkgg Kghk.g Khgkhk
+  003  [6+6+6+6+6+6+6 ]  Kgkgkk Hhgkhk Kgghgk Hkhhgh Htg..k Khhg.k Khhghg
+  004  [6+6+6+6+6+6+6 ]  Kghghk Khgh.g Hhghkk Hggk.h Hkhkkg Kghk.g Hhghkk
+  005  [6+6+6+6+6+6+6 ]  Kkh.kg Hggkgg Hgk..g Khh.kh Htgk.g Hhg..g Hkhgkk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=6 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+2]  KghhgH kggkSg .kgHk. khSk.h gSh..h Kg.kgH k.khHg
+  002  [5+5+5+5+5+5+5+5+2]  Kh.hkH hghhSg .kgShk khHk.. gHg..k Kg.hgH k..kHk
+  003  [5+5+5+5+5+5+5+5+2]  Kk..hH ghgkSk hkkShg hgKhk. kHkghg KhkhgS h.khSg
+  004  [5+5+5+5+5+5+5+5+2]  KkggkS hhkkHg ..kHhk .kSkk. hSk.kh Kgk.gS k..hHg
+  005  [5+5+5+5+5+5+5+5+2]  KgkgkK hggkSh .kkHkg kkHkg. hSg.kk HgkkgK hk.hKk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=6 · voicing=linear · accent=groupings ────────────
+  001  [3+2+7+8+4+8+2+8]  KkhHkS khkkhg Hgkk.h kgHk.h Khgghk hhShSk hkhkhk
+  002  [4+3+7+7+7+2+7+5]  KkhhKh hKghk. khKggk hhgKgg khghKh Kgh.k. hKkggh
+  003  [8+5+2+4+2+6+8+7]  Khkhhk khKggk hShHg. hKgHkg h.gKgg h.kgkK ghkkgh
+  004  [4+4+3+7+8+6+6+4]  Kg.kKh khS.gS khkhkh Hkhkkh khSghh tgKggk hhKghk
+  005  [4+7+6+6+3+5+8+3]  KkhkSg hhkkgS kh..kH kkgghH kgSk.. hKhghk hgkSkg
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=6 · voicing=groove · accent=first ────────────
+  001  [6+6+6+6+6+6+6 ]  Ktggtg Sggtkh Ktggtg Sggtkh Ktg.tg Sggtkh Khgktk
+  002  [6+6+6+6+6+6+6 ]  Kghgkg Sgk.kh Kgg.kg Sgt.kh Kghgkg Sgh.kh Kgkggk
+  003  [6+6+6+6+6+6+6 ]  Kgkhtg Sktggk Kgk.tg Skktkh Kgk.tg Sggkkt Kggkkh
+  004  [6+6+6+6+6+6+6 ]  Kttggk Skg.kh Kttgkk Skggkh Kgt..g Skkgkh Kgtghk
+  005  [6+6+6+6+6+6+6 ]  Kktkkg Skgghg Kktkkg Skg..g Kggkkg Skg..g Kggkgk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=6 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+2]  Kt..gS gkktKt ..gShk ktKtt. gSgkkt KkggkS gkktKg
+  002  [5+5+5+5+5+5+5+5+2]  Kg.hgS t..hKg ..gSt. kgKggh gSt..h Kg..gS kgghKk
+  003  [5+5+5+5+5+5+5+5+2]  KgtggS g.khKg .tgSg. khKght gSggtk Kg.tgS ggkhKk
+  004  [5+5+5+5+5+5+5+5+2]  Kt.kgS kktkKt .kgStk tkKt.t gSkktk KtgkgS kktkKh
+  005  [5+5+5+5+5+5+5+5+2]  Kg..gS kggkKh ghgSkg gkKgk. gSk.gk KgghgS k.gkKh
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=6 · voicing=groove · accent=groupings ────────────
+  001  [2+4+4+8+6+8+4+6]  KgSg.k KgtgSk gghggk Khgttg Skgghg gkKgtg Skgkgk
+  002  [4+7+6+8+7+5+5 ]  Kg.gSk k..tgK gtt.kS ttg.tt kKgk.g hgSk.g kKgkkt
+  003  [3+6+7+7+3+8+8 ]  KgkSgt .kgKhg ttgkSg kkggkK ggSgkk tkktKk ggkkgk
+  004  [8+6+2+8+7+5+6 ]  Kggkgh gkSkk. .gKgSg kkgktg Kggkkh gSk.gk Kggkkt
+  005  [8+6+5+2+2+8+7+4]  Kgghkk tgSktt .kKgkk gSkKgS kkggtg kKgtg. tgSkhk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=7 · voicing=linear · accent=first ────────────
+  001  [7+7+7+7+7+7+7 ]  Kghhkhg Khgkk.h Hgkhhkh Hgkhkkg Hhgh.kk Hgghg.h Hkhkhhg
+  002  [7+7+7+7+7+7+7 ]  Khhggkg Kgg.hkg Hgkhkhk Khgh.gg Khk...h Khh.ghg Hkghghk
+  003  [7+7+7+7+7+7+7 ]  Kgg.hgh Khgg..k Hgkk.gk Khkk..g Hgkk..g Hhgk..k Hgkhhgh
+  004  [7+7+7+7+7+7+7 ]  Kkgkhgh Khhg..g Hggk..h Htghkhg Hkhgkhg Hgk.khk Khghggh
+  005  [7+7+7+7+7+7+7 ]  Khkghkg Kgk.hgg Hghhkgk Kgg..kg Khgh.kg Kkh.k.g Hghkkhg
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=7 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+5+4]  KgkhgSk khgShhg kHkhhgH kkghSh. .gKkggh HkkhkSh khhKkgg
+  002  [5+5+5+5+5+5+5+5+5+4]  KgkhgHh .kkSkhg hHkkhgS hhkhHkg .gSkh.g Hg..gHg kghShgh
+  003  [5+5+5+5+5+5+5+5+5+4]  Kh.kkHg hkgShk. kShk.hS hk.kHg. khHkh.g HhghgKk hhkShhg
+  004  [5+5+5+5+5+5+5+5+5+4]  KhghgHg ..hKhgk hSghkkH hg.kHg. khSg..h HggkgSh k.gKghg
+  005  [5+5+5+5+5+5+5+5+5+4]  KhhkhHk ..gKkgh kHhk.gS kkggHhg .kHk.kh Kg..kHh k.hKhgh
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=7 · voicing=linear · accent=groupings ────────────
+  001  [7+8+8+3+8+2+8+5]  Khk..gk Kgkhg.. gHgkghk .gK.hHk kgkgghS hShhkg. khSkhkg
+  002  [4+5+8+7+3+8+8+6]  KhkkHkg hkSkhkg k.hSgh. k.gHhgH hkgh..h Khhk... hHgkggk
+  003  [7+7+6+5+8+7+8+1]  Khhkhgk Hghkk.h KhkghgK hhgkSkk g..kgHh gkgkgKh hgkhkhS
+  004  [8+4+3+8+4+7+7+8]  Kgkhkgh hSgkhS. kHkggkg .hKhhkS hk.kgkS khhk.gK hkkhghg
+  005  [4+6+8+6+7+8+7+3]  KhghShk hggHkgh ..kgHkh khhShk. k.hSkgh ht.gKhg hhghKgk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=7 · voicing=groove · accent=first ────────────
+  001  [7+7+7+7+7+7+7 ]  Khg..tg Skgkkgk Khghhtg Skgkkgk Khg..tg Skgkggk Khggkgk
+  002  [7+7+7+7+7+7+7 ]  Kggtthg Sttgghk Kggtt.g Shttkkg Kggtthg Shttkkg Kkttgtk
+  003  [7+7+7+7+7+7+7 ]  Kkgk.tk Sktkggk Kghgkgg Sktk.gk Kgh.kkg Sktkggk Kgkkghk
+  004  [7+7+7+7+7+7+7 ]  Kgkkgkg Skkhkgk Kgkkgkg Skg.kgk Kgkkgkg Skkhktk Kggkghk
+  005  [7+7+7+7+7+7+7 ]  Kggh..h Shggttg Kkg.ttg Shggtgg Kkg.ttg Shggttg Kggttgk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=7 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+5+4]  Kgk.kSk .gkKttg gSk.gkK tt.gSk. gkKttkg SgktkKt tggSkgg
+  002  [5+5+5+5+5+5+5+5+5+4]  KgkkgSg tgkKgkk gSgt.kK gkkgSgt .kKgk.g Sgt.kKh g.tSkkh
+  003  [5+5+5+5+5+5+5+5+5+4]  Kgt.gSh tkhKgth gShtkhK gt.gSht khKgt.g SkkgkKg t.gSggk
+  004  [5+5+5+5+5+5+5+5+5+4]  KggtgSk .khKggt gSk.khK ggtgSkg khKggtg Sk.khKg gtgSkgk
+  005  [5+5+5+5+5+5+5+5+5+4]  KggtgSg thkKggt gSgttkK g.tgSgt .kKg..g Sgt.kKg gtgSttk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=7 · voicing=groove · accent=groupings ────────────
+  001  [8+6+7+5+6+8+2+7]  Ktthk.g hSkkggk Kghttgg SkkgkKt hktkSkk gkkgkKg Sggkggk
+  002  [7+7+8+8+6+5+8 ]  Kgghgtg Sghggkh Kggt.k. gSgghtt .kKggkt gSkkgkK gtktkkg
+  003  [3+8+5+7+7+7+4+8]  KtgSgkt .ggkKgg hgSggtk tkKggth ggSkk.. gkKh.gS kkgghhg
+  004  [5+3+7+8+7+4+7+8]  Kg..gS. kKgtkk. gSkggkk .gKgtkk hgSg.kK gtkk.gS ggkkttk
+  005  [6+6+7+8+6+8+8 ]  Ktk..kS gh..kKg gttggSk kg.kgkK tk..kSk kg.kgkK gttgkhg
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=8 · voicing=linear · accent=first ────────────
+  001  [8+8+8+8+8+8+8 ]  Khgk..kh Kghhghhk Hkggk.hg Hkgghgkh Khhgk..k Hgghk.hh Kghkhghk
+  002  [8+8+8+8+8+8+8 ]  Kghk..hk Hkhkggkh Hgkhghgh Hkkggh.h Kgghkggk Khkhgk.k Hghhkkhh
+  003  [8+8+8+8+8+8+8 ]  Kgkhhkgh Hghkgkhh Kkhkgh.k Hghkgkkh Hkgghkhh Khghghkk Hhkkggkh
+  004  [8+8+8+8+8+8+8 ]  Kkgk..kh Khhgh.kh Khggkkhk Hkgkhg.h Khkgkghk Hgkhkgkh Hggkggkh
+  005  [8+8+8+8+8+8+8 ]  Kkhkghkh Hkgghggh Htgh..kh Hghgghgh Kggkh..k Hkhkgk.g Hghkhggh
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=8 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+5+5+5+1]  KhkkgHhk .gSkhkkH hkkhHg.. gKkhgkHh tghSkk.g HkgkkHgh kgShggkK
+  002  [5+5+5+5+5+5+5+5+5+5+5+1]  KkgkhKgh khKghhkK hhghHkkh kHg..gSk ..hKgk.h Kg..gHkk .hKg..kK
+  003  [5+5+5+5+5+5+5+5+5+5+5+1]  Kk..gHgk kgHhk.hK hgkkShk. hShk.gKh k.kHk.hk Hkg.hSk. .kHk..kH
+  004  [5+5+5+5+5+5+5+5+5+5+5+1]  KghhkShk khHgkkhK hg.kSk.. gHk.khSh hkhHggkh Hk..gKkh hkHgkkhH
+  005  [5+5+5+5+5+5+5+5+5+5+5+1]  Kkh.kHhk hgKkgkhH gk.hSgkh kHgkhgHk ..hSghgh KhhggKhk khSh..gK
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=8 · voicing=linear · accent=groupings ────────────
+  001  [7+8+8+8+7+2+8+8]  Kkhh.ghH tghk.khH khgk.khK kggh.gkK hhg.hgKh Kkhgghgk Kghghhgk
+  002  [8+8+7+7+5+8+6+7]  Khghghgh Kkhg.khk KhggkgkK hghgghKh khgKhghk kghHghkk hKhhgghk
+  (only 2 distinct variants reachable after 100 attempts — target was 5)
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=8 · voicing=groove · accent=first ────────────
+  001  [8+8+8+8+8+8+8 ]  Kkhgkttg Skkggkkg Khhgkttg Skkgghgk Kgghtggh Skkggh.k Kgghggkg
+  002  [8+8+8+8+8+8+8 ]  Kgkk..th Skghhkgk Kgkkg.th Sgghkttg Kgkkg.th Sgghkttg Kggtkkgk
+  003  [8+8+8+8+8+8+8 ]  Kggkk.hg Skggh.kg Kggkkghg Skggh.kg Kggkk..g Sgkkgkgk Kgktgkkh
+  004  [8+8+8+8+8+8+8 ]  Kggt..hg Skgg.tgg Kggtgghg Skgghtgg Kggt...g Skgg.t.g Kkgghkgk
+  005  [8+8+8+8+8+8+8 ]  Kgghggkg Skggk.gk Kggh..kg Stgkkhkh Kggh..kg Stgkk.gk Kgkkggkk
+  006  [8+8+8+8+8+8+8 ]  Kkggh..t Skkgghgk Khgghggt Skkg.hgk Khggh.ht Skgt...g Kgkkghkk
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=8 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+5+5+5+1]  Kg..gSkk gkKg..gS gttkKg.. gSgttkKg ghgSgkgk Kg..gSgk tkKg..gS
+  002  [5+5+5+5+5+5+5+5+5+5+5+1]  Kkt.gSgk ktKkt.gS k.kgKkt. gSk.kgKk tggSkgkg KghggSkg kgKh..gS
+  003  [5+5+5+5+5+5+5+5+5+5+5+1]  Kk.gkSht kgKk.gkS gkkgKkgg kSgkkgKk .gkSgkkg KkggkSgk ktKkggkS
+  004  [5+5+5+5+5+5+5+5+5+5+5+1]  Ktt.gSgk kgKkttkS gttkKhtt kSgttkKh ttkSgttk KhttkSgt tkKhttkS
+  005  [5+5+5+5+5+5+5+5+5+5+5+1]  Kg..gSkg khKkgghS k.khKgkk gSkgkhKg kkgSkkhk KgkkgSk. gkKgkkgS
+  006  [5+5+5+5+5+5+5+5+5+5+5+1]  Kh..hSgk hkKh..hS gkhkKt.g hSg..kKh gghSkggk KhgghSk. gkKhgghS
+  (worst same-voice run in this block: 2)
+
+── beats=7 · subdivision=8 · voicing=groove · accent=groupings ────────────
+  (only 0 distinct variants reachable after 120 attempts — target was 6)
+  (worst same-voice run in this block: 0)
+
+── beats=8 · subdivision=2 · voicing=linear · accent=first ────────────
+  001  [2+2+2+2+2+2+2+2]  Kh Kg Sk Kh Hk Kg Hg Kg
+  002  [2+2+2+2+2+2+2+2]  Kg Sg Kg Hg Hg Sg Sk Hg
+  003  [2+2+2+2+2+2+2+2]  Kg Hk Hh Kh Hk Hk Sk Hh
+  004  [2+2+2+2+2+2+2+2]  Kg Hh Kh Kh Sk Sg Hg Sk
+  005  [2+2+2+2+2+2+2+2]  Sg Hg Kh Kh Sg Hk Sg Sk
+  006  [2+2+2+2+2+2+2+2]  Kh Kh Kh Sg Sg Hg Kg Kh
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=2 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+1       ]  Kg gk hS hk hg Hk hh gS
+  002  [5+5+5+1       ]  Sk .. hH g. kh Ht gg hK
+  003  [5+5+5+1       ]  Kh kh hK k. hk Kg .k hH
+  004  [5+5+5+1       ]  Kg .t hK hk hg Hk hk gK
+  005  [5+5+5+1       ]  Kg hg hK hg gh Kh .k gS
+  006  [5+5+5+1       ]  Sk gg kH kg gh Sk hh gS
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=2 · voicing=linear · accent=groupings ────────────
+  001  [2+6+3+5       ]  Kg Kh hk hh Sg kH ht gg
+  002  [5+2+5+4       ]  Kh .. kS hH gk .g Sk kg
+  003  [2+4+4+6       ]  Sg Kg .h Kh .k Kg hg kg
+  004  [6+2+3+5       ]  Kh g. .k Hh Kh gS hk hk
+  005  [6+2+2+6       ]  Sk h. .g Hg Hk Sg gh kg
+  006  [4+2+2+5+3     ]  Sg .t Hg Hg Hh .k kS gk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=2 · voicing=groove · accent=first ────────────
+  001  [2+2+2+2+2+2+2+2]  Kg Sk Kg Sk Kg Sk Kg Sg
+  002  [2+2+2+2+2+2+2+2]  Kg Sk Kg Sk Kg Sk Kg Sk
+  003  [2+2+2+2+2+2+2+2]  Kk Sk Kh Sk Kh Sk Kh Sk
+  004  [2+2+2+2+2+2+2+2]  Kg Sk Kg Sk Kg Sg Kg Sg
+  005  [2+2+2+2+2+2+2+2]  Kg Sk Kg Sk Kg Sk Kh Sk
+  006  [2+2+2+2+2+2+2+2]  Kg Sg Kg Sg Kg Sg Kg Sk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=2 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+1       ]  Kg gt kS kk gg Kg .t kS
+  002  [5+5+5+1       ]  Kg kt kS kk gk Kg kt kS
+  003  [5+5+5+1       ]  Kk g. hS tt kh Kk .. hS
+  004  [5+5+5+1       ]  Kg tt gS g. hg Kg tt gS
+  005  [5+5+5+1       ]  Kh .k gS t. .k Kh gk gS
+  006  [5+5+5+1       ]  Kt t. gS kg gk Kt tg gS
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=2 · voicing=groove · accent=groupings ────────────
+  001  [4+5+3+4       ]  Kt .g Sk tt kK gg Sh gk
+  002  [3+4+3+6       ]  Kk gS kk gK hg Sk kh gk
+  003  [6+5+5         ]  Kg kk .g Sg tk gK gt gk
+  004  [2+6+3+5       ]  Kg Sg tt gk Kh gS gg hg
+  005  [3+6+4+3       ]  Kg gS gg kk gK kt gS gk
+  006  [6+3+5+2       ]  Kg gk kg Sk gK gg kg Sk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=3 · voicing=linear · accent=first ────────────
+  001  [3+3+3+3+3+3+3+3]  K.g Hhg Hkh Hgh K.k Hkh Hkh Htg
+  002  [3+3+3+3+3+3+3+3]  Kgk K.g K.g H.k Hgh Hgk K.g Khg
+  003  [3+3+3+3+3+3+3+3]  K.h H.k Khg Khk K.g Kgh Khk Hgk
+  004  [3+3+3+3+3+3+3+3]  K.g K.g Hgh K.g H.g K.g K.g Khh
+  005  [3+3+3+3+3+3+3+3]  K.k H.k Hkg Kkh K.h K.k H.k Hkk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=3 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+4     ]  Kh. .kS kk. hSh hkh Khk .hK khg
+  002  [5+5+5+5+4     ]  Kg. kgS hk. hKg hgh Hkg kkS kgg
+  003  [5+5+5+5+4     ]  Kkg hgS hhk hSk khk Hhg .hS hkk
+  004  [5+5+5+5+4     ]  Khg khH tgk hSg hgg Hk. kgK khk
+  005  [5+5+5+5+4     ]  Khk khS k.. kSg kgh Kgh kgH hgg
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=3 · voicing=linear · accent=groupings ────────────
+  001  [8+8+8         ]  Kgg hhg hkH hkg khh kKh khk hgh
+  002  [3+3+5+3+6+4   ]  Khg K.g Kk. .gH kkS kh. kkH kkg
+  003  [8+5+6+5       ]  Kgk hk. khS hk. gHk hk. kHk khg
+  004  [4+4+8+8       ]  Kh. kSh hkS hkg kkh gHg hhk hgk
+  005  [3+4+7+7+3     ]  K.k Hhk kHk hk. kgH hkg khg Hhg
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=3 · voicing=groove · accent=first ────────────
+  001  [3+3+3+3+3+3+3+3]  Ktk Skh Kkg S.k K.g Skh Kgg Skk
+  002  [3+3+3+3+3+3+3+3]  Ktg S.g Kkg Skh Kkg Stk K.g Shk
+  003  [3+3+3+3+3+3+3+3]  Kkg Sgk K.g S.k K.g Sgk K.g Sgk
+  004  [3+3+3+3+3+3+3+3]  K.g Sgk K.g S.k Ktg Stk Ktg Sgg
+  005  [3+3+3+3+3+3+3+3]  Khg Stg K.g Stg K.g Stg Khg Skk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=3 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+4     ]  Kgk hgS h.t kKt gtg Shg tkK gtg
+  002  [5+5+5+5+4     ]  Kt. kgS kkh kKh ..g Sgk kgK tkk
+  003  [5+5+5+5+4     ]  Kg. .gS ttk hKg .kg Stt khK kgk
+  004  [5+5+5+5+4     ]  Kh. .hS kgg hKh ..h Skg ghK ggk
+  005  [5+5+5+5+4     ]  Kg. .gS ggk hKg ghg Sg. khK ggk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=3 · voicing=groove · accent=groupings ────────────
+  001  [5+7+4+8       ]  Ktt ggS kkg kgk Kg. gSk kgk kgk
+  002  [6+4+8+6       ]  Kgg hgg Sgg kKg ghk ..t Shg kgk
+  003  [3+7+5+3+6     ]  K.g Stt kkg kKg .kg Shk Kgg kgk
+  004  [7+5+4+8       ]  Kgh .kk gSk ggk Kh. gSg kkg ghk
+  005  [5+3+6+2+8     ]  Kg. .gS kgK gkk ggS kKg khg ghk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=4 · voicing=linear · accent=first ────────────
+  001  [4+4+4+4+4+4+4+4]  Kghg Hhgg Hg.g Kg.h Kh.k Hhgg Khgk Hgkk
+  002  [4+4+4+4+4+4+4+4]  Kgkh Hg.k Kh.g Kg.h Kh.g Kkgh Hkhk Hhgk
+  003  [4+4+4+4+4+4+4+4]  Kh.k Hgkg Khgg Kg.k Hg.g Kh.k Hkgh Kkgg
+  004  [4+4+4+4+4+4+4+4]  Kk.g Kgkg Kg.k Hhgk Hk.k Hkhk Hgkh Kgkg
+  005  [4+4+4+4+4+4+4+4]  Kg.h Hg.k Kgkg Khgh Ht.k Kgkh Khgk Hghk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=4 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+2 ]  Kghh gSkk .gKg kkhS k.kh Khhg hKgg kgKg
+  002  [5+5+5+5+5+5+2 ]  Kg.k hKgg hkHg k.hS h.kk Hh.. kSkh kkSg
+  003  [5+5+5+5+5+5+2 ]  Kgkk gHgg khKg hhkK hk.g Kg.k hKhg hhKk
+  004  [5+5+5+5+5+5+2 ]  Kgkh kKgh hgHk khhS hk.g Hghg kSh. .kHk
+  005  [5+5+5+5+5+5+2 ]  Kg.. hSg. .kKh khhK khgg Hgkg kHgg khSh
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=4 · voicing=linear · accent=groupings ────────────
+  001  [3+6+4+4+6+5+4 ]  K.hS kghk kSkg kKh. hKgh khgS h..g Khgk
+  002  [6+4+8+5+2+7   ]  Khgk khSg .gKk hghk hhKg .kkH kHhk hgkg
+  003  [5+5+2+4+3+6+7 ]  Kgkk hSk. khSk Hkkg HkgH kggk kShh kghk
+  004  [2+2+6+6+8+8   ]  KhSg Khgh kgHh gkhk Kgkg khhk Khgg khhg
+  005  [8+4+2+4+4+2+8 ]  Kkgg hhgk Kghg HkKg kgHg khHk Hkgk hkgh
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=4 · voicing=groove · accent=first ────────────
+  001  [4+4+4+4+4+4+4+4]  Ktkg Shkh Kggt Shgk Kg.t Sgkh Kgkt Shgk
+  002  [4+4+4+4+4+4+4+4]  Kg.k Shkg Kg.k Shkg Kggk Sgkg Kg.k Sggk
+  003  [4+4+4+4+4+4+4+4]  Khtg Sggk Khtg Shgk Kg.k Sgtk Kg.k Sggk
+  004  [4+4+4+4+4+4+4+4]  Kg.h Skkg Kgkg Skkg Kg.h Skkg Kg.h Skkh
+  005  [4+4+4+4+4+4+4+4]  Kggh Sggk Kg.h Sg.k Kg.h Skgk Khgh Sggk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=4 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+2 ]  Kkt. kSgt khKk thkS gtkh Kkt. kSgt khKk
+  002  [5+5+5+5+5+5+2 ]  Kggk gSgk ktKg ..gS ggkh Kggk gShg khKk
+  003  [5+5+5+5+5+5+2 ]  Ktgg tSgg hkKt ..tS kkgk Kt.. tSkk gkKg
+  004  [5+5+5+5+5+5+2 ]  Ktkk gSgg tkKt kkgS g.tk Ktkk gSg. tkKg
+  005  [5+5+5+5+5+5+2 ]  Kghg gSkh khKg tggS khkh Kggh gSkh khKk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=4 · voicing=groove · accent=groupings ────────────
+  001  [7+7+5+2+2+3+6 ]  Kgkg kkgS httk tkKg ttgS kKgS hkKh ttkk
+  002  [7+2+5+3+3+3+5+4]  Khk. .tgS kKgg hgS. kK.g S.kK g..g Sttk
+  003  [8+6+4+3+3+8   ]  Khth gkkg Stt. .kKg gtSk gKkg Sggk ggkk
+  004  [5+2+6+3+5+6+5 ]  Kttg gSgK hktt gSgk Ktt. gStk kgkK ghkk
+  005  [8+5+8+7+4     ]  Kkgg kk.g Sgkk tKkg gkkg gShg g.kh Kgkg
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=5 · voicing=linear · accent=first ────────────
+  001  [5+5+5+5+5+5+5+5]  Kkhkh Hgk.k Hg.hg Hg..h Hgk.g Hkghg Kk..g Hhkkg
+  002  [5+5+5+5+5+5+5+5]  Khkhk Kh..k Hhkkg Hgkkh Hg..k Kg.kg Hkhgh Kgghk
+  003  [5+5+5+5+5+5+5+5]  Kg.kh Hgkkh Kkhgh Hkhgk Khghh Kgk.g Hkhgg Kghkh
+  004  [5+5+5+5+5+5+5+5]  Khghk Kh.gh Kh..g Khkkg Hghhg Hhghk Hggkh Khkkh
+  005  [5+5+5+5+5+5+5+5]  Khgkk Hg.kh Khkgk Khkgk Hk.gk Kghkg Kk..h Kkhhg
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=5 · voicing=linear · accent=repeat (every=7) ────────────
+  001  [7+7+7+7+7+5   ]  Kggk. kgKgh k..hH kkh.. hKghg .kgHg k.hgk Kghgk
+  002  [7+7+7+7+7+5   ]  Kgg.. tgKkg kg.kH hg... kHghg .kgHg hhkkg Hkhhk
+  003  [7+7+7+7+7+5   ]  Kkhkk hgKgg hkgkK ghghh gSgkh khkSk hgkgk Khkhk
+  004  [7+7+7+7+7+5   ]  Kkghg kgKhh gkgkS kh..k hKgh. .khKh kk..h Hgkgh
+  005  [7+7+7+7+7+5   ]  Khkkh kgHhg k..hS hk..k hSkgh kghHg hkhgg Khghg
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=5 · voicing=linear · accent=groupings ────────────
+  001  [8+8+7+3+3+4+7 ]  Kggkh k.kSk hggkk hHkgk khhKg kSkhH k.kSh khgkh
+  002  [4+8+8+4+8+8   ]  Kk.gH kggkg kkSgh kk.hg HkgkK hgkhg khSkh khhgh
+  003  [8+2+5+7+7+3+8 ]  Kkhg. ..kSh Hgkkg Hhgkk .gHhk hghkH kgKhg hkkhk
+  004  [8+7+6+2+7+3+7 ]  Khggk khgHh kkhkh Hgkk. hKhSk hhkhg HhkHg hghkk
+  005  [4+6+2+3+8+8+6+3]  KhkhH kh..k HhKgk Hgghk khkHk hkkhk kHhg. khShg
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=5 · voicing=groove · accent=first ────────────
+  001  [5+5+5+5+5+5+5+5]  Kg.kg Skhtk Kggkg Skhkh Kgghg Skhtk Kgghg Skktg
+  002  [5+5+5+5+5+5+5+5]  Kghkg Sgkkh Kg.kg Sgkkh Kt..h Sgkkh Kg..g Sggtk
+  003  [5+5+5+5+5+5+5+5]  Kg.kg Sg..g Kh.kg Sg.hg Kg.kg Sg..g Kg.kg Stgkg
+  004  [5+5+5+5+5+5+5+5]  Kggkg Sgkhk Kg.kg Sgkhk Kgk.g Sgkhk Kgkhg Skkgk
+  005  [5+5+5+5+5+5+5+5]  Kg.kg Skgkg Kg.kg Sk.kg Kggkg Sk.kg Kggtg Sgtgk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=5 · voicing=groove · accent=repeat (every=7) ────────────
+  001  [7+7+7+7+7+5   ]  Kgtgg htSkg kkgkK gt... tSkgk kgkKg tg..t Sggtk
+  002  [7+7+7+7+7+5   ]  Kggtt kgStt gghkK ggt.k gSttg ghkKg gttkg Stthk
+  003  [7+7+7+7+7+5   ]  Kgkgt gkSkk ttkhK gkgtg gSkkt tkhKg kgtgg Sggkg
+  004  [7+7+7+7+7+5   ]  Kggh. .hSgk khgkK gghgg hSgkk .gkKh ghg.h Skggk
+  005  [7+7+7+7+7+5   ]  Kgtkk ggSgk ..hkK hgkkt gSgk. .hkKh gkktg Sgttk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=5 · voicing=groove · accent=groupings ────────────
+  001  [4+5+3+4+6+8+5+5]  Kg.kS hggkK gkShk hKgkg tgSgk k.hgk Khggt Sggtk
+  002  [4+8+2+8+4+7+7 ]  Kg.hS hkkgg hkKhS hkk.. hkKgg hSkg. kgkKt tkktg
+  003  [6+8+3+4+2+2+8+7]  Kkggt gShkt ggkhK .gSg. kKgSk Khghg ..gSg gkkgk
+  004  [8+6+3+6+3+5+7+2]  Kkgkk ggtSg kkgkK hgSgk ktkK. gSg.. gKgtk gghSg
+  005  [4+4+2+6+6+5+7+6]  Kg.tS ttkKg Sgkgg kKgkk .gSkk tkKgg hgtgS gkttk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=6 · voicing=linear · accent=first ────────────
+  001  [6+6+6+6+6+6+6+6]  Kkh.gh Hgghhk Kgk..h Hkgkkh Hkhggh Kkh..g Kghhgk Hghkgg
+  002  [6+6+6+6+6+6+6+6]  Kgh.kh Kggh.k Khhkhg Hggkgk Khgkhh Kgh.hg Kgg.hg Hggkgh
+  003  [6+6+6+6+6+6+6+6]  Kkgh.g Hgg.hg Hkhghk Hkgkgh Hkhhkh Hkkgkh Hgk..g Hkhggh
+  004  [6+6+6+6+6+6+6+6]  Khkhhg Hkghkg Khgk.h Hkkhkg Hgk.kh Kgghgh Hkhhgh Khkhgk
+  005  [6+6+6+6+6+6+6+6]  Kghkhg Hhkhgg Khg.kg Kkgh.g Hhk..g Hggkgh Hkg..g Hggkkg
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=6 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+5+3]  Khg.hK kghgSh hkgHkk hhKk.. hSkhgg Khk.gH ht.kKg khhSkh
+  002  [5+5+5+5+5+5+5+5+5+3]  KkggkH kg.kSg k.gHgh hkKgkh kKhgkh Kk.gkH hghhKk hkkHgh
+  003  [5+5+5+5+5+5+5+5+5+3]  KghggK k..hKh hggHg. khHggk hSghgh Hg.kgH khggHh gkgKkh
+  004  [5+5+5+5+5+5+5+5+5+3]  KhkkgS khkhHk .hkKgg hkKg.k hHggkk HggkkH h.khKk ..gKgg
+  005  [5+5+5+5+5+5+5+5+5+3]  KhkghH k.khHk k.gHg. kkHghg hKhk.g Kg..gH hkkhKg ..hKgh
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=6 · voicing=linear · accent=groupings ────────────
+  001  [4+8+8+7+6+4+3+8]  KhgkHg hkk..g Kkhhg. .gSkhk hhkHgg hghKkh hKggKh htghhk
+  002  [5+6+8+7+3+6+5+8]  KghkhS kh..kS hghghk hSghhg hkS.hK hkhkgS khghSh kghgkg
+  003  [8+6+4+4+6+6+8+6]  Khghk. .hKgkk hhSkhg HkhhKk h..kSg k.kgSh hkhhkh Kggkhg
+  004  [8+6+4+8+4+8+5+5]  Kkgkhg hhSgkk hkHggh Kkhhk. hkHgkh Kgghgh hgSh.. hShhgh
+  005  [5+6+5+4+6+8+8+6]  KhkkhH tgkhhS khkhKg .kHhgh kkHghh k.kgHg hgk.gk Hgkggh
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=6 · voicing=groove · accent=first ────────────
+  001  [6+6+6+6+6+6+6+6]  Kgkttg Sttkhk Kgkttg Sttkhk Kgkt.g Sttkhk Kgkttg Sggkgk
+  002  [6+6+6+6+6+6+6+6]  Kktt.g Skg..k Khttgg Skg..k Khttgg Shgttk Khtt.g Sgkggk
+  003  [6+6+6+6+6+6+6+6]  Kgtt.g Skgkkg Kgttgg Skgkkg Kgttgg Skgkkg Kgtt.g Skggtk
+  004  [6+6+6+6+6+6+6+6]  Ktgtkg Sggkgk Kgkk.g Sggkgk Kgkkgg Sggktk Kggt.g Skkgkk
+  005  [6+6+6+6+6+6+6+6]  Kghk.g Skhkkg Khkgkg Skhkkg Kgk.kg Skhgkg Khkgkg Sktggk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=6 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+5+3]  KgkkgS k.gkKg kkgSk. gkKgkk gSg..k KgkkgS ggtkKg kkgSgk
+  002  [5+5+5+5+5+5+5+5+5+3]  KghkgS h.tgKg .kgSh. tgKgtt gSggtg KgttgS gghgKg ttgSgk
+  003  [5+5+5+5+5+5+5+5+5+3]  Kg.tgS tkkgKg gtgShk kgKkgg hStkkg KhktgS tkkgKh ktgSgk
+  004  [5+5+5+5+5+5+5+5+5+3]  Kg.kgS h..kKg .kgSg. khKg.h gSggkh Kg.kgS ktgkKg gkgShk
+  005  [5+5+5+5+5+5+5+5+5+3]  Kg.kgS gghkKg .kgSg. khKggk gSgkkt Kg.kgS kgtkKg gkgSkk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=6 · voicing=groove · accent=groupings ────────────
+  001  [8+7+7+4+4+8+4+6]  Kgghgg tgSgg. kgkKgg kkggSg tkKgtg Shgghk kgKgtg Sggkgk
+  002  [8+4+7+8+5+8+8 ]  Khgghg ghSkkh Kkggkk gSkggk ktkKg. .gSkgg kkhkKg ghggkg
+  003  [6+8+8+3+8+3+7+5]  Kgghkg Skktgg hkKhtt .kggSk hKgttg kggSkh Kggtt. gSgkkg
+  004  [3+7+7+3+7+8+7+6]  KggSgh k.gkKg kk..gS .kKgk. ..gSgg hgghkK ghgghg Skggkk
+  005  [4+5+5+8+4+7+7+8]  Kg.hSh .kgKg. tkSkkg .kkgKg ghSkkt .kgKtt gkkgSt kkgghg
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=7 · voicing=linear · accent=first ────────────
+  001  [7+7+7+7+7+7+7+7]  Kkhhk.h Kkhhg.g Kkhk..h Kkh.ggh Hkkg.hg Kkg...h Hghk.gk Hkgkhhg
+  002  [7+7+7+7+7+7+7+7]  Kkghkgg Khg.k.g Hgkggkk Hhkkgkg Hgkghgk Hghgh.g Hhk.kgk Hghkhgh
+  003  [7+7+7+7+7+7+7+7]  Kkghhgh Kghhggk Hghkgkg Hgkhk.h Kgghkhg Hghk.hk Hhggkgk Khhkhhg
+  004  [7+7+7+7+7+7+7+7]  Kkh.kkg Hhkgkkg Hggkgkg Hghgk.g Hhkhkhk Kghkghg Khggkhk Hkgghgg
+  005  [7+7+7+7+7+7+7+7]  Kggh..k Hkh.khk Hhk.hkk Hkk.hgg Hkghkhk Hkk.ghg Kkg...g Khhggkh
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=7 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+5+5+5+1]  KkhhgHg ..kSkk. hKgkhkS hgkhSk. .gShk.k HggkkHk ..kHggk kHg.kgS
+  002  [5+5+5+5+5+5+5+5+5+5+5+1]  Kgk.hKg ..kKg.k kHhkghH gkhgHhk .gHgkhk Hgh.kKh k.gHg.k hKhk.hK
+  003  [5+5+5+5+5+5+5+5+5+5+5+1]  KkhghKh kggKhgh kHkhgkS k..kHg. kkHgh.g KhkghKh k.hKggh hKgkhhK
+  004  [5+5+5+5+5+5+5+5+5+5+5+1]  KgkkgSk k.hKggk hSgkhgK hggkKhk kgKgh.g Khk.hSk khgHg.. kHgkggK
+  005  [5+5+5+5+5+5+5+5+5+5+5+1]  KghghSg khkHkg. hKg..kH htghSkk hkSkk.g HkkgkSg .kkSh.. kShk.gS
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=7 · voicing=linear · accent=groupings ────────────
+  (only 0 distinct variants reachable after 100 attempts — target was 5)
+  (worst same-voice run in this block: 0)
+
+── beats=8 · subdivision=7 · voicing=groove · accent=first ────────────
+  001  [7+7+7+7+7+7+7+7]  Kggt.kk Skg.h.g Kggtgkk Skgghgg Kggt.kk Skgk..g Kggtgkk Sgtggkk
+  002  [7+7+7+7+7+7+7+7]  Kgkkghg Skkgghk Kgkk.hg Skkh.hk Kgkk.hg Skk..hk Kgkkghg Shgtgtk
+  003  [7+7+7+7+7+7+7+7]  Kkgkk.g Sggkghk Ktk..tg Sgg.kkg Ktkg.tg Sgg.kkg Ktkggtg Sttkgkk
+  004  [7+7+7+7+7+7+7+7]  Kgghkkg Sgkk.gk Kgg.kkg Sgkkggk Khtk..t Sgkk.gk Khtkggt Skkggkg
+  005  [7+7+7+7+7+7+7+7]  Kggtt.g Sgkk.gk Kggtthg Sgkk.gk Kghtthg Sggkttk Kggtthg Skkggtk
+  006  [7+7+7+7+7+7+7+7]  Khkkhgg Skgk.gk Khkk.gg Skgkghk Khkkhgg Skgkggk Khkkhgg Sggkkgk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=7 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+5+5+5+1]  KgkkgSk khkKh.. hSkkhkK h..hSk. hkKhtgh SkkhkKh ..hSkkh kKhgghS
+  002  [5+5+5+5+5+5+5+5+5+5+5+1]  KhhggSg ttkKhgg hShggkK tgtgSh. tkKtgtg Stt.kKh g.hSttg kKhg.hS
+  003  [5+5+5+5+5+5+5+5+5+5+5+1]  KgghgSg .tkKg.k gShkkhK ggkgStk khKggkg ShtkhKg .kgShkk hKg.tgS
+  004  [5+5+5+5+5+5+5+5+5+5+5+1]  KhkkgSh tgkKtt. gSht.kK tt.gSht gkKhggh ShtgkKh ..hSggh kKhgghS
+  005  [5+5+5+5+5+5+5+5+5+5+5+1]  Kg.hgSt tkhKkgg hShkktK g..tShk ttKgkkg ShkktKk hkgShkk tKktggS
+  006  [5+5+5+5+5+5+5+5+5+5+5+1]  Kg.tgSk kgkKg.t gSkktkK hgghSht hkKh..h Sgh.kKh ..hSg.g kKhghgS
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=7 · voicing=groove · accent=groupings ────────────
+  001  [8+8+8+8+6+8+6+4]  Kgghkgt kSggt.. .gKgghk .tkSggt ..hgKhg ..gShkk g..gKhg ..gSghk
+  (only 1 distinct variants reachable after 120 attempts — target was 6)
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=8 · voicing=linear · accent=first ────────────
+  001  [8+8+8+8+8+8+8+8]  Khggkkgk Khhgkhkk Hghhk.kh Hkhgkkgh Kghk...k Hkhgh.gh Hkhkk..h Kghghggk
+  002  [8+8+8+8+8+8+8+8]  Khgkgkkh Khggkghk Khggkkhk Khkkh..k Hgkgkgkh Hkhh.kgh Hkghkghh Khghkhhk
+  003  [8+8+8+8+8+8+8+8]  Kkhhk.gk Khgghghk Hhgkhhkh Khhkk.gk Hkhkhghh Kkhghghk Kghgghhk Hkggkgkh
+  004  [8+8+8+8+8+8+8+8]  Kgkgkkgh Kggkgghk Hggkkhkh Kghk..hk Hhkgk..h Khgk.ggk Hhkgkkgh Hkhkghgh
+  005  [8+8+8+8+8+8+8+8]  Kgkhkggh Khkgh.kh Khhgkkgk Hghkkgkh Htgk..kh Htghk.kh Hghkgkkh Khghkggk
+  006  [8+8+8+8+8+8+8+8]  Kghghhgk Hghg.kkh Hgkhggkh Kggh..kk Hkhghg.h Hkhggkkh Hkhh.kkh Kgghgghk
+  007  [8+8+8+8+8+8+8+8]  Kgghgkkh Hghhg.kh Hgkhkhgh Hgkhghgh Hggkghgh Hgkgh.kh Khhg.kgk Khhkhgkk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=8 · voicing=linear · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+5+5+5+5+4]  KgkkgHg. .gKgkggH hkhhKhg. hSkggkSh .kgHhk.h Hk..kHgh hgKgk.kH hgkhSkgh
+  002  [5+5+5+5+5+5+5+5+5+5+5+5+4]  KhhggKhk kgHk..hK h..kHgk. kHhkkgSk kghKh..k HkhkkShh tgHghgkH ht.hKhgh
+  003  [5+5+5+5+5+5+5+5+5+5+5+5+4]  Kgk.hShk khSg..gK k.hkSgkk hSkhkgSh k.gKghgk Kg.kgHhk hkHgkggH hgkkShkh
+  004  [5+5+5+5+5+5+5+5+5+5+5+5+4]  KghgkHgk khHg.khK k..gSk.k hKhggkHk hgkShhgh KkhgkHgk khSgh.hK k..hShhk
+  005  [5+5+5+5+5+5+5+5+5+5+5+5+4]  Kh..gSk. hgKghkgH hkkhHgkh hSgkkhKh kkhKh..k Hg..hHg. .gSkhggH hg.kHgkh
+  006  [5+5+5+5+5+5+5+5+5+5+5+5+4]  Kk..hKhh gkSh.khH gk.hKhg. hKg.khKh kghKhggk HhgkgHkh khHgk.hK hgkkHkhh
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=8 · voicing=linear · accent=groupings ────────────
+  (only 0 distinct variants reachable after 120 attempts — target was 6)
+  (worst same-voice run in this block: 0)
+
+── beats=8 · subdivision=8 · voicing=groove · accent=first ────────────
+  001  [8+8+8+8+8+8+8+8]  Kgkggttg Sgkggttk Kgkg.ttg Sgkg.ttk Kgkggttg Sttkkggk Kgkk..tk Skhkkgkk
+  002  [8+8+8+8+8+8+8+8]  Kgghg..g Sggkgktk Kgghgghg Skkggh.k Kgghggkg Skkhg.hk Kggh...g Sgkkgtgk
+  003  [8+8+8+8+8+8+8+8]  Khhggkkg Sgkkgkkh Khhkgkkg Sgkkgkkh Khhggkkg Sgkkgkkh Kgghtggk Sggkthtk
+  004  [8+8+8+8+8+8+8+8]  Kggttk.g Skkgkkgk Ktggttgg Skkgkkgk Ktggttgg Skkgkkgk Khggttgg Skhkgkkg
+  005  [8+8+8+8+8+8+8+8]  Kggkggtg Skgk..kh Kggkg.tg Skgkggkh Kggkg..g Skgkt.kh Kkgkggtg Skghkkgk
+  006  [8+8+8+8+8+8+8+8]  Kgkkg..g Sttkk.gk Kgkk...g Sttkk.gk Kgkkg..g Sttkkggk Kgkkgghg Sgkkgghk
+  007  [8+8+8+8+8+8+8+8]  Kgghgghg Skkg.hgg Kggh...g Skkg.kgg Kgghg.hg Skkg.hgg Kgghgghg Sggkgtkk
+  008  [8+8+8+8+8+8+8+8]  Kgghkkgg Skggkkgk Kggk.ttg Skggkkgk Kgghgttg Skggkkhk Kggkgttg Sktgghgk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=8 · voicing=groove · accent=repeat (every=5) ────────────
+  001  [5+5+5+5+5+5+5+5+5+5+5+5+4]  KgghgSg. khKg..gS gghkKgh. gSgghkKg hggSggkh Kk..gShg khKkh.gS kkgkKgkg
+  002  [5+5+5+5+5+5+5+5+5+5+5+5+4]  KkttkSg. tkKhttkS g.tkKgtt kSg.khKk ttkSg.kh Kk.tkShg khKhttkS g.khKgkg
+  003  [5+5+5+5+5+5+5+5+5+5+5+5+4]  KtkkgSkk hkKt.kgS gttkKgkk gSgttkKt kkgSgttk KtkkgSgt tkKtgkgS kkgkKggk
+  004  [5+5+5+5+5+5+5+5+5+5+5+5+4]  KggkgSkk gkKtgkgS kktkKt.k gSkkgkKg ktgSkkgk KgttgSkk gkKgghgS kkgkKggk
+  005  [5+5+5+5+5+5+5+5+5+5+5+5+4]  KghggSgk gkKgh.gS gkgkKgh. gSg..kKg tggSgktk KghggSgt .kKghggS gkgkKggk
+  006  [5+5+5+5+5+5+5+5+5+5+5+5+4]  KgkkgSgg tgKgkkgS g.tgKgkk gSggtgKg kkgSg.tg KgkkgSg. tgKgktgS ggtgKttk
+  007  [5+5+5+5+5+5+5+5+5+5+5+5+4]  KggtgSh. .kKg.tgS h.gkKggh gSh..kKg gtgSh..k KgghgSh. .kKg..gS h..kKgtk
+  008  [5+5+5+5+5+5+5+5+5+5+5+5+4]  KgttgSgg kgKgttgS ggkgKgtt gSg.kgKg ttgSggkg KgtkgSg. kgKgghgS kgkhKggk
+  (worst same-voice run in this block: 2)
+
+── beats=8 · subdivision=8 · voicing=groove · accent=groupings ────────────
+  (only 0 distinct variants reachable after 160 attempts — target was 8)
+  (worst same-voice run in this block: 0)
+
+# Total samples generated: 1492
+# Rejected (duplicate or degenerate grouping): 1208
+# Worst same-voice run across entire corpus: 2
+# Run cap target: 2 (max 2 same-voice in a row)
+# ✓ CAP HELD across every sample

@@ -1,0 +1,623 @@
+CHORD AND MELODY GENERATION SYSTEM — COMPLETE DOCUMENTATION
+============================================================
+
+This document describes the complete chord progression generation and melody
+creation systems used in the Melodic Patterns mode. It covers the theoretical
+foundations, data structures, algorithms, and design decisions.
+
+
+================================================================================
+PART 1: CHORD SYSTEM
+================================================================================
+
+
+1.1 CHORD TYPE CATALOG
+----------------------
+
+Chord types are defined per-EDO in edoData.ts. Each chord type has:
+  - id:     unique string identifier (e.g., "maj", "submin_h7")
+  - name:   full descriptive name (e.g., "Supermajor Harm7")
+  - abbr:   short display label (e.g., "Sup H7")
+  - steps:  array of EDO step offsets from root (e.g., [0, 11, 18, 25])
+  - third:  the step value of the chord's third (for quality classification)
+
+UNIVERSAL CHORDS (all EDOs):
+  Triads:     maj, min, dim, aug, sus2, sus4
+  7th chords: maj7, dom7, min7, minmaj7, halfdim7, dim7, augmaj7, aug7, dom7sus4
+
+31-EDO EXTENDED (7 distinct third sizes: 7,8,9,10,11 steps):
+  Triads:     submin (7/6), neutral (11/9), supermaj (9/7)
+  7ths:       submin_h7, submin_m7, submin_M7      (subminor + various 7ths)
+              min_h7                                 (minor + harmonic 7th)
+              neu_h7, neu_m7, neu_M7                (neutral + various 7ths)
+              harm7, maj_n7                          (major + harmonic/neutral 7th)
+              sup_h7, sup_m7, sup_M7                (supermajor + various 7ths)
+
+41-EDO EXTENDED (7 distinct third sizes: 9,10,11,12,13,14,15 steps):
+  Triads:     submin, min (32/27), clmin (6/5), neutral (11/9),
+              clmaj (5/4), maj (81/64), supermaj (9/7),
+              dim_lo, dim_hi, aug_lo, aug_hi, sus2, sus4
+  7ths:       18 chord types covering every triad × 7th combination
+
+GENERIC EDO FALLBACK:
+  For unsupported EDOs, the system computes interval maps and generates
+  submin, neutral, supermaj triads if the relevant third sizes exist
+  within the EDO's interval structure.
+
+
+1.2 HARMONY POOL SYSTEM
+------------------------
+
+The chord pool is built from 14 selectable harmony categories, each
+contributing a set of (root, type) entries.
+
+CATEGORY ARCHITECTURE:
+
+  Layer: DIATONIC (always available)
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │ "functional"  Major diatonic: I, ii, iii, IV, V, V7, Imaj7,       │
+  │               ii7, IVmaj7, iii7, vi, vi7                          │
+  │               Minor diatonic: i, i7, ii°, III, iv, v, VI,         │
+  │               VII, VII7, V7, III7, iv7                             │
+  │               Tonality filter: major-only, minor-only, or both     │
+  │                                                                     │
+  │ "modal"       iv, iv7 (minor plagal in major)                      │
+  │               bVII, bVII7 (Mixolydian)                             │
+  │               bVI, bVImaj7 (Aeolian)                               │
+  │               bIII, bIIImaj7 (borrowed)                            │
+  │               bII, bII7 (Phrygian)                                 │
+  │               #IV, #IV7 (Lydian, when EDO has #4)                  │
+  │               VI, VI7 (Dorian)                                     │
+  │               IV7 (Mixolydian of IV)                               │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  Layer: CHROMATIC (secondary functions)
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │ "secdom"      V/ii, V/iii, V/IV, V/V, V/vi                        │
+  │               Each is a dom7 a P5 above its target                 │
+  │                                                                     │
+  │ "secdim"      vii°/ii, vii°/iii, vii°/IV, vii°/V, vii°/vi        │
+  │               Each is a dim/dim7 a M7 above its target             │
+  │                                                                     │
+  │ "tritone"     TT/I (bII dom7), TT/V (b5 dom7), TT/ii (b6 dom7)   │
+  │                                                                     │
+  │ "neapolitan"  bII maj, bII maj7                                    │
+  │                                                                     │
+  │ "mediants"    III maj, biii min, bvi min, VI maj                   │
+  │               Chromatic third-related chords                        │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  Layer: EXTENDED (chromatic saturation)
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │ "chromDia"    Every chord type on ~12 chromatic roots               │
+  │               (0, b2, 2, b3, 3, 4, b5, 5, b6, 6, b7, 7)          │
+  │               Xen types excluded unless their family is enabled     │
+  │                                                                     │
+  │ "chrom31"     Every chord type on every EDO root (0 to edo-1)      │
+  │               Same xen filtering                                    │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  Layer: XENHARMONIC (microtonal chord qualities)
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │ "xen_submin"  Subminor triads & 7ths on 11 diatonic/chromatic      │
+  │ "xen_neutral" Neutral triads & 7ths on same roots                  │
+  │ "xen_supermaj" Supermajor triads & 7ths                            │
+  │ "xen_clmin"   Classic minor triads & 7ths (41-EDO)                 │
+  │ "xen_clmaj"   Classic major triads & 7ths (41-EDO)                 │
+  │                                                                     │
+  │ Xen roots: 0, M2, M3, P4, P5, M6, m7, b2, m3, b5, m6            │
+  │ (11 roots × N chord types per family)                              │
+  └─────────────────────────────────────────────────────────────────────┘
+
+POOL CONSTRUCTION:
+  1. Build each layer's entries tagged with their HarmonyCategory
+  2. Merge enabled layers
+  3. Deduplicate by (root, type) key
+  4. Filter by minimum chord note count
+  5. Apply roman numeral overrides (V/ notation, TT/ notation)
+
+
+1.3 PROGRESSION GENERATION (MARKOV CHAIN)
+------------------------------------------
+
+Three modes:
+
+POOL MODE:
+  Returns all unique chords in the pool. No sampling. Used by the
+  melody-first chord scorer to evaluate all candidates.
+
+RANDOM MODE:
+  Uniform selection from the pool with soft common-tone preference.
+  70% of the time, prefers chords sharing at least one PC with the
+  previous chord. Creates smoother transitions without functional logic.
+
+FUNCTIONAL MODE:
+  Markov chain with transition tables encoding common-practice tendencies.
+
+  TRANSITION TABLE STRUCTURE:
+    Map<entryKey, { target: entryKey, weight: number }[]>
+
+    Each chord maps to a list of possible next chords with weights.
+    Weight computation: W(base, layer) = base × 3 when the layer is enabled.
+    This biases the chain toward enabled categories without blocking others.
+
+  DIATONIC TRANSITIONS (always defined):
+    I  → ii(3), IV(3), V(2), V7(2), vi(2), iii(1)
+    ii → V(4), V7(4), I(1)
+    iii → vi(3), IV(3), ii(2)
+    IV → V(3), V7(3), I(2)
+    V  → I(5), Imaj7(2), vi(2)
+    V7 → I(5), vi(2)
+    vi → ii(3), IV(3), V(1)
+
+    Minor equivalents:
+    i  → iv(3), ii°(2), V7(2), III(2), VI(1)
+    ii° → V(4), V7(4)
+    III → VI(3), iv(3), VII(2)
+    iv → V(3), V7(3), i(2)
+    V  → i(4), i7(2)
+    VI → ii°(3), iv(3), VII(2)
+    VII → III(3), i(3), VI(2)
+
+    Cross-tonality bridges: vi→ii°, vi→iv, i→IV, i→V
+
+  MODAL TRANSITIONS:
+    Resolutions: bVII→I(4), bVI→bVII(3)/V(2), bIII→IV(3), iv→I(3)
+    Approaches:  I→bVII(3)/bVI(2)/iv(2), IV→iv(2)/bVII(2)
+                 V→bVI(2), vi→iv(2), i→bVII(3)/bVI(2)/bIII(2)
+
+  CHROMATIC TRANSITIONS:
+    Secondary dominants resolve to their targets (weight 5×W).
+    Resolution targets approach the next secondary dominant (weight 4×W).
+    Chain pattern: V/vi→vi→V/ii→ii→V/V→V→I
+    Tritone subs resolve down a half step: TT/I→I, TT/V→V
+    Neapolitan resolves to V.
+
+  XENHARMONIC TRANSITIONS:
+    Each xen chord substitutes for its nearest diatonic relative:
+      submin/clmin → substitutes for min
+      supermaj/clmaj → substitutes for maj
+      neutral → substitutes for maj
+
+    Diatonic → xen substitute: weight 15 when enabled (competes equally
+    with strongest functional transitions like V→I at weight 15).
+
+    Xen chord inherits its diatonic relative's resolution targets at
+    70% weight. So supermajor-I resolves like I but slightly weaker.
+
+  CHAIN EXECUTION:
+    1. Start on I (major), i (minor), or random choice of both
+    2. For each position, look up transitions from current chord
+    3. If transitions exist, weighted random selection
+    4. If no transitions, random pick from entire pool
+    5. Store roman numeral with any V/ or TT/ overrides
+
+
+1.4 MELODY-FIRST CHORD SCORING
+-------------------------------
+
+When the melody is fixed and chords are being found, the system uses a
+multi-factor scoring function instead of simple overlap filtering.
+
+SCORING FACTORS:
+
+  1. COVERAGE (weight 3.0)
+     How well does the chord-melody overlap fit the requested range?
+     In-range: score 1.0
+     Out-of-range: soft linear falloff from the range midpoint
+
+  2. GUIDE-TONE MATCH (weight 2.0)
+     Does the melody contain the chord's 3rd? (+0.5)
+     Does the melody contain the chord's 7th? (+0.5)
+     Guide tones define chord identity. A melody that hits both the 3rd
+     and 7th of a chord will strongly outline that harmony.
+
+  3. VOICE-LEADING (weight 1.5)
+     From the previous chord (if available):
+       Common tones: +0.3 per shared PC
+       Half-step connections: +0.2 per PC within 1-2 EDO steps of a prev PC
+     Smooth voice-leading creates progression continuity.
+
+  4. FUNCTIONAL PROBABILITY (weight 1.0)
+     Diatonic roots (0, 2, M3, 4, 5, 6, 7): score 0.8
+     Non-diatonic roots: score 0.4
+     Mild preference for harmonically grounded chords.
+
+  5. IDENTITY STRENGTH (weight 0.5)
+     Triads and 7ths (3-5 PCs): score 1.0
+     Larger/smaller chords: score 0.6
+     Clear chord identities are preferred over ambiguous clusters.
+
+SELECTION:
+  All pool chords are scored. Top 85% tier (relative to the highest score)
+  are eligible. Random selection within the tier provides variety while
+  ensuring quality.
+
+
+1.5 ROMAN NUMERAL ANALYSIS
+---------------------------
+
+Every chord receives a roman numeral label via toRomanNumeralParts():
+
+  1. Compute root's scale degree relative to the tonic
+  2. Determine quality from chord type (major/minor/dim/aug/neutral/etc.)
+  3. Apply case: uppercase for major-quality, lowercase for minor-quality
+  4. Add accidentals (b, #) for non-diatonic roots
+  5. Add quality suffix (°, +, etc.)
+  6. Override with V/ or TT/ notation when secondary function is detected
+
+getSecDomLabel() detects secondary dominants by checking if a dom7 chord's
+root is a P5 above any diatonic scale degree.
+
+
+================================================================================
+PART 2: MELODY SYSTEM
+================================================================================
+
+
+2.1 NOTE CLASSIFICATION
+------------------------
+
+Every pitch class in the EDO is classified into one of five categories
+relative to a chord (or absolute relative to tonic when no chord context).
+
+CATEGORY HIERARCHY:
+
+  ct          Chord tone — member of the current chord's PC set
+  diatonic    Stable diatonic — 0 accidentals from nearest natural degree
+              (natural tensions: 9, 11, 13)
+  chromatic   Tense diatonic — 1 accidental (b9, #11, b13, etc.)
+  micro       Stable microtonal — 2+ accidentals BUT approximates a
+              7-limit or 11-limit JI consonance
+  microTense  Tense microtonal — 2+ accidentals, NOT close to any
+              low-limit JI ratio
+
+ACCIDENTAL COUNT:
+  Determined by the diatonic naming system. For each EDO step, the system
+  finds the nearest natural degree (1-7) and counts how many sharps or
+  flats are needed to reach it. The augmented unison (A1) defines the
+  sharp/flat step size.
+
+  12-EDO: A1=1, so single sharps/flats cover all chromatic notes.
+          No notes have 2+ accidentals. micro/microTense categories empty.
+  31-EDO: A1=2, so bb/## steps exist. Rich micro/microTense content.
+  41-EDO: A1=3, even more microtonal distinctions.
+
+JI-BASED MICROTONAL CLASSIFICATION:
+  For notes with 2+ accidentals, the system checks proximity to known
+  consonant JI ratios. Tolerance: half an EDO step.
+
+  Stable microtonal (7-limit consonances):
+    8/7   231¢   septimal whole tone
+    7/6   267¢   subminor third
+    9/7   435¢   supermajor third
+    7/5   583¢   septimal tritone (lesser)
+    10/7  617¢   septimal tritone (greater)
+    14/9  765¢   subminor sixth
+    12/7  933¢   supermajor sixth
+    7/4   969¢   harmonic seventh
+
+  Stable microtonal (11-limit consonances):
+    12/11 151¢   neutral second
+    11/9  347¢   neutral third
+    11/8  551¢   undecimal tritone
+    16/11 649¢   undecimal diminished fifth
+    18/11 853¢   neutral sixth
+    11/6  1049¢  neutral seventh
+
+  Theoretical basis: odd-limit consonance (Partch, Tenney, Erlich).
+  The odd limit of a ratio p/q is max(p,q) with powers of 2 factored out.
+  Lower odd-limit = more consonant. 7-limit intervals appear naturally in
+  the harmonic series (partials 7, 9, 14) and are sung without effort in
+  barbershop harmony and blues. 11-limit intervals have a distinctive
+  "neutral" quality that is perceptually stable.
+
+  isStableMicro(relStep, edo):
+    cents = (relStep / edo) * 1200
+    tolerance = (1200 / edo) / 2
+    return any(|cents - target| <= tolerance for target in STABLE_MICRO_CENTS)
+
+
+2.2 CATEGORY WEIGHTING
+------------------------
+
+The unified tension model combines three forces into a single stability
+value that shapes all category weights:
+
+INPUTS:
+  metric weight (posWeight): 0-1, from rhythm generator or default phrase weights
+  phrase arc (arcStability): 0-1, from segment position in the progression
+  bias: 0 (inside/stable) or 1 (outside/tense), user-controlled
+
+COMPUTATION:
+  stability = posWeight * 0.4 + arcStability * 0.3 + (1 - bias) * 0.3
+
+  Range: ~0.1 (maximum tension) to ~0.9 (maximum stability)
+
+WEIGHT APPLICATION:
+  ct:       baseWeight * (1 + stability * 3.0)     — range 1.3x to 3.7x
+  diatonic: baseWeight * (1 + stability * 1.0)     — mild stable boost
+  others:   baseWeight * (1 + (1-stability) * 1.5) — boosted when unstable
+
+The baseWeight for each category comes from the INSIDE_WEIGHT / OUTSIDE_WEIGHT
+tables interpolated by bias:
+  INSIDE:  ct=1.0, diatonic=0.30, chromatic=0.12, micro=0.06, microTense=0.02
+  OUTSIDE: ct=0.05, diatonic=0.12, chromatic=0.30, micro=0.70, microTense=1.0
+
+This means:
+  - Strong beats in opening segments with Inside bias: CTs dominate completely
+  - Weak beats in middle segments with Outside bias: outermost categories dominate
+  - Everything in between: smooth interpolation
+
+
+2.3 FOUR-PASS MELODY GENERATION
+---------------------------------
+
+randomMelodyWithAngularity() generates melodies through four sequential passes.
+
+
+PASS 1: ROLE ASSIGNMENT
+
+Metric weights determine which positions are targets vs connectors.
+
+  Input: metric weights array (from rhythm generator or default)
+  Output: boolean array isTarget[i]
+
+  Target fraction:
+    Without approach/enclosure: 40% of positions are targets
+    With approach/enclosure: 25% (to leave gaps for connector strategies)
+    Minimum: 2 targets (first + last position always targets)
+
+  If too many targets with approach/enclosure enabled, demote weakest
+  interior targets by metric weight until target count is within limit.
+
+
+PASS 2: TARGET GENERATION
+
+For each target position, select a pitch class via weighted random choice.
+
+  WEIGHT FACTORS:
+    1. Category weight (from unified tension model, see 2.2)
+    2. Resolution pull: last position gets 2.5x CT boost
+    3. Cross-segment voice-leading:
+       Last position + next chord known:
+         Half-step from next chord's CT: 3x boost
+         Common tone with next chord: 2x boost
+    4. Guide-tone awareness: first target prefers 3rds/7ths (1.8x boost)
+       when voice-leading from previous segment
+
+  STEPWISE CONSTRAINT:
+    When stepwise mode is on (angularity < 0.5):
+      Within leapThreshold EDO steps: weight *= 1/(1+dist)
+      Beyond leapThreshold: weight *= exp(-(dist - threshold) * 2.5)
+
+    leapThreshold = max(2, edo/7) ≈ one diatonic step
+    This is exponential decay, not a hard cutoff. Steps are strongly
+    preferred but occasional expressive leaps can occur (~8% chance at
+    1 step beyond threshold, ~0.7% at 2 beyond).
+
+  CONTOUR SHAPING:
+    Five shapes: arch, descending, ascending, valley, plateau
+
+    contourBias(shape, position, length):
+      arch:       rise then fall (±0.7)
+      valley:     fall then rise (±0.6)
+      ascending:  steady rise easing off (0.5 → 0.3)
+      descending: steady fall (−0.5 → −0.3)
+      plateau:    rise, hold, descend (0.5, 0, −0.5)
+
+    CROSS-SEGMENT ARC (when totalSegments >= 3):
+      Opening segments (0-33%): ascending, arch
+      Middle segments (33-67%): arch, plateau, ascending
+      Closing segments (67-100%): descending, valley, arch
+
+    Contour bias multiplies direction-matching weights by
+    1 + |bias| * 1.5, and direction-opposing weights by
+    max(0.15, 1 - |bias| * 0.8).
+
+  POOL DEPLETION:
+    When allowRepeats=false and the target pool is exhausted,
+    falls back to allowing repeats. Never falls off into random.
+
+
+PASS 3: CONNECTOR FILLING
+
+Fills gaps between targets using probabilistic strategy selection.
+
+  STRATEGY SELECTION:
+    Eligibility is computed per gap:
+      Motivic:   cell exists, no leaps in stepwise mode, cell fits in gap
+      Scalar:    targets are close in PC space (dist <= gapLen + 2)
+      Enclosure: enabled, chord context exists, gap >= 2
+      Approach:  enabled, chord context exists, gap >= 1
+      Free fill: always available
+
+    Weights:
+      Scalar:    4.0 (highest — most natural connector)
+      Motivic:   3.0 × (1 - bias * 0.3)
+      Enclosure: 2.5
+      Approach:  2.0
+      Free fill: 2.0
+
+    Random selection from weighted strategies per gap.
+    Failed strategy falls through to free fill.
+
+  STRATEGY 0: MOTIVIC REPETITION
+    Captures an interval cell from the first filled gap (3-4 intervals).
+    Attempts exact transposition, then inversion, in subsequent gaps.
+    In stepwise mode, cells containing intervals > leapThreshold are skipped.
+    Remainder filled with fillSmooth toward next target.
+
+  STRATEGY 1: SCALAR PASSING FILL
+    When targets are close, fills with consecutive scale steps.
+    Uses nextScaleStep() to walk through the enabled PC pool in order.
+    Checks that each step is in an enabled category and not already used.
+    Captures a motivic cell from successful scalar fills.
+
+  STRATEGY 2: ENCLOSURE
+    Places upper + lower neighbor of a target at gap boundaries.
+    Target selection: 75% next target, 25% previous target.
+    Neighbor range: up to leapThreshold EDO steps (diatonic neighbors,
+    not just chromatic).
+    Remainder filled with fillSmooth.
+
+  STRATEGY 3: APPROACH NOTE
+    Single chromatic/diatonic neighbor placed at the last gap position
+    (immediately before the next target).
+    Remainder filled with fillSmooth.
+
+  STRATEGY 4: FREE FILL
+    Weighted random with tension-release shaping.
+    CT after tension, tension after CT (tensionWeight function).
+    Stepwise: exponential decay on interval size.
+
+  fillSmooth():
+    Walks from prevPc toward targetPc using scale steps.
+    Falls back to fillFree when the scale walk can't make progress.
+    On the last position, checks interval to afterPc (the next target)
+    and takes an extra step toward it if needed to prevent boundary leaps.
+
+  fillFree():
+    Weighted random from the pool with category weighting and stepwise
+    constraint. Pool depletion fallback: allows repeats if pool exhausted.
+    If all weights are zero, picks the closest available note.
+
+
+PASS 4: OCTAVE PLACEMENT
+
+Converts pitch classes to absolute pitches with register awareness.
+
+  pickOctave(prev, pc, edo, angularity):
+    Considers octaves -1, 0, +1 relative to the EDO.
+    angularity < 0.1: deterministic closest octave (smallest interval).
+    angularity > 0.1: weighted by smooth-vs-angular preference.
+      smooth = 1/(1 + normInterval * 4)  — sharply prefers close
+      angular = normInterval + 0.1       — prefers far
+      weight = smooth * (1-angularity) + angular * angularity
+
+  CONTOUR-AWARE NUDGING:
+    Applies in ALL modes (including stepwise).
+    When contour bias wants a direction and the chosen octave goes the
+    opposite way:
+      Stepwise: try alternate octave ONLY if interval stays within
+                leapThreshold. Prevents register-flatness without leaps.
+      Leap mode: try alternate octave if within 1.5 octaves of center.
+
+  REGISTRAL PULL:
+    After 3 notes, if the current pitch drifts more than 1.2 octaves
+    from the phrase center, pull toward a closer octave.
+    Center is the running average of the first 4 pitches.
+
+  LEAP RECOVERY:
+    After a leap (interval >= leapThreshold), prefer the opposite
+    direction for the next note. If the natural octave continues in
+    the same direction, try flipping to the other octave if it creates
+    contrary motion and stays within 2x leapThreshold.
+
+
+2.4 CROSS-SEGMENT VOICE-LEADING
+---------------------------------
+
+The melody system creates continuity across segments:
+
+  ENTRY (first note of segment):
+    Guide-tone bonus: 1.8x weight for 3rds and 7ths of the chord
+    when prevMelodyEnd is available. Creates smooth connections like:
+    3rd-of-ii → 7th-of-V (half-step resolution).
+
+  EXIT (last note of segment):
+    When nextChordPcs is available:
+      Half-step from any next CT (1-2 EDO steps): 3x weight boost
+      Common tone with next chord (0 steps): 2x weight boost
+    Creates natural voice-leading preparations.
+
+  OCTAVE CONTINUITY:
+    First note of each segment uses pickOctave with reduced angularity
+    (capped at 0.3) to stay close to the previous segment's ending pitch.
+
+
+2.5 RHYTHM INTEGRATION
+------------------------
+
+The rhythm system feeds into melody generation at two points:
+
+  METRIC WEIGHTS → TARGET ASSIGNMENT (Pass 1):
+    High-weight positions become targets (get CTs on strong beats).
+    Low-weight positions become connectors (get passing tones).
+
+  METRIC WEIGHTS → UNIFIED TENSION MODEL (Pass 2):
+    posWeight (0-1) contributes 40% to the stability calculation.
+    Strong beats pull toward CTs. Weak beats allow more color.
+
+  RHYTHM TIMING → PLAYBACK:
+    RhythmTimingData provides per-note durations as fractions of the bar.
+    Playback uses these for variable note spacing instead of equal gaps.
+    Total bar duration = noteCount × playbackSpeed.
+
+
+================================================================================
+PART 3: INTERACTION BETWEEN CHORD AND MELODY SYSTEMS
+================================================================================
+
+
+3.1 CHORDS-FIRST PIPELINE
+
+  1. generateProgression() builds chord sequence using Markov chain or random
+  2. For each chord, randomMelodyWithAngularity() generates melody:
+     - Pitch pool: all EDO PCs
+     - chordPcs: the chord's PCs (used for CT classification)
+     - hasChordContext: true (category classification is chord-relative)
+     - nextChordPcs: next chord in progression (for voice-leading)
+     - segmentIndex/totalSegments: for cross-segment arc
+  3. Reshuffle: new melodies over same chords (locked segments preserved)
+
+  The chord sequence is the fixed structure. The melody adapts to it.
+
+
+3.2 MELODY-FIRST PIPELINE
+
+  1. randomMelodyWithAngularity() generates seed melodies:
+     - chordPcs: [] (no chord context)
+     - hasChordContext: false (absolute classification against tonic)
+  2. pickChordForMelodyInRange() finds best chord using multi-factor scoring
+     - prevChordPcs passed for voice-leading continuity
+  3. Reshuffle: new chords under same melodies (locked segments preserved)
+
+  The melody is the fixed structure. The chord adapts to it.
+  The seed melody is preserved exactly — it is NOT regenerated after
+  the chord is found (earlier versions had this bug).
+
+
+3.3 BIDIRECTIONAL CONSTRAINT FLOW
+
+  Chords → Melody:
+    Chord PCs define what is a "chord tone" vs "tension"
+    Chord progression determines cross-segment arc shaping
+    Next chord enables voice-leading exit preparation
+
+  Melody → Chords:
+    Melody PCs determine guide-tone match (3rd/7th in melody?)
+    Melody content determines overlap/coverage score
+    Melody character influences which chords sound convincing
+
+  Neither side is truly independent. The system creates a feedback loop
+  where each side constrains and informs the other.
+
+
+3.4 WHAT THE SYSTEM IS (FORMALLY)
+
+  A conditional generative model over (harmony, melody, rhythm) with
+  bidirectional constraint flow and multi-stage biasing.
+
+  Chords  = discrete harmonic states selected by Markov chain or scored
+  Melodies = sequences generated by:
+    - category distributions (what kind of notes)
+    - metric structure (where the strong beats are)
+    - contour priors (what shape the phrase takes)
+    - voice-leading constraints (how segments connect)
+    - unified stability model (how tense each position is)
+  Rhythm  = external weighting function injected into generation
+
+  Key structural decision: separation of selection (pitch class) from
+  realization (octave + timing). This is correct and is what makes the
+  system tunable without cascading failures.

@@ -1,0 +1,154 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* HEJI2 — Helmholtz-Ellis JI Pitch Notation font (Plainsound / Marc Sabat) */
+@font-face {
+  font-family: "HEJI2";
+  src: url("/HEJI2.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --font-sans: var(--app-font-sans);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: 0 0% 7%;
+  --foreground: 0 0% 95%;
+  --border: 0 0% 15%;
+  --input: 0 0% 15%;
+  --ring: 240 72% 67%;
+  --card: 0 0% 9%;
+  --card-foreground: 0 0% 90%;
+  --card-border: 0 0% 15%;
+  --popover: 0 0% 9%;
+  --popover-foreground: 0 0% 90%;
+  --popover-border: 0 0% 15%;
+  --primary: 240 72% 67%;
+  --primary-foreground: 0 0% 100%;
+  --primary-border: hsl(240 72% 57%);
+  --secondary: 0 0% 14%;
+  --secondary-foreground: 0 0% 85%;
+  --secondary-border: hsl(0 0% 20%);
+  --muted: 0 0% 14%;
+  --muted-foreground: 0 0% 55%;
+  --muted-border: hsl(0 0% 20%);
+  --accent: 240 72% 67%;
+  --accent-foreground: 0 0% 100%;
+  --accent-border: hsl(240 72% 57%);
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-border: hsl(0 72% 41%);
+  --sidebar: 0 0% 9%;
+  --sidebar-foreground: 0 0% 90%;
+  --sidebar-border: 0 0% 15%;
+  --sidebar-primary: 240 72% 67%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 0 0% 14%;
+  --sidebar-accent-foreground: 0 0% 85%;
+  --sidebar-ring: 240 72% 67%;
+  --chart-1: 240 72% 67%;
+  --chart-2: 160 60% 45%;
+  --chart-3: 30 80% 55%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 340 75% 55%;
+  --app-font-sans: 'Inter', system-ui, sans-serif;
+  --app-font-serif: Georgia, serif;
+  --app-font-mono: Menlo, monospace;
+  --radius: 0.5rem;
+  --button-outline: rgba(255,255,255,.10);
+  --badge-outline: rgba(255,255,255,.05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255,255,255,.04);
+  --elevate-2: rgba(255,255,255,.09);
+  --shadow-2xs: 0px 2px 4px rgba(0,0,0,0.4);
+  --shadow-xs: 0px 2px 6px rgba(0,0,0,0.4);
+  --shadow-sm: 0px 2px 8px rgba(0,0,0,0.4);
+  --shadow: 0px 4px 12px rgba(0,0,0,0.4);
+  --shadow-md: 0px 4px 16px rgba(0,0,0,0.4);
+  --shadow-lg: 0px 8px 24px rgba(0,0,0,0.4);
+  --shadow-xl: 0px 12px 32px rgba(0,0,0,0.4);
+  --shadow-2xl: 0px 24px 48px rgba(0,0,0,0.5);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply font-sans antialiased bg-background text-foreground; }
+}
+
+/* ── Dual-handle range slider (chord fit spectrum) ────────────────── */
+.fit-range-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  margin: 0;
+  width: 100%;
+}
+.fit-range-thumb::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+}
+.fit-range-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ddd;
+  border: 2px solid #888;
+  margin-top: -4px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+.fit-range-thumb::-webkit-slider-thumb:hover {
+  background: #fff;
+  border-color: #aaa;
+}
+.fit-range-thumb::-moz-range-track {
+  height: 6px;
+  background: transparent;
+  border: none;
+}
+.fit-range-thumb::-moz-range-thumb {
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ddd;
+  border: 2px solid #888;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+.fit-range-thumb::-moz-range-thumb:hover {
+  background: #fff;
+  border-color: #aaa;
+}
+

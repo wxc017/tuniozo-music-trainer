@@ -1,0 +1,301 @@
+import { useState, useRef, useCallback, useEffect } from "react";
+import { audioEngine } from "@/lib/audioEngine";
+import { randomChoice } from "@/lib/musicTheory";
+import { getIntervalNames } from "@/lib/edoData";
+import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
+import { weightedRandomChoice, getOptionStats } from "@/lib/stats";
+import type { TabSettingsSnapshot } from "@/App";
+
+const PLAY_STYLES = ["Sequential","Dyad (2 at once)","Trichord (3 at once)","Random (2–3 at once)"];
+const GAP = 650;
+
+interface Props {
+  tonicPc: number;
+  lowestOct: number;
+  highestOct: number;
+  edo: number;
+  onHighlight: (pcs: number[]) => void;
+  responseMode: string;
+  onResult: (text: string) => void;
+  onPlay: (optionKey: string, label: string) => void;
+  lastPlayed: React.MutableRefObject<{frames: number[][]; info: string} | null>;
+  ensureAudio: () => Promise<void>;
+  onShowOnKeyboard?: () => void;
+  playVol?: number;
+  tabSettingsRef?: React.MutableRefObject<TabSettingsSnapshot | null>;
+}
+
+export default function IntervalsTab({
+  tonicPc, lowestOct, highestOct, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, onShowOnKeyboard, playVol = 0.65, tabSettingsRef
+}: Props) {
+  const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [checked, setChecked] = useLS<Set<number>>("lt_ivl_checked", new Set([3,5,8,10,13,15,18,21,23,26,28]));
+  const [numNotes, setNumNotes] = useLS<number>("lt_ivl_numNotes", 2);
+  const [playStyle, setPlayStyle] = useLS<string>("lt_ivl_playStyle", "Sequential");
+  const [showTarget, setShowTarget] = useState<string | null>(null);
+  const [infoText, setInfoText] = useState("");
+  const pendingInfo = useRef<{text: string; isTarget: boolean} | null>(null);
+  const [hasPendingInfo, setHasPendingInfo] = useState(false);
+  const [hasPlayed, setHasPlayed] = useState(false);
+
+  // Recency tracker: maps interval step → sequential play counter when last picked
+  const playCounter = useRef(0);
+  const lastPickedAt = useRef<Map<number, number>>(new Map());
+
+  const toggle = (i: number) => setChecked(prev => {
+    const n = new Set(prev);
+    if (n.has(i)) n.delete(i); else n.add(i);
+    return n;
+  });
+
+  const ivNames = getIntervalNames(edo);
+
+  const selectAll = () => setChecked(new Set(ivNames.map((_,i) => i)));
+  const clearAll = () => setChecked(new Set());
+
+  useEffect(() => {
+    unregisterKnownOptionsForPrefix("ivl:");
+    Array.from(checked).forEach(step => {
+      registerKnownOption(`ivl:${step}`, `Interval: ${ivNames[step]}`);
+    });
+    return () => unregisterKnownOptionsForPrefix("ivl:");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checked, edo]);
+
+  // Publish settings snapshot for history panel
+  useEffect(() => {
+    if (!tabSettingsRef) return;
+    tabSettingsRef.current = {
+      title: "Intervals",
+      groups: [
+        { label: "# Notes", items: [String(numNotes)] },
+        { label: "Play Style", items: [playStyle] },
+        { label: "Intervals", items: Array.from(checked).sort((a, b) => a - b).map(i => ivNames[i]).filter(Boolean) },
+      ],
+    };
+  }, [checked, numNotes, playStyle, edo, tabSettingsRef, ivNames]);
+
+  /** Pick an interval step, biased towards ones not played recently.
+   *  `exclude` optionally avoids picking the same step twice in a row. */
+  const pickStep = (pool: number[], opts: Record<string, { correct: number; wrong: number }>, exclude?: number): number => {
+    const now = playCounter.current;
+    // Candidates: prefer not repeating the previous note's step
+    let candidates = pool.length > 1 && exclude !== undefined
+      ? pool.filter(s => s !== exclude)
+      : pool;
+    if (candidates.length === 0) candidates = pool;
+
+    // Weight: recency-based to cycle through all intervals evenly
+    const weights = candidates.map(s => {
+      const lastAt = lastPickedAt.current.get(s);
+      const age = lastAt === undefined ? candidates.length + 3 : now - lastAt;
+      return Math.min(age, candidates.length + 3);
+    });
+
+    const sum = weights.reduce((s, w) => s + w, 0);
+    let r = Math.random() * sum;
+    for (let i = 0; i < candidates.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return candidates[i];
+    }
+    return candidates[candidates.length - 1];
+  };
+
+  const buildNotes = (): {notes: {note: number; label: string}[]; steps: number[]; root: number} => {
+    const pool = Array.from(checked);
+    if (!pool.length) return {notes: [], steps: [], root: 0};
+    const low = tonicPc + (lowestOct - 4) * edo;
+    const high = tonicPc + (highestOct + 1 - 4) * edo;
+    let r = tonicPc + (lowestOct + Math.floor((highestOct - lowestOct) / 2) - 4) * edo;
+    while (r < low) r += edo;
+    while (r >= high) r -= edo;
+
+    playCounter.current++;
+    const opts = getOptionStats();
+    const count = Math.min(numNotes, 6);
+    const notes: {note: number; label: string}[] = [];
+    const steps: number[] = [];
+    for (let i = 0; i < count; i++) {
+      const prev = i > 0 ? steps[i - 1] : undefined;
+      const step = pickStep(pool, opts, prev);
+      steps.push(step);
+      lastPickedAt.current.set(step, playCounter.current);
+      let n = r + step;
+      // Wrap into playable range, but allow exceeding by one octave
+      // so that e.g. octave doesn't collapse onto unison
+      if (n >= high + edo) n -= edo;
+      if (n < low) n += edo;
+      notes.push({note: n, label: ivNames[step] ?? "Root"});
+    }
+    return {notes, steps, root: r};
+  };
+
+  const buildFrames = (notes: {note: number; label: string}[], root: number): number[][] => {
+    if (!notes.length) return [];
+    const style = playStyle;
+    if (style === "Sequential") {
+      // Each interval note plays simultaneously with the root
+      return notes.map(x => [root, x.note]);
+    }
+    if (style === "Dyad (2 at once)") {
+      return [notes.map(x => x.note)];
+    }
+    if (style === "Trichord (3 at once)") {
+      const frames: number[][] = [];
+      for (let i = 0; i + 1 < notes.length; i += 2) {
+        const frame = [...new Set([root, notes[i].note, notes[i+1].note])];
+        frames.push(frame);
+      }
+      // Handle odd remaining note
+      if (notes.length % 2 === 1) {
+        frames.push([root, notes[notes.length - 1].note]);
+      }
+      if (!frames.length) frames.push([...new Set([root, ...notes.map(x => x.note)])]);
+      return frames;
+    }
+    if (style === "Random (2–3 at once)") {
+      const frames: number[][] = [];
+      let i = 0;
+      while (i < notes.length) {
+        const take = Math.random() < 0.5 ? 1 : 2;
+        const frame = [...new Set([root, ...notes.slice(i, i + take).map(x => x.note)])];
+        frames.push(frame);
+        i += take;
+      }
+      return frames;
+    }
+    // Fallback: root + interval simultaneously
+    return notes.map(x => [root, x.note]);
+  };
+
+  const play = async () => {
+    await ensureAudio();
+    if (!checked.size) return;
+    const {notes, steps, root} = buildNotes();
+    if (!notes.length) return;
+    const frames = buildFrames(notes, root);
+    const desc = notes.map(x => x.label).join(" → ");
+    const sortedSteps = [...steps].sort((a, b) => a - b);
+    const optKey = steps.length === 1
+      ? `ivl:${steps[0]}`
+      : steps.length > 1
+        ? `ivl:${sortedSteps.join('+')}`
+        : `ivl:root`;
+    const stepLabel = steps.length
+      ? steps.map(s => ivNames[s]).join(' + ')
+      : 'Root only';
+    setShowTarget(null);
+    setInfoText("");
+    setHasPendingInfo(false);
+    pendingInfo.current = { text: `Intervals: ${desc}`, isTarget: responseMode !== "Play Audio" };
+    setHasPendingInfo(true);
+    onResult(`Intervals: ${desc}`);
+    onPlay(optKey, `Interval: ${stepLabel}`);
+    lastPlayed.current = { frames, info: desc };
+    setHasPlayed(true);
+    audioEngine.playSequence(frames, edo, GAP, 0.9);
+  };
+
+  const highlightFrames = useCallback((frames: number[][]) => {
+    frameTimers.current.forEach(id => clearTimeout(id));
+    frameTimers.current = [];
+    frames.forEach((frame, i) => {
+      const id = setTimeout(() => {
+        onHighlight(frame);
+      }, i * GAP);
+      frameTimers.current.push(id);
+    });
+  }, [edo, onHighlight]);
+
+  const replay = () => {
+    const lp = lastPlayed.current;
+    if (!lp) return;
+    audioEngine.playSequence(lp.frames, edo, GAP, 0.9);
+  };
+
+  const answerVisible = !!(showTarget || infoText);
+
+  const handleShowInfo = () => {
+    // Toggle: if answer is already visible, hide it
+    if (answerVisible) {
+      setShowTarget(null);
+      setInfoText("");
+      return;
+    }
+    const p = pendingInfo.current;
+    if (!p) return;
+    if (p.isTarget) setShowTarget(p.text);
+    else setInfoText(p.text);
+    if (lastPlayed.current) highlightFrames(lastPlayed.current.frames);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Controls */}
+      <div className="flex flex-wrap gap-4 items-end">
+        <div>
+          <label className="text-xs text-[#888] block mb-1"># Notes</label>
+          <div className="flex gap-1">
+            {[1,2,3,4,5,6].map(n => (
+              <button key={n} onClick={() => setNumNotes(n)}
+                className={`w-8 h-8 rounded text-xs font-medium ${numNotes===n?"bg-[#7173e6] text-white":"bg-[#1e1e1e] text-[#888] hover:bg-[#2a2a2a] border border-[#333]"}`}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="text-xs text-[#888] block mb-1">Play Style</label>
+          <select value={playStyle} onChange={e => setPlayStyle(e.target.value)}
+            className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
+            {PLAY_STYLES.map(s => <option key={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2 flex-wrap items-center">
+        <button onClick={play}
+          className="bg-[#7173e6] hover:bg-[#5a5cc8] text-white px-5 py-2 rounded text-sm font-medium transition-colors">
+          ▶ Play
+        </button>
+        {hasPlayed && (
+          <button onClick={replay}
+            className="bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#333] text-[#aaa] px-4 py-2 rounded text-sm transition-colors">
+            Replay
+          </button>
+        )}
+        {hasPendingInfo && (
+          <button onClick={handleShowInfo}
+            className={`hover:bg-[#2a2a2a] border px-4 py-2 rounded text-sm transition-colors ${answerVisible ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#1e1e1e] border-[#444] text-[#9999ee]"}`}>
+            {answerVisible ? "Hide Answer" : "Show Answer"}
+          </button>
+        )}
+        <button onClick={selectAll} className="text-xs text-[#666] hover:text-[#aaa] px-2 py-1">All</button>
+        <button onClick={clearAll} className="text-xs text-[#666] hover:text-[#aaa] px-2 py-1">None</button>
+      </div>
+
+      {showTarget && (
+        <div className="bg-[#1a2a1a] border border-[#3a5a3a] rounded p-3 text-sm text-[#8fc88f] font-mono whitespace-pre">{showTarget}</div>
+      )}
+      {infoText && !showTarget && (
+        <div className="bg-[#141414] border border-[#2a2a2a] rounded p-3 text-xs text-[#888] font-mono whitespace-pre">{infoText}</div>
+      )}
+
+      {/* Interval checkboxes */}
+      <div>
+        <p className="text-xs text-[#555] mb-2">Select intervals to include:</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1 max-h-64 overflow-y-auto pr-1">
+          {ivNames.map((name, i) => (
+            <label key={i} className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer transition-colors ${
+              checked.has(i) ? "bg-[#1a1a2a] text-[#9999ee]" : "bg-[#141414] text-[#666] hover:bg-[#1e1e1e]"
+            }`}>
+              <input type="checkbox" checked={checked.has(i)} onChange={() => toggle(i)} className="accent-[#7173e6]" />
+              <span className="text-[#555] mr-0.5">{i}</span>{name}
+            </label>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
