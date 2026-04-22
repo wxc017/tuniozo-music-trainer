@@ -156,6 +156,49 @@ function beatsPerBar(timeSig: string): number {
   return top * (4 / bot);
 }
 
+/** Metric partition of a bar at the eighth-note level.  Used for beam
+ *  grouping and to identify where chord changes can land metrically. */
+function metricPartitionEighths(timeSig: string): number[] {
+  const [top, bot] = timeSig.split("/").map(Number);
+  if (bot === 8) {
+    switch (top) {
+      case 3:  return [3];
+      case 5:  return [2, 3];
+      case 6:  return [3, 3];
+      case 7:  return [2, 2, 3];
+      case 9:  return [3, 3, 3];
+      case 12: return [3, 3, 3, 3];
+      default: return Array.from({ length: top }, () => 1);
+    }
+  }
+  // Simple meters (bottom = 4): each beat = 2 eighths.
+  return Array.from({ length: top }, () => 2);
+}
+
+/** Candidate positions (in quarter-note beats from bar start) where a
+ *  mid-bar chord change can land musically — i.e. the start of each
+ *  metric pulse group except the bar downbeat (which always has the
+ *  main chord). */
+function candidateMidBarPulses(timeSig: string): number[] {
+  const partition = metricPartitionEighths(timeSig);
+  const positions: number[] = [];
+  let cumEighths = 0;
+  for (let i = 0; i < partition.length - 1; i++) {
+    cumEighths += partition[i];
+    positions.push(cumEighths / 2); // eighths → quarters
+  }
+  return positions;
+}
+
+/** Short human label for a pulse position.  For simple meters, a beat
+ *  number ("b2", "b3").  For NI / compound, the eighth-note position
+ *  ("♪3", "♪5"). */
+function pulseLabel(posQuarters: number, timeSig: string): string {
+  const [, bot] = timeSig.split("/").map(Number);
+  if (bot === 4) return `b${Math.round(posQuarters) + 1}`;
+  return `♪${Math.round(posQuarters * 2) + 1}`;
+}
+
 /** Musical re-metering: re-bars the same phrase under a new time signature.
  *
  *  Theory: "re-barring" (as opposed to "re-composing") preserves every note's
@@ -487,6 +530,19 @@ function applyWhite(el: HTMLElement) {
   if (svg) (svg as SVGSVGElement).style.filter = "invert(1)";
 }
 
+// ── Beam grouping ──────────────────────────────────────────────────
+// VexFlow beam-group pattern for a given time signature.  In NI /
+// compound meters (bottom = 8) beams follow the 2-and-3 pulse partition
+// — 7/8 → 2+2+3, 6/8 → 3+3 — which is what readers rely on to identify
+// the meter at a glance (Read, Music Notation, ch. 6).  In simple
+// meters (bottom = 4) beams run per quarter-note beat.
+function beamGroupsFor(timeSig: string): Fraction[] {
+  const [, bot] = timeSig.split("/").map(Number);
+  if (bot === 4) return [new Fraction(1, 4)];
+  const partition = metricPartitionEighths(timeSig);
+  return partition.map(g => new Fraction(g, 8));
+}
+
 // Chord label renderer: splits on the "^" marker so everything after it
 // renders as a <sup> superscript. generateProgression emits "^Qua" on
 // quartal chords so "iii^Qua" shows as "iii" with a small "Qua" suffix.
@@ -515,6 +571,7 @@ function SnareLineLine({
   adaptedBars,
   chordLabelsPerBar,
   chordColorsPerBar,
+  chordPositionsPerBar,
   timeSig,
   showTimeSig,
   lineIndex,
@@ -522,10 +579,13 @@ function SnareLineLine({
 }: {
   bars: SongBar[];
   adaptedBars?: MelodyBeat[][];
-  /** 1 or 2 chord labels per bar. 1 → left-aligned to beat 1.
-   *  2 → left/center split (beat 1 + half-bar midpoint). */
+  /** 1 or 2 chord labels per bar. */
   chordLabelsPerBar: string[][];
   chordColorsPerBar: string[][];
+  /** Position of each chord label in quarter-beats from bar start.
+   *  Parallel to chordLabelsPerBar.  The first slot is conventionally 0
+   *  (bar downbeat); the second can be any pulse boundary of the meter. */
+  chordPositionsPerBar: number[][];
   timeSig: string;
   showTimeSig: boolean;
   lineIndex: number;
@@ -619,13 +679,14 @@ function SnareLineLine({
         (voice as unknown as { setMode(m: number): void }).setMode(2);
         voice.addTickables(notes);
 
-        // Beam by quarter-note groups so beams break at every beat
-        // (default behaviour beams everything consecutive, which produces
-        //  ugly cross-beat beams when durations are mixed).
+        // Beam by metric groups so beams never span a beat boundary.
+        // For NI meters (7/8, 5/8, …) this uses the 2/3-pulse partition
+        // that identifies the meter — e.g. 7/8 beams as 2+2+3, not
+        // 2+2+2+1, so a reader sees the grouping at a glance.
         const beams: Beam[] = [];
         try {
           beams.push(...Beam.generateBeams(notes, {
-            groups: [new Fraction(1, 4)],
+            groups: beamGroupsFor(timeSig),
             maintainStemDirections: true,
             flatBeams: true,
             beamRests: false,
@@ -672,23 +733,23 @@ function SnareLineLine({
     }
   }, [bars, adaptedBars, chordLabelsPerBar, chordColorsPerBar, timeSig, showTimeSig, totalWidth, barWidth]);
 
+  const barQuarters = beatsPerBar(timeSig);
   return (
     <div className="overflow-x-auto">
-      {/* Chord labels as HTML row. 1 chord per bar → left-aligned under
-          beat 1. 2 chords per bar → first under beat 1, second under the
-          half-bar midpoint (beat 3 in 4/4) so secondary dominants read
-          against the correct notes. */}
+      {/* Chord labels as HTML row.  Each label's left% is derived from
+          its quarter-beat position in the bar: downbeat → 0%, mid-bar
+          chord → (pos / barQuarters) × 100 so the label sits over the
+          metric pulse the reharmonizer chose. */}
       <div className="flex" style={{ width: totalWidth, paddingLeft: showTimeSig ? TIME_SIG_W + 8 : 8 }}>
         {bars.map((_, bi) => {
           const labels = chordLabelsPerBar[bi] ?? [];
           const colors = chordColorsPerBar[bi] ?? [];
+          const positions = chordPositionsPerBar[bi] ?? [];
           return (
             <div key={bi} className="relative" style={{ width: barWidth, height: 20 }}>
               {labels.map((lbl, li) => {
-                // Beat 1 chord sits at the bar's left edge; mid-bar chord
-                // sits at 50% (above beat 3 in 4/4, since VexFlow formats
-                // notes with symmetric left/right padding inside the bar).
-                const leftPct = li === 0 ? 0 : 50;
+                const pos = positions[li] ?? (li === 0 ? 0 : barQuarters / 2);
+                const leftPct = barQuarters > 0 ? (pos / barQuarters) * 100 : 0;
                 return (
                   <div
                     key={li}
@@ -722,12 +783,14 @@ function SnareLineStave({
   adaptedBars,
   chordLabelsPerBar,
   chordColorsPerBar,
+  chordPositionsPerBar,
   timeSig,
 }: {
   bars: SongBar[];
   adaptedBars?: MelodyBeat[][];
   chordLabelsPerBar: string[][];
   chordColorsPerBar: string[][];
+  chordPositionsPerBar: number[][];
   timeSig: string;
 }) {
   const outerRef = useRef<HTMLDivElement>(null);
@@ -765,6 +828,7 @@ function SnareLineStave({
           adaptedBars={adaptedBars ? lineIndices.map(i => adaptedBars[i]) : undefined}
           chordLabelsPerBar={lineIndices.map(i => chordLabelsPerBar[i] ?? [])}
           chordColorsPerBar={lineIndices.map(i => chordColorsPerBar[i] ?? [])}
+          chordPositionsPerBar={lineIndices.map(i => chordPositionsPerBar[i] ?? [])}
           timeSig={timeSig}
           showTimeSig={li === 0}
           lineIndex={li}
@@ -785,10 +849,14 @@ type SupportedEdo = (typeof SUPPORTED_EDOS)[number];
 
 interface ReharmonizationResult {
   /** Flat chord stream — each bar consumes slotsPerBar[i] entries. Bars
-   *  with a mid-bar split use 2 entries (beat 1 + half-bar midpoint);
-   *  other bars use 1 (aligned to beat 1). */
+   *  with a mid-bar split use 2 entries (bar downbeat + chosen pulse);
+   *  other bars use 1 (aligned to the downbeat). */
   chords: ProgChord[];
   slotsPerBar: (1 | 2)[];
+  /** Position of each chord in quarter-beats from bar start.  Parallel
+   *  to `chords`.  For the first slot of every bar this is 0; for a
+   *  mid-bar slot it is the metric-pulse position chosen for that bar. */
+  chordPositions: number[];
   adaptedMelody: MelodyBeat[][];
 }
 
@@ -798,12 +866,11 @@ export default function HarmonyWorkshop() {
   const [tonality, setTonality] = useState<Tonality>("major");
   const [progMode, setProgMode] = useState<ProgressionMode>("functional");
   const [adaptMelody, setAdaptMelody] = useState(true);
-  // When true, the reharmonizer MAY split a bar into two chords at the
-  // half-bar mark (beat 3 in 4/4) — but only for bars where the melody is
-  // busy enough to support a chord change and where a secondary-dominant
-  // approach to the next bar's chord makes sense. Most bars still get one
-  // chord aligned to beat 1.
-  const [allowMidBarChord, setAllowMidBarChord] = useState(false);
+  // Positions (in quarter-beats from bar start) where the reharmonizer
+  // is allowed to drop a second chord.  Must be a subset of the meter's
+  // candidate pulse boundaries — for 7/8 that's {1, 2}, for 4/4 {1, 2, 3}
+  // (= beats 2, 3, 4), etc.  Empty = mid-bar chords off.
+  const [midBarPulses, setMidBarPulses] = useState<Set<number>>(new Set());
 
   // ── Mode selection ──────────────────────────────────────────────
   const [scaleFamily, setScaleFamily] = useState<string>("Major Family");
@@ -897,6 +964,24 @@ export default function HarmonyWorkshop() {
     setHistory([]);
   }
 
+  // Prune mid-bar pulses when the meter changes: a pulse at ♪5 from 7/8
+  // isn't meaningful in 4/4, so drop anything not in the new meter's
+  // candidate set.
+  const prevTimeSig = useRef(song.timeSignature);
+  if (prevTimeSig.current !== song.timeSignature) {
+    prevTimeSig.current = song.timeSignature;
+    const valid = new Set(candidateMidBarPulses(song.timeSignature));
+    setMidBarPulses(prev => {
+      let changed = false;
+      const next = new Set<number>();
+      for (const p of prev) {
+        if (valid.has(p)) next.add(p);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }
+
   // Derive tonality from mode for generateProgression
   const effectiveTonality = useMemo((): Tonality => {
     // Modes with minor 3rd → minor; modes with major 3rd → major
@@ -910,8 +995,6 @@ export default function HarmonyWorkshop() {
   // ── Reharmonize ─────────────────────────────────────────────────
   const handleReharmonize = useCallback(() => {
     const barCount = song.bars.length;
-    const sigTop = parseInt(song.timeSignature.split("/")[0], 10) || 4;
-    const halfBar = sigTop / 2;
 
     // Main progression: one chord per bar.
     const mainChords = generateProgression(
@@ -920,30 +1003,27 @@ export default function HarmonyWorkshop() {
       checkedSeventhQualities, checkedThirdQualities, false,
     );
 
-    // Per-bar decision: does this bar get a mid-bar chord?
-    //   - Requires the feature toggle on.
-    //   - Bar must have enough melody activity in the second half (≥2 notes)
-    //     to support a harmonic change; otherwise a mid-bar chord would float
-    //     under a long note and add nothing.
-    //   - Next bar must exist and have a different chord — the mid-bar slot
-    //     is meant for a *secondary dominant* (V7 of the next chord) or a
-    //     passing functional chord, not a repeat.
-    //   - ~60 % acceptance when all conditions are met, so the feature stays
-    //     stylistic rather than robotic.
-    const busyInSecondHalf = (bar: SongBar): boolean => {
+    // Candidate pulse positions where a mid-bar chord is metrically
+    // valid in this meter, intersected with what the user has enabled.
+    const allCandidates = candidateMidBarPulses(song.timeSignature);
+    const enabledPulses = allCandidates.filter(p => midBarPulses.has(p));
+
+    // Returns the number of sustained melody notes that fall at or after
+    // `fromQuarters` in the bar — a mid-bar chord floats under no one if
+    // the melody doesn't hit the region it covers.
+    const notesFrom = (bar: SongBar, fromQuarters: number): number => {
       let pos = 0;
       let count = 0;
       for (const b of bar.melody) {
-        if (pos >= halfBar && b.degree !== 0) count++;
+        if (pos >= fromQuarters - 1e-6 && b.degree !== 0) count++;
         pos += b.duration;
-        if (count >= 2) return true;
       }
-      return false;
+      return count;
     };
 
-    // Build a mid-bar chord for bar i — prefer V7 of the *next* bar's chord
-    // (secondary-dominant pull into the downbeat), with a fall-through to a
-    // random chord from the configured pool if dom7 isn't available.
+    // Secondary-dominant builder: V7 of the *next* bar's chord, pulling
+    // into the downbeat. Falls through to any pool chord that shares a
+    // common tone with the next chord (smooth voice-leading).
     const chordPool = generateProgression(
       edo, 0, harmonyCats, "pool", 3,
       effectiveTonality, tonicRoot,
@@ -953,12 +1033,9 @@ export default function HarmonyWorkshop() {
     const P5 = dm["5"] ?? 7;
     const buildMidBarChord = (nextChord: ProgChord | undefined): ProgChord | null => {
       if (!nextChord) return null;
-      // Secondary dominant: root a P5 below the next chord's root, type = dom7.
       const secDomRoot = ((nextChord.root - P5) % edo + edo) % edo;
       const secDom = chordPool.find(c => c.root === secDomRoot && c.chordTypeId === "dom7");
       if (secDom) return secDom;
-      // Fallback: anything from the pool that shares at least one common tone
-      // with the next chord (smooth voice-leading into the downbeat).
       const nextPcs = new Set(nextChord.chordPcs);
       const candidates = chordPool.filter(c =>
         c.chordPcs.some(p => nextPcs.has(p)) && c.roman !== nextChord.roman,
@@ -967,51 +1044,72 @@ export default function HarmonyWorkshop() {
       return candidates[Math.floor(Math.random() * candidates.length)];
     };
 
-    // Assemble flat chord stream + per-bar slot count so the display can
-    // render 1 or 2 labels per bar independently.
+    // Assemble flat chord stream + per-bar slot count + per-chord
+    // positions.  A bar qualifies for a mid-bar chord when:
+    //   - the user has enabled at least one pulse position,
+    //   - the melody has ≥ 1 note at or after that pulse (so the chord
+    //     actually covers something),
+    //   - the next bar's chord is different (mid-bar is for motion, not
+    //     repeats), and
+    //   - a random ~60 % roll passes, so the feature stays stylistic.
     const chords: ProgChord[] = [];
     const slotsPerBar: (1 | 2)[] = [];
+    const chordPositions: number[] = [];
     for (let i = 0; i < barCount; i++) {
       chords.push(mainChords[i]);
-      const wantsSplit =
-        allowMidBarChord &&
-        busyInSecondHalf(song.bars[i]) &&
+      chordPositions.push(0);
+
+      let placed = false;
+      if (
+        enabledPulses.length > 0 &&
         i + 1 < barCount &&
         mainChords[i + 1] &&
         mainChords[i + 1].roman !== mainChords[i].roman &&
-        Math.random() < 0.6;
-      if (wantsSplit) {
-        const mid = buildMidBarChord(mainChords[i + 1]);
-        if (mid) {
-          chords.push(mid);
-          slotsPerBar.push(2);
-          continue;
+        Math.random() < 0.6
+      ) {
+        // Of the enabled pulses, keep only those the melody actually
+        // reaches in this bar, then pick one at random.
+        const viable = enabledPulses.filter(p => notesFrom(song.bars[i], p) >= 1);
+        if (viable.length > 0) {
+          const pulse = viable[Math.floor(Math.random() * viable.length)];
+          const mid = buildMidBarChord(mainChords[i + 1]);
+          if (mid) {
+            chords.push(mid);
+            chordPositions.push(pulse);
+            slotsPerBar.push(2);
+            placed = true;
+          }
         }
       }
-      slotsPerBar.push(1);
+      if (!placed) slotsPerBar.push(1);
     }
 
-    // Melody adaptation: walk each bar's beats, find the chord active at
-    // that beat (first-half chord or second-half chord when a split exists),
-    // and adapt the note to its pitch-class set.
+    // Melody adaptation: walk each bar, applying chord A before the
+    // split pulse and chord B at/after it.
     const adaptedMelody = song.bars.map((bar, i) => {
       if (!adaptMelody) return bar.melody;
       const flatIdx = slotsPerBar.slice(0, i).reduce((s, n) => s + n, 0);
       const chordA = chords[flatIdx];
       const chordB = slotsPerBar[i] === 2 ? chords[flatIdx + 1] : chordA;
+      const splitPos = slotsPerBar[i] === 2 ? chordPositions[flatIdx + 1] : Infinity;
       if (!chordA) return bar.melody;
       let beatPos = 0;
       return bar.melody.map((beat) => {
-        const activeChord = (slotsPerBar[i] === 2 && beatPos >= halfBar) ? chordB : chordA;
+        const activeChord = beatPos >= splitPos - 1e-6 ? chordB : chordA;
         beatPos += beat.duration;
         return adaptMelodyNote(beat, activeChord?.chordPcs ?? chordA.chordPcs, modePcs, edo, tonicRoot);
       });
     });
 
-    const r: ReharmonizationResult = { chords, slotsPerBar, adaptedMelody };
+    const r: ReharmonizationResult = { chords, slotsPerBar, chordPositions, adaptedMelody };
     setResult(r);
-    setHistory((prev) => [...prev, r]);
-  }, [edo, song, harmonyCats, progMode, effectiveTonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, adaptMelody, modePcs, allowMidBarChord]);
+    setHistory((prev) => {
+      // Cap history to avoid unbounded memory growth across long sessions.
+      // 50 entries is more than enough to browse recent reharmonizations.
+      const next = [...prev, r];
+      return next.length > 50 ? next.slice(next.length - 50) : next;
+    });
+  }, [edo, song, harmonyCats, progMode, effectiveTonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, adaptMelody, modePcs, midBarPulses]);
 
   const timeSig = song.timeSignature;
 
@@ -1225,16 +1323,39 @@ export default function HarmonyWorkshop() {
             Original
           </button>
         )}
-        <button
-          onClick={() => setAllowMidBarChord(v => !v)}
-          className={`ml-2 px-2 py-1 border text-xs rounded transition-colors ${
-            allowMidBarChord
-              ? "bg-[#2a2a4a] border-[#7173e6] text-[#9a9cf8]"
-              : "bg-[#1a1a1a] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-          }`}
-          title="Allow the reharmonizer to drop a second chord at the half-bar mark on busy bars (secondary-dominant pulls into the next downbeat).">
-          Mid-bar chords {allowMidBarChord ? "✓" : ""}
-        </button>
+        <div className="ml-2 flex items-center gap-1">
+          <span className="text-[10px] text-[#666] uppercase tracking-wider">
+            Mid-bar pulses
+          </span>
+          {candidateMidBarPulses(song.timeSignature).length === 0 ? (
+            <span className="text-[10px] text-[#444] italic">n/a for this meter</span>
+          ) : (
+            candidateMidBarPulses(song.timeSignature).map((p) => {
+              const on = midBarPulses.has(p);
+              return (
+                <button
+                  key={p}
+                  onClick={() =>
+                    setMidBarPulses((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(p)) next.delete(p);
+                      else next.add(p);
+                      return next;
+                    })
+                  }
+                  className={`px-1.5 py-0.5 text-[10px] rounded border transition-colors ${
+                    on
+                      ? "bg-[#2a2a4a] border-[#7173e6] text-[#9a9cf8]"
+                      : "bg-[#1a1a1a] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                  }`}
+                  title={`Allow a mid-bar chord change at this pulse (${pulseLabel(p, song.timeSignature)} = ${p} quarter-beats from bar start).`}
+                >
+                  {pulseLabel(p, song.timeSignature)}
+                </button>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* ── Single view: reharmonized when result is set, else original ── */}
@@ -1288,6 +1409,24 @@ export default function HarmonyWorkshop() {
                   return colors;
                 })()
               : song.bars.map(() => ["#7173e6"])
+          }
+          chordPositionsPerBar={
+            result
+              ? (() => {
+                  const positions: number[][] = [];
+                  let flatIdx = 0;
+                  for (let bi = 0; bi < song.bars.length; bi++) {
+                    const slots = result.slotsPerBar[bi] ?? 1;
+                    const row: number[] = [];
+                    for (let s = 0; s < slots; s++) {
+                      row.push(result.chordPositions[flatIdx + s] ?? 0);
+                    }
+                    positions.push(row);
+                    flatIdx += slots;
+                  }
+                  return positions;
+                })()
+              : song.bars.map(() => [0])
           }
           timeSig={timeSig}
         />

@@ -1,0 +1,61 @@
+HARMONY WORKSHOP — RE-METER OUTPUT (repro sample)
+===================================================
+
+This is a text capture of what the renderer produced when re-metering
+a folk song into 7/8, with the mid-bar-chord toggle on.
+
+Time signature:   7/8  (2+2+3 expected; renderer produced 2+2+2+1)
+Key:              C major
+Chord layout:     I → V/V (mid-bar) → IV (next bar)
+
+───────────────────────────────────────────────────────────────
+Rendered score (single-line stave, eighth-notes):
+
+    I                                             V/V       IV
+
+    ┌──┐   ┌──┐   ┌──┐
+    │  │   │  │   │  │
+    ♩   ♩  ♩   ♩  ♩   ♩   ♪         ║   ♪
+    3   6  5   3  2   1   6             6
+    └──┘   └──┘   └──┘   (flag)  bar-  (flag)
+    beam   beam   beam           line
+
+Degree stream (as MelodyBeat[]):
+    bar 1 = [3, 6, 5, 3, 2, 1, 6]    chord=I   (mid-bar V/V)
+    bar 2 = [6, …]                   chord=IV
+
+───────────────────────────────────────────────────────────────
+Issues observed:
+
+  (1) BEAMING.  The last three eighth-notes of bar 1 should beam
+      together as one 3-group so the meter reads as 2+2+3.  The
+      current output breaks after every 2 eighths (quarter-note
+      group), producing a 2+2+2+1 beam pattern with a standalone
+      flagged eighth at the end.  This is unambiguously wrong for
+      7/8 — the standalone flag visually contradicts the metric
+      grouping.
+
+  (2) MID-BAR CHORD PLACEMENT.  With mid-bar chords enabled, the
+      V/V lands at the half-bar of the old meter rather than at
+      a pulse boundary of the new 7/8 meter.  In 7/8 a mid-bar
+      chord should land on one of:
+          - start of the first 2-pulse group   (beat 1, trivial)
+          - start of the second 2-pulse group  (beat 3)
+          - start of the 3-pulse group         (beat 5)
+      The renderer places V/V mid-way through a 2-pulse group,
+      which is syncopated rather than metric.
+
+───────────────────────────────────────────────────────────────
+Theory reference for the beaming rule
+(Read, _Music Notation_, ch. 6; London, _Hearing in Time_, ch. 4, 7)
+
+  - In NI (non-isochronous) meters, the tactus groups of 2 and 3
+    eighths are the primary metric units.  Beams must reflect
+    these groups so a reader can see the meter at a glance.
+  - 7/8 has three standard tactus partitions:
+        2+2+3  (Bulgarian Rŭchenitsa, common jazz 7)
+        3+2+2  (Turkish Kalamatianó direction)
+        2+3+2  (Macedonian, less common)
+    Any of these is valid; 2+2+3 is the default the fix will
+    assume unless the user says otherwise.
+  - 6/8 = 3+3 ; 9/8 = 3+3+3 ; 12/8 = 3+3+3+3 ; 5/8 = 2+3 or 3+2.

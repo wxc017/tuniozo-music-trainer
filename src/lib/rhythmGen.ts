@@ -157,6 +157,25 @@ function londonWellFormed(grouping: number[]): boolean {
   return true;
 }
 
+/** Canonical 2- and 3-pulse partitions at the eighth-note level.  Used
+ *  as the preferred grouping for conventional NI and compound meters,
+ *  matching how they are actually notated and heard (London, Hearing in
+ *  Time, ch. 7).  For 7/8 the default is 2+2+3 (Bulgarian Rŭchenitsa /
+ *  common jazz).  Meters not listed here fall through to the generic
+ *  2-and-3 decomposition. */
+function canonicalEighthPartition(beatsPerBar: number, bottom: number): number[] | null {
+  if (bottom !== 8) return null;
+  switch (beatsPerBar) {
+    case 3:  return [3];
+    case 5:  return [2, 3];
+    case 6:  return [3, 3];
+    case 7:  return [2, 2, 3];
+    case 9:  return [3, 3, 3];
+    case 12: return [3, 3, 3, 3];
+    default: return null;
+  }
+}
+
 function getGrouping(beatsPerBar: number, beatSize: number, bottom: number): number[] {
   if (bottom === 4) {
     // Isochronous meter: equal groups (GTTM MWFR 3 — beat regularity)
@@ -165,16 +184,38 @@ function getGrouping(beatsPerBar: number, beatSize: number, bottom: number): num
   // NI meter: use the grouping engine, then validate London's constraint.
   // allCompositions(n, 8) grows ~2^n — at n=20 it's ~500k, at n=24 it's ~8M
   // and hangs the browser. For large slot counts go straight to the
-  // elementary 2-and-3 decomposition, which is London-well-formed by
-  // construction and matches conventional notation for 6/8, 9/8, 12/8, 7/8
-  // (all built from 2- and 3-pulse groups).
+  // canonical 2/3 partition, which is London-well-formed by construction
+  // and matches conventional notation for 6/8, 9/8, 12/8, 7/8.
   const totalSlots = beatsPerBar * beatSize;
   if (totalSlots <= 14) {
     const maxPart = Math.min(totalSlots, 8);
     const result = generateAndSelectGrouping(totalSlots, "musical", maxPart);
     if (result && londonWellFormed(result)) return result;
   }
-  // Fallback: build from 2s and 3s (London's elementary NI groups)
+  // Preferred NI fallback: expand a canonical eighth-level partition up
+  // to the subdivision level.  For bottom=8, each eighth covers exactly
+  // `beatSize` subdivisions (e.g. beatSize=4 → 32nd grid, 2-eighth group
+  // = 8 slots).  When a group exceeds MAX_PART (8), split evenly so
+  // beaming stays readable — 12 → [6, 6], 9 → [5, 4] — rather than the
+  // greedy [8, 4] / [8, 1] that would misalign the group's accent.
+  const eighthPartition = canonicalEighthPartition(beatsPerBar, bottom);
+  if (eighthPartition) {
+    const MAX_PART = 8;
+    const expanded: number[] = [];
+    for (const eighths of eighthPartition) {
+      const slots = eighths * beatSize;
+      if (slots <= MAX_PART) {
+        expanded.push(slots);
+        continue;
+      }
+      const parts = Math.ceil(slots / MAX_PART);
+      const base = Math.floor(slots / parts);
+      const extra = slots - base * parts;
+      for (let i = 0; i < parts; i++) expanded.push(base + (i < extra ? 1 : 0));
+    }
+    if (expanded.reduce((s, v) => s + v, 0) === totalSlots) return expanded;
+  }
+  // Generic fallback: greedy 2s and 3s (London's elementary NI groups)
   const groups: number[] = [];
   let rem = totalSlots;
   while (rem > 0) {
