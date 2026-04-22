@@ -1323,38 +1323,74 @@ export default function HarmonyWorkshop() {
             Original
           </button>
         )}
-        <div className="ml-2 flex items-center gap-1">
+        <div className="ml-2 flex items-center gap-2">
           <span className="text-[10px] text-[#666] uppercase tracking-wider">
             Mid-bar pulses
           </span>
-          {candidateMidBarPulses(song.timeSignature).length === 0 ? (
-            <span className="text-[10px] text-[#444] italic">n/a for this meter</span>
-          ) : (
-            candidateMidBarPulses(song.timeSignature).map((p) => {
-              const on = midBarPulses.has(p);
-              return (
-                <button
-                  key={p}
-                  onClick={() =>
-                    setMidBarPulses((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(p)) next.delete(p);
-                      else next.add(p);
-                      return next;
-                    })
-                  }
-                  className={`px-1.5 py-0.5 text-[10px] rounded border transition-colors ${
-                    on
-                      ? "bg-[#2a2a4a] border-[#7173e6] text-[#9a9cf8]"
-                      : "bg-[#1a1a1a] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                  }`}
-                  title={`Allow a mid-bar chord change at this pulse (${pulseLabel(p, song.timeSignature)} = ${p} quarter-beats from bar start).`}
-                >
-                  {pulseLabel(p, song.timeSignature)}
-                </button>
-              );
-            })
-          )}
+          {(() => {
+            // One circle per pulse in the bar, grouped by the meter's 2/3
+            // partition with a gap between groups so the structure reads.
+            // Group-start circles are the metric pulses where a chord can
+            // land: the downbeat is always the main chord (filled, locked),
+            // later group-starts toggle between "chord can land here" (filled
+            // indigo) and "no mid-bar chord here" (outlined).  Non-start
+            // pulses are small dots that visualise the meter's shape only.
+            const partition = metricPartitionEighths(song.timeSignature);
+            // Eighth-note position of each group's start (cumulative).
+            const groupStartEighth: number[] = [];
+            let cum = 0;
+            for (const g of partition) { groupStartEighth.push(cum); cum += g; }
+            return (
+              <div className="flex items-center gap-2">
+                {partition.map((groupSize, gi) => (
+                  <div key={gi} className="flex items-center gap-1">
+                    {Array.from({ length: groupSize }, (_, pi) => {
+                      const isStart = pi === 0;
+                      if (!isStart) {
+                        return (
+                          <div
+                            key={pi}
+                            className="w-1 h-1 rounded-full bg-[#333]"
+                            title="Within-group pulse"
+                          />
+                        );
+                      }
+                      const isDownbeat = gi === 0;
+                      // Position in quarter-beats = eighth-index / 2.
+                      const posQuarters = groupStartEighth[gi] / 2;
+                      const on = isDownbeat || midBarPulses.has(posQuarters);
+                      const label = pulseLabel(posQuarters, song.timeSignature);
+                      return (
+                        <button
+                          key={pi}
+                          type="button"
+                          disabled={isDownbeat}
+                          onClick={() =>
+                            setMidBarPulses((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(posQuarters)) next.delete(posQuarters);
+                              else next.add(posQuarters);
+                              return next;
+                            })
+                          }
+                          className={`w-3 h-3 rounded-full border-2 transition-colors ${
+                            on
+                              ? "bg-[#7173e6] border-[#7173e6]"
+                              : "bg-transparent border-[#555] hover:border-[#888]"
+                          } ${isDownbeat ? "cursor-default opacity-80" : "cursor-pointer"}`}
+                          title={
+                            isDownbeat
+                              ? `Bar downbeat (${label}) — main chord always lands here`
+                              : `${label} — ${on ? "click to remove mid-bar chord here" : "click to allow a mid-bar chord here"}`
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
