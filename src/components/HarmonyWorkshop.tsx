@@ -1897,67 +1897,64 @@ function HWChordSelectionPanel({
                   {allChecked ? "Clear" : "All"}
                 </button>
               </div>
-              <div className="grid gap-1 p-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+              <div className="grid gap-1 p-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 auto-rows-fr">
                 {level.chords.map(entry => {
                   const isChecked = checkedSet.has(entry.label);
                   const enabledApproaches = new Set(approachMap[entry.label] ?? []);
                   const TONIC_LABELS = new Set(["I", "i", "I°", "i°", "I+", "i+"]);
                   const isTonic = TONIC_LABELS.has(entry.label) || (entry.steps != null && entry.steps[0] === 0);
                   const showApproaches = !isTonic && level.name !== "Modal Interchange";
+                  const xenSteps = entry.steps ?? baseMap[entry.label] ?? null;
+                  const xenAvail = xenSteps ? applicableXenKinds(xenSteps, edo) : [];
+                  const enabledXen = new Set(xenMap[entry.label] ?? []);
                   return (
                     <div key={entry.label}
-                      className="rounded overflow-hidden border transition-colors flex flex-col"
+                      className="rounded overflow-hidden border transition-colors flex flex-col h-full"
                       style={isChecked
                         ? { background: accent + "30", borderColor: accent }
                         : { background: "#141414", borderColor: "#1a1a1a" }}>
                       <button onClick={() => toggleChord(entry.label)}
-                        className={`w-full text-left px-2 py-1 text-xs transition-colors ${
+                        className={`flex-1 w-full text-left px-2 py-1 text-xs transition-colors ${
                           isChecked ? "" : "text-[#666] hover:text-[#888]"
                         }`}
                         style={isChecked ? { color: accent } : undefined}>
                         {entry.label}
                       </button>
-                      {showApproaches && (
-                        <div className="flex gap-0.5 px-1 py-1">
-                          {APPROACH_KINDS.map(k => {
-                            const on = enabledApproaches.has(k);
-                            const color = APPROACH_COLORS[k];
-                            return (
-                              <button key={k}
-                                disabled={!isChecked}
-                                onClick={() => toggleApproach(entry.label, k)}
-                                title={isChecked ? `${APPROACH_LABELS[k]}${entry.label}` : `Enable ${entry.label} first`}
-                                className={`flex-1 text-[8px] leading-none py-0.5 rounded border transition-colors ${
-                                  !isChecked ? "opacity-40 cursor-not-allowed bg-[#0e0e0e] text-[#444] border-[#222]"
-                                  : on ? "text-black font-semibold"
-                                  : "bg-[#1a1a1a] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
-                                }`}
-                                style={isChecked && on ? { background: color, borderColor: color } : undefined}>
-                                {APPROACH_LABELS[k]}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {(() => {
-                        const xenSteps = entry.steps ?? baseMap[entry.label] ?? null;
-                        const xenAvail = xenSteps ? applicableXenKinds(xenSteps, edo) : [];
-                        if (xenAvail.length === 0) return null;
-                        const enabledXen = new Set(xenMap[entry.label] ?? []);
-                        return (
-                          <div className="flex gap-0.5 px-1 py-1 mt-auto">
+                      <div className="flex flex-col gap-0.5">
+                        {showApproaches && (
+                          <div className="flex gap-0.5 px-1 pt-1">
+                            {APPROACH_KINDS.map(k => {
+                              const on = enabledApproaches.has(k);
+                              const color = APPROACH_COLORS[k];
+                              return (
+                                <button key={k}
+                                  onClick={() => isChecked ? toggleApproach(entry.label, k) : toggleChord(entry.label)}
+                                  title={isChecked ? `${APPROACH_LABELS[k]}${entry.label}` : `Click to enable ${entry.label}`}
+                                  className={`flex-1 min-h-[24px] text-[10px] leading-tight px-1 py-1 rounded border transition-colors ${
+                                    !isChecked ? "bg-[#141414] text-[#555] border-[#222] hover:text-[#aaa] hover:border-[#444]"
+                                    : on ? "text-black font-semibold"
+                                    : "bg-[#1a1a1a] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
+                                  }`}
+                                  style={isChecked && on ? { background: color, borderColor: color } : undefined}>
+                                  {APPROACH_LABELS[k]}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {xenAvail.length > 0 && (
+                          <div className="flex gap-0.5 px-1 pb-1">
                             {xenAvail.map(k => {
                               const on = enabledXen.has(k);
                               const color = XEN_COLOR[k];
                               return (
                                 <button key={k}
-                                  disabled={!isChecked}
-                                  onClick={() => toggleXen(entry.label, k)}
+                                  onClick={() => isChecked ? toggleXen(entry.label, k) : toggleChord(entry.label)}
                                   title={isChecked
                                     ? `${entry.label} with ${k === "neu" ? "neutral" : k === "sub" ? "subminor" : k === "sup" ? "supermajor" : k === "qrt" ? "quartal" : "quintal"} variant`
-                                    : `Enable ${entry.label} first`}
-                                  className={`flex-1 text-[9px] leading-none py-0.5 rounded border transition-colors ${
-                                    !isChecked ? "opacity-40 cursor-not-allowed bg-[#0e0e0e] text-[#444] border-[#222]"
+                                    : `Click to enable ${entry.label}`}
+                                  className={`flex-1 min-h-[24px] text-[10px] leading-tight px-1 py-1 rounded border transition-colors ${
+                                    !isChecked ? "bg-[#141414] text-[#555] border-[#222] hover:text-[#aaa] hover:border-[#444]"
                                     : on ? "text-black font-semibold"
                                     : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
                                   }`}
@@ -1967,8 +1964,8 @@ function HWChordSelectionPanel({
                               );
                             })}
                           </div>
-                        );
-                      })()}
+                        )}
+                      </div>
                     </div>
                   );
                 })}
