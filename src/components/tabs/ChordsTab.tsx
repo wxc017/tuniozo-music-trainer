@@ -17,7 +17,7 @@ import {
   getAvailableThirdQualities, getAvailableSeventhQualities, getAvailableFifthQualities,
   computeFifthQuality,
 } from "@/lib/edoData";
-import { getTonalityBanks, getMagicModeBank, getTonalityNames, type TonalityBank, type ChordEntry } from "@/lib/tonalityBanks";
+import { getTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS, type TonalityBank, type ChordEntry, type ApproachKind } from "@/lib/tonalityBanks";
 import { formatRomanNumeral } from "@/lib/formatRoman";
 
 interface Props {
@@ -39,6 +39,19 @@ interface Props {
 }
 
 const REGISTER_MODES = ["Fixed Register","Random Bass Octave","Random Full Register"];
+
+// Tonality family taxonomy — mirrors the Mode Identification tab's
+// Major / Harmonic Minor / Melodic Minor groups.  All seven modes of
+// each parent scale are listed; tonalities not exposed by tonalityBanks
+// for the current EDO are filtered out at render time.
+const TONALITY_FAMILIES: { key: string; label: string; color: string; tonalities: string[] }[] = [
+  { key: "major",    label: "MAJOR",          color: "#6a9aca",
+    tonalities: ["Major","Dorian","Phrygian","Lydian","Mixolydian","Aeolian","Locrian"] },
+  { key: "harmonic", label: "HARMONIC MINOR", color: "#c09050",
+    tonalities: ["Harmonic Minor","Locrian #6","Ionian #5","Dorian #4","Phrygian Dominant","Lydian #2","Ultralocrian"] },
+  { key: "melodic",  label: "MELODIC MINOR",  color: "#c06090",
+    tonalities: ["Melodic Minor","Dorian b2","Lydian Augmented","Lydian Dominant","Mixolydian b6","Locrian #2","Altered"] },
+];
 
 // Chord-type tier ordering for the Progressions selector.
 // Classification walks 3rd by 3rd outward from the roman numeral's natural
@@ -65,9 +78,17 @@ export default function ChordsTab({
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // ── Chord selection state ───────────────────────────────────────────
-  const [checkedChords, setCheckedChords] = useLS<Set<string>>("lt_crd_chords",
-    new Set(["I","IV","V","vi","ii","iii","vii°"])
+  // Per-tonality checked chord labels.  Each tonality gets its own pool
+  // (Primary + Diatonic chords + per-target approach toggles).  At play
+  // time we pick a random tonality from `tonalitySet` and use only that
+  // tonality's pool.
+  const [checkedByTonality, setCheckedByTonality] = useLS<Record<string, string[]>>(
+    "lt_crd_checkedByTon",
+    { Major: ["I","IV","V","ii","iii","vi","vii°"] },
   );
+  // Back-compat: combined view used by global gates (canPlay, previews).
+  // Derived below from `checkedByTonality` ∪ approach chords across all
+  // active tonalities.
   const [regMode, setRegMode] = useLS<string>("lt_crd_regMode", "Fixed Register");
   const [extTendency, setExtTendency] = useLS<string>("lt_crd_extTend", "Any");
   // "7th" is intentionally excluded from the extension UI — the 7th is
@@ -111,9 +132,38 @@ export default function ChordsTab({
       : chordTypeModeResolved;
   const setChordTypeMode = (m: ChordTypeMode) => setChordTypeModeRaw(m);
 
-  // Tonality state
-  const [tonality, setTonality] = useLS<string>("lt_crd_tonality", "Major");
+  // Tonality multi-select. The user picks one or more modes (boxes); at
+  // play time a random one is chosen and only its pool drives the loop.
+  const [tonalitySet, setTonalitySet] = useLS<Set<string>>("lt_crd_tonalities", new Set(["Major"]));
   const [collapsedLevels, setCollapsedLevels] = useState<Set<string>>(new Set());
+
+  // Approach-chord toggles, scoped per tonality.  Outer key = tonality
+  // name; inner key = target chord label; value = enabled approach kinds.
+  const [approachesByTonality, setApproachesByTonality] = useLS<Record<string, Record<string, ApproachKind[]>>>(
+    "lt_crd_approachesByTon", {});
+  const toggleApproach = useCallback((tonality: string, target: string, kind: ApproachKind) => {
+    setApproachesByTonality(prev => {
+      const tonMap = prev[tonality] ?? {};
+      const existing = tonMap[target] ?? [];
+      const has = existing.includes(kind);
+      const next = has ? existing.filter(k => k !== kind) : [...existing, kind];
+      const tonCopy = { ...tonMap };
+      if (next.length === 0) delete tonCopy[target]; else tonCopy[target] = next;
+      const copy = { ...prev };
+      if (Object.keys(tonCopy).length === 0) delete copy[tonality]; else copy[tonality] = tonCopy;
+      return copy;
+    });
+  }, [setApproachesByTonality]);
+
+  // Toggle membership in the tonality multi-select; auto-seeds primary
+  // chords for newly added tonalities so they're playable out of the box.
+  const toggleTonality = useCallback((name: string) => {
+    setTonalitySet(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  }, [setTonalitySet]);
 
   // ── Progression state ──────────────────────────────────────────────
   const [loopLength, setLoopLength] = useLS<number>("lt_crd_fh_len", 4);
@@ -146,11 +196,11 @@ export default function ChordsTab({
 
   useEffect(() => {
     unregisterKnownOptionsForPrefix("crd:");
-    Array.from(checkedChords).forEach(rn => {
-      registerKnownOption(`crd:fh:${rn}`, `Chords: ${rn}`);
-    });
+    const all = new Set<string>();
+    for (const labels of Object.values(checkedByTonality)) for (const l of labels) all.add(l);
+    all.forEach(rn => registerKnownOption(`crd:fh:${rn}`, `Chords: ${rn}`));
     return () => unregisterKnownOptionsForPrefix("crd:");
-  }, [checkedChords]);
+  }, [checkedByTonality]);
 
   // Publish settings snapshot for history panel
   useEffect(() => {
@@ -159,11 +209,13 @@ export default function ChordsTab({
     const extLabels = Array.from(checkedExts);
     const extCountLabels = Array.from(checkedExtCounts).sort().map(String);
     const texLayerLabels = Array.from(textureLayers);
+    const allRomans = new Set<string>();
+    for (const labels of Object.values(checkedByTonality)) for (const l of labels) allRomans.add(l);
 
     tabSettingsRef.current = {
       title: "Progressions",
       groups: [
-        { label: "Roman Numerals", items: Array.from(checkedChords) },
+        { label: "Roman Numerals", items: Array.from(allRomans) },
         { label: "Ext Tendency", items: [extTendency] },
         { label: "Voicings", items: voicingLabels },
         { label: "Extensions", items: extLabels.length ? extLabels : ["none"] },
@@ -178,12 +230,12 @@ export default function ChordsTab({
           `Duration: ${chordDur}s`,
           `Register: ${regMode}`,
           `Layers: ${texLayerLabels.join(", ") || "Harmony"}`,
-          `Tonality: ${tonality}`,
+          `Tonalities: ${Array.from(tonalitySet).join(", ") || "none"}`,
         ]},
       ],
     };
-  }, [checkedChords, extTendency, checkedPatterns, checkedExts, checkedExtCounts,
-      checkedThirds, checkedFifths, checkedSevenths, chordTypeMode, loopLength, loopGap, chordDur, regMode, textureLayers, tonality, edo, tabSettingsRef]);
+  }, [checkedByTonality, extTendency, checkedPatterns, checkedExts, checkedExtCounts,
+      checkedThirds, checkedFifths, checkedSevenths, chordTypeMode, loopLength, loopGap, chordDur, regMode, textureLayers, tonalitySet, edo, tabSettingsRef]);
 
   // Clamp notes to the keyboard's physical pitch range.
   // Avoids losing voices by deduplicating collapsed octaves.
@@ -212,54 +264,142 @@ export default function ChordsTab({
   const allChords = getAllChordsForEdo(edo);
   const baseChordMap = Object.fromEntries(allChords.map(([n, s]) => [n, s]));
 
-  // Get active tonality bank
+  // Tonality banks (one per mode) — Magic Mode is excluded from the new
+  // multi-select picker; the family-grouped boxes only show real modes.
   const tonalityBanks = useMemo(() => getTonalityBanks(edo), [edo]);
-  const magicBank = useMemo(() => getMagicModeBank(edo), [edo]);
-  const tonalityNames = useMemo(() => getTonalityNames(edo), [edo]);
+  const banksByName = useMemo(() => {
+    const map: Record<string, TonalityBank> = {};
+    for (const b of tonalityBanks) map[b.name] = b;
+    return map;
+  }, [tonalityBanks]);
 
-  const activeBank: TonalityBank | null = useMemo(() => {
-    if (tonality === "Magic Mode") return magicBank;
-    return tonalityBanks.find(b => b.name === tonality) ?? tonalityBanks[0] ?? null;
-  }, [tonality, tonalityBanks, magicBank]);
+  // ── Per-tonality builders ────────────────────────────────────────────
+  // For a tonality T, return the (target → steps) map for its
+  // Primary/Diatonic levels. Used both to evaluate approach toggles and
+  // to render the per-tonality chord cards.
+  const buildPrimaryDiatonicTargets = useCallback((t: string): Map<string, number[]> => {
+    const out = new Map<string, number[]>();
+    const bank = banksByName[t];
+    if (!bank) return out;
+    for (const level of bank.levels) {
+      if (level.name !== "Primary" && level.name !== "Diatonic") continue;
+      for (const c of level.chords) {
+        const steps = c.steps ?? baseChordMap[c.label];
+        if (steps) out.set(c.label, steps);
+      }
+    }
+    return out;
+  }, [banksByName, baseChordMap]);
 
-  // Merge tonality-specific chord shapes into base map
-  const chordMap = useMemo(() => {
-    const map = { ...baseChordMap };
-    if (activeBank) {
-      for (const level of activeBank.levels) {
-        for (const entry of level.chords) {
-          if (entry.steps && !map[entry.label]) {
-            map[entry.label] = entry.steps;
-          }
+  // Approach chord entries for a single tonality.
+  const buildApproachEntriesForTonality = useCallback((t: string): ChordEntry[] => {
+    const targets = buildPrimaryDiatonicTargets(t);
+    const approaches = approachesByTonality[t] ?? {};
+    const out: ChordEntry[] = [];
+    const seen = new Set<string>();
+    for (const [target, kinds] of Object.entries(approaches)) {
+      const steps = targets.get(target);
+      if (!steps) continue;
+      for (const kind of kinds) {
+        for (const e of getApproachChords(target, steps, kind, edo)) {
+          if (seen.has(e.label)) continue;
+          seen.add(e.label);
+          out.push(e);
         }
       }
     }
+    return out;
+  }, [approachesByTonality, buildPrimaryDiatonicTargets, edo]);
+
+  // Full chord-shape map for a single tonality (base + bank + approaches).
+  const buildChordMapForTonality = useCallback((t: string): Record<string, number[]> => {
+    const map: Record<string, number[]> = { ...baseChordMap };
+    const bank = banksByName[t];
+    if (bank) {
+      for (const level of bank.levels) {
+        for (const entry of level.chords) {
+          if (entry.steps && !map[entry.label]) map[entry.label] = entry.steps;
+        }
+      }
+    }
+    for (const e of buildApproachEntriesForTonality(t)) {
+      if (e.steps && !map[e.label]) map[e.label] = e.steps;
+    }
     return map;
-  }, [baseChordMap, activeBank]);
+  }, [baseChordMap, banksByName, buildApproachEntriesForTonality]);
 
-  // Filter chords by whether their type matches the checked chord types
-  const edoChordTypes = useMemo(() => getEdoChordTypes(edo), [edo]);
-
-  // Diatonic scale roots for the active tonality, sorted ascending pc. Used
-  // to compute the natural 7th on each scale degree so "1 3 5 7" voicings
-  // respect the key (e.g. I → Imaj7 in Major, V → V7, never Vmaj7).
-  // Bank entries often have steps=null (ref lookups) so resolve each label
-  // through chordMap — which already merges baseChordMap with bank overrides.
-  const diatonicScaleRoots = useMemo<number[] | null>(() => {
-    if (!activeBank) return null;
+  // Pool of pitch-class roots (ascending) for a tonality's diatonic scale —
+  // used by getCompatibleTypes to force the right diatonic 7th.
+  const buildDiatonicScaleRootsForTonality = useCallback((t: string): number[] | null => {
+    const bank = banksByName[t];
+    if (!bank) return null;
+    const map = buildChordMapForTonality(t);
     const roots = new Set<number>();
-    for (const level of activeBank.levels) {
+    for (const level of bank.levels) {
       if (level.name !== "Primary" && level.name !== "Diatonic") continue;
       for (const c of level.chords) {
-        const steps = c.steps ?? chordMap[c.label];
-        if (steps && steps.length > 0) {
-          roots.add(((steps[0] % edo) + edo) % edo);
-        }
+        const steps = c.steps ?? map[c.label];
+        if (steps && steps.length > 0) roots.add(((steps[0] % edo) + edo) % edo);
       }
     }
     if (roots.size !== 7) return null;
     return Array.from(roots).sort((a, b) => a - b);
-  }, [activeBank, chordMap, edo]);
+  }, [banksByName, buildChordMapForTonality, edo]);
+
+  // Effective pool labels for one tonality: checked chords ∪ approach
+  // chord labels generated from approachesByTonality[t].
+  const buildEffectiveCheckedForTonality = useCallback((t: string): Set<string> => {
+    const s = new Set(checkedByTonality[t] ?? []);
+    for (const e of buildApproachEntriesForTonality(t)) s.add(e.label);
+    return s;
+  }, [checkedByTonality, buildApproachEntriesForTonality]);
+
+  // ── Global (union) memos ─────────────────────────────────────────────
+  // Used by canPlay gates, LilPreviewPanel, and the extension scale
+  // builder where a single combined view across all active tonalities is
+  // sufficient.
+
+  // Union chord map. Labels with the same name share the same shape across
+  // the bundled tonalities (verified by tonalityBanks conventions), so the
+  // first hit wins and conflicts don't arise.
+  const chordMap = useMemo(() => {
+    const map: Record<string, number[]> = { ...baseChordMap };
+    for (const t of tonalitySet) {
+      const tMap = buildChordMapForTonality(t);
+      for (const [k, v] of Object.entries(tMap)) {
+        if (!map[k]) map[k] = v;
+      }
+    }
+    return map;
+  }, [baseChordMap, tonalitySet, buildChordMapForTonality]);
+
+  const effectiveChecked = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of tonalitySet) for (const l of buildEffectiveCheckedForTonality(t)) s.add(l);
+    return s;
+  }, [tonalitySet, buildEffectiveCheckedForTonality]);
+
+  // Combined approach labels across all active tonalities — passed as the
+  // boost set to generateFunctionalLoop. (Only relevant inside
+  // startFunctionalLoop after a single tonality has been chosen, but a
+  // union is still valid since approach labels are tonality-specific.)
+  const approachLabels = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of tonalitySet) for (const e of buildApproachEntriesForTonality(t)) s.add(e.label);
+    return s;
+  }, [tonalitySet, buildApproachEntriesForTonality]);
+
+  // Filter chords by whether their type matches the checked chord types
+  const edoChordTypes = useMemo(() => getEdoChordTypes(edo), [edo]);
+
+  // Default diatonic scale roots — derived from the *first* active
+  // tonality (deterministic for stability of the canPlay gate).  Loops
+  // pass per-tonality scale roots through voiceChord at play time.
+  const diatonicScaleRoots = useMemo<number[] | null>(() => {
+    const first = Array.from(tonalitySet)[0];
+    if (!first) return null;
+    return buildDiatonicScaleRootsForTonality(first);
+  }, [tonalitySet, buildDiatonicScaleRootsForTonality]);
 
   // Get the pool of checked chord types that are compatible with a roman numeral's shape.
   // Returns the matching types so the caller can pick one and rebuild the chord.
@@ -285,7 +425,8 @@ export default function ChordsTab({
   // Side of a type: if its 3rd is xen, use the 3rd's nearest-standard side;
   // else if its 7th is xen, use the 7th's side; else the 3rd's side (only
   // reached when fully standard, in which case the xen tiers exclude it).
-  const getCompatibleTypes = useCallback((shape: number[]): EdoChordType[] => {
+  const getCompatibleTypes = useCallback((shape: number[], scaleRootsOverride?: number[] | null): EdoChordType[] => {
+    const scaleRoots = scaleRootsOverride !== undefined ? scaleRootsOverride : diatonicScaleRoots;
     const root = shape[0];
     const rels = shape.map(s => ((s - root) % edo + edo) % edo).sort((a, b) => a - b);
     const chordThird   = rels.length >= 2 ? rels[1] : -1;
@@ -306,10 +447,10 @@ export default function ChordsTab({
     // "any m7/M7".
     const rootNorm = ((root % edo) + edo) % edo;
     let diatonicSeventh: number | null = null;
-    if (diatonicScaleRoots) {
-      const idx = diatonicScaleRoots.indexOf(rootNorm);
+    if (scaleRoots) {
+      const idx = scaleRoots.indexOf(rootNorm);
       if (idx >= 0) {
-        const seventhRoot = diatonicScaleRoots[(idx + 6) % diatonicScaleRoots.length];
+        const seventhRoot = scaleRoots[(idx + 6) % scaleRoots.length];
         diatonicSeventh = ((seventhRoot - rootNorm) % edo + edo) % edo;
       }
     }
@@ -393,11 +534,11 @@ export default function ChordsTab({
   // under the current 3rd/5th/7th + tier selection. Empty → Play is
   // disabled with a hint telling the user to broaden their filters.
   const playablePool = useMemo(() => {
-    return Array.from(checkedChords).filter(rn => {
+    return Array.from(effectiveChecked).filter(rn => {
       const shape = chordMap[rn];
       return shape ? chordMatchesType(shape) : false;
     });
-  }, [checkedChords, chordMap, chordMatchesType]);
+  }, [effectiveChecked, chordMap, chordMatchesType]);
 
   // Whether any selected voicing pattern is playable under the current
   // 7th selection. If the user hasn't checked any 7ths, patterns that
@@ -427,19 +568,24 @@ export default function ChordsTab({
         ? "No triad voicing selected — pick a 3-note voicing or enable at least one 7th."
         : null;
 
-  // When tonality changes, auto-select its primary chords
-  const prevTonality = useRef(tonality);
+  // Seed primary chords for any newly-added tonality. Without this a
+  // freshly toggled mode would have an empty pool and refuse to play.
   useEffect(() => {
-    if (prevTonality.current !== tonality) {
-      prevTonality.current = tonality;
-      if (activeBank) {
-        const primary = activeBank.levels[0];
+    setCheckedByTonality(prev => {
+      let changed = false;
+      const next = { ...prev };
+      for (const t of tonalitySet) {
+        if (next[t]) continue;
+        const bank = banksByName[t];
+        const primary = bank?.levels[0];
         if (primary) {
-          setCheckedChords(new Set(primary.chords.map(c => c.label)));
+          next[t] = primary.chords.map(c => c.label);
+          changed = true;
         }
       }
-    }
-  }, [tonality, activeBank, setCheckedChords]);
+      return changed ? next : prev;
+    });
+  }, [tonalitySet, banksByName, setCheckedByTonality]);
 
   // ── Shared voicing pipeline ─────────────────────────────────────────
 
@@ -455,7 +601,7 @@ export default function ChordsTab({
     return counts;
   }, [checkedPatterns]);
 
-  const voiceChord = useCallback((rn: string, stepsOverride: number[] | null, currentChordMap: Record<string, number[]>, prevChord: number[] | null = null) => {
+  const voiceChord = useCallback((rn: string, stepsOverride: number[] | null, currentChordMap: Record<string, number[]>, prevChord: number[] | null = null, scaleRootsOverride?: number[] | null) => {
     // No voicing patterns selected → nothing to play
     if (patternNoteCounts.size === 0) return null;
 
@@ -465,7 +611,7 @@ export default function ChordsTab({
     // Apply a random compatible chord type — if none match the user's
     // quality filters (3rd/5th/7th + tier), refuse to voice this chord
     // rather than silently falling back to the raw roman-numeral shape.
-    const compatTypes = getCompatibleTypes(shape);
+    const compatTypes = getCompatibleTypes(shape, scaleRootsOverride);
     if (compatTypes.length === 0) return null;
     shape = applyChordType(shape, randomChoice(compatTypes));
 
@@ -500,7 +646,7 @@ export default function ChordsTab({
     const k_ext = Math.max(0, targetNotes - shape.length);
 
     const scalePcs = new Set<number>();
-    const checkedRomans = Array.from(checkedChords).filter(r => currentChordMap[r]);
+    const checkedRomans = Array.from(effectiveChecked).filter(r => currentChordMap[r]);
     for (const rn2 of checkedRomans) {
       for (const s of currentChordMap[rn2] ?? []) scalePcs.add(((s % edo) + edo) % edo);
     }
@@ -688,7 +834,7 @@ export default function ChordsTab({
     }
 
     return { chordAbs, voicingType: "pattern", quality: triadQuality(shape, edo), appliedShape: [...shape] };
-  }, [checkedPatterns, patternNoteCounts, checkedChords, checkedExts, checkedExtCounts, extTendency, regMode, edo, tonicPc, lowestOct, highestOct, clampToLayout, getCompatibleTypes, applyChordType, edoChordTypes, chordTypeMode, diatonicScaleRoots, checkedSevenths]);
+  }, [checkedPatterns, patternNoteCounts, effectiveChecked, checkedExts, checkedExtCounts, extTendency, regMode, edo, tonicPc, lowestOct, highestOct, clampToLayout, getCompatibleTypes, applyChordType, edoChordTypes, chordTypeMode, diatonicScaleRoots, checkedSevenths]);
 
   // ── Progressions: loop engine ───────────────────────────────────────
 
@@ -704,23 +850,22 @@ export default function ChordsTab({
     audioEngine.silencePlay();
   }, []);
 
-  const buildLoopFrames = useCallback((progression: string[]): { chords: number[][]; bass: number[][]; melody: number[][]; appliedShapes: (number[] | null)[] } => {
+  const buildLoopFrames = useCallback((progression: string[], chordMapOverride?: Record<string, number[]>, scaleRootsOverride?: number[] | null): { chords: number[][]; bass: number[][]; melody: number[][]; appliedShapes: (number[] | null)[] } => {
+    const useMap = chordMapOverride ?? chordMap;
+    const useScaleRoots = scaleRootsOverride !== undefined ? scaleRootsOverride : diatonicScaleRoots;
     const chords: number[][] = [];
     const appliedShapes: (number[] | null)[] = [];
     // Thread each chord's voicing into the next so voiceChord can run its
     // voice-leading checklist against the previous chord's actual pitches.
     let prevVoicing: number[] | null = null;
     for (const rn of progression) {
-      const result = voiceChord(rn, null, chordMap, prevVoicing);
+      const result = voiceChord(rn, null, useMap, prevVoicing, useScaleRoots);
       chords.push(result ? result.chordAbs : []);
       appliedShapes.push(result ? result.appliedShape : null);
       if (result && result.chordAbs.length > 0) prevVoicing = result.chordAbs;
     }
     const midOct = Math.floor((lowestOct + highestOct) / 2);
-    // Always generate all voices so Show Answer has complete info;
-    // playVoices filters by textureLayers for audio output
     const bassOct = midOct - 2;
-    // Place melody above the highest chord note when possible
     const highestChordOct = chords.length > 0
       ? Math.floor(Math.max(...chords.flat()) / edo) + 4
       : midOct + 1;
@@ -729,18 +874,16 @@ export default function ChordsTab({
     const bass = generateBassLine(validShapes, edo, tonicPc, bassOct, bassLineMode);
     const melody = generateMelodyLine(validShapes, edo, tonicPc, melOct, melodyMode);
 
-    // Chords are already clamped by voiceChord — only clamp bass & melody
+    // Clamp melody into the layout window and keep it above the chords.
     const layoutMax = layoutPitchRange?.max ?? Infinity;
     for (let i = 0; i < melody.length; i++) {
       melody[i] = clampToLayout(melody[i]);
-      // If clamping emptied the frame, fallback: use the highest chord note
       const subdivsMel = Math.max(1, Math.round(melody.length / chords.length));
       const chordIdxMel = Math.min(Math.floor(i / subdivsMel), chords.length - 1);
       if (melody[i].length === 0 && chords[chordIdxMel]?.length) {
         const topNote = Math.max(...chords[chordIdxMel]);
-        melody[i] = [topNote + edo]; // one octave above highest chord note
+        melody[i] = [topNote + edo];
       }
-      // Ensure melody is always above the highest chord note
       if (chords[chordIdxMel]?.length) {
         const highestChordNote = Math.max(...chords[chordIdxMel]);
         melody[i] = melody[i].map(n => {
@@ -761,7 +904,6 @@ export default function ChordsTab({
         const lowestChordNote = Math.min(...chords[chordIdx]);
         bass[i] = bass[i].map(n => {
           while (n >= lowestChordNote) n -= edo;
-          // Don't go below the keyboard's lowest key
           while (n < layoutMin) n += edo;
           return n;
         });
@@ -771,22 +913,20 @@ export default function ChordsTab({
     }
 
     // ── Arpeggiation: replace block chords with musical broken-chord patterns ──
-    // Bass note first, then chord tones in varied patterns (Alberti, ascending, etc.)
     if (arpEnabled) {
       const arpChords: number[][] = [];
       const patterns = [
-        [0, 2, 1, 2],     // Alberti bass: low-high-mid-high
-        [0, 1, 2, 1],     // low-mid-high-mid
-        [0, 1, 2, 0],     // ascending + return
-        [2, 1, 0, 1],     // descending + return
-        [0, 2, 0, 1],     // bass-top-bass-mid
-        [0, 1, 0, 2],     // bass-mid-bass-top
+        [0, 2, 1, 2],
+        [0, 1, 2, 1],
+        [0, 1, 2, 0],
+        [2, 1, 0, 1],
+        [0, 2, 0, 1],
+        [0, 1, 0, 2],
       ];
       for (let ci = 0; ci < chords.length; ci++) {
         const chord = chords[ci];
         if (chord.length === 0) { arpChords.push([], [], [], []); continue; }
         const sorted = [...chord].sort((a, b) => a - b);
-        // Pick a pattern — vary per chord for musicality
         const pat = patterns[ci % patterns.length];
         for (const idx of pat) {
           const noteIdx = Math.min(idx, sorted.length - 1);
@@ -797,7 +937,6 @@ export default function ChordsTab({
       chords.push(...arpChords);
     }
 
-    // ── Passing tones: add diatonic passing tones between melody notes ──
     if (passingTones && melody.length > 1) {
       const withPassing: number[][] = [];
       for (let i = 0; i < melody.length; i++) {
@@ -806,7 +945,6 @@ export default function ChordsTab({
           const from = melody[i][0];
           const to = melody[i + 1][0];
           const diff = to - from;
-          // Only add passing tone if the interval is larger than a step
           if (Math.abs(diff) > 2 && Math.abs(diff) <= edo / 2) {
             const mid = Math.round((from + to) / 2);
             withPassing.push([mid]);
@@ -818,10 +956,10 @@ export default function ChordsTab({
     }
 
     return { chords, bass, melody, appliedShapes };
-  }, [voiceChord, chordMap, bassLineMode, melodyMode, edo, tonicPc, lowestOct, highestOct, clampToLayout, layoutPitchRange, arpEnabled, passingTones]);
+  }, [voiceChord, chordMap, diatonicScaleRoots, bassLineMode, melodyMode, edo, tonicPc, lowestOct, highestOct, clampToLayout, layoutPitchRange, arpEnabled, passingTones]);
 
   /** Play all active texture voices using the multi-voice scheduler. */
-  const playVoices = useCallback((voices: { chords: number[][]; bass: number[][]; melody: number[][] }, gapMs: number, noteDur: number, vol: number) => {
+  const playVoices = useCallback((voices: { chords: number[][]; bass: number[][] }, gapMs: number, noteDur: number, vol: number) => {
     const voiceList: { frames: number[][]; noteDuration: number; gain: number }[] = [];
     if (textureLayers.has("harmony") && voices.chords.length) {
       voiceList.push({ frames: voices.chords, noteDuration: noteDur, gain: vol * harmonyVol });
@@ -829,44 +967,30 @@ export default function ChordsTab({
     if (textureLayers.has("bass") && voices.bass.length) {
       voiceList.push({ frames: voices.bass, noteDuration: noteDur * 1.2, gain: vol * bassVol });
     }
-    if (textureLayers.has("melody") && voices.melody.length) {
-      voiceList.push({ frames: voices.melody, noteDuration: noteDur * 0.8, gain: vol * melodyVol });
-    }
     if (voiceList.length === 0) return;
     audioEngine.playMultiVoice(voiceList, edo, gapMs, voices.chords.length || 1);
-  }, [textureLayers, edo, harmonyVol, bassVol, melodyVol]);
+  }, [textureLayers, edo, harmonyVol, bassVol]);
 
   /** Build a unified highlight timeline from all voices, merging events at the same time.
    *  Only includes voices whose texture layer is active. */
-  const highlightAllVoices = useCallback((voices: { chords: number[][]; bass: number[][]; melody: number[][] }, gapMs: number) => {
+  const highlightAllVoices = useCallback((voices: { chords: number[][]; bass: number[][] }, gapMs: number) => {
     frameTimers.current.forEach(id => clearTimeout(id));
     frameTimers.current = [];
     const n = voices.chords.length;
     if (n === 0) return;
 
-    // Only include voices for active texture layers
     const activeBass = textureLayers.has("bass") ? voices.bass : [];
-    const activeMelody = textureLayers.has("melody") ? voices.melody : [];
-
-    // Figure out subdivisions for each voice
     const bassSubdivs = activeBass.length > 0 ? Math.max(1, Math.round(activeBass.length / n)) : 0;
-    const melSubdivs = activeMelody.length > 0 ? Math.max(1, Math.round(activeMelody.length / n)) : 0;
-    const maxSubdivs = Math.max(1, bassSubdivs, melSubdivs);
+    const maxSubdivs = Math.max(1, bassSubdivs);
     const subGap = gapMs / maxSubdivs;
 
     for (let slot = 0; slot < n; slot++) {
       for (let sub = 0; sub < maxSubdivs; sub++) {
         const t = slot * gapMs + sub * subGap;
         const notes: number[] = textureLayers.has("harmony") ? [...(voices.chords[slot] || [])] : [];
-        // Add bass frame for this sub-beat
         if (bassSubdivs > 0) {
           const bassIdx = slot * bassSubdivs + Math.min(sub, bassSubdivs - 1);
           if (bassIdx < activeBass.length) notes.push(...activeBass[bassIdx]);
-        }
-        // Add melody frame for this sub-beat
-        if (melSubdivs > 0) {
-          const melIdx = slot * melSubdivs + Math.min(sub, melSubdivs - 1);
-          if (melIdx < activeMelody.length) notes.push(...activeMelody[melIdx]);
         }
         const id = setTimeout(() => onHighlight(notes), t);
         frameTimers.current.push(id);
@@ -874,7 +998,7 @@ export default function ChordsTab({
     }
   }, [onHighlight, textureLayers]);
 
-  const playLoopIteration = useCallback((voices: { chords: number[][]; bass: number[][]; melody: number[][] }, gapMs: number, noteDur: number) => {
+  const playLoopIteration = useCallback((voices: { chords: number[][]; bass: number[][] }, gapMs: number, noteDur: number) => {
     if (!voices.chords.length) return;
     playVoices(voices, gapMs, noteDur, playVol);
     highlightAllVoices(voices, gapMs);
@@ -900,20 +1024,36 @@ export default function ChordsTab({
     await ensureAudio();
     stopLoop();
 
-    const checkedRomans = Array.from(checkedChords).filter(r => chordMap[r]);
+    // Randomize the tonality for this play. Filter to ones that have ≥2
+    // checked chords so we don't pick a tonality with an empty pool.
+    const usableTonalities = Array.from(tonalitySet).filter(t => {
+      const eff = buildEffectiveCheckedForTonality(t);
+      return eff.size >= 2;
+    });
+    if (usableTonalities.length === 0) {
+      setLoopInfo("Select at least 2 chords in a tonality.");
+      return;
+    }
+    const pickedTonality = randomChoice(usableTonalities);
+    const tonalityChordMap = buildChordMapForTonality(pickedTonality);
+    const tonalityScaleRoots = buildDiatonicScaleRootsForTonality(pickedTonality);
+    const tonalityEffective = buildEffectiveCheckedForTonality(pickedTonality);
+    const tonalityApproachLabels = new Set(buildApproachEntriesForTonality(pickedTonality).map(e => e.label));
+
+    const checkedRomans = Array.from(tonalityEffective).filter(r => tonalityChordMap[r]);
     if (checkedRomans.length < 2) {
       setLoopInfo("Select at least 2 chords.");
       return;
     }
 
-    const progression = generateFunctionalLoop(checkedRomans, loopLength);
+    const progression = generateFunctionalLoop(checkedRomans, loopLength, 300, tonalityApproachLabels);
     if (!progression) {
       setLoopInfo("Could not build a valid loop from these chords.");
       return;
     }
 
     setCurrentLoop(progression);
-    const voices = buildLoopFrames(progression);
+    const voices = buildLoopFrames(progression, tonalityChordMap, tonalityScaleRoots);
     if (!voices.chords.some(c => c.length > 0)) {
       setLoopInfo("Could not voice these chords.");
       return;
@@ -932,13 +1072,6 @@ export default function ChordsTab({
         const bassSlice = voices.bass.slice(idx * subdivs, (idx + 1) * subdivs);
         const bassNames = bassSlice.map(f => f.map(n => intervalLabel(((n - tonicPc) % edo + edo) % edo, edo)).join(",")).join(" → ");
         detailLines.push(`Bass:   ${bassNames}`);
-      }
-      // Melody
-      if (textureLayers.has("melody") && voices.melody.length > 0) {
-        const subdivs = Math.max(1, Math.round(voices.melody.length / progression.length));
-        const melSlice = voices.melody.slice(idx * subdivs, (idx + 1) * subdivs);
-        const melNames = melSlice.map(f => f.map(n => intervalLabel(((n - tonicPc) % edo + edo) % edo, edo)).join(",")).join(" → ");
-        detailLines.push(`Melody: ${melNames}`);
       }
       // "from Do" and "in context" show ONLY the chord (harmony) notes
       if (voices.chords[idx]?.length) {
@@ -973,7 +1106,7 @@ export default function ChordsTab({
     const totalChords = arpEnabled ? voices.chords.length / 4 : voices.chords.length;
     const d = setTimeout(() => { setIsLooping(false); }, totalChords * gapMs + 500);
     frameTimers.current.push(d);
-  }, [ensureAudio, stopLoop, checkedChords, chordMap, loopLength, loopGap, chordDur, buildLoopFrames, playVoices, onPlay, onResult, edo, tonicPc, playVol, textureLayers, arpEnabled, arpBpm]);
+  }, [ensureAudio, stopLoop, tonalitySet, buildEffectiveCheckedForTonality, buildChordMapForTonality, buildDiatonicScaleRootsForTonality, buildApproachEntriesForTonality, lastPlayed, loopLength, loopGap, chordDur, buildLoopFrames, playVoices, onPlay, onResult, edo, tonicPc, playVol, textureLayers, arpEnabled, arpBpm]);
 
   const replayFunctionalLoop = useCallback(() => {
     const voices = fhVoicesRef.current;
@@ -1014,26 +1147,76 @@ export default function ChordsTab({
     setCollapsedLevels(prev => { const n = new Set(prev); if (n.has(name)) n.delete(name); else n.add(name); return n; });
   };
 
-  const selectLevel = (chords: ChordEntry[]) => {
-    setCheckedChords(prev => { const n = new Set(prev); for (const c of chords) n.add(c.label); return n; });
-  };
+  // Toggle a single chord label inside a tonality's checked pool.
+  const toggleChordForTonality = useCallback((tonality: string, label: string) => {
+    setCheckedByTonality(prev => {
+      const list = prev[tonality] ?? [];
+      const has = list.includes(label);
+      const next = has ? list.filter(l => l !== label) : [...list, label];
+      return { ...prev, [tonality]: next };
+    });
+  }, [setCheckedByTonality]);
 
-  const deselectLevel = (chords: ChordEntry[]) => {
-    const labels = new Set(chords.map(c => c.label));
-    setCheckedChords(prev => { const n = new Set(prev); for (const l of labels) n.delete(l); return n; });
-  };
+  // Bulk select / clear a level's chords for one tonality.
+  const setLevelForTonality = useCallback((tonality: string, levelChords: ChordEntry[], select: boolean) => {
+    setCheckedByTonality(prev => {
+      const list = new Set(prev[tonality] ?? []);
+      for (const c of levelChords) {
+        if (select) list.add(c.label); else list.delete(c.label);
+      }
+      return { ...prev, [tonality]: Array.from(list) };
+    });
+  }, [setCheckedByTonality]);
 
   // ── Render ──────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-5">
-      {/* Tonality selector row */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <label className="text-xs text-[#888] font-medium">TONALITY</label>
-        <select value={tonality} onChange={e => setTonality(e.target.value)}
-          className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-xs text-white focus:outline-none">
-          {tonalityNames.map(t => <option key={t}>{t}</option>)}
-        </select>
+      {/* Tonality multi-select — family-grouped boxes (Mode ID style).
+          Click a mode to add it to the pool. At play time a random
+          tonality is chosen and only its chord pool is used. */}
+      <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2">
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-[#888] font-medium">TONALITIES</p>
+          <button onClick={() => setTonalitySet(new Set(tonalityBanks.map(b => b.name)))}
+            className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">All</button>
+          {TONALITY_FAMILIES.map(g => (
+            <button key={g.key} onClick={() => setTonalitySet(prev => {
+              const next = new Set(prev);
+              for (const t of g.tonalities) if (banksByName[t]) next.add(t);
+              return next;
+            })}
+              className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5">
+              +{g.label}
+            </button>
+          ))}
+          <button onClick={() => setTonalitySet(new Set())}
+            className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5 ml-auto">Clear</button>
+        </div>
+        {TONALITY_FAMILIES.map(group => {
+          const available = group.tonalities.filter(t => banksByName[t]);
+          if (available.length === 0) return null;
+          return (
+            <div key={group.key}>
+              <p className="text-[9px] mb-1 font-medium tracking-wider"
+                 style={{ color: group.color }}>{group.label}</p>
+              <div className="flex flex-wrap gap-1">
+                {available.map(t => {
+                  const on = tonalitySet.has(t);
+                  return (
+                    <button key={t} onClick={() => toggleTonality(t)}
+                      className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                        on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                      }`}
+                      style={on ? { backgroundColor: group.color + "30", borderColor: group.color, color: group.color } : {}}>
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* ════════════════════════════════════════════════════════════════ */}
@@ -1093,7 +1276,6 @@ export default function ChordsTab({
                   {([
                     { layer: "harmony" as const, vol: harmonyVol, setVol: setHarmonyVol },
                     { layer: "bass" as const, vol: bassVol, setVol: setBassVol },
-                    { layer: "melody" as const, vol: melodyVol, setVol: setMelodyVol },
                   ]).map(({ layer, vol, setVol }) => {
                     const checked = textureLayers.has(layer);
                     return (
@@ -1138,43 +1320,14 @@ export default function ChordsTab({
                   </div>
                 </div>
               )}
-              {textureLayers.has("melody") && (
-                <div>
-                  <p className="text-[10px] text-[#886622] mb-1 font-medium">MELODY MODE</p>
-                  <div className="flex gap-1">
-                    {(["chord-tone", "scalar", "arpeggiate"] as const).map(m => {
-                      const active = melodyMode === m;
-                      return (
-                        <button key={m} onClick={() => setMelodyMode(m)}
-                          style={{
-                            padding: "3px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600,
-                            border: `1.5px solid ${active ? "#e0a040" : "#1a1a1a"}`,
-                            background: active ? "#e0a04018" : "#0e0e0e",
-                            color: active ? "#e0a040" : "#444",
-                            cursor: "pointer",
-                          }}
-                        >{m}</button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              {/* Arpeggio + Passing Tones */}
+              {/* Broken-chord backing toggle */}
               <div className="flex flex-col gap-1">
                 <label className="flex items-center gap-1 cursor-pointer">
                   <input type="checkbox" checked={arpEnabled}
                     onChange={() => setArpEnabled(!arpEnabled)}
                     className="accent-[#e0a040]" />
                   <span className="text-xs" style={{ color: arpEnabled ? "#e0a040" : "#555" }}>
-                    Arpeggiate
-                  </span>
-                </label>
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input type="checkbox" checked={passingTones}
-                    onChange={() => setPassingTones(!passingTones)}
-                    className="accent-[#e0a040]" />
-                  <span className="text-xs" style={{ color: passingTones ? "#e0a040" : "#555" }}>
-                    Passing Tones
+                    Broken chords
                   </span>
                 </label>
               </div>
@@ -1244,18 +1397,39 @@ export default function ChordsTab({
             />
           </div>
 
-          <LilPreviewPanel checkedChords={checkedChords} chordMap={chordMap} edo={edo} tonicPc={tonicPc} lowestOct={lowestOct} highestOct={highestOct} getCompatibleTypes={getCompatibleTypes} applyChordType={applyChordType} />
+          <LilPreviewPanel checkedChords={effectiveChecked} chordMap={chordMap} edo={edo} tonicPc={tonicPc} lowestOct={lowestOct} highestOct={highestOct} getCompatibleTypes={getCompatibleTypes} applyChordType={applyChordType} />
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* CHORD SELECTION                                                */}
+      {/* CHORD SELECTION (per checked tonality)                         */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <ChordSelectionPanel
-        activeBank={activeBank}
-        checkedChords={checkedChords} setCheckedChords={setCheckedChords}
-        collapsedLevels={collapsedLevels} toggleLevel={toggleLevel}
-        selectLevel={selectLevel} deselectLevel={deselectLevel}
-        toggleSet={toggleSet}
-      />
+      <div className="space-y-3">
+        {Array.from(tonalitySet).map(t => {
+          const bank = banksByName[t];
+          if (!bank) return null;
+          const family = TONALITY_FAMILIES.find(f => f.tonalities.includes(t));
+          const accent = family?.color ?? "#7173e6";
+          return (
+            <ChordSelectionPanel
+              key={t}
+              tonality={t}
+              accent={accent}
+              bank={bank}
+              checkedSet={new Set(checkedByTonality[t] ?? [])}
+              toggleChord={(label) => toggleChordForTonality(t, label)}
+              setLevel={(levelChords, select) => setLevelForTonality(t, levelChords, select)}
+              collapsedLevels={collapsedLevels}
+              toggleLevel={toggleLevel}
+              approachMap={approachesByTonality[t] ?? {}}
+              toggleApproach={(target, kind) => toggleApproach(t, target, kind)}
+            />
+          );
+        })}
+        {tonalitySet.size === 0 && (
+          <div className="text-xs text-[#666] italic px-3 py-2 border border-[#222] rounded">
+            Pick at least one tonality above to choose chords.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1620,58 +1794,107 @@ function LilPreviewPanel({ checkedChords, chordMap, edo, tonicPc, lowestOct, hig
   );
 }
 
-function ChordSelectionPanel({ activeBank, checkedChords, setCheckedChords, collapsedLevels, toggleLevel, selectLevel, deselectLevel, toggleSet }: {
-  activeBank: TonalityBank | null;
-  checkedChords: Set<string>; setCheckedChords: (s: Set<string>) => void;
+function ChordSelectionPanel({ tonality, accent, bank, checkedSet, toggleChord, setLevel, collapsedLevels, toggleLevel, approachMap, toggleApproach }: {
+  tonality: string;
+  accent: string;
+  bank: TonalityBank;
+  checkedSet: Set<string>;
+  toggleChord: (label: string) => void;
+  setLevel: (chords: ChordEntry[], select: boolean) => void;
   collapsedLevels: Set<string>;
   toggleLevel: (name: string) => void;
-  selectLevel: (chords: ChordEntry[]) => void;
-  deselectLevel: (chords: ChordEntry[]) => void;
-  toggleSet: <T>(s: Set<T>, v: T) => Set<T>;
+  approachMap: Record<string, ApproachKind[]>;
+  toggleApproach: (target: string, kind: ApproachKind) => void;
 }) {
+  // Per-target approach toggles replace the standalone approach levels.
+  // Modal Interchange ships its own borrowed-chord rows alongside Primary
+  // and Diatonic; the auto-generated approach levels stay hidden.
+  const VISIBLE_LEVELS = new Set(["Primary", "Diatonic", "Modal Interchange"]);
+  const APPROACH_COLORS: Record<ApproachKind, string> = {
+    secdom: "#c77a4a",
+    secdim: "#a86bb8",
+    iiV:    "#4a9ac7",
+    TT:     "#c7a14a",
+  };
+  const visibleLevels = bank.levels.filter(l => VISIBLE_LEVELS.has(l.name));
   return (
-    <div>
-      {activeBank && (
-        <div className="space-y-2">
-          {activeBank.levels.map(level => {
-            const isCollapsed = collapsedLevels.has(level.name);
-            const allChecked = level.chords.every(c => checkedChords.has(c.label));
-            const someChecked = level.chords.some(c => checkedChords.has(c.label));
-            return (
-              <div key={level.name} className="border border-[#1a1a1a] rounded overflow-hidden">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0e0e0e] cursor-pointer select-none"
-                  onClick={() => toggleLevel(level.name)}>
-                  <span className="text-[10px] text-[#555] w-3">{isCollapsed ? "▸" : "▾"}</span>
-                  <span className="text-xs text-[#888] font-medium flex-1">{level.name}</span>
-                  <span className="text-[10px] text-[#444]">{level.chords.filter(c => checkedChords.has(c.label)).length}/{level.chords.length}</span>
-                  <button onClick={e => { e.stopPropagation(); allChecked ? deselectLevel(level.chords) : selectLevel(level.chords); }}
-                    className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
-                      allChecked ? "border-[#7173e6] text-[#7173e6]"
-                        : someChecked ? "border-[#444] text-[#888]"
-                        : "border-[#222] text-[#555]"
-                    }`}>
-                    {allChecked ? "Clear" : "All"}
-                  </button>
-                </div>
-                {!isCollapsed && (
-                  <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-1 p-2">
-                    {level.chords.map(entry => (
-                      <label key={entry.label} className={`flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer transition-colors ${
-                        checkedChords.has(entry.label) ? "bg-[#1a1a2a] text-[#9999ee]" : "bg-[#141414] text-[#666] hover:bg-[#1e1e1e]"
-                      }`}>
-                        <input type="checkbox" checked={checkedChords.has(entry.label)}
-                          onChange={() => setCheckedChords(toggleSet(checkedChords, entry.label))}
-                          className="accent-[#7173e6]" />
-                        {formatRomanNumeral(entry.label)}
-                      </label>
-                    ))}
-                  </div>
-                )}
+    <div className="border rounded overflow-hidden" style={{ borderColor: accent + "40" }}>
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0a0a0a]">
+        <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent }}>{tonality.toUpperCase()}</span>
+      </div>
+      <div className="space-y-2 p-2">
+        {visibleLevels.map(level => {
+          const collapseKey = `${tonality}::${level.name}`;
+          const isCollapsed = collapsedLevels.has(collapseKey);
+          const allChecked = level.chords.every(c => checkedSet.has(c.label));
+          const someChecked = level.chords.some(c => checkedSet.has(c.label));
+          return (
+            <div key={level.name} className="border border-[#1a1a1a] rounded overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0e0e0e] cursor-pointer select-none"
+                onClick={() => toggleLevel(collapseKey)}>
+                <span className="text-[10px] text-[#555] w-3">{isCollapsed ? "▸" : "▾"}</span>
+                <span className="text-xs text-[#888] font-medium flex-1">{level.name}</span>
+                <span className="text-[10px] text-[#444]">{level.chords.filter(c => checkedSet.has(c.label)).length}/{level.chords.length}</span>
+                <button onClick={e => { e.stopPropagation(); setLevel(level.chords, !allChecked); }}
+                  className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+                    allChecked ? "" : someChecked ? "border-[#444] text-[#888]" : "border-[#222] text-[#555]"
+                  }`}
+                  style={allChecked ? { borderColor: accent, color: accent } : undefined}>
+                  {allChecked ? "Clear" : "All"}
+                </button>
               </div>
-            );
-          })}
-        </div>
-      )}
+              {!isCollapsed && (
+                <div className="grid gap-1 p-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+                  {level.chords.map(entry => {
+                    const isChecked = checkedSet.has(entry.label);
+                    const enabledApproaches = new Set(approachMap[entry.label] ?? []);
+                    // Tonic doesn't need its own approach toggles — V/I,
+                    // vii°/I, ii-V→I, and TT/I are already covered by V,
+                    // vii°, the cadence flow, and bII respectively.
+                    // Detect by label (handles Major's null-steps refs)
+                    // plus by root step (handles explicit-shape banks).
+                    const TONIC_LABELS = new Set(["I", "i", "I°", "i°", "I+", "i+"]);
+                    const isTonic = TONIC_LABELS.has(entry.label) || (entry.steps != null && entry.steps[0] === 0);
+                    const showApproaches = !isTonic && level.name !== "Modal Interchange";
+                    return (
+                      <div key={entry.label} className="rounded overflow-hidden bg-[#141414]">
+                        <label className={`flex items-center gap-1 px-2 py-1 text-xs cursor-pointer ${
+                          isChecked ? "" : "text-[#666] hover:text-[#888]"
+                        }`}
+                          style={isChecked ? { background: accent + "30", color: accent } : undefined}>
+                          <input type="checkbox" checked={isChecked}
+                            onChange={() => toggleChord(entry.label)}
+                            className="accent-[#7173e6]" />
+                          {formatRomanNumeral(entry.label)}
+                        </label>
+                        {showApproaches && (
+                          <div className="flex gap-0.5 px-1 py-1 bg-[#0a0a0a]">
+                            {APPROACH_KINDS.map(k => {
+                              const on = enabledApproaches.has(k);
+                              const color = APPROACH_COLORS[k];
+                              return (
+                                <button key={k}
+                                  onClick={() => toggleApproach(entry.label, k)}
+                                  title={`${APPROACH_LABELS[k]}${entry.label}`}
+                                  className={`flex-1 text-[8px] leading-none py-0.5 rounded border transition-colors ${
+                                    on ? "text-black font-semibold" : "bg-[#1a1a1a] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
+                                  }`}
+                                  style={on ? { background: color, borderColor: color } : undefined}>
+                                  {APPROACH_LABELS[k]}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

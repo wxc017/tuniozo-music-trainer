@@ -82,7 +82,7 @@ const TAB_LABELS: Record<Tab, string> = {
 };
 
 const OCT_OPTIONS = [1,2,3,4,5,6,7];
-const VALID_TABS: Tab[] = ["intervals","chords","melody","jazz","patterns","drone","modeid"];
+const VALID_TABS: Tab[] = ["intervals","chords","modeid","melody","jazz","patterns","drone"];
 
 // ── Settings snapshot types (shared with tabs) ──────────────────────
 export interface SettingsGroup {
@@ -122,6 +122,7 @@ export default function App() {
   const [tabKey, setTabKey] = useState(0);
   const [drumTabKey, setDrumTabKey] = useState(0);
   const [drumRestoreTrigger, setDrumRestoreTrigger] = useState(0);
+  const [melodicRestoreTrigger, setMelodicRestoreTrigger] = useState(0);
   const tabContentRef = useRef<HTMLDivElement>(null);
   // Accumulate accent line/phrase imports while practice log modal is open
   const accentImportQueue = useRef<{ measures: unknown[]; grid: string; importMode: string }[]>([]);
@@ -558,7 +559,7 @@ export default function App() {
     answerButtons,
   };
 
-  const tabs = (["intervals","chords","melody","jazz","patterns","drone","modeid"] as Tab[]);
+  const tabs = (["intervals","chords","modeid","melody","jazz","patterns","drone"] as Tab[]);
 
   const sessionAcc = (sessionC + sessionW) ? `${Math.round(100 * sessionC / (sessionC + sessionW))}%` : "";
   const slotAcc = (slotC + slotW) ? `${Math.round(100 * slotC / (slotC + slotW))}%` : "";
@@ -950,7 +951,7 @@ export default function App() {
       {/* ── Melodic Patterns ── */}
       {section === "melodic-patterns" && (
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          <MelodicPatterns />
+          <MelodicPatterns restoreTrigger={melodicRestoreTrigger} />
         </div>
       )}
 
@@ -1545,6 +1546,10 @@ export default function App() {
             } else if (entry.mode === "phrase-decomposition") {
               writePendingRestore("phrase_decomposition", entry.snapshot);
               setSection("phrase-decomposition");
+            } else if (entry.mode === "melodic-patterns") {
+              writePendingRestore("melodic", entry.snapshot);
+              setSection("melodic-patterns");
+              setMelodicRestoreTrigger(k => k + 1);
             }
           }}
         />

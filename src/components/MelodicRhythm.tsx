@@ -126,15 +126,19 @@ function greedySplit(startSlot: number, slotCount: number, totalSlots: number): 
   const hasHalfBar = totalSlots > 0 && totalSlots % 8 === 0;
   const halfAlign = hasHalfBar ? 8 : 4;
 
-  // Durations ordered longest-first. `align` = required divisor for start pos.
-  const D: Array<{ slots: number; str: string; align: number }> = [
+  // Durations ordered longest-first.  `align` = required divisor for start
+  // pos.  `noBeatCross` = duration must not span more than one beat (8th
+  // notes can start on any 16th position — including the "e" / "a"
+  // subdivisions — as long as the 2-slot span stays within a single beat,
+  // rather than forcing two tied 16ths).
+  const D: Array<{ slots: number; str: string; align: number; noBeatCross?: boolean }> = [
     { slots: 16, str: "1",  align: 16 },
     { slots: 12, str: "2d", align: 16 },
     { slots: 8,  str: "2",  align: halfAlign },
     { slots: 6,  str: "4d", align: halfAlign },
     { slots: 4,  str: "4",  align: 4 },
     { slots: 3,  str: "8d", align: 4 },
-    { slots: 2,  str: "8",  align: 2 },
+    { slots: 2,  str: "8",  align: 1, noBeatCross: true },
     { slots: 1,  str: "16", align: 1 },
   ];
 
@@ -146,6 +150,7 @@ function greedySplit(startSlot: number, slotCount: number, totalSlots: number): 
     for (const d of D) {
       if (d.slots > rem) continue;
       if (pos % d.align !== 0) continue;
+      if (d.noBeatCross && Math.floor(pos / 4) !== Math.floor((pos + d.slots - 1) / 4)) continue;
       chosen = d;
       break;
     }
@@ -163,7 +168,7 @@ function greedySplit(startSlot: number, slotCount: number, totalSlots: number): 
 // melody notes sit in the space just below (stems down). Separating pitch
 // placement keeps coincident chord+melody noteheads from stacking.
 const CHORD_KEY  = "g/5";
-const MELODY_KEY = "a/4";
+const MELODY_KEY = "f/4";
 const REST_KEY = "b/4";
 
 interface BuildVoiceResult {
@@ -398,7 +403,12 @@ function VexDualRhythm({
       const melodyBeams = buildBeams(melodyBuild.notes, beatSize);
 
       const fmtW = staveW - 44;
-      new Formatter({ softmaxFactor: 1, globalSoftmax: true })
+      // softmaxFactor controls duration-proportional spacing.  A value of 1
+      // flattens all notes to near-equal width (the previous setting), which
+      // squeezes long notes (whole, half) against their neighbours.  Raising
+      // it gives longer notes proportionally more horizontal room while
+      // still keeping beamed runs compact.
+      new Formatter({ softmaxFactor: 5, globalSoftmax: true })
         .joinVoices([chordVoice, melodyVoice])
         .format([chordVoice, melodyVoice], fmtW);
 

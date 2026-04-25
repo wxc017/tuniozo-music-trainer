@@ -7,7 +7,10 @@ import { weightedRandomChoice, getOptionStats } from "@/lib/stats";
 import type { TabSettingsSnapshot } from "@/App";
 
 const PLAY_STYLES = ["Sequential","Dyad (2 at once)","Trichord (3 at once)","Random (2–3 at once)"];
-const GAP = 650;
+const DEFAULT_GAP_SEC = 0.65;
+const MIN_GAP_SEC = 0.1;
+const MAX_GAP_SEC = 3.0;
+const GAP_STEP_SEC = 0.05;
 
 interface Props {
   tonicPc: number;
@@ -33,6 +36,13 @@ export default function IntervalsTab({
   const [checked, setChecked] = useLS<Set<number>>("lt_ivl_checked", new Set([3,5,8,10,13,15,18,21,23,26,28]));
   const [numNotes, setNumNotes] = useLS<number>("lt_ivl_numNotes", 2);
   const [playStyle, setPlayStyle] = useLS<string>("lt_ivl_playStyle", "Sequential");
+  const [gapSec, setGapSec] = useLS<number>("lt_ivl_gapSec", DEFAULT_GAP_SEC);
+  const clampGap = (v: number) => {
+    if (!isFinite(v)) return DEFAULT_GAP_SEC;
+    const snapped = Math.round(v / GAP_STEP_SEC) * GAP_STEP_SEC;
+    return Math.max(MIN_GAP_SEC, Math.min(MAX_GAP_SEC, Number(snapped.toFixed(2))));
+  };
+  const gapMs = Math.round(gapSec * 1000);
   const [showTarget, setShowTarget] = useState<string | null>(null);
   const [infoText, setInfoText] = useState("");
   const pendingInfo = useRef<{text: string; isTarget: boolean} | null>(null);
@@ -71,10 +81,11 @@ export default function IntervalsTab({
       groups: [
         { label: "# Notes", items: [String(numNotes)] },
         { label: "Play Style", items: [playStyle] },
+        { label: "Note Duration", items: [`${gapSec.toFixed(2)} s`] },
         { label: "Intervals", items: Array.from(checked).sort((a, b) => a - b).map(i => ivNames[i]).filter(Boolean) },
       ],
     };
-  }, [checked, numNotes, playStyle, edo, tabSettingsRef, ivNames]);
+  }, [checked, numNotes, playStyle, gapSec, edo, tabSettingsRef, ivNames]);
 
   /** Pick an interval step, biased towards ones not played recently.
    *  `exclude` optionally avoids picking the same step twice in a row. */
@@ -197,7 +208,7 @@ export default function IntervalsTab({
     onPlay(optKey, `Interval: ${stepLabel}`);
     lastPlayed.current = { frames, info: desc };
     setHasPlayed(true);
-    audioEngine.playSequence(frames, edo, GAP, 0.9);
+    audioEngine.playSequence(frames, edo, gapMs, 0.9);
   };
 
   const highlightFrames = useCallback((frames: number[][]) => {
@@ -206,15 +217,15 @@ export default function IntervalsTab({
     frames.forEach((frame, i) => {
       const id = setTimeout(() => {
         onHighlight(frame);
-      }, i * GAP);
+      }, i * gapMs);
       frameTimers.current.push(id);
     });
-  }, [edo, onHighlight]);
+  }, [edo, onHighlight, gapMs]);
 
   const replay = () => {
     const lp = lastPlayed.current;
     if (!lp) return;
-    audioEngine.playSequence(lp.frames, edo, GAP, 0.9);
+    audioEngine.playSequence(lp.frames, edo, gapMs, 0.9);
   };
 
   const answerVisible = !!(showTarget || infoText);
@@ -272,6 +283,31 @@ export default function IntervalsTab({
             {PLAY_STYLES.map(s => <option key={s}>{s}</option>)}
           </select>
         </div>
+        <div>
+          <label className="text-xs text-[#888] block mb-1">Note Duration</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={MIN_GAP_SEC}
+              max={MAX_GAP_SEC}
+              step={GAP_STEP_SEC}
+              value={gapSec}
+              onChange={e => setGapSec(clampGap(Number(e.target.value)))}
+              className="w-32 accent-[#7173e6]"
+              title={`${gapSec.toFixed(2)} s per note (applies on next play)`}
+            />
+            <input
+              type="number"
+              min={MIN_GAP_SEC}
+              max={MAX_GAP_SEC}
+              step={GAP_STEP_SEC}
+              value={gapSec.toFixed(2)}
+              onChange={e => setGapSec(clampGap(Number(e.target.value)))}
+              className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none text-center"
+            />
+            <span className="text-xs text-[#555]">s</span>
+          </div>
+        </div>
       </div>
 
       {/* Actions */}
@@ -304,18 +340,24 @@ export default function IntervalsTab({
         <div className="bg-[#141414] border border-[#2a2a2a] rounded p-3 text-xs text-[#888] font-mono whitespace-pre">{infoText}</div>
       )}
 
-      {/* Interval checkboxes */}
+      {/* Interval selection — toggle buttons matching the Mode ID /
+          Chords-tab picker style. */}
       <div>
         <p className="text-xs text-[#555] mb-2">Select intervals to include:</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1 max-h-64 overflow-y-auto pr-1">
-          {ivNames.map((name, i) => (
-            <label key={i} className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer transition-colors ${
-              checked.has(i) ? "bg-[#1a1a2a] text-[#9999ee]" : "bg-[#141414] text-[#666] hover:bg-[#1e1e1e]"
-            }`}>
-              <input type="checkbox" checked={checked.has(i)} onChange={() => toggle(i)} className="accent-[#7173e6]" />
-              <span className="text-[#555] mr-0.5">{i}</span>{name}
-            </label>
-          ))}
+        <div className="flex flex-wrap gap-1 max-h-64 overflow-y-auto pr-1">
+          {ivNames.map((name, i) => {
+            const on = checked.has(i);
+            const accent = "#9999ee";
+            return (
+              <button key={i} onClick={() => toggle(i)}
+                className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                  on ? "" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                }`}
+                style={on ? { backgroundColor: accent + "30", borderColor: accent, color: accent } : undefined}>
+                <span className="opacity-60 mr-1">{i}</span>{name}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

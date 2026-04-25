@@ -25,6 +25,11 @@ interface Props {
 
 // ── Mode data ─────────────────────────────────────────────────────────
 
+interface ChordOption {
+  name: string;        // chord symbol key into CD (e.g. "maj7", "m9", "7alt")
+  degrees: string[];   // chromatic degree labels making up the chord
+}
+
 interface ModeInfo {
   name: string;         // code name (matches getModeDegreeMap key)
   family: string;       // "Major Family" | "Harmonic Minor Family" | "Melodic Minor Family"
@@ -32,64 +37,57 @@ interface ModeInfo {
   scaleDegrees: string[];  // 7 ordered degree labels
   character: string[];     // characteristic tones (subset of scaleDegrees)
   stable: string[];        // stable tones
-  chordOptions: string[][];// each option = list of chromatic degree labels
+  chordOptions: ChordOption[]; // characteristic chords for this mode
 }
 
-// Chromatic degree labels → chord arrays
-const CD: Record<string, string[]> = {
-  "maj7":      ["1","3","5","7"],
-  "maj9":      ["1","3","5","7","9"],
-  "maj13":     ["1","3","5","7","9","6"],
-  "maj7#11":   ["1","3","5","7","#4"],
-  "maj9#11":   ["1","3","5","7","9","#4"],
-  "maj13#11":  ["1","3","5","7","9","#4","6"],
-  "m7":        ["1","b3","5","b7"],
-  "m9":        ["1","b3","5","b7","9"],
-  "m11":       ["1","b3","5","b7","9","4"],
-  "m13":       ["1","b3","5","b7","9","4","6"],
-  "m7b9":      ["1","b3","5","b7","b9"],
-  "m11b9":     ["1","b3","5","b7","b9","4"],
-  "sus_b9":    ["1","4","5","b9"],
-  "m7b5":      ["1","b3","b5","b7"],
-  "m9b5":      ["1","b3","b5","b7","9"],
-  "m11b5":     ["1","b3","b5","b7","9","4"],
-  "m7b13":     ["1","b3","5","b7","b13"],
-  "7":         ["1","3","5","b7"],
-  "9":         ["1","3","5","b7","9"],
-  "13":        ["1","3","5","b7","9","6"],
-  "7sus4":     ["1","4","5","b7"],
-  "13sus4":    ["1","4","5","b7","9","6"],
-  "mMaj7":     ["1","b3","5","7"],
-  "mMaj9":     ["1","b3","5","7","9"],
-  "mMaj11":    ["1","b3","5","7","9","4"],
-  "maj7s5":    ["1","3","#5","7"],
-  "maj9s5":    ["1","3","#5","7","9"],
-  "maj7s5s11": ["1","3","#5","7","#4"],
-  "m7s11":     ["1","b3","5","b7","#4"],
-  "m9s11":     ["1","b3","5","b7","9","#4"],
-  "m11s11":    ["1","b3","5","b7","9","4","#4"],
-  "7b9":       ["1","3","5","b7","b9"],
-  "7b13":      ["1","3","5","b7","b13"],
-  "7b9b13":    ["1","3","5","b7","b9","b13"],
-  "7s11":      ["1","3","5","b7","#4"],
-  "9s11":      ["1","3","5","b7","9","#4"],
-  "13s11":     ["1","3","5","b7","9","#4","6"],
-  "9b13":      ["1","3","5","b7","9","b13"],
-  "dim7":      ["1","b3","b5","6"],
-  "dim9":      ["1","b3","b5","6","9"],
-  "dim11":     ["1","b3","b5","6","9","4"],
-  "7alt":      ["1","3","b5","b7","b9","#9"],
-  "7b5":       ["1","3","b5","b7"],
-  "7s5":       ["1","3","#5","b7"],
-  "7s9":       ["1","3","5","b7","#9"],
-  // Lydian / maj#11 variants
-  "maj7s11":   ["1","3","5","7","#4"],
-  "maj9s11":   ["1","3","5","7","9","#4"],
-  "maj13s11":  ["1","3","5","7","9","#4","6"],
+// Each mode has exactly ONE characteristic tonic chord — the full mode stacked
+// as a 13th chord (1, 3rd, 5th, 7th, 9, 11, 13). Degree labels here are kept in
+// "chord-symbol" form (e.g. "9", "11", "b13") for both display and voicing;
+// the chord builder shifts each tone into ascending order at play time.
+const TONIC_CHORD: Record<string, ChordOption> = {
+  // Major Family
+  "Ionian":     { name: "maj7(9,11,13)",     degrees: ["1","3","5","7","9","11","13"] },
+  "Dorian":     { name: "m7(9,11,13)",       degrees: ["1","b3","5","b7","9","11","13"] },
+  "Phrygian":   { name: "m7(♭9,11,♭13)",     degrees: ["1","b3","5","b7","b9","11","b13"] },
+  "Lydian":     { name: "maj7(9,♯11,13)",    degrees: ["1","3","5","7","9","#11","13"] },
+  "Mixolydian": { name: "7(9,11,13)",        degrees: ["1","3","5","b7","9","11","13"] },
+  "Aeolian":    { name: "m7(9,11,♭13)",      degrees: ["1","b3","5","b7","9","11","b13"] },
+  "Locrian":    { name: "m7♭5(♭9,11,♭13)",   degrees: ["1","b3","b5","b7","b9","11","b13"] },
+  // Harmonic Minor Family
+  "Harmonic Minor":    { name: "mMaj7(9,11,♭13)",  degrees: ["1","b3","5","7","9","11","b13"] },
+  "Locrian #6":        { name: "m7♭5(♭9,11,13)",   degrees: ["1","b3","b5","b7","b9","11","13"] },
+  "Ionian #5":         { name: "maj7♯5(9,11,13)",  degrees: ["1","3","#5","7","9","11","13"] },
+  "Dorian #4":         { name: "m7(9,♯11,13)",     degrees: ["1","b3","5","b7","9","#11","13"] },
+  "Phrygian Dominant": { name: "7(♭9,11,♭13)",     degrees: ["1","3","5","b7","b9","11","b13"] },
+  "Lydian #2":         { name: "maj7(♯9,♯11,13)",  degrees: ["1","3","5","7","#9","#11","13"] },
+  "Ultralocrian":      { name: "dim7(♭9,11,♭13)",  degrees: ["1","b3","b5","6","b9","11","b13"] },
+  // Melodic Minor Family
+  "Melodic Minor":     { name: "mMaj7(9,11,13)",   degrees: ["1","b3","5","7","9","11","13"] },
+  "Dorian b2":         { name: "m7(♭9,11,13)",     degrees: ["1","b3","5","b7","b9","11","13"] },
+  "Lydian Augmented":  { name: "maj7♯5(9,♯11,13)", degrees: ["1","3","#5","7","9","#11","13"] },
+  "Lydian Dominant":   { name: "7(9,♯11,13)",      degrees: ["1","3","5","b7","9","#11","13"] },
+  "Mixolydian b6":     { name: "7(9,11,♭13)",      degrees: ["1","3","5","b7","9","11","b13"] },
+  "Locrian #2":        { name: "m7♭5(9,11,♭13)",   degrees: ["1","b3","b5","b7","9","11","b13"] },
+  "Altered":           { name: "7alt",             degrees: ["1","3","b5","b7","b9","#9","#11","b13"] },
 };
 
-const c = (...names: string[]): string[][] =>
-  names.map(n => CD[n] ?? ["1","3","5","b7"]);
+// Resolve a chord-symbol degree label (including "11", "13", etc.) to a step count.
+// Falls back to the lower-octave equivalent when a label isn't directly in the EDO map.
+function resolveStep(d: string, edo: number): number {
+  const map = getDegreeMap(edo);
+  if (map[d] !== undefined) return map[d];
+  const fallback: Record<string, string> = {
+    "11":  "4",  "#11": "#4", "b11": "b4",
+    "13":  "6",  "b13": "b6", "#13": "#6",
+  };
+  const alt = fallback[d];
+  return (alt && map[alt] !== undefined) ? map[alt] : 0;
+}
+
+const c = (modeName: string): ChordOption[] => {
+  const tc = TONIC_CHORD[modeName];
+  return tc ? [tc] : [{ name: "?", degrees: ["1","3","5","b7"] }];
+};
 
 const ALL_MODES: ModeInfo[] = [
   // ── Major Family ──────────────────────────────────────────────────
@@ -97,129 +95,129 @@ const ALL_MODES: ModeInfo[] = [
     name: "Ionian", family: "Major Family", displayName: "Ionian",
     scaleDegrees: ["1","2","3","4","5","6","7"],
     character: ["4","7"], stable: ["1","3","5"],
-    chordOptions: c("maj7","maj9","maj13"),
+    chordOptions: c("Ionian"),
   },
   {
     name: "Dorian", family: "Major Family", displayName: "Dorian",
     scaleDegrees: ["1","2","b3","4","5","6","b7"],
     character: ["b3","6"], stable: ["1","5"],
-    chordOptions: c("m7","m9","m11","m13"),
+    chordOptions: c("Dorian"),
   },
   {
     name: "Phrygian", family: "Major Family", displayName: "Phrygian",
     scaleDegrees: ["1","b2","b3","4","5","b6","b7"],
     character: ["b2"], stable: ["1","5"],
-    chordOptions: c("m7b9","m11b9","sus_b9"),
+    chordOptions: c("Phrygian"),
   },
   {
     name: "Lydian", family: "Major Family", displayName: "Lydian",
     scaleDegrees: ["1","2","3","#4","5","6","7"],
     character: ["#4"], stable: ["1","5"],
-    chordOptions: c("maj7s11","maj9s11","maj13s11"),
+    chordOptions: c("Lydian"),
   },
   {
     name: "Mixolydian", family: "Major Family", displayName: "Mixolydian",
     scaleDegrees: ["1","2","3","4","5","6","b7"],
     character: ["b7"], stable: ["1","3","5"],
-    chordOptions: c("7","9","13","7sus4","13sus4"),
+    chordOptions: c("Mixolydian"),
   },
   {
     name: "Aeolian", family: "Major Family", displayName: "Aeolian",
     scaleDegrees: ["1","2","b3","4","5","b6","b7"],
     character: ["b3","b6"], stable: ["1","5"],
-    chordOptions: c("m7","m9","m11","m7b13"),
+    chordOptions: c("Aeolian"),
   },
   {
     name: "Locrian", family: "Major Family", displayName: "Locrian",
     scaleDegrees: ["1","b2","b3","4","b5","b6","b7"],
     character: ["b2","b5"], stable: ["1"],
-    chordOptions: c("m7b5","m9b5","m11b5"),
+    chordOptions: c("Locrian"),
   },
   // ── Harmonic Minor Family ─────────────────────────────────────────
   {
     name: "Harmonic Minor", family: "Harmonic Minor Family", displayName: "Harmonic Minor",
     scaleDegrees: ["1","2","b3","4","5","b6","7"],
     character: ["b6","7"], stable: ["1","5"],
-    chordOptions: c("mMaj7","mMaj9","mMaj11"),
+    chordOptions: c("Harmonic Minor"),
   },
   {
     name: "Locrian #6", family: "Harmonic Minor Family", displayName: "Locrian ♮6",
     scaleDegrees: ["1","b2","b3","4","b5","6","b7"],
     character: ["b2","6"], stable: ["1"],
-    chordOptions: c("m7b5","m9b5","m11b5"),
+    chordOptions: c("Locrian #6"),
   },
   {
     name: "Ionian #5", family: "Harmonic Minor Family", displayName: "Ionian ♯5",
     scaleDegrees: ["1","2","3","4","#5","6","7"],
     character: ["#5"], stable: ["1"],
-    chordOptions: c("maj7s5","maj9s5","maj7s5s11"),
+    chordOptions: c("Ionian #5"),
   },
   {
     name: "Dorian #4", family: "Harmonic Minor Family", displayName: "Dorian ♯4",
     scaleDegrees: ["1","2","b3","#4","5","6","b7"],
     character: ["#4"], stable: ["1","5"],
-    chordOptions: c("m7s11","m9s11","m11s11"),
+    chordOptions: c("Dorian #4"),
   },
   {
     name: "Phrygian Dominant", family: "Harmonic Minor Family", displayName: "Phrygian Dominant",
     scaleDegrees: ["1","b2","3","4","5","b6","b7"],
     character: ["b2","3","b6"], stable: ["1","5"],
-    chordOptions: c("7b9","7b13","7b9b13"),
+    chordOptions: c("Phrygian Dominant"),
   },
   {
     name: "Lydian #2", family: "Harmonic Minor Family", displayName: "Lydian ♯2",
     scaleDegrees: ["1","#2","3","#4","5","6","7"],
     character: ["#2","#4"], stable: ["1","5"],
-    chordOptions: c("maj7s11","maj9s11"),
+    chordOptions: c("Lydian #2"),
   },
   {
     name: "Ultralocrian", family: "Harmonic Minor Family", displayName: "Superlocrian ♭♭7",
     scaleDegrees: ["1","b2","b3","3","b5","b6","6"],
     character: ["b2","b3","3","b5","b6"], stable: ["1"],
-    chordOptions: c("dim7","dim9","dim11"),
+    chordOptions: c("Ultralocrian"),
   },
   // ── Melodic Minor Family ──────────────────────────────────────────
   {
     name: "Melodic Minor", family: "Melodic Minor Family", displayName: "Melodic Minor",
     scaleDegrees: ["1","2","b3","4","5","6","7"],
     character: ["6","7"], stable: ["1","5"],
-    chordOptions: c("mMaj7","mMaj9","mMaj11"),
+    chordOptions: c("Melodic Minor"),
   },
   {
     name: "Dorian b2", family: "Melodic Minor Family", displayName: "Dorian ♭2",
     scaleDegrees: ["1","b2","b3","4","5","6","b7"],
     character: ["b2","6"], stable: ["1","5"],
-    chordOptions: c("m7b9","m11b9"),
+    chordOptions: c("Dorian b2"),
   },
   {
     name: "Lydian Augmented", family: "Melodic Minor Family", displayName: "Lydian Augmented",
     scaleDegrees: ["1","2","3","#4","#5","6","7"],
     character: ["#4","#5"], stable: ["1"],
-    chordOptions: c("maj7s5","maj9s5","maj7s5s11"),
+    chordOptions: c("Lydian Augmented"),
   },
   {
     name: "Lydian Dominant", family: "Melodic Minor Family", displayName: "Lydian Dominant",
     scaleDegrees: ["1","2","3","#4","5","6","b7"],
     character: ["#4","b7"], stable: ["1","3","5"],
-    chordOptions: c("7s11","9s11","13s11"),
+    chordOptions: c("Lydian Dominant"),
   },
   {
     name: "Mixolydian b6", family: "Melodic Minor Family", displayName: "Mixolydian ♭6",
     scaleDegrees: ["1","2","3","4","5","b6","b7"],
     character: ["b6","b7"], stable: ["1","3","5"],
-    chordOptions: c("7b13","9b13"),
+    chordOptions: c("Mixolydian b6"),
   },
   {
     name: "Locrian #2", family: "Melodic Minor Family", displayName: "Locrian ♮2",
     scaleDegrees: ["1","2","b3","4","b5","b6","b7"],
     character: ["2","b5"], stable: ["1"],
-    chordOptions: c("m7b5","m9b5","m11b5"),
+    chordOptions: c("Locrian #2"),
   },
   {
     name: "Altered", family: "Melodic Minor Family", displayName: "Altered",
     scaleDegrees: ["1","b2","#2","3","b5","#5","b7"],
     character: ["b2","#2","b5","#5"], stable: ["1","3"],
-    chordOptions: c("7alt","7b9","7s9","7b5","7s5"),
+    chordOptions: c("Altered"),
   },
 ];
 
@@ -232,158 +230,33 @@ const FAMILY_MAP: Record<string, ModeInfo[]> = {
 
 // ── Phrase generation ─────────────────────────────────────────────────
 
-const GAP = 560;        // ms between notes
-const CHORD_LEAD = 1300; // ms chord rings before phrase starts
-
-const PATTERN_LIST = [
-  { key: "stepwise",           label: "Stepwise"   },
-  { key: "arpeggio",           label: "Arpeggio"   },
-  { key: "jump",               label: "Jump"        },
-  { key: "character_emphasis", label: "Character"  },
-  { key: "mixed",              label: "Mixed"       },
-] as const;
+const DEFAULT_GAP = 560;  // ms between note starts (legato is added on top)
 
 const NOTE_COUNTS = [4, 5, 6, 7, 8, 10, 12];
 
-function weightedIdx(weights: number[]): number {
-  const total = weights.reduce((a, b) => a + b, 0);
-  let r = Math.random() * total;
-  for (let i = 0; i < weights.length; i++) { r -= weights[i]; if (r <= 0) return i; }
-  return weights.length - 1;
+// The 3rd of a mode is always the second degree of its first chord option
+// (e.g. maj7 → "3", m7 → "b3", dim7 → "b3").
+function getThird(mode: ModeInfo): string {
+  return mode.chordOptions[0]?.degrees[1] ?? "3";
 }
 
-/**
- * Generate a pedagogically-structured mode identification phrase.
- *
- * Structure (for a phrase of length N):
- *   [1] Tonic anchor (degree 1)
- *   [2] Stable approach tone — stepwise neighbor of a characteristic tone
- *   [3..N-2] Body — pattern-dependent movement that highlights characteristic
- *            tones via stepwise approach from stable context
- *   [N-1] Characteristic tone (exposed, approached by step)
- *   [N] Tonic resolution (degree 1)
- *
- * This ensures:
- *  - The tonic is always established first and confirmed last
- *  - Characteristic tones are heard in relation to stable context
- *  - The ear has a clear tonal framework before encountering "color" tones
- */
-function generatePhrase(
-  mode: ModeInfo, tonicAbs: number, edo: number,
-  low: number, high: number,
-  phraseLen: number, pattern: string,
+// Voice-lead a sequence of degree labels to nearest-octave pitches and fit into window.
+// Color-set safety: phrases must NEVER play the tonic (the drone already supplies
+// it). Any "1" in the input sequence is rerouted to the perfect 5th, falling back
+// to the 4th, then the 3rd, depending on what the mode contains.
+function voiceLeadSeq(
+  seq: string[], mode: ModeInfo,
+  tonicAbs: number, edo: number, low: number, high: number,
 ): { notes: number[]; degrees: string[] } | null {
+  const rootSub = mode.scaleDegrees.includes("5") ? "5"
+                : mode.scaleDegrees.includes("4") ? "4"
+                : getThird(mode);
+  const safe = seq.map(d => d === "1" ? rootSub : d);
+
   const modeMap = getModeDegreeMap(edo, mode.family, mode.name);
-  const degs = mode.scaleDegrees;
-  const n = degs.length;
-  const charSet = new Set(mode.character);
-  const stableSet = new Set(mode.stable);
-
-  const charIndices = degs.map((d, i) => charSet.has(d) ? i : -1).filter(i => i >= 0);
-  const stableIndices = degs.map((d, i) => (d === "1" || d === "5" || stableSet.has(d)) ? i : -1).filter(i => i >= 0);
-
-  // Helper: stepwise neighbor of a target index
-  const neighborOf = (target: number): number => {
-    const above = (target + 1) % n;
-    const below = ((target - 1) % n + n) % n;
-    // Prefer the neighbor that is a stable tone
-    if (stableSet.has(degs[above]) || degs[above] === "1" || degs[above] === "5") return above;
-    if (stableSet.has(degs[below]) || degs[below] === "1" || degs[below] === "5") return below;
-    return Math.random() < 0.5 ? above : below;
-  };
-
-  const seq: number[] = [];
-
-  // ── [1] Always start on tonic ──
-  seq.push(0); // degree "1"
-
-  if (phraseLen <= 2) {
-    // Ultra-short: tonic → characteristic tone
-    if (charIndices.length) seq.push(randomChoice(charIndices));
-    else seq.push(0);
-    const raw = seq.map(s => tonicAbs + (modeMap[degs[s]] ?? 0));
-    const fitted = fitLineIntoWindow(raw, edo, low, high);
-    return fitted.length ? { notes: fitted, degrees: seq.map(s => degs[s]) } : null;
-  }
-
-  // ── [2] Move to a stable tone (5th or 3rd) to establish the mode's color ──
-  const openingStable = stableIndices.filter(i => i !== 0);
-  seq.push(openingStable.length ? randomChoice(openingStable) : 1);
-
-  // ── [3..N-2] Body — pattern-dependent, biased toward characteristic tones ──
-  const bodyLen = phraseLen - 4; // reserve: tonic + stable + char + tonic
-  let pos = seq[seq.length - 1];
-
-  for (let i = 0; i < Math.max(0, bodyLen); i++) {
-    const prev = pos;
-
-    if (pattern === "character_emphasis") {
-      // 80% chance to hit a characteristic tone or its stepwise neighbor
-      if (charIndices.length && Math.random() < 0.8) {
-        const target = randomChoice(charIndices);
-        pos = Math.random() < 0.6 ? target : neighborOf(target);
-      } else {
-        pos = ((prev + (Math.random() < 0.5 ? 1 : -1)) % n + n) % n;
-      }
-    } else if (pattern === "stepwise") {
-      const dir = Math.random() < 0.55 ? 1 : -1;
-      const step = Math.random() < 0.8 ? 1 : 2;
-      pos = ((prev + dir * step) % n + n) % n;
-    } else if (pattern === "arpeggio") {
-      // Arpeggiate through chord tones and characteristic tones
-      const targets = [...new Set([0, 2, 4, ...charIndices])];
-      pos = randomChoice(targets);
-    } else if (pattern === "jump") {
-      const dir = Math.random() < 0.5 ? 1 : -1;
-      pos = ((prev + dir * (3 + Math.floor(Math.random() * 3))) % n + n) % n;
-    } else {
-      // mixed: alternate between stepwise and characteristic emphasis
-      if (Math.random() < 0.4 && charIndices.length) {
-        const target = randomChoice(charIndices);
-        pos = Math.random() < 0.5 ? target : neighborOf(target);
-      } else {
-        const dir = Math.random() < 0.5 ? 1 : -1;
-        pos = ((prev + dir * (Math.random() < 0.7 ? 1 : 2)) % n + n) % n;
-      }
-    }
-    seq.push(pos);
-  }
-
-  // ── [N-1] Expose a characteristic tone, approached by step ──
-  if (charIndices.length) {
-    const charTarget = randomChoice(charIndices);
-    // If the previous note isn't already a step away, insert the approach
-    const prevPos = seq[seq.length - 1];
-    const dist = Math.min(
-      Math.abs(prevPos - charTarget),
-      Math.abs(prevPos - charTarget + n),
-      Math.abs(prevPos - charTarget - n),
-    );
-    if (dist > 2) {
-      // Insert a stepwise approach to the characteristic tone
-      seq.push(neighborOf(charTarget));
-    }
-    seq.push(charTarget);
-  } else {
-    // No characteristic tones defined — just approach tonic
-    seq.push(((0 - 1 + n) % n)); // degree below tonic
-  }
-
-  // ── [N] Always resolve to tonic ──
-  seq.push(0);
-
-  // Trim if we overshot the target length
-  while (seq.length > phraseLen) {
-    // Remove from the body, not the structural bookends
-    const removeIdx = 2 + Math.floor(Math.random() * Math.max(1, seq.length - 4));
-    if (removeIdx > 1 && removeIdx < seq.length - 2) seq.splice(removeIdx, 1);
-    else break;
-  }
-
-  // ── Voice-leading: resolve each degree to closest octave of previous note ──
-  const raw: number[] = [tonicAbs + (modeMap[degs[seq[0]]] ?? 0)];
-  for (let i = 1; i < seq.length; i++) {
-    const base = tonicAbs + (modeMap[degs[seq[i]]] ?? 0);
+  const raw: number[] = [tonicAbs + (modeMap[safe[0]] ?? 0)];
+  for (let i = 1; i < safe.length; i++) {
+    const base = tonicAbs + (modeMap[safe[i]] ?? 0);
     let best = base, bestD = Math.abs(base - raw[i - 1]);
     for (let k = -4; k <= 4; k++) {
       const c = base + k * edo, d = Math.abs(c - raw[i - 1]);
@@ -391,23 +264,156 @@ function generatePhrase(
     }
     raw.push(best);
   }
-
   const fitted = fitLineIntoWindow(raw, edo, low, high);
-  return fitted.length ? { notes: fitted, degrees: seq.map(s => degs[s]) } : null;
+  return fitted.length ? { notes: fitted, degrees: safe } : null;
 }
 
-function buildChordNotes(rootAbs: number, degLabels: string[], edo: number): number[] {
-  const dm = getDegreeMap(edo);
-  const notes: number[] = [];
-  for (const d of degLabels) {
-    const off = dm[d];
-    if (off === undefined) continue;
-    let note = rootAbs + off;
-    while (note < rootAbs) note += edo;
-    while (note > rootAbs + Math.round(2.5 * edo)) note -= edo;
-    notes.push(note);
+type PhraseResult = { notes: number[]; degrees: string[] } | null;
+type ArchetypeFn = (
+  mode: ModeInfo, tonicAbs: number, edo: number,
+  low: number, high: number, phraseLen: number,
+) => PhraseResult;
+
+// Helper: colors = character tones excluding the 3rd (3rd has its own slot).
+function getColorsMinusThird(mode: ModeInfo): string[] {
+  const third = getThird(mode);
+  const colors = mode.character.filter(d => d !== third);
+  return colors.length ? colors : [third];
+}
+
+// Archetype B — framed by stable non-root tones (3rd, 5th, etc.).
+// Root never appears; drone supplies the tonic reference.
+const archetypeStableFramed: ArchetypeFn = (mode, tonicAbs, edo, low, high, phraseLen) => {
+  const third = getThird(mode);
+  const colors = getColorsMinusThird(mode);
+  const anchorSet = new Set<string>();
+  for (const s of mode.stable) if (s !== "1") anchorSet.add(s);
+  anchorSet.add(third);
+  if (mode.scaleDegrees.includes("5")) anchorSet.add("5");
+  const anchors = [...anchorSet];
+  if (!anchors.length) anchors.push(third);
+
+  const start = randomChoice(anchors);
+  const end = randomChoice(anchors);
+  const mustHit = [...colors].sort(() => Math.random() - 0.5);
+  const seq: string[] = [start, ...mustHit];
+  const fillCount = Math.max(0, phraseLen - 1 - seq.length);
+  for (let i = 0; i < fillCount; i++) {
+    const r = Math.random();
+    if (r < 0.35) seq.push(randomChoice(anchors));
+    else          seq.push(colors[Math.floor(Math.random() * colors.length)]);
   }
-  return [...new Set(notes)].sort((a, b) => a - b);
+  seq.push(end);
+  return voiceLeadSeq(seq, mode, tonicAbs, edo, low, high);
+};
+
+// Archetype C — chord-tone spine with colors woven in.
+// Root excluded; line alternates between the mode's basic 4-note chord tones
+// (3rd / 5th / 7th — slice avoids the upper extensions, which would just be
+// the rest of the scale and turn the spine into the whole mode) and color tones.
+const archetypeSpine: ArchetypeFn = (mode, tonicAbs, edo, low, high, phraseLen) => {
+  const chord = mode.chordOptions[0]?.degrees ?? ["1","3","5","b7"];
+  const spine = chord.slice(1, 4);
+  if (!spine.length) return null;
+  const colors = getColorsMinusThird(mode);
+
+  const shuffledSpine = [...spine].sort(() => Math.random() - 0.5);
+  const shuffledColors = [...colors].sort(() => Math.random() - 0.5);
+  const target = Math.max(spine.length + colors.length, phraseLen);
+  const seq: string[] = [];
+  let si = 0, ci = 0;
+  while (seq.length < target) {
+    if (Math.random() < 0.5) seq.push(shuffledSpine[si++ % shuffledSpine.length]);
+    else                     seq.push(shuffledColors[ci++ % shuffledColors.length]);
+  }
+  return voiceLeadSeq(seq, mode, tonicAbs, edo, low, high);
+};
+
+// Archetype D — land on a characteristic tone.
+// Phrase starts on a stable tone, weaves through all colors, ends on a random color.
+const archetypeLandOnColor: ArchetypeFn = (mode, tonicAbs, edo, low, high, phraseLen) => {
+  const third = getThird(mode);
+  const colors = getColorsMinusThird(mode);
+  const stableNonRoot = mode.stable.filter(d => d !== "1");
+  const stable = stableNonRoot.length ? stableNonRoot.concat([third]) : [third];
+
+  const finalColor = randomChoice(colors);
+  const start = randomChoice(stable);
+  const mustHit = colors.filter(c => c !== finalColor).sort(() => Math.random() - 0.5);
+  const seq: string[] = [start, ...mustHit];
+  const fillCount = Math.max(0, phraseLen - 1 - seq.length);
+  for (let i = 0; i < fillCount; i++) {
+    const r = Math.random();
+    if (r < 0.3)       seq.push(randomChoice(stable));
+    else if (r < 0.55) seq.push(third);
+    else               seq.push(colors[Math.floor(Math.random() * colors.length)]);
+  }
+  seq.push(finalColor);
+  return voiceLeadSeq(seq, mode, tonicAbs, edo, low, high);
+};
+
+const ARCHETYPES: ArchetypeFn[] = [
+  archetypeStableFramed,
+  archetypeSpine,
+  archetypeLandOnColor,
+];
+
+// Scale builder: play the mode ascending or descending across one octave
+// (8 notes, including the octave return to root). Direction is randomized.
+function generateScale(
+  mode: ModeInfo, tonicAbs: number, edo: number, low: number, high: number,
+): { notes: number[]; degrees: string[]; direction: "up" | "down" } | null {
+  const modeMap = getModeDegreeMap(edo, mode.family, mode.name);
+  const direction: "up" | "down" = Math.random() < 0.5 ? "up" : "down";
+
+  const ascDegrees = [...mode.scaleDegrees, "1"];           // 1 2 b3 4 5 6 b7 1(8va)
+  const ascNotes   = ascDegrees.map((d, i) =>
+    tonicAbs + (i === ascDegrees.length - 1 ? edo : (modeMap[d] ?? 0))
+  );
+
+  const seq = direction === "up" ? ascNotes : [...ascNotes].reverse();
+  const degs = direction === "up" ? ascDegrees : [...ascDegrees].reverse();
+
+  // Shift the whole scale as a unit to fit the register.
+  let notes = seq.slice();
+  while (Math.max(...notes) > high) notes = notes.map(n => n - edo);
+  while (Math.min(...notes) < low)  notes = notes.map(n => n + edo);
+  if (Math.max(...notes) > high || Math.min(...notes) < low) return null;
+
+  return { notes, degrees: degs, direction };
+}
+
+// Characteristic-chord builder: voice the mode's tonic chord as a clean ascending
+// stack (1 < 3 < 5 < 7 < 9 < 11 < 13), then shift the whole stack as a unit if it
+// runs above the high end of the register. Extensions never sit below chord tones.
+function generateChord(
+  mode: ModeInfo, tonicAbs: number, edo: number, low: number, high: number,
+): { notes: number[]; chordName: string; degrees: string[] } | null {
+  if (!mode.chordOptions.length) return null;
+  const pick = mode.chordOptions[0];
+
+  // Place root at tonicAbs, then bring every subsequent tone up by whole octaves
+  // until it sits strictly above the previously placed tone.
+  const root = tonicAbs;
+  const notes: number[] = [root];
+  for (let i = 1; i < pick.degrees.length; i++) {
+    const step = resolveStep(pick.degrees[i], edo);
+    let n = tonicAbs + step;
+    while (n <= notes[notes.length - 1]) n += edo;
+    notes.push(n);
+  }
+
+  // Shift the whole chord down by octaves if it pokes above the register.
+  while (Math.max(...notes) > high) {
+    for (let i = 0; i < notes.length; i++) notes[i] -= edo;
+  }
+  // If even the root is now below the window, push back up — caller's register
+  // is just too narrow for this voicing; we accept slight overrun on the top.
+  while (notes[0] < low) {
+    for (let i = 0; i < notes.length; i++) notes[i] += edo;
+  }
+
+  return { notes, chordName: pick.name, degrees: pick.degrees };
 }
 
 // ── Scale highlight helper ────────────────────────────────────────────
@@ -429,32 +435,6 @@ function getScalePitches(
   return pitches;
 }
 
-// ── Mode descriptions for post-answer feedback ───────────────────────
-
-const MODE_DESCRIPTIONS: Record<string, string> = {
-  "Ionian":             "The standard major scale. Bright and resolved, with a natural leading tone.",
-  "Dorian":             "Minor with a raised 6th. Warm and jazzy, less dark than Aeolian.",
-  "Phrygian":           "Minor with a lowered 2nd. Dark, Spanish/flamenco flavor.",
-  "Lydian":             "Major with a raised 4th. Dreamy, floating, ethereal quality.",
-  "Mixolydian":         "Major with a lowered 7th. Bluesy, rock, dominant sound.",
-  "Aeolian":            "The natural minor scale. Sad, dark, the default minor sound.",
-  "Locrian":            "Diminished tonic. Unstable, tense, rarely used as a standalone mode.",
-  "Harmonic Minor":     "Natural minor with raised 7th. Exotic, classical minor with leading tone.",
-  "Locrian #6":         "Locrian with a natural 6th. Slightly less dark than standard Locrian.",
-  "Ionian #5":          "Major with an augmented 5th. Mysterious, shimmering quality.",
-  "Dorian #4":          "Dorian with a raised 4th. Combines minor warmth with Lydian brightness.",
-  "Phrygian Dominant":  "Phrygian with a major 3rd. Middle Eastern, flamenco, dramatic tension.",
-  "Lydian #2":          "Lydian with an augmented 2nd. Exotic, wide intervals, bright and strange.",
-  "Ultralocrian":       "The most diminished mode. Extremely unstable and dissonant.",
-  "Melodic Minor":      "Minor with raised 6th and 7th. Smooth ascending minor, jazz minor.",
-  "Dorian b2":          "Dorian with a lowered 2nd. Dark minor with Phrygian-like opening.",
-  "Lydian Augmented":   "Lydian with augmented 5th. Bright, expansive, unresolved.",
-  "Lydian Dominant":    "Lydian with a dominant 7th. Bright but bluesy, Bartok scale.",
-  "Mixolydian b6":      "Mixolydian with a lowered 6th. Hindu scale, bittersweet dominant.",
-  "Locrian #2":         "Locrian with a natural 2nd. Half-diminished, less harsh than Locrian.",
-  "Altered":            "All non-essential tones altered. Maximum tension, jazz dominant resolution.",
-};
-
 // ── Component ─────────────────────────────────────────────────────────
 
 export default function ModeIdentificationTab({
@@ -463,17 +443,13 @@ export default function ModeIdentificationTab({
 }: Props) {
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const [modePool, setModePool] = useLS<string>("lt_modeid_pool", "major");
-  const [enabledModes, setEnabledModes] = useLS<Set<string>>("lt_modeid_enabled",
-    new Set((FAMILY_MAP["major"] ?? ALL_MODES).map(m => m.name))
+  const [enabledModes, setEnabledModes] = useLS<Set<string>>("lt_modeid_enabled_v2",
+    new Set(ALL_MODES.map(m => m.name))
   );
-  const [useCharChord, setUseCharChord] = useLS<boolean>("lt_modeid_charChord", true);
-  const [chordGain, setChordGain] = useLS<number>("lt_modeid_chordGain", 0.45);
-  const [chordDroneMode, setChordDroneMode] = useLS<string>("lt_modeid_droneMode", "through");
   const [maxNotes, setMaxNotes] = useLS<number>("lt_modeid_maxNotes", 8);
-  const [checkedPatterns, setCheckedPatterns] = useLS<Set<string>>(
-    "lt_modeid_patterns",
-    new Set(["stepwise","arpeggio","jump","character_emphasis","mixed"]),
+  const [noteSec, setNoteSec] = useLS<number>("lt_modeid_noteSec", DEFAULT_GAP / 1000);
+  const [enabledTypes, setEnabledTypes] = useLS<{ colors: boolean; chord: boolean; scale: boolean }>(
+    "lt_modeid_types_v2", { colors: true, chord: true, scale: true }
   );
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -483,131 +459,131 @@ export default function ModeIdentificationTab({
 
   const curMode = useRef<ModeInfo | null>(null);
   const curDegrees = useRef<string[]>([]);
-  const curChordNotes = useRef<number[] | null>(null);
-  const curChordGain = useRef(0.45);
-  const curUseChord = useRef(false);
+  const curGapMs = useRef(DEFAULT_GAP);
+  const curKind = useRef<"colors" | "chord" | "scale">("colors");
+  const curChord = useRef<{ name: string; degrees: string[] } | null>(null);
+  const curDirection = useRef<"up" | "down" | null>(null);
 
   const stopTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; audioEngine.stopDrone(); };
 
-  const highlightFrames = useCallback((frames: number[][]) => {
+  const highlightFramesWithGap = useCallback((frames: number[][], gapMs: number) => {
     frames.forEach((frame, i) => {
-      const id = setTimeout(() => onHighlight(frame), i * GAP);
+      const id = setTimeout(() => onHighlight(frame), i * gapMs);
       timers.current.push(id);
     });
   }, [onHighlight]);
 
-  const doPlay = useCallback((
-    frames: number[][], withChord: boolean,
-    chordNotes: number[] | null, gain: number,
-    droneMode: string, showVisual: boolean,
-  ) => {
+  // Audio playback. `showVisual` highlights each frame on the visualizer in order
+  // (true only when the user clicks Show Answer — Play / Replay stay audio-only).
+  const doPlay = useCallback((frames: number[][], gapMs: number, showVisual = false) => {
     stopTimers();
-    const phraseMs = frames.length * GAP;
-
-    if (withChord && chordNotes?.length) {
-      // Start characteristic chord as a sustained drone (scale gain by note count)
-      audioEngine.startDrone(chordNotes, edo, gain / Math.sqrt(chordNotes.length));
-      // Show chord notes on keyboard during lead-in
-      if (showVisual) onHighlight(chordNotes);
-      if (droneMode === "through") {
-        // Drone sustains through the entire phrase
-        const pid = setTimeout(() => {
-          audioEngine.playSequence(frames, edo, GAP, 0.9);
-          if (showVisual) highlightFrames(frames);
-        }, CHORD_LEAD);
-        timers.current.push(pid);
-        const stopId = setTimeout(() => audioEngine.stopDrone(), CHORD_LEAD + phraseMs + 500);
-        timers.current.push(stopId);
-        const doneId = setTimeout(() => setIsPlaying(false), CHORD_LEAD + phraseMs + 500);
-        timers.current.push(doneId);
-      } else {
-        // Intro only: drone plays, fades out, then phrase starts after a gap
-        const FADE_MS = 800;
-        const INTRO_DUR = CHORD_LEAD + 400;
-        const fadeId = setTimeout(() => audioEngine.fadeDrone(FADE_MS), INTRO_DUR);
-        timers.current.push(fadeId);
-        const phraseStart = INTRO_DUR + 300;
-        const pid = setTimeout(() => {
-          audioEngine.playSequence(frames, edo, GAP, 0.9);
-          if (showVisual) highlightFrames(frames);
-        }, phraseStart);
-        timers.current.push(pid);
-        const doneId = setTimeout(() => setIsPlaying(false), phraseStart + phraseMs + 500);
-        timers.current.push(doneId);
-      }
-    } else {
-      audioEngine.playSequence(frames, edo, GAP, 0.9);
-      if (showVisual) highlightFrames(frames);
-      const doneId = setTimeout(() => setIsPlaying(false), phraseMs + 500);
-      timers.current.push(doneId);
-    }
-  }, [edo, highlightFrames, onHighlight]);
+    const phraseMs = frames.length * gapMs;
+    const sustainSec = Math.max(0.2, gapMs / 1000 + 0.25);
+    audioEngine.playSequence(frames, edo, gapMs, sustainSec);
+    if (showVisual) highlightFramesWithGap(frames, gapMs);
+    const doneId = setTimeout(() => setIsPlaying(false), phraseMs + 500);
+    timers.current.push(doneId);
+  }, [edo, highlightFramesWithGap]);
 
   const play = async () => {
     if (isPlaying) return;
     await ensureAudio();
 
-    const patternPool = PATTERN_LIST.map(p => p.key).filter(k => checkedPatterns.has(k));
-    if (!patternPool.length) { onResult("Select at least one pattern type."); return; }
-
-    const familyPool = FAMILY_MAP[modePool] ?? ALL_MODES;
-    const pool = familyPool.filter(m => enabledModes.has(m.name));
+    const pool = ALL_MODES.filter(m => enabledModes.has(m.name));
     if (!pool.length) { onResult("Enable at least one mode in the pool."); return; }
+
+    // Pick randomly among the enabled play types.
+    const kinds: Array<"colors" | "chord" | "scale"> = [];
+    if (enabledTypes.colors) kinds.push("colors");
+    if (enabledTypes.chord)  kinds.push("chord");
+    if (enabledTypes.scale)  kinds.push("scale");
+    if (!kinds.length) { onResult("Enable Color Set, Characteristic Chord, or Scale."); return; }
+    const kind = randomChoice(kinds);
+
     const mode = randomChoice(pool);
     const [low, high] = strictWindowBounds(tonicPc, edo, lowestOct, highestOct);
     const midAbs = tonicPc + (Math.floor((lowestOct + highestOct) / 2) - 4) * edo;
-    const pattern = randomChoice(patternPool);
 
-    const result = generatePhrase(mode, midAbs, edo, low, high, maxNotes, pattern);
-    if (!result) { onResult("Could not fit phrase in register."); return; }
+    let frames: number[][];
+    let gapMs: number;
+    let degrees: string[];
+    let chordInfo: { name: string; degrees: string[] } | null = null;
+    let direction: "up" | "down" | null = null;
 
-    const frames = result.notes.map(n => [n]);
-    let chordNotes: number[] | null = null;
-    if (useCharChord) {
-      const opt = randomChoice(mode.chordOptions);
-      const rootAbs = tonicPc + (Math.max(lowestOct, 3) - 4) * edo;
-      chordNotes = buildChordNotes(rootAbs, opt, edo);
+    if (kind === "colors") {
+      // Pick a random archetype; fall through the pool if one can't fit the register.
+      const shuffled = [...ARCHETYPES].sort(() => Math.random() - 0.5);
+      let result: PhraseResult = null;
+      for (const arche of shuffled) {
+        result = arche(mode, midAbs, edo, low, high, maxNotes);
+        if (result) break;
+      }
+      if (!result) { onResult("Could not fit phrase in register."); return; }
+      frames = result.notes.map(n => [n]);
+      gapMs = Math.round(noteSec * 1000);
+      degrees = result.degrees;
+    } else if (kind === "chord") {
+      const built = generateChord(mode, midAbs, edo, low, high);
+      if (!built) { onResult("Mode has no chord options."); return; }
+      frames = [built.notes];
+      gapMs = 2000; // single chord ringing; sustain ≈ 2.25s
+      degrees = built.degrees;
+      chordInfo = { name: built.chordName, degrees: built.degrees };
+    } else {
+      const built = generateScale(mode, midAbs, edo, low, high);
+      if (!built) { onResult("Could not fit scale in register."); return; }
+      frames = built.notes.map(n => [n]);
+      gapMs = Math.round(noteSec * 1000);
+      degrees = built.degrees;
+      direction = built.direction;
     }
 
     curMode.current = mode;
-    curDegrees.current = result.degrees;
-    curChordNotes.current = chordNotes;
-    curChordGain.current = chordGain;
-    curUseChord.current = useCharChord;
-    lastPlayed.current = { frames, info: mode.displayName };
+    curDegrees.current = degrees;
+    curGapMs.current = gapMs;
+    curKind.current = kind;
+    curChord.current = chordInfo;
+    curDirection.current = direction;
+    lastPlayed.current = {
+      frames,
+      info: chordInfo
+        ? `${mode.displayName} — ${chordInfo.name}`
+        : direction
+          ? `${mode.displayName} — scale ${direction === "up" ? "↑" : "↓"}`
+          : mode.displayName,
+    };
     setHasPlayed(true);
 
     setUserAnswer(null);
     setShowAnswer(false);
     setIsPlaying(true);
 
-    onPlay(`modeId:${mode.family}:${mode.name}`, `Mode ID: ${mode.displayName}`);
-    onResult("Mode Identification — listening…");
+    const playKey = chordInfo
+      ? `modeId:${mode.family}:${mode.name}:${chordInfo.name}`
+      : direction
+        ? `modeId:${mode.family}:${mode.name}:scale-${direction}`
+        : `modeId:${mode.family}:${mode.name}`;
+    const playLabel = chordInfo
+      ? `Mode ID: ${mode.displayName} (${chordInfo.name})`
+      : direction
+        ? `Mode ID: ${mode.displayName} (scale ${direction})`
+        : `Mode ID: ${mode.displayName}`;
+    onPlay(playKey, playLabel);
+    onResult(
+      kind === "chord" ? "Mode Identification — Characteristic Chord…"
+      : kind === "scale" ? `Mode Identification — Scale ${direction === "up" ? "↑" : "↓"}…`
+      : "Mode Identification — Color Set…"
+    );
 
-    doPlay(frames, useCharChord, chordNotes, chordGain, chordDroneMode, false);
+    doPlay(frames, gapMs);
   };
 
   const replay = () => {
     const lp = lastPlayed.current;
     if (!lp || isPlaying) return;
     setIsPlaying(true);
-    doPlay(
-      lp.frames,
-      curUseChord.current,
-      curChordNotes.current,
-      curChordGain.current,
-      chordDroneMode,
-      false,
-    );
+    doPlay(lp.frames, curGapMs.current);
   };
-
-  const togglePattern = (key: string) => setCheckedPatterns(prev => {
-    const next = new Set(prev);
-    if (next.has(key)) next.delete(key); else next.add(key);
-    return next;
-  });
-
-  const displayPool = FAMILY_MAP[modePool] ?? ALL_MODES;
 
   const toggleMode = (name: string) => {
     setEnabledModes(prev => {
@@ -618,26 +594,16 @@ export default function ModeIdentificationTab({
     });
   };
 
+  const FAMILY_GROUPS: { key: string; label: string; color: string; modes: ModeInfo[] }[] = [
+    { key: "major",    label: "MAJOR",          color: "#6a9aca", modes: FAMILY_MAP.major    },
+    { key: "harmonic", label: "HARMONIC MINOR", color: "#c09050", modes: FAMILY_MAP.harmonic },
+    { key: "melodic",  label: "MELODIC MINOR",  color: "#c06090", modes: FAMILY_MAP.melodic  },
+  ];
+
   return (
     <div className="space-y-4">
       {/* Options row */}
       <div className="flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="text-xs text-[#888] block mb-1">Mode family</label>
-          <select value={modePool} onChange={e => {
-            const val = e.target.value;
-            setModePool(val);
-            // Auto-enable all modes in the new family
-            const family = FAMILY_MAP[val] ?? ALL_MODES;
-            setEnabledModes(new Set(family.map(m => m.name)));
-          }}
-            className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-            <option value="major">Major modes (7)</option>
-            <option value="harmonic">Harmonic minor (7)</option>
-            <option value="melodic">Melodic minor (7)</option>
-            <option value="all">All modes (21)</option>
-          </select>
-        </div>
         <div>
           <label className="text-xs text-[#888] block mb-1">Max notes</label>
           <select value={maxNotes} onChange={e => setMaxNotes(Number(e.target.value))}
@@ -645,64 +611,82 @@ export default function ModeIdentificationTab({
             {NOTE_COUNTS.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
-        <label className={`flex items-center gap-2 px-3 py-2 rounded text-sm cursor-pointer transition-colors border ${
-          useCharChord
-            ? "bg-[#1a1a2a] text-[#9999ee] border-[#555]"
-            : "bg-[#141414] text-[#666] border-[#2a2a2a] hover:border-[#444]"
-        }`}>
-          <input type="checkbox" checked={useCharChord} onChange={e => setUseCharChord(e.target.checked)}
-            className="accent-[#7173e6]" />
-          Use characteristic chord
-        </label>
-        {useCharChord && (
-          <>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-[#666]">Chord vol</label>
-              <input type="range" min={0.1} max={0.8} step={0.05} value={chordGain}
-                onChange={e => setChordGain(Number(e.target.value))}
-                className="w-20 accent-[#7173e6]" />
-              <span className="text-xs text-[#555] w-7">{Math.round(chordGain / 0.8 * 100)}%</span>
-            </div>
-            <div>
-              <label className="text-xs text-[#888] block mb-1">Drone</label>
-              <select value={chordDroneMode} onChange={e => setChordDroneMode(e.target.value)}
-                className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-                <option value="intro">Intro only</option>
-                <option value="through">Sustain through</option>
-              </select>
-            </div>
-          </>
-        )}
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-[#888]">Note length</label>
+          <input type="range" min={0.2} max={2.0} step={0.05} value={noteSec}
+            onChange={e => setNoteSec(Number(e.target.value))}
+            className="w-28 accent-[#7173e6]" />
+          <span className="text-xs text-[#555] w-10 font-mono">{noteSec.toFixed(2)}s</span>
+        </div>
+        {/* Play-type toggles — Play button picks randomly from those enabled */}
+        <div>
+          <label className="text-xs text-[#888] block mb-1">Play types</label>
+          <div className="flex gap-1">
+            {([
+              { key: "colors", label: "Color Set",            color: "#7173e6" },
+              { key: "chord",  label: "Characteristic Chord", color: "#a06cc8" },
+              { key: "scale",  label: "Scale",                color: "#5cca8a" },
+            ] as const).map(t => {
+              const on = enabledTypes[t.key];
+              return (
+                <button key={t.key}
+                  onClick={() => setEnabledTypes(prev => {
+                    const next = { ...prev, [t.key]: !prev[t.key] };
+                    // At least one must stay enabled
+                    if (!next.colors && !next.chord && !next.scale) return prev;
+                    return next;
+                  })}
+                  className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                    on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                  }`}
+                  style={on ? { backgroundColor: t.color + "30", borderColor: t.color, color: t.color } : {}}>
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* Pool display — click to toggle which modes are enabled */}
-      <div>
-        <div className="flex items-center gap-3 mb-1.5">
-          <p className="text-xs text-[#555]">Mode pool:</p>
-          <button onClick={() => setEnabledModes(new Set(displayPool.map(m => m.name)))}
-            className="text-[10px] text-[#555] hover:text-[#aaa]">All</button>
+      {/* Mode pool — all 21 modes grouped by family, styled like Chords tab toggles */}
+      <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2">
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-[#888] font-medium">MODE POOL</p>
+          <button onClick={() => setEnabledModes(new Set(ALL_MODES.map(m => m.name)))}
+            className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">All</button>
+          {FAMILY_GROUPS.map(g => (
+            <button key={g.key} onClick={() => setEnabledModes(prev => {
+              const next = new Set(prev);
+              for (const m of g.modes) next.add(m.name);
+              return next;
+            })}
+              className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5">
+              +{g.label}
+            </button>
+          ))}
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {displayPool.map(mode => {
-            const isEnabled = enabledModes.has(mode.name);
-            const isAnswer = showAnswer && curMode.current?.name === mode.name;
-            return (
-              <button
-                key={mode.name}
-                onClick={() => toggleMode(mode.name)}
-                className={`px-3 py-1.5 rounded text-sm font-medium border transition-colors cursor-pointer ${
-                  isAnswer
-                    ? "bg-[#1a3a1a] border-[#3a6a3a] text-[#5cca5c]"
-                    : isEnabled
-                      ? "bg-[#1a1a2a] border-[#555] text-[#9999ee]"
-                      : "bg-[#141414] border-[#2a2a2a] text-[#444]"
-                }`}
-              >
-                {mode.displayName}
-              </button>
-            );
-          })}
-        </div>
+        {FAMILY_GROUPS.map(group => (
+          <div key={group.key}>
+            <p className="text-[9px] mb-1 font-medium tracking-wider"
+               style={{ color: group.color }}>{group.label}</p>
+            <div className="flex flex-wrap gap-1">
+              {group.modes.map(mode => {
+                const on = enabledModes.has(mode.name);
+                const isAnswer = showAnswer && curMode.current?.name === mode.name;
+                const color = isAnswer ? "#5cca5c" : group.color;
+                return (
+                  <button key={mode.name} onClick={() => toggleMode(mode.name)}
+                    className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                      on || isAnswer ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                    }`}
+                    style={(on || isAnswer) ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
+                    {mode.displayName}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Answer reveal — shown after clicking Show Answer */}
@@ -713,11 +697,25 @@ export default function ModeIdentificationTab({
             <span className="ml-2 text-xs opacity-60 font-normal">
               ({curMode.current.family.replace(" Family","")})
             </span>
+            {curKind.current === "chord" && curChord.current && (
+              <span className="ml-2 text-xs font-normal text-[#c9a3e8]">
+                · chord played: <span className="font-mono font-medium">{curChord.current.name}</span>
+              </span>
+            )}
+            {curKind.current === "scale" && curDirection.current && (
+              <span className="ml-2 text-xs font-normal text-[#7ad6a3]">
+                · scale {curDirection.current === "up" ? "ascending ↑" : "descending ↓"}
+              </span>
+            )}
           </div>
-          {/* Degrees played in order */}
+          {/* Degrees played / chord tones / scale, with characteristic tones highlighted */}
           {curDegrees.current.length > 0 && (
             <div className="flex gap-1 items-center flex-wrap">
-              <span className="text-[#666] text-xs mr-1">Degrees played:</span>
+              <span className="text-[#666] text-xs mr-1">
+                {curKind.current === "chord" ? "Chord tones:"
+                 : curKind.current === "scale" ? "Scale:"
+                 : "Degrees played:"}
+              </span>
               {curDegrees.current.map((deg, i) => {
                 const isChar = curMode.current!.character.includes(deg);
                 return (
@@ -732,8 +730,8 @@ export default function ModeIdentificationTab({
               })}
             </div>
           )}
-          {/* Scale degrees, characteristic tones, description */}
-          <div className="rounded p-3 text-sm border border-[#333] bg-[#161616] space-y-2">
+          {/* Scale degrees with characteristic tones highlighted */}
+          <div className="rounded p-3 text-sm border border-[#333] bg-[#161616]">
             <div className="flex gap-1 items-center flex-wrap">
               <span className="text-[#666] text-xs mr-1">Scale:</span>
               {curMode.current.scaleDegrees.map(deg => (
@@ -749,42 +747,15 @@ export default function ModeIdentificationTab({
                 (highlighted = characteristic)
               </span>
             </div>
-            <div className="text-xs text-[#666]">
-              Family: <span className="text-[#999]">{curMode.current.family}</span>
-              {curMode.current.stable.length > 0 && (
-                <span className="ml-3">Stable: <span className="text-[#999]">{curMode.current.stable.join(", ")}</span></span>
-              )}
-            </div>
-            <div className="text-xs text-[#888] italic">
-              {MODE_DESCRIPTIONS[curMode.current.name] ?? ""}
-            </div>
           </div>
         </div>
       )}
-
-      {/* Pattern type checkboxes */}
-      <div>
-        <p className="text-xs text-[#555] mb-2">Pattern types:</p>
-        <div className="flex flex-wrap gap-1.5">
-          {PATTERN_LIST.map(({ key, label }) => (
-            <label key={key} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm cursor-pointer transition-colors border ${
-              checkedPatterns.has(key)
-                ? "bg-[#1a1a2a] text-[#9999ee] border-[#444]"
-                : "bg-[#141414] text-[#666] border-[#2a2a2a] hover:border-[#444]"
-            }`}>
-              <input type="checkbox" checked={checkedPatterns.has(key)} onChange={() => togglePattern(key)}
-                className="accent-[#7173e6]" />
-              {label}
-            </label>
-          ))}
-        </div>
-      </div>
 
       {/* Action buttons */}
       <div className="flex gap-2 flex-wrap items-center">
         <button onClick={play} disabled={isPlaying}
           className="bg-[#7173e6] hover:bg-[#5a5cc8] disabled:opacity-50 text-white px-5 py-2 rounded text-sm font-medium transition-colors">
-          {isPlaying ? "♪ Playing…" : "▶ Play Phrase"}
+          {isPlaying ? "♪ Playing…" : "▶ Play"}
         </button>
         {hasPlayed && (
           <button onClick={replay} disabled={isPlaying}
@@ -792,27 +763,27 @@ export default function ModeIdentificationTab({
             Replay
           </button>
         )}
-        {hasPlayed && !showAnswer && (
+        {hasPlayed && (
           <button onClick={() => {
             setShowAnswer(true);
-            // Replay with visualization — chord notes shown first, then phrase
             const lp = lastPlayed.current;
+            const mode = curMode.current;
             if (lp && !isPlaying) {
               setIsPlaying(true);
-              doPlay(
-                lp.frames,
-                curUseChord.current,
-                curChordNotes.current,
-                curChordGain.current,
-                chordDroneMode,
-                true,
-              );
-            } else if (curMode.current) {
-              // No replay possible, just show scale
-              onHighlight(getScalePitches(curMode.current, tonicPc, edo, lowestOct, highestOct));
+              doPlay(lp.frames, curGapMs.current, true);
+              if (mode) {
+                const tailId = setTimeout(
+                  () => onHighlight(getScalePitches(mode, tonicPc, edo, lowestOct, highestOct)),
+                  lp.frames.length * curGapMs.current + 200,
+                );
+                timers.current.push(tailId);
+              }
+            } else if (mode) {
+              onHighlight(getScalePitches(mode, tonicPc, edo, lowestOct, highestOct));
             }
           }}
-            className="bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#444] text-[#9999ee] px-4 py-2 rounded text-sm transition-colors">
+            disabled={isPlaying}
+            className="bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-50 border border-[#444] text-[#9999ee] px-4 py-2 rounded text-sm transition-colors">
             Show Answer
           </button>
         )}

@@ -199,47 +199,79 @@ function pulseLabel(posQuarters: number, timeSig: string): string {
   return `♪${Math.round(posQuarters * 2) + 1}`;
 }
 
-/** Musical re-metering: re-bars the same phrase under a new time signature.
- *
- *  Theory: "re-barring" (as opposed to "re-composing") preserves every note's
- *  original duration and pitch — only the bar groupings change. Notes that
- *  would overflow a new bar are split at the bar line (the continuation is
- *  the same degree on the downbeat of the next bar, which `splitAtBeats`
- *  later draws with a tie when the durations within a bar call for it).
- *
- *  This is the standard approach taught in notation practice (Gould,
- *  *Behind Bars*, ch. 1–2): the phrase contour and rhythmic character
- *  stay intact; the listener hears the same melody grouped into different
- *  metric units.  Chord symbols follow the notes: each new bar takes the
- *  chord of whichever original bar supplied its first note.
- *
- *  This replaces an earlier implementation that regenerated rhythms via the
- *  straight-style engine — that path would freeze the browser on 6/8 and
- *  7/8 because the grouping enumerator would try to list ~8M compositions
- *  for 24-slot bars. */
-function remeterBars(bars: SongBar[], newTimeSig: string, origTimeSig: string): SongBar[] {
-  const newBeats = beatsPerBar(newTimeSig);
-  const oldBeats = beatsPerBar(origTimeSig);
-  if (Math.abs(newBeats - oldBeats) < 1e-9) return bars;
-  if (bars.length === 0) return [];
+// ── Musical re-metering pipeline ─────────────────────────────────────
+//
+// Three-stage dispatcher.  Each stage is a discrete musical strategy
+// drawn from the meter / phrase-rhythm literature; the dispatcher picks
+// the most musical strategy that applies and falls back to the next.
+//
+// Theory:
+//
+//   ROTHSTEIN, *Phrase Rhythm in Tonal Music* (Schirmer, 1989), ch. 2.
+//     A phrase is "directed motion from one tonal entity to another" —
+//     a unit of musical meaning, not a bar count.  Re-metering must
+//     respect phrase boundaries; *phrase expansion / contraction* are
+//     the legitimate ways to fit a phrase into a different bar count
+//     without breaking its identity.  Tonal music has a strong
+//     preference for "square" hypermeter (1-, 2-, 4-bar units), so
+//     phrase lengths in the new meter should snap to those when close.
+//
+//   LERDAHL & JACKENDOFF, *A Generative Theory of Tonal Music* (MIT,
+//     1983).  Grouping Preference Rules (GPRs) drive phrase detection:
+//     long notes (GPR 2b: long IOI) and cadential degrees mark phrase
+//     boundaries.  Time-Span Reduction picks essential anchor notes
+//     (phrase ends, downbeat chord tones) from decorative passing
+//     notes.  Implemented in `melodyPositionStrengths` / used here for
+//     phrase boundary detection.
+//
+//   LONDON, *Hearing in Time* (Oxford 2012), ch. 4.  Compound meters
+//     (6/8, 9/8) have a hierarchically distinct pulse — a dotted-
+//     quarter compound beat is not a re-grouping of quarter pulses.
+//     Crossing simple↔compound therefore needs a pulse-mapping stage
+//     rather than pure re-barring.  Already cited in `londonWellFormed`.
+//
+//   COOPER & MEYER, *The Rhythmic Structure of Music* (Chicago, 1960).
+//     Accent hierarchy at multiple architectonic levels — rhythmic
+//     groupings nest inside metric ones inside hypermetric ones.
+//
+//   GOULD, *Behind Bars* (Faber, 2011), chs. 2 & 6.  Notation rules for
+//     ties across barlines and beam grouping — applied downstream by
+//     `splitAtBeats` and `beamGroupsFor`.
 
-  type FlatNote = { beat: MelodyBeat; chord: string };
-  const flat: FlatNote[] = [];
-  for (const bar of bars) {
-    for (const b of bar.melody) {
-      if (b.duration > 1e-6) flat.push({ beat: b, chord: bar.chordRoman });
+interface FlatNote { beat: MelodyBeat; chord: string; origBarIdx: number; }
+
+function flattenWithChords(bars: SongBar[]): FlatNote[] {
+  const out: FlatNote[] = [];
+  for (let bi = 0; bi < bars.length; bi++) {
+    for (const b of bars[bi].melody) {
+      if (b.duration > 1e-6) out.push({ beat: b, chord: bars[bi].chordRoman, origBarIdx: bi });
     }
   }
-  if (flat.length === 0) {
-    return [{ melody: [{ degree: 1, duration: newBeats }], chordRoman: bars[0].chordRoman }];
-  }
+  return out;
+}
 
+function isCompoundMeter(sig: string): boolean {
+  const [t, b] = sig.split("/").map(Number);
+  return b === 8 && (t === 6 || t === 9 || t === 12);
+}
+
+function isSimpleQuarterMeter(sig: string): boolean {
+  const [, b] = sig.split("/").map(Number);
+  return b === 4;
+}
+
+/** Pour a flat note stream into bars of `barLen` quarter-beats.  Notes
+ *  that overflow a bar split at the line; downstream `splitAtBeats`
+ *  draws the join as a tie when needed.  The first note of each new
+ *  bar carries that bar's chord (the chord of whichever original bar
+ *  supplied that note). */
+function rebarStream(flat: FlatNote[], barLen: number): SongBar[] {
   const EPS = 1e-6;
+  if (flat.length === 0) return [];
   const result: SongBar[] = [];
   let curMelody: MelodyBeat[] = [];
   let curChord = flat[0].chord;
-  let rem = newBeats;
-
+  let rem = barLen;
   for (const { beat, chord } of flat) {
     if (curMelody.length === 0) curChord = chord;
     let dur = beat.duration;
@@ -251,21 +283,224 @@ function remeterBars(bars: SongBar[], newTimeSig: string, origTimeSig: string): 
       if (rem <= EPS) {
         result.push({ melody: curMelody, chordRoman: curChord });
         curMelody = [];
-        rem = newBeats;
-        // A note still in flight carries its original bar's chord into the
-        // new downbeat it just crossed into.
+        rem = barLen;
         curChord = chord;
       }
     }
   }
-
   if (curMelody.length > 0) {
-    // Pad the final partial bar with a rest so the stave renders a complete bar.
     if (rem > EPS) curMelody.push({ degree: 0, duration: rem });
     result.push({ melody: curMelody, chordRoman: curChord });
   }
-
   return result;
+}
+
+/** Stage 1 — same-pulse re-bar.  When source and target share the same
+ *  pulse unit (both quarter-based simple meters, or both eighth-based
+ *  meters), re-metering is a pure notation operation: keep every note's
+ *  duration, redraw the bar lines.  The listener hears the same surface
+ *  rhythm in a different metric grouping (Gould, ch. 6 — the "mixed
+ *  metres" idea).  Returns null if the pair isn't same-pulse. */
+function tryStage1Rebar(flat: FlatNote[], fromSig: string, toSig: string): SongBar[] | null {
+  const [, fromBot] = fromSig.split("/").map(Number);
+  const [, toBot] = toSig.split("/").map(Number);
+  if (fromBot !== toBot) return null;
+  return rebarStream(flat, beatsPerBar(toSig));
+}
+
+/** Stage 2 — pulse-swap mapping for simple↔compound conversions.
+ *
+ *  Maps each pulse of the source meter to one pulse of the target meter
+ *  by scaling note durations by the ratio of bar lengths.  The bar
+ *  count is preserved AND the perceived pulse count per bar is
+ *  preserved — which is the defining feature of the meter to a
+ *  listener (London, ch. 4).
+ *
+ *  Example: 2/4 → 6/8.  2 quarter pulses ↔ 2 dotted-quarter pulses
+ *  (= 2 compound beats).  Each quarter note (1.0 unit) scales to a
+ *  dotted-quarter (1.5 units), giving a "lilting" compound feel
+ *  without changing the phrase length in bars.
+ *
+ *  Returns null when the meter pair isn't a simple↔compound conversion
+ *  with matching pulse counts. */
+function tryStage2PulseMap(flat: FlatNote[], fromSig: string, toSig: string): SongBar[] | null {
+  const fromQ = isSimpleQuarterMeter(fromSig);
+  const fromC = isCompoundMeter(fromSig);
+  const toQ = isSimpleQuarterMeter(toSig);
+  const toC = isCompoundMeter(toSig);
+
+  let srcPulses: number, dstPulses: number;
+  if (fromQ && toC) {
+    srcPulses = Number(fromSig.split("/")[0]);
+    dstPulses = Number(toSig.split("/")[0]) / 3;
+  } else if (fromC && toQ) {
+    srcPulses = Number(fromSig.split("/")[0]) / 3;
+    dstPulses = Number(toSig.split("/")[0]);
+  } else {
+    return null;
+  }
+  if (srcPulses !== dstPulses) return null;
+
+  const scale = beatsPerBar(toSig) / beatsPerBar(fromSig);
+  const scaled = flat.map(f => ({
+    ...f,
+    beat: { ...f.beat, duration: f.beat.duration * scale },
+  }));
+  return rebarStream(scaled, beatsPerBar(toSig));
+}
+
+/** Phrase boundary detector — Lerdahl/Jackendoff GPR.  A boundary is
+ *  taken at the END of a note that is either:
+ *    - significantly longer than the local average (GPR 2b: long IOI), or
+ *    - a cadential scale degree (1 or 5) appearing late in a bar.
+ *  A new phrase only opens after at least two source bars of music has
+ *  accumulated, so short songs aren't fragmented into 1-bar phrases. */
+function detectPhrases(flat: FlatNote[], fromSig: string): FlatNote[][] {
+  if (flat.length <= 4) return [flat];
+  const barLen = beatsPerBar(fromSig);
+  const minPhraseLen = barLen * 2 - 1e-6;
+
+  const durs = flat.map(f => f.beat.duration);
+  const avg = durs.reduce((a, b) => a + b, 0) / Math.max(1, durs.length);
+  const longThreshold = Math.max(avg * 1.6, barLen * 0.5);
+
+  const phrases: FlatNote[][] = [];
+  let cur: FlatNote[] = [];
+  let curDur = 0;
+
+  for (let i = 0; i < flat.length; i++) {
+    const f = flat[i];
+    cur.push(f);
+    curDur += f.beat.duration;
+
+    const isLast = i === flat.length - 1;
+    if (isLast) { phrases.push(cur); break; }
+
+    const isLong = f.beat.duration >= longThreshold;
+    const isCadenceDeg = f.beat.degree === 1 || f.beat.degree === 5;
+    const enoughMaterial = curDur >= minPhraseLen;
+
+    if (enoughMaterial && (isLong || isCadenceDeg)) {
+      phrases.push(cur);
+      cur = [];
+      curDur = 0;
+    }
+  }
+
+  // Merge a tiny final phrase into its predecessor so the song doesn't
+  // end on an awkward 1-bar tag (Rothstein: hypermetric closure).
+  if (phrases.length >= 2) {
+    const last = phrases[phrases.length - 1];
+    const lastDur = last.reduce((s, f) => s + f.beat.duration, 0);
+    if (lastDur < barLen * 0.75) {
+      phrases[phrases.length - 2].push(...last);
+      phrases.pop();
+    }
+  }
+
+  return phrases;
+}
+
+/** Stage 3 — phrase-aware scaling for incompatible meter pairs.
+ *
+ *  For each detected phrase:
+ *    1. Compute the natural target-bar count = (phrase total / new bar
+ *       length).
+ *    2. Snap to the nearest hypermetric-friendly count (1, 2, 4, 8)
+ *       when the natural count is reasonably close (Rothstein: tonal
+ *       phrases prefer square groupings; out-of-square lengths are
+ *       heard as expansion or contraction of an underlying square).
+ *    3. Scale every note in the phrase by (target total / source
+ *       total) so the phrase fills exactly the chosen bar count.  This
+ *       is the GTTM time-span-reduction-lite step: relative durations
+ *       (the rhythmic shape) are preserved, only the absolute scale
+ *       changes.
+ *    4. Quantize note offsets to a 16th-note grid in the target meter
+ *       so the rendered notation uses clean values; rounding error
+ *       absorbs into the phrase-final note.
+ *    5. Pour the result into target bars; `splitAtBeats` adds ties
+ *       across bar lines per Gould ch. 2.
+ *
+ *  Notes are never re-ordered, so phrase contour is preserved exactly.
+ *  Phrases are independently rescaled, so the song's overall length in
+ *  bars adapts naturally to the new meter. */
+function stage3PhraseAware(flat: FlatNote[], fromSig: string, toSig: string): SongBar[] {
+  const toBarLen = beatsPerBar(toSig);
+  const phrases = detectPhrases(flat, fromSig);
+  const out: SongBar[] = [];
+
+  for (const phrase of phrases) {
+    if (phrase.length === 0) continue;
+    const totalSrc = phrase.reduce((s, f) => s + f.beat.duration, 0);
+    if (totalSrc < 1e-6) continue;
+
+    const naturalBars = totalSrc / toBarLen;
+    let targetBars = Math.max(1, Math.round(naturalBars));
+    // Snap toward the nearest "square" count when within a reasonable window
+    for (const candidate of [1, 2, 4, 8]) {
+      const distCand = Math.abs(naturalBars - candidate);
+      const distCur = Math.abs(naturalBars - targetBars);
+      if (distCand < distCur * 0.85) targetBars = candidate;
+    }
+    targetBars = Math.max(1, targetBars);
+    const targetTotal = targetBars * toBarLen;
+    const scale = targetTotal / totalSrc;
+
+    // Scale + quantize via cumulative-position snapping (so total length
+    // is exact and durations come out as differences of grid points).
+    const grid = 0.25;
+    const scaled: FlatNote[] = [];
+    let cumulSrc = 0;
+    let prevQuant = 0;
+    for (let i = 0; i < phrase.length; i++) {
+      const f = phrase[i];
+      cumulSrc += f.beat.duration;
+      const cumulTgt = cumulSrc * scale;
+      const isLast = i === phrase.length - 1;
+      const snapped = isLast
+        ? targetTotal
+        : Math.max(prevQuant + grid, Math.round(cumulTgt / grid) * grid);
+      const dur = snapped - prevQuant;
+      if (dur > 1e-6) {
+        scaled.push({ ...f, beat: { ...f.beat, duration: dur } });
+      }
+      prevQuant = snapped;
+    }
+
+    out.push(...rebarStream(scaled, toBarLen));
+  }
+
+  return out;
+}
+
+/** Musical re-metering dispatcher.
+ *
+ *  Stage 1 (same-pulse re-bar) → Stage 2 (simple↔compound pulse swap)
+ *  → Stage 3 (phrase-aware scaling).  Each stage returns null if it
+ *  doesn't apply, except Stage 3, which always returns a result.
+ *
+ *  This replaces an earlier all-in-one implementation that regenerated
+ *  rhythms via the straight-style engine — that path would freeze the
+ *  browser on 6/8 and 7/8 because the grouping enumerator would try to
+ *  list ~8M compositions for 24-slot bars.  No stage here calls back
+ *  into the rhythm engine for grouping enumeration. */
+function remeterBars(bars: SongBar[], newTimeSig: string, origTimeSig: string): SongBar[] {
+  if (newTimeSig === origTimeSig) return bars;
+  if (bars.length === 0) return [];
+
+  const newBeats = beatsPerBar(newTimeSig);
+  const flat = flattenWithChords(bars);
+  if (flat.length === 0) {
+    return [{ melody: [{ degree: 1, duration: newBeats }], chordRoman: bars[0].chordRoman }];
+  }
+
+  const stage1 = tryStage1Rebar(flat, origTimeSig, newTimeSig);
+  if (stage1) return stage1;
+
+  const stage2 = tryStage2PulseMap(flat, origTimeSig, newTimeSig);
+  if (stage2) return stage2;
+
+  return stage3PhraseAware(flat, origTimeSig, newTimeSig);
 }
 
 /** Rerhythm (in-place): keep each bar's phrase (degree order) intact, apply

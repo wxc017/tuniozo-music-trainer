@@ -104,31 +104,51 @@ export class AudioEngine {
 
   private scheduleNote(
     abs: number, edo: number,
-    startTime: number, duration: number, gain: number
+    startTime: number, duration: number, gain: number,
+    // Optional hard cap on when this note must be fully released.  Used
+    // by sequence/multi-voice schedulers to prevent chord N from bleeding
+    // into chord N+1: pass the next slot's start time and the release
+    // gets compressed to fit, even if (duration + naturalRelease) would
+    // overrun the slot.  Without this cap, the note rings out naturally
+    // past `duration` (single-shot chord behaviour).
+    maxEndTime?: number,
   ) {
     const ctx = this.getCtx();
     const adjusted = Math.min(1.0, gain * this.elBoost(abs, edo));
     const g = ctx.createGain();
+
+    const attack = 0.02;
+    const naturalRelease = 0.25;
+    const sustainEnd = startTime + duration;
+    const naturalEnd = sustainEnd + naturalRelease;
+    const endTime = maxEndTime !== undefined ? Math.min(naturalEnd, maxEndTime) : naturalEnd;
+    // Release fits between sustain end and envelope end; minimum 20ms so
+    // we don't get a click.  If the slot is so tight that it eats into
+    // the sustain, the sustain shortens but we keep a usable release.
+    const releaseLen = Math.max(0.02, endTime - sustainEnd);
+    const releaseStart = Math.max(startTime + attack, endTime - releaseLen);
+
     g.gain.setValueAtTime(0, startTime);
-    g.gain.linearRampToValueAtTime(adjusted, startTime + 0.02);
-    g.gain.setValueAtTime(adjusted, startTime + Math.max(0, duration - 0.1));
-    g.gain.exponentialRampToValueAtTime(0.0001, startTime + duration + 0.25);
+    g.gain.linearRampToValueAtTime(adjusted, startTime + attack);
+    g.gain.setValueAtTime(adjusted, releaseStart);
+    g.gain.exponentialRampToValueAtTime(0.0001, endTime);
     g.connect(this.getPlayDest());
 
+    const stopAt = endTime + 0.02;
     if (this.sampleBuffer) {
       const src = ctx.createBufferSource();
       src.buffer = this.sampleBuffer;
       src.playbackRate.value = this.absToRate(abs, edo);
       src.connect(g);
       src.start(startTime);
-      src.stop(startTime + duration + 0.5);
+      src.stop(stopAt);
     } else {
       const osc = ctx.createOscillator();
       osc.type = "triangle";
       osc.frequency.value = this.absToFreq(abs, edo);
       osc.connect(g);
       osc.start(startTime);
-      osc.stop(startTime + duration + 0.3);
+      osc.stop(stopAt);
     }
   }
 
@@ -153,9 +173,17 @@ export class AudioEngine {
     const ctx = this.getCtx();
     const gap = gapMs / 1000;
     let t = ctx.currentTime + 0.05;
-    for (const frame of frames) {
+    for (let i = 0; i < frames.length; i++) {
+      const frame = frames[i];
       const g = gain / Math.sqrt(Math.max(1, frame.length));
-      frame.forEach(n => this.scheduleNote(n, edo, t, noteDuration, g));
+      // Each note must fully die out, with audible silence before the
+      // next chord starts.  Cap the audible end to ~70% of the slot so
+      // the trailing 30% is true silence — no bleed, no overlap, just
+      // chord → fade → silence → next chord.  The last frame has no
+      // successor and gets a full natural ring-out.
+      const isLast = i === frames.length - 1;
+      const maxEnd = isLast ? undefined : t + gap * 0.7;
+      frame.forEach(n => this.scheduleNote(n, edo, t, noteDuration, g, maxEnd));
       t += gap;
     }
   }
@@ -180,7 +208,15 @@ export class AudioEngine {
       for (let i = 0; i < voice.frames.length; i++) {
         const frame = voice.frames[i];
         const g = voice.gain / Math.sqrt(Math.max(1, frame.length));
-        frame.forEach(n => this.scheduleNote(n, edo, t, voice.noteDuration, g));
+        // Each note must fully die out before the next slot starts —
+        // chord → fade → silence → next chord.  Cap to ~70% of the
+        // sub-slot so the trailing 30% is true silence.  Applies to
+        // every voice (chord, bass, melody) so bass can't ring across
+        // the bar either.  The last note in the loop gets a full
+        // natural ring-out (no successor).
+        const isLast = i === voice.frames.length - 1;
+        const maxEnd = isLast ? undefined : t + subGap * 0.7;
+        frame.forEach(n => this.scheduleNote(n, edo, t, voice.noteDuration, g, maxEnd));
         t += subGap;
         // Reset to next chord slot boundary
         if ((i + 1) % subdivs === 0) {

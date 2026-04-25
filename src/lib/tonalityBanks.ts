@@ -32,6 +32,55 @@ const ref = (label: string): ChordEntry => ({ label, steps: null });
 // Helper: build chord with explicit steps
 const chord = (label: string, steps: number[]): ChordEntry => ({ label, steps });
 
+// ── Approach-chord builders (per target) ──────────────────────────────
+// Used by ChordsTab to toggle secondary-dominant / secondary-diminished /
+// ii-V / tritone-sub approaches on a per-target basis.
+
+export type ApproachKind = "secdom" | "secdim" | "iiV" | "TT";
+
+export const APPROACH_KINDS: ApproachKind[] = ["secdom", "secdim", "iiV", "TT"];
+
+export const APPROACH_LABELS: Record<ApproachKind, string> = {
+  secdom: "V/",
+  secdim: "vii°/",
+  iiV: "ii-V",
+  TT: "TT",
+};
+
+/**
+ * Build the approach chord(s) leading to `targetLabel` for a given approach
+ * kind. Returns [] if the target shape is unusable. ii-V flavor (minor vs
+ * half-dim ii) follows the target's 3rd quality.
+ */
+export function getApproachChords(
+  targetLabel: string,
+  targetSteps: number[] | null,
+  kind: ApproachKind,
+  edo: number,
+): ChordEntry[] {
+  if (!targetSteps || targetSteps.length < 2) return [];
+  const sh = getChordShapes(edo);
+  const { MAJ, MIN, DIM, M2, M3, P5, d5, M7 } = sh;
+  const maj = (r: number) => MAJ.map(s => s + r);
+  const min = (r: number) => MIN.map(s => s + r);
+  const dim = (r: number) => DIM.map(s => s + r);
+  const r = targetSteps[0];
+  const isMajorTarget = (targetSteps[1] - r) === M3;
+  switch (kind) {
+    case "secdom":
+      return [chord(`V/${targetLabel}`, maj(r + P5))];
+    case "secdim":
+      // vii°/X — diminished triad a half-step below the target (or +M7)
+      return [chord(`vii°/${targetLabel}`, dim(r + M7))];
+    case "iiV":
+      return isMajorTarget
+        ? [chord(`ii/${targetLabel}`, min(r + M2)), chord(`V/${targetLabel}`, maj(r + P5))]
+        : [chord(`iiø/${targetLabel}`, dim(r + M2)), chord(`V/${targetLabel}`, maj(r + P5))];
+    case "TT":
+      return [chord(`TT/${targetLabel}`, maj(r + P5 + d5))];
+  }
+}
+
 // ── Build banks for a given EDO ───────────────────────────────────────
 
 export function getTonalityBanks(edo: number): TonalityBank[] {
@@ -59,6 +108,68 @@ export function getTonalityBanks(edo: number): TonalityBank[] {
   // Tritone sub
   const ttSub = (targetLabel: string, targetRoot: number): ChordEntry =>
     chord(`TT/${targetLabel}`, maj(targetRoot + P5 + d5));
+
+  // ── Auto-build a mode bank from scale semitones ──
+  // Stacks scale-step thirds to produce a triad at every degree, then
+  // labels each triad with the right roman-numeral case (case = quality)
+  // and accidental prefix (from the scaleDegrees label like "b3" / "#5").
+  // Used for the exotic harmonic/melodic-minor modes that were missing
+  // from the bank list — keeps them in sync with the Mode-ID taxonomy
+  // without having to hand-write 7 more bespoke entries.
+  const ROMAN_NUM: Record<string, string> = {
+    "1": "I", "2": "II", "3": "III", "4": "IV",
+    "5": "V", "6": "VI", "7": "VII",
+  };
+  const labelTriad = (degLabel: string, kind: "maj" | "min" | "dim" | "aug" | "other"): string => {
+    const m = degLabel.match(/^([b#]+)?(\d+)$/);
+    const prefix = m?.[1] ?? "";
+    const num = m?.[2] ?? degLabel;
+    let r = ROMAN_NUM[num] ?? num;
+    if (kind === "min" || kind === "dim") r = r.toLowerCase();
+    let suffix = "";
+    if (kind === "dim") suffix = "°";
+    else if (kind === "aug") suffix = "+";
+    return prefix + r + suffix;
+  };
+  const buildModeFromScale = (
+    name: string,
+    degLabels: string[],
+    scaleSemis: number[],
+    primaryIdx: number[],
+  ): TonalityBank => {
+    const triads: { label: string; steps: number[]; idx: number; kind: string }[] = [];
+    const aug5 = P5 + A1;
+    for (let i = 0; i < scaleSemis.length; i++) {
+      const root = scaleSemis[i];
+      const third = scaleSemis[(i + 2) % scaleSemis.length] + (i + 2 >= scaleSemis.length ? edo : 0);
+      const fifth = scaleSemis[(i + 4) % scaleSemis.length] + (i + 4 >= scaleSemis.length ? edo : 0);
+      const t3 = third - root;
+      const t5 = fifth - root;
+      let kind: "maj" | "min" | "dim" | "aug" | "other" = "other";
+      let steps: number[];
+      if (t3 === M3 && t5 === P5)        { kind = "maj"; steps = maj(root); }
+      else if (t3 === m3 && t5 === P5)   { kind = "min"; steps = min(root); }
+      else if (t3 === m3 && t5 === d5)   { kind = "dim"; steps = dim(root); }
+      else if (t3 === M3 && t5 === aug5) { kind = "aug"; steps = aug(root); }
+      else { steps = [root, third, fifth]; }
+      triads.push({ label: labelTriad(degLabels[i], kind), steps, idx: i, kind });
+    }
+    const primarySet = new Set(primaryIdx);
+    const primaryEntries = primaryIdx
+      .filter(i => i < triads.length)
+      .map(i => chord(triads[i].label, triads[i].steps));
+    const diatonicEntries = triads
+      .filter(t => !primarySet.has(t.idx))
+      .map(t => chord(t.label, t.steps));
+    return {
+      name,
+      levels: [
+        { name: "Primary", chords: primaryEntries },
+        { name: "Diatonic", chords: diatonicEntries },
+        ...functionLevels(diatonicEntries, primaryEntries),
+      ],
+    };
+  };
 
   /**
    * Given a list of diatonic chord entries, auto-generate the Secondary
@@ -124,12 +235,23 @@ export function getTonalityBanks(edo: number): TonalityBank[] {
           ],
         },
         {
-          name: "Borrowings",
+          // Curated modal-interchange set for Major.  Roughly ordered by
+          // usage frequency across pop / rock / classical / jazz.  Covers
+          // parallel-minor borrowings (iv, bVII, bVI, bIII, v, ii°),
+          // Phrygian (bII / Neapolitan), Lydian (II, #iv°), and the
+          // major-III chromatic mediant.
+          name: "Modal Interchange",
           chords: [
-            chord("ii°", dim(M2)), chord("bIII", maj(m3)),
-            chord("iv", min(P4)), chord("v", min(P5)),
-            chord("bVI", maj(m6)), chord("bVII", maj(m7)),
-            chord("#iv°", dim(P4 + A1)),
+            chord("iv",  min(P4)),         // parallel minor — extremely common
+            chord("bVII", maj(m7)),        // Mixolydian / rock
+            chord("bVI", maj(m6)),         // parallel minor
+            chord("bIII", maj(m3)),        // parallel minor
+            chord("bII", maj(m3 - M2)),    // Neapolitan (Phrygian)
+            chord("v",   min(P5)),         // minor v (Mixolydian / minor)
+            chord("ii°", dim(M2)),         // parallel minor
+            chord("#iv°", dim(P4 + A1)),   // Lydian — raised 4 leading tone
+            chord("II",  maj(M2)),         // Lydian / V/V color
+            chord("III", maj(M3)),         // chromatic mediant
           ],
         },
         {
@@ -175,7 +297,26 @@ export function getTonalityBanks(edo: number): TonalityBank[] {
     (() => {
       const pr = [chord("i", min(0)), chord("iv", min(P4)), chord("bVII", maj(m7))];
       const di = [chord("ii°", dim(M2)), chord("bIII", maj(m3)), chord("v", min(P5)), chord("bVI", maj(m6))];
-      return { name: "Aeolian", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
+      // Curated modal-interchange set for Aeolian — roughly ordered by
+      // usage frequency.  Covers harmonic-minor cadence (V, vii°),
+      // Dorian inflections (IV, VI), Picardy (I), Phrygian Neapolitan
+      // (bII), jazz-minor ii, and Locrian bV tritone color.
+      const mi = [
+        chord("V",    maj(P5)),         // harmonic-minor cadence — extremely common
+        chord("vii°", dim(M7)),         // leading-tone diminished
+        chord("IV",   maj(P4)),         // Dorian major IV (rock / gospel)
+        chord("I",    maj(0)),          // Picardy third
+        chord("bII",  maj(m3 - M2)),    // Neapolitan (Phrygian)
+        chord("VI",   maj(M6)),         // Dorian major VI
+        chord("ii",   min(M2)),         // minor ii (parallel major)
+        chord("bV",   maj(d5)),         // tritone color (Locrian)
+      ];
+      return { name: "Aeolian", levels: [
+        { name: "Primary", chords: pr },
+        { name: "Diatonic", chords: di },
+        { name: "Modal Interchange", chords: mi },
+        ...functionLevels(di, pr),
+      ] };
     })(),
 
     // ── PHRYGIAN ────────────────────────────────────────────────────
@@ -240,6 +381,38 @@ export function getTonalityBanks(edo: number): TonalityBank[] {
       const di = [chord("#ii°", dim(M2 + A1)), chord("iii", min(M3)), chord("#iv°", dim(P4 + A1)), chord("V+", aug(P5)), chord("vi", min(M6))];
       return { name: "Lydian #2", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
+
+    // ── Harmonic-minor family (auto-built from scale) ───────────────
+    buildModeFromScale("Locrian #6",
+      ["1","b2","b3","4","b5","6","b7"],
+      [0, m3 - M2, m3, P4, d5, M6, m7],
+      [0, 3, 6]),
+    buildModeFromScale("Ionian #5",
+      ["1","2","3","4","#5","6","7"],
+      [0, M2, M3, P4, P5 + A1, M6, M7],
+      [0, 3, 5]),
+    buildModeFromScale("Ultralocrian",
+      ["1","b2","b3","3","b5","b6","6"],
+      [0, m3 - M2, m3, M3, d5, m6, M6],
+      [0, 5, 6]),
+
+    // ── Melodic-minor family (auto-built from scale) ────────────────
+    buildModeFromScale("Dorian b2",
+      ["1","b2","b3","4","5","6","b7"],
+      [0, m3 - M2, m3, P4, P5, M6, m7],
+      [0, 3, 6]),
+    buildModeFromScale("Lydian Augmented",
+      ["1","2","3","#4","#5","6","7"],
+      [0, M2, M3, P4 + A1, P5 + A1, M6, M7],
+      [0, 1, 5]),
+    buildModeFromScale("Locrian #2",
+      ["1","2","b3","4","b5","b6","b7"],
+      [0, M2, m3, P4, d5, m6, m7],
+      [0, 4, 6]),
+    buildModeFromScale("Altered",
+      ["1","b2","#2","3","b5","#5","b7"],
+      [0, m3 - M2, m3, M3, d5, P5 + A1, m7],
+      [0, 4, 6]),
   ];
 }
 

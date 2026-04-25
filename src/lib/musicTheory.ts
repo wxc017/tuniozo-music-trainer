@@ -562,6 +562,12 @@ export const HARMONIC_GRAPH: Record<string, string[]> = {
   "TT/ii":  ["ii"],
   "TT/V":   ["V"],
   "TT/vi":  ["vi"],
+  // ── Secondary diminished — resolve to target (leading-tone approach) ──
+  "vii°/ii":  ["ii"],
+  "vii°/iii": ["iii"],
+  "vii°/IV":  ["IV"],
+  "vii°/V":   ["V"],
+  "vii°/vi":  ["vi"],
   // ── Borrowings ──
   "bIII":  ["IV","iv","bVI","bVII","i"],
   "bVI":   ["bVII","V","iv","i"],
@@ -577,6 +583,7 @@ const APPLIED_CHORDS = new Set([
   "V/ii","V/iii","V/IV","V/V","V/vi",
   "ii/IV","ii/V","iiø/ii","iiø/iii","iiø/vi",
   "TT/I","TT/ii","TT/V","TT/vi",
+  "vii°/ii","vii°/iii","vii°/IV","vii°/V","vii°/vi",
 ]);
 
 /** Length options for generated loops */
@@ -597,6 +604,7 @@ export function generateFunctionalLoop(
   available: string[],
   length: number,
   maxAttempts = 300,
+  boosted?: Set<string>,
 ): string[] | null {
   if (available.length < 2) return null;
 
@@ -604,6 +612,8 @@ export function generateFunctionalLoop(
   const diatonicStarts = available.filter(c => !APPLIED_CHORDS.has(c));
   const homes = available.filter(c => HOME_CHORDS.has(c));
   const startPool = diatonicStarts.length > 0 ? diatonicStarts : (homes.length > 0 ? homes : [available[0]]);
+  const boostFactor = 3;
+  const boost = boosted ?? new Set<string>();
 
   const uniformPick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
@@ -643,6 +653,12 @@ export function generateFunctionalLoop(
     "TT/ii":  { ii: 5 },
     "TT/V":   { V: 5 },
     "TT/vi":  { vi: 5 },
+    // Secondary diminished — leading-tone approach, strong resolution to target
+    "vii°/ii":  { ii: 5 },
+    "vii°/iii": { iii: 5 },
+    "vii°/IV":  { IV: 5 },
+    "vii°/V":   { V: 5 },
+    "vii°/vi":  { vi: 5 },
     // Borrowings
     bIII: { IV: 3, iv: 2, bVI: 2, bVII: 2, i: 1 },
     bVI:  { bVII: 3, V: 2, iv: 2, i: 1 },
@@ -650,13 +666,18 @@ export function generateFunctionalLoop(
     "#iv°": { V: 3, "vii°": 2 },
   };
 
-  // Build the transition map, filtering to only available chords
+  // Build the transition map, filtering to only available chords.
+  // Boosted targets get a weight multiplier so the walk biases toward them
+  // even when their transition weights are modest.
   for (const chord of available) {
     const weightMap = FUNCTIONAL_WEIGHTS[chord];
     if (!weightMap) continue;
     const trans: Transition = [];
     for (const [target, weight] of Object.entries(weightMap)) {
-      if (avSet.has(target)) trans.push({ target, weight });
+      if (avSet.has(target)) {
+        const w = boost.has(target) ? weight * boostFactor : weight;
+        trans.push({ target, weight: w });
+      }
     }
     if (trans.length > 0) transitions.set(chord, trans);
   }
@@ -1298,6 +1319,90 @@ export const JAZZ_CELL_BANK_31 = [
 
 // ── Jazz cell family descriptions ─────────────────────────────────────
 
+export const JAZZ_VARIANTS: Record<string, { id: string; label: string }[]> = {
+  "Chord Tone Arpeggios": [
+    { id: "ascending",  label: "Ascending" },
+    { id: "descending", label: "Descending" },
+    { id: "broken",     label: "Broken" },
+    { id: "pendulum",   label: "Pendulum" },
+    { id: "return",     label: "Return" },
+  ],
+  "Enclosures": [
+    { id: "1", label: "→ 1" },
+    { id: "3", label: "→ 3" },
+    { id: "5", label: "→ 5" },
+    { id: "7", label: "→ 7" },
+  ],
+  "Bebop Fragments": [
+    { id: "ascending",  label: "Ascending" },
+    { id: "descending", label: "Descending" },
+  ],
+  "Guide-Tone Lines": [
+    { id: "from_3", label: "Start on 3" },
+    { id: "from_7", label: "Start on 7" },
+  ],
+  "Bergonzi Pentatonics": [
+    { id: "major",     label: "Major" },
+    { id: "minor",     label: "Minor" },
+    { id: "dominant",  label: "Dominant" },
+    { id: "Kumoi",     label: "Kumoi" },
+    { id: "Hirajoshi", label: "Hirajoshi" },
+    { id: "In-Sen",    label: "In-Sen" },
+  ],
+  "Bergonzi Digital Patterns": [
+    { id: "1235", label: "1235" },
+    { id: "1345", label: "1345" },
+    { id: "1256", label: "1256" },
+    { id: "1357", label: "1357" },
+  ],
+  // Triad pair variant IDs are mode-independent degree pairs ("1+4" = triad on
+  // degree 1 + triad on degree 4). The actual triad qualities (M/m/dim) come
+  // from the selected mode. Display labels are computed at render time.
+  "Bergonzi Triad Pairs": [
+    { id: "1+2", label: "1+2" },
+    { id: "2+3", label: "2+3" },
+    { id: "3+4", label: "3+4" },
+    { id: "4+5", label: "4+5" },
+    { id: "5+6", label: "5+6" },
+    { id: "6+7", label: "6+7" },
+    { id: "1+4", label: "1+4" },
+    { id: "1+5", label: "1+5" },
+    { id: "2+5", label: "2+5" },
+    { id: "4+7", label: "4+7" },
+  ],
+  // Hexatonic variants: triad-derived pairs are mode-aware (notes change with
+  // mode); "augmented" and "whole-tone" are symmetric and mode-independent.
+  "Bergonzi Hexatonics": [
+    { id: "1+2",         label: "1+2" },
+    { id: "2+3",         label: "2+3" },
+    { id: "3+4",         label: "3+4" },
+    { id: "4+5",         label: "4+5" },
+    { id: "5+6",         label: "5+6" },
+    { id: "1+4",         label: "1+4" },
+    { id: "1+5",         label: "1+5" },
+    { id: "augmented",   label: "Augmented" },
+    { id: "whole-tone",  label: "Whole-tone" },
+  ],
+  "Bergonzi Intervallic": [
+    { id: "fourths",   label: "4ths" },
+    { id: "fifths",    label: "5ths" },
+    { id: "sixths",    label: "6ths" },
+    { id: "sevenths",  label: "7ths" },
+    { id: "tritones",  label: "Tritones" },
+    { id: "chromatic", label: "Chromatic" },
+    { id: "mix_4_2",   label: "Mix 4ths/2nds" },
+    { id: "mix_5_2",   label: "Mix 5ths/2nds" },
+    { id: "mix_5_3",   label: "Mix 5ths/3rds" },
+    { id: "mix_6_3",   label: "Mix 6ths/3rds" },
+  ],
+};
+
+function pickAllowed<T>(items: T[], idOf: (it: T) => string, enabled?: Set<string>): T {
+  if (!enabled || enabled.size === 0) return randomChoice(items);
+  const filtered = items.filter(it => enabled.has(idOf(it)));
+  return randomChoice(filtered.length ? filtered : items);
+}
+
 export const JAZZ_FAMILY_DESCRIPTIONS: Record<string, string> = {
   "Chord Tone Arpeggios": "Arpeggiated chord tones (1-3-5-7-9) in various orderings — broken, ascending, descending, pendulum, with returns.",
   "Enclosures": "Chromatic or diatonic approach from above and below into a target chord tone. The core bebop ornament.",
@@ -1315,15 +1420,17 @@ export const JAZZ_FAMILY_DESCRIPTIONS: Record<string, string> = {
 const CHORD_TONES = ["1", "3", "5", "7"];
 const CHORD_TONES_EXT = ["1", "3", "5", "7", "9"];
 
-function generateArpeggio(length: number): string[] {
-  const style = randomChoice(["ascending", "descending", "broken", "pendulum", "return"]);
+function generateArpeggio(length: number, enabled?: Set<string>): { degrees: string[]; variant: string } {
+  const styles = ["ascending", "descending", "broken", "pendulum", "return"];
+  const style = pickAllowed(styles, s => s, enabled);
   const pool = length > 5 ? CHORD_TONES_EXT : CHORD_TONES;
+  const variant = `${style} arpeggio (${pool.join("-")})`;
 
   switch (style) {
     case "ascending": {
       const out: string[] = [];
       for (let i = 0; out.length < length; i++) out.push(pool[i % pool.length]);
-      return out;
+      return { degrees: out, variant };
     }
     case "descending": {
       const out: string[] = [];
@@ -1331,7 +1438,7 @@ function generateArpeggio(length: number): string[] {
         if (i < 0) i = pool.length - 1;
         out.push(pool[i]);
       }
-      return out;
+      return { degrees: out, variant };
     }
     case "broken": {
       // Interleave low and high: 1,7,3,5,9,1,...
@@ -1342,7 +1449,7 @@ function generateArpeggio(length: number): string[] {
         if (out.length % 2 === 0) { out.push(sorted[lo]); lo = (lo + 1) % sorted.length; }
         else { out.push(sorted[hi]); hi = (hi - 1 + sorted.length) % sorted.length; }
       }
-      return out;
+      return { degrees: out, variant };
     }
     case "pendulum": {
       // Up by thirds then back: 1,5,3,7,5,9,...
@@ -1353,7 +1460,7 @@ function generateArpeggio(length: number): string[] {
         idx += dir;
         dir = i % 2 === 0 ? 2 : -1; // jump up 2, step back 1
       }
-      return out;
+      return { degrees: out, variant };
     }
     case "return":
     default: {
@@ -1363,7 +1470,7 @@ function generateArpeggio(length: number): string[] {
       const cycle = [...up, ...down];
       const out: string[] = [];
       for (let i = 0; out.length < length; i++) out.push(cycle[i % cycle.length]);
-      return out;
+      return { degrees: out, variant };
     }
   }
 }
@@ -1376,14 +1483,15 @@ const ENCLOSURE_APPROACHES: Record<string, { above: string[]; below: string[] }>
   "7": { above: ["8"], below: ["6", "#6"] },
 };
 
-function generateEnclosure(length: number): string[] {
+function generateEnclosure(length: number, enabled?: Set<string>): { degrees: string[]; variant: string } {
   const targets = Object.keys(ENCLOSURE_APPROACHES);
-  const target = randomChoice(targets);
+  const target = pickAllowed(targets, t => t, enabled);
   const app = ENCLOSURE_APPROACHES[target];
   const above = randomChoice(app.above);
   const below = randomChoice(app.below);
+  const variant = `enclosure → ${target} (${above} above, ${below} below)${length > 3 ? " + chord-tone tail" : ""}`;
 
-  if (length <= 3) return [above, below, target];
+  if (length <= 3) return { degrees: [above, below, target], variant };
 
   // Extended: enclosure + tail of ascending chord tones from target
   const core = [above, below, target];
@@ -1392,7 +1500,7 @@ function generateEnclosure(length: number): string[] {
   for (let i = 1; tail.length < length - 3; i++) {
     tail.push(CHORD_TONES[(targetIdx + i) % CHORD_TONES.length]);
   }
-  return [...core, ...tail];
+  return { degrees: [...core, ...tail], variant };
 }
 
 // Chromatic passing tones for bebop scale fragments
@@ -1412,9 +1520,11 @@ const BEBOP_CHROMATICS_DESC: Record<string, string> = {
   "3_2": "b3",
 };
 
-function generateBebopFragment(length: number): string[] {
+function generateBebopFragment(length: number, enabled?: Set<string>): { degrees: string[]; variant: string } {
   const scale = ["1", "2", "3", "4", "5", "6", "7", "8"];
-  const ascending = Math.random() > 0.4;
+  const dirs = ["ascending", "descending"];
+  const dir = pickAllowed(dirs, d => d, enabled);
+  const ascending = dir === "ascending";
 
   if (ascending) {
     const start = Math.floor(Math.random() * 4); // start on 1-4
@@ -1428,7 +1538,7 @@ function generateBebopFragment(length: number): string[] {
         if (chromatic && Math.random() > 0.4) raw.push(chromatic);
       }
     }
-    return raw.slice(0, length);
+    return { degrees: raw.slice(0, length), variant: `ascending bebop scale fragment from ${scale[start]}` };
   } else {
     const start = 4 + Math.floor(Math.random() * 4); // start on 5-8
     const raw: string[] = [];
@@ -1440,13 +1550,17 @@ function generateBebopFragment(length: number): string[] {
         if (chromatic && Math.random() > 0.4) raw.push(chromatic);
       }
     }
-    return raw.slice(0, length);
+    return { degrees: raw.slice(0, length), variant: `descending bebop scale fragment from ${scale[start]}` };
   }
 }
 
-function generateGuideToneLine(length: number): string[] {
+function generateGuideToneLine(length: number, enabled?: Set<string>): { degrees: string[]; variant: string } {
   // Guide tones are 3rds and 7ths; connect them stepwise
   const guideTones = ["3", "7"];
+  const startCandidates = enabled && enabled.size > 0
+    ? guideTones.filter(t => enabled.has(`from_${t}`))
+    : guideTones;
+  const guidePool = startCandidates.length ? startCandidates : guideTones;
   const passingUp: Record<string, string[]> = {
     "3": ["4", "5", "6", "7"],    // 3 → 7 ascending through scale
     "7": ["8", "9"],              // 7 → next 3 (approached as 9→3 or 8→3)
@@ -1457,7 +1571,8 @@ function generateGuideToneLine(length: number): string[] {
   };
 
   const out: string[] = [];
-  let current = randomChoice(guideTones);
+  const startTone = randomChoice(guidePool);
+  let current = startTone;
   out.push(current);
 
   while (out.length < length) {
@@ -1470,23 +1585,26 @@ function generateGuideToneLine(length: number): string[] {
     }
     current = current === "3" ? "7" : "3";
   }
-  return out.slice(0, length);
+  return { degrees: out.slice(0, length), variant: `guide-tone line (3 ↔ 7) starting on ${startTone}` };
 }
 
 // ── Bergonzi generative engines ──────────────────────────────────────
 
-const MAJOR_PENT = ["1", "2", "3", "5", "6"];
-const MINOR_PENT = ["1", "b3", "4", "5", "b7"];
-const DOM_PENT   = ["1", "2", "3", "5", "b7"];
-const KUMOI_PENT = ["1", "2", "b3", "5", "6"];
-const HIRAJOSHI  = ["1", "2", "b3", "5", "b6"];
-const IN_SEN     = ["1", "b2", "4", "5", "b7"];
-const ALL_PENTS  = [MAJOR_PENT, MINOR_PENT, DOM_PENT, KUMOI_PENT, HIRAJOSHI, IN_SEN];
+const PENTATONIC_BANK: { name: string; notes: string[] }[] = [
+  { name: "major",     notes: ["1", "2", "3", "5", "6"] },
+  { name: "minor",     notes: ["1", "b3", "4", "5", "b7"] },
+  { name: "dominant",  notes: ["1", "2", "3", "5", "b7"] },
+  { name: "Kumoi",     notes: ["1", "2", "b3", "5", "6"] },
+  { name: "Hirajoshi", notes: ["1", "2", "b3", "5", "b6"] },
+  { name: "In-Sen",    notes: ["1", "b2", "4", "5", "b7"] },
+];
 
-function generateBergonziPentatonic(length: number): string[] {
-  const pent = randomChoice(ALL_PENTS);
+function generateBergonziPentatonic(length: number, enabled?: Set<string>): { degrees: string[]; variant: string } {
+  const picked = pickAllowed(PENTATONIC_BANK, p => p.name, enabled);
+  const pent = picked.notes;
   const style = randomChoice(["ascending", "descending", "skip", "pendulum"]);
   const out: string[] = [];
+  let detail = style;
 
   switch (style) {
     case "ascending": {
@@ -1502,6 +1620,7 @@ function generateBergonziPentatonic(length: number): string[] {
     case "skip": {
       const start = Math.floor(Math.random() * pent.length);
       const step = randomChoice([2, 3]);
+      detail = `skip-${step}`;
       for (let i = 0; out.length < length; i++) out.push(pent[(start + i * step) % pent.length]);
       break;
     }
@@ -1515,18 +1634,24 @@ function generateBergonziPentatonic(length: number): string[] {
       break;
     }
   }
-  return out.slice(0, length);
+  return { degrees: out.slice(0, length), variant: `${picked.name} pentatonic — ${detail}` };
 }
 
 const DIGITAL_BASE = ["1", "2", "3", "4", "5", "6", "7"];
 
-function generateBergonziDigital(length: number): string[] {
+function generateBergonziDigital(length: number, enabled?: Set<string>): { degrees: string[]; variant: string } {
   // Pick a 4-note digital cell permutation and optionally sequence it
   const startDeg = Math.floor(Math.random() * 7);
   const cellSize = Math.min(4, length);
   // Base cells: 1235 (skip 4th), 1345 (skip 2nd), 1256 (skip 3-4), 1357 (thirds)
-  const bases = [[0,1,2,4],[0,2,3,4],[0,1,4,5],[0,2,4,6]];
-  const base = randomChoice(bases);
+  const baseBank: { name: string; degs: number[] }[] = [
+    { name: "1235", degs: [0,1,2,4] },
+    { name: "1345", degs: [0,2,3,4] },
+    { name: "1256", degs: [0,1,4,5] },
+    { name: "1357", degs: [0,2,4,6] },
+  ];
+  const baseEntry = pickAllowed(baseBank, b => b.name, enabled);
+  const base = baseEntry.degs;
   // Generate all 24 permutations of the chosen base
   const shapes: number[][] = [];
   for (let a = 0; a < 4; a++)
@@ -1536,6 +1661,7 @@ function generateBergonziDigital(length: number): string[] {
           if (a !== b && a !== c && a !== d && b !== c && b !== d && c !== d)
             shapes.push([base[a], base[b], base[c], base[d]]);
   const shape = randomChoice(shapes);
+  const permLabel = shape.map(d => String(d + 1)).join("-");
   const out: string[] = [];
 
   // Sequence through scale degrees
@@ -1547,22 +1673,34 @@ function generateBergonziDigital(length: number): string[] {
     }
     degOffset = (degOffset + 1) % 7; // move up one scale degree
   }
-  return out.slice(0, length);
+  return {
+    degrees: out.slice(0, length),
+    variant: `digital ${baseEntry.name} cell, perm ${permLabel} (sequenced from degree ${startDeg + 1})`,
+  };
 }
 
-function generateBergonziTriadPair(length: number): string[] {
-  // Pick two adjacent triads from diatonic collection
-  const triadRoots = [
-    { root: 0, notes: ["1", "3", "5"] },
-    { root: 1, notes: ["2", "4", "6"] },
-    { root: 2, notes: ["3", "5", "7"] },
-    { root: 3, notes: ["4", "6", "1"] },
-    { root: 4, notes: ["5", "7", "2"] },
-    { root: 5, notes: ["6", "1", "3"] },
-  ];
-  const idx = Math.floor(Math.random() * (triadRoots.length - 1));
-  const t1 = triadRoots[idx].notes;
-  const t2 = triadRoots[idx + 1].notes;
+function generateBergonziTriadPair(
+  length: number,
+  enabled?: Set<string>,
+  scaleFam: string = "Major Family",
+  modeName: string = "Ionian",
+): { degrees: string[]; variant: string } {
+  // Pair IDs are mode-independent ("1+4" = triad on degree 1 + triad on degree 4).
+  // Notes are derived from the selected mode's diatonic triads.
+  const PAIR_IDS = ["1+2","2+3","3+4","4+5","5+6","6+7","1+4","1+5","2+5","4+7"];
+  const triads = getDiatonicTriadsForMode(scaleFam, modeName);
+  const fallbackI = ["1","3","5"], fallbackII = ["2","4","6"];
+
+  const pickedId = pickAllowed(PAIR_IDS, p => p, enabled);
+  const [aStr, bStr] = pickedId.split("+");
+  const aIdx = parseInt(aStr) - 1;
+  const bIdx = parseInt(bStr) - 1;
+  const t1 = triads[aIdx]?.notes ?? fallbackI;
+  const t2 = triads[bIdx]?.notes ?? fallbackII;
+  const aRoman = triads[aIdx]?.roman ?? aStr;
+  const bRoman = triads[bIdx]?.roman ?? bStr;
+  const pairLabel = `${aRoman}+${bRoman}`;
+  const picked = { id: pickedId, label: pairLabel };
 
   // Permute each triad independently
   const perms = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
@@ -1577,18 +1715,47 @@ function generateBergonziTriadPair(length: number): string[] {
   // Repeat / truncate to target length
   const out: string[] = [];
   for (let i = 0; out.length < length; i++) out.push(cell[i % cell.length]);
-  return out.slice(0, length);
+  const dir = ascending ? "ascending" : "descending";
+  const variant = `${dir} triad pair ${picked.label}: ${t1.join("-")} / ${t2.join("-")}`;
+  return { degrees: out.slice(0, length), variant };
 }
 
-function generateBergonziHexatonic(length: number): string[] {
-  // Build a hexatonic scale from two triads
-  const hexScales = [
-    ["1", "2", "3", "#4", "5", "6"],     // I + II
-    ["1", "b3", "4", "5", "6", "1"],     // i + IV
-    ["1", "2", "4", "5", "6", "b7"],     // V + IV
-    ["1", "3", "#5", "b6", "1", "b3"],   // augmented
-  ];
-  const hex = randomChoice(hexScales);
+function generateBergonziHexatonic(
+  length: number,
+  enabled?: Set<string>,
+  scaleFam: string = "Major Family",
+  modeName: string = "Ionian",
+): { degrees: string[]; variant: string } {
+  // Two kinds of hexatonics:
+  //   - Triad-pair hexes: union of two diatonic triads of the current mode. Notes
+  //     and labels both adapt per-mode (e.g. "1+2" → "I+ii" in Ionian, "i+II" in Phrygian).
+  //   - Symmetric hexes (augmented, whole-tone): mode-independent fixed shapes.
+  const triads = getDiatonicTriadsForMode(scaleFam, modeName);
+  const triadPairIds = ["1+2","2+3","3+4","4+5","5+6","1+4","1+5"];
+
+  const buildPairHex = (id: string): { name: string; notes: string[] } | null => {
+    const [aStr, bStr] = id.split("+");
+    const aIdx = parseInt(aStr) - 1;
+    const bIdx = parseInt(bStr) - 1;
+    const t1 = triads[aIdx]?.notes;
+    const t2 = triads[bIdx]?.notes;
+    if (!t1 || !t2) return null;
+    const merged = Array.from(new Set([...t1, ...t2]));
+    const aRoman = triads[aIdx]?.roman ?? aStr;
+    const bRoman = triads[bIdx]?.roman ?? bStr;
+    return { name: `${aRoman}+${bRoman}`, notes: merged };
+  };
+
+  const hexBank: { id: string; name: string; notes: string[] }[] = [];
+  for (const id of triadPairIds) {
+    const built = buildPairHex(id);
+    if (built && built.notes.length >= 4) hexBank.push({ id, ...built });
+  }
+  hexBank.push({ id: "augmented",  name: "augmented",  notes: ["1", "b3", "3", "5", "#5", "7"] });
+  hexBank.push({ id: "whole-tone", name: "whole-tone", notes: ["1", "2", "3", "#4", "#5", "b7"] });
+
+  const picked = pickAllowed(hexBank, h => h.id, enabled);
+  const hex = picked.notes;
   const style = randomChoice(["ascending", "descending", "skip", "cell4"]);
   const out: string[] = [];
 
@@ -1624,34 +1791,80 @@ function generateBergonziHexatonic(length: number): string[] {
       break;
     }
   }
-  return out.slice(0, length);
+  return { degrees: out.slice(0, length), variant: `${picked.name} hexatonic — ${style}` };
 }
 
-function generateBergonziIntervallic(length: number): string[] {
+function generateBergonziIntervallic(length: number, enabled?: Set<string>): { degrees: string[]; variant: string } {
+  // Diatonic 7-note scale (used by 4ths/5ths/6ths/7ths/mixed variants).
+  // In scale-step terms: walking N indices = walking an (N+1)th interval.
+  // So: 4ths = 3 steps, 5ths = 4 steps, 6ths = 5 steps, 7ths = 6 steps.
   const scale = ["1", "2", "3", "4", "5", "6", "7"];
-  // Interval jump sizes: 2=seconds, 3=thirds, 4=fourths, 5=fifths
-  const intervalType = randomChoice([2, 3, 4, 5]);
+  // 12-note chromatic spelling (used by tritones/chromatic variants).
+  const chrom = ["1", "b2", "2", "b3", "3", "4", "#4", "5", "b6", "6", "b7", "7"];
+  // Tritone partner for each diatonic degree.
+  const tritoneOf: Record<string, string> = {
+    "1": "#4", "2": "b6", "3": "b7", "4": "7", "5": "b2", "6": "b3", "7": "4",
+  };
+  // 2nds/3rds excluded — covered by Bebop Fragments and Arpeggios respectively.
+  type Variant =
+    | { id: string; kind: "diatonic"; step: number; intName: string }
+    | { id: string; kind: "mixed"; primary: number; secondary: number; primaryName: string; secondaryName: string }
+    | { id: "tritones"; kind: "tritone" }
+    | { id: "chromatic"; kind: "chromatic" };
+  const variants: Variant[] = [
+    { id: "fourths",   kind: "diatonic", step: 3, intName: "fourths" },
+    { id: "fifths",    kind: "diatonic", step: 4, intName: "fifths" },
+    { id: "sixths",    kind: "diatonic", step: 5, intName: "sixths" },
+    { id: "sevenths",  kind: "diatonic", step: 6, intName: "sevenths" },
+    { id: "tritones",  kind: "tritone" },
+    { id: "chromatic", kind: "chromatic" },
+    { id: "mix_4_2", kind: "mixed", primary: 3, secondary: 1, primaryName: "fourths", secondaryName: "seconds" },
+    { id: "mix_5_2", kind: "mixed", primary: 4, secondary: 1, primaryName: "fifths",  secondaryName: "seconds" },
+    { id: "mix_5_3", kind: "mixed", primary: 4, secondary: 2, primaryName: "fifths",  secondaryName: "thirds" },
+    { id: "mix_6_3", kind: "mixed", primary: 5, secondary: 2, primaryName: "sixths",  secondaryName: "thirds" },
+  ];
+  const picked = pickAllowed(variants, v => v.id, enabled);
   const ascending = Math.random() > 0.4;
-  const mixed = Math.random() > 0.6; // alternate up/down
-  const start = Math.floor(Math.random() * 7);
-
   const out: string[] = [];
-  let pos = start;
 
-  if (mixed) {
-    // Alternating: step up by interval, step down by different interval
-    const interval2 = intervalType === 2 ? 3 : 2;
+  if (picked.kind === "diatonic") {
+    const start = Math.floor(Math.random() * 7);
+    const dir = ascending ? picked.step : -picked.step;
+    let pos = start;
     for (let i = 0; out.length < length; i++) {
       out.push(scale[((pos % 7) + 7) % 7]);
-      pos += (i % 2 === 0) ? intervalType : -interval2;
+      pos += dir;
     }
-  } else {
-    for (let i = 0; out.length < length; i++) {
-      out.push(scale[((pos % 7) + 7) % 7]);
-      pos += ascending ? intervalType : -intervalType;
-    }
+    return { degrees: out, variant: `${ascending ? "ascending" : "descending"} all-${picked.intName}` };
   }
-  return out.slice(0, length);
+
+  if (picked.kind === "mixed") {
+    const start = Math.floor(Math.random() * 7);
+    let pos = start;
+    for (let i = 0; out.length < length; i++) {
+      out.push(scale[((pos % 7) + 7) % 7]);
+      pos += (i % 2 === 0) ? picked.primary : -picked.secondary;
+    }
+    return { degrees: out, variant: `mixed: up ${picked.primaryName}, down ${picked.secondaryName}` };
+  }
+
+  if (picked.kind === "tritone") {
+    // Alternate scale-step + tritone partner: 1, #4, 2, b6, 3, b7, 4, 7, ...
+    const start = Math.floor(Math.random() * 7);
+    for (let i = 0; out.length < length; i++) {
+      const d = scale[(start + Math.floor(i / 2)) % 7];
+      out.push(i % 2 === 0 ? d : tritoneOf[d]);
+    }
+    return { degrees: out, variant: `tritone-pair cells (scale-tone + tritone partner)` };
+  }
+
+  // chromatic
+  const startC = Math.floor(Math.random() * 12);
+  const dirC = ascending ? 1 : -1;
+  for (let i = 0; out.length < length; i++) {
+    out.push(chrom[((startC + i * dirC) % 12 + 12) % 12]);
+  }
+  return { degrees: out, variant: `${ascending ? "ascending" : "descending"} chromatic walk` };
 }
 
 /**
@@ -1661,26 +1874,29 @@ function generateBergonziIntervallic(length: number): string[] {
 export function generateJazzCell(
   family: string,
   length: number,
-): { degrees: string[]; family: string; name: string } {
-  let degrees: string[];
+  enabledVariants?: Set<string>,
+  scaleFam: string = "Major Family",
+  modeName: string = "Ionian",
+): { degrees: string[]; family: string; name: string; variant: string } {
+  let result: { degrees: string[]; variant: string };
   switch (family) {
-    case "Chord Tone Arpeggios":      degrees = generateArpeggio(length); break;
-    case "Enclosures":                degrees = generateEnclosure(length); break;
-    case "Bebop Fragments":           degrees = generateBebopFragment(length); break;
-    case "Guide-Tone Lines":          degrees = generateGuideToneLine(length); break;
-    case "Bergonzi Pentatonics":      degrees = generateBergonziPentatonic(length); break;
-    case "Bergonzi Digital Patterns":  degrees = generateBergonziDigital(length); break;
-    case "Bergonzi Triad Pairs":      degrees = generateBergonziTriadPair(length); break;
-    case "Bergonzi Hexatonics":       degrees = generateBergonziHexatonic(length); break;
-    case "Bergonzi Intervallic":      degrees = generateBergonziIntervallic(length); break;
+    case "Chord Tone Arpeggios":      result = generateArpeggio(length, enabledVariants); break;
+    case "Enclosures":                result = generateEnclosure(length, enabledVariants); break;
+    case "Bebop Fragments":           result = generateBebopFragment(length, enabledVariants); break;
+    case "Guide-Tone Lines":          result = generateGuideToneLine(length, enabledVariants); break;
+    case "Bergonzi Pentatonics":      result = generateBergonziPentatonic(length, enabledVariants); break;
+    case "Bergonzi Digital Patterns": result = generateBergonziDigital(length, enabledVariants); break;
+    case "Bergonzi Triad Pairs":      result = generateBergonziTriadPair(length, enabledVariants, scaleFam, modeName); break;
+    case "Bergonzi Hexatonics":       result = generateBergonziHexatonic(length, enabledVariants, scaleFam, modeName); break;
+    case "Bergonzi Intervallic":      result = generateBergonziIntervallic(length, enabledVariants); break;
     default: {
       // Fallback to bank
       const pool = JAZZ_CELL_BANK_31.filter(c => c.family === family);
       const pick = pool.length ? randomChoice(pool) : { degrees: ["1", "3", "5"], name: "fallback" };
-      return { degrees: pick.degrees, family, name: pick.name };
+      return { degrees: pick.degrees, family, name: pick.name, variant: `bank cell ${pick.name}` };
     }
   }
-  return { degrees, family, name: `gen_${family.slice(0, 3)}_${Date.now().toString(36)}` };
+  return { degrees: result.degrees, family, name: `gen_${family.slice(0, 3)}_${Date.now().toString(36)}`, variant: result.variant };
 }
 
 // ── Pattern Sequences ─────────────────────────────────────────────────
@@ -1692,10 +1908,8 @@ export const PATTERN_SCALE_FAMILIES: Record<string, string[]> = {
 };
 
 export const PATTERN_SEQUENCE_FAMILIES = [
-  "Scalar Sequences","Interval Chains","Skip Patterns","Cell Sequences",
-  "Triad Sequences","Seventh-Chord Sequences","Quartal / Quintal Sequences",
-  "Neighbor / Enclosure Patterns","Contour Patterns","Rotational Sequences",
-  "Within-Octave Patterns","Extended Patterns","Interval Inversion Pairs",
+  "Steps","Thirds","Fourths","Fifths","Sixths",
+  "Cells","Arch / Valley","Rotation",
 ];
 
 const PATTERN_SCALE_MAPS_31: Record<string, Record<string, Record<string, number>>> = {
@@ -1734,6 +1948,55 @@ export function getModeDegreeMap31(scaleFam: string, modeName: string): Record<s
   return fam[modeName] ?? DEGREE_MAP_MAJOR_31;
 }
 
+// Diatonic triads built off each scale degree of the selected mode.
+// Used by Bergonzi Triad Pairs and Hexatonics to pick mode-correct triads
+// rather than always playing major triads.
+export type DiatonicTriad = {
+  root: string;
+  third: string;
+  fifth: string;
+  notes: string[];
+  quality: "M" | "m" | "dim" | "aug";
+  roman: string;
+};
+
+const ROMAN_UPPER = ["I", "II", "III", "IV", "V", "VI", "VII"];
+
+export function getDiatonicTriadsForMode(scaleFam: string, modeName: string): DiatonicTriad[] {
+  const modeMap = getModeDegreeMap31(scaleFam, modeName);
+  const sorted = Object.entries(modeMap).sort((a, b) => a[1] - b[1]);
+  const names = sorted.map(([n]) => n);
+  const steps = sorted.map(([, s]) => s);
+  const n = names.length;
+  if (n < 7) return [];
+
+  // 31-EDO interval sizes (for triad-quality classification):
+  // M3 = 10, m3 = 8, P5 = 18, dim5 = 16, aug5 = 21.
+  return names.map((_, idx) => {
+    const root = names[idx];
+    const third = names[(idx + 2) % n];
+    const fifth = names[(idx + 4) % n];
+    const rootStep = steps[idx];
+    const thirdStep = (idx + 2) >= n ? steps[(idx + 2) % n] + 31 : steps[idx + 2];
+    const fifthStep = (idx + 4) >= n ? steps[(idx + 4) % n] + 31 : steps[idx + 4];
+    const m3 = thirdStep - rootStep;
+    const p5 = fifthStep - rootStep;
+
+    let quality: "M" | "m" | "dim" | "aug" = "M";
+    if (m3 === 10 && p5 === 18) quality = "M";
+    else if (m3 === 8 && p5 === 18) quality = "m";
+    else if (m3 === 8 && p5 === 16) quality = "dim";
+    else if (m3 === 10 && p5 === 21) quality = "aug";
+
+    let roman = ROMAN_UPPER[idx];
+    if (quality === "m") roman = roman.toLowerCase();
+    else if (quality === "dim") roman = roman.toLowerCase() + "°";
+    else if (quality === "aug") roman = roman + "+";
+
+    return { root, third, fifth, notes: [root, third, fifth], quality, roman };
+  });
+}
+
 export function getScaleDiatonicSteps(scaleFam: string, modeName: string, edo = 31): number[] {
   if (edo !== 31) {
     const modeMap = getModeDegreeMap(edo, scaleFam, modeName);
@@ -1770,6 +2033,8 @@ export function generatePatternSteps(scaleSteps: number[], startIdx: number, sty
   }
   else if (style === "skip2") for (let i=0;i<length;i++) idxs.push(startIdx+i*2);
   else if (style === "skip3") for (let i=0;i<length;i++) idxs.push(startIdx+i*3);
+  else if (style === "skip4") for (let i=0;i<length;i++) idxs.push(startIdx+i*4);
+  else if (style === "skip5") for (let i=0;i<length;i++) idxs.push(startIdx+i*5);
   else if (style === "cell2") {
     const cell=[0,2];
     for (let i=0;i<length;i++) idxs.push(startIdx+cell[i%2]+Math.floor(i/2));
@@ -1795,20 +2060,24 @@ export function generatePatternSteps(scaleSteps: number[], startIdx: number, sty
   return idxs.map(idxToStep);
 }
 
+// Optional sub-variant selector for pattern families. Variant ID matches the style
+// name in FAMILY_TO_STYLES — families without an entry here have a single style and
+// don't need a variant picker UI.
+export const PATTERN_VARIANTS: Record<string, { id: string; label: string }[]> = {
+  "Steps":         [{ id: "asc",   label: "Asc" },    { id: "desc",  label: "Desc" }],
+  "Cells":         [{ id: "cell2", label: "2-note" }, { id: "cell3", label: "3-note" }],
+  "Arch / Valley": [{ id: "arch",  label: "Arch" },   { id: "valley", label: "Valley" }],
+};
+
 export const FAMILY_TO_STYLES: Record<string,string[]> = {
-  "Scalar Sequences":            ["asc","desc"],
-  "Interval Chains":             ["skip2_alt","skip3_alt","skip2","skip3"],
-  "Skip Patterns":               ["skip2","skip3"],
-  "Cell Sequences":              ["cell2","cell3"],
-  "Triad Sequences":             ["skip2"],
-  "Seventh-Chord Sequences":     ["skip2"],
-  "Quartal / Quintal Sequences": ["skip3"],
-  "Neighbor / Enclosure Patterns":["neighbor"],
-  "Contour Patterns":            ["arch","valley"],
-  "Rotational Sequences":        ["rotate"],
-  "Within-Octave Patterns":      ["asc","desc"],
-  "Extended Patterns":           ["asc","skip2","arch"],
-  "Interval Inversion Pairs":    ["asc_desc"],
+  "Steps":         ["asc","desc"],
+  "Thirds":        ["skip2"],
+  "Fourths":       ["skip3"],
+  "Fifths":        ["skip4"],
+  "Sixths":        ["skip5"],
+  "Cells":         ["cell2","cell3"],
+  "Arch / Valley": ["arch","valley"],
+  "Rotation":      ["rotate"],
 };
 
 export function buildDynamicPatternLine(

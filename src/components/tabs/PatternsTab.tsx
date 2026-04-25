@@ -3,12 +3,13 @@ import { audioEngine } from "@/lib/audioEngine";
 import {
   PATTERN_SCALE_FAMILIES, PATTERN_SEQUENCE_FAMILIES,
   buildDynamicPatternLine, getScaleDiatonicSteps, randomChoice,
-  FAMILY_TO_STYLES
+  FAMILY_TO_STYLES, PATTERN_VARIANTS
 } from "@/lib/musicTheory";
 import { getDegreeMap } from "@/lib/edoData";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
 import { weightedRandomChoice } from "@/lib/stats";
 import PitchContour, { useContourReplay } from "@/components/PitchContour";
+import ModeScalePicker from "@/components/ModeScalePicker";
 import type { TabSettingsSnapshot } from "@/App";
 
 interface Props {
@@ -41,8 +42,9 @@ export default function PatternsTab({
   const [modeName, setModeName] = useLS<string>("lt_pat_modeName", PATTERN_SCALE_FAMILIES[familyNames[0]][0]);
   const [lengthFilter, setLengthFilter] = useLS<string>("lt_pat_length", "Any");
   const [checked, setChecked] = useLS<Set<string>>("lt_pat_checked",
-    new Set(["Scalar Sequences","Interval Chains","Skip Patterns","Cell Sequences","Triad Sequences"])
+    new Set(["Steps","Thirds","Fourths","Cells"])
   );
+  const [variantEnabled, setVariantEnabled] = useLS<Record<string, string[]>>("lt_pat_variants", {});
   const [showTarget, setShowTarget] = useState<string | null>(null);
   const [infoText, setInfoText] = useState<string>("");
   const [isPlaying, setIsPlaying] = useState(false);
@@ -61,12 +63,13 @@ export default function PatternsTab({
   useEffect(() => {
     unregisterKnownOptionsForPrefix("pat:");
     const styles: string[] = [];
-    Array.from(checked).forEach(fam => styles.push(...(FAMILY_TO_STYLES[fam] ?? [fam])));
+    Array.from(checked).forEach(fam => styles.push(...allowedStylesFor(fam)));
     styles.forEach(style => {
       registerKnownOption(`pat:${style}`, `Pattern: ${style}`);
     });
     return () => unregisterKnownOptionsForPrefix("pat:");
-  }, [checked]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checked, variantEnabled]);
 
   // Publish settings snapshot for history panel
   useEffect(() => {
@@ -87,6 +90,33 @@ export default function PatternsTab({
     const n = new Set(prev); if (n.has(f)) n.delete(f); else n.add(f); return n;
   });
 
+  // Resolve allowed styles for a family, filtered by enabled variants if any.
+  const allowedStylesFor = (fam: string): string[] => {
+    const all = FAMILY_TO_STYLES[fam] ?? [fam];
+    const variants = PATTERN_VARIANTS[fam];
+    if (!variants) return all;
+    const enabled = variantEnabled[fam];
+    if (!enabled || enabled.length === 0) return all;
+    const filtered = all.filter(s => enabled.includes(s));
+    return filtered.length ? filtered : all;
+  };
+
+  const isVariantOn = (family: string, vid: string): boolean => {
+    const list = variantEnabled[family];
+    if (!list || list.length === 0) return true;
+    return list.includes(vid);
+  };
+
+  const toggleVariant = (family: string, vid: string) => {
+    setVariantEnabled(prev => {
+      const all = (PATTERN_VARIANTS[family] ?? []).map(v => v.id);
+      const current = prev[family] && prev[family].length > 0 ? prev[family] : all;
+      const next = current.includes(vid) ? current.filter(v => v !== vid) : [...current, vid];
+      const safe = next.length === 0 ? all : next;
+      return { ...prev, [family]: safe };
+    });
+  };
+
   const play = async () => {
     if (isPlaying) return;
     await ensureAudio();
@@ -94,7 +124,7 @@ export default function PatternsTab({
 
     const dyn_len = lengthFilter !== "Any" ? parseInt(lengthFilter) : 4 + Math.floor(Math.random() * 4);
     const allStyles: string[] = [];
-    Array.from(checked).forEach(fam => allStyles.push(...(FAMILY_TO_STYLES[fam] ?? [fam])));
+    Array.from(checked).forEach(fam => allStyles.push(...allowedStylesFor(fam)));
     const pickedStyle = allStyles.length
       ? weightedRandomChoice(allStyles, s => `pat:${s}`)
       : randomChoice(["asc","desc","skip2","arch","cell2"]);
@@ -163,6 +193,7 @@ export default function PatternsTab({
     setIsPlaying(true);
     if (contourVisible) contourReplay.startReplay();
     audioEngine.playSequence(lp.frames, edo, GAP, 0.8);
+    if (showTarget || infoText) highlightFrames(lp.frames);
     setTimeout(() => setIsPlaying(false), lp.frames.length * GAP + 500);
   };
 
@@ -178,29 +209,16 @@ export default function PatternsTab({
   return (
     <div className="space-y-4">
       {/* Scale selector */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <label className="text-xs text-[#888] block mb-1">Scale Family</label>
-          <select value={scaleFam} onChange={e => handleFamChange(e.target.value)}
-            className="w-full bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-            {familyNames.map(f => <option key={f}>{f}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-[#888] block mb-1">Mode</label>
-          <select value={modeName} onChange={e => setModeName(e.target.value)}
-            className="w-full bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-            {PATTERN_SCALE_FAMILIES[scaleFam].map(m => <option key={m}>{m}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-[#888] block mb-1">Length</label>
-          <select value={lengthFilter} onChange={e => setLengthFilter(e.target.value)}
-            className="w-full bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-            {LENGTH_OPTIONS.map(l => <option key={l}>{l}</option>)}
-          </select>
-        </div>
+      <div>
+        <label className="text-xs text-[#888] block mb-1">Length</label>
+        <select value={lengthFilter} onChange={e => setLengthFilter(e.target.value)}
+          className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
+          {LENGTH_OPTIONS.map(l => <option key={l}>{l}</option>)}
+        </select>
       </div>
+
+      <ModeScalePicker scaleFam={scaleFam} modeName={modeName}
+        onChange={(fam, mode) => { setScaleFam(fam); setModeName(mode); }} />
 
       <div className="flex gap-2 flex-wrap items-center">
         <button onClick={play} disabled={isPlaying}
@@ -213,7 +231,7 @@ export default function PatternsTab({
             Replay
           </button>
         )}
-        {hasPendingInfo && !showTarget && !infoText && (
+        {hasPendingInfo && (
           <button onClick={handleShowInfo}
             className="bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#444] text-[#9999ee] px-4 py-2 rounded text-sm transition-colors">
             Show Answer
@@ -222,39 +240,73 @@ export default function PatternsTab({
         {answerButtons}
       </div>
 
-      {showTarget && (
-        <div className="bg-[#1a2a1a] border border-[#3a5a3a] rounded p-3 text-sm text-[#8fc88f] font-mono whitespace-pre">{showTarget}</div>
-      )}
-      {infoText && !showTarget && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded p-3 text-xs text-[#888] font-mono whitespace-pre">{infoText}</div>
-      )}
-
-      {contourVisible && contourNotes && contourDegrees && (
-        <PitchContour
-          notes={contourNotes}
-          degrees={contourDegrees}
-          activeIdx={contourReplay.activeIdx}
-          label="Pattern"
-          color="#e6c871"
-        />
+      {(showTarget || infoText) && contourDegrees && (
+        <div className={`rounded p-3 border ${
+          showTarget
+            ? "bg-[#1a2a1a] border-[#3a5a3a]"
+            : "bg-[#141414] border-[#2a2a2a]"
+        }`}>
+          <div className="flex gap-1 items-center flex-wrap">
+            <span className="text-[#666] text-xs mr-1">Degrees played:</span>
+            {contourDegrees.map((deg, i) => {
+              const isAltered = /[b#]/.test(deg);
+              return (
+                <span key={i} className={`px-1.5 py-0.5 rounded text-xs font-mono border ${
+                  isAltered
+                    ? "bg-[#2a1a3a] text-[#bb88ee] border-[#6644aa] font-bold"
+                    : showTarget
+                      ? "bg-[#1a2a1a] text-[#8fc88f] border-[#3a5a3a]"
+                      : "bg-[#1a1a2a] text-[#9999ee] border-[#333]"
+                }`}>
+                  {deg}
+                </span>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <div>
         <div className="flex items-center gap-3 mb-2">
           <p className="text-xs text-[#555]">Pattern Families:</p>
-          <button onClick={() => setChecked(new Set(PATTERN_SEQUENCE_FAMILIES))} className="text-xs text-[#666] hover:text-[#aaa]">All</button>
-          <button onClick={() => setChecked(new Set())} className="text-xs text-[#666] hover:text-[#aaa]">None</button>
+          <button onClick={() => setChecked(new Set(PATTERN_SEQUENCE_FAMILIES))} className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">All</button>
+          <button onClick={() => setChecked(new Set())} className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">None</button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-          {PATTERN_SEQUENCE_FAMILIES.map(f => (
-            <label key={f} className={`flex items-center gap-2 px-3 py-2 rounded text-sm cursor-pointer transition-colors ${
-              checked.has(f) ? "bg-[#1a1a2a] text-[#9999ee]" : "bg-[#141414] text-[#666] hover:bg-[#1e1e1e]"
-            }`}>
-              <input type="checkbox" checked={checked.has(f)} onChange={() => toggle(f)} className="accent-[#7173e6]" />
-              {f}
-              <span className="ml-auto text-[10px] px-1 rounded text-[#7aaa7a] border border-[#3a6a3a]">generative</span>
-            </label>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {PATTERN_SEQUENCE_FAMILIES.map(f => {
+            const on = checked.has(f);
+            const variants = PATTERN_VARIANTS[f] ?? [];
+            return (
+              <div key={f} className={`rounded border transition-colors ${
+                on ? "bg-[#1a1a2a] border-[#3a3a5a]" : "bg-[#111] border-[#222]"
+              }`}>
+                <button onClick={() => toggle(f)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                    on ? "text-[#9999ee]" : "text-[#666] hover:text-[#aaa]"
+                  }`}>
+                  {f}
+                  <span className="ml-auto text-[10px] px-1 rounded text-[#7aaa7a] border border-[#3a6a3a]">generative</span>
+                </button>
+                {on && variants.length > 0 && (
+                  <div className="flex flex-wrap gap-1 px-3 pb-2">
+                    {variants.map(v => {
+                      const vOn = isVariantOn(f, v.id);
+                      return (
+                        <button key={v.id} onClick={() => toggleVariant(f, v.id)}
+                          className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
+                            vOn
+                              ? "bg-[#7173e6]/20 border-[#7173e6] text-[#bbbbee]"
+                              : "bg-[#0e0e0e] border-[#2a2a2a] text-[#555] hover:text-[#999]"
+                          }`}>
+                          {v.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

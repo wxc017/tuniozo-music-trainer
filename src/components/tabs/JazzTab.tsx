@@ -1,14 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import {
-  JAZZ_CELL_BANK_31, JAZZ_FAMILIES, JAZZ_FAMILY_DESCRIPTIONS,
-  generateJazzCell,
+  JAZZ_CELL_BANK_31, JAZZ_FAMILIES, JAZZ_FAMILY_DESCRIPTIONS, JAZZ_VARIANTS,
+  generateJazzCell, getDiatonicTriadsForMode,
   jazzPhraseToStepsEdo, randomChoice, fitLineIntoWindow, strictWindowBounds,
   PATTERN_SCALE_FAMILIES
 } from "@/lib/musicTheory";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
 import { weightedRandomChoice } from "@/lib/stats";
 import PitchContour, { useContourReplay } from "@/components/PitchContour";
+import ModeScalePicker from "@/components/ModeScalePicker";
 import type { TabSettingsSnapshot } from "@/App";
 
 interface Props {
@@ -39,6 +40,8 @@ export default function JazzTab({
   const [checked, setChecked] = useLS<Set<string>>("lt_jazz_checked",
     new Set(["Chord Tone Arpeggios","Enclosures","Bebop Fragments","Guide-Tone Lines"])
   );
+  // Per-family enabled variant IDs (empty array = all enabled). Stored as plain object for serialization.
+  const [variantEnabled, setVariantEnabled] = useLS<Record<string, string[]>>("lt_jazz_variants", {});
   const [lengthFilter, setLengthFilter] = useLS<string>("lt_jazz_length", "Any");
   const [scaleFam, setScaleFam] = useLS<string>("lt_jazz_scaleFam", "Major Family");
   const [modeName, setModeName] = useLS<string>("lt_jazz_mode", "Ionian");
@@ -51,6 +54,7 @@ export default function JazzTab({
   const [contourNotes, setContourNotes] = useState<number[] | null>(null);
   const [contourDegrees, setContourDegrees] = useState<string[] | null>(null);
   const [contourVisible, setContourVisible] = useState(false);
+  const [variantText, setVariantText] = useState<string>("");
 
   const modeOptions = PATTERN_SCALE_FAMILIES[scaleFam] ?? [];
   const safeMode = modeOptions.includes(modeName) ? modeName : (modeOptions[0] ?? "Ionian");
@@ -80,6 +84,37 @@ export default function JazzTab({
     const n = new Set(prev); if (n.has(f)) n.delete(f); else n.add(f); return n;
   });
 
+  const isVariantOn = (family: string, vid: string): boolean => {
+    const list = variantEnabled[family];
+    if (!list || list.length === 0) return true; // empty = all on
+    return list.includes(vid);
+  };
+
+  // Variant button labels for triad-pair / hexatonic families adapt to the
+  // current mode (e.g. "1+2" displays as "I+ii" in Ionian, "i+II" in Phrygian).
+  const variantLabel = (family: string, vid: string, fallback: string): string => {
+    if (family !== "Bergonzi Triad Pairs" && family !== "Bergonzi Hexatonics") return fallback;
+    if (vid === "augmented" || vid === "whole-tone") return fallback;
+    if (!/^\d\+\d$/.test(vid)) return fallback;
+    const triads = getDiatonicTriadsForMode(scaleFam, safeMode);
+    if (triads.length < 7) return fallback;
+    const [aStr, bStr] = vid.split("+");
+    const a = triads[parseInt(aStr) - 1]?.roman ?? aStr;
+    const b = triads[parseInt(bStr) - 1]?.roman ?? bStr;
+    return `${a}+${b}`;
+  };
+
+  const toggleVariant = (family: string, vid: string) => {
+    setVariantEnabled(prev => {
+      const all = (JAZZ_VARIANTS[family] ?? []).map(v => v.id);
+      const current = prev[family] && prev[family].length > 0 ? prev[family] : all;
+      const next = current.includes(vid) ? current.filter(v => v !== vid) : [...current, vid];
+      // Don't allow zero — fall back to all on
+      const safe = next.length === 0 ? all : next;
+      return { ...prev, [family]: safe };
+    });
+  };
+
   const play = async () => {
     if (isPlaying) return;
     await ensureAudio();
@@ -88,7 +123,9 @@ export default function JazzTab({
 
     const family = weightedRandomChoice(families, f => `jazz:${f}`);
     const len = lengthFilter !== "Any" ? parseInt(lengthFilter) : 3 + Math.floor(Math.random() * 5);
-    const phrase = generateJazzCell(family, len);
+    const enabledList = variantEnabled[family];
+    const enabledSet = enabledList && enabledList.length > 0 ? new Set(enabledList) : undefined;
+    const phrase = generateJazzCell(family, len, enabledSet, scaleFam, safeMode);
     const [low, high] = strictWindowBounds(tonicPc, edo, lowestOct, highestOct);
     const base = tonicPc + (lowestOct + Math.floor((highestOct - lowestOct) / 2) - 4) * edo;
     const rawSteps = jazzPhraseToStepsEdo(phrase.degrees, base - tonicPc, scaleFam, safeMode, edo);
@@ -105,6 +142,7 @@ export default function JazzTab({
     setContourNotes(absNotes);
     setContourDegrees(phrase.degrees);
     setContourVisible(false);
+    setVariantText(phrase.variant);
     pendingInfo.current = { text: info, isTarget: responseMode !== "Play Audio" };
     setHasPendingInfo(true);
     onResult(`Jazz: ${family}`);
@@ -139,6 +177,7 @@ export default function JazzTab({
     setIsPlaying(true);
     if (contourVisible) contourReplay.startReplay();
     audioEngine.playSequence(lp.frames, edo, GAP, 0.8);
+    if (showTarget || infoText) highlightFrames(lp.frames);
     setTimeout(() => setIsPlaying(false), lp.frames.length * GAP + 500);
   };
 
@@ -161,24 +200,13 @@ export default function JazzTab({
             {LENGTH_OPTIONS.map(l => <option key={l}>{l}</option>)}
           </select>
         </div>
-        <div>
-          <label className="text-xs text-[#888] block mb-1">Scale Family</label>
-          <select value={scaleFam} onChange={e => { setScaleFam(e.target.value); setModeName(PATTERN_SCALE_FAMILIES[e.target.value]?.[0] ?? "Ionian"); }}
-            className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-            {SCALE_FAM_NAMES.map(f => <option key={f}>{f}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-[#888] block mb-1">Mode</label>
-          <select value={safeMode} onChange={e => setModeName(e.target.value)}
-            className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-            {modeOptions.map(m => <option key={m}>{m}</option>)}
-          </select>
-        </div>
         <div className="text-xs text-[#555]">
           {JAZZ_FAMILIES.filter(f => checked.has(f)).length} families selected
         </div>
       </div>
+
+      <ModeScalePicker scaleFam={scaleFam} modeName={safeMode}
+        onChange={(fam, mode) => { setScaleFam(fam); setModeName(mode); }} />
 
       <div className="flex gap-2 flex-wrap items-center">
         <button onClick={play} disabled={isPlaying}
@@ -191,7 +219,7 @@ export default function JazzTab({
             Replay
           </button>
         )}
-        {hasPendingInfo && !showTarget && !infoText && (
+        {hasPendingInfo && (
           <button onClick={handleShowInfo}
             className="bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#444] text-[#9999ee] px-4 py-2 rounded text-sm transition-colors">
             Show Answer
@@ -200,40 +228,84 @@ export default function JazzTab({
         {answerButtons}
       </div>
 
-      {showTarget && (
-        <div className="bg-[#1a2a1a] border border-[#3a5a3a] rounded p-3 text-sm text-[#8fc88f] font-mono whitespace-pre">{showTarget}</div>
-      )}
-      {infoText && !showTarget && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded p-3 text-xs text-[#888] font-mono whitespace-pre">{infoText}</div>
-      )}
-
-      {contourVisible && contourNotes && contourDegrees && (
-        <PitchContour
-          notes={contourNotes}
-          degrees={contourDegrees}
-          activeIdx={contourReplay.activeIdx}
-          label="Jazz Cell"
-          color="#7173e6"
-        />
+      {(showTarget || infoText) && contourDegrees && (
+        <div className={`rounded p-3 border space-y-2 ${
+          showTarget
+            ? "bg-[#1a2a1a] border-[#3a5a3a]"
+            : "bg-[#141414] border-[#2a2a2a]"
+        }`}>
+          {variantText && (
+            <div className="text-xs text-[#aaa]">
+              <span className="text-[#666]">Variant: </span>
+              <span className={showTarget ? "text-[#bfdfbf]" : "text-[#bbbbee]"}>{variantText}</span>
+            </div>
+          )}
+          <div className="flex gap-1 items-center flex-wrap">
+            <span className="text-[#666] text-xs mr-1">Degrees played:</span>
+            {contourDegrees.map((deg, i) => {
+              const isAltered = /[b#]/.test(deg);
+              return (
+                <span key={i} className={`px-1.5 py-0.5 rounded text-xs font-mono border ${
+                  isAltered
+                    ? "bg-[#2a1a3a] text-[#bb88ee] border-[#6644aa] font-bold"
+                    : showTarget
+                      ? "bg-[#1a2a1a] text-[#8fc88f] border-[#3a5a3a]"
+                      : "bg-[#1a1a2a] text-[#9999ee] border-[#333]"
+                }`}>
+                  {deg}
+                </span>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <div>
-        <p className="text-xs text-[#555] mb-2">Jazz Cell Families:</p>
-        <div className="grid grid-cols-1 gap-1">
-          {JAZZ_FAMILIES.map(f => (
-            <label key={f} className={`flex items-start gap-2 px-3 py-2 rounded text-sm cursor-pointer transition-colors ${
-              checked.has(f) ? "bg-[#1a1a2a] text-[#9999ee]" : "bg-[#141414] text-[#666] hover:bg-[#1e1e1e]"
-            }`}>
-              <input type="checkbox" checked={checked.has(f)} onChange={() => toggle(f)} className="accent-[#7173e6] mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  {f}
-                  <span className="text-[10px] px-1 rounded text-[#7aaa7a] border border-[#3a6a3a]">generative</span>
-                </div>
-                <p className="text-[10px] text-[#555] mt-0.5 leading-snug">{JAZZ_FAMILY_DESCRIPTIONS[f]}</p>
+        <div className="flex items-center gap-3 mb-2">
+          <p className="text-xs text-[#555]">Jazz Cell Families:</p>
+          <button onClick={() => setChecked(new Set(JAZZ_FAMILIES))} className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">All</button>
+          <button onClick={() => setChecked(new Set())} className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">None</button>
+        </div>
+        <div className="space-y-2">
+          {JAZZ_FAMILIES.map(f => {
+            const on = checked.has(f);
+            const variants = JAZZ_VARIANTS[f] ?? [];
+            return (
+              <div key={f} className={`rounded border transition-colors ${
+                on ? "bg-[#1a1a2a] border-[#3a3a5a]" : "bg-[#111] border-[#222]"
+              }`}>
+                <button onClick={() => toggle(f)}
+                  className={`w-full flex items-start gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                    on ? "text-[#9999ee]" : "text-[#666] hover:text-[#aaa]"
+                  }`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      {f}
+                      <span className="text-[10px] px-1 rounded text-[#7aaa7a] border border-[#3a6a3a]">generative</span>
+                    </div>
+                    <p className="text-[10px] text-[#555] mt-0.5 leading-snug">{JAZZ_FAMILY_DESCRIPTIONS[f]}</p>
+                  </div>
+                </button>
+                {on && variants.length > 0 && (
+                  <div className="flex flex-wrap gap-1 px-3 pb-2">
+                    {variants.map(v => {
+                      const vOn = isVariantOn(f, v.id);
+                      return (
+                        <button key={v.id} onClick={() => toggleVariant(f, v.id)}
+                          className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
+                            vOn
+                              ? "bg-[#7173e6]/20 border-[#7173e6] text-[#bbbbee]"
+                              : "bg-[#0e0e0e] border-[#2a2a2a] text-[#555] hover:text-[#999]"
+                          }`}>
+                          {variantLabel(f, v.id, v.label)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </label>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

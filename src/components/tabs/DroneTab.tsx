@@ -2,13 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import {
   strictWindowBounds, fitChordIntoWindow, randomChoice,
-  VOICING_TYPES, applyVoicing,
+  ALL_VOICING_PATTERNS, applyVoicingPattern,
   checkLowIntervalLimits, formatLilWarnings,
 } from "@/lib/musicTheory";
-import { getChordDroneTypes, getIntervalNames, getDegreeMap } from "@/lib/edoData";
+import { getChordDroneTypes, getIntervalNames } from "@/lib/edoData";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
 import { weightedRandomChoice, recordAnswer } from "@/lib/stats";
 import type { TabSettingsSnapshot } from "@/App";
+
+const ROOT_VOICING_PATTERNS = ALL_VOICING_PATTERNS.filter(p => p.group === "Root Position");
 
 interface Props {
   tonicPc: number;
@@ -28,27 +30,6 @@ interface Props {
 const DURATION_OPTIONS = ["1","2","3","4","5"];
 type PlayMode = "After drone" | "Over drone";
 
-interface ChromDeg { key: string; label: string; step: number; }
-
-function getChromDegrees(edo: number): ChromDeg[] {
-  const dm = getDegreeMap(edo);
-  const byStep = new Map<number, string[]>();
-  for (const [name, step] of Object.entries(dm)) {
-    if (step < 0 || step >= edo) continue;
-    if (!byStep.has(step)) byStep.set(step, []);
-    byStep.get(step)!.push(name);
-  }
-  return Array.from(byStep.entries())
-    .sort((a, b) => a[0] - b[0])
-    .map(([step, names]) => {
-      const sorted = [...names].sort((a, b) => {
-        const rank = (s: string) => s.startsWith("b") ? 0 : s.startsWith("#") ? 1 : -1;
-        return rank(a) - rank(b);
-      });
-      return { key: sorted[0], label: sorted.join("/"), step };
-    });
-}
-
 interface DroneParams {
   chordAbs: number[];
   droneRoot: number;
@@ -66,11 +47,9 @@ export default function DroneTab({
   const [checkedChords, setCheckedChords] = useLS<Set<string>>("lt_drn_chords",
     new Set(["Major Triad","Dominant 7"])
   );
-  const chromDegrees = getChromDegrees(edo);
-  const [checkedDegrees, setCheckedDegrees] = useLS<Set<string>>("lt_drn_degrees_v2",
-    new Set<string>(["1"])
+  const [checkedVoicings, setCheckedVoicings] = useLS<Set<string>>("lt_drn_voicings",
+    new Set(["t-135", "7-1357"])
   );
-  const [voicingType, setVoicingType] = useLS<string>("lt_drn_voicing", "Close");
   const [checkedIvls, setCheckedIvls] = useLS<Set<number>>("lt_drn_ivls", new Set());
   const [duration, setDuration] = useLS<string>("lt_drn_duration", "4");
   const [playMode, setPlayMode] = useLS<PlayMode>("lt_drn_playMode", "After drone");
@@ -78,7 +57,8 @@ export default function DroneTab({
   const [ivlVol, setIvlVol] = useLS<number>("lt_drn_ivl_vol", 0.65);
   const [droneActive, setDroneActive] = useState(false);
   const [droneLabel, setDroneLabel] = useState("");
-  const [showTarget, setShowTarget] = useState<string | null>(null);
+  const [answerText, setAnswerText] = useState<string | null>(null);
+  const [answerVisible, setAnswerVisible] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
   const lastDroneParams = useRef<DroneParams | null>(null);
 
@@ -104,13 +84,13 @@ export default function DroneTab({
       title: "Chord Drone",
       groups: [
         { label: "Chords", items: Array.from(checkedChords) },
-        { label: "Root Degrees", items: Array.from(checkedDegrees) },
+        { label: "Voicings", items: ROOT_VOICING_PATTERNS.filter(p => checkedVoicings.has(p.id)).map(p => p.label) },
         { label: "Intervals", items: Array.from(checkedIvls).map(i => ivlNames[i] ?? `Step ${i}`) },
-        { label: "Settings", items: [`Voicing: ${voicingType}`, `Duration: ${duration}s`, `Play: ${playMode}`] },
+        { label: "Settings", items: [`Duration: ${duration}s`, `Play: ${playMode}`] },
       ],
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkedChords, checkedDegrees, checkedIvls, voicingType, duration, playMode, tabSettingsRef]);
+  }, [checkedChords, checkedVoicings, checkedIvls, duration, playMode, tabSettingsRef]);
 
   const toggle = <T,>(set: Set<T>, val: T): Set<T> => {
     const n = new Set(set); if (n.has(val)) n.delete(val); else n.add(val); return n;
@@ -143,19 +123,15 @@ export default function DroneTab({
   const startDrone = async () => {
     await ensureAudio();
     if (!checkedChords.size) { onResult("Select at least one drone chord type."); return; }
-    if (!checkedDegrees.size) { onResult("Select at least one degree."); return; }
 
     const chordName = weightedRandomChoice(Array.from(checkedChords), c => `drn:${c}`);
-    const degKey    = randomChoice(Array.from(checkedDegrees));
-    const degName   = chromDegrees.find(d => d.key === degKey)?.label ?? degKey;
-    const degStep   = getDegreeMap(edo)[degKey] ?? 0;
 
     const shape = getChordDroneTypes(edo)[chordName];
     const [low, high] = strictWindowBounds(tonicPc, edo, lowestOct, highestOct);
 
-    // Place drone root (tonicPc + degree offset) in the mid-register window
+    // Place drone root (tonic) in the mid-register window
     const midOct = lowestOct + Math.floor((highestOct - lowestOct) / 2);
-    let droneRoot = tonicPc + degStep + (midOct - 4) * edo;
+    let droneRoot = tonicPc + (midOct - 4) * edo;
     while (droneRoot >= high) droneRoot -= edo;
     while (droneRoot < low)  droneRoot += edo;
 
@@ -163,9 +139,18 @@ export default function DroneTab({
     let chordAbs = fitChordIntoWindow(rawChord, edo, low, high);
     if (!chordAbs.length) { onResult("Chord doesn't fit in register window."); return; }
 
-    // Apply voicing
-    const voiced = applyVoicing(chordAbs, edo, voicingType);
-    if (voiced.length === chordAbs.length) chordAbs = voiced;
+    // Apply a root-position voicing pattern whose note count matches the chord
+    const compatVoicings = ROOT_VOICING_PATTERNS.filter(p => {
+      if (!checkedVoicings.has(p.id)) return false;
+      if (chordAbs.length < p.minNotes) return false;
+      if (p.maxNotes !== undefined && chordAbs.length > p.maxNotes) return false;
+      return true;
+    });
+    if (compatVoicings.length) {
+      const pat = randomChoice(compatVoicings);
+      const voiced = applyVoicingPattern(chordAbs, edo, pat);
+      if (voiced.length) chordAbs = voiced;
+    }
 
     // Pick interval relative to drone root
     let ivlNote: number | null = null;
@@ -181,7 +166,7 @@ export default function DroneTab({
     }
 
     const dur = parseInt(duration) * 1000;
-    const label = `${degName} — ${chordName}`;
+    const label = chordName;
     const params: DroneParams = { chordAbs, droneRoot, ivlNote, ivlName, droneVol, ivlVol, dur, playMode };
     lastDroneParams.current = params;
 
@@ -193,7 +178,8 @@ export default function DroneTab({
 
     setDroneActive(true);
     setDroneLabel(label);
-    setShowTarget(null);
+    setAnswerText(ivlNote !== null ? `${label} — ${ivlName}` : label);
+    setAnswerVisible(false);
     onDroneStateChange?.(true);
     onResult(`Chord Drone: ${label}`);
     onPlay(`drn:${chordName}`, `Drone: ${label}`);
@@ -229,7 +215,6 @@ export default function DroneTab({
     const params = lastDroneParams.current;
     if (!params) return;
     const { chordAbs, ivlNote, droneVol: dv, ivlVol: iv, dur, playMode } = params;
-    showSequential(params);
     audioEngine.startDrone(chordAbs, edo, dv);
     if (playMode === "Over drone" && ivlNote !== null) {
       setTimeout(() => audioEngine.playNote(ivlNote!, edo, 1.5, iv), Math.floor(dur / 2));
@@ -242,17 +227,21 @@ export default function DroneTab({
     }, dur);
   };
 
-  const showOnKeyboard = () => {
+  const handleShowAnswer = () => {
+    if (answerVisible) {
+      setAnswerVisible(false);
+      onHighlight([]);
+      return;
+    }
+    setAnswerVisible(true);
     const params = lastDroneParams.current;
-    if (!params) return;
-    showSequential(params);
+    if (params) showSequential(params);
   };
-  void showOnKeyboard;
 
   return (
     <div className="space-y-4">
       <p className="text-xs text-[#666]">
-        A sustained drone chord plays on a random scale degree; a random interval note sounds over or after it.
+        A sustained drone chord plays on the tonic; a random interval note sounds over or after it.
       </p>
 
       {/* Controls row */}
@@ -262,14 +251,6 @@ export default function DroneTab({
           <select value={duration} onChange={e => setDuration(e.target.value)}
             className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
             {DURATION_OPTIONS.map(d => <option key={d}>{d}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <label className="text-xs text-[#888] block mb-1">Voicing</label>
-          <select value={voicingType} onChange={e => setVoicingType(e.target.value)}
-            className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-            {VOICING_TYPES.map(v => <option key={v}>{v}</option>)}
           </select>
         </div>
 
@@ -320,51 +301,67 @@ export default function DroneTab({
             Replay
           </button>
         )}
+        {hasPlayed && answerText && (
+          <button onClick={handleShowAnswer}
+            className={`hover:bg-[#2a2a2a] border px-4 py-2 rounded text-sm transition-colors ${answerVisible ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#1e1e1e] border-[#444] text-[#9999ee]"}`}>
+            {answerVisible ? "Hide Answer" : "Show Answer"}
+          </button>
+        )}
       </div>
 
-
-      {showTarget && (
-        <div className="bg-[#1a2a1a] border border-[#3a5a3a] rounded p-3 text-sm text-[#8fc88f] font-mono whitespace-pre">{showTarget}</div>
+      {answerVisible && answerText && (
+        <div className="bg-[#1a2a1a] border border-[#3a5a3a] rounded p-3 text-sm text-[#8fc88f] font-mono whitespace-pre">{answerText}</div>
       )}
-
-      {/* Scale degree selector */}
-      <div>
-        <div className="flex items-center gap-3 mb-2">
-          <p className="text-xs text-[#555]">Drone degree (random):</p>
-          <button onClick={() => setCheckedDegrees(new Set(chromDegrees.map(d => d.key)))}
-            className="text-xs text-[#666] hover:text-[#aaa]">All</button>
-          <button onClick={() => setCheckedDegrees(new Set<string>(["1"]))}
-            className="text-xs text-[#666] hover:text-[#aaa]">Reset</button>
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {chromDegrees.map(deg => (
-            <button key={deg.key}
-              onClick={() => setCheckedDegrees(toggle(checkedDegrees, deg.key))}
-              className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors border ${
-                checkedDegrees.has(deg.key)
-                  ? "bg-[#1a1a2a] border-[#4a4a8a] text-[#9999ee]"
-                  : "bg-[#141414] border-[#2a2a2a] text-[#555] hover:text-[#888]"
-              }`}>
-              {deg.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Drone chord types */}
       <div>
-        <p className="text-xs text-[#555] mb-2">Drone Chord Types:</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
-          {Object.keys(getChordDroneTypes(edo)).map(name => (
-            <label key={name} className={`flex items-center gap-2 px-3 py-2 rounded text-xs cursor-pointer transition-colors ${
-              checkedChords.has(name) ? "bg-[#1a1a2a] text-[#9999ee]" : "bg-[#141414] text-[#666] hover:bg-[#1e1e1e]"
-            }`}>
-              <input type="checkbox" checked={checkedChords.has(name)}
-                onChange={() => setCheckedChords(toggle(checkedChords, name))}
-                className="accent-[#7173e6]" />
-              {name}
-            </label>
-          ))}
+        <div className="flex items-center gap-3 mb-2">
+          <p className="text-xs text-[#555]">Drone Chord Types:</p>
+          <button onClick={() => setCheckedChords(new Set(Object.keys(getChordDroneTypes(edo))))}
+            className="text-xs text-[#666] hover:text-[#aaa]">All</button>
+          <button onClick={() => setCheckedChords(new Set())}
+            className="text-xs text-[#666] hover:text-[#aaa]">None</button>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {Object.keys(getChordDroneTypes(edo)).map(name => {
+            const on = checkedChords.has(name);
+            const accent = "#9999ee";
+            return (
+              <button key={name} onClick={() => setCheckedChords(toggle(checkedChords, name))}
+                className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                  on ? "" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                }`}
+                style={on ? { backgroundColor: accent + "30", borderColor: accent, color: accent } : undefined}>
+                {name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Voicings (root position) */}
+      <div>
+        <div className="flex items-center gap-3 mb-2">
+          <p className="text-xs text-[#555]">Voicings (root position):</p>
+          <button onClick={() => setCheckedVoicings(new Set(ROOT_VOICING_PATTERNS.map(p => p.id)))}
+            className="text-xs text-[#666] hover:text-[#aaa]">All</button>
+          <button onClick={() => setCheckedVoicings(new Set())}
+            className="text-xs text-[#666] hover:text-[#aaa]">None</button>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {ROOT_VOICING_PATTERNS.map(p => {
+            const on = checkedVoicings.has(p.id);
+            const accent = "#9999ee";
+            return (
+              <button key={p.id} onClick={() => setCheckedVoicings(toggle(checkedVoicings, p.id))}
+                className={`px-2 py-1 text-[10px] font-mono rounded border transition-colors ${
+                  on ? "" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                }`}
+                style={on ? { backgroundColor: accent + "30", borderColor: accent, color: accent } : undefined}>
+                {p.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -377,17 +374,20 @@ export default function DroneTab({
           <button onClick={() => setCheckedIvls(new Set())}
             className="text-xs text-[#666] hover:text-[#aaa]">None</button>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1 max-h-48 overflow-y-auto pr-1">
-          {getIntervalNames(edo).map((name, i) => (
-            <label key={i} className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer transition-colors ${
-              checkedIvls.has(i) ? "bg-[#1a1a2a] text-[#9999ee]" : "bg-[#141414] text-[#666] hover:bg-[#1e1e1e]"
-            }`}>
-              <input type="checkbox" checked={checkedIvls.has(i)}
-                onChange={() => setCheckedIvls(toggle(checkedIvls, i))}
-                className="accent-[#7173e6]" />
-              <span className="text-[#444] mr-0.5">{i}</span>{name}
-            </label>
-          ))}
+        <div className="flex flex-wrap gap-1 max-h-64 overflow-y-auto pr-1">
+          {getIntervalNames(edo).map((name, i) => {
+            const on = checkedIvls.has(i);
+            const accent = "#9999ee";
+            return (
+              <button key={i} onClick={() => setCheckedIvls(toggle(checkedIvls, i))}
+                className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                  on ? "" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                }`}
+                style={on ? { backgroundColor: accent + "30", borderColor: accent, color: accent } : undefined}>
+                <span className="opacity-60 mr-1">{i}</span>{name}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

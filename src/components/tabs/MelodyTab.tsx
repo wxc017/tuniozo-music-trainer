@@ -9,6 +9,7 @@ import { getDegreeMap } from "@/lib/edoData";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
 import { weightedRandomChoice, recordAnswer } from "@/lib/stats";
 import PitchContour, { useContourReplay } from "@/components/PitchContour";
+import ModeScalePicker from "@/components/ModeScalePicker";
 import type { TabSettingsSnapshot } from "@/App";
 
 interface Props {
@@ -215,6 +216,7 @@ export default function MelodyTab({
     setIsPlaying(true);
     if (contourVisible) contourReplay.startReplay();
     audioEngine.playSequence(lp.frames, edo, GAP, 0.85);
+    if (showTarget || infoText) highlightFrames(lp.frames);
     setTimeout(() => setIsPlaying(false), lp.frames.length * GAP + 500);
   };
 
@@ -250,24 +252,13 @@ export default function MelodyTab({
             {LENGTH_OPTIONS.map(l => <option key={l}>{l}</option>)}
           </select>
         </div>
-        <div>
-          <label className="text-xs text-[#888] block mb-1">Scale Family <span className="text-[#555]">(generative)</span></label>
-          <select value={scaleFam} onChange={e => { setScaleFam(e.target.value); setModeName(PATTERN_SCALE_FAMILIES[e.target.value]?.[0] ?? "Ionian"); }}
-            className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-            {SCALE_FAM_NAMES.map(f => <option key={f}>{f}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-[#888] block mb-1">Mode <span className="text-[#555]">(generative)</span></label>
-          <select value={safeMode} onChange={e => setModeName(e.target.value)}
-            className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-            {modeOptions.map(m => <option key={m}>{m}</option>)}
-          </select>
-        </div>
         <div className="text-xs text-[#555]">
           {Array.from(checked).filter(f => MELODY_FAMILIES.includes(f)).length} families selected
         </div>
       </div>
+
+      <ModeScalePicker scaleFam={scaleFam} modeName={safeMode}
+        onChange={(fam, mode) => { setScaleFam(fam); setModeName(mode); }} />
 
       <div className="flex gap-2 flex-wrap items-center">
         <button onClick={play} disabled={isPlaying}
@@ -280,7 +271,7 @@ export default function MelodyTab({
             Replay
           </button>
         )}
-        {hasPendingInfo && !showTarget && !infoText && (
+        {hasPendingInfo && (
           <button onClick={handleShowInfo}
             className="bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#444] text-[#9999ee] px-4 py-2 rounded text-sm transition-colors">
             Show Answer
@@ -289,33 +280,66 @@ export default function MelodyTab({
         {answerButtons}
       </div>
 
-      {showTarget && (
-        <div className="bg-[#1a2a1a] border border-[#3a5a3a] rounded p-3 text-sm text-[#8fc88f] font-mono whitespace-pre">{showTarget}</div>
-      )}
-      {infoText && !showTarget && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded p-3 text-xs text-[#888] font-mono whitespace-pre">{infoText}</div>
+      {(showTarget || infoText) && contourDegrees && (
+        <div className={`rounded p-3 border ${
+          showTarget
+            ? "bg-[#1a2a1a] border-[#3a5a3a]"
+            : "bg-[#141414] border-[#2a2a2a]"
+        }`}>
+          <div className="flex gap-1 items-center flex-wrap">
+            <span className="text-[#666] text-xs mr-1">Degrees played:</span>
+            {contourDegrees.map((deg, i) => {
+              const isAltered = /[b#]/.test(deg);
+              return (
+                <span key={i} className={`px-1.5 py-0.5 rounded text-xs font-mono border ${
+                  isAltered
+                    ? "bg-[#2a1a3a] text-[#bb88ee] border-[#6644aa] font-bold"
+                    : showTarget
+                      ? "bg-[#1a2a1a] text-[#8fc88f] border-[#3a5a3a]"
+                      : "bg-[#1a1a2a] text-[#9999ee] border-[#333]"
+                }`}>
+                  {deg}
+                </span>
+              );
+            })}
+          </div>
+        </div>
       )}
 
-      <div>
-        <p className="text-xs text-[#555] mb-2">Melody Families:</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-          {MELODY_FAMILIES.map(f => {
-            const isGen = GENERATIVE_FAMILIES.has(f);
-            return (
-              <label key={f} className={`flex items-center gap-2 px-3 py-2 rounded text-sm cursor-pointer transition-colors ${
-                checked.has(f) ? "bg-[#1a1a2a] text-[#9999ee]" : "bg-[#141414] text-[#666] hover:bg-[#1e1e1e]"
-              }`}>
-                <input type="checkbox" checked={checked.has(f)} onChange={() => toggle(f)} className="accent-[#7173e6]" />
-                {f}
-                <span className="ml-auto">
-                  <span className={`text-[10px] px-1 rounded ${isGen ? "text-[#7aaa7a] border border-[#3a6a3a]" : "text-[#8888cc] border border-[#33336a]"}`}>
-                    {isGen ? "generative" : "fixed bank"}
-                  </span>
-                </span>
-              </label>
-            );
-          })}
+      {/* Melody families — grouped toggles styled like the Mode Identification pool */}
+      <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2">
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-[#888] font-medium">MELODY FAMILIES</p>
+          <button onClick={() => setChecked(new Set(MELODY_FAMILIES))}
+            className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">All</button>
+          <button onClick={() => setChecked(new Set())}
+            className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5">None</button>
         </div>
+        {([
+          { key: "generative", label: "GENERATIVE",  color: "#7aaa7a",
+            families: MELODY_FAMILIES.filter(f =>  GENERATIVE_FAMILIES.has(f)) },
+          { key: "fixed",      label: "FIXED BANK",  color: "#8888cc",
+            families: MELODY_FAMILIES.filter(f => !GENERATIVE_FAMILIES.has(f)) },
+        ] as const).map(group => (
+          <div key={group.key}>
+            <p className="text-[9px] mb-1 font-medium tracking-wider"
+               style={{ color: group.color }}>{group.label}</p>
+            <div className="flex flex-wrap gap-1">
+              {group.families.map(f => {
+                const on = checked.has(f);
+                return (
+                  <button key={f} onClick={() => toggle(f)}
+                    className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                      on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                    }`}
+                    style={on ? { backgroundColor: group.color + "30", borderColor: group.color, color: group.color } : {}}>
+                    {f}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

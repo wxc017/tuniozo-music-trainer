@@ -2932,12 +2932,19 @@ export function generateProgression(
     { root: P4, type: "dom7" },
   ].map(e => ({ ...e, layer: "modal" as const }));
 
-  // ── QUARTAL JAZZ ── sus4, 7sus4, min7, maj7 on all diatonic + chromatic roots
+  // ── QUARTAL JAZZ ── sus4, 7sus4, min7, maj7 on diatonic roots of the tonality.
   // Modal jazz voicings: quartal stacks and extended chords approximated by
   // available types.  Root motion favors stepwise (M2) and quartal (P4).
+  // Roots are restricted to the diatonic set of the current tonality so a
+  // bVI-qua doesn't appear when the user has selected an Ionian/major context.
   const quartalTypes = ["sus4", "sus2", "dom7sus4", "min7", "maj7"];
   const quartalAvail = quartalTypes.filter(t => shapes.some(s => s.id === t));
-  const quartalRoots = [...new Set([0, M2, M3, P4, P5, M6, m7, b2, m3, m6])];
+  const M7q = dm["7"] ?? P5 + M3;
+  const quartalRoots = tonality === "major"
+    ? [...new Set([0, M2, M3, P4, P5, M6, M7q])]
+    : tonality === "minor"
+    ? [...new Set([0, M2, m3, P4, P5, m6, m7])]
+    : [...new Set([0, M2, M3, P4, P5, M6, m7, b2, m3, m6, M7q])];
   const quartalPool: PoolEntry[] = [];
   if (cats.has("quartal")) {
     for (const r of quartalRoots) {

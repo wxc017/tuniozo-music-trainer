@@ -3126,7 +3126,7 @@ export default function DrumPatterns({
           <PracticeLogSaveBar
             mode={mode === "ostinato" ? "drum-ostinato" : mode === "accent" ? "accent-study" : mode === "independence" ? "independence-study" : mode === "transform" ? "drum-ostinato" : "stickings-study"}
             label={mode === "ostinato" ? "Drum Patterns · Ostinato" : mode === "accent" ? "Drum Patterns · Accent Study" : mode === "independence" ? "Drum Patterns · Independence" : mode === "transform" ? "Drum Patterns · Transform" : "Drum Patterns · Stickings"}
-            hideRatingAndLog={mode === "accent" || mode === "stickings" || mode === "independence" || mode === "transform"}
+            hideRatingAndLog={mode === "accent" || mode === "stickings" || mode === "independence" || mode === "transform" || mode === "interplay"}
             sourceOptions={[
               { value: "drum-ostinato",       label: "Ostinato" },
               { value: "accent-study",        label: "Accent Study" },

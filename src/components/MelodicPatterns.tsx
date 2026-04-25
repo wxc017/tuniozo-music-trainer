@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLS } from "@/lib/storage";
+import { addPracticeEntry, readPendingRestore, type PracticeRating } from "@/lib/practiceLog";
 import { audioEngine } from "@/lib/audioEngine";
 import { getEdoChordTypes, getLayoutFile, getFullDegreeNames, getAvailableThirdQualities, getAvailableSeventhQualities, pcToNoteName, pcToNoteNameWithEnharmonic, getDegreeMap, formatHalfAccidentals } from "@/lib/edoData";
 import { renderAccidentals } from "@/lib/accidentalDisplay";
@@ -742,7 +743,7 @@ function captureBergonziMeta() {
   };
 }
 
-export default function MelodicPatterns() {
+export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger?: number } = {}) {
   // v2: root-based Markov chain for harmonic progressions
   const [edo, setEdo] = useState<SupportedEdo>(31);
   const [tonicRoot, setTonicRoot] = useState(0);
@@ -978,6 +979,130 @@ export default function MelodicPatterns() {
     localStorage.setItem(LOG_KEY, JSON.stringify(next));
     sessionStart.current = Date.now();
   }, [practiceLog, presetName, edo, tonality, pipeline, segments.length]);
+
+  // ── Global Practice Log integration ────────────────────────────────────
+  // Captures the full settings + generated segments so an entry can be
+  // restored later with the exact same pattern (rather than regenerating
+  // random new segments from the same settings).
+  const [logRating, setLogRating] = useState<PracticeRating>(3);
+  const [logFlash, setLogFlash] = useState<string>("");
+
+  const buildMPSnapshot = useCallback((): Record<string, unknown> => ({
+    edo, tonicRoot, tonality, pipeline,
+    scaleFamily, scaleMode,
+    harmonyCats: [...harmonyCats], enabledCats: [...enabledCats],
+    progMode, bias, stepwise, vocab: [...vocab],
+    patternLength, minChordNotes, segmentCount, allowRepeats,
+    fitRange, sameChord, playbackSpeed,
+    voiceCount, multiTonic, chordsPerCenter,
+    checkedThirdQualities: [...checkedThirdQualities],
+    checkedSeventhQualities: [...checkedSeventhQualities],
+    rhythmWeights: rhythmWeights ? [...rhythmWeights] : undefined,
+    segments,
+    drill: pipeline === "pattern-drill" ? {
+      addressing: drillAddressing,
+      patternInput: drillPatternInput,
+      pattern: drillPattern,
+      chordInput: drillChordInput,
+      chords: drillChords,
+      permutation: drillPermutation,
+    } : undefined,
+    presetName,
+  }), [
+    edo, tonicRoot, tonality, pipeline, scaleFamily, scaleMode,
+    harmonyCats, enabledCats, progMode, bias, stepwise, vocab,
+    patternLength, minChordNotes, segmentCount, allowRepeats,
+    fitRange, sameChord, playbackSpeed, voiceCount, multiTonic, chordsPerCenter,
+    checkedThirdQualities, checkedSeventhQualities, rhythmWeights,
+    segments, drillAddressing, drillPatternInput, drillPattern, drillChordInput,
+    drillChords, drillPermutation, presetName,
+  ]);
+
+  const buildMPPreview = useCallback((): string => {
+    const modeBit = `${scaleMode} (${tonality})`;
+    const pipelineLabel =
+      pipeline === "melody-first" ? "Melody→Chords" :
+      pipeline === "chords-first" ? "Chords→Melodies" :
+      pipeline === "pattern-drill" ? "Pattern Drill" : pipeline;
+    if (pipeline === "pattern-drill") {
+      const chordSummary = drillChords.slice(0, 8).join(" ") + (drillChords.length > 8 ? "…" : "");
+      return `${pipelineLabel} · ${modeBit} · ${drillPatternInput} · ${chordSummary}`;
+    }
+    const romans = segments.map(s => s.roman ?? "").filter(Boolean).slice(0, 8).join(" ");
+    return `${pipelineLabel} · ${modeBit} · ${segments.length} segment${segments.length !== 1 ? "s" : ""}${romans ? ` · ${romans}${segments.length > 8 ? "…" : ""}` : ""}`;
+  }, [pipeline, scaleMode, tonality, segments, drillChords, drillPatternInput]);
+
+  const logToPracticeLog = useCallback(() => {
+    if (segments.length === 0 && !(pipeline === "pattern-drill" && drillChords.length > 0)) {
+      setLogFlash("Generate a pattern first");
+      setTimeout(() => setLogFlash(""), 2000);
+      return;
+    }
+    const label = presetName
+      ? `Melodic Patterns · ${presetName}`
+      : `Melodic Patterns · ${pipeline === "pattern-drill" ? "Drill" : pipeline === "melody-first" ? "Melody→Chords" : "Chords→Melodies"}`;
+    addPracticeEntry({
+      mode: "melodic-patterns",
+      label,
+      rating: logRating,
+      preview: buildMPPreview(),
+      snapshot: buildMPSnapshot(),
+      canRestore: true,
+    });
+    setLogFlash("Logged!");
+    setTimeout(() => setLogFlash(""), 1500);
+  }, [segments.length, pipeline, drillChords.length, presetName, logRating, buildMPPreview, buildMPSnapshot]);
+
+  const applyMPSnapshot = useCallback((snap: Record<string, unknown>) => {
+    if (typeof snap.edo === "number") setEdo(snap.edo as SupportedEdo);
+    if (typeof snap.tonicRoot === "number") setTonicRoot(snap.tonicRoot);
+    if (typeof snap.scaleFamily === "string") setScaleFamily(snap.scaleFamily);
+    if (typeof snap.scaleMode === "string") setScaleMode(snap.scaleMode);
+    if (typeof snap.pipeline === "string") setPipeline(snap.pipeline as Pipeline);
+    if (Array.isArray(snap.harmonyCats)) setHarmonyCats(new Set(snap.harmonyCats as HarmonyCategory[]));
+    if (Array.isArray(snap.enabledCats)) setEnabledCats(new Set(snap.enabledCats as NoteCategory[]));
+    if (typeof snap.progMode === "string") setProgMode(snap.progMode as ProgressionMode);
+    if (typeof snap.bias === "number") setBias(snap.bias);
+    if (typeof snap.stepwise === "boolean") setStepwise(snap.stepwise);
+    if (Array.isArray(snap.vocab)) setVocab(new Set(snap.vocab as MelodicVocab[]));
+    if (typeof snap.patternLength === "number") setPatternLength(snap.patternLength);
+    if (typeof snap.minChordNotes === "number") setMinChordNotes(snap.minChordNotes);
+    if (typeof snap.segmentCount === "number") setSegmentCount(snap.segmentCount);
+    if (typeof snap.allowRepeats === "boolean") setAllowRepeats(snap.allowRepeats);
+    if (Array.isArray(snap.fitRange) && snap.fitRange.length === 2) setFitRange(snap.fitRange as [number, number]);
+    if (typeof snap.sameChord === "boolean") setSameChord(snap.sameChord);
+    if (typeof snap.playbackSpeed === "number") setPlaybackSpeed(snap.playbackSpeed);
+    if (typeof snap.voiceCount === "number") setVoiceCount(snap.voiceCount as 1 | 2 | 3 | 4);
+    if (snap.multiTonic === null || typeof snap.multiTonic === "string") {
+      setMultiTonic(snap.multiTonic as MultiTonicCycle | null);
+    }
+    if (typeof snap.chordsPerCenter === "number") setChordsPerCenter(snap.chordsPerCenter);
+    if (Array.isArray(snap.checkedThirdQualities)) setCheckedThirdQualities(new Set(snap.checkedThirdQualities as string[]));
+    if (Array.isArray(snap.checkedSeventhQualities)) setCheckedSeventhQualities(new Set(snap.checkedSeventhQualities as string[]));
+    if (Array.isArray(snap.rhythmWeights)) setRhythmWeights(snap.rhythmWeights as number[]);
+    else if (snap.rhythmWeights === undefined) setRhythmWeights(undefined);
+    if (Array.isArray(snap.segments)) setSegments(snap.segments as SegmentState[]);
+    const drill = snap.drill as Record<string, unknown> | undefined;
+    if (drill) {
+      if (typeof drill.addressing === "string") setDrillAddressing(drill.addressing as DrillAddressing);
+      if (typeof drill.patternInput === "string") setDrillPatternInput(drill.patternInput);
+      if (Array.isArray(drill.pattern)) setDrillPattern(drill.pattern as PatternNote[]);
+      if (typeof drill.chordInput === "string") setDrillChordInput(drill.chordInput);
+      if (Array.isArray(drill.chords)) setDrillChords(drill.chords as string[]);
+      if (typeof drill.permutation === "string") setDrillPermutation(drill.permutation as PermutationMode);
+    }
+    if (typeof snap.presetName === "string") setPresetName(snap.presetName);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Read pending-restore on mount and whenever restoreTrigger bumps —
+  // populated by App.tsx when the user clicks a melodic-patterns entry
+  // in the practice-log modal.
+  useEffect(() => {
+    const pending = readPendingRestore<Record<string, unknown>>("melodic");
+    if (pending) applyMPSnapshot(pending);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoreTrigger]);
 
   // ── Lumatone layout ──
   const [layout, setLayout] = useState<LayoutResult | null>(null);
@@ -1531,6 +1656,33 @@ export default function MelodicPatterns() {
           <div className="font-bold">Pattern Drill</div>
           <div className="text-[9px] mt-0.5 opacity-70">Lock a pattern, cycle through chord changes</div>
         </button>
+      </div>
+
+      {/* Universal Save-to-Practice-Log bar — available in every pipeline.
+          Rating + snapshot + preview → the entry can be restored with its
+          exact pattern from the practice-log modal. */}
+      <div className="flex items-center gap-2 text-[10px] text-[#666]">
+        <span className="uppercase tracking-wider">Save to Practice Log</span>
+        <div className="flex items-center gap-0.5"
+             title="Rate this pattern">
+          {[1, 2, 3, 4, 5].map(n => (
+            <button key={n} onClick={() => setLogRating(n as PracticeRating)}
+              className="text-[14px] leading-none px-0.5"
+              style={{ color: n <= logRating ? "#c8aa50" : "#333" }}>
+              ★
+            </button>
+          ))}
+        </div>
+        <button onClick={logToPracticeLog}
+          className="px-2 py-1 rounded border border-[#4a6a4a] text-[#7aaa7a] hover:text-[#9aca9a] transition-colors"
+          title="Save current pattern + settings to the global practice log (restorable from the log modal)">
+          Save to Log
+        </button>
+        {logFlash && (
+          <span className={logFlash === "Logged!" ? "text-[#7aaa7a]" : "text-[#e06060]"}>
+            {logFlash}
+          </span>
+        )}
       </div>
 
       {/* Lumatone visualizer */}
@@ -2136,7 +2288,7 @@ export default function MelodicPatterns() {
           <div className="border-l border-[#2a2a2a] h-4 mx-1" />
           <button onClick={logSession}
             className="px-2 py-1 text-[10px] rounded border border-[#3a3a5a] text-[#8888cc] hover:text-[#aaaaee] transition-colors"
-            title="Log this practice session">
+            title="Log this practice session locally">
             Log Session
           </button>
           <button onClick={() => setShowLog(v => !v)}
