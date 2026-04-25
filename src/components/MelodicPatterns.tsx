@@ -114,20 +114,33 @@ function bankToMajMinBoth(tonality: string): Tonality {
 // "neu" = neutral 3rd (between m3 and M3).
 // "sub" = subminor 3rd (one EDO step below m3) — only for minor-3rd chords.
 // "sup" = supermajor 3rd (one EDO step above M3) — only for major-3rd chords.
-export type XenKind = "neu" | "sub" | "sup";
-const XEN_KINDS: XenKind[] = ["neu", "sub", "sup"];
-const XEN_LABEL: Record<XenKind, string> = { neu: "neu", sub: "sub", sup: "sup" };
+// "qrt" = quartal voicing (stacked 4ths from root) — applies to any chord.
+// "qnt" = quintal voicing (stacked 5ths from root) — applies to any chord.
+export type XenKind = "neu" | "sub" | "sup" | "qrt" | "qnt";
+const XEN_KINDS: XenKind[] = ["neu", "sub", "sup", "qrt", "qnt"];
+const XEN_LABEL: Record<XenKind, string> = { neu: "neu", sub: "sub", sup: "sup", qrt: "qua", qnt: "quin" };
 const XEN_COLOR: Record<XenKind, string> = {
   neu: "#9a66c0",   // neutral — purple
   sub: "#7aaa6a",   // subminor — green
   sup: "#cc6a8a",   // supermajor — pink
+  qrt: "#4a9ac7",   // quartal — teal
+  qnt: "#c8aa50",   // quintal — amber
 };
-const XEN_SUFFIX = "~"; // chord-label separator: "I~neu", "ii~sub"
+const XEN_SUFFIX = "~"; // chord-label separator: "I~neu", "ii~sub", "I~qrt"
 
 function applyXenKind(steps: number[], kind: XenKind, edo: number): number[] | null {
-  if (edo === 12 || steps.length < 2) return null;
+  if (steps.length < 2) return null;
   const sh = getChordShapes(edo);
   const root = steps[0];
+  if (kind === "qrt") {
+    // Stack three perfect fourths from the root: root, root+P4, root+2*P4
+    return [root, root + sh.P4, root + 2 * sh.P4];
+  }
+  if (kind === "qnt") {
+    // Stack three perfect fifths from the root: root, root+P5, root+2*P5
+    return [root, root + sh.P5, root + 2 * sh.P5];
+  }
+  if (edo === 12) return null;
   const third = steps[1] - root;
   const neu = Math.round((sh.m3 + sh.M3) / 2);
   const sup = sh.M3 + 1;
@@ -142,12 +155,29 @@ function applyXenKind(steps: number[], kind: XenKind, edo: number): number[] | n
 }
 
 function applicableXenKinds(steps: number[], edo: number): XenKind[] {
-  if (edo === 12 || steps.length < 2) return [];
+  if (steps.length < 2) return [];
   const sh = getChordShapes(edo);
   const third = steps[1] - steps[0];
-  if (third === sh.M3) return ["neu", "sup"];
-  if (third === sh.m3) return ["neu", "sub"];
-  return [];
+  const out: XenKind[] = [];
+  // Tertian xen (3rd alterations) — only when the EDO produces a distinct
+  // interval that doesn't collide with m3, M3, M2 (sus2), or P4 (sus4).
+  if (edo !== 12) {
+    const distinct = (n: number) => n > 0 && n < edo
+      && n !== sh.m3 && n !== sh.M3 && n !== sh.M2 && n !== sh.P4;
+    const neu = Math.round((sh.m3 + sh.M3) / 2);
+    if (third === sh.M3) {
+      if (distinct(neu)) out.push("neu");
+      if (distinct(sh.M3 + 1)) out.push("sup");
+    } else if (third === sh.m3) {
+      if (distinct(neu)) out.push("neu");
+      if (distinct(sh.m3 - 1)) out.push("sub");
+    }
+  }
+  // Quartal/quintal voicings apply to every chord with at least a 3rd —
+  // they replace the chord with stacked-4ths / stacked-5ths from the root.
+  out.push("qrt");
+  out.push("qnt");
+  return out;
 }
 
 // Build chord-shape map for one tonality (base chords + bank-explicit + approaches + xen variants)
@@ -3639,20 +3669,21 @@ function MPChordSelectionPanel({
                         {entry.label}
                       </button>
                       {showApproaches && (
-                        <div className="flex gap-0.5 px-1 py-1"
-                          style={{ background: isChecked ? "rgba(0,0,0,0.25)" : "#0a0a0a" }}>
-
+                        <div className="flex gap-0.5 px-1 py-1">
                           {APPROACH_KINDS.map(k => {
                             const on = enabledApproaches.has(k);
                             const color = APPROACH_COLORS[k];
                             return (
                               <button key={k}
+                                disabled={!isChecked}
                                 onClick={() => toggleApproach(entry.label, k)}
-                                title={`${APPROACH_LABELS[k]}${entry.label}`}
+                                title={isChecked ? `${APPROACH_LABELS[k]}${entry.label}` : `Enable ${entry.label} first`}
                                 className={`flex-1 text-[8px] leading-none py-0.5 rounded border transition-colors ${
-                                  on ? "text-black font-semibold" : "bg-[#1a1a1a] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
+                                  !isChecked ? "opacity-40 cursor-not-allowed bg-[#0e0e0e] text-[#444] border-[#222]"
+                                  : on ? "text-black font-semibold"
+                                  : "bg-[#1a1a1a] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
                                 }`}
-                                style={on ? { background: color, borderColor: color } : undefined}>
+                                style={isChecked && on ? { background: color, borderColor: color } : undefined}>
                                 {APPROACH_LABELS[k]}
                               </button>
                             );
@@ -3665,19 +3696,21 @@ function MPChordSelectionPanel({
                         if (xenAvail.length === 0) return null;
                         const enabledXen = new Set(xenMap[entry.label] ?? []);
                         return (
-                          <div className="flex gap-0.5 px-1 py-1"
-                            style={{ background: isChecked ? "rgba(0,0,0,0.4)" : "#080808" }}>
+                          <div className="flex gap-0.5 px-1 py-1">
                             {xenAvail.map(k => {
                               const on = enabledXen.has(k);
                               const color = XEN_COLOR[k];
                               return (
                                 <button key={k}
+                                  disabled={!isChecked}
                                   onClick={() => toggleXen(entry.label, k)}
-                                  title={`${entry.label} with ${k === "neu" ? "neutral" : k === "sub" ? "subminor" : "supermajor"} 3rd`}
+                                  title={isChecked ? `${entry.label} with ${k === "neu" ? "neutral" : k === "sub" ? "subminor" : "supermajor"} 3rd` : `Enable ${entry.label} first`}
                                   className={`flex-1 text-[8px] leading-none py-0.5 rounded border transition-colors ${
-                                    on ? "text-black font-semibold" : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
+                                    !isChecked ? "opacity-40 cursor-not-allowed bg-[#0e0e0e] text-[#444] border-[#222]"
+                                    : on ? "text-black font-semibold"
+                                    : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
                                   }`}
-                                  style={on ? { background: color, borderColor: color } : undefined}>
+                                  style={isChecked && on ? { background: color, borderColor: color } : undefined}>
                                   {XEN_LABEL[k]}
                                 </button>
                               );

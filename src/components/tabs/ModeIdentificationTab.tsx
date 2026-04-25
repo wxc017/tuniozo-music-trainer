@@ -435,37 +435,51 @@ function generateScale(
   return { notes: fitted, degrees, pattern };
 }
 
-// Characteristic-chord builder: voice the mode's tonic chord as a clean ascending
-// stack (1 < 3 < 5 < 7 < 9 < 11 < 13), then shift the whole stack as a unit if it
-// runs above the high end of the register. Extensions never sit below chord tones.
+// Characteristic-chord builder: a 1-3-7 shell (lower structure) topped by the
+// mode's character tones (upper structure), so the listener hears the basic
+// quality (major / minor / dom / dim) underneath the modal colors. Root is
+// anchored at tonicAbs; each successive tone is octave-shifted up to sit above
+// the previous one, and the stack is allowed to run past the top of the
+// register. Character tones already covered by the shell (e.g. Mixolydian's
+// b7) drop out — leaving the shell to carry that color on its own.
 function generateChord(
-  mode: ModeInfo, tonicAbs: number, edo: number, low: number, high: number,
+  mode: ModeInfo, tonicAbs: number, edo: number, _low: number, _high: number,
 ): { notes: number[]; chordName: string; degrees: string[] } | null {
+  void _low; void _high;
   if (!mode.chordOptions.length) return null;
   const pick = mode.chordOptions[0];
 
-  // Place root at tonicAbs, then bring every subsequent tone up by whole octaves
-  // until it sits strictly above the previously placed tone.
-  const root = tonicAbs;
-  const notes: number[] = [root];
-  for (let i = 1; i < pick.degrees.length; i++) {
-    const step = resolveStep(pick.degrees[i], edo);
-    let n = tonicAbs + step;
+  // Shell: 1, 3, 7 — read by chord position so altered 3rds/7ths
+  // (b3, b7, dim7=6, …) come along with the chord's quality.
+  const shell: string[] = [pick.degrees[0]];
+  if (pick.degrees.length >= 2) shell.push(pick.degrees[1]);
+  if (pick.degrees.length >= 4) shell.push(pick.degrees[3]);
+
+  // Upper structure: character tones not already represented in the shell,
+  // sorted by raw step so the voicing reads in ascending pitch order.
+  const shellSet = new Set(shell);
+  const upper = mode.character
+    .filter(d => !shellSet.has(d))
+    .map(d => ({ d, step: resolveStep(d, edo) }))
+    .sort((a, b) => a.step - b.step);
+
+  const notes: number[] = [tonicAbs];
+  for (let i = 1; i < shell.length; i++) {
+    let n = tonicAbs + resolveStep(shell[i], edo);
+    while (n <= notes[notes.length - 1]) n += edo;
+    notes.push(n);
+  }
+  for (const { d } of upper) {
+    let n = tonicAbs + resolveStep(d, edo);
     while (n <= notes[notes.length - 1]) n += edo;
     notes.push(n);
   }
 
-  // Shift the whole chord down by octaves if it pokes above the register.
-  while (Math.max(...notes) > high) {
-    for (let i = 0; i < notes.length; i++) notes[i] -= edo;
-  }
-  // If even the root is now below the window, push back up — caller's register
-  // is just too narrow for this voicing; we accept slight overrun on the top.
-  while (notes[0] < low) {
-    for (let i = 0; i < notes.length; i++) notes[i] += edo;
-  }
-
-  return { notes, chordName: pick.name, degrees: pick.degrees };
+  return {
+    notes,
+    chordName: pick.name,
+    degrees: [...shell, ...upper.map(u => u.d)],
+  };
 }
 
 // ── Scale highlight helper ────────────────────────────────────────────
@@ -701,15 +715,20 @@ export default function ModeIdentificationTab({
             })}
           </div>
         </div>
-        {/* Scale patterns — small toggles, only effective when Scale type is enabled */}
+        {/* Scale patterns — only selectable when the Scale play type is on */}
         <div className={enabledTypes.scale ? "" : "opacity-50"}>
-          <label className="text-xs text-[#888] block mb-1">Scale patterns</label>
+          <label className="text-xs text-[#888] block mb-1">
+            Scale patterns
+            {!enabledTypes.scale && <span className="ml-1 text-[#555]">(enable Scale to edit)</span>}
+          </label>
           <div className="flex gap-1 flex-wrap">
             {SCALE_PATTERNS.map(p => {
               const on = enabledScalePatterns.has(p);
               const color = "#5cca8a";
+              const disabled = !enabledTypes.scale;
               return (
                 <button key={p}
+                  disabled={disabled}
                   onClick={() => setEnabledScalePatterns(prev => {
                     const next = new Set(prev);
                     if (next.has(p)) {
@@ -718,9 +737,10 @@ export default function ModeIdentificationTab({
                     return next;
                   })}
                   className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-                    on ? "" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                    disabled ? "cursor-not-allowed bg-[#0e0e0e] border-[#222] text-[#444]"
+                    : on ? "" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
                   }`}
-                  style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
+                  style={!disabled && on ? { backgroundColor: color + "30", borderColor: color, color } : undefined}>
                   {SCALE_PATTERN_LABEL[p]}
                 </button>
               );

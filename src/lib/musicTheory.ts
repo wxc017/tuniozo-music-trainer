@@ -555,12 +555,14 @@ export const HARMONIC_GRAPH: Record<string, string[]> = {
   "V/IV":  ["IV"],
   "V/V":   ["V"],
   "V/vi":  ["vi"],
-  // ── Secondary ii-Vs — ii resolves to V, which resolves to target ──
-  "ii/IV":   ["V/IV"],
-  "ii/V":    ["V/V"],
-  "iiø/ii":  ["V/ii"],
-  "iiø/iii": ["V/iii"],
-  "iiø/vi":  ["V/vi"],
+  // ── Secondary ii-Vs — ii primarily resolves to V/X, but accepts the
+  //    target, vii°/X, and TT/X as fallbacks so the walk doesn't
+  //    dead-end when V/X is filtered out of the available pool.
+  "ii/IV":   ["V/IV", "vii°/IV", "TT/IV", "IV"],
+  "ii/V":    ["V/V",  "vii°/V",  "TT/V",  "V"],
+  "iiø/ii":  ["V/ii", "vii°/ii", "TT/ii", "ii"],
+  "iiø/iii": ["V/iii","vii°/iii", "iii"],
+  "iiø/vi":  ["V/vi", "vii°/vi", "TT/vi", "vi"],
   // ── Tritone subs — resolve to their target (down a half step) ──
   "TT/I":   ["I"],
   "TT/ii":  ["ii"],
@@ -648,11 +650,11 @@ export function generateFunctionalLoop(
     "V/IV":  { IV: 5 },
     "V/V":   { V: 5 },
     "V/vi":  { vi: 5 },
-    "ii/IV":   { "V/IV": 5 },
-    "ii/V":    { "V/V": 5 },
-    "iiø/ii":  { "V/ii": 5 },
-    "iiø/iii": { "V/iii": 5 },
-    "iiø/vi":  { "V/vi": 5 },
+    "ii/IV":   { "V/IV": 5, "vii°/IV": 2, "TT/IV": 1, IV: 2 },
+    "ii/V":    { "V/V": 5,  "vii°/V": 2,  "TT/V": 1,  V: 2 },
+    "iiø/ii":  { "V/ii": 5, "vii°/ii": 2, "TT/ii": 1, ii: 2 },
+    "iiø/iii": { "V/iii": 5,"vii°/iii": 2, iii: 2 },
+    "iiø/vi":  { "V/vi": 5, "vii°/vi": 2, "TT/vi": 1, vi: 2 },
     "TT/I":   { I: 5 },
     "TT/ii":  { ii: 5 },
     "TT/V":   { V: 5 },
