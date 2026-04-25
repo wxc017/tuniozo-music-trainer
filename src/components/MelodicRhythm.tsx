@@ -137,7 +137,11 @@ function greedySplit(startSlot: number, slotCount: number, totalSlots: number): 
     { slots: 8,  str: "2",  align: halfAlign },
     { slots: 6,  str: "4d", align: halfAlign },
     { slots: 4,  str: "4",  align: 4 },
-    { slots: 3,  str: "8d", align: 4 },
+    // Dotted-8 allowed to start at any 8th-note position (align=2),
+    // so an offbeat 3-slot span renders as a clean dotted-8 instead
+    // of "8 tied to 16".  Crossing one beat boundary is conventional
+    // in contemporary / jazz notation and reads more cleanly than a tie.
+    { slots: 3,  str: "8d", align: 2 },
     { slots: 2,  str: "8",  align: 1, noBeatCross: true },
     { slots: 1,  str: "16", align: 1 },
   ];
@@ -167,9 +171,10 @@ function greedySplit(startSlot: number, slotCount: number, totalSlots: number): 
 // Chord notes sit in the space just above the visible center line (stems up);
 // melody notes sit in the space just below (stems down). Separating pitch
 // placement keeps coincident chord+melody noteheads from stacking.
+// Rests share their voice's note key so they sit on the same line as
+// the chord or melody hits, rather than the staff's middle line.
 const CHORD_KEY  = "g/5";
 const MELODY_KEY = "f/4";
-const REST_KEY = "b/4";
 
 interface BuildVoiceResult {
   notes: StaveNote[];
@@ -198,7 +203,7 @@ function buildVoice(
       const restDurs = splitAtBeats(cursor, pos - cursor, beatSize, bottom, totalSlots);
       for (const dur of restDurs) {
         const rn = new StaveNote({
-          keys: [REST_KEY], duration: dur + "r", stemDirection: stemDir,
+          keys: [NOTE_KEY], duration: dur + "r", stemDirection: stemDir,
         } as StaveNoteStruct);
         if (dur.includes("d")) Dot.buildAndAttach([rn], { all: true });
         notes.push(rn);
@@ -232,7 +237,7 @@ function buildVoice(
     const restDurs = splitAtBeats(cursor, totalSlots - cursor, beatSize, bottom, totalSlots);
     for (const dur of restDurs) {
       const rn = new StaveNote({
-        keys: [REST_KEY], duration: dur + "r", stemDirection: stemDir,
+        keys: [NOTE_KEY], duration: dur + "r", stemDirection: stemDir,
       } as StaveNoteStruct);
       if (dur.includes("d")) Dot.buildAndAttach([rn], { all: true });
       notes.push(rn);
