@@ -358,29 +358,81 @@ const ARCHETYPES: ArchetypeFn[] = [
   archetypeLandOnColor,
 ];
 
-// Scale builder: play the mode ascending or descending across one octave
-// (8 notes, including the octave return to root). Direction is randomized.
+// Scale traversal patterns. All cover every degree of the mode exactly once;
+// monotonic patterns bookend with the tonic octave, non-monotonic ones don't.
+// Non-monotonic patterns remove the "ascending-scale gestalt" so the user
+// actually has to identify the intervals, not the overall contour.
+type ScalePattern = "up" | "down" | "thirds-up" | "thirds-down" | "shuffle";
+const SCALE_PATTERNS: ScalePattern[] = ["up", "down", "thirds-up", "thirds-down", "shuffle"];
+
+export const SCALE_PATTERN_LABEL: Record<ScalePattern, string> = {
+  "up":          "ascending ↑",
+  "down":        "descending ↓",
+  "thirds-up":   "thirds ↑",
+  "thirds-down": "thirds ↓",
+  "shuffle":     "shuffled",
+};
+
 function generateScale(
   mode: ModeInfo, tonicAbs: number, edo: number, low: number, high: number,
-): { notes: number[]; degrees: string[]; direction: "up" | "down" } | null {
+  allowedPatterns: ScalePattern[] = SCALE_PATTERNS,
+): { notes: number[]; degrees: string[]; pattern: ScalePattern } | null {
   const modeMap = getModeDegreeMap(edo, mode.family, mode.name);
-  const direction: "up" | "down" = Math.random() < 0.5 ? "up" : "down";
+  const n = mode.scaleDegrees.length;
+  const asc = Array.from({ length: n }, (_, i) => i);
+  const pool = allowedPatterns.length ? allowedPatterns : SCALE_PATTERNS;
+  const pattern = randomChoice(pool);
 
-  const ascDegrees = [...mode.scaleDegrees, "1"];           // 1 2 b3 4 5 6 b7 1(8va)
-  const ascNotes   = ascDegrees.map((d, i) =>
-    tonicAbs + (i === ascDegrees.length - 1 ? edo : (modeMap[d] ?? 0))
-  );
+  // Build the degree-index traversal and decide where (if anywhere) the
+  // octave tonic sits — monotonic patterns bookend so the phrase resolves.
+  let idxSeq: number[];
+  let octPos: "start" | "end" | null;
+  if (pattern === "up")               { idxSeq = asc;                             octPos = "end";   }
+  else if (pattern === "down")        { idxSeq = [...asc].reverse();              octPos = "start"; }
+  else if (pattern === "thirds-up")   { idxSeq = [0,2,4,6,1,3,5].filter(i => i<n); octPos = "end";   }
+  else if (pattern === "thirds-down") { idxSeq = [6,4,2,0,5,3,1].filter(i => i<n); octPos = "start"; }
+  else                                { idxSeq = [...asc].sort(() => Math.random() - 0.5); octPos = null; }
 
-  const seq = direction === "up" ? ascNotes : [...ascNotes].reverse();
-  const degs = direction === "up" ? ascDegrees : [...ascDegrees].reverse();
+  const degrees = idxSeq.map(i => mode.scaleDegrees[i]);
+  if (octPos === "end")   degrees.push("1");
+  else if (octPos === "start") degrees.unshift("1");
 
-  // Shift the whole scale as a unit to fit the register.
-  let notes = seq.slice();
-  while (Math.max(...notes) > high) notes = notes.map(n => n - edo);
-  while (Math.min(...notes) < low)  notes = notes.map(n => n + edo);
-  if (Math.max(...notes) > high || Math.min(...notes) < low) return null;
+  // Pitch placement. Monotonic patterns force each step in its direction
+  // (so thirds-up stays ascending even across the 7→2 wrap); shuffle
+  // voice-leads each degree to the nearest octave of the previous note.
+  const direction = (pattern === "down" || pattern === "thirds-down") ? "down"
+                  : (pattern === "up"   || pattern === "thirds-up")   ? "up"
+                  : "free";
 
-  return { notes, degrees: degs, direction };
+  const notes: number[] = [];
+  for (let i = 0; i < degrees.length; i++) {
+    const isOct = (octPos === "end"   && i === degrees.length - 1)
+               || (octPos === "start" && i === 0);
+    const step = isOct ? edo : (modeMap[degrees[i]] ?? 0);
+    const base = tonicAbs + step;
+    if (i === 0) { notes.push(base); continue; }
+    const prev = notes[i - 1];
+    if (direction === "up") {
+      let m = base; while (m < prev) m += edo; notes.push(m);
+    } else if (direction === "down") {
+      let m = base; while (m > prev) m -= edo; notes.push(m);
+    } else {
+      let best = base, bestD = Math.abs(base - prev);
+      for (let k = -4; k <= 4; k++) {
+        const cand = base + k * edo, d = Math.abs(cand - prev);
+        if (d < bestD) { bestD = d; best = cand; }
+      }
+      notes.push(best);
+    }
+  }
+
+  // Shift the whole line as a unit to fit the register.
+  let fitted = notes.slice();
+  while (Math.max(...fitted) > high) fitted = fitted.map(v => v - edo);
+  while (Math.min(...fitted) < low)  fitted = fitted.map(v => v + edo);
+  if (Math.max(...fitted) > high || Math.min(...fitted) < low) return null;
+
+  return { notes: fitted, degrees, pattern };
 }
 
 // Characteristic-chord builder: voice the mode's tonic chord as a clean ascending
@@ -451,6 +503,9 @@ export default function ModeIdentificationTab({
   const [enabledTypes, setEnabledTypes] = useLS<{ colors: boolean; chord: boolean; scale: boolean }>(
     "lt_modeid_types_v2", { colors: true, chord: true, scale: true }
   );
+  const [enabledScalePatterns, setEnabledScalePatterns] = useLS<Set<ScalePattern>>(
+    "lt_modeid_scale_patterns", new Set<ScalePattern>(SCALE_PATTERNS)
+  );
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
@@ -462,7 +517,7 @@ export default function ModeIdentificationTab({
   const curGapMs = useRef(DEFAULT_GAP);
   const curKind = useRef<"colors" | "chord" | "scale">("colors");
   const curChord = useRef<{ name: string; degrees: string[] } | null>(null);
-  const curDirection = useRef<"up" | "down" | null>(null);
+  const curPattern = useRef<ScalePattern | null>(null);
 
   const stopTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; audioEngine.stopDrone(); };
 
@@ -508,7 +563,7 @@ export default function ModeIdentificationTab({
     let gapMs: number;
     let degrees: string[];
     let chordInfo: { name: string; degrees: string[] } | null = null;
-    let direction: "up" | "down" | null = null;
+    let pattern: ScalePattern | null = null;
 
     if (kind === "colors") {
       // Pick a random archetype; fall through the pool if one can't fit the register.
@@ -530,12 +585,12 @@ export default function ModeIdentificationTab({
       degrees = built.degrees;
       chordInfo = { name: built.chordName, degrees: built.degrees };
     } else {
-      const built = generateScale(mode, midAbs, edo, low, high);
+      const built = generateScale(mode, midAbs, edo, low, high, Array.from(enabledScalePatterns));
       if (!built) { onResult("Could not fit scale in register."); return; }
       frames = built.notes.map(n => [n]);
       gapMs = Math.round(noteSec * 1000);
       degrees = built.degrees;
-      direction = built.direction;
+      pattern = built.pattern;
     }
 
     curMode.current = mode;
@@ -543,13 +598,13 @@ export default function ModeIdentificationTab({
     curGapMs.current = gapMs;
     curKind.current = kind;
     curChord.current = chordInfo;
-    curDirection.current = direction;
+    curPattern.current = pattern;
     lastPlayed.current = {
       frames,
       info: chordInfo
         ? `${mode.displayName} — ${chordInfo.name}`
-        : direction
-          ? `${mode.displayName} — scale ${direction === "up" ? "↑" : "↓"}`
+        : pattern
+          ? `${mode.displayName} — scale ${SCALE_PATTERN_LABEL[pattern]}`
           : mode.displayName,
     };
     setHasPlayed(true);
@@ -560,18 +615,18 @@ export default function ModeIdentificationTab({
 
     const playKey = chordInfo
       ? `modeId:${mode.family}:${mode.name}:${chordInfo.name}`
-      : direction
-        ? `modeId:${mode.family}:${mode.name}:scale-${direction}`
+      : pattern
+        ? `modeId:${mode.family}:${mode.name}:scale-${pattern}`
         : `modeId:${mode.family}:${mode.name}`;
     const playLabel = chordInfo
       ? `Mode ID: ${mode.displayName} (${chordInfo.name})`
-      : direction
-        ? `Mode ID: ${mode.displayName} (scale ${direction})`
+      : pattern
+        ? `Mode ID: ${mode.displayName} (scale ${SCALE_PATTERN_LABEL[pattern]})`
         : `Mode ID: ${mode.displayName}`;
     onPlay(playKey, playLabel);
     onResult(
       kind === "chord" ? "Mode Identification — Characteristic Chord…"
-      : kind === "scale" ? `Mode Identification — Scale ${direction === "up" ? "↑" : "↓"}…`
+      : kind === "scale" ? `Mode Identification — Scale ${pattern ? SCALE_PATTERN_LABEL[pattern] : ""}…`
       : "Mode Identification — Color Set…"
     );
 
@@ -646,6 +701,32 @@ export default function ModeIdentificationTab({
             })}
           </div>
         </div>
+        {/* Scale patterns — small toggles, only effective when Scale type is enabled */}
+        <div className={enabledTypes.scale ? "" : "opacity-50"}>
+          <label className="text-xs text-[#888] block mb-1">Scale patterns</label>
+          <div className="flex gap-1 flex-wrap">
+            {SCALE_PATTERNS.map(p => {
+              const on = enabledScalePatterns.has(p);
+              const color = "#5cca8a";
+              return (
+                <button key={p}
+                  onClick={() => setEnabledScalePatterns(prev => {
+                    const next = new Set(prev);
+                    if (next.has(p)) {
+                      if (next.size > 1) next.delete(p);
+                    } else next.add(p);
+                    return next;
+                  })}
+                  className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                    on ? "" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                  }`}
+                  style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
+                  {SCALE_PATTERN_LABEL[p]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Mode pool — all 21 modes grouped by family, styled like Chords tab toggles */}
@@ -702,9 +783,9 @@ export default function ModeIdentificationTab({
                 · chord played: <span className="font-mono font-medium">{curChord.current.name}</span>
               </span>
             )}
-            {curKind.current === "scale" && curDirection.current && (
+            {curKind.current === "scale" && curPattern.current && (
               <span className="ml-2 text-xs font-normal text-[#7ad6a3]">
-                · scale {curDirection.current === "up" ? "ascending ↑" : "descending ↓"}
+                · scale {SCALE_PATTERN_LABEL[curPattern.current]}
               </span>
             )}
           </div>

@@ -5,12 +5,35 @@ import {
   ALL_VOICING_PATTERNS, applyVoicingPattern,
   checkLowIntervalLimits, formatLilWarnings,
 } from "@/lib/musicTheory";
-import { getChordDroneTypes, getIntervalNames } from "@/lib/edoData";
+import { getChordDroneTypes, getIntervalNames, getDegreeMap } from "@/lib/edoData";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
 import { weightedRandomChoice, recordAnswer } from "@/lib/stats";
 import type { TabSettingsSnapshot } from "@/App";
 
 const ROOT_VOICING_PATTERNS = ALL_VOICING_PATTERNS.filter(p => p.group === "Root Position");
+
+interface ChromDeg { key: string; label: string; step: number; }
+
+// Walk the EDO's degree map and bucket each step into "1", "b2/2/#2", etc.
+// so the user can pick any chromatic root degree (not just diatonic 1–7).
+function getChromDegrees(edo: number): ChromDeg[] {
+  const dm = getDegreeMap(edo);
+  const byStep = new Map<number, string[]>();
+  for (const [name, step] of Object.entries(dm)) {
+    if (step < 0 || step >= edo) continue;
+    if (!byStep.has(step)) byStep.set(step, []);
+    byStep.get(step)!.push(name);
+  }
+  return Array.from(byStep.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([step, names]) => {
+      const sorted = [...names].sort((a, b) => {
+        const rank = (s: string) => s.startsWith("b") ? 0 : s.startsWith("#") ? 1 : -1;
+        return rank(a) - rank(b);
+      });
+      return { key: sorted[0], label: sorted.join("/"), step };
+    });
+}
 
 interface Props {
   tonicPc: number;
@@ -50,7 +73,11 @@ export default function DroneTab({
   const [checkedVoicings, setCheckedVoicings] = useLS<Set<string>>("lt_drn_voicings",
     new Set(["t-135", "7-1357"])
   );
+  const [checkedDegrees, setCheckedDegrees] = useLS<Set<string>>("lt_drn_degrees_v2",
+    new Set<string>(["1"])
+  );
   const [checkedIvls, setCheckedIvls] = useLS<Set<number>>("lt_drn_ivls", new Set());
+  const chromDegrees = getChromDegrees(edo);
   const [duration, setDuration] = useLS<string>("lt_drn_duration", "4");
   const [playMode, setPlayMode] = useLS<PlayMode>("lt_drn_playMode", "After drone");
   const [droneVol, setDroneVol] = useLS<number>("lt_drn_vol", 0.12);
@@ -84,13 +111,14 @@ export default function DroneTab({
       title: "Chord Drone",
       groups: [
         { label: "Chords", items: Array.from(checkedChords) },
+        { label: "Root Degrees", items: Array.from(checkedDegrees) },
         { label: "Voicings", items: ROOT_VOICING_PATTERNS.filter(p => checkedVoicings.has(p.id)).map(p => p.label) },
         { label: "Intervals", items: Array.from(checkedIvls).map(i => ivlNames[i] ?? `Step ${i}`) },
         { label: "Settings", items: [`Duration: ${duration}s`, `Play: ${playMode}`] },
       ],
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkedChords, checkedVoicings, checkedIvls, duration, playMode, tabSettingsRef]);
+  }, [checkedChords, checkedDegrees, checkedVoicings, checkedIvls, duration, playMode, tabSettingsRef]);
 
   const toggle = <T,>(set: Set<T>, val: T): Set<T> => {
     const n = new Set(set); if (n.has(val)) n.delete(val); else n.add(val); return n;
@@ -123,15 +151,20 @@ export default function DroneTab({
   const startDrone = async () => {
     await ensureAudio();
     if (!checkedChords.size) { onResult("Select at least one drone chord type."); return; }
+    if (!checkedDegrees.size) { onResult("Select at least one scale degree."); return; }
 
     const chordName = weightedRandomChoice(Array.from(checkedChords), c => `drn:${c}`);
+    const degKey  = randomChoice(Array.from(checkedDegrees));
+    const degInfo = chromDegrees.find(d => d.key === degKey);
+    const degLabel = degInfo?.label ?? degKey;
+    const degStep  = degInfo?.step ?? (getDegreeMap(edo)[degKey] ?? 0);
 
     const shape = getChordDroneTypes(edo)[chordName];
     const [low, high] = strictWindowBounds(tonicPc, edo, lowestOct, highestOct);
 
-    // Place drone root (tonic) in the mid-register window
+    // Place drone root at (tonic + selected degree offset), mid-register
     const midOct = lowestOct + Math.floor((highestOct - lowestOct) / 2);
-    let droneRoot = tonicPc + (midOct - 4) * edo;
+    let droneRoot = tonicPc + degStep + (midOct - 4) * edo;
     while (droneRoot >= high) droneRoot -= edo;
     while (droneRoot < low)  droneRoot += edo;
 
@@ -166,7 +199,7 @@ export default function DroneTab({
     }
 
     const dur = parseInt(duration) * 1000;
-    const label = chordName;
+    const label = `${degLabel} — ${chordName}`;
     const params: DroneParams = { chordAbs, droneRoot, ivlNote, ivlName, droneVol, ivlVol, dur, playMode };
     lastDroneParams.current = params;
 
@@ -333,6 +366,32 @@ export default function DroneTab({
                 }`}
                 style={on ? { backgroundColor: accent + "30", borderColor: accent, color: accent } : undefined}>
                 {name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Scale degrees — drone root placed at (tonic + selected degree); pick is randomized */}
+      <div>
+        <div className="flex items-center gap-3 mb-2">
+          <p className="text-xs text-[#555]">Scale degrees (drone root):</p>
+          <button onClick={() => setCheckedDegrees(new Set(chromDegrees.map(d => d.key)))}
+            className="text-xs text-[#666] hover:text-[#aaa]">All</button>
+          <button onClick={() => setCheckedDegrees(new Set())}
+            className="text-xs text-[#666] hover:text-[#aaa]">None</button>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {chromDegrees.map(d => {
+            const on = checkedDegrees.has(d.key);
+            const accent = "#9999ee";
+            return (
+              <button key={d.key} onClick={() => setCheckedDegrees(toggle(checkedDegrees, d.key))}
+                className={`px-2 py-1 text-[10px] font-mono rounded border transition-colors ${
+                  on ? "" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                }`}
+                style={on ? { backgroundColor: accent + "30", borderColor: accent, color: accent } : undefined}>
+                {d.label}
               </button>
             );
           })}

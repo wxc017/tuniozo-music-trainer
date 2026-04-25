@@ -2,23 +2,25 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLS } from "@/lib/storage";
 import { addPracticeEntry, readPendingRestore, type PracticeRating } from "@/lib/practiceLog";
 import { audioEngine } from "@/lib/audioEngine";
-import { getEdoChordTypes, getLayoutFile, getFullDegreeNames, getAvailableThirdQualities, getAvailableSeventhQualities, pcToNoteName, pcToNoteNameWithEnharmonic, getDegreeMap, formatHalfAccidentals } from "@/lib/edoData";
+import { getEdoChordTypes, getLayoutFile, getFullDegreeNames, pcToNoteName, pcToNoteNameWithEnharmonic, getDegreeMap, formatHalfAccidentals, getBaseChords, getChordShapes } from "@/lib/edoData";
 import { renderAccidentals } from "@/lib/accidentalDisplay";
+import { formatRomanNumeral } from "@/lib/formatRoman";
 import { computeLayout, type LayoutResult } from "@/lib/lumatoneLayout";
 import { ALL_VOICING_PATTERNS, VOICING_PATTERN_GROUPS, generateFunctionalLoop, PATTERN_SCALE_FAMILIES, getScaleDiatonicSteps } from "@/lib/musicTheory";
+import {
+  getTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS,
+  type ApproachKind, type ChordEntry, type TonalityBank,
+} from "@/lib/tonalityBanks";
 import LumatoneKeyboard from "@/components/LumatoneKeyboard";
 import MelodicRhythm, { type RhythmTimingData } from "@/components/MelodicRhythm";
 import {
-  type HarmonyCategory,
   type NoteCategory,
   type ProgressionMode,
   type Tonality,
   type MelodicVocab,
-  HARMONY_CATEGORIES,
   VOCAB_GROUPS,
   VOCAB_REQUIRED_CATS,
   VOCAB_MIN_NOTES,
-  availableHarmonyCategories,
   randomMelodyWithAngularity,
   getLastDigitalShape,
   getLastTriadPairInfo,
@@ -26,7 +28,6 @@ import {
   getLastPentatonicInfo,
   getLastIntervallicInfo,
   getLastCellType,
-  pickChordForMelodyInRange,
   getIntervals,
   getContour,
   degreeName,
@@ -36,12 +37,8 @@ import {
   chordMelodyOverlap,
   classifyFit,
   classifyNoteCategory,
-  generateProgression,
   toRomanNumeralParts,
-  getSecDomLabel,
   generateCounterpoint,
-  generateMultiTonicProgression,
-  type MultiTonicCycle,
   type DrillChord,
   xenFamily,
   isStableMicro,
@@ -59,10 +56,6 @@ const TONALITY_OPTIONS: { value: Tonality; label: string; color: string }[] = [
   { value: "both",  label: "Both",  color: "#999" },
 ];
 
-const HARMONY_GROUP_COLORS: Record<string, string> = {
-  "Diatonic": "#5a8a5a", "Chromatic": "#c06090", "Extended": "#c8aa50", "Xenharmonic": "#8888cc",
-};
-
 const CATEGORY_OPTIONS: { value: NoteCategory; label: string; desc: string; color: string }[] = [
   { value: "ct",         label: "Chord Tones",       desc: "Notes in the chord",                                   color: "#5a8a5a" },
   { value: "diatonic",   label: "Stable Diatonic",   desc: "Natural tensions (9, 11, 13)",                         color: "#c8aa50" },
@@ -72,9 +65,345 @@ const CATEGORY_OPTIONS: { value: NoteCategory; label: string; desc: string; colo
 ];
 
 const FIT_COLORS = { fits: "#5a8a5a", kinda: "#c8aa50", clashes: "#c06090" };
-const PATTERN_LENGTHS = [2, 3, 4, 5, 6, 7, 8] as const;
-const CHORD_NOTE_COUNTS = [2, 3, 4, 5, 6, 7, 8] as const;
+const PATTERN_LENGTHS = Array.from({ length: 16 }, (_, i) => i + 1) as readonly number[];
+const SEGMENT_COUNTS  = Array.from({ length: 32 }, (_, i) => i + 1) as readonly number[];
 type Pipeline = "melody-first" | "chords-first" | "pattern-drill";
+
+// ── Tonality families (mirrors ChordsTab) ────────────────────────────
+const TONALITY_FAMILIES: { key: string; label: string; color: string; tonalities: string[] }[] = [
+  { key: "major",    label: "MAJOR",          color: "#6a9aca",
+    tonalities: ["Major","Dorian","Phrygian","Lydian","Mixolydian","Aeolian","Locrian"] },
+  { key: "harmonic", label: "HARMONIC MINOR", color: "#c09050",
+    tonalities: ["Harmonic Minor","Locrian #6","Ionian #5","Dorian #4","Phrygian Dominant","Lydian #2","Ultralocrian"] },
+  { key: "melodic",  label: "MELODIC MINOR",  color: "#c06090",
+    tonalities: ["Melodic Minor","Dorian b2","Lydian Augmented","Lydian Dominant","Mixolydian b6","Locrian #2","Altered"] },
+];
+
+// Tonality bank name → (scaleFamily, scaleMode) used by the melody pool
+// builder.  "Major" maps to "Ionian"; everything else is its own mode.
+function bankToScaleFamMode(tonality: string): [string, string] {
+  if (tonality === "Major") return ["Major Family", "Ionian"];
+  for (const f of TONALITY_FAMILIES) {
+    if (f.tonalities.includes(tonality)) {
+      const fam = f.key === "major" ? "Major Family"
+               : f.key === "harmonic" ? "Harmonic Minor Family"
+               : "Melodic Minor Family";
+      return [fam, tonality];
+    }
+  }
+  return ["Major Family", "Ionian"];
+}
+
+// Tonality → "major" | "minor" | "both" — drives Tonality-typed callers
+function bankToMajMinBoth(tonality: string): Tonality {
+  const [, mode] = bankToScaleFamMode(tonality);
+  const major = new Set([
+    "Ionian","Lydian","Mixolydian","Ionian #5","Lydian Augmented","Lydian Dominant","Mixolydian b6","Lydian #2",
+  ]);
+  const minor = new Set([
+    "Aeolian","Dorian","Phrygian","Locrian","Harmonic Minor","Locrian #6","Dorian #4","Phrygian Dominant",
+    "Ultralocrian","Melodic Minor","Dorian b2","Locrian #2",
+  ]);
+  if (major.has(mode)) return "major";
+  if (minor.has(mode)) return "minor";
+  return "both";
+}
+
+// ── Xen variants ─────────────────────────────────────────────────────
+// Per-chord toggles that swap the 3rd for a microtonal variant.
+// "neu" = neutral 3rd (between m3 and M3).
+// "sub" = subminor 3rd (one EDO step below m3) — only for minor-3rd chords.
+// "sup" = supermajor 3rd (one EDO step above M3) — only for major-3rd chords.
+export type XenKind = "neu" | "sub" | "sup";
+const XEN_KINDS: XenKind[] = ["neu", "sub", "sup"];
+const XEN_LABEL: Record<XenKind, string> = { neu: "neu", sub: "sub", sup: "sup" };
+const XEN_COLOR: Record<XenKind, string> = {
+  neu: "#9a66c0",   // neutral — purple
+  sub: "#7aaa6a",   // subminor — green
+  sup: "#cc6a8a",   // supermajor — pink
+};
+const XEN_SUFFIX = "~"; // chord-label separator: "I~neu", "ii~sub"
+
+function applyXenKind(steps: number[], kind: XenKind, edo: number): number[] | null {
+  if (edo === 12 || steps.length < 2) return null;
+  const sh = getChordShapes(edo);
+  const root = steps[0];
+  const third = steps[1] - root;
+  const neu = Math.round((sh.m3 + sh.M3) / 2);
+  const sup = sh.M3 + 1;
+  const sub = sh.m3 - 1;
+  let newThird: number;
+  if (kind === "neu")      newThird = neu;
+  else if (kind === "sub") newThird = sub;
+  else if (kind === "sup") newThird = sup;
+  else return null;
+  if (newThird === third) return null;
+  return [root, root + newThird, ...steps.slice(2)];
+}
+
+function applicableXenKinds(steps: number[], edo: number): XenKind[] {
+  if (edo === 12 || steps.length < 2) return [];
+  const sh = getChordShapes(edo);
+  const third = steps[1] - steps[0];
+  if (third === sh.M3) return ["neu", "sup"];
+  if (third === sh.m3) return ["neu", "sub"];
+  return [];
+}
+
+// Build chord-shape map for one tonality (base chords + bank-explicit + approaches + xen variants)
+function buildChordMapForTonality(
+  tonality: string, edo: number,
+  approachesForT: Record<string, ApproachKind[]> = {},
+  xenForT: Record<string, XenKind[]> = {},
+): Record<string, number[]> {
+  const baseMap: Record<string, number[]> = Object.fromEntries(getBaseChords(edo));
+  const banks = getTonalityBanks(edo);
+  const bank = banks.find(b => b.name === tonality);
+  const map: Record<string, number[]> = { ...baseMap };
+  if (bank) {
+    for (const level of bank.levels) {
+      for (const e of level.chords) {
+        if (e.steps && !map[e.label]) map[e.label] = e.steps;
+      }
+    }
+    // Approach entries (per-target secdom / secdim / iiV / TT)
+    const targets = new Map<string, number[]>();
+    for (const level of bank.levels) {
+      if (level.name !== "Primary" && level.name !== "Diatonic") continue;
+      for (const c of level.chords) {
+        const steps = c.steps ?? baseMap[c.label];
+        if (steps) targets.set(c.label, steps);
+      }
+    }
+    for (const [target, kinds] of Object.entries(approachesForT)) {
+      const steps = targets.get(target);
+      if (!steps) continue;
+      for (const kind of kinds) {
+        for (const e of getApproachChords(target, steps, kind, edo)) {
+          if (e.steps && !map[e.label]) map[e.label] = e.steps;
+        }
+      }
+    }
+    // Xen-variant entries (per-chord neu / sub / sup)
+    for (const [target, kinds] of Object.entries(xenForT)) {
+      const steps = targets.get(target);
+      if (!steps) continue;
+      for (const kind of kinds) {
+        const variantSteps = applyXenKind(steps, kind, edo);
+        if (!variantSteps) continue;
+        const label = `${target}${XEN_SUFFIX}${kind}`;
+        if (!map[label]) map[label] = variantSteps;
+      }
+    }
+  }
+  return map;
+}
+
+// Effective checked roman labels for one tonality: explicit checks ∪ approach labels ∪ xen variants
+function getEffectiveCheckedForTonality(
+  tonality: string, edo: number,
+  checked: string[],
+  approachesForT: Record<string, ApproachKind[]>,
+  xenForT: Record<string, XenKind[]> = {},
+): string[] {
+  const out = new Set(checked);
+  const banks = getTonalityBanks(edo);
+  const bank = banks.find(b => b.name === tonality);
+  if (!bank) return Array.from(out);
+  const baseMap: Record<string, number[]> = Object.fromEntries(getBaseChords(edo));
+  const targets = new Map<string, number[]>();
+  for (const level of bank.levels) {
+    if (level.name !== "Primary" && level.name !== "Diatonic") continue;
+    for (const c of level.chords) {
+      const steps = c.steps ?? baseMap[c.label];
+      if (steps) targets.set(c.label, steps);
+    }
+  }
+  for (const [target, kinds] of Object.entries(approachesForT)) {
+    const steps = targets.get(target);
+    if (!steps) continue;
+    for (const kind of kinds) {
+      for (const e of getApproachChords(target, steps, kind, edo)) {
+        // ii-V's V/X part is owned by the V/ (secdom) toggle — drop it here
+        // so the V only appears when V/ is also enabled separately.
+        if (kind === "iiV" && e.label.startsWith("V/")) continue;
+        out.add(e.label);
+      }
+    }
+  }
+  // Xen variants: each enabled (target, kind) becomes a "target~kind" pool entry.
+  for (const [target, kinds] of Object.entries(xenForT)) {
+    const steps = targets.get(target);
+    if (!steps) continue;
+    for (const kind of kinds) {
+      const variantSteps = applyXenKind(steps, kind, edo);
+      if (!variantSteps) continue;
+      out.add(`${target}${XEN_SUFFIX}${kind}`);
+    }
+  }
+  return Array.from(out);
+}
+
+// Match a chord shape (relative steps from root) to an EDO chord-type id,
+// for ProgChord.chordTypeId display annotation.
+function inferChordTypeId(steps: number[], edo: number): string {
+  const chordTypes = getEdoChordTypes(edo);
+  if (steps.length === 0) return "chord";
+  const root = steps[0];
+  const rels = steps.map(s => ((s - root) % edo + edo) % edo).sort((a, b) => a - b).join(",");
+  for (const ct of chordTypes) {
+    const ctRels = ct.steps.slice().sort((a, b) => a - b).join(",");
+    if (ctRels === rels) return ct.id;
+  }
+  return "chord";
+}
+
+// Pool-driven progression generator: uses the existing functional-loop
+// Markov chain to order roman labels picked from one tonality's pool, then
+// resolves each label to absolute chord PCs.  Falls back to random
+// uniform sampling when `mode === "random"` or the loop generator can't
+// find a valid functional path.
+interface PoolProgChord { roman: string; chordPcs: number[]; root: number; chordTypeId: string; }
+function generatePoolProgression(
+  edo: number,
+  count: number,
+  tonality: string,
+  checked: string[],
+  approachesForT: Record<string, ApproachKind[]>,
+  xenForT: Record<string, XenKind[]>,
+  tonicRoot: number,
+  mode: ProgressionMode,
+): PoolProgChord[] {
+  if (count <= 0) return [];
+  const chordMap = buildChordMapForTonality(tonality, edo, approachesForT, xenForT);
+  const effective = getEffectiveCheckedForTonality(tonality, edo, checked, approachesForT, xenForT)
+    .filter(l => chordMap[l] && chordMap[l].length > 0);
+  if (effective.length === 0) return [];
+
+  let labels: string[] | null = null;
+  if (mode === "functional") {
+    // Boost any user-selected label that is NOT in the bank's Primary or
+    // Diatonic level (i.e. Modal Interchange, Secondary Dominants, ii-Vs,
+    // Tritone Subs, plus dynamically-generated approach chords AND xen
+    // variants) so the Markov walk visits them when chosen.  Diatonic
+    // chords don't need a boost — they already dominate the graph.
+    const banks = getTonalityBanks(edo);
+    const bank = banks.find(b => b.name === tonality);
+    const diatonicSet = new Set<string>();
+    if (bank) {
+      for (const level of bank.levels) {
+        if (level.name === "Primary" || level.name === "Diatonic") {
+          for (const c of level.chords) diatonicSet.add(c.label);
+        }
+      }
+    }
+    const boost = new Set<string>();
+    for (const lbl of effective) {
+      if (!diatonicSet.has(lbl)) boost.add(lbl);
+    }
+    // Xen-variant labels share their parent chord's transitions in the
+    // Markov graph — a label like "I~neu" would have no graph entry, so
+    // pre-substitute the parent into the available pool used by the Markov
+    // walk and remap afterwards.  Each xen label maps to its parent label.
+    const variantToParent = new Map<string, string>();
+    const markovAvailable = effective.map(lbl => {
+      const idx = lbl.indexOf(XEN_SUFFIX);
+      if (idx > 0) {
+        const parent = lbl.slice(0, idx);
+        variantToParent.set(lbl, parent);
+        return parent;
+      }
+      return lbl;
+    });
+    const markovBoost = new Set<string>();
+    for (const lbl of boost) {
+      const parent = variantToParent.get(lbl) ?? lbl;
+      markovBoost.add(parent);
+    }
+    const parentLabels = generateFunctionalLoop(markovAvailable, count, 300, markovBoost);
+    if (parentLabels) {
+      // Remap each parent slot back to a (parent or variant) chosen from the
+      // user's effective pool, biased toward the variant if any are checked.
+      const variantsByParent = new Map<string, string[]>();
+      for (const lbl of effective) {
+        const idx = lbl.indexOf(XEN_SUFFIX);
+        if (idx > 0) {
+          const parent = lbl.slice(0, idx);
+          if (!variantsByParent.has(parent)) variantsByParent.set(parent, []);
+          variantsByParent.get(parent)!.push(lbl);
+        }
+      }
+      const parentChecked = new Set(effective.filter(l => !l.includes(XEN_SUFFIX)));
+      labels = parentLabels.map(parent => {
+        const variants = variantsByParent.get(parent) ?? [];
+        const candidates: string[] = [];
+        if (parentChecked.has(parent)) candidates.push(parent);
+        candidates.push(...variants);
+        if (candidates.length === 0) return parent;
+        return candidates[Math.floor(Math.random() * candidates.length)];
+      });
+    }
+  }
+  if (!labels) {
+    // Random fallback / random mode
+    labels = Array.from({ length: count }, () => effective[Math.floor(Math.random() * effective.length)]);
+  }
+
+  return labels.map(roman => {
+    const steps = chordMap[roman] ?? [0];
+    const chordPcs = steps.map(s => ((s + tonicRoot) % edo + edo) % edo);
+    const root = ((steps[0] + tonicRoot) % edo + edo) % edo;
+    return { roman, chordPcs, root, chordTypeId: inferChordTypeId(steps, edo) };
+  });
+}
+
+// Enumerate every chord in one tonality's effective pool (for ChordBrowser).
+function getAllPoolChords(
+  edo: number, tonality: string, checked: string[],
+  approachesForT: Record<string, ApproachKind[]>,
+  xenForT: Record<string, XenKind[]>,
+  tonicRoot: number,
+): PoolProgChord[] {
+  const chordMap = buildChordMapForTonality(tonality, edo, approachesForT, xenForT);
+  const effective = getEffectiveCheckedForTonality(tonality, edo, checked, approachesForT, xenForT)
+    .filter(l => chordMap[l] && chordMap[l].length > 0);
+  return effective.map(roman => {
+    const steps = chordMap[roman];
+    const chordPcs = steps.map(s => ((s + tonicRoot) % edo + edo) % edo);
+    const root = ((steps[0] + tonicRoot) % edo + edo) % edo;
+    return { roman, chordPcs, root, chordTypeId: inferChordTypeId(steps, edo) };
+  });
+}
+
+// Convenience: pick a chord label from the pool whose PCs best fit a given
+// melody (max overlap with melody PCs).  Replaces pickChordForMelodyInRange.
+function pickPoolChordForMelody(
+  edo: number, melodyPcs: number[],
+  tonality: string, checked: string[],
+  approachesForT: Record<string, ApproachKind[]>,
+  xenForT: Record<string, XenKind[]>,
+  tonicRoot: number,
+): PoolProgChord | null {
+  const chordMap = buildChordMapForTonality(tonality, edo, approachesForT, xenForT);
+  const effective = getEffectiveCheckedForTonality(tonality, edo, checked, approachesForT, xenForT)
+    .filter(l => chordMap[l] && chordMap[l].length > 0);
+  if (effective.length === 0) return null;
+  const melodyPcSet = new Set(melodyPcs.map(p => ((p % edo) + edo) % edo));
+  let best: { label: string; score: number } | null = null;
+  for (const label of effective) {
+    const steps = chordMap[label];
+    const pcs = steps.map(s => ((s + tonicRoot) % edo + edo) % edo);
+    let overlap = 0;
+    for (const pc of pcs) if (melodyPcSet.has(pc)) overlap++;
+    const score = overlap / Math.max(1, pcs.length);
+    if (!best || score > best.score) best = { label, score };
+  }
+  if (!best) return null;
+  const steps = chordMap[best.label];
+  const chordPcs = steps.map(s => ((s + tonicRoot) % edo + edo) % edo);
+  const root = ((steps[0] + tonicRoot) % edo + edo) % edo;
+  return { roman: best.label, chordPcs, root, chordTypeId: inferChordTypeId(steps, edo) };
+}
 
 type PermutationMode = "original" | "retrograde" | `rotate${number}` | `swap${number}` | "all";
 
@@ -102,18 +431,6 @@ const EXTRA_SCALE_DEGREES: Record<string, string[]> = {
   "Hirajoshi":              ["1","2","b3","5","b6"],
   "Sus Pentatonic":         ["1","2","4","5","b7"],
 };
-
-/** Full list of { family, mode } options for the drill picker. */
-const DRILL_SCALE_OPTIONS: { family: string; mode: string }[] = (() => {
-  const out: { family: string; mode: string }[] = [];
-  for (const [fam, modes] of Object.entries(PATTERN_SCALE_FAMILIES)) {
-    for (const m of modes) out.push({ family: fam, mode: m });
-  }
-  for (const m of Object.keys(EXTRA_SCALE_DEGREES)) {
-    out.push({ family: EXTRA_SCALE_FAMILY, mode: m });
-  }
-  return out;
-})();
 
 // ── Drill chord-pool categories ──────────────────────────────────────
 // The drill replaces the 8-group roman-numeral palette (diatonic-major /
@@ -752,66 +1069,75 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
   // the chord-progression / melody generators is derived from the mode below
   // (see `tonality` useMemo).  Old "set tonality" UI has been replaced by the
   // Scale/Mode dropdown.
-  const [scaleFamily, setScaleFamily] = useLS<string>("lt_mp_scale_family", "Major Family");
-  const [scaleMode,   setScaleMode]   = useLS<string>("lt_mp_scale_mode",   "Ionian");
-  // Derive "major" / "minor" / "both" from the mode's characteristic 3rd:
-  //   major-3rd modes (Ionian / Lydian / Mixolydian / Major Pent / blues-major / Ryukyu…) → "major"
-  //   minor-3rd modes (Aeolian / Dorian / Phrygian / Locrian / Harm-min / Mel-min / Minor Pent / Hirajoshi / In…) → "minor"
-  //   ambiguous-3rd modes (Whole Tone / Half-Whole / Altered / Lydian #2 / Double Harmonic…) → "both"
-  const tonality: Tonality = useMemo(() => {
-    const majorSide = new Set([
-      "Ionian", "Lydian", "Mixolydian",
-      "Ionian #5", "Lydian Augmented", "Lydian Dominant", "Mixolydian b6",
-      "Lydian #5", "Major #5",
-      "Major Pentatonic", "Major Blues", "Ryukyu Pentatonic",
-    ]);
-    const minorSide = new Set([
-      "Aeolian", "Dorian", "Phrygian", "Locrian",
-      "Harmonic Minor", "Locrian #6", "Dorian #4", "Phrygian Dominant",
-      "Ultralocrian",
-      "Melodic Minor", "Dorian b2", "Locrian #2",
-      "Minor Pentatonic", "Minor Blues",
-      "In Pentatonic", "Hirajoshi",
-    ]);
-    if (majorSide.has(scaleMode)) return "major";
-    if (minorSide.has(scaleMode)) return "minor";
-    return "both";
-  }, [scaleMode]);
-  // Back-compat: old preset restores call setTonality — route that through
-  // the mode picker by snapping to Ionian / Aeolian / (keep current mode).
+  // ── Tonality + chord pool state (mirrors ChordsTab) ─────────────────
+  // tonalitySet = active tonality banks (multi-select).  At play time one
+  // is picked at random and its chord pool drives that round.
+  // checkedByTonality = per-tonality checked roman labels.
+  // approachesByTonality = per-target approach toggles per tonality.
+  const [tonalitySet, setTonalitySet] = useLS<Set<string>>("lt_mp_tonality_set", new Set(["Major"]));
+  const [checkedByTonality, setCheckedByTonality] = useLS<Record<string, string[]>>(
+    "lt_mp_checked_by_tonality",
+    { Major: ["I", "IV", "V", "ii", "iii", "vi", "vii°"] },
+  );
+  const [approachesByTonality, setApproachesByTonality] = useLS<Record<string, Record<string, ApproachKind[]>>>(
+    "lt_mp_approaches_by_tonality", {},
+  );
+  const [xenByTonality, setXenByTonality] = useLS<Record<string, Record<string, XenKind[]>>>(
+    "lt_mp_xen_by_tonality", {},
+  );
+  // Pick a deterministic primary tonality for state-deriving memos.  At
+  // play time we pick a random tonality from the set; this primary is
+  // only for stable downstream state (melody pool, scale family/mode).
+  const primaryTonality = useMemo<string>(() => {
+    const arr = Array.from(tonalitySet);
+    return arr[0] ?? "Major";
+  }, [tonalitySet]);
+  const scaleFamily = useMemo(() => bankToScaleFamMode(primaryTonality)[0], [primaryTonality]);
+  const scaleMode   = useMemo(() => bankToScaleFamMode(primaryTonality)[1], [primaryTonality]);
+  const tonality: Tonality = useMemo(() => bankToMajMinBoth(primaryTonality), [primaryTonality]);
+  // Back-compat for old preset restores
   const setTonality = useCallback((t: Tonality) => {
-    if (t === "major") { setScaleFamily("Major Family"); setScaleMode("Ionian"); }
-    else if (t === "minor") { setScaleFamily("Major Family"); setScaleMode("Aeolian"); }
-    // "both" has no single mode equivalent — leave the current mode alone.
-  }, [setScaleFamily, setScaleMode]);
+    if (t === "major") setTonalitySet(new Set(["Major"]));
+    else if (t === "minor") setTonalitySet(new Set(["Aeolian"]));
+  }, [setTonalitySet]);
+  const setScaleFamily = useCallback((_fam: string) => { /* derived now */ }, []);
+  const setScaleMode = useCallback((m: string) => {
+    // Snap tonalitySet to a single bank matching the mode (back-compat)
+    const matchBank = m === "Ionian" ? "Major" : m;
+    setTonalitySet(new Set([matchBank]));
+  }, [setTonalitySet]);
+
   const [patternLength, setPatternLength] = useState(4);
-  const [minChordNotes, setMinChordNotes] = useState(3);
   const [allowRepeats, setAllowRepeats] = useState(false);
-  const [harmonyCats, setHarmonyCats] = useState<Set<HarmonyCategory>>(new Set(["functional"]));
-  const toggleHarmony = (c: HarmonyCategory) => setHarmonyCats(prev => {
-    const next = new Set(prev);
-    if (next.has(c)) { if (next.size > 1) next.delete(c); }
-    else next.add(c);
-    return next;
-  });
-  const availableThirdQualities = useMemo(() => getAvailableThirdQualities(edo), [edo]);
-  const [checkedThirdQualities, setCheckedThirdQualities] = useState<Set<string>>(new Set(["min3", "maj3"]));
-  const toggleThirdQuality = (q: string) => setCheckedThirdQualities(prev => {
-    const next = new Set(prev);
-    if (next.has(q)) next.delete(q);
-    else next.add(q);
-    return next;
-  });
-  const availableSeventhQualities = useMemo(() => getAvailableSeventhQualities(edo), [edo]);
-  const [checkedSeventhQualities, setCheckedSeventhQualities] = useState<Set<string>>(new Set(["min7", "maj7"]));
-  const toggleSeventhQuality = (q: string) => setCheckedSeventhQualities(prev => {
-    const next = new Set(prev);
-    if (next.has(q)) next.delete(q);
-    else next.add(q);
-    return next;
-  });
-  const includeAltered = false; // Altered mode removed — always disabled
-  const [progMode, setProgMode] = useState<ProgressionMode>("functional");
+  const [progMode, setProgMode] = useLS<ProgressionMode>("lt_mp_prog_mode", "functional");
+
+  // Wrapper closures over the new pool-driven engine.  Each call picks one
+  // tonality at random from `tonalitySet` (mirrors ChordsTab).
+  const generateProg = useCallback((count: number, mode: ProgressionMode = progMode) => {
+    const arr = Array.from(tonalitySet);
+    if (arr.length === 0) return [];
+    const t = arr[Math.floor(Math.random() * arr.length)];
+    return generatePoolProgression(edo, count, t, checkedByTonality[t] ?? [], approachesByTonality[t] ?? {}, xenByTonality[t] ?? {}, tonicRoot, mode);
+  }, [edo, tonalitySet, checkedByTonality, approachesByTonality, xenByTonality, tonicRoot, progMode]);
+  const pickChordForMelody = useCallback((melodyPcs: number[]) => {
+    const arr = Array.from(tonalitySet);
+    if (arr.length === 0) return null;
+    const t = arr[Math.floor(Math.random() * arr.length)];
+    return pickPoolChordForMelody(edo, melodyPcs, t, checkedByTonality[t] ?? [], approachesByTonality[t] ?? {}, xenByTonality[t] ?? {}, tonicRoot);
+  }, [edo, tonalitySet, checkedByTonality, approachesByTonality, xenByTonality, tonicRoot]);
+  const allPoolChords = useMemo(() => {
+    const out: PoolProgChord[] = [];
+    const seen = new Set<string>();
+    for (const t of tonalitySet) {
+      for (const c of getAllPoolChords(edo, t, checkedByTonality[t] ?? [], approachesByTonality[t] ?? {}, xenByTonality[t] ?? {}, tonicRoot)) {
+        const key = `${c.root}:${c.chordTypeId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(c);
+      }
+    }
+    return out;
+  }, [edo, tonalitySet, checkedByTonality, approachesByTonality, xenByTonality, tonicRoot]);
   const [enabledCats, setEnabledCats] = useState<Set<NoteCategory>>(new Set(["ct"]));
   const toggleCat = (cat: NoteCategory) => setEnabledCats(prev => {
     const next = new Set(prev);
@@ -830,8 +1156,6 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
   const [vocab, setVocab] = useState<Set<MelodicVocab>>(new Set());
   const cellRes = "diatonic" as const;
   const [voiceCount, setVoiceCount] = useState<1 | 2 | 3 | 4>(1);
-  const [multiTonic, setMultiTonic] = useState<MultiTonicCycle | null>(null);
-  const [chordsPerCenter, setChordsPerCenter] = useState(2);
   // Only one vocab cell active at a time — selecting one deselects others
   const toggleVocab = (v: MelodicVocab) => setVocab(prev => {
     if (prev.has(v)) return new Set();  // toggle off
@@ -888,13 +1212,11 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
   }, []);
   const fullPool = useMemo(() => Array.from({ length: edo }, (_, i) => i), [edo]);
   const allChordTypes = useMemo(() => getEdoChordTypes(edo), [edo]);
-  const availableCats = useMemo(() => availableHarmonyCategories(edo), [edo]);
+  const tonalityBanks = useMemo<TonalityBank[]>(() => getTonalityBanks(edo), [edo]);
 
   // Reset EDO-dependent state when EDO changes
   useEffect(() => {
     setTonicRoot(prev => prev >= edo ? 0 : prev);
-    setCheckedThirdQualities(new Set(["min3", "maj3"]));
-    setCheckedSeventhQualities(new Set(["min7", "maj7"]));
     setDrillPattern([{ deg: 1, cat: "ct" }, { deg: 2, cat: "diatonic" }, { deg: 3, cat: "ct" }, { deg: 2, cat: "diatonic" }]);
     setDrillPatternInput("1 2 3 2");
   }, [edo]);
@@ -903,10 +1225,14 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
   interface MelodicPreset {
     name: string;
     edo: SupportedEdo; tonality: Tonality; pipeline: Pipeline;
-    harmonyCats: string[]; enabledCats: string[];
+    tonalitySet?: string[];
+    checkedByTonality?: Record<string, string[]>;
+    approachesByTonality?: Record<string, Record<string, ApproachKind[]>>;
+    xenByTonality?: Record<string, Record<string, XenKind[]>>;
+    enabledCats: string[];
     progMode: ProgressionMode; bias: number; stepwise: boolean;
     vocab: string[];
-    patternLength: number; minChordNotes: number; segmentCount: number;
+    patternLength: number; segmentCount: number;
     fitRange: [number, number]; sameChord: boolean; playbackSpeed: number;
     // Legacy compat
     useApproach?: boolean; useEnclosure?: boolean;
@@ -921,23 +1247,29 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
     const name = presetName.trim() || `Preset ${presets.length + 1}`;
     const preset: MelodicPreset = {
       name, edo, tonality, pipeline,
-      harmonyCats: [...harmonyCats], enabledCats: [...enabledCats],
+      tonalitySet: [...tonalitySet],
+      checkedByTonality: { ...checkedByTonality },
+      approachesByTonality: { ...approachesByTonality },
+      xenByTonality: { ...xenByTonality },
+      enabledCats: [...enabledCats],
       progMode, bias, stepwise, vocab: [...vocab],
-      patternLength, minChordNotes, segmentCount,
+      patternLength, segmentCount,
       fitRange, sameChord, playbackSpeed,
     };
     const next = [...presets.filter(p => p.name !== name), preset];
     setPresets(next);
     localStorage.setItem(PRESET_KEY, JSON.stringify(next));
     setPresetName("");
-  }, [presetName, presets, edo, tonality, pipeline, harmonyCats, enabledCats, progMode, bias, stepwise, vocab, patternLength, minChordNotes, segmentCount, fitRange, sameChord, playbackSpeed]);
+  }, [presetName, presets, edo, tonality, pipeline, tonalitySet, checkedByTonality, approachesByTonality, enabledCats, progMode, bias, stepwise, vocab, patternLength, segmentCount, fitRange, sameChord, playbackSpeed]);
 
   const loadPreset = useCallback((p: MelodicPreset) => {
     setEdo(p.edo); setTonality(p.tonality); setPipeline(p.pipeline);
-    setHarmonyCats(new Set(p.harmonyCats as HarmonyCategory[]));
+    if (p.tonalitySet) setTonalitySet(new Set(p.tonalitySet));
+    if (p.checkedByTonality) setCheckedByTonality(p.checkedByTonality);
+    if (p.approachesByTonality) setApproachesByTonality(p.approachesByTonality);
+    if (p.xenByTonality) setXenByTonality(p.xenByTonality);
     setEnabledCats(new Set(p.enabledCats as NoteCategory[]));
     setProgMode(p.progMode); setBias(p.bias); setStepwise(p.stepwise);
-    // Load vocab (with legacy compat for old presets that had useApproach/useEnclosure)
     if (p.vocab) {
       setVocab(new Set(p.vocab as MelodicVocab[]));
     } else {
@@ -946,9 +1278,10 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
       if (p.useEnclosure) v.add("enclosure");
       setVocab(v);
     }
-    setPatternLength(p.patternLength); setMinChordNotes(p.minChordNotes);
+    setPatternLength(p.patternLength);
     setSegmentCount(p.segmentCount); setFitRange(p.fitRange);
     setSameChord(p.sameChord); setPlaybackSpeed(p.playbackSpeed);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deletePreset = useCallback((name: string) => {
@@ -990,13 +1323,13 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
   const buildMPSnapshot = useCallback((): Record<string, unknown> => ({
     edo, tonicRoot, tonality, pipeline,
     scaleFamily, scaleMode,
-    harmonyCats: [...harmonyCats], enabledCats: [...enabledCats],
+    tonalitySet: [...tonalitySet],
+    checkedByTonality, approachesByTonality, xenByTonality,
+    enabledCats: [...enabledCats],
     progMode, bias, stepwise, vocab: [...vocab],
-    patternLength, minChordNotes, segmentCount, allowRepeats,
+    patternLength, segmentCount, allowRepeats,
     fitRange, sameChord, playbackSpeed,
-    voiceCount, multiTonic, chordsPerCenter,
-    checkedThirdQualities: [...checkedThirdQualities],
-    checkedSeventhQualities: [...checkedSeventhQualities],
+    voiceCount,
     rhythmWeights: rhythmWeights ? [...rhythmWeights] : undefined,
     segments,
     drill: pipeline === "pattern-drill" ? {
@@ -1010,10 +1343,11 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
     presetName,
   }), [
     edo, tonicRoot, tonality, pipeline, scaleFamily, scaleMode,
-    harmonyCats, enabledCats, progMode, bias, stepwise, vocab,
-    patternLength, minChordNotes, segmentCount, allowRepeats,
-    fitRange, sameChord, playbackSpeed, voiceCount, multiTonic, chordsPerCenter,
-    checkedThirdQualities, checkedSeventhQualities, rhythmWeights,
+    tonalitySet, checkedByTonality, approachesByTonality, xenByTonality,
+    enabledCats, progMode, bias, stepwise, vocab,
+    patternLength, segmentCount, allowRepeats,
+    fitRange, sameChord, playbackSpeed, voiceCount,
+    rhythmWeights,
     segments, drillAddressing, drillPatternInput, drillPattern, drillChordInput,
     drillChords, drillPermutation, presetName,
   ]);
@@ -1059,26 +1393,28 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
     if (typeof snap.scaleFamily === "string") setScaleFamily(snap.scaleFamily);
     if (typeof snap.scaleMode === "string") setScaleMode(snap.scaleMode);
     if (typeof snap.pipeline === "string") setPipeline(snap.pipeline as Pipeline);
-    if (Array.isArray(snap.harmonyCats)) setHarmonyCats(new Set(snap.harmonyCats as HarmonyCategory[]));
+    if (Array.isArray(snap.tonalitySet)) setTonalitySet(new Set(snap.tonalitySet as string[]));
+    if (snap.checkedByTonality && typeof snap.checkedByTonality === "object") {
+      setCheckedByTonality(snap.checkedByTonality as Record<string, string[]>);
+    }
+    if (snap.approachesByTonality && typeof snap.approachesByTonality === "object") {
+      setApproachesByTonality(snap.approachesByTonality as Record<string, Record<string, ApproachKind[]>>);
+    }
+    if (snap.xenByTonality && typeof snap.xenByTonality === "object") {
+      setXenByTonality(snap.xenByTonality as Record<string, Record<string, XenKind[]>>);
+    }
     if (Array.isArray(snap.enabledCats)) setEnabledCats(new Set(snap.enabledCats as NoteCategory[]));
     if (typeof snap.progMode === "string") setProgMode(snap.progMode as ProgressionMode);
     if (typeof snap.bias === "number") setBias(snap.bias);
     if (typeof snap.stepwise === "boolean") setStepwise(snap.stepwise);
     if (Array.isArray(snap.vocab)) setVocab(new Set(snap.vocab as MelodicVocab[]));
     if (typeof snap.patternLength === "number") setPatternLength(snap.patternLength);
-    if (typeof snap.minChordNotes === "number") setMinChordNotes(snap.minChordNotes);
     if (typeof snap.segmentCount === "number") setSegmentCount(snap.segmentCount);
     if (typeof snap.allowRepeats === "boolean") setAllowRepeats(snap.allowRepeats);
     if (Array.isArray(snap.fitRange) && snap.fitRange.length === 2) setFitRange(snap.fitRange as [number, number]);
     if (typeof snap.sameChord === "boolean") setSameChord(snap.sameChord);
     if (typeof snap.playbackSpeed === "number") setPlaybackSpeed(snap.playbackSpeed);
     if (typeof snap.voiceCount === "number") setVoiceCount(snap.voiceCount as 1 | 2 | 3 | 4);
-    if (snap.multiTonic === null || typeof snap.multiTonic === "string") {
-      setMultiTonic(snap.multiTonic as MultiTonicCycle | null);
-    }
-    if (typeof snap.chordsPerCenter === "number") setChordsPerCenter(snap.chordsPerCenter);
-    if (Array.isArray(snap.checkedThirdQualities)) setCheckedThirdQualities(new Set(snap.checkedThirdQualities as string[]));
-    if (Array.isArray(snap.checkedSeventhQualities)) setCheckedSeventhQualities(new Set(snap.checkedSeventhQualities as string[]));
     if (Array.isArray(snap.rhythmWeights)) setRhythmWeights(snap.rhythmWeights as number[]);
     else if (snap.rhythmWeights === undefined) setRhythmWeights(undefined);
     if (Array.isArray(snap.segments)) setSegments(snap.segments as SegmentState[]);
@@ -1231,12 +1567,10 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
   // ═══════════════════════════════════════════════════════════════════
 
   const generateChordsFirst = useCallback((count: number) => {
-    // Generate progression — multi-tonic wraps the standard generator
+    // Pool-driven progression — Markov chain over the selected tonality's chord pool
     const prog = sameChord
-      ? (() => { const one = generateProgression(edo, 1, harmonyCats, progMode, minChordNotes, tonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, includeAltered); if (!one[0]) return []; return Array.from({ length: count }, () => one[0]); })()
-      : multiTonic
-        ? generateMultiTonicProgression(edo, multiTonic, chordsPerCenter, harmonyCats, progMode, minChordNotes, tonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, includeAltered)
-        : generateProgression(edo, count, harmonyCats, progMode, minChordNotes, tonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, includeAltered);
+      ? (() => { const one = generateProg(1); if (!one[0]) return []; return Array.from({ length: count }, () => one[0]); })()
+      : generateProg(count);
     const mw = rhythmWeights;
     const segs: SegmentState[] = [];
     const usedMelodies = new Set<string>();
@@ -1265,7 +1599,7 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
     }
     setSegments(segs);
     setActiveSegment(0);
-  }, [edo, harmonyCats, progMode, fullPool, patternLength, enabledCats, bias, allowRepeats, minChordNotes, tonality, angularity, useApproach, useEnclosure, sameChord, makeVoices, multiTonic, chordsPerCenter, vocab, checkedThirdQualities, checkedSeventhQualities, includeAltered, rhythmWeights, tonicRoot]);
+  }, [edo, generateProg, fullPool, patternLength, enabledCats, bias, allowRepeats, tonality, angularity, useApproach, useEnclosure, sameChord, makeVoices, vocab, rhythmWeights, tonicRoot]);
 
   const reshuffleMelodiesOverChords = useCallback(() => {
     const mw = rhythmWeights;
@@ -1303,7 +1637,7 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
 
     if (hasVocab) {
       // Generate chords first so melody has chord context for vocab strategies
-      const prog = generateProgression(edo, count, harmonyCats, progMode, minChordNotes, tonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, includeAltered);
+      const prog = generateProg(count);
       for (let i = 0; i < prog.length; i++) {
         const ch = prog[i];
         const prevEnd = segs.length > 0 ? segs[segs.length - 1].melody.at(-1) : undefined;
@@ -1321,7 +1655,7 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
       }
     } else {
       // Generate chord progression via Markov chain first, then create melodies
-      const prog = generateProgression(edo, count, harmonyCats, progMode, minChordNotes, tonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, includeAltered);
+      const prog = generateProg(count);
       for (let i = 0; i < prog.length; i++) {
         const ch = prog[i];
         const prevEnd = segs.length > 0 ? segs[segs.length - 1].melody.at(-1) : undefined;
@@ -1339,7 +1673,7 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
     }
     setSegments(segs);
     setActiveSegment(0);
-  }, [edo, fullPool, patternLength, allowRepeats, harmonyCats, minChordNotes, tonality, enabledCats, bias, fitRange, angularity, useApproach, useEnclosure, makeVoices, checkedThirdQualities, checkedSeventhQualities, includeAltered, rhythmWeights, progMode, tonicRoot, vocab]);
+  }, [edo, fullPool, patternLength, allowRepeats, generateProg, tonality, enabledCats, bias, fitRange, angularity, useApproach, useEnclosure, makeVoices, rhythmWeights, tonicRoot, vocab]);
 
   const reshuffleChordsOverMelodies = useCallback(() => {
     // Generate a new Markov chain progression, then assign chords to melodies.
@@ -1347,7 +1681,7 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
     setSegments(prev => {
       const unlocked = prev.filter(s => !s.locked).length;
       if (unlocked === 0) return prev;
-      const prog = generateProgression(edo, unlocked, harmonyCats, progMode, minChordNotes, tonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, includeAltered);
+      const prog = generateProg(unlocked);
       const result: typeof prev = [];
       let progIdx = 0;
       for (const s of prev) {
@@ -1361,7 +1695,7 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
       }
       return result;
     });
-  }, [edo, harmonyCats, progMode, minChordNotes, tonality, tonicRoot, checkedThirdQualities, checkedSeventhQualities, includeAltered]);
+  }, [generateProg]);
 
   // ═══════════════════════════════════════════════════════════════════
 
@@ -1406,7 +1740,7 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
         // In sameChord mode, reuse the first segment's chord
         const ch = sameChord && prev.length > 0
           ? { chordPcs: prev[0].chordPcs, root: prev[0].root, chordTypeId: prev[0].chordTypeId, roman: prev[0].roman }
-          : (() => { const p = generateProgression(edo, 1, harmonyCats, progMode, minChordNotes, tonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, includeAltered); return p[0]; })();
+          : generateProg(1)[0];
         if (!ch) return prev;
         const prevEnd = prev.length > 0 ? prev[prev.length - 1].melody.at(-1) : undefined;
         const melody = randomMelodyWithAngularity(fullPool, ch.chordPcs, patternLength, enabledCats, bias, allowRepeats, edo, angularity, true, useApproach, useEnclosure, mw, prevEnd, tonicRoot, 0, 0, undefined, vocab, cellRes, tonality);
@@ -1420,11 +1754,11 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
         const prevEnd = prev.length > 0 ? prev[prev.length - 1].melody.at(-1) : undefined;
         const melody = randomMelodyWithAngularity(fullPool, [], patternLength, enabledCats, bias, allowRepeats, edo, angularity, false, useApproach, useEnclosure, mw, prevEnd, tonicRoot, 0, 0, undefined, vocab, cellRes, tonality);
         const bm = captureBergonziMeta();
-        const match = pickChordForMelodyInRange(melody, edo, fitRange[0], fitRange[1], harmonyCats, minChordNotes, tonality, tonicRoot, undefined, checkedSeventhQualities, checkedThirdQualities, includeAltered);
+        const match = pickChordForMelody(melody);
         if (match) {
-          return [...prev, { chordPcs: match.chordPcs, root: match.root, chordTypeId: match.chordTypeId, melody, ...bm }];
+          return [...prev, { chordPcs: match.chordPcs, root: match.root, chordTypeId: match.chordTypeId, roman: match.roman, melody, ...bm }];
         }
-        const prog = generateProgression(edo, 1, harmonyCats, "random", minChordNotes, tonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, includeAltered);
+        const prog = generateProg(1, "random");
         const ch = prog[0];
         if (!ch) return prev;
         return [...prev, { chordPcs: ch.chordPcs, root: ch.root, chordTypeId: ch.chordTypeId, roman: ch.roman, melody, ...bm }];
@@ -1456,9 +1790,9 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
   const stepSegmentChord = (i: number) => {
     setSegments(prev => prev.map((s, idx) => {
       if (idx !== i || s.locked) return s;
-      const match = pickChordForMelodyInRange(s.melody, edo, fitRange[0], fitRange[1], harmonyCats, minChordNotes, tonality, tonicRoot, undefined, checkedSeventhQualities, checkedThirdQualities, includeAltered);
-      if (match) return { ...s, chordPcs: match.chordPcs, root: match.root, chordTypeId: match.chordTypeId, roman: undefined };
-      const prog = generateProgression(edo, 1, harmonyCats, "random", minChordNotes, tonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, includeAltered);
+      const match = pickChordForMelody(s.melody);
+      if (match) return { ...s, chordPcs: match.chordPcs, root: match.root, chordTypeId: match.chordTypeId, roman: match.roman };
+      const prog = generateProg(1, "random");
       const ch = prog[0];
       if (!ch) return s;
       return { ...s, chordPcs: ch.chordPcs, root: ch.root, chordTypeId: ch.chordTypeId, roman: ch.roman };
@@ -1476,14 +1810,10 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
       const afterCount = prev.length - anchorIdx - 1;
       // Generate a progression that ends at anchor position: generate beforeCount+1 chords,
       // use the first beforeCount (the +1 slot will be replaced by anchor)
-      const beforeProg = beforeCount > 0
-        ? generateProgression(edo, beforeCount, harmonyCats, progMode, minChordNotes, tonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, includeAltered)
-        : [];
+      const beforeProg = beforeCount > 0 ? generateProg(beforeCount) : [];
       // Generate chords continuing from anchor: seed a new progression starting from anchor's
       // harmonic neighborhood — generate afterCount+1, skip the first (anchor proxy), take the rest
-      const afterProg = afterCount > 0
-        ? generateProgression(edo, afterCount + 1, harmonyCats, progMode, minChordNotes, tonality, tonicRoot, checkedSeventhQualities, checkedThirdQualities, includeAltered).slice(1)
-        : [];
+      const afterProg = afterCount > 0 ? generateProg(afterCount + 1).slice(1) : [];
       // Stitch: before chords + anchor (unchanged) + after chords
       const result: typeof prev = [];
       let beforeIdx = 0;
@@ -1713,60 +2043,33 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
           </select>
         </div>
         <div>
-          <label className="block text-[10px] text-[#666] uppercase tracking-wider mb-1">Scale / Mode</label>
-          <select
-            value={`${scaleFamily}::${scaleMode}`}
-            onChange={e => {
-              const [fam, mode] = e.target.value.split("::");
-              setScaleFamily(fam); setScaleMode(mode);
-            }}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 h-7 text-[11px] text-white focus:outline-none"
-            title="Drives degree resolution, the derived major/minor tonality, and every pipeline's chord pool. Replaces the old Major/Minor/Both toggle.">
-            {(() => {
-              const byFam: Record<string, string[]> = {};
-              for (const { family, mode } of DRILL_SCALE_OPTIONS) {
-                (byFam[family] = byFam[family] ?? []).push(mode);
-              }
-              return Object.entries(byFam).map(([fam, modes]) => (
-                <optgroup key={fam} label={fam}>
-                  {modes.map(m => (
-                    <option key={m} value={`${fam}::${m}`}>{m}</option>
-                  ))}
-                </optgroup>
-              ));
-            })()}
-          </select>
-        </div>
-        <div>
           <label className="block text-[10px] text-[#666] uppercase tracking-wider mb-1">Melody Notes</label>
-          <div className="flex gap-1">
-            {PATTERN_LENGTHS.map(n => (
-              <button key={n} onClick={() => setPatternLength(n)}
-                className={`w-7 h-7 text-[11px] rounded border transition-colors ${
-                  patternLength === n ? "bg-[#2a2a2a] border-[#555] text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                }`}>{n}</button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <label className="block text-[10px] text-[#666] uppercase tracking-wider mb-1">Min Chord Notes</label>
-          <div className="flex gap-1">
-            {CHORD_NOTE_COUNTS.map(n => (
-              <button key={n} onClick={() => setMinChordNotes(n)}
-                className={`w-7 h-7 text-[11px] rounded border transition-colors ${
-                  minChordNotes === n ? "bg-[#2a2a2a] border-[#555] text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                }`}>{n}</button>
-            ))}
-          </div>
+          <input type="number" min={1} max={16} step={1}
+            value={patternLength}
+            onChange={e => setPatternLength(Math.max(1, Math.min(16, parseInt(e.target.value) || 1)))}
+            className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 h-7 text-[11px] text-white focus:outline-none text-center" />
         </div>
         <div>
           <label className="block text-[10px] text-[#666] uppercase tracking-wider mb-1">Count</label>
+          <input type="number" min={1} max={32} step={1}
+            value={segmentCount}
+            onChange={e => setSegmentCount(Math.max(1, Math.min(32, parseInt(e.target.value) || 1)))}
+            className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 h-7 text-[11px] text-white focus:outline-none text-center" />
+        </div>
+        <div>
+          <label className="block text-[10px] text-[#666] uppercase tracking-wider mb-1">Logic</label>
           <div className="flex gap-1">
-            {[2, 4, 6, 8, 12, 16].map(n => (
-              <button key={n} onClick={() => setSegmentCount(n)}
+            {([
+              { value: "functional" as ProgressionMode, label: "Markov", color: "#6a9aca" },
+              { value: "random" as ProgressionMode,     label: "Random", color: "#999" },
+            ]).map(m => (
+              <button key={m.value} onClick={() => setProgMode(m.value)}
                 className={`px-2 h-7 text-[10px] rounded border transition-colors ${
-                  segmentCount === n ? "bg-[#2a2a2a] border-[#555] text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                }`}>{n}</button>
+                  progMode === m.value ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                }`}
+                style={progMode === m.value ? { backgroundColor: m.color + "30", borderColor: m.color, color: m.color } : {}}>
+                {m.label}
+              </button>
             ))}
           </div>
         </div>
@@ -1783,72 +2086,15 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
         </div>
       </div>
 
-      {/* Row 2: Harmony (non-xenharmonic categories) */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-[10px] text-[#666] uppercase tracking-wider">Harmony</span>
-        {HARMONY_CATEGORIES.filter(c => availableCats.has(c.id) && c.group !== "Xenharmonic").map(c => {
-          const on = harmonyCats.has(c.id);
-          const color = HARMONY_GROUP_COLORS[c.group] ?? "#999";
-          return (
-            <button key={c.id} onClick={() => toggleHarmony(c.id)} title={`${c.desc} [${c.group}]`}
-              className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-                on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-              }`}
-              style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
-              {c.label.replace("{edo}", String(edo))}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Row 2b: 3rds + 7ths + Logic */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-[10px] text-[#666] uppercase tracking-wider">3rds</span>
-        {availableThirdQualities.map(q => {
-          const on = checkedThirdQualities.has(q.id);
-          const color = "#7aaa6a";
-          return (
-            <button key={q.id} onClick={() => toggleThirdQuality(q.id)} title={q.desc}
-              className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-                on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-              }`}
-              style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
-              {q.label}
-            </button>
-          );
-        })}
-        {availableSeventhQualities.length > 0 && <>
-          <div className="border-l border-[#2a2a2a] h-5 mx-0.5" />
-          <span className="text-[10px] text-[#666] uppercase tracking-wider">7ths</span>
-          {availableSeventhQualities.map(q => {
-            const on = checkedSeventhQualities.has(q.id);
-            const color = "#b07acc";
-            return (
-              <button key={q.id} onClick={() => toggleSeventhQuality(q.id)} title={q.desc}
-                className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-                  on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                }`}
-                style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
-                {q.label}
-              </button>
-            );
-          })}
-        </>}
-        <div className="border-l border-[#2a2a2a] h-5 mx-0.5" />
-        <span className="text-[10px] text-[#666] uppercase tracking-wider">Logic</span>
-        {([
-          { value: "functional" as ProgressionMode, label: "Functional", desc: "Chords follow common-practice tendencies (T→PD→D→T)", color: "#6a9aca" },
-          { value: "random" as ProgressionMode,     label: "Random",     desc: "Pick chords randomly from the pool",                  color: "#999" },
-        ]).map(m => (
-          <button key={m.value} onClick={() => setProgMode(m.value)} title={m.desc}
-            className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-              progMode === m.value ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-            }`}
-            style={progMode === m.value ? { backgroundColor: m.color + "30", borderColor: m.color, color: m.color } : {}}>
-            {m.label}
-          </button>
-        ))}
-      </div>
+      {/* Tonality multi-select + per-tonality chord pool (mirrors ChordsTab) */}
+      <TonalityChordPicker
+        edo={edo}
+        tonalityBanks={tonalityBanks}
+        tonalitySet={tonalitySet} setTonalitySet={setTonalitySet}
+        checkedByTonality={checkedByTonality} setCheckedByTonality={setCheckedByTonality}
+        approachesByTonality={approachesByTonality} setApproachesByTonality={setApproachesByTonality}
+        xenByTonality={xenByTonality} setXenByTonality={setXenByTonality}
+      />
 
       {/* Row 3: Chord fit slider (melody-first only) */}
       {pipeline === "melody-first" && (
@@ -1987,41 +2233,6 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
         })}
       </div>
 
-      {/* Row 6b: Multi-tonic system (optional) */}
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] text-[#666] uppercase tracking-wider">Key Cycle</span>
-        <button onClick={() => setMultiTonic(null)}
-          className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-            !multiTonic ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-          }`}
-          style={!multiTonic ? { backgroundColor: "#5a8a5a30", borderColor: "#5a8a5a", color: "#5a8a5a" } : {}}
-          title="Single key center — standard progression">Single Key</button>
-        {([
-          { value: "major3rd" as const, label: "Maj 3rds", color: "#c8aa50", title: "Coltrane changes — major-third cycle (C → E → A♭)" },
-          { value: "minor3rd" as const, label: "Min 3rds", color: "#c06090", title: "Diminished axis — minor-third cycle (C → E♭ → G♭ → A)" },
-          { value: "tritone" as const,  label: "Tritone",  color: "#8888cc", title: "Tritone axis — (C → F♯)" },
-          { value: "wholeTone" as const, label: "Whole Tone", color: "#aa8866", title: "Whole-tone cycle through all keys by M2" },
-        ]).map(opt => {
-          const active = multiTonic === opt.value;
-          return (
-            <button key={opt.value} onClick={() => setMultiTonic(active ? null : opt.value)}
-              className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-                active ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-              }`}
-              style={active ? { backgroundColor: opt.color + "30", borderColor: opt.color, color: opt.color } : {}}
-              title={opt.title}>{opt.label}</button>
-          );
-        })}
-        {multiTonic && (
-          <div className="flex items-center gap-1 ml-2">
-            <span className="text-[9px] text-[#666]">per key:</span>
-            <input type="range" min={1} max={6} value={chordsPerCenter} onChange={e => setChordsPerCenter(Number(e.target.value))}
-              className="w-16 h-1 accent-[#c8aa50]" />
-            <span className="text-[10px] text-[#999] w-3">{chordsPerCenter}</span>
-          </div>
-        )}
-      </div>
-
       <div className="flex gap-2 items-center">
         <button onClick={() => generate(segmentCount)}
           className="px-5 py-2 text-sm rounded border bg-[#0e1a0e] border-[#2a4a2a] text-[#5a8a5a] hover:text-[#7aaa7a] transition-colors font-bold">
@@ -2055,9 +2266,8 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
           const defaultParts = ct
             ? toRomanNumeralParts(edo, seg.root, ct)
             : { roman: "?", chordType: "Unknown" };
-          // Use V/ notation for secondary dominants, then generation override, then default
-          const secLabel = getSecDomLabel(edo, seg.root, seg.chordTypeId, harmonyCats);
-          const roman = secLabel ?? seg.roman ?? defaultParts.roman;
+          // Pool-driven generator already produces V/X labels in `roman`, so use it directly.
+          const roman = seg.roman ?? defaultParts.roman;
           const romanParts = { roman, chordType: defaultParts.chordType };
 
           const isLocked = !!seg.locked;
@@ -2378,12 +2588,7 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
           melody={segments[chordBrowserIdx].melody}
           edo={edo}
           allChordTypes={allChordTypes}
-          harmonyCats={harmonyCats}
-          tonality={tonality}
-          tonicRoot={tonicRoot}
-          seventhFilter={checkedSeventhQualities}
-          thirdFilter={checkedThirdQualities}
-          includeAltered={includeAltered}
+          poolChords={allPoolChords}
           onPick={(root, chordTypeId, chordPcs) => replaceChord(chordBrowserIdx, root, chordTypeId, chordPcs)}
           onClose={() => setChordBrowserIdx(null)}
         />
@@ -2463,35 +2668,94 @@ function PatternDrillSection({
     setDrillChords(drillChords.filter((_, i) => i !== idx));
   }, [drillChords, setDrillChords]);
 
+  // Active tonality bank name. drillScaleMode comes back as "Ionian" for the
+  // Major bank, so we map that one case back to the bank's display name.
+  const activeTonality = useMemo(
+    () => (drillScaleMode === "Ionian" ? "Major" : drillScaleMode),
+    [drillScaleMode],
+  );
+
   // Scale PCs for the active mode — drives degree resolution in realizePattern.
   const activeScalePcs = useMemo(
     () => getScalePcs(edo, tonicRoot, drillScaleFamily, drillScaleMode),
     [edo, tonicRoot, drillScaleFamily, drillScaleMode],
   );
-  // All chord types available in the active EDO — reused by the scale-aware
-  // palette builder so every mode change reshapes the full chord pool.
-  const drillChordTypes = useMemo(() => getEdoChordTypes(edo), [edo]);
 
-  // Flattened scale-aware palette: every chord the UI shows (diatonic + modal
-  // interchange + sec dom + TT + microtonal stable/tense).  Used wherever the
-  // drill section needs to look up a chord by its roman numeral or by (root,
-  // type) — TT substitution, input validation, and Randomize's fallback pool.
-  // Drives microtonal chords into Randomize that the legacy hand-authored
-  // palette excluded.
+  // Tonality bank for the active mode (Primary / Diatonic / Modal Interchange
+  // / Secondary Dominants / Tritone Subs roman-numeral levels).
+  const activeBank = useMemo(() => {
+    const banks = getTonalityBanks(edo);
+    return banks.find(b => b.name === activeTonality) ?? null;
+  }, [edo, activeTonality]);
+
+  // Derive per-numeral xen-variant toggles by parsing labels in checkedChords:
+  // a label like "I~neu" means I has its neutral-3rd variant enabled. This
+  // feeds buildChordMapForTonality so the variant resolves at drill time.
+  const xenForDrill = useMemo<Record<string, XenKind[]>>(() => {
+    const out: Record<string, XenKind[]> = {};
+    const validKinds: readonly string[] = XEN_KINDS;
+    for (const label of checkedChords) {
+      const sep = label.indexOf(XEN_SUFFIX);
+      if (sep < 0) continue;
+      const target = label.slice(0, sep);
+      const kind = label.slice(sep + 1);
+      if (!validKinds.includes(kind)) continue;
+      if (!out[target]) out[target] = [];
+      out[target].push(kind as XenKind);
+    }
+    return out;
+  }, [checkedChords]);
+
+  // label → steps-from-tonic map for the active tonality (base chords +
+  // bank-explicit shapes + xen variants). Used by resolveChord and input
+  // validation.
+  const chordMap = useMemo(
+    () => buildChordMapForTonality(activeTonality, edo, {}, xenForDrill),
+    [activeTonality, edo, xenForDrill],
+  );
+
+  // Flat list of every roman numeral surfaced by the bank (plus any enabled
+  // xen variants) — the chord palette UI iterates the bank's levels directly,
+  // but resolveChord / Randomize / input validation need a flat pool of valid
+  // labels.
   const romanChords = useMemo(() => {
-    const byCat = buildScaleAwareDrillPalette(edo, tonicRoot, activeScalePcs, drillChordTypes);
-    return Object.values(byCat).flat();
-  }, [edo, tonicRoot, activeScalePcs, drillChordTypes]);
+    if (!activeBank) return [] as { roman: string; root: number; steps: number[] }[];
+    const out: { roman: string; root: number; steps: number[] }[] = [];
+    const seen = new Set<string>();
+    for (const level of activeBank.levels) {
+      for (const entry of level.chords) {
+        if (seen.has(entry.label)) continue;
+        const stepsFromTonic = entry.steps ?? chordMap[entry.label];
+        if (!stepsFromTonic || stepsFromTonic.length === 0) continue;
+        seen.add(entry.label);
+        const rootRel = ((stepsFromTonic[0] % edo) + edo) % edo;
+        const stepsFromRoot = stepsFromTonic.map(s => s - stepsFromTonic[0]);
+        out.push({ roman: entry.label, root: rootRel, steps: stepsFromRoot });
+      }
+    }
+    // Xen variants currently in chordMap (e.g. "I~neu" when user toggled it on).
+    for (const [label, stepsFromTonic] of Object.entries(chordMap)) {
+      if (seen.has(label)) continue;
+      if (label.indexOf(XEN_SUFFIX) < 0) continue;
+      if (!stepsFromTonic || stepsFromTonic.length === 0) continue;
+      seen.add(label);
+      const rootRel = ((stepsFromTonic[0] % edo) + edo) % edo;
+      const stepsFromRoot = stepsFromTonic.map(s => s - stepsFromTonic[0]);
+      out.push({ roman: label, root: rootRel, steps: stepsFromRoot });
+    }
+    return out;
+  }, [activeBank, chordMap, edo]);
 
   // Resolve roman numeral to chord data
   const resolveChord = useCallback((roman: string) => {
-    const match = romanChords.find(c => c.roman === roman);
-    if (!match) return null;
-    const root = ((match.root + tonicRoot) % edo + edo) % edo;
-    const steps = match.steps; // already intervals from root
-    const pcs = steps.map(s => ((s + root) % edo + edo) % edo);
+    const stepsFromTonic = chordMap[roman];
+    if (!stepsFromTonic || stepsFromTonic.length === 0) return null;
+    const rootBase = stepsFromTonic[0];
+    const root = ((rootBase + tonicRoot) % edo + edo) % edo;
+    const steps = stepsFromTonic.map(s => s - rootBase);
+    const pcs = stepsFromTonic.map(s => ((s + tonicRoot) % edo + edo) % edo);
     return { roman, root, steps, pcs };
-  }, [romanChords, tonicRoot, edo]);
+  }, [chordMap, tonicRoot, edo]);
 
   // Get active permutations.  Permutation keys encode order:
   //   original, retrograde, rotate{i} (i = 1..N-1), swap{i} (swap positions i and i+1, i = 0..N-2).
@@ -2578,34 +2842,31 @@ function PatternDrillSection({
         </div>
       </div>
 
-      {/* Scale / Mode — same state as the main settings row above; changing
-          it here updates it there too and vice-versa. */}
-      <div className="flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="block text-[10px] text-[#666] uppercase tracking-wider mb-1">Scale / Mode</label>
-          <select
-            value={`${drillScaleFamily}::${drillScaleMode}`}
-            onChange={e => {
-              const [fam, mode] = e.target.value.split("::");
-              setDrillScaleFamily(fam); setDrillScaleMode(mode);
-            }}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-white focus:outline-none"
-            title="Scale used for degree resolution. Shared with the melody-first / chords-first pipelines.">
-            {(() => {
-              const byFam: Record<string, string[]> = {};
-              for (const { family, mode } of DRILL_SCALE_OPTIONS) {
-                (byFam[family] = byFam[family] ?? []).push(mode);
-              }
-              return Object.entries(byFam).map(([fam, modes]) => (
-                <optgroup key={fam} label={fam}>
-                  {modes.map(m => (
-                    <option key={m} value={`${fam}::${m}`}>{m}</option>
-                  ))}
-                </optgroup>
-              ));
-            })()}
-          </select>
-        </div>
+      {/* Tonality — single-select buttons grouped by family (mirrors the
+          Spatial Audiation Chords / Mode-ID picker). Shared state with the
+          melody-first / chords-first pipelines via setDrillScaleMode. */}
+      <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2">
+        <p className="text-xs text-[#888] font-medium">TONALITY</p>
+        {TONALITY_FAMILIES.map(group => (
+          <div key={group.key}>
+            <p className="text-[9px] mb-1 font-medium tracking-wider"
+               style={{ color: group.color }}>{group.label}</p>
+            <div className="flex flex-wrap gap-1">
+              {group.tonalities.map(t => {
+                const on = activeTonality === t;
+                return (
+                  <button key={t} onClick={() => setDrillScaleMode(t)}
+                    className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                      on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                    }`}
+                    style={on ? { backgroundColor: group.color + "30", borderColor: group.color, color: group.color } : {}}>
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Pattern input */}
@@ -2690,57 +2951,104 @@ function PatternDrillSection({
         )}
       </div>
 
-      {/* Chord progression picker */}
+      {/* Chord progression picker — bank-derived roman numerals per level,
+          styled to match the Spatial Audiation Chords tab's chord-card grid
+          (checkbox + label, accent-tinted when checked). */}
       <div className="bg-[#111] border border-[#1e1e1e] rounded-lg p-3 space-y-3">
         <div className="text-[10px] text-[#aa66aa] uppercase tracking-wider font-medium">Chord Progression</div>
-        {/* 6-category taxonomy — the entire palette is rebuilt per scale.
-            Changing Ionian → Dorian → Phrygian Dominant reshapes not just
-            Diatonic but also Modal Interchange, Secondary Dominant, TT,
-            Microtonal Stable, and Microtonal Tense. */}
         {(() => {
-          const byCat = buildScaleAwareDrillPalette(edo, tonicRoot, activeScalePcs, drillChordTypes);
-          const CAT_ORDER: DrillChordCategory[] = ["diatonic", "modal", "secdom", "tritone", "xen-stable", "xen-tense"];
-          return CAT_ORDER.map(cat => {
-            const chords = byCat[cat];
-            if (chords.length === 0) return null;
-            const info = DRILL_CATEGORY_INFO[cat];
-            const triads   = chords.filter(rc => rc.steps.length <= 3);
-            const sevenths = chords.filter(rc => rc.steps.length >= 4);
-            const renderBtn = (rc: DrillChord) => {
-              const checked = checkedChords.has(rc.roman);
-              return (
-                <button key={rc.roman} onClick={() => toggleChord(rc.roman)}
-                  className="px-1.5 py-0.5 text-[10px] rounded border transition-colors font-mono"
-                  style={{
-                    borderColor: checked ? info.color : info.color + "40",
-                    backgroundColor: checked ? info.color + "25" : "transparent",
-                    color: checked ? "#fff" : "#888",
-                  }}>
-                  {renderAccidentals(rc.roman)}
-                </button>
-              );
-            };
-            return (
-              <div key={cat} className="space-y-1">
-                {triads.length > 0 && (
-                  <div className="flex flex-wrap gap-1 items-center">
-                    <span className="text-[8px] uppercase tracking-wider mr-1 w-20 text-right flex-shrink-0"
-                      style={{ color: info.color }}
-                      title={info.desc}>
-                      {info.label}
-                    </span>
-                    {triads.map(renderBtn)}
-                  </div>
-                )}
-                {sevenths.length > 0 && (
-                  <div className="flex flex-wrap gap-1 items-center">
-                    <span className="w-20 flex-shrink-0" />
-                    {sevenths.map(renderBtn)}
-                  </div>
-                )}
+          if (!activeBank) return null;
+          const fam = TONALITY_FAMILIES.find(f => f.tonalities.includes(activeTonality));
+          const accent = fam?.color ?? "#7173e6";
+          return (
+            <div className="border rounded overflow-hidden" style={{ borderColor: accent + "40" }}>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0a0a0a]">
+                <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent }}>
+                  {activeTonality.toUpperCase()}
+                </span>
               </div>
-            );
-          });
+              <div className="space-y-2 p-2">
+                {activeBank.levels.map(level => {
+                  const visible = level.chords.filter(e => {
+                    const s = e.steps ?? chordMap[e.label];
+                    return s && s.length > 0;
+                  });
+                  if (visible.length === 0) return null;
+                  const checkedCount = visible.filter(c => checkedChords.has(c.label)).length;
+                  const allChecked = checkedCount === visible.length;
+                  const someChecked = checkedCount > 0;
+                  const setLevel = (select: boolean) => {
+                    setCheckedChords(prev => {
+                      const next = new Set(prev);
+                      for (const c of visible) {
+                        if (select) next.add(c.label); else next.delete(c.label);
+                      }
+                      setDrillChords([...next]);
+                      return next;
+                    });
+                  };
+                  return (
+                    <div key={level.name} className="border border-[#1a1a1a] rounded overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0e0e0e]">
+                        <span className="text-xs text-[#888] font-medium flex-1">{level.name}</span>
+                        <span className="text-[10px] text-[#444]">{checkedCount}/{visible.length}</span>
+                        <button onClick={() => setLevel(!allChecked)}
+                          className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+                            allChecked ? "" : someChecked ? "border-[#444] text-[#888]" : "border-[#222] text-[#555]"
+                          }`}
+                          style={allChecked ? { borderColor: accent, color: accent } : undefined}>
+                          {allChecked ? "Clear" : "All"}
+                        </button>
+                      </div>
+                      <div className="grid gap-1 p-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+                        {visible.map(entry => {
+                          const isChecked = checkedChords.has(entry.label);
+                          const baseSteps = entry.steps ?? chordMap[entry.label] ?? null;
+                          const xenAvail = baseSteps ? applicableXenKinds(baseSteps, edo) : [];
+                          return (
+                            <div key={entry.label}
+                              className="rounded overflow-hidden border transition-colors"
+                              style={isChecked
+                                ? { background: accent + "30", borderColor: accent }
+                                : { background: "#141414", borderColor: "#1a1a1a" }}>
+                              <button onClick={() => toggleChord(entry.label)}
+                                className={`w-full text-left px-2 py-1 text-xs transition-colors ${
+                                  isChecked ? "" : "text-[#666] hover:text-[#888]"
+                                }`}
+                                style={isChecked ? { color: accent } : undefined}>
+                                {formatRomanNumeral(entry.label)}
+                              </button>
+                              {xenAvail.length > 0 && (
+                                <div className="flex gap-0.5 px-1 py-1"
+                                  style={{ background: isChecked ? "rgba(0,0,0,0.4)" : "#080808" }}>
+                                  {xenAvail.map(k => {
+                                    const variantLabel = `${entry.label}${XEN_SUFFIX}${k}`;
+                                    const on = checkedChords.has(variantLabel);
+                                    const color = XEN_COLOR[k];
+                                    return (
+                                      <button key={k}
+                                        onClick={() => toggleChord(variantLabel)}
+                                        title={`${entry.label} with ${k === "neu" ? "neutral" : k === "sub" ? "subminor" : "supermajor"} 3rd`}
+                                        className={`flex-1 text-[8px] leading-none py-0.5 rounded border transition-colors ${
+                                          on ? "text-black font-semibold" : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
+                                        }`}
+                                        style={on ? { background: color, borderColor: color } : undefined}>
+                                        {XEN_LABEL[k]}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
         })()}
         {/* Action buttons + custom input */}
         <div className="flex gap-2 items-center">
@@ -2947,33 +3255,21 @@ function ChordBrowser({
   melody,
   edo,
   allChordTypes,
-  harmonyCats,
-  tonality,
-  tonicRoot,
-  seventhFilter,
-  thirdFilter,
-  includeAltered,
+  poolChords,
   onPick,
   onClose,
 }: {
   melody: number[];
   edo: number;
   allChordTypes: ReturnType<typeof getEdoChordTypes>;
-  harmonyCats: Set<HarmonyCategory>;
-  tonality: Tonality;
-  tonicRoot: number;
-  seventhFilter?: Set<string>;
-  thirdFilter?: Set<string>;
-  includeAltered?: boolean;
+  poolChords: PoolProgChord[];
   onPick: (root: number, chordTypeId: string, chordPcs: number[]) => void;
   onClose: () => void;
 }) {
   const [search, setSearch] = useState("");
 
-  // Build pool from selected harmony categories, then score by melody fit
+  // Score the user-selected chord pool by melody fit
   const ranked = useMemo(() => {
-    // Use generateProgression with a large count to sample the pool, then deduplicate
-    const pool = generateProgression(edo, 500, harmonyCats, "random", 2, tonality, tonicRoot, seventhFilter, thirdFilter, includeAltered);
     const seen = new Set<string>();
     const results: {
       root: number;
@@ -2983,28 +3279,24 @@ function ChordBrowser({
       name: string;
       roman: string;
     }[] = [];
-
-    for (const ch of pool) {
+    for (const ch of poolChords) {
       const key = `${ch.root}:${ch.chordTypeId}`;
       if (seen.has(key)) continue;
       seen.add(key);
       const ct = allChordTypes.find(c => c.id === ch.chordTypeId);
-      if (!ct) continue;
       const overlap = chordMelodyOverlap(melody, ch.chordPcs, edo);
       results.push({
         root: ch.root,
         chordTypeId: ch.chordTypeId,
         chordPcs: ch.chordPcs,
         overlap,
-        name: ct.name,
+        name: ct?.name ?? ch.roman,
         roman: ch.roman,
       });
     }
-
-    // Sort by overlap descending (highest overlap = best fit first)
     results.sort((a, b) => b.overlap - a.overlap);
     return results;
-  }, [melody, edo, allChordTypes, harmonyCats, tonality, tonicRoot, seventhFilter, thirdFilter, includeAltered]);
+  }, [melody, edo, allChordTypes, poolChords]);
 
   const filtered = search
     ? ranked.filter(c =>
@@ -3109,6 +3401,297 @@ function VoicingReference() {
             ))}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Tonality + chord-pool picker (mirrors ChordsTab) ─────────────────
+// Family-grouped tonality multi-select on top, then a per-tonality
+// chord-selection panel for each active tonality (Primary / Diatonic /
+// Modal Interchange levels with per-roman-numeral toggles + approach
+// chord toggles for the V/X, vii°/X, ii-V, TT/X targets).
+function TonalityChordPicker({
+  edo, tonalityBanks,
+  tonalitySet, setTonalitySet,
+  checkedByTonality, setCheckedByTonality,
+  approachesByTonality, setApproachesByTonality,
+  xenByTonality, setXenByTonality,
+}: {
+  edo: number;
+  tonalityBanks: TonalityBank[];
+  tonalitySet: Set<string>;
+  setTonalitySet: (next: Set<string>) => void;
+  checkedByTonality: Record<string, string[]>;
+  setCheckedByTonality: (next: Record<string, string[]>) => void;
+  approachesByTonality: Record<string, Record<string, ApproachKind[]>>;
+  setApproachesByTonality: (next: Record<string, Record<string, ApproachKind[]>>) => void;
+  xenByTonality: Record<string, Record<string, XenKind[]>>;
+  setXenByTonality: (next: Record<string, Record<string, XenKind[]>>) => void;
+}) {
+  const banksByName = useMemo(() => {
+    const m: Record<string, TonalityBank> = {};
+    for (const b of tonalityBanks) m[b.name] = b;
+    return m;
+  }, [tonalityBanks]);
+
+  const toggleTonality = (name: string) => {
+    const next = new Set(tonalitySet);
+    if (next.has(name)) next.delete(name); else next.add(name);
+    setTonalitySet(next);
+    // Default-check the Primary level for newly added tonalities
+    if (next.has(name) && !checkedByTonality[name]) {
+      const bank = banksByName[name];
+      if (bank) {
+        const primary = bank.levels.find(l => l.name === "Primary");
+        if (primary) {
+          setCheckedByTonality({ ...checkedByTonality, [name]: primary.chords.map(c => c.label) });
+        }
+      }
+    }
+  };
+
+  const toggleChord = (tonality: string, label: string) => {
+    const list = checkedByTonality[tonality] ?? [];
+    const has = list.includes(label);
+    const nextList = has ? list.filter(l => l !== label) : [...list, label];
+    setCheckedByTonality({ ...checkedByTonality, [tonality]: nextList });
+  };
+
+  const setLevelChecked = (tonality: string, levelChords: ChordEntry[], select: boolean) => {
+    const list = new Set(checkedByTonality[tonality] ?? []);
+    for (const c of levelChords) {
+      if (select) list.add(c.label); else list.delete(c.label);
+    }
+    setCheckedByTonality({ ...checkedByTonality, [tonality]: Array.from(list) });
+  };
+
+  const toggleApproach = (tonality: string, target: string, kind: ApproachKind) => {
+    const tApp = approachesByTonality[tonality] ?? {};
+    const list = tApp[target] ?? [];
+    const has = list.includes(kind);
+    const nextList = has ? list.filter(k => k !== kind) : [...list, kind];
+    const nextT = { ...tApp, [target]: nextList };
+    if (nextList.length === 0) delete nextT[target];
+    setApproachesByTonality({ ...approachesByTonality, [tonality]: nextT });
+  };
+
+  const toggleXen = (tonality: string, target: string, kind: XenKind) => {
+    const tXen = xenByTonality[tonality] ?? {};
+    const list = tXen[target] ?? [];
+    const has = list.includes(kind);
+    const nextList = has ? list.filter(k => k !== kind) : [...list, kind];
+    const nextT = { ...tXen, [target]: nextList };
+    if (nextList.length === 0) delete nextT[target];
+    setXenByTonality({ ...xenByTonality, [tonality]: nextT });
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Family-grouped tonality multi-select */}
+      <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2">
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-[#888] font-medium">TONALITIES</p>
+          <button onClick={() => setTonalitySet(new Set(tonalityBanks.map(b => b.name)))}
+            className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">All</button>
+          {TONALITY_FAMILIES.map(g => (
+            <button key={g.key} onClick={() => {
+              const next = new Set(tonalitySet);
+              for (const t of g.tonalities) if (banksByName[t]) next.add(t);
+              setTonalitySet(next);
+            }}
+              className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5">
+              +{g.label}
+            </button>
+          ))}
+          <button onClick={() => setTonalitySet(new Set())}
+            className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5 ml-auto">Clear</button>
+        </div>
+        {TONALITY_FAMILIES.map(group => {
+          const available = group.tonalities.filter(t => banksByName[t]);
+          if (!available.length) return null;
+          return (
+            <div key={group.key}>
+              <p className="text-[9px] mb-1 font-medium tracking-wider"
+                 style={{ color: group.color }}>{group.label}</p>
+              <div className="flex flex-wrap gap-1">
+                {available.map(t => {
+                  const on = tonalitySet.has(t);
+                  return (
+                    <button key={t} onClick={() => toggleTonality(t)}
+                      className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                        on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                      }`}
+                      style={on ? { backgroundColor: group.color + "30", borderColor: group.color, color: group.color } : {}}>
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Per-tonality chord selection panels */}
+      {Array.from(tonalitySet).map(tonality => {
+        const bank = banksByName[tonality];
+        if (!bank) return null;
+        const family = TONALITY_FAMILIES.find(f => f.tonalities.includes(tonality));
+        const accent = family?.color ?? "#7173e6";
+        return (
+          <MPChordSelectionPanel
+            key={tonality}
+            tonality={tonality}
+            accent={accent}
+            bank={bank}
+            checkedSet={new Set(checkedByTonality[tonality] ?? [])}
+            toggleChord={(label) => toggleChord(tonality, label)}
+            setLevel={(chs, sel) => setLevelChecked(tonality, chs, sel)}
+            approachMap={approachesByTonality[tonality] ?? {}}
+            toggleApproach={(target, kind) => toggleApproach(tonality, target, kind)}
+            xenMap={xenByTonality[tonality] ?? {}}
+            toggleXen={(target, kind) => toggleXen(tonality, target, kind)}
+            edo={edo}
+          />
+        );
+      })}
+      {tonalitySet.size === 0 && (
+        <div className="text-xs text-[#666] italic px-3 py-2 border border-[#222] rounded">
+          Pick at least one tonality above to choose chords.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Per-tonality chord-selection panel: shows Primary, Diatonic and Modal
+// Interchange levels, with a checkbox per roman numeral and small approach
+// toggles (V/, vii°/, ii-V, TT) on each non-tonic Primary/Diatonic chord.
+function MPChordSelectionPanel({
+  tonality, accent, bank, checkedSet,
+  toggleChord, setLevel, approachMap, toggleApproach,
+  xenMap, toggleXen,
+  edo,
+}: {
+  tonality: string;
+  accent: string;
+  bank: TonalityBank;
+  checkedSet: Set<string>;
+  toggleChord: (label: string) => void;
+  setLevel: (chords: ChordEntry[], select: boolean) => void;
+  approachMap: Record<string, ApproachKind[]>;
+  toggleApproach: (target: string, kind: ApproachKind) => void;
+  xenMap: Record<string, XenKind[]>;
+  toggleXen: (target: string, kind: XenKind) => void;
+  edo: number;
+}) {
+  // Primary/Diatonic chord entries store `steps: null` and resolve at engine
+  // time via getBaseChords; cache that lookup so the xen-toggle row can
+  // detect each chord's third interval.
+  const baseMap = useMemo<Record<string, number[]>>(
+    () => Object.fromEntries(getBaseChords(edo)), [edo]);
+  const VISIBLE_LEVELS = new Set(["Primary", "Diatonic", "Modal Interchange"]);
+  const APPROACH_COLORS: Record<ApproachKind, string> = {
+    secdom: "#c77a4a", secdim: "#a86bb8", iiV: "#4a9ac7", TT: "#c7a14a",
+  };
+  const visibleLevels = bank.levels.filter(l => VISIBLE_LEVELS.has(l.name));
+  return (
+    <div className="border rounded overflow-hidden" style={{ borderColor: accent + "40" }}>
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0a0a0a]">
+        <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent }}>{tonality.toUpperCase()}</span>
+      </div>
+      <div className="space-y-2 p-2">
+        {visibleLevels.map(level => {
+          const allChecked = level.chords.every(c => checkedSet.has(c.label));
+          const someChecked = level.chords.some(c => checkedSet.has(c.label));
+          return (
+            <div key={level.name} className="border border-[#1a1a1a] rounded overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0e0e0e]">
+                <span className="text-xs text-[#888] font-medium flex-1">{level.name}</span>
+                <span className="text-[10px] text-[#444]">{level.chords.filter(c => checkedSet.has(c.label)).length}/{level.chords.length}</span>
+                <button onClick={() => setLevel(level.chords, !allChecked)}
+                  className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+                    allChecked ? "" : someChecked ? "border-[#444] text-[#888]" : "border-[#222] text-[#555]"
+                  }`}
+                  style={allChecked ? { borderColor: accent, color: accent } : undefined}>
+                  {allChecked ? "Clear" : "All"}
+                </button>
+              </div>
+              <div className="grid gap-1 p-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+                {level.chords.map(entry => {
+                  const isChecked = checkedSet.has(entry.label);
+                  const enabledApproaches = new Set(approachMap[entry.label] ?? []);
+                  const TONIC_LABELS = new Set(["I", "i", "I°", "i°", "I+", "i+"]);
+                  const isTonic = TONIC_LABELS.has(entry.label) || (entry.steps != null && entry.steps[0] === 0);
+                  const showApproaches = !isTonic && level.name !== "Modal Interchange";
+                  return (
+                    <div key={entry.label}
+                      className="rounded overflow-hidden border transition-colors"
+                      style={isChecked
+                        ? { background: accent + "30", borderColor: accent }
+                        : { background: "#141414", borderColor: "#1a1a1a" }}>
+                      <button onClick={() => toggleChord(entry.label)}
+                        className={`w-full text-left px-2 py-1 text-xs transition-colors ${
+                          isChecked ? "" : "text-[#666] hover:text-[#888]"
+                        }`}
+                        style={isChecked ? { color: accent } : undefined}>
+                        {entry.label}
+                      </button>
+                      {showApproaches && (
+                        <div className="flex gap-0.5 px-1 py-1"
+                          style={{ background: isChecked ? "rgba(0,0,0,0.25)" : "#0a0a0a" }}>
+
+                          {APPROACH_KINDS.map(k => {
+                            const on = enabledApproaches.has(k);
+                            const color = APPROACH_COLORS[k];
+                            return (
+                              <button key={k}
+                                onClick={() => toggleApproach(entry.label, k)}
+                                title={`${APPROACH_LABELS[k]}${entry.label}`}
+                                className={`flex-1 text-[8px] leading-none py-0.5 rounded border transition-colors ${
+                                  on ? "text-black font-semibold" : "bg-[#1a1a1a] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
+                                }`}
+                                style={on ? { background: color, borderColor: color } : undefined}>
+                                {APPROACH_LABELS[k]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {(() => {
+                        const xenSteps = entry.steps ?? baseMap[entry.label] ?? null;
+                        const xenAvail = xenSteps ? applicableXenKinds(xenSteps, edo) : [];
+                        if (xenAvail.length === 0) return null;
+                        const enabledXen = new Set(xenMap[entry.label] ?? []);
+                        return (
+                          <div className="flex gap-0.5 px-1 py-1"
+                            style={{ background: isChecked ? "rgba(0,0,0,0.4)" : "#080808" }}>
+                            {xenAvail.map(k => {
+                              const on = enabledXen.has(k);
+                              const color = XEN_COLOR[k];
+                              return (
+                                <button key={k}
+                                  onClick={() => toggleXen(entry.label, k)}
+                                  title={`${entry.label} with ${k === "neu" ? "neutral" : k === "sub" ? "subminor" : "supermajor"} 3rd`}
+                                  className={`flex-1 text-[8px] leading-none py-0.5 rounded border transition-colors ${
+                                    on ? "text-black font-semibold" : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
+                                  }`}
+                                  style={on ? { background: color, borderColor: color } : undefined}>
+                                  {XEN_LABEL[k]}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

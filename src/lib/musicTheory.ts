@@ -530,12 +530,16 @@ export function buildSequenceFromFormula(
  */
 export const HARMONIC_GRAPH: Record<string, string[]> = {
   // ── Diatonic major ──
-  "I":    ["ii","iii","IV","V","vi","vii°","V/ii","V/iii","V/IV","V/V","V/vi","ii/IV","ii/V","iiø/ii","iiø/iii","iiø/vi","TT/I","TT/ii","TT/V","TT/vi"],
+  // Major-key diatonic chords also reach the modal-interchange chords
+  // (iv, bIII, bVI, bVII) so loops with borrowings selected can actually
+  // visit them — without these edges the borrowed chords are unreachable
+  // unless they happen to be picked as the loop's start.
+  "I":    ["ii","iii","IV","V","vi","vii°","V/ii","V/iii","V/IV","V/V","V/vi","ii/IV","ii/V","iiø/ii","iiø/iii","iiø/vi","TT/I","TT/ii","TT/V","TT/vi","iv","bVII","bIII","bVI"],
   "ii":   ["V","vii°","V/V","ii/V"],
   "iii":  ["vi","IV","ii"],
-  "IV":   ["V","vii°","I","ii","V/V","TT/V"],
-  "V":    ["I","vi","IV","TT/I"],
-  "vi":   ["ii","IV","V","iii","V/ii","iiø/ii"],
+  "IV":   ["V","vii°","I","ii","V/V","TT/V","iv"],
+  "V":    ["I","vi","IV","TT/I","bVI"],
+  "vi":   ["ii","IV","V","iii","V/ii","iiø/ii","iv","bVII"],
   "vii°": ["I","iii","vi"],
   // ── Diatonic minor ──
   "i":    ["ii°","III","iv","V","v","VI","VII","vii°"],
@@ -624,12 +628,12 @@ export function generateFunctionalLoop(
   const transitions = new Map<string, Transition>();
 
   const FUNCTIONAL_WEIGHTS: Record<string, Record<string, number>> = {
-    "I":    { ii: 3, iii: 2, IV: 3, V: 2, vi: 2, "vii°": 1, "V/ii": 2, "V/iii": 1, "V/IV": 2, "V/V": 3, "V/vi": 2, "ii/IV": 1, "ii/V": 2, "iiø/ii": 1, "iiø/iii": 1, "iiø/vi": 1, "TT/I": 1, "TT/ii": 1, "TT/V": 1, "TT/vi": 1 },
+    "I":    { ii: 3, iii: 2, IV: 3, V: 2, vi: 2, "vii°": 1, "V/ii": 2, "V/iii": 1, "V/IV": 2, "V/V": 3, "V/vi": 2, "ii/IV": 1, "ii/V": 2, "iiø/ii": 1, "iiø/iii": 1, "iiø/vi": 1, "TT/I": 1, "TT/ii": 1, "TT/V": 1, "TT/vi": 1, iv: 1, bVII: 1, bIII: 1, bVI: 1 },
     "ii":   { V: 4, "vii°": 2, "V/V": 3, "ii/V": 2 },
     "iii":  { vi: 3, IV: 3, ii: 2 },
-    "IV":   { V: 3, "vii°": 2, I: 2, ii: 1, "V/V": 2, "TT/V": 1 },
-    "V":    { I: 5, vi: 2, IV: 1 },
-    "vi":   { ii: 3, IV: 3, V: 1, iii: 2, "V/ii": 2, "iiø/ii": 1 },
+    "IV":   { V: 3, "vii°": 2, I: 2, ii: 1, "V/V": 2, "TT/V": 1, iv: 2 },
+    "V":    { I: 5, vi: 2, IV: 1, bVI: 1 },
+    "vi":   { ii: 3, IV: 3, V: 1, iii: 2, "V/ii": 2, "iiø/ii": 1, iv: 1, bVII: 1 },
     "vii°": { I: 3, iii: 2, vi: 2 },
     "i":    { "ii°": 2, III: 2, iv: 3, V: 2, v: 1, VI: 2, VII: 1, "vii°": 2 },
     "ii°":  { V: 4, "vii°": 2, v: 1 },

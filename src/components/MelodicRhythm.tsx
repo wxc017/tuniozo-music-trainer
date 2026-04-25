@@ -133,7 +133,7 @@ function greedySplit(startSlot: number, slotCount: number, totalSlots: number): 
   // rather than forcing two tied 16ths).
   const D: Array<{ slots: number; str: string; align: number; noBeatCross?: boolean }> = [
     { slots: 16, str: "1",  align: 16 },
-    { slots: 12, str: "2d", align: 16 },
+    { slots: 12, str: "2d", align: 4 },
     { slots: 8,  str: "2",  align: halfAlign },
     { slots: 6,  str: "4d", align: halfAlign },
     { slots: 4,  str: "4",  align: 4 },
@@ -347,7 +347,7 @@ function VexDualRhythm({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const STAVE_Y = 10;
-  const height = 110;
+  const height = 170;
 
   useEffect(() => {
     const el = containerRef.current;
