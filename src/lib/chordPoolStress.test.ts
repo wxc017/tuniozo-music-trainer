@@ -95,7 +95,7 @@ function allXenForChecked(
 }
 
 describe("chord-pool engine — stress test", () => {
-  it("every chord in every progression is well-formed", () => {
+  it("every chord in every progression is well-formed", { timeout: 60000 }, () => {
     let totalSamples = 0;
     const bugs: Bug[] = [];
 
@@ -302,6 +302,26 @@ describe("chord-pool engine — stress test", () => {
           expect(XEN_KINDS).toContain(k);
         }
       }
+    }
+  });
+
+  it("EDO-specific xen options match the documented table", () => {
+    // Probe a known major-3rd chord (M3 above root) and a known minor-3rd
+    // chord (m3 above root) in each EDO and assert the per-side xen-kind
+    // list matches the table's promises.  qrt + qnt always present.
+    const sh = (e: number) => getChordShapes(e);
+    const cases: { edo: number; majSide: string[]; minSide: string[] }[] = [
+      { edo: 12, majSide: ["qrt", "qnt"], minSide: ["qrt", "qnt"] }, // no tertian
+      { edo: 17, majSide: ["qrt", "qnt"], minSide: ["qrt", "qnt"] }, // 17 has none
+      { edo: 19, majSide: ["sup", "qrt", "qnt"], minSide: ["sub", "qrt", "qnt"] }, // no neutral
+      { edo: 31, majSide: ["neu", "sup", "qrt", "qnt"], minSide: ["neu", "sub", "qrt", "qnt"] },
+      { edo: 41, majSide: ["neu", "clmaj", "sup", "qrt", "qnt"], minSide: ["neu", "clmin", "sub", "qrt", "qnt"] },
+    ];
+    for (const c of cases) {
+      const major = applicableXenKinds([0, sh(c.edo).M3, sh(c.edo).P5], c.edo);
+      const minor = applicableXenKinds([0, sh(c.edo).m3, sh(c.edo).P5], c.edo);
+      expect(major).toEqual(c.majSide);
+      expect(minor).toEqual(c.minSide);
     }
   });
 

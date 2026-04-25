@@ -17,6 +17,7 @@ import {
   getAvailableThirdQualities,
 } from "@/lib/edoData";
 import { getTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS, type TonalityBank, type ChordEntry, type ApproachKind } from "@/lib/tonalityBanks";
+import { xenIntervalsForEdo } from "@/lib/tonalityChordPool";
 import { formatRomanNumeral } from "@/lib/formatRoman";
 
 interface Props {
@@ -1673,8 +1674,18 @@ function ChordSelectionPanel({
                       if (numeralThird === sh.M2 || numeralThird === sh.P4) return [];
                       const mid = (sh.m3 + sh.M3) / 2;
                       const numeralIsMajor = numeralThird >= mid;
+                      // EDO-specific allowlist: 17 has nothing, 19 has
+                      // sub/sup but no neutral, 31 has sub/neu/sup, 41
+                      // adds classical thirds.  Filter the catalog
+                      // qualities to those exposed by the EDO table.
+                      const xenAvail = xenIntervalsForEdo(edo);
+                      const allowedIds = new Set(
+                        (Object.keys(xenAvail) as Array<"neu" | "sub" | "sup" | "clmin" | "clmaj">)
+                          .map(k => k + "3"),
+                      );
                       const types = getEdoChordTypes(edo);
                       return xenThirds
+                        .filter(q => allowedIds.has(q.id))
                         .filter(q => {
                           if (q.id === "neu3") return true;
                           const t = types.find(x => x.thirdQuality === q.id);
