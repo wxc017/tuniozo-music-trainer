@@ -60,24 +60,29 @@ export function getApproachChords(
 ): ChordEntry[] {
   if (!targetSteps || targetSteps.length < 2) return [];
   const sh = getChordShapes(edo);
-  const { MAJ, MIN, DIM, M2, M3, P5, d5, M7 } = sh;
-  const maj = (r: number) => MAJ.map(s => s + r);
+  const { MIN, DIM, M2, M3, P5, d5, m7, M7 } = sh;
+  // Secondary dominants (V/X and TT/X) carry a dominant function and must
+  // voice as dom7 — building them as plain major triads lets `voiceChord`
+  // upgrade them to maj7, which is the wrong 7th quality.  Store the full
+  // dom7 shape (root, M3, P5, m7) so getCompatibleTypes locks onto dom7.
+  const dom7 = (r: number) => [r, r + M3, r + P5, r + m7];
   const min = (r: number) => MIN.map(s => s + r);
   const dim = (r: number) => DIM.map(s => s + r);
   const r = targetSteps[0];
   const isMajorTarget = (targetSteps[1] - r) === M3;
   switch (kind) {
     case "secdom":
-      return [chord(`V/${targetLabel}`, maj(r + P5))];
+      return [chord(`V/${targetLabel}`, dom7(r + P5))];
     case "secdim":
       // vii°/X — diminished triad a half-step below the target (or +M7)
       return [chord(`vii°/${targetLabel}`, dim(r + M7))];
     case "iiV":
       return isMajorTarget
-        ? [chord(`ii/${targetLabel}`, min(r + M2)), chord(`V/${targetLabel}`, maj(r + P5))]
-        : [chord(`iiø/${targetLabel}`, dim(r + M2)), chord(`V/${targetLabel}`, maj(r + P5))];
+        ? [chord(`ii/${targetLabel}`, min(r + M2)), chord(`V/${targetLabel}`, dom7(r + P5))]
+        : [chord(`iiø/${targetLabel}`, dim(r + M2)), chord(`V/${targetLabel}`, dom7(r + P5))];
     case "TT":
-      return [chord(`TT/${targetLabel}`, maj(r + P5 + d5))];
+      // Tritone-sub of V → also a dom7 (a half-step above the target)
+      return [chord(`TT/${targetLabel}`, dom7(r + P5 + d5))];
   }
 }
 
@@ -91,23 +96,26 @@ export function getTonalityBanks(edo: number): TonalityBank[] {
   const min = (root: number) => MIN.map(s => s + root);
   const dim = (root: number) => DIM.map(s => s + root);
   const aug = (root: number) => AUG.map(s => s + root);
+  // Dom7 stack — used for V/X and TT/X so the voicing engine matches a
+  // dom7 chord type rather than upgrading a triad to maj7.
+  const dom7 = (root: number) => [root, root + M3, root + P5, root + m7];
 
-  // Secondary dominant: V of target root
+  // Secondary dominant: V of target root (explicit dom7)
   const secV = (targetLabel: string, targetRoot: number): ChordEntry =>
-    chord(`V/${targetLabel}`, maj(targetRoot + P5));
+    chord(`V/${targetLabel}`, dom7(targetRoot + P5));
   // Secondary ii-V (major target)
   const secIIV = (targetLabel: string, targetRoot: number): ChordEntry[] => [
     chord(`ii/${targetLabel}`, min(targetRoot + M2)),
-    chord(`V/${targetLabel}`, maj(targetRoot + P5)),
+    chord(`V/${targetLabel}`, dom7(targetRoot + P5)),
   ];
   // Secondary ii-V (minor target)
   const secIIoV = (targetLabel: string, targetRoot: number): ChordEntry[] => [
     chord(`iiø/${targetLabel}`, dim(targetRoot + M2)),
-    chord(`V/${targetLabel}`, maj(targetRoot + P5)),
+    chord(`V/${targetLabel}`, dom7(targetRoot + P5)),
   ];
-  // Tritone sub
+  // Tritone sub — dominant function (dom7 a tritone from V)
   const ttSub = (targetLabel: string, targetRoot: number): ChordEntry =>
-    chord(`TT/${targetLabel}`, maj(targetRoot + P5 + d5));
+    chord(`TT/${targetLabel}`, dom7(targetRoot + P5 + d5));
 
   // ── Auto-build a mode bank from scale semitones ──
   // Stacks scale-step thirds to produce a triad at every degree, then

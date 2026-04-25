@@ -264,6 +264,8 @@ export default function ChordsTab({
   }, [banksByName, baseChordMap]);
 
   // Approach chord entries for a single tonality.
+  // ii-V's V/X part is owned by the V/ (secdom) toggle — drop it here so
+  // the V only appears in the pool when V/ is also enabled separately.
   const buildApproachEntriesForTonality = useCallback((t: string): ChordEntry[] => {
     const targets = buildPrimaryDiatonicTargets(t);
     const approaches = approachesByTonality[t] ?? {};
@@ -274,6 +276,7 @@ export default function ChordsTab({
       if (!steps) continue;
       for (const kind of kinds) {
         for (const e of getApproachChords(target, steps, kind, edo)) {
+          if (kind === "iiV" && e.label.startsWith("V/")) continue;
           if (seen.has(e.label)) continue;
           seen.add(e.label);
           out.push(e);

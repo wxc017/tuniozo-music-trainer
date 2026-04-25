@@ -129,16 +129,24 @@ export function buildChordMapForTonality(
         if (e.steps && !map[e.label]) map[e.label] = e.steps;
       }
     }
-    const targets = new Map<string, number[]>();
+    // Approach targets — only Primary/Diatonic, since approaches don't
+    // really make sense for borrowed (modal-interchange) chords.
+    const approachTargets = new Map<string, number[]>();
+    // Xen targets — every visible chord (Primary, Diatonic, AND Modal
+    // Interchange), so MI chords like bVII can also pick up qrt/qnt etc.
+    const xenTargets = new Map<string, number[]>();
     for (const level of bank.levels) {
-      if (level.name !== "Primary" && level.name !== "Diatonic") continue;
+      const isApproachLevel = level.name === "Primary" || level.name === "Diatonic";
+      const isXenLevel = isApproachLevel || level.name === "Modal Interchange";
       for (const c of level.chords) {
         const steps = c.steps ?? baseMap[c.label];
-        if (steps) targets.set(c.label, steps);
+        if (!steps) continue;
+        if (isApproachLevel) approachTargets.set(c.label, steps);
+        if (isXenLevel) xenTargets.set(c.label, steps);
       }
     }
     for (const [target, kinds] of Object.entries(approachesForT)) {
-      const steps = targets.get(target);
+      const steps = approachTargets.get(target);
       if (!steps) continue;
       for (const kind of kinds) {
         for (const e of getApproachChords(target, steps, kind, edo)) {
@@ -147,7 +155,7 @@ export function buildChordMapForTonality(
       }
     }
     for (const [target, kinds] of Object.entries(xenForT)) {
-      const steps = targets.get(target);
+      const steps = xenTargets.get(target);
       if (!steps) continue;
       for (const kind of kinds) {
         const variantSteps = applyXenKind(steps, kind, edo);
@@ -171,16 +179,20 @@ export function getEffectiveCheckedForTonality(
   const bank = banks.find(b => b.name === tonality);
   if (!bank) return Array.from(out);
   const baseMap: Record<string, number[]> = Object.fromEntries(getBaseChords(edo));
-  const targets = new Map<string, number[]>();
+  const approachTargets = new Map<string, number[]>();
+  const xenTargets = new Map<string, number[]>();
   for (const level of bank.levels) {
-    if (level.name !== "Primary" && level.name !== "Diatonic") continue;
+    const isApproachLevel = level.name === "Primary" || level.name === "Diatonic";
+    const isXenLevel = isApproachLevel || level.name === "Modal Interchange";
     for (const c of level.chords) {
       const steps = c.steps ?? baseMap[c.label];
-      if (steps) targets.set(c.label, steps);
+      if (!steps) continue;
+      if (isApproachLevel) approachTargets.set(c.label, steps);
+      if (isXenLevel) xenTargets.set(c.label, steps);
     }
   }
   for (const [target, kinds] of Object.entries(approachesForT)) {
-    const steps = targets.get(target);
+    const steps = approachTargets.get(target);
     if (!steps) continue;
     for (const kind of kinds) {
       for (const e of getApproachChords(target, steps, kind, edo)) {
@@ -191,7 +203,7 @@ export function getEffectiveCheckedForTonality(
     }
   }
   for (const [target, kinds] of Object.entries(xenForT)) {
-    const steps = targets.get(target);
+    const steps = xenTargets.get(target);
     if (!steps) continue;
     for (const kind of kinds) {
       const variantSteps = applyXenKind(steps, kind, edo);
