@@ -336,7 +336,9 @@ const archetypeStableFramed: ArchetypeFn = (mode, tonicAbs, edo, low, high, phra
   for (let i = 0; i < fillCount; i++) {
     const prev = seq[seq.length - 1];
     const r = Math.random();
-    if (r < 0.35) seq.push(pickAvoiding(anchors, prev));
+    // Strong bias toward color tones — they're what actually identifies
+    // the mode. Anchors only fill ~20% of the inner slots.
+    if (r < 0.2)  seq.push(pickAvoiding(anchors, prev));
     else          seq.push(pickAvoiding(colorPool, prev));
   }
   seq.push(end);
@@ -363,7 +365,9 @@ const archetypeSpine: ArchetypeFn = (mode, tonicAbs, edo, low, high, phraseLen) 
   let si = 0, ci = 0;
   while (seq.length < target) {
     const prev: string | undefined = seq.length > 0 ? seq[seq.length - 1] : undefined;
-    if (Math.random() < 0.5) {
+    // 70% color tones, 30% spine — same color-bias intent as the
+    // other two archetypes.
+    if (Math.random() < 0.3) {
       let pick = shuffledSpine[si++ % shuffledSpine.length];
       if (pick === prev && shuffledSpine.length > 1) pick = shuffledSpine[si++ % shuffledSpine.length];
       seq.push(pick);
@@ -401,9 +405,11 @@ const archetypeLandOnColor: ArchetypeFn = (mode, tonicAbs, edo, low, high, phras
   for (let i = 0; i < fillCount; i++) {
     const prev = seq[seq.length - 1];
     const r = Math.random();
-    if (r < 0.3)       seq.push(pickAvoiding(stable, prev));
-    else if (r < 0.55) seq.push(prev === third ? pickAvoiding(stable, prev) : third);
-    else               seq.push(pickAvoiding(colorPool, prev));
+    // 70% color, 15% stable, 15% third.  Heavy bias toward colors so
+    // the listener actually hears the mode's defining tones.
+    if (r < 0.15)       seq.push(pickAvoiding(stable, prev));
+    else if (r < 0.30)  seq.push(prev === third ? pickAvoiding(stable, prev) : third);
+    else                seq.push(pickAvoiding(colorPool, prev));
   }
   seq.push(finalColor);
   return voiceLeadSeq(seq, mode, tonicAbs, edo, low, high);
@@ -980,36 +986,32 @@ export default function ModeIdentificationTab({
           className="bg-[#7173e6] hover:bg-[#5a5cc8] disabled:opacity-50 text-white px-5 py-2 rounded text-sm font-medium transition-colors">
           {isPlaying ? "♪ Playing…" : "▶ Play"}
         </button>
-        {hasPlayed && (
-          <button onClick={replay} disabled={isPlaying}
-            className="bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-50 border border-[#333] text-[#aaa] px-4 py-2 rounded text-sm transition-colors">
-            Replay
-          </button>
-        )}
-        {hasPlayed && (
-          <button onClick={() => {
-            setShowAnswer(true);
-            const lp = lastPlayed.current;
-            const mode = curMode.current;
-            if (lp && !isPlaying) {
-              setIsPlaying(true);
-              doPlay(lp.frames, curGapMs.current, true);
-              if (mode) {
-                const tailId = setTimeout(
-                  () => onHighlight(getScalePitches(mode, tonicPc, edo, lowestOct, highestOct)),
-                  lp.frames.length * curGapMs.current + 200,
-                );
-                timers.current.push(tailId);
-              }
-            } else if (mode) {
-              onHighlight(getScalePitches(mode, tonicPc, edo, lowestOct, highestOct));
+        <button onClick={replay} disabled={isPlaying || !hasPlayed}
+          className="bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-50 border border-[#333] text-[#aaa] px-4 py-2 rounded text-sm transition-colors">
+          Replay
+        </button>
+        <button onClick={() => {
+          setShowAnswer(true);
+          const lp = lastPlayed.current;
+          const mode = curMode.current;
+          if (lp && !isPlaying) {
+            setIsPlaying(true);
+            doPlay(lp.frames, curGapMs.current, true);
+            if (mode) {
+              const tailId = setTimeout(
+                () => onHighlight(getScalePitches(mode, tonicPc, edo, lowestOct, highestOct)),
+                lp.frames.length * curGapMs.current + 200,
+              );
+              timers.current.push(tailId);
             }
-          }}
-            disabled={isPlaying}
-            className="bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-50 border border-[#444] text-[#9999ee] px-4 py-2 rounded text-sm transition-colors">
-            Show Answer
-          </button>
-        )}
+          } else if (mode) {
+            onHighlight(getScalePitches(mode, tonicPc, edo, lowestOct, highestOct));
+          }
+        }}
+          disabled={isPlaying || !hasPlayed}
+          className="bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-50 border border-[#444] text-[#9999ee] px-4 py-2 rounded text-sm transition-colors">
+          Show Answer
+        </button>
         {answerButtons}
       </div>
     </div>
