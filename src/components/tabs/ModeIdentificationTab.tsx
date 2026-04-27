@@ -489,24 +489,37 @@ function tryBuildScale(
   tonicAbs: number, edo: number, low: number, high: number,
   maxNotes: number,
 ): { notes: number[]; degrees: string[]; pattern: ScalePattern } | null {
-  // Degree-index traversal for each pattern.  Step counts walk the
-  // diatonic degree wheel:
-  //   thirds  → +2 mod 7  → [0,2,4,6,1,3,5]
-  //   fourths → +3 mod 7  → [0,3,6,2,5,1,4]
-  //   fifths  → +4 mod 7  → [0,4,1,5,2,6,3]
-  //   sixths  → +5 mod 7  → [0,5,3,1,6,4,2]
+  // Degree-index traversal for each pattern.  Walks the diatonic degree
+  // wheel by a fixed step size:
+  //   thirds  → +2 mod n
+  //   fourths → +3 mod n
+  //   fifths  → +4 mod n
+  //   sixths  → +5 mod n
   //   shuffle → random permutation
-  // Each non-shuffle pattern coin-flips between starting at the tonic
-  // and walking forward (1, 3, 5, 7, 2, 4, 6 for 3rds) versus the
-  // reversed traversal that lands ON the tonic (6, 4, 2, 7, 5, 3, 1).
-  // Voice-leading inverts each note so the line stays in the register.
+  // Non-shuffle patterns pick a random start degree (so the line doesn't
+  // always begin on the tonic) and coin-flip the direction (forward vs
+  // reverse).  Voice-leading inverts each note so the line stays in
+  // the register window.
   let idxSeq: number[];
-  if (pattern === "thirds")       idxSeq = [0,2,4,6,1,3,5].filter(i => i < n);
-  else if (pattern === "fourths") idxSeq = [0,3,6,2,5,1,4].filter(i => i < n);
-  else if (pattern === "fifths")  idxSeq = [0,4,1,5,2,6,3].filter(i => i < n);
-  else if (pattern === "sixths")  idxSeq = [0,5,3,1,6,4,2].filter(i => i < n);
-  else                            idxSeq = [...asc].sort(() => Math.random() - 0.5);
-  if (pattern !== "shuffle" && Math.random() < 0.5) idxSeq = idxSeq.slice().reverse();
+  if (pattern === "shuffle") {
+    idxSeq = [...asc].sort(() => Math.random() - 0.5);
+  } else {
+    const stepSize =
+      pattern === "thirds"  ? 2 :
+      pattern === "fourths" ? 3 :
+      pattern === "fifths"  ? 4 :
+      pattern === "sixths"  ? 5 : 1;
+    const startIdx = Math.floor(Math.random() * n);
+    idxSeq = [];
+    const seen = new Set<number>();
+    for (let k = 0; k < n; k++) {
+      const idx = ((startIdx + k * stepSize) % n + n) % n;
+      if (seen.has(idx)) break;
+      seen.add(idx);
+      idxSeq.push(idx);
+    }
+    if (Math.random() < 0.5) idxSeq = idxSeq.slice().reverse();
+  }
   const octPos: "start" | "end" | null = null;
 
   // Honour the Max-notes setting: truncate the traversal so the phrase
