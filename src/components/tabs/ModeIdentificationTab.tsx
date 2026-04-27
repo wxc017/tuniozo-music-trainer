@@ -496,14 +496,17 @@ function tryBuildScale(
   //   fifths  → +4 mod 7  → [0,4,1,5,2,6,3]
   //   sixths  → +5 mod 7  → [0,5,3,1,6,4,2]
   //   shuffle → random permutation
-  // No octave bookend on any of them — voice-leading inverts each
-  // note so the line stays in the user's register window.
+  // Each non-shuffle pattern coin-flips between starting at the tonic
+  // and walking forward (1, 3, 5, 7, 2, 4, 6 for 3rds) versus the
+  // reversed traversal that lands ON the tonic (6, 4, 2, 7, 5, 3, 1).
+  // Voice-leading inverts each note so the line stays in the register.
   let idxSeq: number[];
   if (pattern === "thirds")       idxSeq = [0,2,4,6,1,3,5].filter(i => i < n);
   else if (pattern === "fourths") idxSeq = [0,3,6,2,5,1,4].filter(i => i < n);
   else if (pattern === "fifths")  idxSeq = [0,4,1,5,2,6,3].filter(i => i < n);
   else if (pattern === "sixths")  idxSeq = [0,5,3,1,6,4,2].filter(i => i < n);
   else                            idxSeq = [...asc].sort(() => Math.random() - 0.5);
+  if (pattern !== "shuffle" && Math.random() < 0.5) idxSeq = idxSeq.slice().reverse();
   const octPos: "start" | "end" | null = null;
 
   // Honour the Max-notes setting: truncate the traversal so the phrase
