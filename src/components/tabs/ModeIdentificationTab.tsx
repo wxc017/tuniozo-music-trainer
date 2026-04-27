@@ -445,7 +445,7 @@ export const SCALE_PATTERN_LABEL: Record<ScalePattern, string> = {
   "fourths":     "Scale 4ths",
   "fifths":      "Scale 5ths",
   "sixths":      "Scale 6ths",
-  "shuffle":     "Scale shuffled",
+  "shuffle":     "Scale Shuffled",
 };
 
 function generateScale(
