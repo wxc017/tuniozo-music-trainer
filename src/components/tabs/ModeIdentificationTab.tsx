@@ -947,11 +947,6 @@ export default function ModeIdentificationTab({
                 · chord played: <span className="font-mono font-medium">{curChord.current.name}</span>
               </span>
             )}
-            {curKind.current === "scale" && curPattern.current && (
-              <span className="ml-2 text-xs font-normal text-[#7ad6a3]">
-                · scale {SCALE_PATTERN_LABEL[curPattern.current]}
-              </span>
-            )}
           </div>
           {/* Degrees played / chord tones / scale, with characteristic tones highlighted */}
           {curDegrees.current.length > 0 && (
