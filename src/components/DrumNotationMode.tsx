@@ -4,7 +4,7 @@ import {
 import {
   Renderer, Stave, StaveNote, Voice, Formatter, Beam, Barline, Accidental, Dot,
   Articulation, Annotation, GraceNote, GraceNoteGroup, Parenthesis,
-  Tuplet, Volta,
+  Volta,
   GhostNote as VFGhostNote,
   type StaveNoteStruct,
 } from "vexflow";
@@ -52,6 +52,10 @@ const STAVE_TOP_Y      = 38;
 const LINE_SPACING     = 10;
 const STAVE_AREA_H     = 160;
 const DEFAULT_MEASURE_W = 220;
+/** CSS-scale factor applied to the edit-pane SVG so the editing bar
+ *  is visibly larger than the preview bars.  Click coordinates are
+ *  divided by this factor before being mapped back to slot/pitch. */
+const EDIT_PANE_SCALE = 1.7;
 const CLEF_EXTRA_W      = 78;
 const DEFAULT_MPR       = 4;
 // Active layout — updated per render for dense grids (16th/32nd)
@@ -478,48 +482,6 @@ function renderScore(
           ctx.setFillStyle("#ffffff");
           beams.forEach(b => { try { b.setContext(ctx).draw(); } catch { /* skip */ } });
 
-          // ── Tuplet brackets ──
-          // Walk vfNotes alongside mNotes; whenever consecutive notes
-          // share the same `tuplet` value, group them into a single
-          // VexFlow Tuplet bracket.  notesOccupied uses standard
-          // ratios: 3:2, 5:4, 6:4, 7:4 — matching common drum-set
-          // tuplet conventions.
-          {
-            const tupletGroups: { notes: StaveNote[]; n: 3 | 5 | 6 | 7 }[] = [];
-            let runStart = -1;
-            let runN: 3 | 5 | 6 | 7 | null = null;
-            const flushRun = (endIdx: number) => {
-              if (runStart < 0 || runN === null) return;
-              const groupNotes = vfNotes.slice(runStart, endIdx);
-              if (groupNotes.length >= 2) tupletGroups.push({ notes: groupNotes, n: runN });
-              runStart = -1;
-              runN = null;
-            };
-            for (let i = 0; i < vfNotes.length; i++) {
-              const nd = mNotes.find(n => n.startSlot === slotMap[i]);
-              const t = nd?.tuplet;
-              if (t && (runN === null || t === runN)) {
-                if (runStart < 0) { runStart = i; runN = t; }
-              } else {
-                flushRun(i);
-                if (t) { runStart = i; runN = t; }
-              }
-            }
-            flushRun(vfNotes.length);
-
-            for (const g of tupletGroups) {
-              const occupied = g.n === 3 ? 2 : g.n === 6 ? 4 : 4; // 5:4, 7:4
-              try {
-                const tup = new Tuplet(g.notes, {
-                  numNotes: g.n,
-                  notesOccupied: occupied,
-                  bracketed: true,
-                  ratioed: false,
-                });
-                tup.setContext(ctx).draw();
-              } catch { /* skip tuplet errors */ }
-            }
-          }
 
 
           // Build anchor map from actual rendered positions of ALL tickables
@@ -1231,6 +1193,11 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   // Editor state
   const [notes, setNotes] = useState<NoteData[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Active editing bar (Aered-style "current measure").  Bar selection
+  // happens in the preview; click placement still works on whatever
+  // bar the cursor is over, but bar-management commands (insert /
+  // duplicate / remove) act on this bar.
+  const [editingBarIdx, setEditingBarIdx] = useState<number>(0);
   const [duration, setDuration] = useState<Duration>("q");
   // Update layout density for 16th/32nd note grids (2 bars per line, double width)
   // Derive from actual note content OR selected duration tool
@@ -1242,9 +1209,6 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   // placements use it; pressing a notehead key with notes selected
   // re-skins those instead.
   const [notehead, setNotehead] = useState<NoteheadType>("default");
-  // Active tuplet for new placements (3 / 5 / 6 / 7).  null = no
-  // tuplet.  Set by Aered subdivision keys 3/5/6/7 and reset by 1/2/4/8.
-  const [activeTuplet, setActiveTuplet] = useState<3 | 5 | 6 | 7 | null>(null);
   const [isRest, setIsRest] = useState(false);
   const [hoverPos, setHoverPos] = useState<HoverPos | null>(null);
   const [dragRect, setDragRect] = useState<{ x1:number; y1:number; x2:number; y2:number } | null>(null);
@@ -1265,6 +1229,12 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   const isMouseDownRef = useRef(false);
 
   const scoreRef = useRef<HTMLDivElement | null>(null);
+  // Aered-style "current measure" pane.  Renders only the bar at
+  // editingBarIdx at large size — the user does click-placement in
+  // here, while the top scoreRef shows the whole piece read-only as
+  // a navigation surface.
+  const editPaneRef = useRef<HTMLDivElement | null>(null);
+  const editPaneLayoutsRef = useRef<MeasureLayout[]>([]);
   const scoreAreaRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const ytPlayerRef = useRef<YTPlayerAPI | null>(null);
@@ -1331,6 +1301,49 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     }
   }, [notes, selectedIds, activeProject, playingNoteIds, _denseGrid, containerW]);
 
+  // Render the edit pane (single bar at large size).  Reuses
+  // renderScore by handing it a synthetic project containing only the
+  // editing bar (with `measure` remapped to 0); MEASURE_W /
+  // MEASURES_PER_ROW are temporarily overridden to a wide single-bar
+  // layout, then restored so the preview render isn't perturbed.
+  useEffect(() => {
+    if (!editPaneRef.current || !activeProject) return;
+    try {
+      const w = editPaneRef.current.clientWidth || 900;
+      const savedMW = MEASURE_W;
+      const savedMPR = MEASURES_PER_ROW;
+      MEASURE_W = Math.max(400, w - CLEF_EXTRA_W - 30);
+      MEASURES_PER_ROW = 1;
+      try {
+        const synthSetup: ScoreSetup = {
+          ...activeProject.setup,
+          barCount: 1,
+          // Carry over the editing bar's time-signature override (if
+          // any) onto the synthetic bar at index 0.
+          perBarTimeSig: activeProject.setup.perBarTimeSig?.[editingBarIdx]
+            ? { 0: activeProject.setup.perBarTimeSig[editingBarIdx] }
+            : undefined,
+        };
+        const synthNotes = notes
+          .filter(n => n.measure === editingBarIdx)
+          .map(n => ({ ...n, measure: 0 }));
+        const { layouts } = renderScore(
+          editPaneRef.current,
+          synthSetup,
+          synthNotes,
+          selectedIds,
+          playingNoteIds,
+        );
+        editPaneLayoutsRef.current = layouts;
+      } finally {
+        MEASURE_W = savedMW;
+        MEASURES_PER_ROW = savedMPR;
+      }
+    } catch (e) {
+      console.warn("Edit-pane render error:", e);
+    }
+  }, [notes, selectedIds, activeProject, playingNoteIds, editingBarIdx, containerW]);
+
   // Auto-save
   useEffect(() => {
     if (!activeProject) return;
@@ -1338,6 +1351,13 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     saveProject(updated);
     setProjectsState(loadProjects());
   }, [notes, syncPoints, youtubeUrl]);
+
+  // Persist activeProject directly (tempo, perBarVolta, etc. that
+  // live on the project itself, not in notes).
+  useEffect(() => {
+    if (!activeProject) return;
+    saveProject(activeProject);
+  }, [activeProject]);
 
   // Playback cursor animation
   useEffect(() => {
@@ -1441,56 +1461,74 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       if (e.ctrlKey && e.key === "z") { e.preventDefault(); undo(); return; }
 
       // ── Aered bar-manipulation keybinds ──────────────────────────
-      // I  → insert empty bar after the active project's last bar
-      // Shift+B → duplicate the last bar
-      // Shift+R → remove the last bar (kept Shift to avoid collision
-      //           with `r` for rest toggle and `R` for sticking)
+      // All operate on the active editing bar.
+      //   I        → insert empty bar AFTER the editing bar
+      //   Shift+B  → duplicate the editing bar (with its notes)
+      //   Shift+R  → remove the editing bar
+      //   PageUp / PageDown → step the editing bar
       if (e.key === "I" && activeProject) {
         e.preventDefault();
+        const insertAt = editingBarIdx + 1;
+        // Shift every bar at or after insertAt up by 1.
+        setNotes(prev => prev.map(n => n.measure >= insertAt ? { ...n, measure: n.measure + 1 } : n));
         setActiveProject({
           ...activeProject,
           setup: { ...activeProject.setup, barCount: activeProject.setup.barCount + 1 },
         });
+        setEditingBarIdx(insertAt);
         return;
       }
       if (e.key === "B" && e.shiftKey && activeProject) {
         e.preventDefault();
-        const lastIdx = activeProject.setup.barCount - 1;
-        const dupNotes = notes
-          .filter(n => n.measure === lastIdx)
-          .map(n => ({ ...n, id: crypto.randomUUID(), measure: lastIdx + 1 }));
-        setNotes(prev => [...prev, ...dupNotes]);
+        const src = editingBarIdx;
+        const dst = editingBarIdx + 1;
+        // Shift bars at >= dst up by 1, then drop the duplicates at dst.
+        setNotes(prev => {
+          const shifted = prev.map(n => n.measure >= dst ? { ...n, measure: n.measure + 1 } : n);
+          const dupNotes = prev
+            .filter(n => n.measure === src)
+            .map(n => ({ ...n, id: crypto.randomUUID(), measure: dst }));
+          return [...shifted, ...dupNotes];
+        });
         setActiveProject({
           ...activeProject,
           setup: { ...activeProject.setup, barCount: activeProject.setup.barCount + 1 },
         });
+        setEditingBarIdx(dst);
         return;
       }
       if (e.key === "R" && e.shiftKey && activeProject && activeProject.setup.barCount > 1) {
         e.preventDefault();
-        const lastIdx = activeProject.setup.barCount - 1;
-        setNotes(prev => prev.filter(n => n.measure !== lastIdx));
+        const removeAt = editingBarIdx;
+        // Drop notes in removeAt; shift bars > removeAt down by 1.
+        setNotes(prev => prev
+          .filter(n => n.measure !== removeAt)
+          .map(n => n.measure > removeAt ? { ...n, measure: n.measure - 1 } : n),
+        );
         setActiveProject({
           ...activeProject,
           setup: { ...activeProject.setup, barCount: activeProject.setup.barCount - 1 },
         });
+        setEditingBarIdx(Math.max(0, removeAt - 1));
+        return;
+      }
+      if (e.key === "PageUp" && activeProject) {
+        e.preventDefault();
+        setEditingBarIdx(i => Math.max(0, i - 1));
+        return;
+      }
+      if (e.key === "PageDown" && activeProject) {
+        e.preventDefault();
+        setEditingBarIdx(i => Math.min(activeProject.setup.barCount - 1, i + 1));
         return;
       }
 
-      // Aered-style subdivision keys (drum mode):
-      //   1 = quarter, 2 = 8th, 3 = quarter triplet, 4 = 16th,
-      //   5 = quintuplet (16ths in 5:4), 6 = 8th triplet,
-      //   7 = septuplet, 8 = 32nd
-      // Non-tuplet keys (1/2/4/8) clear the active tuplet so the
-      // next click places a regular note.
-      if (e.key === "1") { setDuration("q"); setActiveTuplet(null); return; }
-      if (e.key === "2") { setDuration("8"); setActiveTuplet(null); return; }
-      if (e.key === "3") { setDuration("q"); setActiveTuplet(3); return; }
-      if (e.key === "4") { setDuration("16"); setActiveTuplet(null); return; }
-      if (e.key === "5") { setDuration("16"); setActiveTuplet(5); return; }
-      if (e.key === "6") { setDuration("8"); setActiveTuplet(6); return; }
-      if (e.key === "7") { setDuration("16"); setActiveTuplet(7); return; }
-      if (e.key === "8") { setDuration("32"); setActiveTuplet(null); return; }
+      // Subdivision keybinds (drum mode):
+      //   1 quarter, 2 8th, 4 16th, 8 32nd.
+      if (e.key === "1") { setDuration("q");  return; }
+      if (e.key === "2") { setDuration("8");  return; }
+      if (e.key === "4") { setDuration("16"); return; }
+      if (e.key === "8") { setDuration("32"); return; }
       if (e.key === "0" || e.key === "r") { setIsRest(r => !r); return; }
 
       // Arrow keys move primary selected note pitch
@@ -1622,6 +1660,69 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     (e.target as Element).setPointerCapture(e.pointerId);
   }, [getOverlayPos]);
 
+  // ── Edit-pane click placement ────────────────────────────────────
+  // Bypasses the preview's full pointer pipeline; takes coords
+  // relative to the edit-pane render (un-scaling by EDIT_PANE_SCALE),
+  // resolves them via editPaneLayoutsRef (one bar at mIdx=0), and
+  // creates a note in the *real* editingBarIdx.
+  const handleEditPanePointerDown = useCallback((e: React.PointerEvent) => {
+    if (!activeProject || !editPaneRef.current) return;
+    const layout = editPaneLayoutsRef.current[0];
+    if (!layout) return;
+
+    const rect = editPaneRef.current.getBoundingClientRect();
+    // Un-scale the click position so it lines up with the underlying
+    // (unscaled) VexFlow render.
+    const x = (e.clientX - rect.left) / EDIT_PANE_SCALE;
+    const y = (e.clientY - rect.top) / EDIT_PANE_SCALE;
+
+    const ts = activeProject.setup.perBarTimeSig?.[editingBarIdx]
+      ?? activeProject.setup.defaultTimeSig;
+    const totalSlots = measureSlots(ts);
+    const gridSnap = DURATION_SLOTS[duration];
+    const anchors = layout.slotAnchors;
+    if (!anchors || anchors.length < 2) return;
+    const slot = xToSlot(x, anchors, gridSnap, totalSlots);
+
+    const ls = layout.lineSpacing ?? LINE_SPACING;
+    const lineIdx = (y - layout.staveTopLineY) / ls;
+    const snappedLine = Math.round(lineIdx * 2) / 2;
+    const pitch = isRest ? "b/4" : linePosToPitch(snappedLine, activeProject.setup.clef);
+
+    // If a note already exists at this exact (slot, pitch) in the
+    // editing bar, select it instead of placing a duplicate.
+    const existing = notes.find(n =>
+      n.measure === editingBarIdx &&
+      n.startSlot === slot &&
+      !n.isRest &&
+      n.pitch === pitch,
+    );
+    if (existing) { setSelectedIds([existing.id]); return; }
+
+    pushHistory(notes);
+    const newNote: NoteData = {
+      id: crypto.randomUUID(),
+      measure: editingBarIdx,
+      startSlot: slot,
+      duration,
+      pitch,
+      accidental: accidental ?? undefined,
+      notehead: notehead === "default" ? undefined : notehead,
+      isRest,
+    };
+    setNotes(prev => {
+      const filtered = prev.filter(n => {
+        if (n.measure !== editingBarIdx || n.startSlot !== slot) return true;
+        if (isRest) return false;
+        return !n.isRest && n.pitch !== newNote.pitch;
+      });
+      return [...filtered, newNote].sort((a, b) =>
+        a.measure !== b.measure ? a.measure - b.measure : a.startSlot - b.startSlot,
+      );
+    });
+    setSelectedIds([newNote.id]);
+  }, [activeProject, editingBarIdx, duration, accidental, notehead, isRest, notes]);
+
   // Adjust ghost-note x and y to match VexFlow's actual layout for the measure
   const applyLayoutX = useCallback((hp: HoverPos): HoverPos => {
     const layout = measureLayoutsRef.current.find(l => l.mIdx === hp.mIdx);
@@ -1683,97 +1784,13 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       return;
     }
 
-    // Single click
+    // Single click — preview is read-only.  Clicking a bar just
+    // switches the editing target into the bottom pane.  All
+    // placement / selection / YT controls live on the edit pane.
     const hp = computeHover(pos.x, pos.y, activeProject.setup, duration, measureLayoutsRef.current);
     if (!hp) return;
-    const { mIdx, slot } = hp;
-    const ts = activeProject.setup.perBarTimeSig?.[mIdx] ?? activeProject.setup.defaultTimeSig;
-    const totalSlots = measureSlots(ts);
-
-    // ALT+click = toggle bar selection for Phrase Decomposition
-    if (e.altKey) {
-      setPhraseDecompBars(prev => {
-        const next = new Set(prev);
-        if (next.has(mIdx)) next.delete(mIdx); else next.add(mIdx);
-        return next;
-      });
-      return;
-    }
-
-    // YouTube sync mode: Ctrl+click = seek+play from measure, Shift+click = set loop range
-    if (showYT && syncPoints.length >= 2) {
-      if (e.ctrlKey || e.metaKey) {
-        const timestamp = interpolateMeasureTime(mIdx, syncPoints);
-        if (timestamp !== null && ytPlayerRef.current) {
-          setCurrentSyncMeasure(mIdx);
-          ytPlayerRef.current.seekTo(timestamp, true);
-          ytPlayerRef.current.playVideo();
-        }
-        return;
-      }
-      if (e.shiftKey) {
-        setLoopRange(prev => {
-          if (!prev) return { start: mIdx, end: mIdx };
-          const lo = Math.min(prev.start, prev.end, mIdx);
-          const hi = Math.max(prev.start, prev.end, mIdx);
-          return { start: lo, end: hi };
-        });
-        return;
-      }
-    }
-
-    const hit = noteAtClick(notes, pos.x, pos.y, notePixelPosRef.current, activeProject.setup);
-
-    // In note-placement mode, clicking a user rest falls through to placement.
-    const clickedRestInNoteMode = !isRest && (hit?.isRest ?? false);
-
-    if (!clickedRestInNoteMode) {
-      // If a popup is already open, re-select or deselect on click
-      if (selectedIds.length === 1) {
-        if (hit) { setSelectedIds([hit.id]); return; }
-        setSelectedIds([]);
-        return;
-      }
-
-      if (hit) { setSelectedIds([hit.id]); return; }
-
-      // Clicked empty space — deselect only, do NOT place
-      if (selectedIds.length > 0) {
-        setSelectedIds([]);
-        return;
-      }
-    } else {
-      setSelectedIds([]);
-    }
-
-    // Place new note
-    if (slot + DURATION_SLOTS[duration] > totalSlots) return;
-    pushHistory(notes);
-    const newNote: NoteData = {
-      id: crypto.randomUUID(),
-      measure: mIdx,
-      startSlot: slot,
-      duration,
-      pitch: isRest ? "b/4" : hp.pitch,
-      accidental: accidental ?? undefined,
-      notehead: notehead === "default" ? undefined : notehead,
-      tuplet: activeTuplet ?? undefined,
-      isRest,
-    };
-    setNotes(prev => {
-      // Rests replace everything at the slot; pitched notes only replace
-      // same-pitch notes (and any rests) — other pitches stay to form chords.
-      const filtered = prev.filter(n => {
-        if (n.measure !== mIdx || n.startSlot !== slot) return true;
-        if (isRest) return false;                    // rest clears slot
-        return !n.isRest && n.pitch !== newNote.pitch; // keep other pitches
-      });
-      return [...filtered, newNote].sort((a, b) =>
-        a.measure !== b.measure ? a.measure - b.measure : a.startSlot - b.startSlot
-      );
-    });
-    setSelectedIds([]);
-  }, [activeProject, notes, duration, accidental, notehead, activeTuplet, isRest, selectedIds, getOverlayPos, showYT, syncPoints]);
+    if (hp.mIdx !== editingBarIdx) setEditingBarIdx(hp.mIdx);
+  }, [activeProject, duration, editingBarIdx, getOverlayPos, notes]);
 
   // ── Project actions ──────────────────────────────────────────────────────
 
@@ -2121,10 +2138,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     const ctx = new Ctx();
     playCtxRef.current = ctx;
 
-    // Tempo lives on activeProject's title field for now (no tempo
-    // ScoreSetup field yet); accept either project.title-derived
-    // tempo or the constant default.  Future: add a tempo input.
-    const tempo = 100;
+    const tempo = activeProject.tempo && activeProject.tempo > 0 ? activeProject.tempo : 100;
     const slotsPerQuarter = 8;
     const secondsPerSlot = 60 / tempo / slotsPerQuarter;
     const startTime = ctx.currentTime + 0.1;
@@ -2481,7 +2495,61 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
           >
             {drumPlaying ? "■ Stop" : "▶ Play Drums"}
           </button>
+          <label className="flex items-center gap-1 text-[10px] text-[#666] uppercase tracking-wider ml-2">
+            BPM
+            <input
+              type="number"
+              min={20}
+              max={400}
+              value={activeProject.tempo ?? 100}
+              onChange={e => {
+                const v = parseInt(e.target.value, 10);
+                if (Number.isFinite(v) && v > 0) {
+                  setActiveProject({ ...activeProject, tempo: v });
+                }
+              }}
+              className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-0.5 text-xs text-white focus:outline-none w-14"
+            />
+          </label>
+          {/* Volta picker — set or clear an ending label on the
+              active selection's bar.  No selection → button disabled. */}
+          <div className="w-px h-4 bg-[#2a2a2a] ml-1" />
+          <span className="text-[10px] text-[#666] uppercase tracking-wider ml-1">Ending</span>
+          {(["A", "B", "C"] as const).map(label => {
+            const selBar = selectedIds.length > 0
+              ? notes.find(n => n.id === selectedIds[0])?.measure
+              : undefined;
+            const cur = selBar !== undefined
+              ? activeProject.setup.perBarVolta?.[selBar]
+              : undefined;
+            const active = cur === label;
+            return (
+              <button
+                key={label}
+                disabled={selBar === undefined}
+                onClick={() => {
+                  if (selBar === undefined) return;
+                  const nextVolta = { ...(activeProject.setup.perBarVolta ?? {}) };
+                  if (active) delete nextVolta[selBar];
+                  else nextVolta[selBar] = label;
+                  setActiveProject({
+                    ...activeProject,
+                    setup: { ...activeProject.setup, perBarVolta: nextVolta },
+                  });
+                }}
+                className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
+                  active
+                    ? "bg-[#7173e618] border-[#7173e6] text-[#9999ee]"
+                    : "bg-[#1a1a1a] border-[#2a2a2a] text-[#888] hover:text-[#ccc] disabled:opacity-30 disabled:cursor-not-allowed"
+                }`}
+                title={`Set bracket "${label}" on selected bar (toggle)`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
+
 
         {/* Export */}
         <div className="flex items-center gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2">
@@ -2540,9 +2608,10 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       )}
 
       {/* ── Main content ── */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Score area */}
-        <div ref={scoreAreaRef} className="flex-1 overflow-auto py-4">
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Score area (preview) — top half, all bars visible at compact
+             size.  Scrollable so long pieces stay reachable. */}
+        <div ref={scoreAreaRef} className="flex-shrink-0 max-h-[42vh] overflow-auto py-2 border-b border-[#1a1a1a] flex items-start gap-3 pr-3">
           <div style={{ position: "relative", display: "inline-block" }}>
             {/* VexFlow rendering target — lineHeight:0 prevents baseline gap under the SVG */}
             <div ref={scoreRef} style={{ display: "block", lineHeight: 0 }} />
@@ -3117,6 +3186,95 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                 </div>
               </div>
             )}
+          </div>
+          {/* Inline "add bar" button — appended to the right of the
+              rendered score in the preview.  It always adds a bar at
+              the end; the renderer naturally pushes onto a new line
+              when the current line is full. */}
+          <button
+            onClick={() => {
+              setActiveProject({
+                ...activeProject,
+                setup: { ...activeProject.setup, barCount: activeProject.setup.barCount + 1 },
+              });
+            }}
+            className="self-center mt-12 w-9 h-9 rounded-full bg-[#1a3a1a] border-2 border-[#3a8a3a] text-[#7adf7a] text-base font-bold hover:bg-[#1a4a1a] hover:border-[#5acf5a] hover:text-[#9aff9a] transition-colors flex items-center justify-center flex-shrink-0"
+            title="Add bar at the end of the piece"
+          >
+            +
+          </button>
+        </div>
+
+        {/* ── Edit pane (Aered-style "current measure"): the bar at
+             editingBarIdx, rendered large.  All note placement
+             happens in here; the preview above is read-only and
+             clicking a preview bar just switches the editing
+             target. */}
+        <div className="flex-1 overflow-auto bg-[#070707] border-t border-[#222] p-3">
+          <div className="flex items-center gap-2 mb-2 text-[10px] text-[#666] uppercase tracking-wider">
+            <span>Editing bar</span>
+            <span className="text-white font-mono">{editingBarIdx + 1}</span>
+            <span>of</span>
+            <span className="text-white font-mono">{activeProject.setup.barCount}</span>
+            {/* Inline duplicate / remove for the active bar — placed
+                here because the active bar is what's visible below. */}
+            <button
+              onClick={() => {
+                const src = editingBarIdx;
+                const dst = editingBarIdx + 1;
+                setNotes(prev => {
+                  const shifted = prev.map(n => n.measure >= dst ? { ...n, measure: n.measure + 1 } : n);
+                  const dup = prev
+                    .filter(n => n.measure === src)
+                    .map(n => ({ ...n, id: crypto.randomUUID(), measure: dst }));
+                  return [...shifted, ...dup];
+                });
+                setActiveProject({
+                  ...activeProject,
+                  setup: { ...activeProject.setup, barCount: activeProject.setup.barCount + 1 },
+                });
+                setEditingBarIdx(dst);
+              }}
+              className="ml-2 px-2 py-0.5 text-[10px] rounded border border-[#2a2a2a] bg-[#1a1a1a] text-[#aaa] hover:text-white hover:border-[#3a3a3a]"
+              title="Duplicate this bar (Shift+B)"
+            >
+              ⧉ Dup
+            </button>
+            <button
+              disabled={activeProject.setup.barCount <= 1}
+              onClick={() => {
+                const removeAt = editingBarIdx;
+                setNotes(prev => prev
+                  .filter(n => n.measure !== removeAt)
+                  .map(n => n.measure > removeAt ? { ...n, measure: n.measure - 1 } : n),
+                );
+                setActiveProject({
+                  ...activeProject,
+                  setup: { ...activeProject.setup, barCount: activeProject.setup.barCount - 1 },
+                });
+                setEditingBarIdx(Math.max(0, removeAt - 1));
+              }}
+              className="px-2 py-0.5 text-[10px] rounded border border-[#3a1818] bg-[#1a1010] text-[#cc6666] hover:text-[#ee8888] hover:bg-[#220c0c] disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Remove this bar (Shift+R)"
+            >
+              ✕ Remove
+            </button>
+          </div>
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <div
+              ref={editPaneRef}
+              onPointerDown={handleEditPanePointerDown}
+              style={{
+                display: "block",
+                lineHeight: 0,
+                // Scale the rendered SVG so the editing bar is
+                // visibly larger than the preview bars.  Click
+                // handlers undo this scale before computing slot.
+                transform: `scale(${EDIT_PANE_SCALE})`,
+                transformOrigin: "top left",
+                cursor: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Ccircle cx='5' cy='5' r='3' fill='white' fill-opacity='.85'/%3E%3C/svg%3E") 5 5, auto`,
+              }}
+            />
           </div>
         </div>
 
