@@ -436,18 +436,14 @@ function renderScore(
         let cursor = 0;
         const addGhosts = (upTo: number) => {
           if (upTo <= cursor) return;
-          // Use small, uniform ghost notes (8th = 4 slots) so VexFlow
-          // distributes space evenly.  Large ghosts (half/dotted-quarter)
-          // make the formatter stretch empty areas disproportionately,
-          // causing grid lines to bunch up around notes.
+          // Pad with 16th-note ghosts (2 slots each) so VexFlow
+          // produces an evenly-spaced 16th-note grid.  This makes
+          // the X-ray dashed lines align perfectly to the visible
+          // beat positions whether the bar is empty, sparse, or
+          // fully populated.  Trailing < 2-slot remainder gets a
+          // 32nd-note ghost to keep the alignment.
           let rem = upTo - cursor;
-          while (rem >= 4) {
-            allTickables.push(new VFGhostNote({ duration: "8" }));
-            allTickableSlots.push(cursor);
-            cursor += 4;
-            rem -= 4;
-          }
-          if (rem >= 2) {
+          while (rem >= 2) {
             allTickables.push(new VFGhostNote({ duration: "16" }));
             allTickableSlots.push(cursor);
             cursor += 2;
@@ -2620,7 +2616,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   }
 
   return (
-    <div className="flex flex-col h-full max-w-6xl mx-auto w-full" onKeyDown={() => {}}>
+    <div className="flex flex-col h-full w-full" onKeyDown={() => {}}>
       {/* ── Toolbar rows ── */}
       <div className="flex flex-wrap items-center gap-2 py-2">
         {/* Projects + Duration + Rest + Accidentals */}
@@ -2784,8 +2780,10 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       {/* ── Main content ── */}
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Preview — fills the remaining vertical space and scrolls
-             freely (only place in the editor that scrolls). */}
-        <div ref={scoreAreaRef} className="flex-1 overflow-auto py-2 border-b border-[#1a1a1a] flex items-start gap-3 pr-3">
+             freely (only place in the editor that scrolls).  Capped
+             at max-w-6xl + mx-auto so the preview keeps the original
+             page margins; the edit pane below uses full width. */}
+        <div ref={scoreAreaRef} className="flex-1 overflow-auto py-2 border-b border-[#1a1a1a] flex items-start gap-3 pr-3 max-w-6xl mx-auto w-full">
           <div style={{ position: "relative", display: "inline-block" }}>
             {/* VexFlow rendering target — lineHeight:0 prevents baseline gap under the SVG */}
             <div ref={scoreRef} style={{ display: "block", lineHeight: 0 }} />
