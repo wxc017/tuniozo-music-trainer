@@ -3405,7 +3405,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
               ✕ Remove
             </button>
           </div>
-          <div style={{ position: "relative", display: "inline-block" }}>
+          <div style={{ position: "relative", display: "block", width: "100%" }}>
             <div
               ref={editPaneRef}
               onPointerDown={handleEditPanePointerDown}
