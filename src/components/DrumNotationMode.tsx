@@ -1236,10 +1236,15 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   // a navigation surface.
   const editPaneRef = useRef<HTMLDivElement | null>(null);
   const editPaneLayoutsRef = useRef<MeasureLayout[]>([]);
-  // Hover-preview position on the edit pane (in unscaled SVG coords).
-  // null when the cursor is off the pane.  Rendered as a small green
-  // ghost dot that snaps to the next click's slot/pitch.
+  const editPaneNotePosRef = useRef<NotePixelPos[]>([]);
+  // Hover-preview position on the edit pane.  null when the cursor
+  // is off the pane.  Rendered as a small green ghost dot that snaps
+  // to the next click's slot/pitch.
   const [editHover, setEditHover] = useState<{ x: number; y: number } | null>(null);
+  // Drag-select state on the edit pane (mass selection rectangle).
+  const editDragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const editIsMouseDownRef = useRef(false);
+  const [editDragRect, setEditDragRect] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const scoreAreaRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const ytPlayerRef = useRef<YTPlayerAPI | null>(null);
@@ -1342,7 +1347,9 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
         const synthNotes = notes
           .filter(n => n.measure === editingBarIdx)
           .map(n => ({ ...n, measure: 0 }));
-        const { layouts } = renderScore(
+        // Selected ids are NoteData ids and unchanged when we remap
+        // measures, so they still match.
+        const { layouts, positions } = renderScore(
           editPaneRef.current,
           synthSetup,
           synthNotes,
@@ -1350,6 +1357,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
           playingNoteIds,
         );
         editPaneLayoutsRef.current = layouts;
+        editPaneNotePosRef.current = positions;
       } finally {
         MEASURE_W        = savedMW;
         MEASURES_PER_ROW = savedMPR;
@@ -1690,6 +1698,15 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     const rect = editPaneRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    // Drag-rect update when the user is mid-drag.
+    if (editIsMouseDownRef.current && editDragStartRef.current) {
+      const start = editDragStartRef.current;
+      if (Math.abs(x - start.x) > 4 || Math.abs(y - start.y) > 4) {
+        setEditDragRect({ x1: start.x, y1: start.y, x2: x, y2: y });
+      }
+    }
+
     const ts = activeProject.setup.perBarTimeSig?.[editingBarIdx]
       ?? activeProject.setup.defaultTimeSig;
     const totalSlots = measureSlots(ts);
@@ -1706,19 +1723,53 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   }, [activeProject, editingBarIdx, duration]);
 
   // ── Edit-pane click placement ────────────────────────────────────
-  // Bypasses the preview's full pointer pipeline; takes coords
-  // relative to the edit-pane render (un-scaling by EDIT_PANE_SCALE),
-  // resolves them via editPaneLayoutsRef (one bar at mIdx=0), and
-  // creates a note in the *real* editingBarIdx.
+  // pointerDown records the start; pointerUp decides "click → place
+  // note" vs "drag → mass-select notes inside the rect".  All coords
+  // resolve via editPaneLayoutsRef (one bar at mIdx=0) and any note
+  // creation goes into the *real* editingBarIdx.
   const handleEditPanePointerDown = useCallback((e: React.PointerEvent) => {
     if (!activeProject || !editPaneRef.current) return;
+    const rect = editPaneRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    editDragStartRef.current = { x, y };
+    editIsMouseDownRef.current = true;
+    (e.target as Element).setPointerCapture(e.pointerId);
+  }, [activeProject]);
+
+  const handleEditPanePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!activeProject || !editPaneRef.current || !editIsMouseDownRef.current) return;
+    editIsMouseDownRef.current = false;
     const layout = editPaneLayoutsRef.current[0];
-    if (!layout) return;
+    const start = editDragStartRef.current;
+    editDragStartRef.current = null;
+    setEditDragRect(null);
+    if (!layout || !start) return;
 
     const rect = editPaneRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    const dx = x - start.x;
+    const dy = y - start.y;
+    const isDrag = Math.abs(dx) > 5 || Math.abs(dy) > 5;
+
+    // Drag → mass-select notes inside the rectangle.
+    if (isDrag) {
+      const rx1 = Math.min(start.x, x);
+      const rx2 = Math.max(start.x, x);
+      const ry1 = Math.min(start.y, y);
+      const ry2 = Math.max(start.y, y);
+      const synthIds = editPaneNotePosRef.current
+        .filter(p => p.x >= rx1 && p.x <= rx2 && p.y >= ry1 && p.y <= ry2)
+        .map(p => p.id);
+      // Note ids are stable across the synth-render remap (we kept
+      // the original ids), so synthIds match the real notes.
+      setSelectedIds(synthIds);
+      return;
+    }
+
+    // Click → place a note at (slot, pitch) in editingBarIdx.
     const ts = activeProject.setup.perBarTimeSig?.[editingBarIdx]
       ?? activeProject.setup.defaultTimeSig;
     const totalSlots = measureSlots(ts);
@@ -1732,8 +1783,6 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     const snappedLine = Math.round(lineIdx * 2) / 2;
     const pitch = isRest ? "b/4" : linePosToPitch(snappedLine, activeProject.setup.clef);
 
-    // If a note already exists at this exact (slot, pitch) in the
-    // editing bar, select it instead of placing a duplicate.
     const existing = notes.find(n =>
       n.measure === editingBarIdx &&
       n.startSlot === slot &&
@@ -2841,6 +2890,32 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                 })
               }
 
+              {/* Editing-bar overlay — bright yellow box around the
+                  bar currently shown in the edit pane below.  Style
+                  matches the AccentStudy bar-select look so the eye
+                  can quickly find which bar is "live". */}
+              {(() => {
+                const layout = measureLayoutsRef.current.find(l => l.mIdx === editingBarIdx);
+                if (!layout) return null;
+                const ls = layout.lineSpacing;
+                const padding = ls * 1.5;
+                const staffH = 4 * ls;
+                const x = measureX(layout.mIdx % MEASURES_PER_ROW);
+                const w = measureW(layout.mIdx % MEASURES_PER_ROW);
+                const y = layout.staveTopLineY - padding;
+                const h = staffH + padding * 2;
+                return (
+                  <rect
+                    key={`edit-${editingBarIdx}`}
+                    x={x} y={y} width={w} height={h}
+                    fill="rgba(240,200,80,0.12)"
+                    stroke="#f0c850"
+                    strokeWidth={2}
+                    rx={4}
+                  />
+                );
+              })()}
+
               {/* Bend annotations — smooth curved arrow with label snapped between staff lines */}
               {notePixelPosRef.current.map(pos => {
                 const n = notes.find(n => n.id === pos.id);
@@ -3335,13 +3410,63 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
               ref={editPaneRef}
               onPointerDown={handleEditPanePointerDown}
               onPointerMove={handleEditPanePointerMove}
-              onPointerLeave={() => setEditHover(null)}
+              onPointerUp={handleEditPanePointerUp}
+              onPointerLeave={() => { setEditHover(null); }}
               style={{
                 display: "block",
                 lineHeight: 0,
                 cursor: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Ccircle cx='5' cy='5' r='3' fill='white' fill-opacity='.85'/%3E%3C/svg%3E") 5 5, auto`,
               }}
             />
+            {/* Always-on X-Ray on the editing measure + drag-select
+                rectangle.  Both ride the same pointer-events-none
+                overlay so the underlying pointer handlers still see
+                clicks on the staff. */}
+            <svg
+              style={{
+                position: "absolute",
+                left: 0, top: 0,
+                width: "100%", height: "100%",
+                pointerEvents: "none",
+              }}
+            >
+              {(() => {
+                const layout = editPaneLayoutsRef.current[0];
+                if (!layout || !activeProject) return null;
+                const ts = activeProject.setup.perBarTimeSig?.[editingBarIdx]
+                  ?? activeProject.setup.defaultTimeSig;
+                const totalSlots = measureSlots(ts);
+                const gridSlots = DURATION_SLOTS[duration];
+                const y1 = layout.staveTopLineY;
+                const y2 = layout.staveTopLineY + 4 * layout.lineSpacing;
+                const out: ReactNode[] = [];
+                for (let s = 0; s < totalSlots; s += gridSlots) {
+                  const lx = slotToX(s, layout.slotAnchors);
+                  out.push(
+                    <line
+                      key={`xr-${s}`}
+                      x1={lx} x2={lx} y1={y1} y2={y2}
+                      stroke="rgba(255,255,255,0.30)"
+                      strokeWidth={1}
+                      strokeDasharray="3 3"
+                    />,
+                  );
+                }
+                return out;
+              })()}
+              {editDragRect && (
+                <rect
+                  x={Math.min(editDragRect.x1, editDragRect.x2)}
+                  y={Math.min(editDragRect.y1, editDragRect.y2)}
+                  width={Math.abs(editDragRect.x2 - editDragRect.x1)}
+                  height={Math.abs(editDragRect.y2 - editDragRect.y1)}
+                  fill="rgba(113,115,230,0.12)"
+                  stroke="#7173e6"
+                  strokeWidth={1}
+                  strokeDasharray="4 2"
+                />
+              )}
+            </svg>
             {editHover && (
               <div
                 style={{
