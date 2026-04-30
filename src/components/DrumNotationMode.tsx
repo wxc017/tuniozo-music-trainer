@@ -57,6 +57,35 @@ let STAVE_TOP_Y      = 38;
 let LINE_SPACING     = 10;
 let STAVE_AREA_H     = 160;
 const DEFAULT_MEASURE_W = 220;
+
+/** The 8 valid drum lines.  Click placement on the edit pane snaps
+ *  the cursor's lineIdx to whichever of these is closest; clicks
+ *  too far from any are rejected (no note placed).  lineIdx values
+ *  match the linePosToPitch convention (treble, lineIdx 0 = top
+ *  staff line F5). */
+const DRUM_LINES: { name: string; lineIdx: number; pitch: string }[] = [
+  { name: "Crash",   lineIdx: -2,   pitch: "a/5" },
+  { name: "Hi-Hat",  lineIdx: -1,   pitch: "g/5" },
+  { name: "Tom 1",   lineIdx: 0.5,  pitch: "e/5" },
+  { name: "Tom 2",   lineIdx: 1,    pitch: "d/5" },
+  { name: "Snare",   lineIdx: 1.5,  pitch: "c/5" },
+  { name: "Floor",   lineIdx: 2.5,  pitch: "a/4" },
+  { name: "Bass",    lineIdx: 3.5,  pitch: "f/4" },
+  { name: "HH Foot", lineIdx: 4.5,  pitch: "d/4" },
+];
+
+/** Snap a clicked lineIdx to the nearest drum line within tolerance. */
+const DRUM_SNAP_TOLERANCE = 0.7;
+function snapToDrumLine(lineIdx: number): { lineIdx: number; pitch: string } | null {
+  let best: typeof DRUM_LINES[number] | null = null;
+  let bestDist = Infinity;
+  for (const d of DRUM_LINES) {
+    const dist = Math.abs(d.lineIdx - lineIdx);
+    if (dist < bestDist) { bestDist = dist; best = d; }
+  }
+  if (!best || bestDist > DRUM_SNAP_TOLERANCE) return null;
+  return { lineIdx: best.lineIdx, pitch: best.pitch };
+}
 const CLEF_EXTRA_W      = 78;
 const DEFAULT_MPR       = 4;
 // Active layout — updated per render for dense grids (16th/32nd)
@@ -1235,8 +1264,12 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   // here, while the top scoreRef shows the whole piece read-only as
   // a navigation surface.
   const editPaneRef = useRef<HTMLDivElement | null>(null);
+  const editPaneContainerRef = useRef<HTMLDivElement | null>(null);
   const editPaneLayoutsRef = useRef<MeasureLayout[]>([]);
   const editPaneNotePosRef = useRef<NotePixelPos[]>([]);
+  // Track the bottom pane's actual size so the editing measure
+  // scales to fill it.  Updates via ResizeObserver.
+  const [editPaneH, setEditPaneH] = useState(280);
   // Hover-preview position on the edit pane.  null when the cursor
   // is off the pane.  Rendered as a small green ghost dot that snaps
   // to the next click's slot/pitch.
@@ -1311,6 +1344,20 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     }
   }, [notes, selectedIds, activeProject, playingNoteIds, _denseGrid, containerW]);
 
+  // Track the bottom-pane height so the editing measure scales to
+  // fill it.  ResizeObserver fires whenever the parent container
+  // resizes (window resize, devtools toggle, etc.) and triggers a
+  // re-render via setEditPaneH.
+  useEffect(() => {
+    const el = editPaneContainerRef.current;
+    if (!el) return;
+    const update = () => setEditPaneH(el.clientHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [activeProject]);
+
   // Render the edit pane (single bar at large size).  Reuses
   // renderScore by handing it a synthetic project containing only the
   // editing bar (with `measure` remapped to 0); MEASURE_W /
@@ -1319,11 +1366,14 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   useEffect(() => {
     if (!editPaneRef.current || !activeProject) return;
     try {
-      // Render the editing bar at a larger natural size so it's
-      // visibly bigger than preview bars without resorting to CSS
-      // transforms (which collapse the layout box and clip the
-      // staff).  Override geometry, then restore.
+      // Render the editing bar at a larger natural size so it fills
+      // the bottom pane.  Override geometry, then restore.
       const containerW = editPaneRef.current.parentElement?.clientWidth ?? 900;
+      // Reserve ~50 px for the header + padding inside the pane.
+      const targetStaveH = Math.max(140, editPaneH - 60);
+      // Staff = 4 line-spacings tall; reserve ~35 % of remaining
+      // vertical for top/bottom margins (rest area, ledger lines).
+      const targetLS = Math.max(12, Math.floor(targetStaveH / 7));
       const savedMW    = MEASURE_W;
       const savedMPR   = MEASURES_PER_ROW;
       const savedSAH   = STAVE_AREA_H;
@@ -1331,9 +1381,9 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       const savedSTY   = STAVE_TOP_Y;
       MEASURES_PER_ROW = 1;
       MEASURE_W        = Math.max(280, containerW - CLEF_EXTRA_W - 30);
-      LINE_SPACING     = 16;   // up from 10
-      STAVE_AREA_H     = 220;  // up from 160 — gives room for the taller staff
-      STAVE_TOP_Y      = 28;
+      LINE_SPACING     = targetLS;
+      STAVE_AREA_H     = targetStaveH;
+      STAVE_TOP_Y      = Math.max(20, Math.floor(targetStaveH * 0.18));
       try {
         const synthSetup: ScoreSetup = {
           ...activeProject.setup,
@@ -1368,7 +1418,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     } catch (e) {
       console.warn("Edit-pane render error:", e);
     }
-  }, [notes, selectedIds, activeProject, playingNoteIds, editingBarIdx, containerW]);
+  }, [notes, selectedIds, activeProject, playingNoteIds, editingBarIdx, containerW, editPaneH]);
 
   // Auto-save
   useEffect(() => {
@@ -1716,9 +1766,10 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     const slot = xToSlot(x, anchors, gridSnap, totalSlots);
     const ls = layout.lineSpacing ?? LINE_SPACING;
     const lineIdx = (y - layout.staveTopLineY) / ls;
-    const snappedLine = Math.round(lineIdx * 2) / 2;
+    const drum = snapToDrumLine(lineIdx);
+    if (!drum) { setEditHover(null); return; }
     const snapX = slotToX(slot, anchors);
-    const snapY = layout.staveTopLineY + snappedLine * ls;
+    const snapY = layout.staveTopLineY + drum.lineIdx * ls;
     setEditHover({ x: snapX, y: snapY });
   }, [activeProject, editingBarIdx, duration]);
 
@@ -1769,7 +1820,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       return;
     }
 
-    // Click → place a note at (slot, pitch) in editingBarIdx.
+    // Click → place a note at (slot, drum-line) in editingBarIdx.
     const ts = activeProject.setup.perBarTimeSig?.[editingBarIdx]
       ?? activeProject.setup.defaultTimeSig;
     const totalSlots = measureSlots(ts);
@@ -1780,8 +1831,14 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
 
     const ls = layout.lineSpacing ?? LINE_SPACING;
     const lineIdx = (y - layout.staveTopLineY) / ls;
-    const snappedLine = Math.round(lineIdx * 2) / 2;
-    const pitch = isRest ? "b/4" : linePosToPitch(snappedLine, activeProject.setup.clef);
+    let pitch: string;
+    if (isRest) {
+      pitch = "b/4";
+    } else {
+      const drum = snapToDrumLine(lineIdx);
+      if (!drum) return; // click was too far from any drum line — ignore
+      pitch = drum.pitch;
+    }
 
     const existing = notes.find(n =>
       n.measure === editingBarIdx &&
@@ -1789,7 +1846,10 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       !n.isRest &&
       n.pitch === pitch,
     );
-    if (existing) { setSelectedIds([existing.id]); return; }
+    // Click on an existing note: do nothing (no auto-popup).  Use
+    // shift+click or drag-rect to multi-select; the popup-on-single-
+    // select behavior is intentionally suppressed in drum mode.
+    if (existing) return;
 
     pushHistory(notes);
     const newNote: NoteData = {
@@ -1812,7 +1872,8 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
         a.measure !== b.measure ? a.measure - b.measure : a.startSlot - b.startSlot,
       );
     });
-    setSelectedIds([newNote.id]);
+    // Don't auto-select the freshly-placed note — keeps the selection
+    // popup from opening on every placement.
   }, [activeProject, editingBarIdx, duration, accidental, notehead, isRest, notes]);
 
   // Adjust ghost-note x and y to match VexFlow's actual layout for the measure
@@ -3352,10 +3413,11 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
         </div>
 
         {/* ── Edit pane (Aered-style "current measure"): the bar at
-             editingBarIdx, rendered large.  Sized to its content and
-             stuck to the bottom edge — no scroll on this pane; the
-             preview above takes any overflow. */}
-        <div className="flex-shrink-0 bg-[#070707] border-t border-[#222] px-3 pt-1 pb-2 overflow-hidden">
+             editingBarIdx, rendered large.  Takes 60% of the main
+             content height so the editing measure fills the bottom
+             of the page; the preview takes the remaining 40% and
+             scrolls. */}
+        <div ref={editPaneContainerRef} className="flex-shrink-0 bg-[#070707] border-t border-[#222] px-3 pt-1 pb-2 overflow-hidden" style={{ height: "60%" }}>
           <div className="flex items-center gap-2 mb-2 text-[10px] text-[#666] uppercase tracking-wider">
             <span>Editing bar</span>
             <span className="text-white font-mono">{editingBarIdx + 1}</span>
@@ -3405,7 +3467,18 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
               ✕ Remove
             </button>
           </div>
-          <div style={{ position: "relative", display: "block", width: "100%" }}>
+          <div
+            style={{
+              position: "relative",
+              display: "block",
+              width: "100%",
+              // Prevent the browser's native text selection from
+              // kicking in when the user drags on the edit pane —
+              // we use the drag for our own mass-select rectangle.
+              userSelect: "none",
+              WebkitUserSelect: "none",
+            }}
+          >
             <div
               ref={editPaneRef}
               onPointerDown={handleEditPanePointerDown}
