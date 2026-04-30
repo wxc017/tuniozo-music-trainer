@@ -1370,10 +1370,11 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       // the bottom pane.  Override geometry, then restore.
       const containerW = editPaneRef.current.parentElement?.clientWidth ?? 900;
       // Reserve ~50 px for the header + padding inside the pane.
-      const targetStaveH = Math.max(140, editPaneH - 60);
-      // Staff = 4 line-spacings tall; reserve ~35 % of remaining
-      // vertical for top/bottom margins (rest area, ledger lines).
-      const targetLS = Math.max(12, Math.floor(targetStaveH / 7));
+      const targetStaveH = Math.max(180, editPaneH - 50);
+      // Staff = 4 line-spacings tall.  Use a tighter top margin so
+      // most of the available height goes into the staff itself —
+      // LS = staveH / 5 puts the 4-line staff at ~80 % of the pane.
+      const targetLS = Math.max(18, Math.floor(targetStaveH / 5));
       const savedMW    = MEASURE_W;
       const savedMPR   = MEASURES_PER_ROW;
       const savedSAH   = STAVE_AREA_H;
@@ -1383,7 +1384,9 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       MEASURE_W        = Math.max(280, containerW - CLEF_EXTRA_W - 30);
       LINE_SPACING     = targetLS;
       STAVE_AREA_H     = targetStaveH;
-      STAVE_TOP_Y      = Math.max(20, Math.floor(targetStaveH * 0.18));
+      // Small top margin so ledger lines for crash / hh fit above
+      // the top staff line.
+      STAVE_TOP_Y      = Math.max(20, Math.floor(targetStaveH * 0.12));
       try {
         const synthSetup: ScoreSetup = {
           ...activeProject.setup,
@@ -3403,7 +3406,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
              content height so the editing measure fills the bottom
              of the page; the preview takes the remaining 40% and
              scrolls. */}
-        <div ref={editPaneContainerRef} className="flex-shrink-0 bg-[#070707] border-t border-[#222] px-3 pt-1 pb-2 overflow-hidden" style={{ height: "60%" }}>
+        <div ref={editPaneContainerRef} className="flex-shrink-0 bg-[#070707] border-t border-[#222] px-3 pt-1 pb-2 overflow-hidden" style={{ height: "70%" }}>
           <div className="flex items-center gap-2 mb-2 text-[10px] text-[#666] uppercase tracking-wider">
             <span>Editing bar</span>
             <span className="text-white font-mono">{editingBarIdx + 1}</span>
