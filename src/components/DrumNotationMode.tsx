@@ -3028,14 +3028,18 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
 
             {/* Per-measure play buttons removed — single play button in YouTube panel + Ctrl+click */}
 
-            {/* ── Multi-select overlay (duration + ties + delete) ── */}
-            {selectedIds.length > 1 && multiSelectPos && (
+            {/* ── Multi-select overlay (duration + ties + delete) ──
+                Pinned above the edit pane via `position: fixed` so it
+                only appears in the editing-bar region, not overlaying
+                the preview. */}
+            {selectedIds.length > 1 && (
               <div
                 style={{
-                  position: "absolute",
-                  left: Math.max(4, multiSelectPos.px - 10),
-                  top: (() => { const above = multiSelectPos.py - 140; return above >= 4 ? above : multiSelectPos.py + 22; })(),
-                  zIndex: 20,
+                  position: "fixed",
+                  bottom: editPaneH + 12,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  zIndex: 30,
                   pointerEvents: "all",
                 }}
                 onPointerDown={e => e.stopPropagation()}
@@ -3127,23 +3131,19 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
               </div>
             )}
 
-            {/* ── Single-note context popup ── */}
-            {selectedIds.length === 1 && selectedNote && selectedNotePos && (
+            {/* ── Single-note context popup ──
+                Pinned above the edit pane via `position: fixed`
+                instead of anchored to the preview note's pixel
+                location.  Keeps all selection UI in the editing
+                region. */}
+            {selectedIds.length === 1 && selectedNote && (
               <div
                 style={{
-                  position: "absolute",
-                  left: (() => {
-                    const POPUP_W = 220;
-                    const onRightHalf = selectedNotePos.px > scoreDims.w / 2;
-                    return onRightHalf
-                      ? Math.max(4, selectedNotePos.px - POPUP_W - 8)
-                      : Math.min(scoreDims.w - POPUP_W - 4, selectedNotePos.px + 16);
-                  })(),
-                  top: (() => {
-                    const above = selectedNotePos.py - 108;
-                    return above >= 4 ? above : selectedNotePos.py + 22;
-                  })(),
-                  zIndex: 20,
+                  position: "fixed",
+                  bottom: editPaneH + 12,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  zIndex: 30,
                   pointerEvents: "all",
                 }}
                 onPointerDown={e => e.stopPropagation()}
@@ -3346,23 +3346,9 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                     );
                   })()}
 
-                  {/* Row 7: bend — fixed guitar values */}
-                  {!selectedNote.isRest && (
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-[#666]">Bend:</span>
-                      {([0.25,0.5,1,1.5,2,2.5] as number[]).map(v => {
-                        const lbl = v === 0.25 ? "¼" : v === 0.5 ? "½" : v === 1.5 ? "1½" : v === 2.5 ? "2½" : String(v);
-                        const active = selectedNote.bendSteps === v;
-                        return (
-                          <button
-                            key={v}
-                            className={`px-1.5 py-0.5 border rounded transition-colors text-[10px] font-mono ${active ? "bg-[#7173e6] border-[#7173e6] text-white" : "border-[#333] text-[#aaa] hover:text-white hover:border-[#555]"}`}
-                            onClick={() => setBendOnSelected(active ? 0 : v)}
-                          >{lbl}</button>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {/* Bend control intentionally omitted — drums
+                      don't bend; the row used to live in NoteEntryMode
+                      for guitar-style pitched scoring. */}
                 </div>
               </div>
             )}
