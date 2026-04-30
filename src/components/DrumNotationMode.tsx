@@ -81,6 +81,24 @@ const DRUM_LINES: { name: string; lineIdx: number; pitch: string; defaultHead?: 
   { name: "HH Foot", lineIdx: 4.5,  pitch: "d/4", defaultHead: "x" },
 ];
 
+/** Edit-pane grid math: returns the x position of a 16th-note slot
+ *  using uniform spacing across the bar's note area.  This is
+ *  independent of VexFlow's formatter output, so the X-ray grid
+ *  stays locked at evenly-spaced positions even when notes are
+ *  placed (which otherwise shift the formatter's anchors). */
+function evenSlotX(slot: number, totalSlots: number, layout: MeasureLayout): number {
+  return layout.noteStartX + (slot / totalSlots) * layout.justifyWidth;
+}
+
+/** Inverse of evenSlotX — given a click x, return the snapped slot
+ *  on the uniform 16th-note grid. */
+function xToSlotEven(x: number, totalSlots: number, gridSnap: number, layout: MeasureLayout): number {
+  const usable = layout.justifyWidth || 1;
+  const raw = ((x - layout.noteStartX) / usable) * totalSlots;
+  const snapped = Math.round(raw / gridSnap) * gridSnap;
+  return Math.max(0, Math.min(totalSlots - gridSnap, snapped));
+}
+
 /** Snap a clicked lineIdx to the nearest drum line within tolerance. */
 const DRUM_SNAP_TOLERANCE = 0.7;
 function snapToDrumLine(lineIdx: number): { lineIdx: number; pitch: string; defaultHead?: "x" } | null {
@@ -469,10 +487,26 @@ function renderScore(
         (voice as unknown as { setMode(m: number): void }).setMode(2);
         voice.addTickables(allTickables);
 
+        // Anchor voice — a parallel voice of N invisible 16th-note
+        // ghost rests covering the full bar.  Joining this with the
+        // notes voice makes VexFlow's formatter space columns based
+        // on the 16 even time-points, so the X-ray grid stays
+        // locked at uniform 16th-note positions even when an actual
+        // note (quarter, half, etc.) is placed.
+        const sixteenSlots = DURATION_SLOTS["16"]; // = 2
+        const numSixteenths = Math.max(1, Math.round(totalSlots / sixteenSlots));
+        const anchorTickables: VFGhostNote[] = [];
+        for (let i = 0; i < numSixteenths; i++) {
+          anchorTickables.push(new VFGhostNote({ duration: "16" }));
+        }
+        const anchorVoice = new Voice({ numBeats: ts.num, beatValue: ts.den });
+        (anchorVoice as unknown as { setMode(m: number): void }).setMode(2);
+        anchorVoice.addTickables(anchorTickables);
+
         try {
           const fmt = new Formatter();
-          fmt.joinVoices([voice]);
-          fmt.format([voice], justifyWidth);
+          fmt.joinVoices([voice, anchorVoice]);
+          fmt.format([voice, anchorVoice], justifyWidth);
 
           // Manual beam grouping: group consecutive beamable notes (8th or
           // shorter) within the same beat.  This is more reliable than
@@ -1875,7 +1909,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     const ts = activeProject.setup.perBarTimeSig?.[editingBarIdx]
       ?? activeProject.setup.defaultTimeSig;
     const totalSlots = measureSlots(ts);
-    const gridSnap = DURATION_SLOTS[duration];
+    const gridSnap = DURATION_SLOTS["16"];
     const anchors = layout.slotAnchors;
     if (!anchors || anchors.length < 2) return;
     const slot = xToSlot(x, anchors, gridSnap, totalSlots);
