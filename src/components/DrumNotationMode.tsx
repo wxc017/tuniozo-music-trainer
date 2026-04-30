@@ -63,20 +63,21 @@ const DEFAULT_MEASURE_W = 220;
  *  too far from any are rejected (no note placed).  lineIdx values
  *  match the linePosToPitch convention (treble, lineIdx 0 = top
  *  staff line F5). */
-const DRUM_LINES: { name: string; lineIdx: number; pitch: string }[] = [
-  { name: "Crash",   lineIdx: -2,   pitch: "a/5" },
-  { name: "Hi-Hat",  lineIdx: -1,   pitch: "g/5" },
+const DRUM_LINES: { name: string; lineIdx: number; pitch: string; defaultHead?: "x" }[] = [
+  // Cymbals → X notehead by default.  Drums → regular round head.
+  { name: "Crash",   lineIdx: -2,   pitch: "a/5", defaultHead: "x" },
+  { name: "Hi-Hat",  lineIdx: -1,   pitch: "g/5", defaultHead: "x" },
   { name: "Tom 1",   lineIdx: 0.5,  pitch: "e/5" },
   { name: "Tom 2",   lineIdx: 1,    pitch: "d/5" },
   { name: "Snare",   lineIdx: 1.5,  pitch: "c/5" },
   { name: "Floor",   lineIdx: 2.5,  pitch: "a/4" },
   { name: "Bass",    lineIdx: 3.5,  pitch: "f/4" },
-  { name: "HH Foot", lineIdx: 4.5,  pitch: "d/4" },
+  { name: "HH Foot", lineIdx: 4.5,  pitch: "d/4", defaultHead: "x" },
 ];
 
 /** Snap a clicked lineIdx to the nearest drum line within tolerance. */
 const DRUM_SNAP_TOLERANCE = 0.7;
-function snapToDrumLine(lineIdx: number): { lineIdx: number; pitch: string } | null {
+function snapToDrumLine(lineIdx: number): { lineIdx: number; pitch: string; defaultHead?: "x" } | null {
   let best: typeof DRUM_LINES[number] | null = null;
   let bestDist = Infinity;
   for (const d of DRUM_LINES) {
@@ -84,7 +85,7 @@ function snapToDrumLine(lineIdx: number): { lineIdx: number; pitch: string } | n
     if (dist < bestDist) { bestDist = dist; best = d; }
   }
   if (!best || bestDist > DRUM_SNAP_TOLERANCE) return null;
-  return { lineIdx: best.lineIdx, pitch: best.pitch };
+  return { lineIdx: best.lineIdx, pitch: best.pitch, defaultHead: best.defaultHead };
 }
 const CLEF_EXTRA_W      = 78;
 const DEFAULT_MPR       = 4;
@@ -1274,6 +1275,10 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   // is off the pane.  Rendered as a small green ghost dot that snaps
   // to the next click's slot/pitch.
   const [editHover, setEditHover] = useState<{ x: number; y: number } | null>(null);
+  // Note id currently under the cursor on the edit pane (or null).
+  // Hover-key shortcuts (G/A/D/F/N/U/Y) act on this note even when
+  // it isn't selected.
+  const hoveredNoteIdRef = useRef<string | null>(null);
   // Drag-select state on the edit pane (mass selection rectangle).
   const editDragStartRef = useRef<{ x: number; y: number } | null>(null);
   const editIsMouseDownRef = useRef(false);
@@ -1624,51 +1629,52 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       }
 
       // Accidentals for all selected notes
-      if (selectedIds.length > 0) {
-        if (e.key === "#") setNotes(prev => prev.map(n => selectedIds.includes(n.id) ? { ...n, accidental: "#" as AccidentalType } : n));
-        if (e.key === "b") setNotes(prev => prev.map(n => selectedIds.includes(n.id) ? { ...n, accidental: "b" as AccidentalType } : n));
-        // n = natural collides with Aered's "normal" articulation — in
-        // drum mode we treat lowercase n as articulation-normal.
+      // Hover-or-selected note targeting.  Hover-key shortcuts act
+      // on the note under the cursor when one's there; if not,
+      // they fall back to the selection.  This matches the spec
+      // "by pressing a key while hovering a note, you can set it".
+      const hovered = hoveredNoteIdRef.current;
+      const targetIds = hovered ? [hovered] : selectedIds;
+      if (targetIds.length > 0) {
+        if (e.key === "#") setNotes(prev => prev.map(n => targetIds.includes(n.id) ? { ...n, accidental: "#" as AccidentalType } : n));
+        if (e.key === "b") setNotes(prev => prev.map(n => targetIds.includes(n.id) ? { ...n, accidental: "b" as AccidentalType } : n));
 
-        // Aered-style articulation keys (drum mode).  Apply to selected
-        // notes; clear with "n" or by re-pressing the same key.
+        // Articulation keys (apply to hover-target or selection).
         if (e.key === "a" || e.key === "A") {
           e.preventDefault();
-          setNotes(prev => prev.map(n => selectedIds.includes(n.id) && !n.isRest
+          setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
             ? { ...n, articulation: n.articulation === "accent" ? "normal" : "accent" } : n));
         }
         if (e.key === "g" || e.key === "G") {
           e.preventDefault();
-          setNotes(prev => prev.map(n => selectedIds.includes(n.id) && !n.isRest
+          setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
             ? { ...n, articulation: n.articulation === "ghost" ? "normal" : "ghost" } : n));
         }
         if (e.key === "f" || e.key === "F") {
           e.preventDefault();
-          setNotes(prev => prev.map(n => selectedIds.includes(n.id) && !n.isRest
+          setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
             ? { ...n, articulation: n.articulation === "flam" ? "normal" : "flam" } : n));
         }
         if (e.key === "d" || e.key === "D") {
           e.preventDefault();
-          setNotes(prev => prev.map(n => selectedIds.includes(n.id) && !n.isRest
+          setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
             ? { ...n, articulation: n.articulation === "drag" ? "normal" : "drag" } : n));
         }
         if (e.key === "n" || e.key === "N") {
-          // Drum: clear articulation back to normal.  Harmonic users
-          // already have "n" mapped to natural via the row above; this
-          // additional clear is harmless when accidental is "n".
-          setNotes(prev => prev.map(n => selectedIds.includes(n.id) && !n.isRest
-            ? { ...n, articulation: "normal", accidental: "n" as AccidentalType } : n));
+          setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
+            ? { ...n, articulation: "normal" } : n));
         }
-        // Sticking: R / L (uppercase only so it doesn't fight with
-        // common single-letter shortcuts on harmonic side).
-        if (e.key === "R") {
+        // Stickings — `U` for right (R) and `Y` for left (L).  These
+        // letters were chosen so they don't collide with the
+        // articulation row; a re-press toggles the sticking off.
+        if (e.key === "u" || e.key === "U") {
           e.preventDefault();
-          setNotes(prev => prev.map(n => selectedIds.includes(n.id) && !n.isRest
+          setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
             ? { ...n, stick: n.stick === "R" ? undefined : "R" } : n));
         }
-        if (e.key === "L") {
+        if (e.key === "y" || e.key === "Y") {
           e.preventDefault();
-          setNotes(prev => prev.map(n => selectedIds.includes(n.id) && !n.isRest
+          setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
             ? { ...n, stick: n.stick === "L" ? undefined : "L" } : n));
         }
       }
@@ -1745,12 +1751,22 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   // so the green ghost dot shows exactly where the next click will
   // place the note.
   const handleEditPanePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!activeProject || !editPaneRef.current) { setEditHover(null); return; }
+    if (!activeProject || !editPaneRef.current) { setEditHover(null); hoveredNoteIdRef.current = null; return; }
     const layout = editPaneLayoutsRef.current[0];
-    if (!layout) { setEditHover(null); return; }
+    if (!layout) { setEditHover(null); hoveredNoteIdRef.current = null; return; }
     const rect = editPaneRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    // Track which (if any) note's notehead the cursor is on so
+    // hover-keys (G/A/D/F/N/U/Y) can target it.
+    const HIT_R = 14;
+    const hovered = editPaneNotePosRef.current.find(p => {
+      const dx = p.x - x;
+      const dy = p.y - y;
+      return dx * dx + dy * dy < HIT_R * HIT_R;
+    });
+    hoveredNoteIdRef.current = hovered ? hovered.id : null;
 
     // Drag-rect update when the user is mid-drag.
     if (editIsMouseDownRef.current && editDragStartRef.current) {
@@ -1823,6 +1839,18 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       return;
     }
 
+    // Hit-test against rendered note pixel positions first.  This
+    // is how clicking an existing note opens the overlay — radius
+    // tolerance is generous so the user doesn't have to be pixel-
+    // perfect on a small notehead.
+    const HIT_R = 14;
+    const hit = editPaneNotePosRef.current.find(p => {
+      const dx = p.x - x;
+      const dy = p.y - y;
+      return dx * dx + dy * dy < HIT_R * HIT_R;
+    });
+    if (hit) { setSelectedIds([hit.id]); return; }
+
     // Click → place a note at (slot, drum-line) in editingBarIdx.
     const ts = activeProject.setup.perBarTimeSig?.[editingBarIdx]
       ?? activeProject.setup.defaultTimeSig;
@@ -1835,24 +1863,18 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     const ls = layout.lineSpacing ?? LINE_SPACING;
     const lineIdx = (y - layout.staveTopLineY) / ls;
     let pitch: string;
+    let lineHead: NoteheadType | undefined;
     if (isRest) {
       pitch = "b/4";
     } else {
       const drum = snapToDrumLine(lineIdx);
       if (!drum) return; // click was too far from any drum line — ignore
       pitch = drum.pitch;
+      // Cymbals (Crash, Hi-Hat, HH Foot) get an X notehead by
+      // default.  User's notehead picker still wins if they've
+      // chosen something other than "default".
+      if (drum.defaultHead === "x") lineHead = "x";
     }
-
-    const existing = notes.find(n =>
-      n.measure === editingBarIdx &&
-      n.startSlot === slot &&
-      !n.isRest &&
-      n.pitch === pitch,
-    );
-    // Click on an existing note: do nothing (no auto-popup).  Use
-    // shift+click or drag-rect to multi-select; the popup-on-single-
-    // select behavior is intentionally suppressed in drum mode.
-    if (existing) return;
 
     pushHistory(notes);
     const newNote: NoteData = {
@@ -1862,7 +1884,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       duration,
       pitch,
       accidental: accidental ?? undefined,
-      notehead: notehead === "default" ? undefined : notehead,
+      notehead: notehead !== "default" ? notehead : lineHead,
       isRest,
     };
     setNotes(prev => {
@@ -3498,7 +3520,10 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                 const ts = activeProject.setup.perBarTimeSig?.[editingBarIdx]
                   ?? activeProject.setup.defaultTimeSig;
                 const totalSlots = measureSlots(ts);
-                const gridSlots = DURATION_SLOTS[duration];
+                // Fixed 16th-note grid — independent of the active
+                // placement duration so the X-ray always shows the
+                // finest-readable subdivision.  Red dashed lines.
+                const gridSlots = DURATION_SLOTS["16"];
                 const y1 = layout.staveTopLineY;
                 const y2 = layout.staveTopLineY + 4 * layout.lineSpacing;
                 const out: ReactNode[] = [];
@@ -3508,9 +3533,9 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                     <line
                       key={`xr-${s}`}
                       x1={lx} x2={lx} y1={y1} y2={y2}
-                      stroke="rgba(255,255,255,0.30)"
-                      strokeWidth={1}
-                      strokeDasharray="3 3"
+                      stroke="rgba(240, 200, 60, 0.85)"
+                      strokeWidth={2}
+                      strokeDasharray="4 3"
                     />,
                   );
                 }
