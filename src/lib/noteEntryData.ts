@@ -137,6 +137,8 @@ export interface NoteEntryProject {
   /** Instrument family — picked at score creation.  Legacy projects
    *  without this field are treated as "harmonic". */
   instrument?: Instrument;
+  /** BPM for drum-mode playback.  Defaults to 100 when absent. */
+  tempo?: number;
 }
 
 // ── Utilities ──────────────────────────────────────────────────────────────────
