@@ -1384,13 +1384,11 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       // Render the editing bar at a larger natural size so it fills
       // the bottom pane.  Override geometry, then restore.
       const containerW = editPaneRef.current.parentElement?.clientWidth ?? 900;
-      // The editing bar uses the same per-pixel staff geometry as
-      // the preview (LINE_SPACING = 10), then CSS-scales the SVG by
-      // EDIT_PANE_SCALE for the visual enlargement.  We DO override
-      // STAVE_AREA_H + STAVE_TOP_Y so the SVG box fits the staff
-      // tightly — otherwise the default 160 px area leaves a big
-      // empty band above + below the staff once scaled.
-      const targetStaveH = 64;   // 4*LS (= 40) + 24 px margins
+      // SVG box big enough that VexFlow's stave draw isn't clipped
+      // and the 40 px staff can sit centered with margins above
+      // (cymbal ledger lines) and below (hh-foot).  120 with TOP_Y =
+      // 40 gives staff y=40..80, centered in 120 px.
+      const targetStaveH = 120;
       const targetLS = LINE_SPACING;
       const savedMW    = MEASURE_W;
       const savedMPR   = MEASURES_PER_ROW;
@@ -1407,7 +1405,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       MEASURE_W        = Math.max(280, preScaleW - CLEF_EXTRA_W - 6);
       LINE_SPACING     = targetLS;
       STAVE_AREA_H     = targetStaveH;
-      STAVE_TOP_Y      = 12;  // small top margin so cymbals sit clear of the SVG edge
+      STAVE_TOP_Y      = 40;  // staff at y=40..80 sits centered in 120-tall SVG
       try {
         const synthSetup: ScoreSetup = {
           ...activeProject.setup,
@@ -2616,7 +2614,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   }
 
   return (
-    <div className="flex flex-col h-full max-w-6xl mx-auto w-full" onKeyDown={() => {}}>
+    <div className="flex flex-col h-full w-full" onKeyDown={() => {}}>
       {/* ── Toolbar rows ── */}
       <div className="flex flex-wrap items-center gap-2 py-2">
         {/* Projects + Duration + Rest + Accidentals */}
@@ -2657,31 +2655,9 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
               </button>
             ))}
           </div>
-          <div className="w-px h-4 bg-[#2a2a2a]" />
-          {/* Notehead picker (drum mode) — selecting a head sets it as
-              the active head for new notes; with a selection, also
-              re-skins the selected notes immediately. */}
-          <div className="flex gap-1">
-            {NOTEHEAD_ORDER.map(h => (
-              <button
-                key={h}
-                onClick={() => {
-                  setNotehead(h);
-                  if (selectedIds.length > 0) {
-                    setNotes(prev => prev.map(n =>
-                      selectedIds.includes(n.id) && !n.isRest
-                        ? { ...n, notehead: h === "default" ? undefined : h }
-                        : n,
-                    ));
-                  }
-                }}
-                className={toolBtn(notehead === h)}
-                title={NOTEHEAD_LABELS[h]}
-              >
-                {h === "default" ? "●" : h === "x" ? "✕" : h === "circle-x" ? "⊗" : h === "diamond" ? "◇" : "△"}
-              </button>
-            ))}
-          </div>
+          {/* Notehead picker buttons removed — Crash / Hi-Hat / HH-Foot
+              get an X notehead automatically on placement, and the
+              hover-key cheat-sheet covers all other variants. */}
           <div className="w-px h-4 bg-[#2a2a2a]" />
           <button onClick={undo} className={toolBtn(false)} title="Undo (Ctrl+Z)">↩ Undo</button>
           <button onClick={handleFillRests} className={toolBtn(false)} title="Fill all empty gaps with rests">𝄼 Fill Rests</button>
@@ -3450,7 +3426,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
              × scale + header + padding) so there's no extra dead
              space below it. */}
         <div ref={editPaneContainerRef} className="flex-shrink-0 bg-[#070707] border-t border-[#222] px-0 pt-1 pb-0 overflow-hidden"
-             style={{ height: 64 * EDIT_PANE_SCALE + 32 }}>
+             style={{ height: 120 * EDIT_PANE_SCALE + 50 }}>
           <div className="flex items-center gap-2 mb-1 px-3 text-[10px] text-[#666] uppercase tracking-wider">
             <span>Editing bar</span>
             <span className="text-white font-mono">{editingBarIdx + 1}</span>
@@ -3505,7 +3481,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
               position: "relative",
               display: "block",
               width: "100%",
-              height: 64 * EDIT_PANE_SCALE,
+              height: 120 * EDIT_PANE_SCALE,
               userSelect: "none",
               WebkitUserSelect: "none",
             }}
@@ -3532,8 +3508,8 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
               style={{
                 position: "absolute",
                 left: 0, top: 0,
-                width: STAVE_AREA_H * 4, // wider than needed; scaled below
-                height: STAVE_AREA_H,
+                width: 2400,
+                height: 120,
                 transform: `scale(${EDIT_PANE_SCALE})`,
                 transformOrigin: "top left",
                 pointerEvents: "none",
@@ -3592,6 +3568,26 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                 }}
               />
             )}
+          </div>
+          {/* Keybind cheat sheet — sits under the editing bar so the
+              user has the controls visible without a popup.  Hover-keys
+              act on the note under the cursor; duration / rest keys
+              act on the next placement. */}
+          <div className="px-3 pt-1 text-[9px] text-[#666] flex flex-wrap gap-x-3 gap-y-0.5 leading-tight">
+            <span><span className="text-[#aaa] font-mono">1/2/4/8</span> dur (q/8/16/32)</span>
+            <span><span className="text-[#aaa] font-mono">A</span> accent</span>
+            <span><span className="text-[#aaa] font-mono">G</span> ghost</span>
+            <span><span className="text-[#aaa] font-mono">F</span> flam</span>
+            <span><span className="text-[#aaa] font-mono">D</span> drag</span>
+            <span><span className="text-[#aaa] font-mono">N</span> normal</span>
+            <span><span className="text-[#aaa] font-mono">U</span>/<span className="text-[#aaa] font-mono">Y</span> stick R/L</span>
+            <span><span className="text-[#aaa] font-mono">R</span> rest</span>
+            <span><span className="text-[#aaa] font-mono">I</span> insert bar</span>
+            <span><span className="text-[#aaa] font-mono">⇧B</span> dup</span>
+            <span><span className="text-[#aaa] font-mono">⇧R</span> remove</span>
+            <span><span className="text-[#aaa] font-mono">PgUp</span>/<span className="text-[#aaa] font-mono">PgDn</span> nav</span>
+            <span><span className="text-[#aaa] font-mono">Del</span> delete sel</span>
+            <span><span className="text-[#aaa] font-mono">Ctrl+Z</span> undo</span>
           </div>
         </div>
 
