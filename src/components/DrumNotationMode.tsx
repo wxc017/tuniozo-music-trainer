@@ -365,6 +365,14 @@ function renderScore(
       const y = rowY + STAVE_TOP_Y;
 
       const stave = new Stave(x, y, w);
+      // Override VexFlow's internal line-spacing to match our
+      // LINE_SPACING constant so the rendered staff actually grows
+      // with our overrides (default is 10 px regardless of stave
+      // height).
+      try {
+        (stave as unknown as { setOptions(o: { spacing_between_lines_px: number }): void })
+          .setOptions({ spacing_between_lines_px: LINE_SPACING });
+      } catch { /* older VF builds */ }
       if (mInRow === 0) {
         stave.addClef(vfClef);
         const keyName = KEY_NAMES[keySignature as keyof typeof KEY_NAMES] ?? "C";
