@@ -1,5 +1,6 @@
 import {
   useState, useRef, useEffect, useCallback, useMemo,
+  type ReactNode,
 } from "react";
 import {
   Renderer, Stave, StaveNote, Voice, Formatter, Beam, Barline, Accidental, Dot,
@@ -1235,6 +1236,10 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   // a navigation surface.
   const editPaneRef = useRef<HTMLDivElement | null>(null);
   const editPaneLayoutsRef = useRef<MeasureLayout[]>([]);
+  // Hover-preview position on the edit pane (in unscaled SVG coords).
+  // null when the cursor is off the pane.  Rendered as a small green
+  // ghost dot that snaps to the next click's slot/pitch.
+  const [editHover, setEditHover] = useState<{ x: number; y: number } | null>(null);
   const scoreAreaRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const ytPlayerRef = useRef<YTPlayerAPI | null>(null);
@@ -1659,6 +1664,33 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     isMouseDownRef.current = true;
     (e.target as Element).setPointerCapture(e.pointerId);
   }, [getOverlayPos]);
+
+  // ── Edit-pane hover preview ──────────────────────────────────────
+  // Tracks cursor position on the edit pane (un-scaled to match the
+  // underlying SVG coords), snapped to the active grid + pitch line
+  // so the green ghost dot shows exactly where the next click will
+  // place the note.
+  const handleEditPanePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!activeProject || !editPaneRef.current) { setEditHover(null); return; }
+    const layout = editPaneLayoutsRef.current[0];
+    if (!layout) { setEditHover(null); return; }
+    const rect = editPaneRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / EDIT_PANE_SCALE;
+    const y = (e.clientY - rect.top) / EDIT_PANE_SCALE;
+    const ts = activeProject.setup.perBarTimeSig?.[editingBarIdx]
+      ?? activeProject.setup.defaultTimeSig;
+    const totalSlots = measureSlots(ts);
+    const gridSnap = DURATION_SLOTS[duration];
+    const anchors = layout.slotAnchors;
+    if (!anchors || anchors.length < 2) { setEditHover(null); return; }
+    const slot = xToSlot(x, anchors, gridSnap, totalSlots);
+    const ls = layout.lineSpacing ?? LINE_SPACING;
+    const lineIdx = (y - layout.staveTopLineY) / ls;
+    const snappedLine = Math.round(lineIdx * 2) / 2;
+    const snapX = slotToX(slot, anchors);
+    const snapY = layout.staveTopLineY + snappedLine * ls;
+    setEditHover({ x: snapX, y: snapY });
+  }, [activeProject, editingBarIdx, duration]);
 
   // ── Edit-pane click placement ────────────────────────────────────
   // Bypasses the preview's full pointer pipeline; takes coords
@@ -3186,23 +3218,50 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                 </div>
               </div>
             )}
+            {/* Per-row "+" button — anchored to the right edge of
+                each rendered preview line.  When the last line has
+                room, the + is at the end of that line (adds a bar
+                inline).  When the last line is full, an extra +
+                appears below it as a "start a new line" affordance.
+                Positions are read from measureLayoutsRef and rendered
+                as absolutely-placed buttons over the score wrapper. */}
+            {(() => {
+              const layouts = measureLayoutsRef.current;
+              if (!layouts.length) return null;
+              // Group by row, find the last bar per row, and compute
+              // the right-edge x and a Y centered on the staff.
+              const rowsMap = new Map<number, { lastMIdx: number; rightX: number; y: number }>();
+              for (const l of layouts) {
+                const rightX = l.noteStartX + l.justifyWidth + 6;
+                const cur = rowsMap.get(l.rowIdx);
+                if (!cur || l.mIdx > cur.lastMIdx) {
+                  rowsMap.set(l.rowIdx, { lastMIdx: l.mIdx, rightX, y: l.staveTopLineY + 2 * l.lineSpacing });
+                }
+              }
+              const buttons: ReactNode[] = [];
+              for (const [rowIdx, info] of rowsMap) {
+                const lastInRow = (info.lastMIdx + 1) % MEASURES_PER_ROW === 0;
+                buttons.push(
+                  <button
+                    key={`add-${rowIdx}`}
+                    onClick={() => {
+                      void renderTick;
+                      setActiveProject({
+                        ...activeProject,
+                        setup: { ...activeProject.setup, barCount: activeProject.setup.barCount + 1 },
+                      });
+                    }}
+                    className="absolute w-7 h-7 rounded-full bg-[#1a3a1a] border-2 border-[#3a8a3a] text-[#7adf7a] text-sm font-bold hover:bg-[#1a4a1a] hover:border-[#5acf5a] hover:text-[#9aff9a] transition-colors flex items-center justify-center"
+                    style={{ left: info.rightX, top: info.y - 14 }}
+                    title={lastInRow ? "Start a new line with another bar" : "Add a bar to this line"}
+                  >
+                    +
+                  </button>,
+                );
+              }
+              return buttons;
+            })()}
           </div>
-          {/* Inline "add bar" button — appended to the right of the
-              rendered score in the preview.  It always adds a bar at
-              the end; the renderer naturally pushes onto a new line
-              when the current line is full. */}
-          <button
-            onClick={() => {
-              setActiveProject({
-                ...activeProject,
-                setup: { ...activeProject.setup, barCount: activeProject.setup.barCount + 1 },
-              });
-            }}
-            className="self-center mt-12 w-9 h-9 rounded-full bg-[#1a3a1a] border-2 border-[#3a8a3a] text-[#7adf7a] text-base font-bold hover:bg-[#1a4a1a] hover:border-[#5acf5a] hover:text-[#9aff9a] transition-colors flex items-center justify-center flex-shrink-0"
-            title="Add bar at the end of the piece"
-          >
-            +
-          </button>
         </div>
 
         {/* ── Edit pane (Aered-style "current measure"): the bar at
@@ -3264,6 +3323,8 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
             <div
               ref={editPaneRef}
               onPointerDown={handleEditPanePointerDown}
+              onPointerMove={handleEditPanePointerMove}
+              onPointerLeave={() => setEditHover(null)}
               style={{
                 display: "block",
                 lineHeight: 0,
@@ -3275,6 +3336,21 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                 cursor: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Ccircle cx='5' cy='5' r='3' fill='white' fill-opacity='.85'/%3E%3C/svg%3E") 5 5, auto`,
               }}
             />
+            {/* Hover ghost dot — multiplied by EDIT_PANE_SCALE so its
+                position lines up visually with the scaled SVG. */}
+            {editHover && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: editHover.x * EDIT_PANE_SCALE - 5,
+                  top:  editHover.y * EDIT_PANE_SCALE - 5,
+                  width: 10, height: 10,
+                  borderRadius: 5,
+                  background: "rgba(106, 207, 138, 0.7)",
+                  pointerEvents: "none",
+                }}
+              />
+            )}
           </div>
         </div>
 
