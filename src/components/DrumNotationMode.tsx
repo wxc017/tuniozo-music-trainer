@@ -58,6 +58,12 @@ let LINE_SPACING     = 10;
 let STAVE_AREA_H     = 160;
 const DEFAULT_MEASURE_W = 220;
 
+/** Visual zoom applied to the edit-pane SVG.  Preview bars render
+ *  at 1×; the editing bar renders at this multiplier so the staff
+ *  reads bigger.  Pointer-down handlers divide click coordinates
+ *  by this factor before mapping to slot/pitch. */
+const EDIT_PANE_SCALE = 2.4;
+
 /** The 8 valid drum lines.  Click placement on the edit pane snaps
  *  the cursor's lineIdx to whichever of these is closest; clicks
  *  too far from any are rejected (no note placed).  lineIdx values
@@ -365,14 +371,6 @@ function renderScore(
       const y = rowY + STAVE_TOP_Y;
 
       const stave = new Stave(x, y, w);
-      // Override VexFlow's internal line-spacing to match our
-      // LINE_SPACING constant so the rendered staff actually grows
-      // with our overrides (default is 10 px regardless of stave
-      // height).
-      try {
-        (stave as unknown as { setOptions(o: { spacing_between_lines_px: number }): void })
-          .setOptions({ spacing_between_lines_px: LINE_SPACING });
-      } catch { /* older VF builds */ }
       if (mInRow === 0) {
         stave.addClef(vfClef);
         const keyName = KEY_NAMES[keySignature as keyof typeof KEY_NAMES] ?? "C";
@@ -1382,13 +1380,14 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       // Render the editing bar at a larger natural size so it fills
       // the bottom pane.  Override geometry, then restore.
       const containerW = editPaneRef.current.parentElement?.clientWidth ?? 900;
-      // Fixed staff dimensions so the edit-pane render doesn't
-      // depend on the container height — that dependency caused a
-      // layout-resize feedback loop where the bar kept growing.
-      // The container itself stays at its 70 % flex height; the
-      // SVG sits inside at this fixed natural size.
-      const targetStaveH = 360;
-      const targetLS = 80; // ~8× the preview's LINE_SPACING
+      // Render the editing bar at the SAME natural size as the
+      // preview (no STAVE_AREA_H / LINE_SPACING override) — VexFlow
+      // 5's Stave option API didn't actually scale the staff.
+      // The visible enlargement is instead done by CSS-scaling the
+      // rendered SVG; the click handler divides pointer coords by
+      // EDIT_PANE_SCALE so hits still align.
+      const targetStaveH = STAVE_AREA_H;
+      const targetLS = LINE_SPACING;
       const savedMW    = MEASURE_W;
       const savedMPR   = MEASURES_PER_ROW;
       const savedSAH   = STAVE_AREA_H;
@@ -1764,8 +1763,8 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     const layout = editPaneLayoutsRef.current[0];
     if (!layout) { setEditHover(null); hoveredNoteIdRef.current = null; return; }
     const rect = editPaneRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = (e.clientX - rect.left) / EDIT_PANE_SCALE;
+    const y = (e.clientY - rect.top) / EDIT_PANE_SCALE;
 
     // Track which (if any) note's notehead the cursor is on so
     // hover-keys (G/A/D/F/N/U/Y) can target it.
@@ -1812,8 +1811,8 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   const handleEditPanePointerDown = useCallback((e: React.PointerEvent) => {
     if (!activeProject || !editPaneRef.current) return;
     const rect = editPaneRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = (e.clientX - rect.left) / EDIT_PANE_SCALE;
+    const y = (e.clientY - rect.top) / EDIT_PANE_SCALE;
     editDragStartRef.current = { x, y };
     editIsMouseDownRef.current = true;
     (e.target as Element).setPointerCapture(e.pointerId);
@@ -1829,8 +1828,8 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     if (!layout || !start) return;
 
     const rect = editPaneRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = (e.clientX - rect.left) / EDIT_PANE_SCALE;
+    const y = (e.clientY - rect.top) / EDIT_PANE_SCALE;
 
     const dx = x - start.x;
     const dy = y - start.y;
@@ -3435,12 +3434,14 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
           </div>
         </div>
 
-        {/* ── Edit pane (Aered-style "current measure"): the bar at
-             editingBarIdx, rendered large.  Takes 60% of the main
-             content height so the editing measure fills the bottom
-             of the page; the preview takes the remaining 40% and
-             scrolls. */}
-        <div ref={editPaneContainerRef} className="flex-shrink-0 bg-[#070707] border-t border-[#222] px-3 pt-1 pb-2 overflow-hidden" style={{ height: "70%" }}>
+        {/* ── Edit pane (Aered-style "current measure").  The bar is
+             rendered at the same natural size as the preview, then
+             CSS-scaled by EDIT_PANE_SCALE so the staff reads big.
+             Container height is sized to the scaled SVG (~ STAVE_AREA_H
+             × scale + header + padding) so there's no extra dead
+             space below it. */}
+        <div ref={editPaneContainerRef} className="flex-shrink-0 bg-[#070707] border-t border-[#222] px-3 pt-1 pb-2 overflow-hidden"
+             style={{ height: STAVE_AREA_H * EDIT_PANE_SCALE + 60 }}>
           <div className="flex items-center gap-2 mb-2 text-[10px] text-[#666] uppercase tracking-wider">
             <span>Editing bar</span>
             <span className="text-white font-mono">{editingBarIdx + 1}</span>
@@ -3495,6 +3496,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
               position: "relative",
               display: "block",
               width: "100%",
+              height: STAVE_AREA_H * EDIT_PANE_SCALE,
               // Prevent the browser's native text selection from
               // kicking in when the user drags on the edit pane —
               // we use the drag for our own mass-select rectangle.
@@ -3511,18 +3513,23 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
               style={{
                 display: "block",
                 lineHeight: 0,
+                transform: `scale(${EDIT_PANE_SCALE})`,
+                transformOrigin: "top left",
                 cursor: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Ccircle cx='5' cy='5' r='3' fill='white' fill-opacity='.85'/%3E%3C/svg%3E") 5 5, auto`,
               }}
             />
             {/* Always-on X-Ray on the editing measure + drag-select
                 rectangle.  Both ride the same pointer-events-none
-                overlay so the underlying pointer handlers still see
-                clicks on the staff. */}
+                overlay; the SVG itself is CSS-scaled by EDIT_PANE_SCALE
+                to match the underlying staff render. */}
             <svg
               style={{
                 position: "absolute",
                 left: 0, top: 0,
-                width: "100%", height: "100%",
+                width: STAVE_AREA_H * 4, // wider than needed; scaled below
+                height: STAVE_AREA_H,
+                transform: `scale(${EDIT_PANE_SCALE})`,
+                transformOrigin: "top left",
                 pointerEvents: "none",
               }}
             >
@@ -3570,8 +3577,8 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
               <div
                 style={{
                   position: "absolute",
-                  left: editHover.x - 5,
-                  top:  editHover.y - 5,
+                  left: editHover.x * EDIT_PANE_SCALE - 5,
+                  top:  editHover.y * EDIT_PANE_SCALE - 5,
                   width: 10, height: 10,
                   borderRadius: 5,
                   background: "rgba(106, 207, 138, 0.7)",
