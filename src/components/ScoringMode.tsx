@@ -32,6 +32,7 @@ export default function ScoringMode() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [newComposer, setNewComposer] = useState("");
   const [newInstrument, setNewInstrument] = useState<Instrument>("harmonic");
 
   const activeProject = useMemo(
@@ -45,11 +46,14 @@ export default function ScoringMode() {
     const title = newTitle.trim() || "Untitled";
     const project = newProject(title, DEFAULT_SETUP);
     project.instrument = newInstrument;
+    const composer = newComposer.trim();
+    if (composer) project.composer = composer;
     saveProject(project);
     setProjects(loadProjects());
     setActiveId(project.id);
     setShowNewDialog(false);
     setNewTitle("");
+    setNewComposer("");
     setNewInstrument("harmonic");
   }
 
@@ -84,7 +88,7 @@ export default function ScoringMode() {
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-base font-semibold text-white">Scoring</h2>
         <button
-          onClick={() => { setShowNewDialog(true); setNewTitle(""); setNewInstrument("harmonic"); }}
+          onClick={() => { setShowNewDialog(true); setNewTitle(""); setNewComposer(""); setNewInstrument("harmonic"); }}
           className="px-3 py-1.5 bg-[#7173e6] hover:bg-[#5a5cc7] text-white text-sm rounded font-medium transition-colors"
         >
           New score
@@ -110,7 +114,10 @@ export default function ScoringMode() {
                     className="group flex items-center gap-3 cursor-pointer rounded-lg border border-[#1f1f1f] bg-[#111] hover:bg-[#161616] hover:border-[#333] transition-colors px-4 py-3"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm text-white truncate">{p.title || "Untitled"}</div>
+                      <div className="text-sm text-white truncate">
+                        {p.title || "Untitled"}
+                        {p.composer ? <span className="text-[#888] font-normal"> — {p.composer}</span> : null}
+                      </div>
                       <div className="text-[10px] text-[#666] mt-0.5">
                         <span
                           className={`inline-block px-1.5 py-0.5 rounded mr-2 border ${
@@ -171,6 +178,20 @@ export default function ScoringMode() {
                 onChange={e => setNewTitle(e.target.value)}
                 placeholder="Score title…"
                 autoFocus
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#7173e6]"
+                onKeyDown={e => {
+                  if (e.key === "Escape") setShowNewDialog(false);
+                  if (e.key === "Enter") handleCreate();
+                }}
+              />
+            </label>
+
+            <label className="block">
+              <div className="text-[10px] text-[#666] uppercase tracking-wider mb-1">Composer</div>
+              <input
+                value={newComposer}
+                onChange={e => setNewComposer(e.target.value)}
+                placeholder="(optional)"
                 className="w-full bg-[#1a1a1a] border border-[#333] rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#7173e6]"
                 onKeyDown={e => {
                   if (e.key === "Escape") setShowNewDialog(false);

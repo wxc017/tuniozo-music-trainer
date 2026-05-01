@@ -20,7 +20,6 @@ import {
 } from "@/lib/noteEntryData";
 import PracticeLogSaveBar from "./PracticeLogSaveBar";
 import { exportToPdf } from "@/lib/exportPdf";
-import { writePendingRestore } from "@/lib/practiceLog";
 
 // ── YouTube API global ──────────────────────────────────────────────────────
 declare global {
@@ -1403,7 +1402,6 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   const [showYT, setShowYT] = useState(false);
   const [showXRay, setShowXRay] = useState(false);
   const [loopRange, setLoopRange] = useState<{ start: number; end: number } | null>(null);
-  const [phraseDecompBars, setPhraseDecompBars] = useState<Set<number>>(new Set());
 
   // Derived single-select (for popup anchor)
   const selectedId = selectedIds[0] ?? null;
@@ -2572,21 +2570,6 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     drumHighlightTimeoutsRef.current.push(stopT);
   }
 
-  function handleSendToPhraseDecomp() {
-    if (!activeProject || phraseDecompBars.size === 0) return;
-    const ts = activeProject.setup.defaultTimeSig;
-    // Store import data so PhraseDecomposition picks it up on mount
-    writePendingRestore("phrase_decomp_import", {
-      notes,
-      barNumbers: [...phraseDecompBars],
-      timeSig: ts,
-      tempo: undefined,
-    });
-    setPhraseDecompBars(new Set());
-    // Navigate to phrase decomposition
-    window.dispatchEvent(new CustomEvent("app-navigate", { detail: "phrase-decomposition" }));
-  }
-
   function handleSync() {
     const ts = ytPlayerRef.current?.getCurrentTime() ?? 0;
     setSyncPoints(prev => {
@@ -2866,17 +2849,6 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
         <div className="flex items-center gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2">
           <button onClick={handleExportMusicXML} className={toolBtn(false)}>↓ MusicXML</button>
           <button onClick={handleExportPdf} className={toolBtn(false)}>↓ PDF</button>
-          <div className="w-px h-4 bg-[#2a2a2a]" />
-          <button
-            onClick={handleSendToPhraseDecomp}
-            className={toolBtn(phraseDecompBars.size > 0)}
-            title="ALT+click bars to select, then send to Phrase Decomposition"
-            style={phraseDecompBars.size > 0 ? { borderColor: "#c8aa50", color: "#c8aa50" } : {}}
-          >
-            {phraseDecompBars.size > 0
-              ? `→ Decompose (${phraseDecompBars.size} bars)`
-              : "→ Decompose"}
-          </button>
         </div>
 
         {/* Setup / YouTube */}
@@ -3090,30 +3062,6 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                 })
               }
 
-              {/* Phrase Decomposition bar selection highlights */}
-              {phraseDecompBars.size > 0 && measureLayoutsRef.current
-                .filter(l => phraseDecompBars.has(l.mIdx))
-                .map(layout => {
-                  const ls = layout.lineSpacing;
-                  const padding = ls * 1.2;
-                  const staffH = 4 * ls;
-                  const x = measureX(layout.mInRow);
-                  const w = measureW(layout.mInRow);
-                  const y = layout.staveTopLineY - padding;
-                  const h = staffH + padding * 2;
-                  return (
-                    <rect
-                      key={`pd-${layout.mIdx}`}
-                      x={x} y={y} width={w} height={h}
-                      fill="rgba(200,170,80,0.08)"
-                      stroke="#c8aa50"
-                      strokeWidth={1.5}
-                      strokeOpacity={0.5}
-                      strokeDasharray="5 3"
-                    />
-                  );
-                })
-              }
 
               {/* Editing-bar overlay — bright yellow box around the
                   bar currently shown in the edit pane below.  Style
