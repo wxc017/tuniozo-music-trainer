@@ -136,6 +136,9 @@ export type Instrument = "harmonic" | "drum";
 export interface NoteEntryProject {
   id: string;
   title: string;
+  /** Composer / arranger credit shown alongside the title.  Optional;
+   *  legacy projects without this field render no composer line. */
+  composer?: string;
   setup: ScoreSetup;
   notes: NoteData[];
   syncPoints: SyncPoint[];
