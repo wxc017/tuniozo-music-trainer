@@ -11,8 +11,8 @@ import TonalVisualizer from "./TonalVisualizer";
 
 interface Props {
   tonicPc: number;
-  lowestOct: number;
-  highestOct: number;
+  lowestPitch: number;
+  highestPitch: number;
   edo: number;
   onHighlight: (pcs: number[]) => void;
   onResult: (text: string) => void;
@@ -71,7 +71,7 @@ function generatePattern(
 }
 
 export default function ComparisonPanel({
-  tonicPc, lowestOct, highestOct, edo, onHighlight, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.65, onAnswer,
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.65, onAnswer,
 }: Props) {
   const [exerciseType, setExerciseType] = useLS<ExerciseType>("lt_tonal_comp_type", "same_different");
   const [hasPlayed, setHasPlayed] = useState(false);
@@ -91,8 +91,9 @@ export default function ComparisonPanel({
 
     const ton = randomChoice(TONALITIES);
     tonality.current = ton;
-    const [low, high] = strictWindowBounds(tonicPc, edo, lowestOct, highestOct);
-    const midAbs = tonicPc + (Math.floor((lowestOct + highestOct) / 2) - 4) * edo;
+    const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
+    const midPitchRaw = Math.floor((lowestPitch + highestPitch) / 2);
+    const midAbs = midPitchRaw - (((midPitchRaw - tonicPc) % edo + edo) % edo);
 
     if (exerciseType === "same_different") {
       const patA = generatePattern(midAbs, edo, low, high, ton.family, ton.mode, ton.stable, 4);
@@ -218,7 +219,7 @@ export default function ComparisonPanel({
       }, first.length * GAP + 800);
       timers.current.push(t);
     }
-  }, [isPlaying, ensureAudio, exerciseType, tonicPc, edo, lowestOct, highestOct, onResult, onPlay, lastPlayed, playVol]);
+  }, [isPlaying, ensureAudio, exerciseType, tonicPc, edo, lowestPitch, highestPitch, onResult, onPlay, lastPlayed, playVol]);
 
   const replay = () => {
     const lp = lastPlayed.current;

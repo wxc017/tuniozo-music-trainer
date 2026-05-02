@@ -11,13 +11,13 @@ interface Props {
   setTonicPc: (v: number) => void;
   edo: number;
   setEdo: (v: number) => void;
-  lowestOct: number;
-  highestOct: number;
+  lowestPitch: number;
+  highestPitch: number;
   ensureAudio: () => Promise<void>;
   onEdoChange?: () => void;
 }
 
-export default function DrillDroneStrip({ tonicPc, setTonicPc, edo, setEdo, lowestOct, highestOct, ensureAudio, onEdoChange }: Props) {
+export default function DrillDroneStrip({ tonicPc, setTonicPc, edo, setEdo, lowestPitch: _lowestPitch, highestPitch: _highestPitch, ensureAudio, onEdoChange }: Props) {
   const [droneOn, setDroneOn] = useLS<boolean>("lt_drill_drone_on", false);
   const [droneMode, setDroneMode] = useLS<DroneMode>("lt_drill_drone_mode", "Single");
   const [droneGain, setDroneGain] = useLS<number>("lt_drill_drone_gain", 0.08);

@@ -56,12 +56,22 @@ const TONALITY_OPTIONS: { value: Tonality; label: string; color: string }[] = [
   { value: "both",  label: "Both",  color: "#999" },
 ];
 
-const CATEGORY_OPTIONS: { value: NoteCategory; label: string; desc: string; color: string }[] = [
-  { value: "ct",         label: "Chord Tones",       desc: "Notes in the chord",                                   color: "#5a8a5a" },
-  { value: "diatonic",   label: "Stable Diatonic",   desc: "Natural tensions (9, 11, 13)",                         color: "#c8aa50" },
-  { value: "chromatic",  label: "Tense Diatonic",    desc: "Chromatic tensions (b9, #11, b13…)",                   color: "#c06090" },
-  { value: "micro",      label: "Stable Microtonal", desc: "7/11-limit consonances (7/4, 7/6, 11/8, 11/9…)",      color: "#7a9ec0" },
-  { value: "microTense", label: "Tense Microtonal",  desc: "Higher-limit intervals — far from simple JI ratios",   color: "#8888cc" },
+// User-facing category buckets.  The underlying NoteCategory enum still
+// carries five values (ct / diatonic / chromatic / micro / microTense), but
+// the UI now collapses the two stable buckets ("diatonic" + "micro") into
+// a single "Stable" option that toggles both together.
+type CategoryUiKey = "ct" | "stable" | "chromatic" | "microTense";
+const CATEGORY_UI_TO_INTERNAL: Record<CategoryUiKey, NoteCategory[]> = {
+  ct:         ["ct"],
+  stable:     ["diatonic", "micro"],
+  chromatic:  ["chromatic"],
+  microTense: ["microTense"],
+};
+const CATEGORY_OPTIONS: { value: CategoryUiKey; label: string; desc: string; color: string }[] = [
+  { value: "ct",         label: "Chord Tones",      desc: "Notes in the chord",                                                  color: "#5a8a5a" },
+  { value: "stable",     label: "Stable",           desc: "Natural tensions (9, 11, 13) + 7/11-limit consonances (7/4, 11/8, …)", color: "#c8aa50" },
+  { value: "chromatic",  label: "Diatonic Tense",   desc: "Chromatic tensions (b9, #11, b13…)",                                  color: "#c06090" },
+  { value: "microTense", label: "Microtonal Tense", desc: "Higher-limit intervals — far from simple JI ratios",                  color: "#8888cc" },
 ];
 
 const FIT_COLORS = { fits: "#5a8a5a", kinda: "#c8aa50", clashes: "#c06090" };
@@ -77,6 +87,17 @@ const TONALITY_FAMILIES: { key: string; label: string; color: string; tonalities
     tonalities: ["Harmonic Minor","Locrian #6","Ionian #5","Dorian #4","Phrygian Dominant","Lydian #2","Ultralocrian"] },
   { key: "melodic",  label: "MELODIC MINOR",  color: "#c06090",
     tonalities: ["Melodic Minor","Dorian b2","Lydian Augmented","Lydian Dominant","Mixolydian b6","Locrian #2","Altered"] },
+  // Septimal / neutral diatonic families (31-EDO).  Mode names use
+  // single-letter qualifiers: s = sub, m = min, N = neu, S = sup,
+  // bb = half-flat, ## = half-sharp, b/# = whole flat/sharp.
+  { key: "subminor",   label: "SUBMINOR DIATONIC",   color: "#7aaa6a",
+    tonalities: ["Subminor Diatonic","Locrian s2 s5 s6","Supermajor Ionian","Dorian s3 bb4 s7","Subminor Phrygian m7","Supermajor Lydian M2 b5","Supermajor Mixolydian ##5 m7"] },
+  { key: "neutral",    label: "NEUTRAL DIATONIC",    color: "#9a66c0",
+    tonalities: ["Neutral Diatonic","Dorian N2 bb5 N6","Neutral Ionian","Ionian N3 ##4 N7","Neutral Dorian m7","Neutral Ionian M2 ##4","Neutral Dorian bb5 m7"] },
+  { key: "supermajor", label: "SUPERMAJOR DIATONIC", color: "#cc6a8a",
+    tonalities: ["Supermajor Diatonic","Dorian S2 ##5 S6","Subminor Phrygian","Lydian S3 b5 S7","Supermajor Mixolydian m7","Subminor Aeolian M2 bb4","Subminor Locrian m7"] },
+  { key: "subharmonic",label: "SUBHARMONIC DIATONIC",color: "#4a9ac7",
+    tonalities: ["Subharmonic Diatonic","Locrian s2 s5 N6","Supermajor Ionian #5","Dorian s3 ##4 s7","Phrygian s2 N3 s6","Supermajor Lydian #2 b5","Neutral Dorian b4 bb5 bb7"] },
 ];
 
 // Tonality bank name → (scaleFamily, scaleMode) used by the melody pool
@@ -2173,9 +2194,17 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
       <div className="flex items-center gap-2">
         <span className="text-[10px] text-[#666] uppercase tracking-wider">Note Pool</span>
         {CATEGORY_OPTIONS.map(c => {
-          const on = enabledCats.has(c.value);
+          const internal = CATEGORY_UI_TO_INTERNAL[c.value];
+          const on = internal.some(k => enabledCats.has(k));
           return (
-            <button key={c.value} onClick={() => toggleCat(c.value)} title={c.desc}
+            <button key={c.value} onClick={() => {
+              setEnabledCats(prev => {
+                const next = new Set(prev);
+                if (on) for (const k of internal) next.delete(k);
+                else for (const k of internal) next.add(k);
+                return next;
+              });
+            }} title={c.desc}
               className={`px-2 py-1 text-[10px] rounded border transition-colors ${
                 on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
               }`}
@@ -3102,69 +3131,9 @@ function PatternDrillSection({
                                     })}
                                   </div>
                                 )}
-                                {xenAvail.length > 0 && (() => {
-                                  // Render 3rd-quality kinds individually;
-                                  // collapse qrt/qnt into one "qua/quin" button.
-                                  const thirdKinds = xenAvail.filter(k => k !== "qrt" && k !== "qnt");
-                                  const hasStack = xenAvail.includes("qrt") || xenAvail.includes("qnt");
-                                  const stackLabels: string[] = [];
-                                  if (xenAvail.includes("qrt")) stackLabels.push(`${entry.label}${XEN_SUFFIX}qrt`);
-                                  if (xenAvail.includes("qnt")) stackLabels.push(`${entry.label}${XEN_SUFFIX}qnt`);
-                                  const stackOn = stackLabels.some(l => checkedChords.has(l));
-                                  const toggleStack = () => {
-                                    setCheckedChords(prev => {
-                                      const next = new Set(prev);
-                                      if (stackOn) {
-                                        for (const l of stackLabels) next.delete(l);
-                                      } else {
-                                        for (const l of stackLabels) next.add(l);
-                                      }
-                                      setDrillChords([...next]);
-                                      return next;
-                                    });
-                                  };
-                                  return (
-                                    <div className="flex flex-col gap-0.5 px-1 pb-1">
-                                      {thirdKinds.length > 0 && (
-                                        <div className="flex gap-0.5">
-                                          {thirdKinds.map(k => {
-                                            const variantLabel = `${entry.label}${XEN_SUFFIX}${k}`;
-                                            const on = checkedChords.has(variantLabel);
-                                            const color = XEN_COLOR[k];
-                                            return (
-                                              <button key={k}
-                                                onClick={() => isChecked ? toggleChord(variantLabel) : toggleChord(entry.label)}
-                                                title={isChecked ? `${entry.label} ${XEN_LABEL[k]}` : `Click to enable ${entry.label}`}
-                                                className={`flex-1 min-h-[24px] text-[10px] leading-tight px-1 py-1 rounded border transition-colors ${
-                                                  !isChecked ? "bg-[#141414] text-[#555] border-[#222] hover:text-[#aaa] hover:border-[#444]"
-                                                  : on ? "text-black font-semibold"
-                                                  : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
-                                                }`}
-                                                style={isChecked && on ? { background: color, borderColor: color } : undefined}>
-                                                {XEN_LABEL[k]}
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                      {hasStack && (
-                                        <div className="flex gap-0.5">
-                                          <button
-                                            onClick={() => isChecked ? toggleStack() : toggleChord(entry.label)}
-                                            title={isChecked ? `${entry.label} qua/quin (stacked 4ths + 5ths)` : `Click to enable ${entry.label}`}
-                                            className={`flex-1 min-h-[24px] text-[10px] leading-tight px-1 py-1 rounded border transition-colors ${
-                                              !isChecked ? "bg-[#141414] text-[#555] border-[#222] hover:text-[#aaa] hover:border-[#444]"
-                                              : stackOn ? "text-black font-semibold"
-                                              : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
-                                            }`}
-                                            style={isChecked && stackOn ? { background: XEN_COLOR.qrt, borderColor: XEN_COLOR.qrt } : undefined}>
-                                            qua/quin
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
+                                {/* Xen 3rd-quality + qua/quin toggles removed —
+                                    coverage moved into the new septimal /
+                                    neutral / supermajor tonality families. */}
                               </div>
                             </div>
                           );
@@ -3742,7 +3711,7 @@ function MPChordSelectionPanel({
   return (
     <div className="border rounded overflow-hidden" style={{ borderColor: accent + "40" }}>
       <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0a0a0a]">
-        <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent }}>{tonality.toUpperCase()}</span>
+        <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent }}>{tonality}</span>
       </div>
       <div className="space-y-2 p-2">
         {visibleLevels.map(level => {
@@ -3806,51 +3775,9 @@ function MPChordSelectionPanel({
                             })}
                           </div>
                         )}
-                        {xenAvail.length > 0 && (() => {
-                          const thirdKinds = xenAvail.filter(k => k !== "qrt" && k !== "qnt");
-                          const hasStack = xenAvail.includes("qrt") || xenAvail.includes("qnt");
-                          const stackOn = enabledXen.has("qrt") || enabledXen.has("qnt");
-                          return (
-                            <div className="flex flex-col gap-0.5 px-1 pb-1">
-                              {thirdKinds.length > 0 && (
-                                <div className="flex gap-0.5">
-                                  {thirdKinds.map(k => {
-                                    const on = enabledXen.has(k);
-                                    const color = XEN_COLOR[k];
-                                    return (
-                                      <button key={k}
-                                        onClick={() => isChecked ? toggleXen(entry.label, k) : toggleChord(entry.label)}
-                                        title={isChecked ? `${entry.label} with ${k === "neu" ? "neutral" : k === "sub" ? "subminor" : "supermajor"} variant` : `Click to enable ${entry.label}`}
-                                        className={`flex-1 min-h-[24px] text-[10px] leading-tight px-1 py-1 rounded border transition-colors ${
-                                          !isChecked ? "bg-[#141414] text-[#555] border-[#222] hover:text-[#aaa] hover:border-[#444]"
-                                          : on ? "text-black font-semibold"
-                                          : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
-                                        }`}
-                                        style={isChecked && on ? { background: color, borderColor: color } : undefined}>
-                                        {XEN_LABEL[k]}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              {hasStack && (
-                                <div className="flex gap-0.5">
-                                  <button
-                                    onClick={() => isChecked ? toggleXenStack(entry.label) : toggleChord(entry.label)}
-                                    title={isChecked ? `${entry.label} as quartal (stacked 4ths) + quintal (stacked 5ths)` : `Click to enable ${entry.label}`}
-                                    className={`flex-1 min-h-[24px] text-[10px] leading-tight px-1 py-1 rounded border transition-colors ${
-                                      !isChecked ? "bg-[#141414] text-[#555] border-[#222] hover:text-[#aaa] hover:border-[#444]"
-                                      : stackOn ? "text-black font-semibold"
-                                      : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
-                                    }`}
-                                    style={isChecked && stackOn ? { background: XEN_COLOR.qrt, borderColor: XEN_COLOR.qrt } : undefined}>
-                                    qua/quin
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
+                        {/* Xen 3rd-quality + qua/quin toggles removed —
+                            coverage moved into the new septimal/neutral/
+                            supermajor tonality families. */}
                       </div>
                     </div>
                   );

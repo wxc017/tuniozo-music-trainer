@@ -7,8 +7,8 @@ import { useLS } from "@/lib/storage";
 
 interface Props {
   tonicPc: number;
-  lowestOct: number;
-  highestOct: number;
+  lowestPitch: number;
+  highestPitch: number;
   edo: number;
   onHighlight: (pcs: number[]) => void;
   responseMode: string;
@@ -19,7 +19,7 @@ interface Props {
 }
 
 export default function QPPTab({
-  tonicPc, lowestOct, highestOct, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio
 }: Props) {
   const [checked, setChecked] = useLS<Set<string>>("lt_qpp_checked",
     new Set(["Single Notes","Intervals","Triads"])
@@ -37,16 +37,16 @@ export default function QPPTab({
     await ensureAudio();
     if (!checked.size) { onResult("Select at least one QPP target type."); return; }
 
-    const result = qppGenerate(edo, tonicPc, lowestOct, highestOct, Array.from(checked));
-    if (!result) { onResult("Could not generate QPP target. Try wider octave range."); return; }
+    const result = qppGenerate(edo, tonicPc, lowestPitch, highestPitch, Array.from(checked));
+    if (!result) { onResult("Could not generate QPP target. Try wider pitch range."); return; }
 
     const { kind, notes, label } = result;
     const frames = notes.length === 1 ? [[notes[0]]] : [notes];
     const info = `Type:  ${kind}\nNotes: [${notes.join(", ")}]\nLabel: ${label}`;
-    const optKey = `qpp:${[...checked].sort().join(',')}:oct${lowestOct}-${highestOct}`;
+    const optKey = `qpp:${[...checked].sort().join(',')}:p${lowestPitch}-${highestPitch}`;
     setShowTarget(null);
     onResult(`QPP: ${kind}`);
-    onPlay(optKey, `QPP (${[...checked].join(', ')}, Oct ${lowestOct}-${highestOct})`);
+    onPlay(optKey, `QPP (${[...checked].join(', ')}, Pitch ${lowestPitch}-${highestPitch})`);
     lastPlayed.current = { frames, info };
     setHasPlayed(true);
 

@@ -77,8 +77,8 @@ export default function DrillResponse() {
   // Tonal params
   const [tonicPc, setTonicPc] = useLS<number>("lt_drill_tonic", 0);
   const [edo, setEdo] = useLS<number>("lt_app_edo", 12);
-  const [lowestOct, setLowestOct] = useLS<number>("lt_drill_lowOct", 3);
-  const [highestOct, setHighestOct] = useLS<number>("lt_drill_highOct", 5);
+  const [lowestPitch, setLowestPitch] = useLS<number>("lt_drill_lowPitch", -12);
+  const [highestPitch, setHighestPitch] = useLS<number>("lt_drill_highPitch", 23);
   const [playVol, setPlayVol] = useLS<number>("lt_drill_playVol", 0.7);
   const [audioReady, setAudioReady] = useState(false);
   const lastPlayed = useRef<{ frames: number[][]; info: string } | null>(null);
@@ -109,8 +109,8 @@ export default function DrillResponse() {
 
   const tonalProps = {
     tonicPc,
-    lowestOct,
-    highestOct,
+    lowestPitch,
+    highestPitch,
     edo,
     onHighlight: noopPcs,
     responseMode: "Play Audio",
@@ -201,7 +201,7 @@ export default function DrillResponse() {
       <DrillDroneStrip
         tonicPc={tonicPc} setTonicPc={setTonicPc}
         edo={edo} setEdo={setEdo}
-        lowestOct={lowestOct} highestOct={highestOct}
+        lowestPitch={lowestPitch} highestPitch={highestPitch}
         ensureAudio={ensureAudio}
         onEdoChange={() => setAudioReady(false)}
       />

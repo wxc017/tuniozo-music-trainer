@@ -1,7 +1,12 @@
-// ── PDF Export via print window ──────────────────────────────────────────────
+// ── PDF Export via jspdf + svg2pdf ───────────────────────────────────────────
 //
-// Captures notation elements as images (removing VexFlow invert filter),
-// builds a print-friendly HTML page, and triggers the browser print dialog.
+// Renders notation SVGs directly into a vector PDF (no PNG raster, no print
+// dialog).  The PDF is assembled in-memory and triggers a download
+// automatically.  Notation glyphs render as actual SVG paths so they're
+// crisp at any zoom and don't depend on the browser's font infrastructure.
+
+import { jsPDF } from "jspdf";
+import { svg2pdf } from "svg2pdf.js";
 
 export interface PdfSection {
   title?: string;
@@ -14,161 +19,112 @@ export interface PdfOptions {
 }
 
 /**
- * Capture a notation element as a PNG data URL suitable for print.
- * Temporarily disables the SVG invert(1) filter to get dark-on-white output.
+ * Clone an SVG and recolour it for printing.  The live editor SVG is
+ * white-on-black (post-processed at render time) — the cloned copy
+ * needs to read black-on-white for paper.  Returns a detached SVG
+ * that can be passed straight to svg2pdf.
  */
-async function captureForPrint(element: HTMLElement): Promise<string> {
-  // Find SVGs with invert filter and temporarily disable
-  const svgs = element.querySelectorAll("svg");
-  const origFilters: string[] = [];
-  svgs.forEach((svg, i) => {
-    origFilters[i] = (svg as SVGSVGElement).style.filter;
-    (svg as SVGSVGElement).style.filter = "none";
-  });
+function clonePrintableSvg(orig: SVGSVGElement): SVGSVGElement {
+  const svg = orig.cloneNode(true) as SVGSVGElement;
+  svg.style.filter = "none";
+  svg.removeAttribute("filter");
+  if (!svg.getAttribute("xmlns")) svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
 
-  // Also handle abcjs elements (foreground color is light)
-  const abcEls = element.querySelectorAll(".abcjs-container svg");
-  const origFills: { el: SVGElement; fill: string }[] = [];
-  abcEls.forEach(el => {
-    const svg = el as SVGElement;
-    origFills.push({ el: svg, fill: svg.style.fill });
-  });
-
-  try {
-    const { toCanvas } = await import("html-to-image");
-    const canvas = await toCanvas(element, {
-      backgroundColor: "#ffffff",
-      pixelRatio: 2,
-    });
-    return canvas.toDataURL("image/png");
-  } finally {
-    // Restore filters
-    svgs.forEach((svg, i) => {
-      (svg as SVGSVGElement).style.filter = origFilters[i];
-    });
-    origFills.forEach(({ el, fill }) => {
-      el.style.fill = fill;
-    });
-  }
-}
-
-function buildPrintHtml(
-  captures: { title?: string; dataUrl: string }[],
-  fileName: string,
-  options: PdfOptions,
-): string {
-  const sections = captures.map((c, i) => {
-    const titleHtml = options.showTitles && c.title
-      ? `<h2 style="font-family:Georgia,serif;font-size:18px;margin:0 0 8px;color:#222;">${escHtml(c.title)}</h2>`
-      : "";
-    const pageBreak = options.splitSections && i > 0
-      ? 'style="page-break-before:always;"'
-      : i > 0
-      ? 'style="margin-top:24px;"'
-      : "";
-    return `<div ${pageBreak}>${titleHtml}<img src="${c.dataUrl}" style="max-width:100%;height:auto;" /></div>`;
-  }).join("\n");
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <title>${escHtml(fileName)}</title>
-  <style>
-    @media print {
-      body { margin: 0; padding: 12mm; }
-      img { max-width: 100% !important; }
-      #export-toolbar { display: none !important; }
+  const WHITE_RE = /^(white|#fff(fff)?|rgb\(255\s*,\s*255\s*,\s*255\))$/i;
+  const recolour = (node: Element) => {
+    const fill = node.getAttribute("fill");
+    if (fill && WHITE_RE.test(fill.trim())) node.setAttribute("fill", "#000000");
+    const stroke = node.getAttribute("stroke");
+    if (stroke && WHITE_RE.test(stroke.trim())) node.setAttribute("stroke", "#000000");
+    const styleAttr = node.getAttribute("style");
+    if (styleAttr) {
+      const fixed = styleAttr
+        .replace(/(fill\s*:\s*)(white|#fff(?:fff)?|rgb\(255,\s*255,\s*255\))/gi, "$1#000000")
+        .replace(/(stroke\s*:\s*)(white|#fff(?:fff)?|rgb\(255,\s*255,\s*255\))/gi, "$1#000000");
+      if (fixed !== styleAttr) node.setAttribute("style", fixed);
     }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #fff;
-      color: #111;
-      padding: 20px;
-    }
-    #export-toolbar {
-      position: sticky; top: 0; z-index: 1000;
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 14px; margin: -20px -20px 16px;
-      background: #1a1a2a; border-bottom: 1px solid #333;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-    #export-toolbar button {
-      padding: 5px 12px; border-radius: 5px; font-size: 11px; font-weight: 700;
-      cursor: pointer; border: 1px solid #3a3a7a; background: #1e1e3a;
-      color: #9a9cf8; letter-spacing: 0.5px; transition: all 80ms;
-    }
-    #export-toolbar button:hover { background: #2a2a4a; }
-    #export-toolbar .toolbar-label {
-      font-size: 11px; color: #666; margin-right: auto;
-    }
-    #export-content[contenteditable="true"] {
-      outline: none;
-      min-height: 100px;
-    }
-    #export-content[contenteditable="true"]:focus {
-      box-shadow: inset 0 0 0 2px rgba(113,115,230,0.15);
-      border-radius: 4px;
-    }
-  </style>
-</head>
-<body>
-  <div id="export-toolbar">
-    <span class="toolbar-label">Edit content below, then export</span>
-    <button onclick="window.print()" title="Print or save as PDF">Print / PDF</button>
-    <button onclick="downloadHtml()" title="Download edited HTML">Download HTML</button>
-  </div>
-  <div id="export-content" contenteditable="true">
-    ${sections}
-  </div>
-  <script>
-    function downloadHtml() {
-      var content = document.getElementById('export-content').innerHTML;
-      var html = '<!DOCTYPE html>\\n<html>\\n<head>\\n<meta charset="utf-8"/>\\n'
-        + '<title>${escHtml(fileName).replace(/'/g, "\\'")}</title>\\n'
-        + '<style>\\nbody{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff;color:#111;padding:20px;}\\n'
-        + '@media print{body{margin:0;padding:12mm;}img{max-width:100%!important;}}\\n</style>\\n'
-        + '</head>\\n<body>\\n' + content + '\\n</body>\\n</html>';
-      var blob = new Blob([html], { type: 'text/html' });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = '${escHtml(fileName).replace(/'/g, "\\'")}' + '.html';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-  </script>
-</body>
-</html>`;
-}
-
-function escHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  };
+  recolour(svg);
+  svg.querySelectorAll("*").forEach(recolour);
+  return svg;
 }
 
 /**
- * Export notation sections to PDF via browser print dialog.
+ * Export notation sections directly to a downloadable PDF.  No print
+ * window, no edit UI — clicking the button triggers a file download.
+ * The score SVG is rendered into the PDF as vector paths, centered on
+ * the page with the title at the top.  A4 landscape; multi-page if
+ * the score is taller than a single page.
  */
 export async function exportToPdf(
   sections: PdfSection[],
   fileName: string,
   options: PdfOptions,
 ): Promise<void> {
-  const captures = await Promise.all(
-    sections.map(async s => ({
-      title: s.title,
-      dataUrl: await captureForPrint(s.element),
-    })),
-  );
+  // Collect the score SVG from each section.  Sibling overlays
+  // (X-ray grid, drag-rect, hover dot) live OUTSIDE scoreRef so
+  // querying scoreRef directly returns just the VexFlow render.
+  const items = sections
+    .map(s => {
+      const svg = s.element.querySelector("svg") as SVGSVGElement | null;
+      return svg ? { title: s.title, svg } : null;
+    })
+    .filter((x): x is { title?: string; svg: SVGSVGElement } => x !== null);
 
-  const html = buildPrintHtml(captures, fileName, options);
-  const win = window.open("", "_blank");
-  if (!win) {
-    alert("Popup blocked. Please allow popups to export PDF.");
-    return;
+  if (items.length === 0) return;
+
+  // A4 landscape (842 × 595 pt) suits wide drum scores.
+  const PAGE_W = 842;
+  const PAGE_H = 595;
+  const MARGIN = 36;
+
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (i > 0) doc.addPage();
+
+    let yCursor = MARGIN;
+    if (options.showTitles && item.title) {
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(20);
+      doc.text(item.title, PAGE_W / 2, yCursor + 16, { align: "center" });
+      yCursor += 36;
+    }
+
+    const orig = item.svg;
+    const naturalW = parseFloat(orig.getAttribute("width") ?? "0") || orig.clientWidth || 800;
+    const naturalH = parseFloat(orig.getAttribute("height") ?? "0") || orig.clientHeight || 200;
+    const usableW = PAGE_W - 2 * MARGIN;
+    const usableH = PAGE_H - yCursor - MARGIN;
+    const scale = Math.min(usableW / naturalW, usableH / naturalH, 1);
+    const fitW = naturalW * scale;
+    const fitH = naturalH * scale;
+    const xCenter = (PAGE_W - fitW) / 2;
+
+    const clone = clonePrintableSvg(orig);
+    // svg2pdf walks a real (in-document) SVG element.  Attach the
+    // clone to a hidden container so any layout / measurement queries
+    // resolve correctly during conversion.
+    const stage = document.createElement("div");
+    stage.style.position = "absolute";
+    stage.style.left = "-99999px";
+    stage.style.top = "0";
+    stage.appendChild(clone);
+    document.body.appendChild(stage);
+    try {
+      await svg2pdf(clone, doc, {
+        x: xCenter,
+        y: yCursor,
+        width: fitW,
+        height: fitH,
+      });
+    } finally {
+      stage.remove();
+    }
   }
-  win.document.write(html);
-  win.document.close();
+
+  doc.save(fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`);
 }
 
 /**

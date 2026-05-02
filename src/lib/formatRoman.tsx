@@ -1,4 +1,5 @@
 import React from "react";
+import { formatHalfAccidentals } from "./edoData";
 
 const SUPER_CHARS = new Set(["°", "ø", "+"]);
 const SPLIT_RE = /([°ø+])/;
@@ -6,19 +7,42 @@ const SPLIT_RE = /([°ø+])/;
 /**
  * Renders a roman numeral label with chord-type symbols (°, ø, +) as superscript.
  * Handles compound labels like "iiø/V", "vii°/X", "V/vi", "bIII+", "#iv°".
+ * Also applies half-accidental glyph formatting so "##" / "bb" render as
+ * the proper half-sharp (𝄲) / half-flat (𝄳) Unicode characters.
+ *
+ * Xen tonality chord labels carry a space-delimited quality suffix
+ * (e.g. "iii s3", "I s3 N7").  Anything after the first space is rendered
+ * inside a single <sup> so the full suffix appears as superscript.
  */
 export function formatRomanNumeral(label: string): React.ReactNode {
-  if (!SPLIT_RE.test(label)) return label;
+  label = formatHalfAccidentals(label);
 
-  const parts = label.split("/");
-  const result: React.ReactNode[] = [];
-
-  for (let i = 0; i < parts.length; i++) {
-    if (i > 0) result.push("/");
-    result.push(formatSingleRoman(parts[i], i));
+  const spaceIdx = label.indexOf(" ");
+  let head = label;
+  let suffixSup: React.ReactNode = null;
+  if (spaceIdx >= 0) {
+    head = label.slice(0, spaceIdx);
+    const suffix = label.slice(spaceIdx + 1);
+    suffixSup = (
+      <sup style={{ fontSize: "0.7em", verticalAlign: "super", lineHeight: 0 }}>{suffix}</sup>
+    );
   }
 
-  return <>{result}</>;
+  let body: React.ReactNode;
+  if (!SPLIT_RE.test(head)) {
+    body = head;
+  } else {
+    const parts = head.split("/");
+    const result: React.ReactNode[] = [];
+    for (let i = 0; i < parts.length; i++) {
+      if (i > 0) result.push("/");
+      result.push(formatSingleRoman(parts[i], i));
+    }
+    body = <>{result}</>;
+  }
+
+  if (suffixSup === null) return body;
+  return <>{body}{suffixSup}</>;
 }
 
 function formatSingleRoman(part: string, key: number): React.ReactNode {

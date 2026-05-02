@@ -281,7 +281,35 @@ export function newProject(title: string, setup: ScoreSetup): NoteEntryProject {
 
 // ── MusicXML export ────────────────────────────────────────────────────────────
 
+/** XML-escape a string so titles / composer names don't break the output. */
+function xmlEscape(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Map a drum pitch (with optional notehead) to a notehead-shape token
+ *  recognised by MusicXML readers (Sibelius, Finale, MuseScore). */
+function drumNoteheadFor(pitch: string, notehead?: NoteheadType): string | null {
+  if (notehead === "x") return "x";
+  if (notehead === "circle-x") return "circle x";
+  if (notehead === "diamond") return "diamond";
+  // Heuristic: cymbal pitches (a/5, f/5) default to X if no notehead set.
+  if (!notehead && (pitch.startsWith("a/5") || pitch.startsWith("f/5") || pitch.startsWith("d/4"))) return "x";
+  return null;
+}
+
 export function generateMusicXML(project: NoteEntryProject): string {
+  // Drum projects use a different export path: percussion clef and
+  // <unpitched> notes instead of <pitch>, plus notehead glyphs for
+  // cymbals.  Detect at the top so the rest of this function can stay
+  // focused on harmonic notation.
+  if (project.instrument === "drum") {
+    return generateDrumMusicXML(project);
+  }
+
   const { setup, notes, title } = project;
   const { clef, keySignature, defaultTimeSig, barCount } = setup;
 
@@ -304,11 +332,17 @@ export function generateMusicXML(project: NoteEntryProject): string {
     return { step: s.toUpperCase(), octave: parseInt(o) };
   }
 
+  const safeTitle = xmlEscape(title);
+  const composerLine = project.composer
+    ? `\n  <identification><creator type="composer">${xmlEscape(project.composer)}</creator></identification>`
+    : "";
+
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
 <score-partwise version="3.1">
+  <work><work-title>${safeTitle}</work-title></work>${composerLine}
   <part-list>
-    <score-part id="P1"><part-name>${title}</part-name></score-part>
+    <score-part id="P1"><part-name>${safeTitle}</part-name></score-part>
   </part-list>
   <part id="P1">
 `;
@@ -366,6 +400,129 @@ export function generateMusicXML(project: NoteEntryProject): string {
         if (n.isTieStart) xml += `        <tie type="start"/>\n`;
         if (n.isTieEnd)   xml += `        <tie type="stop"/>\n`;
         if (n.bendSteps)  xml += `        <notations><technical><bend><bend-alter>${n.bendSteps}</bend-alter></bend></technical></notations>\n`;
+        xml += `      </note>\n`;
+      }
+      if (!isChord) cursor = n.startSlot + noteSlots(n);
+    }
+    if (cursor < totalSlots) {
+      decomposeSlotsToRests(totalSlots - cursor).forEach(emitRest);
+    }
+
+    xml += `    </measure>\n`;
+  }
+
+  xml += `  </part>\n</score-partwise>`;
+  return xml;
+}
+
+/** Drum-set MusicXML: percussion clef, <unpitched> notes with
+ *  display-step / display-octave, notehead glyphs for cymbals.
+ *  Works in MuseScore, Sibelius, Dorico, and Finale. */
+function generateDrumMusicXML(project: NoteEntryProject): string {
+  const { setup, notes, title } = project;
+  const { defaultTimeSig, barCount } = setup;
+
+  const DIV = 8;
+  const durToInfo: Record<Duration, { type: string; dur: number }> = {
+    "w":  { type: "whole",   dur: 32 },
+    "h":  { type: "half",    dur: 16 },
+    "q":  { type: "quarter", dur: 8  },
+    "8":  { type: "eighth",  dur: 4  },
+    "16": { type: "16th",    dur: 2  },
+    "32": { type: "32nd",    dur: 1  },
+  };
+
+  const safeTitle = xmlEscape(title);
+  const composerLine = project.composer
+    ? `\n  <identification><creator type="composer">${xmlEscape(project.composer)}</creator></identification>`
+    : "";
+
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="3.1">
+  <work><work-title>${safeTitle}</work-title></work>${composerLine}
+  <part-list>
+    <score-part id="P1">
+      <part-name>Drum set</part-name>
+      <part-abbreviation>D. set</part-abbreviation>
+    </score-part>
+  </part-list>
+  <part id="P1">
+`;
+
+  for (let m = 0; m < barCount; m++) {
+    const ts = setup.perBarTimeSig?.[m] ?? defaultTimeSig;
+    const totalSlots = measureSlots(ts);
+    const mNotes = notes
+      .filter(n => n.measure === m)
+      .sort((a, b) => a.startSlot - b.startSlot);
+
+    xml += `    <measure number="${m + 1}">\n`;
+    if (m === 0) {
+      xml += `      <attributes>\n`;
+      xml += `        <divisions>${DIV}</divisions>\n`;
+      xml += `        <time><beats>${ts.num}</beats><beat-type>${ts.den}</beat-type></time>\n`;
+      xml += `        <clef><sign>percussion</sign><line>2</line></clef>\n`;
+      xml += `        <staff-details><staff-lines>5</staff-lines></staff-details>\n`;
+      xml += `      </attributes>\n`;
+    } else {
+      const prevTs = setup.perBarTimeSig?.[m - 1] ?? defaultTimeSig;
+      if (ts.num !== prevTs.num || ts.den !== prevTs.den) {
+        xml += `      <attributes><time><beats>${ts.num}</beats><beat-type>${ts.den}</beat-type></time></attributes>\n`;
+      }
+    }
+
+    const title = setup.perBarTitle?.[m];
+    if (title) {
+      xml += `      <direction placement="above"><direction-type><words>${xmlEscape(title)}</words></direction-type></direction>\n`;
+    }
+
+    const emitRest = (dur: Duration) => {
+      const { type, dur: d } = durToInfo[dur];
+      xml += `      <note><rest/><duration>${d}</duration><type>${type}</type></note>\n`;
+    };
+
+    let cursor = 0;
+    for (let ni = 0; ni < mNotes.length; ni++) {
+      const n = mNotes[ni];
+      const prevPitched = ni > 0 ? mNotes.slice(0, ni).reverse().find(p => !p.isRest) : undefined;
+      const isChord = !n.isRest && prevPitched && prevPitched.startSlot === n.startSlot;
+
+      if (!isChord && n.startSlot > cursor) {
+        decomposeSlotsToRests(n.startSlot - cursor).forEach(emitRest);
+      }
+      if (n.isRest) {
+        emitRest(n.duration);
+      } else {
+        const { type, dur: d } = durToInfo[n.duration];
+        const dotDur = n.dotted ? Math.round(d * 1.5) : d;
+        const [step, oct] = n.pitch.split("/");
+        const displayStep = step.toUpperCase();
+        const displayOct = parseInt(oct, 10);
+        const headTok = drumNoteheadFor(n.pitch, n.notehead);
+        xml += `      <note>\n`;
+        if (isChord) xml += `        <chord/>\n`;
+        xml += `        <unpitched>\n`;
+        xml += `          <display-step>${displayStep}</display-step>\n`;
+        xml += `          <display-octave>${displayOct}</display-octave>\n`;
+        xml += `        </unpitched>\n`;
+        xml += `        <duration>${dotDur}</duration>\n`;
+        xml += `        <type>${type}</type>${n.dotted ? "<dot/>" : ""}\n`;
+        if (headTok) xml += `        <notehead>${headTok}</notehead>\n`;
+        // Articulations / stem stickings live under <notations>.
+        const notationParts: string[] = [];
+        if (n.articulation === "accent") {
+          notationParts.push(`<articulations><accent/></articulations>`);
+        }
+        if (n.articulation === "ghost") {
+          notationParts.push(`<notehead-text><display-text>(${displayStep})</display-text></notehead-text>`);
+        }
+        if (n.stick) {
+          notationParts.push(`<technical><other-technical>${n.stick}</other-technical></technical>`);
+        }
+        if (notationParts.length) {
+          xml += `        <notations>${notationParts.join("")}</notations>\n`;
+        }
         xml += `      </note>\n`;
       }
       if (!isChord) cursor = n.startSlot + noteSlots(n);

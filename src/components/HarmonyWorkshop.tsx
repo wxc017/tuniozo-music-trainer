@@ -2270,7 +2270,7 @@ function HWChordSelectionPanel({
   return (
     <div className="border rounded overflow-hidden" style={{ borderColor: accent + "40" }}>
       <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0a0a0a]">
-        <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent }}>{tonality.toUpperCase()}</span>
+        <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent }}>{tonality}</span>
       </div>
       <div className="space-y-2 p-2">
         {visibleLevels.map(level => {
@@ -2334,55 +2334,9 @@ function HWChordSelectionPanel({
                             })}
                           </div>
                         )}
-                        {xenAvail.length > 0 && (() => {
-                          const thirdKinds = xenAvail.filter(k => k !== "qrt" && k !== "qnt");
-                          const hasStack = xenAvail.includes("qrt") || xenAvail.includes("qnt");
-                          const stackOn = enabledXen.has("qrt") || enabledXen.has("qnt");
-                          return (
-                            <div className="flex flex-col gap-0.5 px-1 pb-1">
-                              {thirdKinds.length > 0 && (
-                                <div className="flex gap-0.5">
-                                  {thirdKinds.map(k => {
-                                    const on = enabledXen.has(k);
-                                    const color = XEN_COLOR[k];
-                                    return (
-                                      <button key={k}
-                                        onClick={() => isChecked ? toggleXen(entry.label, k) : toggleChord(entry.label)}
-                                        title={isChecked
-                                          ? `${entry.label} with ${k === "neu" ? "neutral" : k === "sub" ? "subminor" : "supermajor"} variant`
-                                          : `Click to enable ${entry.label}`}
-                                        className={`flex-1 min-h-[24px] text-[10px] leading-tight px-1 py-1 rounded border transition-colors ${
-                                          !isChecked ? "bg-[#141414] text-[#555] border-[#222] hover:text-[#aaa] hover:border-[#444]"
-                                          : on ? "text-black font-semibold"
-                                          : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
-                                        }`}
-                                        style={isChecked && on ? { background: color, borderColor: color } : undefined}>
-                                        {XEN_LABEL[k]}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              {hasStack && (
-                                <div className="flex gap-0.5">
-                                  <button
-                                    onClick={() => isChecked ? toggleXenStack(entry.label) : toggleChord(entry.label)}
-                                    title={isChecked
-                                      ? `${entry.label} as quartal (stacked 4ths) + quintal (stacked 5ths)`
-                                      : `Click to enable ${entry.label}`}
-                                    className={`flex-1 min-h-[24px] text-[10px] leading-tight px-1 py-1 rounded border transition-colors ${
-                                      !isChecked ? "bg-[#141414] text-[#555] border-[#222] hover:text-[#aaa] hover:border-[#444]"
-                                      : stackOn ? "text-black font-semibold"
-                                      : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
-                                    }`}
-                                    style={isChecked && stackOn ? { background: XEN_COLOR.qrt, borderColor: XEN_COLOR.qrt } : undefined}>
-                                    qua/quin
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
+                        {/* Xen 3rd-quality + qua/quin toggles removed —
+                            coverage moved into the new septimal/neutral/
+                            supermajor tonality families. */}
                       </div>
                     </div>
                   );

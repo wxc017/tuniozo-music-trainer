@@ -37,8 +37,8 @@ function getChromDegrees(edo: number): ChromDeg[] {
 
 interface Props {
   tonicPc: number;
-  lowestOct: number;
-  highestOct: number;
+  lowestPitch: number;
+  highestPitch: number;
   edo: number;
   onHighlight: (pcs: number[]) => void;
   onResult: (text: string) => void;
@@ -68,7 +68,7 @@ interface DroneParams {
 }
 
 export default function DroneTab({
-  tonicPc, lowestOct, highestOct, edo, onHighlight, onResult, onPlay, lastPlayed, ensureAudio, onDroneStateChange, onAnswer, tabSettingsRef,
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, onResult, onPlay, lastPlayed, ensureAudio, onDroneStateChange, onAnswer, tabSettingsRef,
 }: Props) {
   const [checkedChords, setCheckedChords] = useLS<Set<string>>("lt_drn_chords",
     new Set(["Major Triad","Dominant 7"])
@@ -169,11 +169,13 @@ export default function DroneTab({
     const degStep  = degInfo?.step ?? (getDegreeMap(edo)[degKey] ?? 0);
 
     const shape = getChordDroneTypes(edo)[chordName];
-    const [low, high] = strictWindowBounds(tonicPc, edo, lowestOct, highestOct);
+    const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
 
-    // Place drone root at (tonic + selected degree offset), mid-register
-    const midOct = lowestOct + Math.floor((highestOct - lowestOct) / 2);
-    let droneRoot = tonicPc + degStep + (midOct - 4) * edo;
+    // Place drone root at (tonic + selected degree offset), centered near
+    // the mid-pitch of the user's range, then snapped into [low, high).
+    const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
+    let droneRoot = midPitch + degStep
+      - (((midPitch - tonicPc) % edo + edo) % edo);
     while (droneRoot >= high) droneRoot -= edo;
     while (droneRoot < low)  droneRoot += edo;
 

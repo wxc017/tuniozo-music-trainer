@@ -45,7 +45,7 @@ export default function RhythmEarTraining() {
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <h2 className="text-sm font-semibold text-[#888] uppercase tracking-widest">
-          Rhythm Spatial Audiation
+          Rhythm Tonal Audiation
         </h2>
         <div className="flex items-center gap-2 ml-auto">
           <label className="text-xs text-[#666]">BPM</label>

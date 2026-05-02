@@ -422,10 +422,13 @@ export function chooseInversion(chord: number[], edo: number, allowed: number[])
 
 // ── Register helpers ──────────────────────────────────────────────────
 
-export function strictWindowBounds(tonicPc: number, edo: number, lowestOff: number, highestOff: number): [number,number] {
-  const low = tonicPc + (lowestOff - 4) * edo;
-  const high = tonicPc + (highestOff + 1 - 4) * edo;
-  return low <= high ? [low, high] : [high, low];
+/** Returns [low, high) — a half-open absolute-pitch interval. Inputs are
+ *  the user's exercise range bounds (both inclusive), so high = highestPitch + 1.
+ *  Bounds are swapped if passed in reversed order. */
+export function strictWindowBounds(lowestPitch: number, highestPitch: number): [number,number] {
+  const low = Math.min(lowestPitch, highestPitch);
+  const high = Math.max(lowestPitch, highestPitch) + 1;
+  return [low, high];
 }
 
 export function fitChordIntoWindow(chordAbs: number[], edo: number, low: number, high: number): number[] {
@@ -465,17 +468,22 @@ export function fitChordIntoWindow(chordAbs: number[], edo: number, low: number,
 
 export function placeChordInRegister(
   chordAbs: number[], edo: number, tonicPc: number,
-  lowestOff: number, highestOff: number, registerMode: string
+  lowestPitch: number, highestPitch: number, registerMode: string
 ): number[] {
   if (!chordAbs.length) return [];
-  const [low, high] = strictWindowBounds(tonicPc, edo, lowestOff, highestOff);
-  let targetOff = lowestOff;
-  if (registerMode === "Random Bass Octave") {
-    targetOff = lowestOff + Math.floor(Math.random() * (highestOff - lowestOff + 1));
-  } else if (registerMode === "Random Full Register") {
-    targetOff = lowestOff + Math.floor(Math.random() * (highestOff - lowestOff + 1));
+  const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
+  // Bass anchor: a tonic-aligned pitch inside [low, high).  Default is the
+  // lowest tonic in range; randomized modes pick any tonic-aligned anchor
+  // available within the user's exact range.
+  const tonicAnchors: number[] = [];
+  for (let p = low + (((tonicPc - low) % edo) + edo) % edo; p < high; p += edo) {
+    tonicAnchors.push(p);
   }
-  const targetLow = tonicPc + (targetOff - 4) * edo;
+  if (tonicAnchors.length === 0) tonicAnchors.push(low);
+  let targetLow = tonicAnchors[0];
+  if (registerMode === "Random Bass Octave" || registerMode === "Random Full Register") {
+    targetLow = tonicAnchors[Math.floor(Math.random() * tonicAnchors.length)];
+  }
   const targetHigh = targetLow + edo;
   let out = [...chordAbs].sort((a,b)=>a-b);
   const bass = out[0];
@@ -2051,6 +2059,68 @@ export const PATTERN_SCALE_FAMILIES: Record<string, string[]> = {
   "Major Family": ["Ionian","Dorian","Phrygian","Lydian","Mixolydian","Aeolian","Locrian"],
   "Harmonic Minor Family": ["Harmonic Minor","Locrian #6","Ionian #5","Dorian #4","Phrygian Dominant","Lydian #2","Ultralocrian"],
   "Melodic Minor Family": ["Melodic Minor","Dorian b2","Lydian Augmented","Lydian Dominant","Mixolydian b6","Locrian #2","Altered"],
+  // ── Septimal / Neutral diatonics (31-EDO) ────────────────────────────
+  // Each family is a "uniformly inflected" diatonic at mode 1 (the
+  // canonical parent).  Modes 2-7 are mechanical rotations of that
+  // parent — each rotation has a *different* interval pattern that
+  // does NOT mirror any standard Greek-mode shape (the modal-tone
+  // alterations don't survive rotation, so a name like "Sup Dorian"
+  // would imply a sup-3 + minor-3-from-Dorian relationship that the
+  // rotation doesn't actually produce).  We label each rotation by
+  // numeric position within its family instead.
+  // Mode-1 of each family carries "Diatonic" since the parent's 2/4/5
+  // are unaltered (e.g., "Subminor Diatonic" = 1 2 sub3 4 5 sub6 sub7).
+  // Modes 2-7 use Greek-mode position names with the family prefix
+  // (e.g., "Subminor Dorian" = the rotation that starts on the parent's
+  // 2nd degree).  The prefix flags the parent family — *not* a uniform
+  // alteration of every modal position in that rotation.  Specific
+  // deviations from a "pure" prefixed mode are reflected in the actual
+  // scale-degree labels (the sub3/neu6/etc. tags).
+  // Mode names for the four septimal/neutral families are derived from
+  // the parent scale's actual interval pattern.  Mode 1 is the
+  // canonical anchor name; modes 2-7 follow the Western harmonic-minor
+  // / melodic-minor convention — closest Greek mode + specific
+  // accidentals — collapsing the three modal-tone alterations into a
+  // "Subminor" / "Neutral" / "Supermajor" prefix when applicable.  See
+  // nameXenRotation() below.  The names are pre-computed (not derived
+  // at module load) since the helper depends on consts that come later
+  // in this file.
+  "Subminor Diatonic Family": [
+    "Subminor Diatonic",
+    "Locrian s2 s5 s6",
+    "Supermajor Ionian",
+    "Dorian s3 bb4 s7",
+    "Subminor Phrygian m7",
+    "Supermajor Lydian M2 b5",
+    "Supermajor Mixolydian ##5 m7",
+  ],
+  "Neutral Diatonic Family": [
+    "Neutral Diatonic",
+    "Dorian N2 bb5 N6",
+    "Neutral Ionian",
+    "Ionian N3 ##4 N7",
+    "Neutral Dorian m7",
+    "Neutral Ionian M2 ##4",
+    "Neutral Dorian bb5 m7",
+  ],
+  "Supermajor Diatonic Family": [
+    "Supermajor Diatonic",
+    "Dorian S2 ##5 S6",
+    "Subminor Phrygian",
+    "Lydian S3 b5 S7",
+    "Supermajor Mixolydian m7",
+    "Subminor Aeolian M2 bb4",
+    "Subminor Locrian m7",
+  ],
+  "Subharmonic Diatonic Family": [
+    "Subharmonic Diatonic",
+    "Locrian s2 s5 N6",
+    "Supermajor Ionian #5",
+    "Dorian s3 ##4 s7",
+    "Phrygian s2 N3 s6",
+    "Supermajor Lydian #2 b5",
+    "Neutral Dorian b4 bb5 bb7",
+  ],
 };
 
 export const PATTERN_SEQUENCE_FAMILIES = [
@@ -2071,22 +2141,345 @@ const PATTERN_SCALE_MAPS_31: Record<string, Record<string, Record<string, number
   "Harmonic Minor Family": {
     "Harmonic Minor":   {"1":0,"2":5,"b3":8,"4":13,"5":18,"b6":21,"7":28},
     "Locrian #6":       {"1":0,"b2":3,"b3":8,"4":13,"b5":16,"6":23,"b7":26},
-    "Ionian #5":        {"1":0,"2":5,"3":10,"4":13,"#5":21,"6":23,"7":28},
+    // Ionian #5 — proper 31-EDO rotation places #5 at step 20 (aug5),
+    // not 21 (m6).  Existing data used a 12-EDO enharmonic shortcut.
+    "Ionian #5":        {"1":0,"2":5,"3":10,"4":13,"#5":20,"6":23,"7":28},
     "Dorian #4":        {"1":0,"2":5,"b3":8,"#4":15,"5":18,"6":23,"b7":26},
     "Phrygian Dominant":{"1":0,"b2":3,"3":10,"4":13,"5":18,"b6":21,"b7":26},
-    "Lydian #2":        {"1":0,"#2":8,"3":10,"#4":15,"5":18,"6":23,"7":28},
-    "Ultralocrian":     {"1":0,"b2":3,"b3":8,"3":10,"b5":16,"b6":21,"6":23},
+    // Lydian #2 — proper aug2 = step 7, not step 8 (which is m3 in
+    // 31-EDO).  Existing data used a 12-EDO enharmonic shortcut.
+    "Lydian #2":        {"1":0,"#2":7,"3":10,"#4":15,"5":18,"6":23,"7":28},
+    // Ultralocrian — proper rotation gives [0, 3, 8, 11, 16, 21, 24].
+    // Pos 4 step 11 = "b4" (dim4); pos 7 step 24 = "bb7" (dim7, =
+    // sup6 enharmonically).  Existing data shifted both by one step
+    // to use a 12-EDO enharmonic.
+    "Ultralocrian":     {"1":0,"b2":3,"b3":8,"b4":11,"b5":16,"b6":21,"bb7":24},
   },
   "Melodic Minor Family": {
     "Melodic Minor":    {"1":0,"2":5,"b3":8,"4":13,"5":18,"6":23,"7":28},
     "Dorian b2":        {"1":0,"b2":3,"b3":8,"4":13,"5":18,"6":23,"b7":26},
-    "Lydian Augmented": {"1":0,"2":5,"3":10,"#4":15,"#5":21,"6":23,"7":28},
+    // Lydian Augmented — proper aug5 = step 20 (not step 21 which is m6).
+    "Lydian Augmented": {"1":0,"2":5,"3":10,"#4":15,"#5":20,"6":23,"7":28},
     "Lydian Dominant":  {"1":0,"2":5,"3":10,"#4":15,"5":18,"6":23,"b7":26},
     "Mixolydian b6":    {"1":0,"2":5,"3":10,"4":13,"5":18,"b6":21,"b7":26},
     "Locrian #2":       {"1":0,"2":5,"b3":8,"4":13,"b5":16,"b6":21,"b7":26},
-    "Altered":          {"1":0,"b2":3,"#2":8,"3":10,"b5":16,"#5":21,"b7":26},
+    // Altered — proper rotation gives [0, 3, 7, 10, 16, 20, 26]:
+    //   #2 = step 7 (true aug2, not m3 = 8)
+    //   #5 = step 20 (true aug5, not m6 = 21)
+    "Altered":          {"1":0,"b2":3,"#2":7,"3":10,"b5":16,"#5":20,"b7":26},
   },
 };
+
+// ── Septimal/Neutral diatonic families (programmatically rotated) ────
+// Each parent is the canonical mode-1 of the family; modes 2-7 are
+// rotations (start the parent on degree N).  Each rotation gets a
+// position-aware degree label using the sub/neu/sup convention for
+// the modal positions (3, 6, 7) and #/b for everything else.
+//
+// 31-EDO step → label, indexed by 1-based position:
+//   pos 1: 0 → "1"
+//   pos 2: 5 → "2", with offsets producing "bb2"/"b2"/"neu2"/"sup2"/"#2"
+//   pos 3: 10 → "3", offsets → "sub3"/"b3"/"neu3"/"sup3"/"#3"
+//   pos 4: 13 → "4", offsets → "b4"/"neu4"/"#4"/"##4"
+//   pos 5: 18 → "5", offsets → "b5"/"neu5"/"#5"/"##5"
+//   pos 6: 23 → "6", offsets → "sub6"/"b6"/"neu6"/"sup6"/"#6"
+//   pos 7: 28 → "7", offsets → "sub7"/"b7"/"neu7"/"sup7"/"#7"
+const POSITION_DIATONIC_31 = [0, 5, 10, 13, 18, 23, 28];
+
+// Absolute interval label for any 31-EDO step value (0-30) — used as a
+// fallback when a scale's note sits too far from its position's diatonic
+// default for the s / m / N / S / # system to make sense.  Single-letter
+// quality vocabulary, uniform across all positions:
+//   s = subminor   m = minor   N = neutral
+//   (bare number) = major (M2 / M3 / M6 / M7) or perfect (P4 / P5)
+//   S = supermajor   # = augmented
+function absoluteIntervalLabel31(step: number): string {
+  switch (step) {
+    case 0:  return "1";
+    case 2:  return "s2";
+    case 3:  return "m2";
+    case 4:  return "N2";
+    case 5:  return "2";
+    case 6:  return "S2";
+    case 7:  return "s3";
+    case 8:  return "m3";
+    case 9:  return "N3";
+    case 10: return "3";
+    case 11: return "S3";
+    case 13: return "4";
+    case 14: return "##4";
+    case 15: return "#4";
+    case 16: return "b5";
+    case 17: return "bb5";
+    case 18: return "5";
+    case 19: return "##5";
+    case 20: return "s6";
+    case 21: return "m6";
+    case 22: return "N6";
+    case 23: return "6";
+    case 24: return "S6";
+    case 25: return "s7";
+    case 26: return "m7";
+    case 27: return "N7";
+    case 28: return "7";
+    case 29: return "S7";
+    default: return `step${step}`;
+  }
+}
+
+// Position-aware label for a step at a given scale position (1-7).
+//
+// Modal positions (2, 3, 6, 7) use the major/minor letter system:
+//   diff -3 = s (sub)   -2 = m (min)   -1 = N (neu)
+//    0 = bare position number (M / P implicit)
+//   +1 = S (sup)   +2 = # (aug)
+//
+// Perfect positions (4, 5) use the chromatic-accidental system since
+// they don't have major/minor forms.  Half-sharp (##) and half-flat
+// (bb) sit at the in-between (1-step) deviations; whole sharp (#) and
+// whole flat (b) are the standard chromatic alterations:
+//   diff -3 = s (sub-flat)        -2 = b (flat / d)        -1 = bb (half-flat)
+//    0 = bare number (P)
+//   +1 = ## (half-sharp)          +2 = # (sharp / aug)
+//
+// Out-of-range deviations fall back to the absolute interval label.
+function labelStep31ForPosition(step: number, position: number): string {
+  const expected = POSITION_DIATONIC_31[position - 1];
+  const diff = step - expected;
+  const isPerfect = position === 4 || position === 5;
+  if (diff === 0)  return String(position);
+  if (isPerfect) {
+    if (diff === -3) return `s${position}`;
+    if (diff === -2) return `b${position}`;
+    if (diff === -1) return `bb${position}`;
+    if (diff ===  1) return `##${position}`;
+    if (diff ===  2) return `#${position}`;
+  } else {
+    if (diff === -4) return `bb${position}`;
+    if (diff === -3) return `s${position}`;
+    if (diff === -2) return `m${position}`;
+    if (diff === -1) return `N${position}`;
+    if (diff ===  1) return `S${position}`;
+    if (diff ===  2) return `#${position}`;
+    if (diff ===  3) return `##${position}`;
+  }
+  return absoluteIntervalLabel31(step);
+}
+
+// Deviation-label variant of labelStep31ForPosition.  Used inside mode
+// names where a quality prefix has shifted the implied baseline at a
+// modal position — an unaltered Major value (M2 / M3 / M6 / M7) is then
+// itself a deviation from the prefix, so we tag it explicitly with "M"
+// rather than the bare position digit.  Perfect-position diff-0 stays
+// as the bare digit since P4 / P5 are unambiguous.
+function devLabel(step: number, position: number): string {
+  const expected = POSITION_DIATONIC_31[position - 1];
+  if (step === expected && position !== 4 && position !== 5) {
+    return `M${position}`;
+  }
+  return labelStep31ForPosition(step, position);
+}
+
+function rotateAndLabel(parent: readonly number[], rotIdx: number): Record<string, number> {
+  const root = parent[rotIdx];
+  const map: Record<string, number> = {};
+  for (let i = 0; i < parent.length; i++) {
+    const j = (rotIdx + i) % parent.length;
+    const wrap = (rotIdx + i) >= parent.length ? 31 : 0;
+    const step = parent[j] + wrap - root;
+    map[labelStep31ForPosition(step, i + 1)] = step;
+  }
+  return map;
+}
+function buildXenFamily(parent: readonly number[], modeNames: readonly string[]): Record<string, Record<string, number>> {
+  const out: Record<string, Record<string, number>> = {};
+  for (let i = 0; i < modeNames.length; i++) {
+    out[modeNames[i]] = rotateAndLabel(parent, i);
+  }
+  return out;
+}
+
+// ── Programmatic mode-naming for septimal/neutral families (31-EDO) ──
+// Each rotation gets a name using the same convention Western harmonic
+// minor / melodic minor modes use: the closest standard Greek mode plus
+// a list of specific deviations.  When the rotation's three modal
+// positions (3, 6, 7) all share a sub / neu / sup quality, we collapse
+// those three deviations into a leading "Subminor" / "Neutral" /
+// "Supermajor" prefix and append only the *remaining* deviations — same
+// way "Phrygian Dominant" hides Phrygian's lifted 3rd inside the
+// "Dominant" qualifier.  Otherwise we fall through to a bare Greek-mode
+// name with each non-matching position spelled out.
+const STD_GREEK_MODES_31_INTERVALS: { name: string; intervals: number[] }[] = [
+  { name: "Ionian",     intervals: [0, 5, 10, 13, 18, 23, 28] },
+  { name: "Dorian",     intervals: [0, 5,  8, 13, 18, 23, 26] },
+  { name: "Phrygian",   intervals: [0, 3,  8, 13, 18, 21, 26] },
+  { name: "Lydian",     intervals: [0, 5, 10, 15, 18, 23, 28] },
+  { name: "Mixolydian", intervals: [0, 5, 10, 13, 18, 23, 26] },
+  { name: "Aeolian",    intervals: [0, 5,  8, 13, 18, 21, 26] },
+  { name: "Locrian",    intervals: [0, 3,  8, 13, 16, 21, 26] },
+];
+// Quality absolute step values at each scale position (1-indexed).
+//   Subminor:   pos2=2,  pos3=7,  pos5=15, pos6=20, pos7=25
+//   Neutral:    pos2=4,  pos3=9,  pos5=17, pos6=22, pos7=27
+//   Supermajor: pos2=6,  pos3=11, pos5=19, pos6=24, pos7=29
+const XEN_QUALITIES: { name: string; pos: Record<number, number> }[] = [
+  { name: "Subminor",   pos: { 2: 2,  3: 7,  5: 15, 6: 20, 7: 25 } },
+  { name: "Neutral",    pos: { 2: 4,  3: 9,  5: 17, 6: 22, 7: 27 } },
+  { name: "Supermajor", pos: { 2: 6,  3: 11, 5: 19, 6: 24, 7: 29 } },
+];
+
+function nameXenRotation(scale: number[]): string {
+  // 1) Pick the closest standard Greek mode by sum of |position diffs|.
+  let best = STD_GREEK_MODES_31_INTERVALS[0];
+  let bestDist = Infinity;
+  for (const gm of STD_GREEK_MODES_31_INTERVALS) {
+    let d = 0;
+    for (let i = 0; i < 7; i++) d += Math.abs(scale[i] - gm.intervals[i]);
+    if (d < bestDist) { bestDist = d; best = gm; }
+  }
+  // 2) Quality prefix.  Look at the modal-flavored positions for the
+  //    Greek mode and check whether they all line up to a single
+  //    quality (sub / neu / sup).  Locrian's b5 is also "modal-flavored"
+  //    (non-perfect), so include pos 5 for Locrian-based modes.
+  //    A quality fires when at most one targeted position fails to
+  //    match — i.e. ≥3 of {2,3,6,7} for non-Locrian Greek modes,
+  //    ≥4 of {2,3,5,6,7} for Locrian.  The unmatched position(s) fall
+  //    through to the suffix as deviations.
+  const isLocrian = best.name === "Locrian";
+  const targetPositions = isLocrian ? [2, 3, 5, 6, 7] : [2, 3, 6, 7];
+  const matchThreshold = isLocrian ? 4 : 3;
+
+  let bestQ: { name: string; pos: Record<number, number> } | null = null;
+  let bestMatchCount = 0;
+  for (const q of XEN_QUALITIES) {
+    let count = 0;
+    for (const p of targetPositions) {
+      if (scale[p - 1] === q.pos[p]) count++;
+    }
+    if (count >= matchThreshold && count > bestMatchCount) {
+      bestQ = q;
+      bestMatchCount = count;
+    }
+  }
+
+  // 3) Build expected scale: closest Greek with EVERY targeted position
+  //    overwritten by the quality's value (not just the matched ones).
+  //    A targeted position whose actual value differs from the quality
+  //    becomes a dev — that's the disambiguator between e.g. canonical
+  //    "Subminor Phrygian" (pos 7 = s7) and "Subminor Phrygian m7"
+  //    (pos 7 = m7, sharing the {2, 3, 6} subminor character but with a
+  //    Phrygian-natural b7 instead of subminor's s7).
+  const expected = [...best.intervals];
+  if (bestQ) {
+    for (const p of targetPositions) expected[p - 1] = bestQ.pos[p];
+  }
+
+  // 4) List remaining deviations using position-aware labels (s3 / N5
+  //    / bb4 / ##5 / bb7 / etc.).  Modal-natural M values are tagged
+  //    with explicit "M" so the dev reads clearly under a quality prefix.
+  const devs: string[] = [];
+  for (let i = 1; i < 7; i++) {
+    if (scale[i] === expected[i]) continue;
+    devs.push(devLabel(scale[i], i + 1));
+  }
+
+  // 5) Compose.  Pure-quality scales with diatonic 2/4/5 collapse to
+  //    "{Quality} Diatonic" — matches the user's spec:
+  //      "Diatonic if there is 2 4 5"
+  const prefix = bestQ ? bestQ.name : "";
+  const std245 = scale[1] === 5 && scale[3] === 13 && scale[4] === 18;
+  if (prefix && std245 && devs.length === 0) return `${prefix} Diatonic`;
+  const greekPart = prefix ? `${prefix} ${best.name}` : best.name;
+  return devs.length === 0 ? greekPart : `${greekPart} ${devs.join(" ")}`;
+}
+
+// Build the family's mode-name list directly from the parent scale.
+// Mode 1 carries the user-chosen "anchor" name (e.g. "Subminor Diatonic")
+// since the auto-namer wouldn't know to call the family's tonic by its
+// canonical short name.  Modes 2-7 are derived from each rotation's
+// actual interval pattern via nameXenRotation().
+function buildXenFamilyNames(parent: readonly number[], anchorName: string): string[] {
+  const names = [anchorName];
+  for (let i = 1; i < 7; i++) {
+    const root = parent[i];
+    const scale: number[] = [];
+    for (let j = 0; j < parent.length; j++) {
+      const k = (i + j) % parent.length;
+      const wrap = (i + j) >= parent.length ? 31 : 0;
+      scale.push(parent[k] + wrap - root);
+    }
+    names.push(nameXenRotation(scale));
+  }
+  return names;
+}
+
+// 31-EDO parent scales (mode 1 of each family).
+//
+// Computed rotations — generated by buildXenFamily(parent, modeNames):
+//
+// Subminor Diatonic Family
+//   Mode 1 Subminor Diatonic   1     2     sub3  4     5     sub6  sub7
+//   Mode 2 Subminor Dorian     1     bb2   b3    4     bb5   sub6  b7
+//   Mode 3 Subminor Phrygian   1     sup2  sup3  4     5     sup6  sup7
+//   Mode 4 Subminor Lydian     1     2     sub3  b4    5     6     sub7
+//   Mode 5 Subminor Mixolydian 1     bb2   sub3  4     5     sub6  b7
+//   Mode 6 Subminor Aeolian    1     2     sup3  ##4   5     sup6  sup7
+//   Mode 7 Subminor Locrian    1     sup2  sup3  4     #5    sup6  b7
+//
+// Neutral Diatonic Family
+//   Mode 1 Neutral Diatonic    1     2     neu3  4     5     neu6  neu7
+//   Mode 2 Neutral Dorian      1     neu2  b3    4     neu5  neu6  b7
+//   Mode 3 Neutral Phrygian    1     neu2  neu3  4     5     neu6  neu7
+//   Mode 4 Neutral Lydian      1     2     neu3  neu4  5     6     neu7
+//   Mode 5 Neutral Mixolydian  1     neu2  neu3  4     5     neu6  b7
+//   Mode 6 Neutral Aeolian     1     2     neu3  neu4  5     neu6  neu7
+//   Mode 7 Neutral Locrian     1     neu2  neu3  4     neu5  neu6  b7
+//
+// Supermajor Diatonic Family
+//   Mode 1 Supermajor Diatonic 1     2     sup3  4     5     sup6  sup7
+//   Mode 2 Supermajor Dorian   1     sup2  b3    4     #5    sup6  b7
+//   Mode 3 Supermajor Phrygian 1     bb2   sub3  4     5     sub6  sub7
+//   Mode 4 Supermajor Lydian   1     2     sup3  ##4   5     6     sup7
+//   Mode 5 Supermajor Mixolydian 1   sup2  sup3  4     5     sup6  b7
+//   Mode 6 Supermajor Aeolian  1     2     sub3  b4    5     sub6  sub7
+//   Mode 7 Supermajor Locrian  1     bb2   sub3  4     bb5   sub6  b7
+//
+// Subharmonic Diatonic Family
+//   Mode 1 Subharmonic Diatonic 1    2     sub3  4     5     sub6  neu7
+//   Mode 2 Subharmonic Dorian  1     bb2   b3    4     bb5   neu6  b7
+//   Mode 3 Subharmonic Phrygian 1    sup2  sup3  4     ##5   sup6  sup7
+//   Mode 4 Subharmonic Lydian  1     2     sub3  neu4  5     6     sub7
+//   Mode 5 Subharmonic Mixolydian 1  bb2   neu3  4     5     sub6  b7
+//   Mode 6 Subharmonic Aeolian 1     #2    sup3  ##4   5     sup6  sup7
+//   Mode 7 Subharmonic Locrian 1     neu2  neu3  bb4   neu5  neu6  bbb7
+//
+// The mode names use the rotation-index Greek-mode position with the
+// family prefix.  Note that the prefix tags lineage — many rotations
+// invert the family quality (e.g. Subminor Phrygian and Subminor
+// Aeolian both come out *supermajor*-flavored because rotating a
+// uniformly-down-shifted scale exposes a uniformly-up-shifted shape
+// from the opposite tonal pole).  The position-aware degree labels
+// preserve the *actual* interval at every degree.
+const SUBMINOR_PARENT_31     = [0, 5, 7, 13, 18, 20, 25] as const;  // 1 2 sub3 4 5 sub6 sub7
+const NEUTRAL_PARENT_31      = [0, 5, 9, 13, 18, 22, 27] as const;  // 1 2 neu3 4 5 neu6 neu7
+const SUPERMAJOR_PARENT_31   = [0, 5, 11, 13, 18, 24, 29] as const; // 1 2 sup3 4 5 sup6 sup7
+const SUBHARMONIC_PARENT_31  = [0, 5, 7, 13, 18, 20, 27] as const;  // 1 2 sub3 4 5 sub6 neu7
+
+PATTERN_SCALE_MAPS_31["Subminor Diatonic Family"]   = buildXenFamily(SUBMINOR_PARENT_31,    PATTERN_SCALE_FAMILIES["Subminor Diatonic Family"]);
+PATTERN_SCALE_MAPS_31["Neutral Diatonic Family"]    = buildXenFamily(NEUTRAL_PARENT_31,     PATTERN_SCALE_FAMILIES["Neutral Diatonic Family"]);
+PATTERN_SCALE_MAPS_31["Supermajor Diatonic Family"] = buildXenFamily(SUPERMAJOR_PARENT_31,  PATTERN_SCALE_FAMILIES["Supermajor Diatonic Family"]);
+PATTERN_SCALE_MAPS_31["Subharmonic Diatonic Family"] = buildXenFamily(SUBHARMONIC_PARENT_31, PATTERN_SCALE_FAMILIES["Subharmonic Diatonic Family"]);
+
+// Plumb the xen families into edoData's getPatternScaleMaps cache so the
+// EDO-aware getModeDegreeMap (used by Mode-ID, MelodicPatterns, etc.)
+// finds them too.  Module-load side-effect.
+import { registerXenPatternMaps } from "./edoData";
+registerXenPatternMaps(31, {
+  "Subminor Diatonic Family":   PATTERN_SCALE_MAPS_31["Subminor Diatonic Family"],
+  "Neutral Diatonic Family":    PATTERN_SCALE_MAPS_31["Neutral Diatonic Family"],
+  "Supermajor Diatonic Family": PATTERN_SCALE_MAPS_31["Supermajor Diatonic Family"],
+  "Subharmonic Diatonic Family": PATTERN_SCALE_MAPS_31["Subharmonic Diatonic Family"],
+});
 
 export function getModeDegreeMap31(scaleFam: string, modeName: string): Record<string, number> {
   const fam = PATTERN_SCALE_MAPS_31[scaleFam];
@@ -2227,7 +2620,7 @@ export const FAMILY_TO_STYLES: Record<string,string[]> = {
 };
 
 export function buildDynamicPatternLine(
-  edo: number, tonicPc: number, lowestOff: number, highestOff: number,
+  edo: number, tonicPc: number, lowestPitch: number, highestPitch: number,
   scaleFam: string, modeName: string, length: number, checkedFams: string[],
   styleOverride?: string
 ): [number[], string] | null {
@@ -2243,10 +2636,15 @@ export function buildDynamicPatternLine(
   if (!rawSteps.length) return null;
   const offset = rawSteps[0];
   const normSteps = rawSteps.map(s => s - offset);
-  const startOff = lowestOff + Math.floor(Math.random() * (highestOff - lowestOff + 1));
-  const base = tonicPc + (startOff - 4) * edo + offset;
+  const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
+  // Pick a random tonic-aligned anchor pitch inside the range.
+  const anchors: number[] = [];
+  for (let p = low + (((tonicPc - low) % edo) + edo) % edo; p < high; p += edo) {
+    anchors.push(p);
+  }
+  const startBase = anchors.length ? anchors[Math.floor(Math.random() * anchors.length)] : low;
+  const base = startBase + offset;
   const lineAbs = normSteps.map(s => base + s);
-  const [low, high] = strictWindowBounds(tonicPc, edo, lowestOff, highestOff);
   const fitted = fitLineIntoWindow(lineAbs, edo, low, high);
   return fitted.length ? [fitted, style] : null;
 }
@@ -2300,9 +2698,9 @@ export const QPP_TARGET_TYPES = [
 ];
 
 export function qppGenerate(
-  edo: number, tonicPc: number, lowestOff: number, highestOff: number, kinds: string[]
+  edo: number, tonicPc: number, lowestPitch: number, highestPitch: number, kinds: string[]
 ): { kind: string; notes: number[]; label: string } | null {
-  const [low, high] = strictWindowBounds(tonicPc, edo, lowestOff, highestOff);
+  const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
   const roots = Array.from({length: high - low}, (_, i) => low + i);
   const pick = () => randomChoice(kinds);
 
