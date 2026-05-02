@@ -7,8 +7,8 @@ import { getChordShapes } from "@/lib/edoData";
 
 interface Props {
   tonicPc: number;
-  lowestOct: number;
-  highestOct: number;
+  lowestPitch: number;
+  highestPitch: number;
   edo: number;
   onHighlight: (pcs: number[]) => void;
   onResult: (text: string) => void;
@@ -41,7 +41,7 @@ const COMMON_LOOPS: Record<LoopSize, string[][]> = {
 };
 
 export default function ChordLoopsPanel({
-  tonicPc, lowestOct, highestOct, edo, onHighlight, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.6, onAnswer,
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.6, onAnswer,
 }: Props) {
   const [loopSize, setLoopSize] = useLS<LoopSize>("lt_tonal_loop_size", 4);
   const [hasPlayed, setHasPlayed] = useState(false);
@@ -70,8 +70,9 @@ export default function ChordLoopsPanel({
     const loop = randomChoice(loops);
     correctLoop.current = loop;
 
-    const midOct = Math.floor((lowestOct + highestOct) / 2);
-    const rootAbs = tonicPc + (midOct - 4) * edo;
+    // Tonic-aligned root pitch closest to the mid-pitch of the user's range.
+    const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
+    const rootAbs = midPitch - (((midPitch - tonicPc) % edo + edo) % edo);
 
     const chordMap = Object.fromEntries(CHORD_POOL.map(c => [c.label, c.build(sh)]));
     const frames: number[][] = [];
@@ -81,7 +82,7 @@ export default function ChordLoopsPanel({
       const shape = chordMap[label];
       if (!shape) continue;
       const notes = placeChordInRegister(
-        shape.map(s => rootAbs + s), edo, tonicPc, lowestOct, highestOct, "Fixed Register"
+        shape.map(s => rootAbs + s), edo, tonicPc, lowestPitch, highestPitch, "Fixed Register"
       );
       frames.push(notes);
     }
@@ -98,7 +99,7 @@ export default function ChordLoopsPanel({
     audioEngine.playSequence(frames, edo, 1000, 0.65, playVol * 0.7);
     const d = setTimeout(() => setIsPlaying(false), frames.length * 1000 + 500);
     timers.current.push(d);
-  }, [isPlaying, ensureAudio, loopSize, tonicPc, edo, lowestOct, highestOct, onResult, onPlay, lastPlayed, playVol]);
+  }, [isPlaying, ensureAudio, loopSize, tonicPc, edo, lowestPitch, highestPitch, onResult, onPlay, lastPlayed, playVol]);
 
   const replay = () => {
     const lp = lastPlayed.current;

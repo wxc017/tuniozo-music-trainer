@@ -14,8 +14,8 @@ const GAP_STEP_SEC = 0.05;
 
 interface Props {
   tonicPc: number;
-  lowestOct: number;
-  highestOct: number;
+  lowestPitch: number;
+  highestPitch: number;
   edo: number;
   onHighlight: (pcs: number[]) => void;
   responseMode: string;
@@ -30,7 +30,7 @@ interface Props {
 }
 
 export default function IntervalsTab({
-  tonicPc, lowestOct, highestOct, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, onShowOnKeyboard, playVol = 0.65, tabSettingsRef, answerButtons
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, onShowOnKeyboard, playVol = 0.65, tabSettingsRef, answerButtons
 }: Props) {
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [checked, setChecked] = useLS<Set<number>>("lt_ivl_checked", new Set([3,5,8,10,13,15,18,21,23,26,28]));
@@ -118,9 +118,9 @@ export default function IntervalsTab({
     // name list — otherwise stale picks show up as "Root" in the answer.
     const pool = Array.from(checked).filter(i => i >= 0 && i < ivNames.length);
     if (!pool.length) return {notes: [], steps: [], root: 0};
-    const low = tonicPc + (lowestOct - 4) * edo;
-    const high = tonicPc + (highestOct + 1 - 4) * edo;
-    let r = tonicPc + (lowestOct + Math.floor((highestOct - lowestOct) / 2) - 4) * edo;
+    const low = lowestPitch;
+    const high = highestPitch + 1;
+    let r = Math.floor((lowestPitch + highestPitch) / 2);
     while (r < low) r += edo;
     while (r >= high) r -= edo;
 

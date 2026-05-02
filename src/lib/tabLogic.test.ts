@@ -19,14 +19,14 @@ const EDOS = [12, 31, 41];
 
 describe("IntervalsTab: note building", () => {
   function buildNotes(
-    checked: Set<number>, tonicPc: number, lowestOct: number, highestOct: number, edo: number, numNotes: number
+    checked: Set<number>, tonicPc: number, lowestPitch: number, highestPitch: number, edo: number, numNotes: number
   ) {
     const pool = Array.from(checked);
     if (!pool.length) return { notes: [], steps: [], root: 0 };
     const ivNames = getIntervalNames(edo);
-    const low = tonicPc + (lowestOct - 4) * edo;
-    const high = tonicPc + (highestOct + 1 - 4) * edo;
-    let r = tonicPc + (lowestOct + Math.floor((highestOct - lowestOct) / 2) - 4) * edo;
+    const low = lowestPitch;
+    const high = highestPitch + 1;
+    let r = Math.floor((lowestPitch + highestPitch) / 2);
     while (r < low) r += edo;
     while (r >= high) r -= edo;
 
@@ -45,14 +45,14 @@ describe("IntervalsTab: note building", () => {
   }
 
   it("returns empty for empty checked set", () => {
-    const result = buildNotes(new Set(), 0, 3, 5, 31, 2);
+    const result = buildNotes(new Set(), 0, -31, 61, 31, 2);
     expect(result.notes).toEqual([]);
   });
 
   it("returns correct number of notes (capped at 6)", () => {
     const checked = new Set([3, 5, 8, 10]);
     for (let n = 1; n <= 8; n++) {
-      const result = buildNotes(checked, 0, 3, 5, 31, n);
+      const result = buildNotes(checked, 0, -31, 61, 31, n);
       expect(result.notes.length).toBe(Math.min(n, 6));
     }
   });
@@ -61,11 +61,11 @@ describe("IntervalsTab: note building", () => {
     for (const edo of EDOS) {
       for (let tonic = 0; tonic < edo; tonic += Math.ceil(edo / 4)) {
         const checked = new Set([1, 3, 5]);
-        const result = buildNotes(checked, tonic, 2, 6, edo, 2);
-        const low = tonic + (2 - 4) * edo;
-        const high = tonic + (6 + 1 - 4) * edo;
-        expect(result.root).toBeGreaterThanOrEqual(low);
-        expect(result.root).toBeLessThan(high);
+        const lowestPitch = tonic - 2 * edo;
+        const highestPitch = tonic + 3 * edo - 1;
+        const result = buildNotes(checked, tonic, lowestPitch, highestPitch, edo, 2);
+        expect(result.root).toBeGreaterThanOrEqual(lowestPitch);
+        expect(result.root).toBeLessThan(highestPitch + 1);
       }
     }
   });
@@ -74,19 +74,19 @@ describe("IntervalsTab: note building", () => {
     for (const edo of EDOS) {
       const ivNames = getIntervalNames(edo);
       const checked = new Set([1, 3, 5, 8, 10]);
-      const result = buildNotes(checked, 0, 3, 5, edo, 3);
+      const result = buildNotes(checked, 0, -edo, 2 * edo - 1, edo, 3);
       for (const { label } of result.notes) {
         expect(ivNames).toContain(label);
       }
     }
   });
 
-  it("stress: all possible tonic/octave combinations produce valid results", () => {
+  it("stress: all possible tonic/range combinations produce valid results", () => {
     const checked = new Set([5, 10, 18]);
     for (const edo of [31]) {
       for (let tonic = 0; tonic < edo; tonic += 5) {
-        for (let lo = 1; lo <= 5; lo++) {
-          for (let hi = lo + 1; hi <= 7; hi++) {
+        for (let lo = -3 * edo; lo <= -edo; lo += edo) {
+          for (let hi = lo + edo; hi <= 3 * edo; hi += edo) {
             const result = buildNotes(checked, tonic, lo, hi, edo, 3);
             expect(result.notes.length).toBe(3);
           }

@@ -919,11 +919,32 @@ function getPatternMaps(edo: number): Record<string, ScaleFamilyMap> {
     melPat    = [T, s, T, T, T, T, s];
   }
 
-  return {
+  const out: Record<string, ScaleFamilyMap> = {
     "Major Family":         buildDiatonicModes(ionianPat, DIATONIC_MODE_NAMES, DIATONIC_DEGREE_NAMES),
     "Harmonic Minor Family":buildDiatonicModes(harmPat,   HARM_MODE_NAMES,     HARM_DEGREE_NAMES),
     "Melodic Minor Family": buildDiatonicModes(melPat,    MEL_MODE_NAMES,      MEL_DEGREE_NAMES),
   };
+
+  // Xen families (septimal / neutral diatonics) — registered at module
+  // load by lazy-loading the maps that musicTheory.ts builds.  Currently
+  // populated only for 31-EDO since their parent scales rely on
+  // septimal / neutral step sizes not available in other tunings.
+  for (const [fam, modes] of Object.entries(_xenPatternMaps[edo] ?? {})) {
+    out[fam] = modes;
+  }
+
+  return out;
+}
+
+// External-source xen-family pattern maps — populated by musicTheory.ts
+// via registerXenPatternMaps() so the diatonic / harmonic / melodic
+// generator above doesn't need to know about septimal step sizes.
+const _xenPatternMaps: Record<number, Record<string, ScaleFamilyMap>> = {};
+export function registerXenPatternMaps(edo: number, maps: Record<string, ScaleFamilyMap>) {
+  _xenPatternMaps[edo] = { ..._xenPatternMaps[edo], ...maps };
+  // Bust the cache so subsequent getPatternScaleMaps(edo) calls pick up
+  // the freshly-registered families.
+  delete _patternMapsCache[edo];
 }
 
 // Cache the results so we don't recalculate every render

@@ -149,8 +149,14 @@ export default function App() {
   const [edo, setEdo] = useLS<number>("lt_app_edo", 31);
   const [vizType, setVizType] = useLS<VisualizerType>("lt_app_vizType", "lumatone");
   const [tonicPc, setTonicPc] = useLS<number>("lt_app_tonic", 0);
-  const [lowestOct, setLowestOct] = useLS<number>("lt_app_lowestOct", 3);
-  const [highestOct, setHighestOct] = useLS<number>("lt_app_highestOct", 5);
+  // Exercise range — absolute pitch bounds (both inclusive). Set by clicking
+  // two visualizer keys via the "Range" button. Defaults span 3 octaves
+  // around the tonic (tonicPc - edo to tonicPc + 2*edo - 1).
+  const [lowestPitch, setLowestPitch] = useLS<number>("lt_app_lowestPitch", -12);
+  const [highestPitch, setHighestPitch] = useLS<number>("lt_app_highestPitch", 23);
+  // Range-pick mode: when > 0, the next visualizer click sets either the
+  // low (1) or high (2) bound of the exercise range. 0 = inactive.
+  const [rangePickStep, setRangePickStep] = useState<0 | 1 | 2>(0);
   const [responseMode, setResponseMode] = useLS<ResponseMode>("lt_app_responseMode", "Play Audio");
   // droneTonal removed — drone now uses tonicPc directly
   const [droneOct, setDroneOct] = useLS<number>("lt_app_droneOct", 4);
@@ -532,7 +538,26 @@ export default function App() {
     audioEngine.playNote(key.pitch, edo, 1.0, 0.8);
     setHighlighted(new Set([key.pitch]));
     setTimeout(() => setHighlighted(new Set()), 1500);
-  }, [ensureAudio, edo]);
+    // Range-pick mode: the clicked pitch becomes the bound exactly — no
+    // octave snapping. Step 1 sets the low bound, step 2 sets the high
+    // bound (swapping if the user clicked them in reverse order so that
+    // lowestPitch <= highestPitch always holds).
+    if (rangePickStep > 0) {
+      const pitch = key.pitch;
+      if (rangePickStep === 1) {
+        setLowestPitch(pitch);
+        setRangePickStep(2);
+      } else {
+        if (pitch < lowestPitch) {
+          setHighestPitch(lowestPitch);
+          setLowestPitch(pitch);
+        } else {
+          setHighestPitch(pitch);
+        }
+        setRangePickStep(0);
+      }
+    }
+  }, [ensureAudio, edo, rangePickStep, lowestPitch, setLowestPitch, setHighestPitch]);
 
   // ── Answer buttons injected into each tab next to its Show Answer ─
   const answerButtons = (responseMode === "Play Audio" && awaitingAnswer) ? (
@@ -551,7 +576,7 @@ export default function App() {
 
   // ── Shared props for every tab ─────────────────────────────────────
   const sharedTabProps = {
-    tonicPc, lowestOct, highestOct, edo: edo,
+    tonicPc, lowestPitch, highestPitch, edo: edo,
     onHighlight: handleHighlight, responseMode,
     onResult: handleResult,
     onPlay: handlePlay,
@@ -592,7 +617,7 @@ export default function App() {
               ) : (() => {
                 const SECTION_BUTTONS: { id: string; label: string; beta?: boolean }[] = [
                   // Always-visible
-                  { id: "ear-trainer",          label: "Spatial Audiation" },
+                  { id: "ear-trainer",          label: "Tonal Audiation" },
                   { id: "drum-patterns",        label: "Drum Patterns" },
                   { id: "melodic-patterns",     label: "Melodic Patterns" },
                   { id: "harmony-workshop",     label: "Harmony Workshop" },
@@ -696,16 +721,28 @@ export default function App() {
               </div>
               <div className="w-px h-4 bg-[#2a2a2a]" />
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Exercise Range</label>
-                <select value={lowestOct} onChange={e => setLowestOct(Number(e.target.value))}
-                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
-                  {OCT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-                <span className="text-xs text-[#555]">–</span>
-                <select value={highestOct} onChange={e => setHighestOct(Number(e.target.value))}
-                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
-                  {OCT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
+                <label className="text-xs text-[#666]">Range</label>
+                <button onClick={() => setRangePickStep(s => s === 0 ? 1 : 0)}
+                  title={rangePickStep === 0
+                    ? "Click to pick low + high notes on the visualizer"
+                    : "Click again to cancel"}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-colors border ${
+                    rangePickStep > 0
+                      ? "bg-[#7173e6] border-[#7173e6] text-white animate-pulse"
+                      : "bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#555]"
+                  }`}>
+                  {rangePickStep === 1 ? "Click low note…"
+                    : rangePickStep === 2 ? "Click high note…"
+                    : (() => {
+                        const loPc = ((lowestPitch % edo) + edo) % edo;
+                        const hiPc = ((highestPitch % edo) + edo) % edo;
+                        const loName = formatHalfAccidentals(pcToNoteNameWithEnharmonic(loPc, edo) ?? "");
+                        const hiName = formatHalfAccidentals(pcToNoteNameWithEnharmonic(hiPc, edo) ?? "");
+                        const loOct = 4 + Math.floor((lowestPitch - tonicPc) / edo);
+                        const hiOct = 4 + Math.floor((highestPitch - tonicPc) / edo);
+                        return `${loName}${loOct}–${hiName}${hiOct}`;
+                      })()}
+                </button>
               </div>
               <div className="w-px h-4 bg-[#2a2a2a]" />
               <div className="flex items-center gap-1.5">
@@ -726,8 +763,10 @@ export default function App() {
               </div>
               <button onClick={async () => {
                 await ensureAudio();
-                const midOct = Math.floor((lowestOct + highestOct) / 2);
-                const tonicNote = tonicPc + (midOct - 4) * edo;
+                // Pick the tonic-aligned pitch nearest the midpoint of the
+                // current pitch range.
+                const mid = Math.floor((lowestPitch + highestPitch) / 2);
+                const tonicNote = mid - (((mid - tonicPc) % edo + edo) % edo);
                 audioEngine.playNote(tonicNote, edo, 1.0, 0.8);
                 handleHighlight([tonicNote]);
               }}
@@ -840,7 +879,7 @@ export default function App() {
 
       {/* Sticky keyboard — sits as a direct child of the scrolling root
           (not nested in the header) so its `sticky top-0` containing block
-          spans the full scroll range. Only shown in spatial audiation. */}
+          spans the full scroll range. Only shown in tonal audiation. */}
       {section === "ear-trainer" && (
         <div className="sticky top-0 z-30 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0">
           {edo === 12 && vizType === "piano" ? (
@@ -1281,7 +1320,7 @@ export default function App() {
               const settingsSnap = captureEarTrainerSettingsSnapshot();
               addPracticeEntry({
                 mode: "ear-trainer",
-                label: `Spatial Audiation · ${title}`,
+                label: `Tonal Audiation · ${title}`,
                 rating,
                 preview,
                 snapshot: { ...settingsSnap, biasKeys, settingsSnapshot: settings } as unknown as Record<string, unknown>,
@@ -1403,7 +1442,7 @@ export default function App() {
           {activeTab === "drone" && (
             <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
               <h2 className="font-semibold mb-4">Chord Drone</h2>
-              <DroneTab key={tabKey} tonicPc={tonicPc} lowestOct={lowestOct} highestOct={highestOct}
+              <DroneTab key={tabKey} tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch}
                 edo={edo} onHighlight={handleHighlight} onResult={handleResult}
                 onPlay={handlePlay} onAnswer={trackAnswer} lastPlayed={lastPlayed} ensureAudio={ensureAudio}
                 onDroneStateChange={(active) => { if (!active) setDroneIsOn(false); }} />

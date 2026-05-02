@@ -14,16 +14,18 @@ import {
 } from "@/lib/musicTheory";
 import {
   getExtLabelToSteps, getChordShapes, getEdoChordTypes, type EdoChordType,
+  formatHalfAccidentals,
   getAvailableThirdQualities,
+  getModeDegreeMap,
 } from "@/lib/edoData";
 import { getTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS, type TonalityBank, type ChordEntry, type ApproachKind } from "@/lib/tonalityBanks";
-import { xenIntervalsForEdo } from "@/lib/tonalityChordPool";
+import { xenIntervalsForEdo, bankToScaleFamMode } from "@/lib/tonalityChordPool";
 import { formatRomanNumeral } from "@/lib/formatRoman";
 
 interface Props {
   tonicPc: number;
-  lowestOct: number;
-  highestOct: number;
+  lowestPitch: number;
+  highestPitch: number;
   edo: number;
   onHighlight: (pcs: number[]) => void;
   responseMode: string;
@@ -51,6 +53,17 @@ const TONALITY_FAMILIES: { key: string; label: string; color: string; tonalities
     tonalities: ["Harmonic Minor","Locrian #6","Ionian #5","Dorian #4","Phrygian Dominant","Lydian #2","Ultralocrian"] },
   { key: "melodic",  label: "MELODIC MINOR",  color: "#c06090",
     tonalities: ["Melodic Minor","Dorian b2","Lydian Augmented","Lydian Dominant","Mixolydian b6","Locrian #2","Altered"] },
+  // Septimal / neutral diatonic families (31-EDO).  Mode names use the
+  // harmonic-minor / melodic-minor convention with single-letter
+  // qualifiers (s = sub, m = min, N = neu, M = maj, S = sup, # = aug).
+  { key: "subminor",   label: "SUBMINOR DIATONIC",   color: "#7aaa6a",
+    tonalities: ["Subminor Diatonic","Locrian s2 s5 s6","Supermajor Ionian","Dorian s3 bb4 s7","Subminor Phrygian m7","Supermajor Lydian M2 b5","Supermajor Mixolydian ##5 m7"] },
+  { key: "neutral",    label: "NEUTRAL DIATONIC",    color: "#9a66c0",
+    tonalities: ["Neutral Diatonic","Dorian N2 bb5 N6","Neutral Ionian","Ionian N3 ##4 N7","Neutral Dorian m7","Neutral Ionian M2 ##4","Neutral Dorian bb5 m7"] },
+  { key: "supermajor", label: "SUPERMAJOR DIATONIC", color: "#cc6a8a",
+    tonalities: ["Supermajor Diatonic","Dorian S2 ##5 S6","Subminor Phrygian","Lydian S3 b5 S7","Supermajor Mixolydian m7","Subminor Aeolian M2 bb4","Subminor Locrian m7"] },
+  { key: "subharmonic",label: "SUBHARMONIC DIATONIC",color: "#4a9ac7",
+    tonalities: ["Subharmonic Diatonic","Locrian s2 s5 N6","Supermajor Ionian #5","Dorian s3 ##4 s7","Phrygian s2 N3 s6","Supermajor Lydian #2 b5","Neutral Dorian b4 bb5 bb7"] },
 ];
 
 // Standard third qualities are always shown in the 3RDS panel; xenharmonic
@@ -60,7 +73,7 @@ const TONALITY_FAMILIES: { key: string; label: string; color: string; tonalities
 const STANDARD_THIRD_QUALITIES = new Set(["sus2", "min3", "maj3", "sus4"]);
 
 export default function ChordsTab({
-  tonicPc, lowestOct, highestOct, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.55, layoutPitchRange, tabSettingsRef, answerButtons
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.55, layoutPitchRange, tabSettingsRef, answerButtons
 }: Props) {
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -268,9 +281,15 @@ export default function ChordsTab({
   const allChords = getAllChordsForEdo(edo);
   const baseChordMap = Object.fromEntries(allChords.map(([n, s]) => [n, s]));
 
+  // Toggle: when on, chord-pool Roman numerals expose the 7th-quality
+  // suffix (e.g. "iii (s3 s7)"); when off, only the 3rd-quality suffix
+  // shows ("iii (s3)").  Default is off — the chord shape always
+  // includes the 7th note, but the label stays compact.
+  const [showSevenths, setShowSevenths] = useLS<boolean>("lt_crd_show_sevenths", false);
+
   // Tonality banks (one per mode) — Magic Mode is excluded from the new
   // multi-select picker; the family-grouped boxes only show real modes.
-  const tonalityBanks = useMemo(() => getTonalityBanks(edo), [edo]);
+  const tonalityBanks = useMemo(() => getTonalityBanks(edo, showSevenths), [edo, showSevenths]);
   const banksByName = useMemo(() => {
     const map: Record<string, TonalityBank> = {};
     for (const b of tonalityBanks) map[b.name] = b;
@@ -606,10 +625,17 @@ export default function ChordsTab({
 
     const rootStep = shape[0];
 
-    // Pick a "reference" octave to build the chord content (extension picking
-    // uses absolute-pitch dedup, so we need a concrete octave for that step).
-    const refOctave = lowestOct + Math.floor(Math.random() * (highestOct - lowestOct + 1));
-    const refRootAbs = tonicPc + (refOctave - 4) * edo + rootStep;
+    // Pick a "reference" tonic-aligned anchor pitch within the user's range
+    // to build the chord content (extension picking uses absolute-pitch
+    // dedup, so we need a concrete absolute root for that step).
+    const tonicAnchors: number[] = [];
+    for (let p = lowestPitch + (((tonicPc - lowestPitch) % edo) + edo) % edo; p <= highestPitch; p += edo) {
+      tonicAnchors.push(p);
+    }
+    const refTonic = tonicAnchors.length
+      ? tonicAnchors[Math.floor(Math.random() * tonicAnchors.length)]
+      : lowestPitch;
+    const refRootAbs = refTonic + rootStep;
     let chordAbsRef = shape.map(s => refRootAbs + (s - rootStep));
 
     // Find the matching chord type for per-type stable/avoid filtering
@@ -679,10 +705,9 @@ export default function ChordsTab({
     if (compatPatterns.length === 0) return null;
 
     // Capture chord content as steps relative to the reference root, so we
-    // can re-realize it at any candidate octave during voice-leading search.
+    // can re-realize it at any candidate root pitch during voice-leading search.
     const relSteps = chordAbsRef.map(n => n - refRootAbs);
-    const buildVoicing = (oct: number, pattern: typeof ALL_VOICING_PATTERNS[number]): number[] => {
-      const rootAbs = tonicPc + (oct - 4) * edo + rootStep;
+    const buildVoicing = (rootAbs: number, pattern: typeof ALL_VOICING_PATTERNS[number]): number[] => {
       const content = relSteps.map(s => rootAbs + s).sort((a, b) => a - b);
       const voiced = applyVoicingPattern(content, edo, pattern);
       // Stack upper extensions above the voicing's current top, each one
@@ -701,35 +726,36 @@ export default function ChordsTab({
     };
 
     // Bass gate: the LOWEST note of the realized voicing must sit inside
-    // the exercise range [lowestRootAbs, highestRootAbs]. Inversions can
-    // push the root above the bass, so we gate on the bass — not the root
-    // — to keep the whole chord anchored in the user's window.
-    const lowestRootAbs  = tonicPc + (lowestOct  - 4) * edo;
-    const highestRootAbs = tonicPc + (highestOct - 4) * edo;
+    // the exercise range [lowestPitch, highestPitch]. Inversions can push
+    // the root above the bass, so we gate on the bass — not the root —
+    // to keep the whole chord anchored in the user's window.
     const bassInRange = (voicing: number[]): boolean => {
       if (voicing.length === 0) return false;
       const low = Math.min(...voicing);
-      return low >= lowestRootAbs && low <= highestRootAbs;
+      return low >= lowestPitch && low <= highestPitch;
     };
     // How far the bass sits outside the range (0 = in range). Used as a
     // fallback tiebreaker when no candidate has its bass inside the window.
     const bassOffset = (voicing: number[]): number => {
       if (voicing.length === 0) return Infinity;
       const low = Math.min(...voicing);
-      if (low < lowestRootAbs) return lowestRootAbs - low;
-      if (low > highestRootAbs) return low - highestRootAbs;
+      if (low < lowestPitch) return lowestPitch - low;
+      if (low > highestPitch) return low - highestPitch;
       return 0;
     };
 
-    // Enumerate every (octave, pattern) candidate in a window wider than
-    // the exercise range, since inversion patterns can shift the realized
-    // bass up or down from its content-root octave.
-    const searchLo = lowestOct - 2;
-    const searchHi = highestOct + 2;
+    // Enumerate every (root-pitch, pattern) candidate over a window wider
+    // than the exercise range, since inversion patterns can shift the
+    // realized bass up or down from its content-root pitch.  Roots are
+    // sampled on the chord's pc cycle (rootStep above each tonic-aligned
+    // pitch) — one root per edo step in the search window.
+    const searchLo = lowestPitch - 2 * edo;
+    const searchHi = highestPitch + 2 * edo;
+    const firstRoot = searchLo + (((tonicPc + rootStep - searchLo) % edo) + edo) % edo;
     const allCandidates: number[][] = [];
-    for (let oct = searchLo; oct <= searchHi; oct++) {
+    for (let rootAbs = firstRoot; rootAbs <= searchHi; rootAbs += edo) {
       for (const pat of compatPatterns) {
-        const cand = buildVoicing(oct, pat);
+        const cand = buildVoicing(rootAbs, pat);
         if (cand.length > 0) allCandidates.push(cand);
       }
     }
@@ -769,7 +795,7 @@ export default function ChordsTab({
         const byOffset = [...scored].sort((a, b) => a.offset - b.offset || a.dist - b.dist);
         chordAbs = byOffset[0].voicing;
       } else {
-        chordAbs = buildVoicing(refOctave, randomChoice(compatPatterns));
+        chordAbs = buildVoicing(refRootAbs, randomChoice(compatPatterns));
       }
     } else {
       // First chord: random pick among voicings whose bass is in range.
@@ -782,12 +808,12 @@ export default function ChordsTab({
         const byOffset = [...allCandidates].sort((a, b) => bassOffset(a) - bassOffset(b));
         chordAbs = byOffset[0];
       } else {
-        chordAbs = buildVoicing(refOctave, randomChoice(compatPatterns));
+        chordAbs = buildVoicing(refRootAbs, randomChoice(compatPatterns));
       }
     }
 
     return { chordAbs, voicingType: "pattern", quality: triadQuality(shape, edo), appliedShape: [...shape] };
-  }, [checkedPatterns, patternNoteCounts, effectiveChecked, checkedExts, checkedExtCounts, extTendency, regMode, edo, tonicPc, lowestOct, highestOct, clampToLayout, getCompatibleTypes, applyChordType, edoChordTypes, diatonicScaleRoots]);
+  }, [checkedPatterns, patternNoteCounts, effectiveChecked, checkedExts, checkedExtCounts, extTendency, regMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, getCompatibleTypes, applyChordType, edoChordTypes, diatonicScaleRoots]);
 
   // ── Progressions: loop engine ───────────────────────────────────────
 
@@ -817,7 +843,10 @@ export default function ChordsTab({
       appliedShapes.push(result ? result.appliedShape : null);
       if (result && result.chordAbs.length > 0) prevVoicing = result.chordAbs;
     }
-    const midOct = Math.floor((lowestOct + highestOct) / 2);
+    // Derive octave indices from the absolute-pitch range — generateBassLine
+    // and generateMelodyLine still take octave indices internally.
+    const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
+    const midOct = 4 + Math.floor((midPitch - tonicPc) / edo);
     const bassOct = midOct - 2;
     const highestChordOct = chords.length > 0
       ? Math.floor(Math.max(...chords.flat()) / edo) + 4
@@ -884,7 +913,7 @@ export default function ChordsTab({
     }
 
     return { chords, bass, melody, appliedShapes };
-  }, [voiceChord, chordMap, bassLineMode, melodyMode, edo, tonicPc, lowestOct, highestOct, clampToLayout, layoutPitchRange, passingTones]);
+  }, [voiceChord, chordMap, bassLineMode, melodyMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, layoutPitchRange, passingTones]);
 
   /** Play all active texture voices using the multi-voice scheduler.
    *  CHORD_BOOST compensates for the playMultiVoice 1/sqrt(noteCount)
@@ -892,6 +921,43 @@ export default function ChordsTab({
    *  ~2, so a 0.55 * 0.7 input ends up around 0.19 — half of Mode ID's
    *  0.7 single-note default.  Multiply up so chord-mode hits a
    *  comparable loudness without changing the user-facing slider. */
+  // Preview a tonality's parent scale: ascending 1-2-3-4-5-6-7-1' as
+  // single notes, then a 5-second sustain of the whole scale highlighted
+  // at once so the user can scan the shape on the visualizer.  Used by
+  // the small ▶ button on each mode in the tonality picker.
+  const previewTonalityScale = useCallback(async (tonality: string) => {
+    await ensureAudio();
+    frameTimers.current.forEach(id => clearTimeout(id));
+    frameTimers.current = [];
+    const [fam, mode] = bankToScaleFamMode(tonality);
+    const map = getModeDegreeMap(edo, fam, mode);
+    const steps = Object.values(map).sort((a, b) => a - b);
+    if (steps.length === 0) return;
+    const allSteps = [...steps, steps[0] + edo];   // append octave
+    // Center the preview around the user's exercise range so it sits on
+    // the visualizer.  Anchor on the lowest tonic ≥ lowestPitch.
+    const baseTonic = lowestPitch + (((tonicPc - lowestPitch) % edo) + edo) % edo;
+    const frames = allSteps.map(s => [baseTonic + s]);
+    const noteDur = 0.55;
+    const gapMs = 500;
+    const HOLD_MS = 5000;   // full-scale highlight after the sequence
+    audioEngine.playMultiVoice(
+      [{ frames, noteDuration: noteDur, gain: playVol * harmonyVol * 1.6 }],
+      edo, gapMs, frames.length
+    );
+    for (let i = 0; i < frames.length; i++) {
+      const id = setTimeout(() => onHighlight(frames[i]), i * gapMs);
+      frameTimers.current.push(id);
+    }
+    // After the ascending run, light up the whole scale at once for 5s.
+    const allNotes = allSteps.map(s => baseTonic + s);
+    const holdStart = frames.length * gapMs;
+    const holdId = setTimeout(() => onHighlight(allNotes), holdStart);
+    frameTimers.current.push(holdId);
+    const clearId = setTimeout(() => onHighlight([]), holdStart + HOLD_MS);
+    frameTimers.current.push(clearId);
+  }, [edo, tonicPc, lowestPitch, playVol, harmonyVol, ensureAudio, onHighlight]);
+
   const CHORD_BOOST = 2.2;
   const BASS_BOOST = 1.6;
   const playVoices = useCallback((voices: { chords: number[][]; bass: number[][] }, gapMs: number, noteDur: number, vol: number) => {
@@ -1174,18 +1240,6 @@ export default function ChordsTab({
       <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2">
         <div className="flex items-center gap-2">
           <p className="text-xs text-[#888] font-medium">TONALITIES</p>
-          <button onClick={() => setTonalitySet(new Set(tonalityBanks.map(b => b.name)))}
-            className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">All</button>
-          {TONALITY_FAMILIES.map(g => (
-            <button key={g.key} onClick={() => setTonalitySet(prev => {
-              const next = new Set(prev);
-              for (const t of g.tonalities) if (banksByName[t]) next.add(t);
-              return next;
-            })}
-              className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5">
-              +{g.label}
-            </button>
-          ))}
           <button onClick={() => setTonalitySet(new Set())}
             className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5 ml-auto">Clear</button>
         </div>
@@ -1200,13 +1254,23 @@ export default function ChordsTab({
                 {available.map(t => {
                   const on = tonalitySet.has(t);
                   return (
-                    <button key={t} onClick={() => toggleTonality(t)}
-                      className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-                        on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                      }`}
-                      style={on ? { backgroundColor: group.color + "30", borderColor: group.color, color: group.color } : {}}>
-                      {t}
-                    </button>
+                    <span key={t} className="inline-flex items-stretch">
+                      <button onClick={() => toggleTonality(t)}
+                        className={`px-2 py-1 text-[10px] rounded-l border-y border-l transition-colors ${
+                          on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                        }`}
+                        style={on ? { backgroundColor: group.color + "30", borderColor: group.color, color: group.color } : {}}>
+                        {formatHalfAccidentals(t)}
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); previewTonalityScale(t); }}
+                        title="Preview scale"
+                        className={`px-1.5 py-1 text-[9px] rounded-r border-y border-r transition-colors ${
+                          on ? "" : "bg-[#0a0a0a] border-[#2a2a2a] text-[#555] hover:text-[#aaa]"
+                        }`}
+                        style={on ? { backgroundColor: group.color + "20", borderColor: group.color, color: group.color } : {}}>
+                        ▶
+                      </button>
+                    </span>
                   );
                 })}
               </div>
@@ -1363,7 +1427,7 @@ export default function ChordsTab({
           />
           <VoicingPatternControls checkedPatterns={checkedPatterns} setCheckedPatterns={setCheckedPatterns} toggleSet={toggleSet} />
 
-          <LilPreviewPanel checkedChords={effectiveChecked} chordMap={chordMap} edo={edo} tonicPc={tonicPc} lowestOct={lowestOct} highestOct={highestOct} getCompatibleTypes={getCompatibleTypes} applyChordType={applyChordType} />
+          <LilPreviewPanel checkedChords={effectiveChecked} chordMap={chordMap} edo={edo} tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch} getCompatibleTypes={getCompatibleTypes} applyChordType={applyChordType} />
 
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* CHORD SELECTION (per checked tonality)                          */}
@@ -1623,9 +1687,9 @@ function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet
   );
 }
 
-function LilPreviewPanel({ checkedChords, chordMap, edo, tonicPc, lowestOct, highestOct, getCompatibleTypes, applyChordType }: {
+function LilPreviewPanel({ checkedChords, chordMap, edo, tonicPc, lowestPitch, highestPitch, getCompatibleTypes, applyChordType }: {
   checkedChords: Set<string>; chordMap: Record<string, number[]>;
-  edo: number; tonicPc: number; lowestOct: number; highestOct: number;
+  edo: number; tonicPc: number; lowestPitch: number; highestPitch: number;
   getCompatibleTypes: (shape: number[]) => EdoChordType[];
   applyChordType: (shape: number[], type: EdoChordType) => number[];
 }) {
@@ -1635,9 +1699,12 @@ function LilPreviewPanel({ checkedChords, chordMap, edo, tonicPc, lowestOct, hig
     const checkedRomans = Array.from(checkedChords).filter(r => chordMap[r]);
     const out: { rn: string; ok: boolean; warnings: LilWarning[] }[] = [];
 
-    // Check at both the mid-octave (normal placement) and lowest octave (worst case)
-    const midOct = Math.floor((lowestOct + highestOct) / 2);
-    const octaves = [midOct, lowestOct];
+    // Check at both the mid-pitch tonic anchor (normal placement) and the
+    // lowest tonic anchor (worst case for low-interval limits).
+    const lowTonic = lowestPitch + (((tonicPc - lowestPitch) % edo) + edo) % edo;
+    const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
+    const midTonic = midPitch - (((midPitch - tonicPc) % edo) + edo) % edo;
+    const tonicAnchors = [midTonic, lowTonic];
 
     for (const rn of checkedRomans) {
       const baseShape = chordMap[rn];
@@ -1652,8 +1719,8 @@ function LilPreviewPanel({ checkedChords, chordMap, edo, tonicPc, lowestOct, hig
       let worst: LilWarning[] = [];
       for (const shape of shapesToCheck) {
         const rootStep = shape[0];
-        for (const oct of octaves) {
-          const rootAbs = tonicPc + (oct - 4) * edo + rootStep;
+        for (const tonicAbs of tonicAnchors) {
+          const rootAbs = tonicAbs + rootStep;
           const chordAbs = shape.map(s => rootAbs + (s - rootStep)).sort((a, b) => a - b);
           const w = checkLowIntervalLimits(chordAbs, edo);
           if (w.length > worst.length) worst = w;
@@ -1662,7 +1729,7 @@ function LilPreviewPanel({ checkedChords, chordMap, edo, tonicPc, lowestOct, hig
       out.push({ rn, ok: worst.length === 0, warnings: worst });
     }
     return out;
-  }, [checkedChords, chordMap, edo, tonicPc, lowestOct, highestOct, getCompatibleTypes, applyChordType]);
+  }, [checkedChords, chordMap, edo, tonicPc, lowestPitch, highestPitch, getCompatibleTypes, applyChordType]);
 
   const problemCount = results.filter(r => !r.ok).length;
 
@@ -1776,7 +1843,7 @@ function ChordSelectionPanel({
   return (
     <div className="border rounded overflow-hidden" style={{ borderColor: accent + "40" }}>
       <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0a0a0a]">
-        <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent }}>{tonality.toUpperCase()}</span>
+        <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent, textTransform: "none" }}>{formatHalfAccidentals(tonality)}</span>
       </div>
       <div className="space-y-2 p-2">
         {visibleLevels.map(level => {
@@ -1812,40 +1879,6 @@ function ChordSelectionPanel({
                     const TONIC_LABELS = new Set(["I", "i", "I°", "i°", "I+", "i+"]);
                     const isTonic = TONIC_LABELS.has(entry.label) || (entry.steps != null && entry.steps[0] === 0);
                     const showApproaches = !isTonic && level.name !== "Modal Interchange";
-                    // Pre-compute xen options so the cell layout knows
-                    // whether the row will appear (drives spacer placement).
-                    const xenOpts: { id: string; label: string }[] = (() => {
-                      if (xenThirds.length === 0) return [];
-                      const shape = entry.steps ?? chordMap[entry.label] ?? null;
-                      if (!shape || shape.length < 2) return [];
-                      const sh = getChordShapes(edo);
-                      const root = shape[0];
-                      const rels = shape.map(s => ((s - root) % edo + edo) % edo).sort((a, b) => a - b);
-                      const numeralThird = rels[1];
-                      if (numeralThird === sh.M2 || numeralThird === sh.P4) return [];
-                      const mid = (sh.m3 + sh.M3) / 2;
-                      const numeralIsMajor = numeralThird >= mid;
-                      // EDO-specific allowlist: 17 has nothing, 19 has
-                      // sub/sup but no neutral, 31 has sub/neu/sup, 41
-                      // adds classical thirds.  Filter the catalog
-                      // qualities to those exposed by the EDO table.
-                      const xenAvail = xenIntervalsForEdo(edo);
-                      const allowedIds = new Set(
-                        (Object.keys(xenAvail) as Array<"neu" | "sub" | "sup" | "clmin" | "clmaj">)
-                          .map(k => k + "3"),
-                      );
-                      const types = getEdoChordTypes(edo);
-                      return xenThirds
-                        .filter(q => allowedIds.has(q.id))
-                        .filter(q => {
-                          if (q.id === "neu3") return true;
-                          const t = types.find(x => x.thirdQuality === q.id);
-                          if (!t) return false;
-                          return (t.third >= mid) === numeralIsMajor;
-                        })
-                        .map(q => ({ id: q.id, label: q.label }));
-                    })();
-                    const enabledXen = new Set(xenMap[entry.label] ?? []);
                     return (
                       <div key={entry.label}
                         className="rounded overflow-hidden border transition-colors flex flex-col h-full"
@@ -1881,50 +1914,11 @@ function ChordSelectionPanel({
                               })}
                             </div>
                           )}
-                          <div className="flex flex-col gap-0.5 px-1 pb-1">
-                            {xenOpts.length > 0 && (
-                              <div className="flex gap-0.5">
-                                {xenOpts.map(q => {
-                                  const on = enabledXen.has(q.id);
-                                  const color = XEN_QUALITY_COLOR[q.id] ?? "#c09050";
-                                  return (
-                                    <button key={q.id}
-                                      onClick={() => isChecked ? toggleXen(entry.label, q.id) : toggleChord(entry.label)}
-                                      title={isChecked ? `${entry.label} with ${q.label} 3rd` : `Click to enable ${entry.label}`}
-                                      className={`flex-1 min-h-[24px] text-[10px] leading-tight px-1 py-1 rounded border transition-colors ${
-                                        !isChecked ? "bg-[#141414] text-[#555] border-[#222] hover:text-[#aaa] hover:border-[#444]"
-                                        : on ? "text-black font-semibold"
-                                        : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
-                                      }`}
-                                      style={isChecked && on ? { background: color, borderColor: color } : undefined}>
-                                      {XEN_SHORT_LABEL[q.id] ?? q.label.toLowerCase()}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            <div className="flex gap-0.5">
-                              {(() => {
-                                const on = enabledXen.has("qrt") || enabledXen.has("qnt");
-                                const color = XEN_QUALITY_COLOR.qrt;
-                                return (
-                                  <button
-                                    onClick={() => isChecked ? toggleXenStack(entry.label) : toggleChord(entry.label)}
-                                    title={isChecked
-                                      ? `${entry.label} as quartal (stacked 4ths) + quintal (stacked 5ths)`
-                                      : `Click to enable ${entry.label}`}
-                                    className={`flex-1 min-h-[24px] text-[10px] leading-tight px-1 py-1 rounded border transition-colors ${
-                                      !isChecked ? "bg-[#141414] text-[#555] border-[#222] hover:text-[#aaa] hover:border-[#444]"
-                                      : on ? "text-black font-semibold"
-                                      : "bg-[#141414] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
-                                    }`}
-                                    style={isChecked && on ? { background: color, borderColor: color } : undefined}>
-                                    qua/quin
-                                  </button>
-                                );
-                              })()}
-                            </div>
-                          </div>
+                          {/* Xen 3rd-quality + qua/quin toggles removed —
+                              the new septimal/neutral tonality families
+                              (Subminor / Neutral / Supermajor Diatonic)
+                              cover the same chord variants at the
+                              tonality level instead of per-numeral. */}
                         </div>
                       </div>
                     );

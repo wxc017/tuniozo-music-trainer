@@ -2,15 +2,15 @@ import { useState, useRef, useCallback } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import {
   fitLineIntoWindow, strictWindowBounds, randomChoice,
-  getModeDegreeMap, getDegreeMap,
+  getModeDegreeMap, getDegreeMap, PATTERN_SCALE_FAMILIES,
 } from "@/lib/musicTheory";
 import { useLS } from "@/lib/storage";
 import { recordAnswer } from "@/lib/stats";
 
 interface Props {
   tonicPc: number;
-  lowestOct: number;
-  highestOct: number;
+  lowestPitch: number;
+  highestPitch: number;
   edo: number;
   onHighlight: (pcs: number[]) => void;
   responseMode: string;
@@ -60,7 +60,7 @@ const TONIC_CHORD: Record<string, ChordOption> = {
   "Dorian #4":         { name: "m7(9,♯11,13)",     degrees: ["1","b3","5","b7","9","#11","13"] },
   "Phrygian Dominant": { name: "7(♭9,11,♭13)",     degrees: ["1","3","5","b7","b9","11","b13"] },
   "Lydian #2":         { name: "maj7(♯9,♯11,13)",  degrees: ["1","3","5","7","#9","#11","13"] },
-  "Ultralocrian":      { name: "dim7(♭9,11,♭13)",  degrees: ["1","b3","b5","6","b9","11","b13"] },
+  "Ultralocrian":      { name: "dim7(♭9,11,♭13)",  degrees: ["1","b3","b5","bb7","b9","11","b13"] },
   // Melodic Minor Family
   "Melodic Minor":     { name: "mMaj7(9,11,13)",   degrees: ["1","b3","5","7","9","11","13"] },
   "Dorian b2":         { name: "m7(♭9,11,13)",     degrees: ["1","b3","5","b7","b9","11","13"] },
@@ -182,9 +182,13 @@ const ALL_MODES: ModeInfo[] = [
     chordOptions: c("Lydian #2"),
   },
   {
+    // Proper 31-EDO Ultralocrian: pos 4 = step 11 (b4), pos 7 = step 24
+    // (bb7).  Existing data labelled these as "3" / "6" (12-EDO
+    // enharmonic shorthand for m3 / m7), which in 31-EDO sit at
+    // different pitches.
     name: "Ultralocrian", family: "Harmonic Minor Family", displayName: "Superlocrian ♭♭7",
-    scaleDegrees: ["1","b2","b3","3","b5","b6","6"],
-    character: ["b2","b3","3","b5","b6"], stable: ["1"],
+    scaleDegrees: ["1","b2","b3","b4","b5","b6","bb7"],
+    character: ["b2","b3","b4","b5","b6","bb7"], stable: ["1"],
     chordOptions: c("Ultralocrian"),
   },
   // ── Melodic Minor Family ──────────────────────────────────────────
@@ -230,12 +234,55 @@ const ALL_MODES: ModeInfo[] = [
     character: ["b2","#2","b5","#5"], stable: ["1","3"],
     chordOptions: c("Altered"),
   },
+  // ── Septimal / neutral diatonic families (31-EDO) ───────────────────
+  // Each family has 7 modes — mode 1 is the canonical parent and modes
+  // 2-7 are mechanical rotations.  Names are numerical because the
+  // rotations don't correspond to standard Greek-mode shapes (the
+  // sub/neu/sup alterations don't survive rotation).  All scale-degree
+  // labels come from the rotation maps in PATTERN_SCALE_MAPS_31.
+  ...buildXenRotationInfos(),
 ];
+
+function buildXenRotationInfos(): ModeInfo[] {
+  const families = [
+    "Subminor Diatonic Family",
+    "Neutral Diatonic Family",
+    "Supermajor Diatonic Family",
+    "Subharmonic Diatonic Family",
+  ];
+  const out: ModeInfo[] = [];
+  for (const family of families) {
+    const modeNames = PATTERN_SCALE_FAMILIES[family] ?? [];
+    for (const modeName of modeNames) {
+      const map = getModeDegreeMap(31, family, modeName);
+      const sorted = Object.entries(map).sort((a, b) => a[1] - b[1]);
+      const scaleDegrees = sorted.map(([k]) => k);
+      // Character = any non-standard degree (sub/neu/sup, or #/bb prefix)
+      const isStandard = (d: string) => /^[1-7]$|^b[1-7]$/.test(d);
+      const character = scaleDegrees.filter(d => !isStandard(d) && d !== "1");
+      const has5 = scaleDegrees.includes("5");
+      out.push({
+        name: modeName,
+        family,
+        displayName: modeName,
+        scaleDegrees,
+        character: character.length ? character : [scaleDegrees[2] ?? "1"],
+        stable: has5 ? ["1","5"] : ["1"],
+        chordOptions: [{ name: modeName, degrees: scaleDegrees.slice(0, 4) }],
+      });
+    }
+  }
+  return out;
+}
 
 const FAMILY_MAP: Record<string, ModeInfo[]> = {
   major:    ALL_MODES.filter(m => m.family === "Major Family"),
   harmonic: ALL_MODES.filter(m => m.family === "Harmonic Minor Family"),
   melodic:  ALL_MODES.filter(m => m.family === "Melodic Minor Family"),
+  subminor: ALL_MODES.filter(m => m.family === "Subminor Diatonic Family"),
+  neutral:  ALL_MODES.filter(m => m.family === "Neutral Diatonic Family"),
+  supermajor: ALL_MODES.filter(m => m.family === "Supermajor Diatonic Family"),
+  subharmonic: ALL_MODES.filter(m => m.family === "Subharmonic Diatonic Family"),
   all:      ALL_MODES,
 };
 
@@ -685,17 +732,18 @@ function generateChord(
 
 function getScalePitches(
   mode: ModeInfo, tonicPc: number, edo: number,
-  lowestOct: number, highestOct: number,
+  lowestPitch: number, highestPitch: number,
 ): number[] {
   const modeMap = getModeDegreeMap(edo, mode.family, mode.name);
-  const [low, high] = strictWindowBounds(tonicPc, edo, lowestOct, highestOct);
   const pitches: number[] = [];
   for (const deg of mode.scaleDegrees) {
     const offset = modeMap[deg] ?? 0;
-    for (let oct = lowestOct; oct <= highestOct; oct++) {
-      const abs = tonicPc + (oct - 4) * edo + offset;
-      if (abs >= low && abs <= high) pitches.push(abs);
-    }
+    // Walk every (tonicPc + offset + k*edo) across octaves k and keep
+    // the ones in [lowestPitch, highestPitch].
+    let abs = tonicPc + offset;
+    while (abs < lowestPitch) abs += edo;
+    while (abs - edo >= lowestPitch) abs -= edo;
+    for (; abs <= highestPitch; abs += edo) pitches.push(abs);
   }
   return pitches;
 }
@@ -703,7 +751,7 @@ function getScalePitches(
 // ── Component ─────────────────────────────────────────────────────────
 
 export default function ModeIdentificationTab({
-  tonicPc, lowestOct, highestOct, edo, onHighlight,
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight,
   onResult, onPlay, lastPlayed, ensureAudio, onAnswer, answerButtons,
 }: Props) {
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -773,8 +821,10 @@ export default function ModeIdentificationTab({
       picked === "color-set" ? "colors" : "scale";
 
     const mode = randomChoice(pool);
-    const [low, high] = strictWindowBounds(tonicPc, edo, lowestOct, highestOct);
-    const midAbs = tonicPc + (Math.floor((lowestOct + highestOct) / 2) - 4) * edo;
+    const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
+    // Tonic-aligned anchor closest to the mid-pitch of the user's range.
+    const midPitchRaw = Math.floor((lowestPitch + highestPitch) / 2);
+    const midAbs = midPitchRaw - (((midPitchRaw - tonicPc) % edo + edo) % edo);
 
     let frames: number[][];
     let gapMs: number;
@@ -783,11 +833,14 @@ export default function ModeIdentificationTab({
     let pattern: ScalePattern | null = null;
 
     // Strict window for any horizontal phrase (Color Set + Scale): the
-    // phrase ends at the tonic of `highestOct`, no bleed into the
-    // octave above.  Characteristic Chord uses the wider bounds since
-    // it's a vertical sonority.
-    const tightHigh = tonicPc + (highestOct - 4) * edo;
-    const tightLow  = tonicPc + (lowestOct  - 4) * edo;
+    // phrase is bounded by tonic-aligned pitches inside the user's range.
+    // Characteristic Chord uses the wider raw bounds since it's a vertical
+    // sonority.
+    const firstTonic = lowestPitch + (((tonicPc - lowestPitch) % edo) + edo) % edo;
+    const tightLow = firstTonic <= highestPitch ? firstTonic : lowestPitch;
+    const tightHigh = firstTonic <= highestPitch
+      ? firstTonic + edo * Math.floor((highestPitch - firstTonic) / edo)
+      : highestPitch;
 
     if (picked === "color-set") {
       const shuffled = [...ARCHETYPES].sort(() => Math.random() - 0.5);
@@ -1062,13 +1115,13 @@ export default function ModeIdentificationTab({
             doPlay(lp.frames, curGapMs.current, true);
             if (mode) {
               const tailId = setTimeout(
-                () => onHighlight(getScalePitches(mode, tonicPc, edo, lowestOct, highestOct)),
+                () => onHighlight(getScalePitches(mode, tonicPc, edo, lowestPitch, highestPitch)),
                 lp.frames.length * curGapMs.current + 200,
               );
               timers.current.push(tailId);
             }
           } else if (mode) {
-            onHighlight(getScalePitches(mode, tonicPc, edo, lowestOct, highestOct));
+            onHighlight(getScalePitches(mode, tonicPc, edo, lowestPitch, highestPitch));
           }
         }}
           disabled={isPlaying || !hasPlayed}

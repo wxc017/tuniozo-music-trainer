@@ -113,7 +113,7 @@ describe("placeChordInRegister", () => {
   it("places chord in specified register range", () => {
     const cs = getChordShapes(31);
     const chord = [0, cs.M3, cs.P5]; // I chord
-    const placed = placeChordInRegister(chord, 31, 0, 3, 5, "Fixed Register");
+    const placed = placeChordInRegister(chord, 31, 0, -31, 61, "Fixed Register");
     // All notes should be within the register window
     expect(placed.length).toBeGreaterThanOrEqual(3);
     for (const n of placed) {
@@ -122,13 +122,13 @@ describe("placeChordInRegister", () => {
   });
 
   it("returns empty for empty input", () => {
-    expect(placeChordInRegister([], 31, 0, 3, 5, "Fixed Register")).toEqual([]);
+    expect(placeChordInRegister([], 31, 0, -31, 61, "Fixed Register")).toEqual([]);
   });
 
   it("preserves note count (no notes dropped)", () => {
     const cs = getChordShapes(31);
     const chord = [0, cs.M3, cs.P5, cs.m7]; // dom7
-    const placed = placeChordInRegister(chord, 31, 0, 2, 6, "Fixed Register");
+    const placed = placeChordInRegister(chord, 31, 0, -62, 92, "Fixed Register");
     expect(placed.length).toBe(4);
   });
 
@@ -136,7 +136,7 @@ describe("placeChordInRegister", () => {
     const cs = getChordShapes(31);
     const chord = [0, cs.M3, cs.P5];
     for (const mode of ["Fixed Register", "Random Bass Octave", "Random Full Register"]) {
-      const placed = placeChordInRegister(chord, 31, 0, 2, 6, mode);
+      const placed = placeChordInRegister(chord, 31, 0, -62, 92, mode);
       expect(placed.length).toBeGreaterThanOrEqual(3);
     }
   });
@@ -438,14 +438,14 @@ describe("generateMelodyLine", () => {
 describe("strictWindowBounds", () => {
   it("returns [low, high] where low < high", () => {
     for (const edo of EDOS) {
-      const [low, high] = strictWindowBounds(0, edo, 2, 6);
+      const [low, high] = strictWindowBounds(-2 * edo, 3 * edo - 1);
       expect(low).toBeLessThan(high);
     }
   });
 
   it("range covers at least one octave", () => {
     for (const edo of EDOS) {
-      const [low, high] = strictWindowBounds(0, edo, 4, 5);
+      const [low, high] = strictWindowBounds(0, edo);
       expect(high - low).toBeGreaterThanOrEqual(edo);
     }
   });
@@ -454,7 +454,7 @@ describe("strictWindowBounds", () => {
 describe("fitChordIntoWindow", () => {
   it("all notes stay within window bounds", () => {
     for (const edo of EDOS) {
-      const [low, high] = strictWindowBounds(0, edo, 2, 6);
+      const [low, high] = strictWindowBounds(-2 * edo, 3 * edo - 1);
       const chord = [0, 10, 18].map(s => s + low);
       const fitted = fitChordIntoWindow(chord, edo, low, high);
       for (const n of fitted) {
@@ -468,7 +468,7 @@ describe("fitChordIntoWindow", () => {
 describe("fitLineIntoWindow", () => {
   it("keeps melody within bounds", () => {
     for (const edo of EDOS) {
-      const [low, high] = strictWindowBounds(0, edo, 3, 5);
+      const [low, high] = strictWindowBounds(-edo, 2 * edo - 1);
       const line = [0, 5, 10, 13, 18, 23, 28].map(s => s + low);
       const fitted = fitLineIntoWindow(line, edo, low, high);
       for (const n of fitted) {
@@ -479,7 +479,7 @@ describe("fitLineIntoWindow", () => {
   });
 
   it("preserves note count", () => {
-    const [low, high] = strictWindowBounds(0, 31, 3, 5);
+    const [low, high] = strictWindowBounds(-31, 61);
     const line = [0, 5, 10, 18, 23, 28].map(s => s + low);
     const fitted = fitLineIntoWindow(line, 31, low, high);
     expect(fitted.length).toBe(line.length);

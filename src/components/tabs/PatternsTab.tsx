@@ -14,8 +14,8 @@ import type { TabSettingsSnapshot } from "@/App";
 
 interface Props {
   tonicPc: number;
-  lowestOct: number;
-  highestOct: number;
+  lowestPitch: number;
+  highestPitch: number;
   edo: number;
   onHighlight: (pcs: number[]) => void;
   responseMode: string;
@@ -34,7 +34,7 @@ const LENGTH_OPTIONS = ["Any","3","4","5","6","7","8","10","12"];
 const GAP = 580;
 
 export default function PatternsTab({
-  tonicPc, lowestOct, highestOct, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, onShowOnKeyboard, playVol = 0.65, tabSettingsRef, answerButtons,
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, onShowOnKeyboard, playVol = 0.65, tabSettingsRef, answerButtons,
 }: Props) {
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const familyNames = Object.keys(PATTERN_SCALE_FAMILIES);
@@ -130,7 +130,7 @@ export default function PatternsTab({
       : randomChoice(["asc","desc","skip2","arch","cell2"]);
     let result: [number[], string] | null = null;
     for (let i = 0; i < 30; i++) {
-      result = buildDynamicPatternLine(edo, tonicPc, lowestOct, highestOct, scaleFam, modeName, dyn_len, Array.from(checked), pickedStyle);
+      result = buildDynamicPatternLine(edo, tonicPc, lowestPitch, highestPitch, scaleFam, modeName, dyn_len, Array.from(checked), pickedStyle);
       if (result) break;
     }
     if (!result) { onResult("Could not fit pattern into window. Try wider octave range."); return; }

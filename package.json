@@ -81,7 +81,9 @@
     "abcjs": "^6.6.2",
     "epubjs": "^0.3.93",
     "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.1",
     "pdfjs-dist": "^5.5.207",
+    "svg2pdf.js": "^2.7.0",
     "three": "^0.183.2",
     "vexflow": "^5.0.0"
   }

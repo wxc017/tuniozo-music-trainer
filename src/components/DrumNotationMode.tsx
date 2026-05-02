@@ -5,7 +5,7 @@ import {
 import {
   Renderer, Stave, StaveNote, Voice, Formatter, Beam, Barline, Accidental, Dot,
   Articulation, Annotation, GraceNote, GraceNoteGroup, Parenthesis,
-  Volta,
+  Volta, StaveTie,
   GhostNote as VFGhostNote,
   type StaveNoteStruct,
 } from "vexflow";
@@ -18,8 +18,8 @@ import {
   linePosToPitch, pitchToLineIdx,
   loadProjects, saveProject, deleteProject, newProject, generateMusicXML,
 } from "@/lib/noteEntryData";
-import PracticeLogSaveBar from "./PracticeLogSaveBar";
 import { exportToPdf } from "@/lib/exportPdf";
+import PracticeLogSaveBar from "./PracticeLogSaveBar";
 
 // ── YouTube API global ──────────────────────────────────────────────────────
 declare global {
@@ -332,16 +332,26 @@ function buildVFNotes(
       const sorted = [...group].sort((a, b) =>
         pitchToLineIdx(b.pitch, vfClef) - pitchToLineIdx(a.pitch, vfClef)
       );
-      const dotted = sorted.some(n => n.dotted);
+      const allDotted = sorted.every(n => n.dotted);
+      const anyDotted = sorted.some(n => n.dotted);
       const keys = sorted.map(n => pitchWithHead(n.pitch, n.notehead));
       const vfn = new StaveNote({
         keys,
         duration: VF_DURATION_MAP[sorted[0].duration],
-        dots: dotted ? 1 : 0,
+        // Only treat the chord as fully dotted when every member is dotted —
+        // a partial chord-dot would force a uniform dotted duration on
+        // notes the user didn't dot.
+        dots: allDotted ? 1 : 0,
         clef,
       } as StaveNoteStruct);
-      if (dotted) {
+      if (allDotted) {
         try { Dot.buildAndAttach([vfn], { all: true }); } catch { /* skip */ }
+      } else if (anyDotted) {
+        // Visual-only dot on the specific notehead(s) the user dotted.
+        sorted.forEach((n, idx) => {
+          if (!n.dotted) return;
+          try { vfn.addModifier(new Dot(), idx); } catch { /* skip */ }
+        });
       }
       sorted.forEach((n, idx) => {
         if (n.accidental) {
@@ -432,6 +442,12 @@ function renderScore(
   const vfClef = clef === "bass" ? "bass" : "treble";
   const positions: NotePixelPos[] = [];
   const layouts: MeasureLayout[] = [];
+  // Track every rendered (vfNote, source-note ids) pair across all measures
+  // so we can draw ties — including cross-bar ties — in a single pass after
+  // every measure has been laid out.
+  const allRendered: { vfNote: StaveNote; ids: string[] }[] = [];
+  const globalNoteById = new Map<string, NoteData>();
+  for (const n of notes) globalNoteById.set(n.id, n);
 
   for (let rowIdx = 0; rowIdx < rowLayout.rows.length; rowIdx++) {
     const rowY = rowIdx * STAVE_AREA_H;
@@ -680,6 +696,12 @@ function renderScore(
           ctx.setFillStyle("#ffffff");
           beams.forEach(b => { try { b.setContext(ctx).draw(); } catch { /* skip */ } });
 
+          // Stash every rendered note for the post-render tie pass — handled
+          // outside this measure loop so ties can span bar lines.
+          for (let i = 0; i < vfNotes.length; i++) {
+            allRendered.push({ vfNote: vfNotes[i], ids: idGroups[i] });
+          }
+
           // Collect note pixel positions from actual rendered positions.
           vfNotes.forEach((vfn, i) => {
             const ids = idGroups[i];
@@ -722,6 +744,61 @@ function renderScore(
       layouts.push({ mIdx, noteStartX, justifyWidth, rowIdx, mInRow, staveTopLineY, lineSpacing, slotAnchors });
     }
   }
+
+  // ── Tie pass ─────────────────────────────────────────────────────────
+  // Walk every consecutive pair of rendered notes (across bar lines) and
+  // emit a StaveTie when the source NoteData says one should connect.
+  // Each tie attaches to a specific notehead index inside any chord
+  // member, so chord-mates that aren't part of the tie don't get a curve.
+  for (let i = 0; i + 1 < allRendered.length; i++) {
+    const a = allRendered[i];
+    const b = allRendered[i + 1];
+    if (a.vfNote.isRest() || b.vfNote.isRest()) continue;
+    // Find which chord member in A starts the tie and which in B ends it.
+    let aIdx = -1;
+    let aTiePitch: string | null = null;
+    for (let k = 0; k < a.ids.length; k++) {
+      const src = globalNoteById.get(a.ids[k]);
+      if (src?.isTieStart) { aIdx = k; aTiePitch = src.pitch; break; }
+    }
+    let bIdx = -1;
+    let bTiePitch: string | null = null;
+    for (let k = 0; k < b.ids.length; k++) {
+      const src = globalNoteById.get(b.ids[k]);
+      if (src?.isTieEnd) { bIdx = k; bTiePitch = src.pitch; break; }
+    }
+    if (aIdx < 0 && bIdx < 0) continue;
+    // If only one side has the explicit flag, find the matching pitch on
+    // the other side.  Falls back to the same chord-position-index when
+    // pitches differ (e.g. user-driven non-standard tie).
+    const tiePitch = aTiePitch ?? bTiePitch ?? null;
+    if (aIdx < 0) {
+      if (tiePitch != null) {
+        for (let k = 0; k < a.ids.length; k++) {
+          if (globalNoteById.get(a.ids[k])?.pitch === tiePitch) { aIdx = k; break; }
+        }
+      }
+      if (aIdx < 0) aIdx = Math.min(bIdx, a.ids.length - 1);
+    }
+    if (bIdx < 0) {
+      if (tiePitch != null) {
+        for (let k = 0; k < b.ids.length; k++) {
+          if (globalNoteById.get(b.ids[k])?.pitch === tiePitch) { bIdx = k; break; }
+        }
+      }
+      if (bIdx < 0) bIdx = Math.min(aIdx, b.ids.length - 1);
+    }
+    try {
+      const tie = new StaveTie({
+        firstNote: a.vfNote,
+        lastNote: b.vfNote,
+        firstIndexes: [aIdx],
+        lastIndexes: [bIdx],
+      });
+      tie.setContext(ctx).draw();
+    } catch { /* skip */ }
+  }
+
   // Post-process the SVG so every element is visible on a dark background.
   // • Set stroke/fill inheritance at the root to white — elements without an
   //   explicit attribute inherit white rather than browser-default black.
@@ -3262,19 +3339,48 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                 onClick={e => e.stopPropagation()}
               >
                 <div className="flex flex-col gap-1 bg-[#161616] border border-[#333] rounded-lg px-2 py-1.5 shadow-xl text-xs" style={{ minWidth: 200 }}>
-                  {/* Row 1: note label + delete */}
+                  {/* Row 1: note label + convert-to-rest / pitched / delete */}
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[#7173e6] font-mono font-medium">
                       {selectedNote.isRest ? "rest" : selectedNote.pitch.replace(/^[a-g]/, c => c.toUpperCase())}
                     </span>
-                    <button
-                      className="px-1.5 py-0.5 text-[#cc5555] border border-[#3a1818] rounded hover:bg-[#2a0a0a] text-xs"
-                      onClick={() => {
-                        pushHistory(notes);
-                        setNotes(prev => prev.filter(n => n.id !== selectedNote.id));
-                        setSelectedIds([]);
-                      }}
-                    >✕ Del</button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        title={selectedNote.isRest ? "Make this a pitched note" : "Convert this note into a rest"}
+                        className="px-1.5 py-0.5 text-[#aaa] border border-[#333] rounded hover:text-white hover:border-[#7173e6] text-[10px]"
+                        onClick={() => {
+                          pushHistory(notes);
+                          if (selectedNote.isRest) {
+                            // Rest → pitched: drop onto the middle staff line
+                            // (b/4 in treble) and clear rest-only fields.
+                            updateSelected({ isRest: false, pitch: "b/4" });
+                          } else {
+                            // Pitched → rest: clear tie / accidental / notehead
+                            // / articulation / stick since they don't apply to
+                            // rests.  Pitch is repurposed to encode the rest's
+                            // vertical position (defaults to mid-staff).
+                            updateSelected({
+                              isRest: true,
+                              pitch: "b/4",
+                              accidental: undefined,
+                              notehead: undefined,
+                              articulation: undefined,
+                              stick: undefined,
+                              isTieStart: undefined,
+                              isTieEnd: undefined,
+                            });
+                          }
+                        }}
+                      >{selectedNote.isRest ? "♪ Note" : "𝄽 Rest"}</button>
+                      <button
+                        className="px-1.5 py-0.5 text-[#cc5555] border border-[#3a1818] rounded hover:bg-[#2a0a0a] text-xs"
+                        onClick={() => {
+                          pushHistory(notes);
+                          setNotes(prev => prev.filter(n => n.id !== selectedNote.id));
+                          setSelectedIds([]);
+                        }}
+                      >✕ Del</button>
+                    </div>
                   </div>
 
                   {/* Row 2a: rest direction (vertical position on staff) — rests only */}
@@ -3397,42 +3503,38 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                     );
                   })()}
 
-                  {/* Row 6: tie — only allowed between different beat groups, never within.
-                       In mixed groups (varying durations within a beat), only the first
-                       note of every group (besides the first) may tie, and only backward. */}
+                  {/* Row 6: tie — allowed between any selected non-rest note and
+                       its previous / next non-rest note in the score, including
+                       across bar lines and regardless of pitch.  Chord-mates at
+                       the same slot are skipped so a chord member can still
+                       reach the actual prev/next-in-time note. */}
                   {!selectedNote.isRest && (() => {
                     const sorted = [...notes].sort((a, b) =>
                       a.measure !== b.measure ? a.measure - b.measure : a.startSlot - b.startSlot);
                     const idx = sorted.findIndex(n => n.id === selectedNote.id);
-                    const prevN = idx > 0 ? sorted[idx - 1] : null;
-                    const nextN = idx < sorted.length - 1 ? sorted[idx + 1] : null;
-                    // Beat group = slots per beat based on time sig denominator
-                    const ts = activeProject!.setup.perBarTimeSig?.[selectedNote.measure] ?? activeProject!.setup.defaultTimeSig;
-                    const beatSlots = 32 / ts.den;
-                    const beatGroup = (n: NoteData) => Math.floor(n.startSlot / beatSlots);
-                    const myBeat = beatGroup(selectedNote);
-
-                    // Collect all notes in the same measure & beat group
-                    const sameGroupNotes = sorted.filter(n =>
-                      n.measure === selectedNote.measure && beatGroup(n) === myBeat && !n.isRest);
-                    const isMixed = sameGroupNotes.length > 1 &&
-                      !sameGroupNotes.every(n => n.duration === sameGroupNotes[0].duration);
-                    const isFirstInGroup = sameGroupNotes.length === 0 ||
-                      sameGroupNotes[0].id === selectedNote.id;
-
-                    // Only allow ties across beat group boundaries
-                    let canTiePrev = prevN && !prevN.isRest && prevN.pitch === selectedNote.pitch
-                      && (prevN.measure !== selectedNote.measure || beatGroup(prevN) !== beatGroup(selectedNote));
-                    let canTieNext = nextN && !nextN.isRest && nextN.pitch === selectedNote.pitch
-                      && (nextN.measure !== selectedNote.measure || beatGroup(nextN) !== beatGroup(selectedNote));
-
-                    // In mixed groups: only the first note of every group (besides
-                    // the first beat group) may tie, and only backward ("tie to prev").
-                    // It's a press-once action — sets the tie and deselects.
-                    if (isMixed) {
-                      if (!isFirstInGroup || myBeat === 0) canTiePrev = false;
-                      canTieNext = false;
+                    // Walk back/forward to find the first note at a strictly
+                    // earlier/later (measure, slot) — skips chord-mates at the
+                    // same slot so a top-of-chord note can find its target.
+                    let prevN: NoteData | null = null;
+                    for (let i = idx - 1; i >= 0; i--) {
+                      const n = sorted[i];
+                      if (n.isRest) continue;
+                      const isEarlier = n.measure < selectedNote.measure ||
+                        (n.measure === selectedNote.measure && n.startSlot < selectedNote.startSlot);
+                      if (!isEarlier) continue;
+                      prevN = n; break;
                     }
+                    let nextN: NoteData | null = null;
+                    for (let i = idx + 1; i < sorted.length; i++) {
+                      const n = sorted[i];
+                      if (n.isRest) continue;
+                      const isLater = n.measure > selectedNote.measure ||
+                        (n.measure === selectedNote.measure && n.startSlot > selectedNote.startSlot);
+                      if (!isLater) continue;
+                      nextN = n; break;
+                    }
+                    const canTiePrev = !!prevN;
+                    const canTieNext = !!nextN;
 
                     if (!canTiePrev && !canTieNext) return null;
                     return (
@@ -3444,7 +3546,6 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                             onClick={() => {
                               pushHistory(notes);
                               setNotes(all => all.map(n => n.id === selectedNote.id ? { ...n, isTieEnd: !n.isTieEnd } : n));
-                              if (isMixed) setSelectedIds([]);
                             }}
                           >← from prev</button>
                         )}

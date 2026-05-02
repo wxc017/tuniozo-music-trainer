@@ -9,8 +9,8 @@ import { formatRomanNumeral } from "@/lib/formatRoman";
 
 interface Props {
   tonicPc: number;
-  lowestOct: number;
-  highestOct: number;
+  lowestPitch: number;
+  highestPitch: number;
   edo: number;
   onHighlight: (pcs: number[]) => void;
   onResult: (text: string) => void;
@@ -53,7 +53,7 @@ const TONALITY_LABELS: Record<Tonality, string> = {
 };
 
 export default function FunctionIdPanel({
-  tonicPc, lowestOct, highestOct, edo, onHighlight, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.6, onAnswer,
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.6, onAnswer,
 }: Props) {
   const [tonality, setTonality] = useLS<Tonality>("lt_tonal_func_tonality", "major");
   const [playContext, setPlayContext] = useLS<boolean>("lt_tonal_func_context", true);
@@ -76,8 +76,8 @@ export default function FunctionIdPanel({
     const target = randomChoice(funcs);
     correctAnswer.current = target.label;
 
-    const midOct = Math.floor((lowestOct + highestOct) / 2);
-    const rootAbs = tonicPc + (midOct - 4) * edo;
+    const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
+    const rootAbs = midPitch - (((midPitch - tonicPc) % edo + edo) % edo);
 
     // Build tonic chord for context
     const tonicShape = funcs[0].buildShape(sh);
@@ -86,7 +86,7 @@ export default function FunctionIdPanel({
     // Build target chord
     const targetShape = target.buildShape(sh);
     const targetNotes = placeChordInRegister(
-      targetShape.map(s => rootAbs + s), edo, tonicPc, lowestOct, highestOct, "Fixed Register"
+      targetShape.map(s => rootAbs + s), edo, tonicPc, lowestPitch, highestPitch, "Fixed Register"
     );
 
     setHasPlayed(true);
@@ -98,7 +98,7 @@ export default function FunctionIdPanel({
 
     if (playContext) {
       // Play tonic first, then target
-      const contextNotes = placeChordInRegister(tonicNotes, edo, tonicPc, lowestOct, highestOct, "Fixed Register");
+      const contextNotes = placeChordInRegister(tonicNotes, edo, tonicPc, lowestPitch, highestPitch, "Fixed Register");
       lastPlayed.current = { frames: [contextNotes, targetNotes], info: target.label };
       onResult("Listen: tonic context, then identify the chord...");
       audioEngine.playChord(contextNotes, edo, 1.2, playVol * 0.7);
@@ -115,7 +115,7 @@ export default function FunctionIdPanel({
       const d = setTimeout(() => setIsPlaying(false), 2000);
       timers.current.push(d);
     }
-  }, [isPlaying, ensureAudio, tonality, playContext, tonicPc, edo, lowestOct, highestOct, onResult, onPlay, lastPlayed, onHighlight, playVol]);
+  }, [isPlaying, ensureAudio, tonality, playContext, tonicPc, edo, lowestPitch, highestPitch, onResult, onPlay, lastPlayed, onHighlight, playVol]);
 
   const replay = () => {
     const lp = lastPlayed.current;

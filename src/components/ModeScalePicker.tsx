@@ -7,9 +7,16 @@ interface Props {
 }
 
 const FAMILY_GROUPS: { key: string; label: string; color: string }[] = [
-  { key: "Major Family",          label: "MAJOR",          color: "#6a9aca" },
-  { key: "Harmonic Minor Family", label: "HARMONIC MINOR", color: "#c09050" },
-  { key: "Melodic Minor Family",  label: "MELODIC MINOR",  color: "#c06090" },
+  { key: "Major Family",            label: "MAJOR",            color: "#6a9aca" },
+  { key: "Harmonic Minor Family",   label: "HARMONIC MINOR",   color: "#c09050" },
+  { key: "Melodic Minor Family",    label: "MELODIC MINOR",    color: "#c06090" },
+  // Septimal / neutral diatonic families (31-EDO).  The 7 modes per family
+  // are mechanical rotations of the parent — they aren't Greek-mode shapes
+  // with a sub/neu/sup prefix, so we label them numerically.
+  { key: "Subminor Diatonic Family",   label: "SUBMINOR DIATONIC",   color: "#7aaa6a" },
+  { key: "Neutral Diatonic Family",    label: "NEUTRAL DIATONIC",    color: "#9a66c0" },
+  { key: "Supermajor Diatonic Family", label: "SUPERMAJOR DIATONIC", color: "#cc6a8a" },
+  { key: "Subharmonic Diatonic Family", label: "SUBHARMONIC DIATONIC",color: "#4a9ac7" },
 ];
 
 export default function ModeScalePicker({ scaleFam, modeName, onChange }: Props) {

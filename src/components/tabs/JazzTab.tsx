@@ -14,8 +14,8 @@ import type { TabSettingsSnapshot } from "@/App";
 
 interface Props {
   tonicPc: number;
-  lowestOct: number;
-  highestOct: number;
+  lowestPitch: number;
+  highestPitch: number;
   edo: number;
   onHighlight: (pcs: number[]) => void;
   responseMode: string;
@@ -34,7 +34,7 @@ const SCALE_FAM_NAMES = Object.keys(PATTERN_SCALE_FAMILIES);
 const GAP = 550;
 
 export default function JazzTab({
-  tonicPc, lowestOct, highestOct, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.65, tabSettingsRef, answerButtons,
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.65, tabSettingsRef, answerButtons,
 }: Props) {
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [checked, setChecked] = useLS<Set<string>>("lt_jazz_checked",
@@ -126,8 +126,10 @@ export default function JazzTab({
     const enabledList = variantEnabled[family];
     const enabledSet = enabledList && enabledList.length > 0 ? new Set(enabledList) : undefined;
     const phrase = generateJazzCell(family, len, enabledSet, scaleFam, safeMode);
-    const [low, high] = strictWindowBounds(tonicPc, edo, lowestOct, highestOct);
-    const base = tonicPc + (lowestOct + Math.floor((highestOct - lowestOct) / 2) - 4) * edo;
+    const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
+    // Tonic-aligned base pitch closest to the mid-pitch of the user's range.
+    const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
+    const base = midPitch - (((midPitch - tonicPc) % edo + edo) % edo);
     const rawSteps = jazzPhraseToStepsEdo(phrase.degrees, base - tonicPc, scaleFam, safeMode, edo);
     const absNotes = fitLineIntoWindow(rawSteps.map(s => tonicPc + s), edo, low, high);
 

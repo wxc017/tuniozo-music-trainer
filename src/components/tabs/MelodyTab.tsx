@@ -14,8 +14,8 @@ import type { TabSettingsSnapshot } from "@/App";
 
 interface Props {
   tonicPc: number;
-  lowestOct: number;
-  highestOct: number;
+  lowestPitch: number;
+  highestPitch: number;
   edo: number;
   onHighlight: (pcs: number[]) => void;
   responseMode: string;
@@ -71,7 +71,7 @@ function resolveDegrees(
 }
 
 export default function MelodyTab({
-  tonicPc, lowestOct, highestOct, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.65, onAnswer, tabSettingsRef, answerButtons,
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.65, onAnswer, tabSettingsRef, answerButtons,
 }: Props) {
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [checked, setChecked] = useLS<Set<string>>("lt_mel_checked",
@@ -141,8 +141,10 @@ export default function MelodyTab({
 
     const phrase = randomChoice(pool);
     const isGen = GENERATIVE_FAMILIES.has(family);
-    const [low, high] = strictWindowBounds(tonicPc, edo, lowestOct, highestOct);
-    const base = tonicPc + (lowestOct + Math.floor((highestOct - lowestOct + 1) / 2) - 4) * edo;
+    const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
+    // Tonic-aligned base pitch closest to the mid-pitch of the user's range.
+    const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
+    const base = midPitch - (((midPitch - tonicPc) % edo + edo) % edo);
     const rawSteps = resolveDegrees(phrase, base - tonicPc, scaleFam, safeMode, isGen, edo);
     const absNotes = fitLineIntoWindow(rawSteps.map(s => tonicPc + s), edo, low, high);
 
