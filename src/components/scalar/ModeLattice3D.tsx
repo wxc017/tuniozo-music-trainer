@@ -19,10 +19,18 @@ import { formatHalfAccidentals, getSolfege } from "@/lib/edoData";
 interface Props {
   edo: number;
   rootPitch: number;          // absolute pitch (within visualizer range) where the drone sits
-  rootName?: string;          // letter name for the root, e.g. "C"
+  tonicPc: number;            // user's tonic pitch class (0..edo-1)
   anchorKey: string | null;   // user's selected tonality key, or null
   playVol?: number;
   onActiveModeChange?: (mode: ModeNode | null) => void;
+}
+
+// Closest 12-EDO letter for a pitch class in any EDO.  Used so each
+// node's label reads with the correct root — e.g. D Dorian, not C Dorian.
+const NOTE_LETTERS = ["C","D♭","D","E♭","E","F","G♭","G","A♭","A","B♭","B"];
+function letterForPc(pc: number, edo: number): string {
+  const pc12 = Math.round((pc / edo) * 12);
+  return NOTE_LETTERS[((pc12 % 12) + 12) % 12] ?? "";
 }
 
 // Family → palette colour.  Mirrors the picker's family colours so the
@@ -43,7 +51,8 @@ const FAMILY_COLOR: Record<string, string> = {
 
 interface NodeMeshProps {
   node: ModeNode;
-  rootName: string;
+  tonicPc: number;
+  edo: number;
   isAnchor: boolean;
   isActive: boolean;
   isHovered: boolean;
@@ -59,7 +68,12 @@ function NodeGeometry({ r }: { r: number }) {
   return <sphereGeometry args={[r, 24, 16]} />;
 }
 
-function NodeMesh({ node, rootName, isAnchor, isActive, isHovered, alterationFromAnchor: dAnchor, onHover, onClick }: NodeMeshProps) {
+function NodeMesh({ node, tonicPc, edo, isAnchor, isActive, isHovered, alterationFromAnchor: dAnchor, onHover, onClick }: NodeMeshProps) {
+  // Per-node root letter: anchor and parallels sit on the user's tonic;
+  // relatives have their own rootPcOffset so they read e.g. "D Dorian"
+  // instead of "C Dorian".
+  const nodeRootPc = ((tonicPc + node.rootPcOffset) % edo + edo) % edo;
+  const rootName = letterForPc(nodeRootPc, edo);
   const meshRef = useRef<THREE.Mesh>(null);
   const baseColor = new THREE.Color(FAMILY_COLOR[node.family] ?? "#888");
   const emissive = new THREE.Color(FAMILY_COLOR[node.family] ?? "#888");
@@ -136,13 +150,13 @@ interface SceneProps {
   anchorMode: string | null;
   activeKey: string | null;
   hoveredKey: string | null;
-  rootName: string;
+  tonicPc: number;
   onHover: (key: string | null) => void;
   onClick: (node: ModeNode) => void;
   edo: number;
 }
 
-function Scene({ anchorFamily, anchorMode, activeKey, hoveredKey, rootName, onHover, onClick, edo }: SceneProps) {
+function Scene({ anchorFamily, anchorMode, activeKey, hoveredKey, tonicPc, onHover, onClick, edo }: SceneProps) {
   const lattice = useMemo(
     () => getModeLattice(edo, anchorFamily, anchorMode),
     [edo, anchorFamily, anchorMode]
@@ -200,7 +214,8 @@ function Scene({ anchorFamily, anchorMode, activeKey, hoveredKey, rootName, onHo
         <NodeMesh
           key={node.key}
           node={node}
-          rootName={rootName}
+          tonicPc={tonicPc}
+          edo={edo}
           isAnchor={anchorKey === node.key}
           isActive={activeKey === node.key}
           isHovered={hoveredKey === node.key}
@@ -219,7 +234,7 @@ function Scene({ anchorFamily, anchorMode, activeKey, hoveredKey, rootName, onHo
 const DEFAULT_ROOT_GAIN = 1.6;
 const DEFAULT_TONE_GAIN = 0.85;
 
-export default function ModeLattice3D({ edo, rootPitch, rootName = "", anchorKey, playVol = 0.55, onActiveModeChange }: Props) {
+export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, playVol = 0.55, onActiveModeChange }: Props) {
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [activeNode, setActiveNode] = useState<ModeNode | null>(null);
@@ -310,7 +325,7 @@ export default function ModeLattice3D({ edo, rootPitch, rootName = "", anchorKey
             anchorMode={anchorKey ? anchorKey.split("::")[1] : null}
             activeKey={activeKey}
             hoveredKey={hoveredKey}
-            rootName={rootName}
+            tonicPc={tonicPc}
             onHover={setHoveredKey}
             onClick={handleClick}
             edo={edo} />
