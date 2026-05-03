@@ -102,7 +102,11 @@ function buildEdges(nodes: ModeNode[]): ModeEdge[] {
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const d = alterationDistance(nodes[i].scale, nodes[j].scale);
-      if (d === 1 || d === 2) {
+      // 1 + 2 alteration edges are the primary topology.  3-alteration
+      // edges are emitted as faint "bridge" edges so the xen families
+      // (which are 3 alterations from the Western chain at minimum)
+      // don't end up as disconnected islands in the cloud.
+      if (d === 1 || d === 2 || d === 3) {
         out.push({ fromKey: nodes[i].key, toKey: nodes[j].key, alterations: d });
       }
     }
@@ -139,9 +143,11 @@ function runForceLayout(nodes: ModeNode[], edges: ModeEdge[], rand: () => number
   // Tunable constants.
   const REPULSION = 0.55;     // magnitude of pairwise repulsion
   const SPRING_1 = 1.0;        // attraction strength along 1-alt edges
-  const SPRING_2 = 0.25;       // attraction strength along 2-alt edges (weaker)
+  const SPRING_2 = 0.25;       // attraction strength along 2-alt edges
+  const SPRING_3 = 0.05;       // very weak attraction along 3-alt bridges
   const REST_1 = 1.5;
   const REST_2 = 3.0;
+  const REST_3 = 4.5;
   const ITERS = 350;
   const INITIAL_STEP = 0.18;
   const COOLING = 0.992;
@@ -186,8 +192,8 @@ function runForceLayout(nodes: ModeNode[], edges: ModeEdge[], rand: () => number
       const dx = nodes[j].pos[0] - nodes[i].pos[0];
       const dz = nodes[j].pos[2] - nodes[i].pos[2];
       const r = Math.sqrt(dx * dx + dz * dz + 0.0001);
-      const k = e.alterations === 1 ? SPRING_1 : SPRING_2;
-      const rest = e.alterations === 1 ? REST_1 : REST_2;
+      const k = e.alterations === 1 ? SPRING_1 : e.alterations === 2 ? SPRING_2 : SPRING_3;
+      const rest = e.alterations === 1 ? REST_1 : e.alterations === 2 ? REST_2 : REST_3;
       const f = k * (r - rest);
       const ux = dx / r, uz = dz / r;
       fx[i] += f * ux; fz[i] += f * uz;
