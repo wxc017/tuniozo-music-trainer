@@ -229,10 +229,37 @@ function Scene({ anchorFamily, anchorMode, activeKey, hoveredKey, tonicPc, onHov
   );
 }
 
-// Default per-note gains: root sits ~2x louder than upper tones so the
-// fundamental reads clearly as the root of the drone.
-const DEFAULT_ROOT_GAIN = 1.6;
-const DEFAULT_TONE_GAIN = 0.85;
+// Default per-note gains follow the harmonic series.  The root is the
+// fundamental (h = 1), and each scale degree's default volume drops
+// off with the harmonic number it most closely approximates, in the
+// natural order that overtones appear above a fundamental:
+//   degree 1 (root) → harmonic 1 — loudest
+//   degree 5 (P5)   → harmonic 3 — first non-octave overtone
+//   degree 3 (M3)   → harmonic 5
+//   degree 7 (M7/m7) → harmonic 7  (septimal partial)
+//   degree 2 (M2)   → harmonic 9
+//   degree 4 (~P4)  → harmonic 11
+//   degree 6 (M6)   → harmonic 13
+// We use 1/sqrt(h) so the falloff is musical (perceived loudness ~
+// amplitude squared) rather than too steep.
+const HARMONIC_BY_DEGREE: Record<number, number> = {
+  1: 1,    // root      → fundamental
+  2: 9,    // 2nd       → 9th harmonic
+  3: 5,    // 3rd       → 5th harmonic
+  4: 11,   // 4th       → 11th harmonic
+  5: 3,    // 5th       → 3rd harmonic (first non-octave partial)
+  6: 13,   // 6th       → 13th harmonic
+  7: 7,    // 7th       → 7th harmonic
+};
+const HARMONIC_GAIN_BASE = 1.6;
+
+function harmonicSeriesGains(scale: number[]): number[] {
+  return scale.map((_, idx) => {
+    const degree = idx + 1;        // scale[0] = root = degree 1
+    const h = HARMONIC_BY_DEGREE[degree] ?? 17;
+    return HARMONIC_GAIN_BASE / Math.sqrt(h);
+  });
+}
 
 export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, playVol = 0.55, onActiveModeChange }: Props) {
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
@@ -278,7 +305,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
       onActiveModeChange?.(null);
       return;
     }
-    const gains = node.scale.map(s => (s === 0 ? DEFAULT_ROOT_GAIN : DEFAULT_TONE_GAIN));
+    const gains = harmonicSeriesGains(node.scale);
     setPerNoteGains(gains);
     setActiveKey(node.key);
     setActiveNode(node);
@@ -298,7 +325,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
 
   const resetGains = useCallback(() => {
     if (!activeNode) return;
-    const gains = activeNode.scale.map(s => (s === 0 ? DEFAULT_ROOT_GAIN : DEFAULT_TONE_GAIN));
+    const gains = harmonicSeriesGains(activeNode.scale);
     setPerNoteGains(gains);
     startDroneFor(activeNode, gains);
   }, [activeNode, startDroneFor]);
@@ -348,7 +375,8 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
           <div className="flex flex-wrap gap-2">
             {activeNode.scale.map((step, i) => {
               const isRoot = step === 0;
-              const v = perNoteGains[i] ?? (isRoot ? DEFAULT_ROOT_GAIN : DEFAULT_TONE_GAIN);
+              const harmonicDefaults = harmonicSeriesGains(activeNode.scale);
+              const v = perNoteGains[i] ?? harmonicDefaults[i];
               const label = solfege ? solfege[step] : `step ${step}`;
               return (
                 <div key={i}
