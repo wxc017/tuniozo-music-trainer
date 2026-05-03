@@ -598,37 +598,37 @@ export function buildCylinderLattice(
     }
   }
 
-  // Y-edges: same family + same key, brightness-adjacent modes.
-  for (const family of families) {
-    const sorted = (modes.get(family.id) ?? []).slice()
-      .sort((a, b) => b.brightness - a.brightness);
-    for (let ki = 0; ki < keys.length; ki++) {
-      for (let i = 0; i < sorted.length - 1; i++) {
-        const fromId = `${ki}::${family.id}::${sorted[i].name}`;
-        const toId = `${ki}::${family.id}::${sorted[i + 1].name}`;
-        if (nodeMap.has(fromId) && nodeMap.has(toId)) {
-          edges.push({ fromId, toId, type: "y", alt: 0, color: family.color });
-        }
-      }
-    }
-  }
+  // Helper: pitch-set symmetric distance / 2 between two nodes.
+  const altOf = (a: LatticeNode, b: LatticeNode): number => {
+    const setA = new Set(a.mode.scale.map(s => ((a.rootPc + s) % edo + edo) % edo));
+    const setB = new Set(b.mode.scale.map(s => ((b.rootPc + s) % edo + edo) % edo));
+    let symdiff = 0;
+    for (const v of setA) if (!setB.has(v)) symdiff++;
+    for (const v of setB) if (!setA.has(v)) symdiff++;
+    return symdiff / 2;
+  };
 
-  // Z-edges: same key, 1-alt cross-family pairs (modulation strings
-  // that connect different family knots in 3D).
+  // Y/Z edges: every same-root-pc pair whose alteration distance is
+  // 1 or 2, so the closest neighbours of any node always read as
+  // +1 / +2 rather than whatever brightness-rank-adjacent gave us
+  // (which can land at +3, +4 in the more chromatic families).
+  // Within-family pairs are tagged "y", cross-family "z" — the
+  // renderer colours them differently.
   for (let ki = 0; ki < keys.length; ki++) {
     const subset = nodes.filter(n => n.keyIdx === ki);
     for (let i = 0; i < subset.length; i++) {
       for (let j = i + 1; j < subset.length; j++) {
         const a = subset[i], b = subset[j];
-        if (a.family === b.family) continue;
-        const setA = new Set(a.mode.scale.map(s => ((a.rootPc + s) % edo + edo) % edo));
-        const setB = new Set(b.mode.scale.map(s => ((b.rootPc + s) % edo + edo) % edo));
-        let symdiff = 0;
-        for (const v of setA) if (!setB.has(v)) symdiff++;
-        for (const v of setB) if (!setA.has(v)) symdiff++;
-        if (symdiff / 2 === 1) {
-          edges.push({ fromId: a.id, toId: b.id, type: "z", alt: 1, color: Z_EDGE_COLOR });
-        }
+        const alt = altOf(a, b);
+        if (alt !== 1 && alt !== 2) continue;
+        const sameFam = a.family === b.family;
+        edges.push({
+          fromId: a.id,
+          toId: b.id,
+          type: sameFam ? "y" : "z",
+          alt,
+          color: sameFam ? a.family.color : Z_EDGE_COLOR,
+        });
       }
     }
   }
