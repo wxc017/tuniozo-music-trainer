@@ -40,6 +40,11 @@ export default function ScalarTab({
   const [activeFamilyColor, setActiveFamilyColor] = useState<string>("#6a9aca");
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
+  // Drone state: tracks whether a syllable is currently sustained, plus
+  // the press-hold timer that fires after 2s of holding to start it.
+  const [dronedStep, setDronedStep] = useState<number | null>(null);
+  const droneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // All tonality banks for the current EDO.  showSevenths = true so the
   // chord pool exposes 7th-quality suffixes (Scalar Exploration is a
   // reference view; we want to see everything).
@@ -68,11 +73,15 @@ export default function ScalarTab({
 
   const baseTonic = lowestPitch + (((tonicPc - lowestPitch) % edo) + edo) % edo;
 
-  // Helper: clear any pending highlight scheduling and stop audio.
+  // Helper: clear any pending highlight scheduling, stop audio, kill
+  // any active syllable drone.
   const stop = useCallback(() => {
     frameTimers.current.forEach(id => clearTimeout(id));
     frameTimers.current = [];
+    if (droneTimerRef.current) { clearTimeout(droneTimerRef.current); droneTimerRef.current = null; }
+    audioEngine.stopDrone();
     audioEngine.silencePlay();
+    setDronedStep(null);
     onHighlight([]);
   }, [onHighlight]);
 
@@ -83,6 +92,8 @@ export default function ScalarTab({
     await ensureAudio();
     frameTimers.current.forEach(id => clearTimeout(id));
     frameTimers.current = [];
+    audioEngine.stopDrone();
+    setDronedStep(null);
     const stepsAsc = view.scale.map(s => s.step);
     const allSteps = [...stepsAsc, stepsAsc[0] + edo];
     const frames = allSteps.map(s => [baseTonic + s]);
@@ -105,32 +116,99 @@ export default function ScalarTab({
     frameTimers.current.push(clearId);
   }, [view, baseTonic, edo, ensureAudio, playVol, onHighlight]);
 
-  // Static highlight: light up the entire scale at once on the keyboard,
-  // for as long as the user wants to study the shape (cleared on next
-  // action).
+  // Static highlight: light up the entire scale at once on the keyboard.
+  // Stays lit until the user takes another action — no auto-clear.
   const highlightAll = useCallback(() => {
     if (!view) return;
     frameTimers.current.forEach(id => clearTimeout(id));
     frameTimers.current = [];
+    audioEngine.stopDrone();
+    setDronedStep(null);
     const allSteps = [...view.scale.map(s => s.step), view.scale[0].step + edo];
     onHighlight(allSteps.map(s => baseTonic + s));
   }, [view, baseTonic, edo, onHighlight]);
 
-  // Play a single chord (its pitches simultaneously) and highlight.
+  // Play a single chord (its pitches simultaneously).  The highlight
+  // sticks for the duration of the audio, then stays — any subsequent
+  // action (another chord click, a different highlight, or Clear)
+  // overrides it.  No timed auto-clear, matching the Highlight Scale
+  // button's sticky behaviour.
   const playChord = useCallback(async (steps: number[]) => {
     if (!steps || steps.length === 0) return;
     await ensureAudio();
     frameTimers.current.forEach(id => clearTimeout(id));
     frameTimers.current = [];
+    audioEngine.stopDrone();
+    setDronedStep(null);
     const pitches = steps.map(s => baseTonic + s);
     audioEngine.playMultiVoice(
       [{ frames: [pitches], noteDuration: 1.4, gain: playVol * 1.6 }],
       edo, 0, 1
     );
     onHighlight(pitches);
-    const clearId = setTimeout(() => onHighlight([]), 1500);
-    frameTimers.current.push(clearId);
   }, [baseTonic, edo, ensureAudio, playVol, onHighlight]);
+
+  // Sticky highlight for a chord — no audio, no auto-clear.  Stays lit
+  // until the user takes another action.
+  const highlightChord = useCallback((steps: number[]) => {
+    if (!steps || steps.length === 0) return;
+    frameTimers.current.forEach(id => clearTimeout(id));
+    frameTimers.current = [];
+    audioEngine.stopDrone();
+    setDronedStep(null);
+    onHighlight(steps.map(s => baseTonic + s));
+  }, [baseTonic, onHighlight]);
+
+  // ── Syllable interaction ─────────────────────────────────────────
+  // - Quick click → play the tone (single transient note).
+  // - Press-and-hold ≥ 2s → start a sustained drone on that pitch.
+  // - Click again on the droning syllable → stop drone.
+  // - Clicking any syllable while a drone is active first stops the drone.
+  const playSyllable = useCallback(async (step: number) => {
+    await ensureAudio();
+    const pitch = baseTonic + step;
+    audioEngine.playMultiVoice(
+      [{ frames: [[pitch]], noteDuration: 0.7, gain: playVol * 1.2 }],
+      edo, 0, 1
+    );
+    onHighlight([pitch]);
+  }, [baseTonic, edo, ensureAudio, playVol, onHighlight]);
+
+  const startSyllableDrone = useCallback(async (step: number) => {
+    await ensureAudio();
+    audioEngine.stopDrone();
+    audioEngine.startDrone([baseTonic + step], edo, 0.07);
+    onHighlight([baseTonic + step]);
+    setDronedStep(step);
+  }, [baseTonic, edo, ensureAudio, onHighlight]);
+
+  const stopSyllableDrone = useCallback(() => {
+    audioEngine.stopDrone();
+    setDronedStep(null);
+  }, []);
+
+  const onSyllablePressStart = useCallback((step: number) => {
+    // If something is already droning, treat this press as the toggle-off
+    // gesture instead of a fresh play.
+    if (dronedStep !== null) {
+      stopSyllableDrone();
+      return;
+    }
+    playSyllable(step);
+    if (droneTimerRef.current) clearTimeout(droneTimerRef.current);
+    droneTimerRef.current = setTimeout(() => {
+      startSyllableDrone(step);
+      droneTimerRef.current = null;
+    }, 2000);
+  }, [dronedStep, playSyllable, startSyllableDrone, stopSyllableDrone]);
+
+  const onSyllablePressEnd = useCallback(() => {
+    // Released before the 2s threshold — cancel the pending drone.
+    if (droneTimerRef.current) {
+      clearTimeout(droneTimerRef.current);
+      droneTimerRef.current = null;
+    }
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -158,25 +236,39 @@ export default function ScalarTab({
             </button>
           </div>
 
-          {/* Solfège + degree row */}
+          {/* Solfège + degree row.  Click to play the tone; press-and-
+              hold ≥ 2s to start a drone on that pitch (click again to
+              stop). */}
           <div className="flex flex-wrap gap-2">
-            {view.scale.map(s => (
-              <div key={s.step}
-                   className="flex flex-col items-center px-3 py-2 rounded border"
-                   style={{ borderColor: activeFamilyColor + "30",
-                            background: activeFamilyColor + "10" }}>
-                <span className="text-base font-bold"
-                      style={{ color: activeFamilyColor }}>
-                  {s.solfege}
-                </span>
-                <span className="text-[10px] text-[#888] mt-0.5">
-                  {formatHalfAccidentals(s.degree)}
-                </span>
-                <span className="text-[9px] text-[#555]">
-                  step {s.step}
-                </span>
-              </div>
-            ))}
+            {view.scale.map(s => {
+              const droning = dronedStep === s.step;
+              return (
+                <button key={s.step}
+                  onMouseDown={() => onSyllablePressStart(s.step)}
+                  onMouseUp={onSyllablePressEnd}
+                  onMouseLeave={onSyllablePressEnd}
+                  onTouchStart={(e) => { e.preventDefault(); onSyllablePressStart(s.step); }}
+                  onTouchEnd={onSyllablePressEnd}
+                  title={`Click: play ${s.solfege}.  Hold 2s: drone on ${s.solfege}.`}
+                  className="flex flex-col items-center px-3 py-2 rounded border transition-colors select-none"
+                  style={{
+                    borderColor: droning ? activeFamilyColor : activeFamilyColor + "30",
+                    background: droning ? activeFamilyColor + "40" : activeFamilyColor + "10",
+                    boxShadow: droning ? `0 0 0 2px ${activeFamilyColor}55 inset` : undefined,
+                  }}>
+                  <span className="text-base font-bold"
+                        style={{ color: activeFamilyColor }}>
+                    {s.solfege}
+                  </span>
+                  <span className="text-[10px] text-[#888] mt-0.5">
+                    {formatHalfAccidentals(s.degree)}
+                  </span>
+                  <span className="text-[9px] text-[#555]">
+                    {droning ? "🔊 drone" : `step ${s.step}`}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Chord pool — Primary + Diatonic */}
@@ -191,14 +283,22 @@ export default function ScalarTab({
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {level.chords.map((entry, i) => (
-                    <button key={`${entry.label}-${i}`}
-                      onClick={() => entry.steps && playChord(entry.steps)}
-                      title={entry.steps
-                        ? `${entry.label} — ${entry.steps.join(", ")}`
-                        : entry.label}
-                      className="px-3 py-1.5 text-sm font-semibold rounded border border-[#2a2a2a] bg-[#141414] text-[#bbb] hover:text-white hover:border-[#444] transition-colors">
-                      {formatRomanNumeral(entry.label)}
-                    </button>
+                    <span key={`${entry.label}-${i}`} className="inline-flex items-stretch">
+                      <button
+                        onClick={() => entry.steps && playChord(entry.steps)}
+                        title={entry.steps
+                          ? `Play ${entry.label} — ${entry.steps.join(", ")}`
+                          : entry.label}
+                        className="px-3 py-1.5 text-sm font-semibold rounded-l border-y border-l border-[#2a2a2a] bg-[#141414] text-[#bbb] hover:text-white hover:border-[#444] transition-colors">
+                        {formatRomanNumeral(entry.label)}
+                      </button>
+                      <button
+                        onClick={() => entry.steps && highlightChord(entry.steps)}
+                        title={`Highlight ${entry.label} on keyboard (sticky)`}
+                        className="px-1.5 py-1.5 text-[10px] rounded-r border-y border-r border-[#2a2a2a] bg-[#0d0d0d] text-[#555] hover:text-[#aaa] hover:border-[#444] transition-colors">
+                        ⬚
+                      </button>
+                    </span>
                   ))}
                 </div>
               </div>
