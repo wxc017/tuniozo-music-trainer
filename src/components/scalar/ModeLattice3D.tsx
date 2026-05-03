@@ -269,10 +269,12 @@ function PcKnot({ cfg, parentCfg, isAnchorPc }: {
   return (
     <group position={cfg.center}>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[cfg.R, cfg.r, 18, 64]} />
+        <torusGeometry args={[cfg.R, cfg.r, 22, 96]} />
         <meshStandardMaterial
-          color={isAnchorPc ? "#3a4a66" : "#2a3340"}
-          transparent opacity={0.09}
+          color={isAnchorPc ? "#6e7480" : "#555a64"}
+          transparent opacity={0.55}
+          roughness={0.85}
+          metalness={0}
           side={THREE.DoubleSide}
           depthWrite={false} />
       </mesh>
