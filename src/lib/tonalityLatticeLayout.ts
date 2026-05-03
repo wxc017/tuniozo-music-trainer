@@ -417,7 +417,7 @@ export function findLatticeNode(
 // pc variation is the *twist count*: r = interval class from anchor
 // (0..6).  m3 modulation gives 3 strands twisted around the backbone;
 // tritone gives 6.  Anchor (r = 0) is unwound.
-const KNOT_R = 5.0;
+const KNOT_R = 8.0;
 const KNOT_r = KNOT_R / 2;
 const KNOT_P = 3;
 const KNOT_Q = 5;
@@ -453,7 +453,7 @@ const PC_OFFSET_BY_SEMIS: Record<number, [number, number, number]> = {
   11: [-0.5,  0,   -0.7],       // −m2 (= +M7)
   6:  [ 0.7,  0,   -0.7],       // tritone
 };
-const PC_KNOT_SPACING = 34;
+const PC_KNOT_SPACING = 100;
 
 // Local position on a (P, Q) torus knot at parameter t, relative to
 // the knot's centre.  Matches three.js's TorusKnotGeometry path so
