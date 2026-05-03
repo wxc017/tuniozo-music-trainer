@@ -23,7 +23,7 @@ function CameraReset({ resetKey }: { resetKey: number }) {
   useEffect(() => {
     if (resetKey !== prevKey.current) {
       prevKey.current = resetKey;
-      camera.position.set(6, 6, 22);
+      camera.position.set(10, 10, 36);
       camera.lookAt(0, 0, 0);
       const c = controls as { target?: { set: (x: number, y: number, z: number) => void }; update?: () => void } | null;
       if (c?.target) { c.target.set(0, 0, 0); c.update?.(); }
@@ -233,22 +233,40 @@ function PcKnot({ cfg, isAnchorPc }: { cfg: KnotConfig; isAnchorPc: boolean }) {
   const emissiveIntensity = isAnchorPc ? 0.55 : 0.25;
   const opacity = isAnchorPc ? 0.75 : 0.5;
 
+  // Faint shell of the carrying torus the knot lives on.  Helps the
+  // user read the (R, r) torus shape that the knot/strand bundle is
+  // wound around, without visually competing with the strands.
+  const shell = (
+    <mesh rotation={[Math.PI / 2, 0, 0]}>
+      <torusGeometry args={[cfg.R, cfg.r, 18, 64]} />
+      <meshStandardMaterial
+        color={isAnchorPc ? "#3a4a66" : "#2a3340"}
+        transparent opacity={0.09}
+        side={THREE.DoubleSide}
+        depthWrite={false} />
+    </mesh>
+  );
+
   if (r === 0) {
     return (
-      <mesh position={cfg.center} rotation={[Math.PI / 2, 0, 0]}>
-        <torusKnotGeometry args={[cfg.R, 0.18, 240, 14, cfg.P, cfg.Q]} />
-        <meshStandardMaterial
-          color={color} emissive={emissive}
-          emissiveIntensity={emissiveIntensity}
-          roughness={0.55} metalness={0.35}
-          transparent opacity={opacity}
-          depthWrite={false} />
-      </mesh>
+      <group position={cfg.center}>
+        {shell}
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusKnotGeometry args={[cfg.R, 0.18, 240, 14, cfg.P, cfg.Q]} />
+          <meshStandardMaterial
+            color={color} emissive={emissive}
+            emissiveIntensity={emissiveIntensity}
+            roughness={0.55} metalness={0.35}
+            transparent opacity={opacity}
+            depthWrite={false} />
+        </mesh>
+      </group>
     );
   }
 
   return (
     <group position={cfg.center}>
+      {shell}
       {strands.map((curve, i) => (
         <mesh key={i}>
           <tubeGeometry args={[curve, 280, 0.08, 6, true]} />
@@ -597,11 +615,17 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   // the orbit camera back to its default 3/4 view.
   const [cameraResetKey, setCameraResetKey] = useState(0);
 
+  // Shift+click sets this so the orbit target smoothly animates to
+  // the chosen node — overrides the default focus heuristic
+  // (active → selected → anchor) until it's reset.
+  const [cameraFocusId, setCameraFocusId] = useState<string | null>(null);
+
   // Reset expansion when the user changes their tonic / anchor —
   // start over with only the new anchor's neighbourhood visible.
   useEffect(() => {
     setExpandedRoots(new Set([anchorRootPc]));
     setSelectedId(null);
+    setCameraFocusId(null);
   }, [anchorRootPc, anchorKey]);
 
   // Family / edge visibility toggles.
@@ -682,6 +706,13 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
 
   const handleClick = useCallback((node: LatticeNode, ev: ThreeEvent<MouseEvent>) => {
     const ctrl = ev.ctrlKey || ev.metaKey;
+    const shift = ev.shiftKey;
+    if (shift) {
+      // Shift+click: focus the camera on this node — animate the orbit
+      // target without affecting the drone or the modulation overlay.
+      setCameraFocusId(node.id);
+      return;
+    }
     if (ctrl) {
       // Ctrl/⌘+click: toggle the modulation overlay for this node.
       // Doesn't affect the drone — keeps the picker / mixer intact.
@@ -746,21 +777,22 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
     setActiveNode(null);
     setPerNoteGains([]);
     setSelectedId(null);
+    setCameraFocusId(null);
     setExpandedRoots(new Set([anchorRootPc]));
     setCameraResetKey(k => k + 1);
     onActiveModeChange?.(null);
   }, [anchorRootPc, onActiveModeChange]);
 
-  // Focus target for the orbit camera: animate to whichever node is
-  // currently the user's "centre of attention" — the active drone if
-  // any, then the selected node, then the anchor.  Lets camera follow
-  // the user as they grow the lattice outward.
+  // Focus target for the orbit camera.  Shift+click pins to a
+  // specific node; otherwise fall back to whichever node is currently
+  // the user's centre of attention — active drone, then selected
+  // node, then anchor.
   const focusPos = useMemo<[number, number, number] | null>(() => {
-    const id = activeId ?? selectedId ?? anchorId;
+    const id = cameraFocusId ?? activeId ?? selectedId ?? anchorId;
     if (!id) return null;
     const node = lattice.nodeMap.get(id);
     return node ? node.pos : null;
-  }, [activeId, selectedId, anchorId, lattice]);
+  }, [cameraFocusId, activeId, selectedId, anchorId, lattice]);
 
   const updateGain = useCallback((index: number, value: number) => {
     if (!activeNode) return;
@@ -782,7 +814,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   // Initial camera position — close enough to see the anchor knot
   // clearly at startup; the user zooms out (or expands neighbouring
   // roots) as they grow the structure.
-  const cameraPos: [number, number, number] = [6, 6, 22];
+  const cameraPos: [number, number, number] = [10, 10, 36];
 
   return (
     <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded overflow-hidden">
@@ -923,7 +955,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
       })()}
 
       <div className="px-3 py-1.5 text-[9px] text-[#555] border-t border-[#1a1a1a] flex items-center gap-3">
-        <span>Click a node to drone it; <b>Ctrl+click</b> to show its modulation rays.  Drag to orbit, scroll to zoom, arrow keys to pan.  Click "+" to grow a key into the lattice; click "×" on the mid-edge to collapse it back.</span>
+        <span>Click a node to drone it; <b>Ctrl+click</b> to show its modulation rays; <b>Shift+click</b> to focus the camera on it.  Drag to orbit, scroll to zoom, arrow keys to pan.  Click "+" to grow a key into the lattice; click "×" on the mid-edge to collapse it back.</span>
         {activeNode && (
           <span style={{ color: activeNode.family.color }}>
             playing: {activeNode.key.name} {formatHalfAccidentals(activeNode.mode.name)}
