@@ -791,18 +791,31 @@ export function buildCylinderLattice(
       // tube, alt-1 alongside alt-1, etc.  This is the "symmetric"
       // alignment: same arc layout on both knots, same parametric
       // position for corresponding modes.
+      // Modulated pcs render as their own *full torus knot* — same R,
+      // r, P, Q as the anchor — translated to a fresh position in
+      // space so the user reads them as "the same knot, copy-pasted".
+      // Direction comes from the modulation interval (PC_OFFSET_BY_SEMIS),
+      // spacing is wide enough to leave a clear gap between the anchor
+      // and the satellite.  parentPc=null + cableOffset/cableTOffset=0
+      // routes sampleKnotCurve through the standalone branch.
+      const SATELLITE_SPACING = 30;
+      const dirRaw = PC_OFFSET_BY_SEMIS[((info.modSemis % 12) + 12) % 12]
+        ?? [1, 0, 0];
+      const dirLen = Math.hypot(dirRaw[0], dirRaw[1], dirRaw[2]) || 1;
+      const childCenter: [number, number, number] = [
+        parentCfg.center[0] + (dirRaw[0] / dirLen) * SATELLITE_SPACING,
+        parentCfg.center[1] + (dirRaw[1] / dirLen) * SATELLITE_SPACING,
+        parentCfg.center[2] + (dirRaw[2] / dirLen) * SATELLITE_SPACING,
+      ];
+
       const cableCfg: KnotConfig = {
         pc: childPc,
-        center: [0, 0, 0],
+        center: childCenter,
         R: KNOT_R, r: KNOT_r, P: KNOT_P, Q: KNOT_Q,
         intervalR: 0,
-        parentPc,
+        parentPc: null,
         wraps: info.modSemis,
-        // Distance from the parent's tube centre.  Push cables well
-        // clear of the parent (and of each other for stacked
-        // modulations) so the lattice doesn't crowd up around the
-        // anchor when the user opens several modulations.
-        cableOffset: parentCfg.r * 1.6,
+        cableOffset: 0,
         cableTOffset: 0,
         sourceNodeId: info.sourceNodeId,
       };
