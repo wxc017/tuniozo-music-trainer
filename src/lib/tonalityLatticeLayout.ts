@@ -752,26 +752,44 @@ export function buildCylinderLattice(
     return symdiff / 2;
   };
 
-  // Y/Z edges: every same-root-pc pair whose alteration distance is
-  // 1 or 2, so the closest neighbours of any node always read as
-  // +1 / +2 rather than whatever brightness-rank-adjacent gave us
-  // (which can land at +3, +4 in the more chromatic families).
-  // Within-family pairs are tagged "y", cross-family "z" — the
-  // renderer colours them differently.
+  // Y-edges: every brightness-rank-adjacent same-family pair, so each
+  // family arc is unbroken on the knot — no matter how chromatic the
+  // family is, all 7 of its modes are connected in a chain.  alt is
+  // computed and stored so the renderer can show its actual value.
+  for (const family of families) {
+    const sorted = (modes.get(family.id) ?? []).slice()
+      .sort((a, b) => b.brightness - a.brightness);
+    for (let ki = 0; ki < keys.length; ki++) {
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const fromId = `${ki}::${family.id}::${sorted[i].name}`;
+        const toId = `${ki}::${family.id}::${sorted[i + 1].name}`;
+        const a = nodeMap.get(fromId);
+        const b = nodeMap.get(toId);
+        if (!a || !b) continue;
+        edges.push({
+          fromId, toId, type: "y",
+          alt: altOf(a, b),
+          color: family.color,
+        });
+      }
+    }
+  }
+
+  // Z-edges: every same-root-pc pair whose alteration distance is 1
+  // or 2, across families (modal-interchange neighbours).  Reads as
+  // "the closest tonalities at this root in other families".
   for (let ki = 0; ki < keys.length; ki++) {
     const subset = nodes.filter(n => n.keyIdx === ki);
     for (let i = 0; i < subset.length; i++) {
       for (let j = i + 1; j < subset.length; j++) {
         const a = subset[i], b = subset[j];
+        if (a.family === b.family) continue;
         const alt = altOf(a, b);
         if (alt !== 1 && alt !== 2) continue;
-        const sameFam = a.family === b.family;
         edges.push({
-          fromId: a.id,
-          toId: b.id,
-          type: sameFam ? "y" : "z",
-          alt,
-          color: sameFam ? a.family.color : Z_EDGE_COLOR,
+          fromId: a.id, toId: b.id,
+          type: "z", alt,
+          color: Z_EDGE_COLOR,
         });
       }
     }
