@@ -470,7 +470,11 @@ function Scene({
       if (!a || !b) continue;
       if (!expandedRoots.has(a.rootPc) || !expandedRoots.has(b.rootPc)) continue;
       if (!showFamilies[a.family.id] || !showFamilies[b.family.id]) continue;
-      if (!showEdges[e.type]) continue;
+      // Bridges aren't a user-toggleable edge type; only y/z get
+      // gated on showEdges (which only has y/z keys).  Without this
+      // exemption the bridges silently fall through `!showEdges["bridge"]`
+      // === !undefined === true and disappear from visibleEdges.
+      if (e.type !== "bridge" && !showEdges[e.type]) continue;
       // y/z edges always live within a single pc-knot — same root,
       // so both endpoints sit on the same knot.  We curve the edge
       // along the actual knot path: torus-surface (φ, θ) interpolation
