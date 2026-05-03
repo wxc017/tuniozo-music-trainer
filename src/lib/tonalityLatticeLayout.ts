@@ -769,19 +769,6 @@ export function buildCylinderLattice(
       const childKeyEntry = uniqueKeys.find(uk => uk.key.pc === childPc);
       if (!childKeyEntry) continue;
 
-      const cableCfg: KnotConfig = {
-        pc: childPc,
-        center: [0, 0, 0],
-        R: KNOT_R, r: KNOT_r, P: KNOT_P, Q: KNOT_Q,
-        intervalR: 0,
-        parentPc,
-        wraps: info.modSemis,
-        cableOffset: parentCfg.r * 0.45,
-        cableTOffset: sourceNode.knotT / TWO_PI,
-        sourceNodeId: info.sourceNodeId,
-      };
-      pcKnots.set(childPc, cableCfg);
-
       // Compute the cable's "anchor pitch set": the user's anchor mode
       // rooted at the cable's pc.
       const childAnchorPcSet = new Set<number>();
@@ -793,6 +780,34 @@ export function buildCylinderLattice(
           }
         }
       }
+
+      // Alt-distance between the cable's anchor mode (anchor-mode rooted
+      // at childPc) and the parent anchor's pitch set.  This drives
+      // cableTOffset so the cable's anchor lands at the *same* arc-N
+      // position on the parent that alt-N tonalities occupy on the main
+      // knot — i.e. the cable is symmetric with the main knot's arc
+      // structure (D Ionian on the +M2 cable lines up with where the
+      // alt-2 arc sits on the C-Ionian-anchored main knot).
+      let cableAltDistance = 0;
+      {
+        let symdiff = 0;
+        for (const v of childAnchorPcSet) if (!anchorPcSet.has(v)) symdiff++;
+        for (const v of anchorPcSet) if (!childAnchorPcSet.has(v)) symdiff++;
+        cableAltDistance = symdiff / 2;
+      }
+
+      const cableCfg: KnotConfig = {
+        pc: childPc,
+        center: [0, 0, 0],
+        R: KNOT_R, r: KNOT_r, P: KNOT_P, Q: KNOT_Q,
+        intervalR: 0,
+        parentPc,
+        wraps: info.modSemis,
+        cableOffset: parentCfg.r * 0.45,
+        cableTOffset: cableAltDistance / ALT_LEVELS,
+        sourceNodeId: info.sourceNodeId,
+      };
+      pcKnots.set(childPc, cableCfg);
       const childAltOf = (t: Tonality): number => {
         const tSet = new Set<number>();
         for (const s of t.mode.scale) tSet.add(((t.pc + s) % edo + edo) % edo);
