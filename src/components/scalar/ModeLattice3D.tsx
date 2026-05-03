@@ -173,6 +173,23 @@ function altDistance(a: LatticeNode, b: LatticeNode, edo: number): number {
   return symdiff / 2;
 }
 
+// Cable colour by modulation interval — matches the modulation-ray
+// palette so the cable visually echoes the ray that spawned it.
+const SEMIS_TO_MOD_COLOR: Record<number, string> = {
+  7:  "#9966ff", 5:  "#9966ff",   // P5 / P4 — purple
+  4:  "#22ddaa", 8:  "#22ddaa",   // ±M3    — green
+  3:  "#3aafff", 9:  "#3aafff",   // ±m3    — blue
+  2:  "#ff5588", 10: "#ff5588",   // ±M2    — pink
+  6:  "#ff9933",                  // TT     — orange
+  1:  "#cc66ff", 11: "#cc66ff",   // ±m2    — light purple
+};
+
+function darken(hex: string, amount: number): string {
+  const c = new THREE.Color(hex);
+  c.lerp(new THREE.Color("#000000"), amount);
+  return `#${c.getHexString()}`;
+}
+
 // THREE.Curve subclass for a cable-knot path.  Defers to cablePoint
 // from the layout so we use exactly the same curve at render time
 // and at node-build time — guarantees nodes land on the rendered tube.
@@ -218,17 +235,25 @@ function PcKnot({ cfg, parentCfg, isAnchorPc }: {
     );
   }, [isCable, parentCfg, cfg.wraps, cfg.cableOffset, cfg.cableTOffset]);
 
-  const color = isAnchorPc ? "#88bbff" : isCable ? "#a4d4ff" : "#5577aa";
-  const emissive = isAnchorPc ? "#264466" : isCable ? "#1a3a55" : "#101a26";
-  const emissiveIntensity = isAnchorPc ? 0.55 : isCable ? 0.45 : 0.25;
+  const cableColor = isCable ? (SEMIS_TO_MOD_COLOR[cfg.wraps] ?? "#a4d4ff") : "#a4d4ff";
+  const color = isAnchorPc ? "#88bbff" : isCable ? cableColor : "#5577aa";
+  const emissive = isAnchorPc ? "#264466"
+                : isCable ? darken(cableColor, 0.7)
+                : "#101a26";
+  const emissiveIntensity = isAnchorPc ? 0.55 : isCable ? 0.55 : 0.25;
   const opacity = isAnchorPc ? 0.75 : isCable ? 0.85 : 0.45;
+
+  // Tube radii are small enough that node spheres (r ~ 0.22 / 0.32)
+  // sit clearly proud of the tube and don't get clipped through it.
+  const TUBE_RADIUS = 0.08;
+  const NODE_CABLE_RADIUS = 0.09;
 
   if (isCable && cableCurve) {
     // Cable knot — TubeGeometry along the cable curve.  No shell;
     // the parent's tube is the visible carrier.
     return (
       <mesh>
-        <tubeGeometry args={[cableCurve, 320, 0.22, 10, true]} />
+        <tubeGeometry args={[cableCurve, 320, NODE_CABLE_RADIUS, 10, true]} />
         <meshStandardMaterial
           color={color} emissive={emissive}
           emissiveIntensity={emissiveIntensity}
@@ -252,7 +277,7 @@ function PcKnot({ cfg, parentCfg, isAnchorPc }: {
           depthWrite={false} />
       </mesh>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusKnotGeometry args={[cfg.R, 0.18, 240, 14, cfg.P, cfg.Q]} />
+        <torusKnotGeometry args={[cfg.R, TUBE_RADIUS, 240, 14, cfg.P, cfg.Q]} />
         <meshStandardMaterial
           color={color} emissive={emissive}
           emissiveIntensity={emissiveIntensity}
@@ -277,16 +302,16 @@ interface NodeMeshProps {
 
 function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHover, onClick }: NodeMeshProps) {
   const meshRef = useRef<THREE.Mesh>(null);
-  // Single smooth colour ramp from "neon" (rank 0, family hue lerped
-  // toward white) to "near-black" (rank 6, family hue lerped toward
-  // black) with linear interpolation in between.  No opacity scaling
-  // — the gradient lives entirely in colour + emissive intensity so
-  // the nodes stay fully solid and easy to see against the knot tube.
+  // Single smooth colour ramp from "neon" (rank 0: family hue lerped
+  // ~55% toward white) to "deep but readable" (rank 6: family hue
+  // lerped only ~45% toward black, so it still reads as the family
+  // colour, not just dark grey).  No opacity scaling — gradient lives
+  // entirely in colour + emissive intensity so nodes stay fully solid.
   const rankT = node.modeRank / 6;
   const baseColor = useMemo(() => {
     const family = new THREE.Color(node.family.color);
     const neon = family.clone().lerp(new THREE.Color("#ffffff"), 0.55);
-    const dark = family.clone().lerp(new THREE.Color("#000000"), 0.88);
+    const dark = family.clone().lerp(new THREE.Color("#000000"), 0.45);
     return neon.lerp(dark, rankT);
   }, [node.family.color, rankT]);
   const emissive = baseColor;
@@ -304,6 +329,7 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
     <group position={node.pos}>
       <mesh
         ref={meshRef}
+        renderOrder={2}
         onPointerOver={(e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); onHover(node.id); }}
         onPointerOut={() => onHover(null)}
         onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onClick(node, e); }}>
@@ -311,14 +337,16 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
         <meshStandardMaterial
           color={baseColor}
           emissive={emissive}
-          // Smooth emissive falloff matching the colour ramp:
-          // brightest mode glows hard, darkest barely glows.  No
-          // opacity transparency — the dimming is entirely in light.
           emissiveIntensity={
-            (isActive ? 1.6 : isAnchor ? 1.1 : 0.7) * (1 - rankT * 0.85)
+            (isActive ? 1.6 : isAnchor ? 1.1 : 0.7) * (1 - rankT * 0.65)
           }
           roughness={0.6}
-          metalness={0} />
+          metalness={0}
+          // Always render on top of the knot tube — without this the
+          // transparent tube material renders over the sphere when
+          // depths are close, clipping the node visually.
+          depthTest={false}
+          depthWrite={false} />
       </mesh>
       <Html center distanceFactor={isHovered || isActive || isAnchor || isSelected ? 8 : 11}
             style={{ pointerEvents: "none" }}>
@@ -525,10 +553,16 @@ function Scene({
         const isAnchorTarget = m.toNode.rootPc === anchorRootPc;
         const fromV = new THREE.Vector3(...m.fromNode.pos);
         const toV   = new THREE.Vector3(...m.toNode.pos);
-        // Ghost marker at 60% of the way out — only used when collapsed.
+        // Ghost marker sits a fixed short distance out from the
+        // source node along the ray, so it stays right next to the
+        // node the user just Ctrl-clicked instead of floating far
+        // away near the (still-hidden) target.
+        const GHOST_DISTANCE = 1.6;
+        const dir = toV.clone().sub(fromV);
+        const dirLen = dir.length() || 1;
         const ghostV = expanded
           ? toV
-          : fromV.clone().lerp(toV, 0.6);
+          : fromV.clone().add(dir.multiplyScalar(Math.min(GHOST_DISTANCE, dirLen * 0.4) / dirLen));
         // Midpoint marker (for the "×" collapse toggle when expanded).
         const midV = fromV.clone().lerp(toV, 0.5);
         return (
