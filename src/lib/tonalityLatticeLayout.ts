@@ -748,12 +748,124 @@ export function buildCylinderLattice(
     }
   }
 
+  // ── Cable knots (modulation satellites) ────────────────────────────────
+  // For every pc the user has expanded via a Ctrl+click modulation
+  // spoke, build a cable knot wrapping the source-knot's tube.  The
+  // cable carries its own 49 same-root-as-pc tonalities arranged in
+  // alt arcs from the cable's "anchor mode" (the user's anchor mode,
+  // rooted at this pc — e.g. G Ionian if anchor is C Ionian and
+  // modulation is +P5).  BFS-process so a child whose source is
+  // already built can be processed; we loop until no progress.
+  let progress = true;
+  while (progress) {
+    progress = false;
+    for (const [childPc, info] of expansionInfo) {
+      if (pcKnots.has(childPc)) continue;
+      const sourceNode = nodeMap.get(info.sourceNodeId);
+      if (!sourceNode) continue;
+      const parentPc = sourceNode.rootPc;
+      const parentCfg = pcKnots.get(parentPc);
+      if (!parentCfg) continue;
+      const childKeyEntry = uniqueKeys.find(uk => uk.key.pc === childPc);
+      if (!childKeyEntry) continue;
+
+      const cableCfg: KnotConfig = {
+        pc: childPc,
+        center: [0, 0, 0],
+        R: KNOT_R, r: KNOT_r, P: KNOT_P, Q: KNOT_Q,
+        intervalR: 0,
+        parentPc,
+        wraps: info.modSemis,
+        cableOffset: parentCfg.r * 0.45,
+        cableTOffset: sourceNode.knotT / TWO_PI,
+        sourceNodeId: info.sourceNodeId,
+      };
+      pcKnots.set(childPc, cableCfg);
+
+      // Compute the cable's "anchor pitch set": the user's anchor mode
+      // rooted at the cable's pc.
+      const childAnchorPcSet = new Set<number>();
+      if (anchorFamily && anchorModeName) {
+        const anchorMode = modes.get(anchorFamily.id)?.find(m => m.name === anchorModeName);
+        if (anchorMode) {
+          for (const s of anchorMode.scale) {
+            childAnchorPcSet.add(((childPc + s) % edo + edo) % edo);
+          }
+        }
+      }
+      const childAltOf = (t: Tonality): number => {
+        const tSet = new Set<number>();
+        for (const s of t.mode.scale) tSet.add(((t.pc + s) % edo + edo) % edo);
+        let symdiff = 0;
+        for (const v of tSet) if (!childAnchorPcSet.has(v)) symdiff++;
+        for (const v of childAnchorPcSet) if (!tSet.has(v)) symdiff++;
+        return symdiff / 2;
+      };
+      const childIsAnchor = (t: Tonality): boolean =>
+        (anchorFamily ? t.family.id === anchorFamily.id : true)
+        && (anchorModeName ? t.mode.name === anchorModeName : true);
+
+      // Build all 49 (family × mode) tonalities at this child pc, group
+      // into arcs, sort each by brightness desc.
+      const childTonalities: Tonality[] = [];
+      for (const family of families) {
+        for (const mode of (modes.get(family.id) ?? [])) {
+          childTonalities.push({
+            keyIdx: childKeyEntry.keyIdx,
+            key: childKeyEntry.key,
+            family, mode,
+            pc: childPc,
+          });
+        }
+      }
+      const childArcs: Tonality[][] = Array.from({ length: ALT_LEVELS }, () => []);
+      let childAnchorTonality: Tonality | null = null;
+      for (const t of childTonalities) {
+        if (childIsAnchor(t)) { childAnchorTonality = t; continue; }
+        const alt = childAltOf(t);
+        const idx = alt === 0 ? 1 : Math.min(alt, ALT_LEVELS - 1);
+        childArcs[idx].push(t);
+      }
+
+      // Place nodes along the cable curve.  sampleKnotCurve handles
+      // the cable parameterisation given (cableCfg, parentCfg).
+      const placeCableNode = (t: Tonality, knotT: number, alt: number, rank: number) => {
+        const u = knotT / TWO_PI;
+        const pos = sampleKnotCurve(cableCfg, parentCfg, u);
+        const id = `${t.keyIdx}::${t.family.id}::${t.mode.name}`;
+        const node: LatticeNode = {
+          id, key: t.key, keyIdx: t.keyIdx,
+          family: t.family, mode: t.mode,
+          pos,
+          rootPc: t.pc,
+          knotT, modeRank: rank,
+          altLevel: alt,
+        };
+        nodes.push(node);
+        nodeMap.set(id, node);
+      };
+      if (childAnchorTonality) {
+        placeCableNode(childAnchorTonality, 0.5 * ARC_T, 0, 0);
+      }
+      for (let alt = 1; alt < ALT_LEVELS; alt++) {
+        const arc = childArcs[alt];
+        if (arc.length === 0) continue;
+        arc.sort((a, b) => b.mode.brightness - a.mode.brightness);
+        const arcStart = alt * ARC_T;
+        for (let i = 0; i < arc.length; i++) {
+          const knotT = arcStart + ARC_T * (i + 0.5) / arc.length;
+          const rank = arc.length > 1 ? (i / (arc.length - 1)) * 6 : 0;
+          placeCableNode(arc[i], knotT, alt, rank);
+        }
+      }
+      progress = true;
+    }
+  }
+
   // Suppress unused-noise warnings from helpers we keep available.
   void PC_OFFSET_BY_SEMIS;
   void SEMIS_TO_INTERVAL_CLASS;
   void PC_KNOT_SPACING;
-  void sampleKnotCurve;
-  void expansionInfo;
   void X_EDGE_COLOR;
   void intervalSteps;
 
@@ -838,7 +950,7 @@ export interface ModulationEdge {
   semis?: number;
 }
 
-function intervalSteps(edo: number, semitones12: number): number {
+export function intervalSteps(edo: number, semitones12: number): number {
   // Map 12-EDO semitones to the active EDO's step count.
   if (edo === 12) return semitones12;
   if (edo === 31) {

@@ -127,6 +127,7 @@ import { audioEngine } from "@/lib/audioEngine";
 import {
   buildCylinderLattice, LATTICE_FAMILIES,
   scaleNoteNames, computeModulationEdges, sampleKnotCurve, cablePoint,
+  intervalSteps,
   type TonalityLattice, type LatticeNode, type ModulationEdge,
   type KnotConfig, type PcExpansion,
 } from "@/lib/tonalityLatticeLayout";
@@ -619,16 +620,16 @@ function Scene({
         if (!sourceNode) return null;
         const sourcePos = new THREE.Vector3(...sourceNode.pos);
         const GHOST_DISTANCE = 1.6;
-        const MOD_SPOKES: Array<{ label: string; color: string; dir: [number, number, number] }> = [
-          { label: "+P5", color: "#9966ff", dir: [ 1,  0,  0] },
-          { label: "+P4", color: "#9966ff", dir: [-1,  0,  0] },
-          { label: "+M3", color: "#22ddaa", dir: [ 0,  1,  0] },
-          { label: "−M3", color: "#22ddaa", dir: [ 0, -1,  0] },
-          { label: "+m3", color: "#3aafff", dir: [ 0.7, 0,  0.7] },
-          { label: "−m3", color: "#3aafff", dir: [-0.7, 0, -0.7] },
-          { label: "+M2", color: "#ff5588", dir: [ 0,  0,  1] },
-          { label: "−M2", color: "#ff5588", dir: [ 0,  0, -1] },
-          { label: "TT",  color: "#ff9933", dir: [ 0.7,  0.5, -0.7] },
+        const MOD_SPOKES: Array<{ label: string; color: string; dir: [number, number, number]; semis: number }> = [
+          { label: "+P5", color: "#9966ff", dir: [ 1,  0,  0],     semis: 7 },
+          { label: "+P4", color: "#9966ff", dir: [-1,  0,  0],     semis: 5 },
+          { label: "+M3", color: "#22ddaa", dir: [ 0,  1,  0],     semis: 4 },
+          { label: "−M3", color: "#22ddaa", dir: [ 0, -1,  0],     semis: 8 },
+          { label: "+m3", color: "#3aafff", dir: [ 0.7, 0,  0.7],  semis: 3 },
+          { label: "−m3", color: "#3aafff", dir: [-0.7, 0, -0.7],  semis: 9 },
+          { label: "+M2", color: "#ff5588", dir: [ 0,  0,  1],     semis: 2 },
+          { label: "−M2", color: "#ff5588", dir: [ 0,  0, -1],     semis: 10 },
+          { label: "TT",  color: "#ff9933", dir: [ 0.7,  0.5, -0.7], semis: 6 },
         ];
         return MOD_SPOKES.map((m, i) => {
           const dirV = new THREE.Vector3(...m.dir).normalize().multiplyScalar(GHOST_DISTANCE);
@@ -647,7 +648,23 @@ function Scene({
                 depthWrite={false} />
               <mesh
                 position={endPos}
-                onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); /* TODO: modulate anchor */ }}
+                onClick={(e: ThreeEvent<MouseEvent>) => {
+                  e.stopPropagation();
+                  // Click a spoke → spawn a cable knot for that
+                  // modulation's target pc.  Build a synthetic
+                  // ModulationEdge so the existing onExpand handler
+                  // can record source + semis into pcExpansionInfo.
+                  const targetPc = (sourceNode.rootPc + intervalSteps(edo, m.semis)) % edo;
+                  const fakeEdge: ModulationEdge = {
+                    fromNode: sourceNode,
+                    toNode: sourceNode,
+                    kind: "interval",
+                    label: m.label,
+                    color: m.color,
+                    semis: m.semis,
+                  };
+                  onExpand(targetPc, fakeEdge);
+                }}
                 onPointerOver={(e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); document.body.style.cursor = "pointer"; }}
                 onPointerOut={() => { document.body.style.cursor = "default"; }}>
                 <sphereGeometry args={[0.12, 14, 10]} />
