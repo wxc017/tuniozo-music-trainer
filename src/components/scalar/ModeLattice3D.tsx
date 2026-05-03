@@ -804,23 +804,45 @@ function Scene({
               depthTest={false}
               depthWrite={false} />
             {labelVisible && (
-              <Html position={e.mid} center distanceFactor={isBridge ? 14 : 9}
-                    style={{ pointerEvents: "none" }}
-                    zIndexRange={[100, 0]}>
-                <div style={{
-                  background: "#0a0a0acc",
-                  border: `1px solid ${isBridge ? "#ccddee" : e.color}`,
-                  color: isBridge ? "#ffffff" : e.color,
-                  padding: isBridge ? "1px 3px" : "0 1px",
-                  borderRadius: 2,
-                  fontSize: isBridge ? 7 : 5,
-                  fontWeight: 700,
-                  lineHeight: isBridge ? "8px" : "6px",
-                  whiteSpace: "nowrap",
-                }}>
-                  +{e.alt}
-                </div>
-              </Html>
+              isBridge ? (
+                // Bridge labels render at fixed screen size (no
+                // distanceFactor) so they're always visible regardless
+                // of camera zoom — they're the lattice's primary
+                // structural readout and shouldn't shrink.
+                <Html position={e.mid} center
+                      style={{ pointerEvents: "none" }}
+                      zIndexRange={[100, 0]}>
+                  <div style={{
+                    background: "#0a0a0aee",
+                    border: "1px solid #ccddee",
+                    color: "#ffffff",
+                    padding: "2px 6px",
+                    borderRadius: 3,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    whiteSpace: "nowrap",
+                  }}>
+                    +{e.alt}
+                  </div>
+                </Html>
+              ) : (
+                <Html position={e.mid} center distanceFactor={9}
+                      style={{ pointerEvents: "none" }}>
+                  <div style={{
+                    background: "#0a0a0acc",
+                    border: `1px solid ${e.color}`,
+                    color: e.color,
+                    padding: "0 1px",
+                    borderRadius: 1,
+                    fontSize: 5,
+                    fontWeight: 700,
+                    lineHeight: "6px",
+                    whiteSpace: "nowrap",
+                  }}>
+                    +{e.alt}
+                  </div>
+                </Html>
+              )
             )}
           </group>
         );
