@@ -580,11 +580,14 @@ function Scene({
             <Line
               points={[m.fromNode.pos, [ghostV.x, ghostV.y, ghostV.z]]}
               color={m.color}
-              lineWidth={expanded ? 2.4 : 1.6}
-              transparent opacity={expanded ? 0.95 : 0.75}
+              lineWidth={expanded ? 2.8 : 2.0}
+              transparent opacity={expanded ? 0.95 : 0.85}
               dashed={!expanded}
               dashScale={20}
-              gapSize={0.3} />
+              gapSize={0.3}
+              renderOrder={2}
+              depthTest={false}
+              depthWrite={false} />
             {/* Alt-distance label: how many notes differ between the
                 Ctrl-clicked node and this modulation's destination. */}
             <Html position={[rayMidV.x, rayMidV.y, rayMidV.z]} center distanceFactor={9}
@@ -677,7 +680,10 @@ function Scene({
           <group key={`${e.type}-${i}`}>
             <Line points={e.points} color={e.color}
               lineWidth={e.type === "z" ? 3.2 : 2.6}
-              transparent opacity={e.type === "z" ? 1 : 0.9} />
+              transparent opacity={e.type === "z" ? 1 : 0.9}
+              renderOrder={2}
+              depthTest={false}
+              depthWrite={false} />
             {labelVisible && (
               <Html position={e.mid} center distanceFactor={9}
                     style={{ pointerEvents: "none" }}>
