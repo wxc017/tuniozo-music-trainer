@@ -264,13 +264,15 @@ function PcKnot({ cfg, parentCfg, isAnchorPc }: {
   const NODE_CABLE_RADIUS = 0.18;
 
   if (isCable && cableCurve) {
-    // Cable knot — TubeGeometry along the cable curve.  Opaque so its
-    // colour stays vivid against the shell from any angle, and gets
-    // proper depth sorting (shell behind cable is occluded; shell in
-    // front blends over it but doesn't wash it out).
+    // Cable knot — TubeGeometry along the cable curve.  Tubular
+    // segment count scales with wraps so the high-wrap cables (e.g.
+    // tritone with wraps=6) stay smooth: each wrap around the parent
+    // tube gets at least ~160 segments, on top of a 320-segment floor
+    // for the parent-path portion.  Tritone gets ~1280 segments.
+    const tubularSegments = Math.max(320, 320 + cfg.wraps * 160);
     return (
       <mesh renderOrder={1}>
-        <tubeGeometry args={[cableCurve, 320, NODE_CABLE_RADIUS, 10, true]} />
+        <tubeGeometry args={[cableCurve, tubularSegments, NODE_CABLE_RADIUS, 12, true]} />
         <meshStandardMaterial
           color={color} emissive={emissive}
           emissiveIntensity={emissiveIntensity}
@@ -507,9 +509,17 @@ function Scene({
         let dU = uB - uA;
         if (dU >  0.5) dU -= 1;
         if (dU < -0.5) dU += 1;
+        // Cables wrap the parent's tube `wraps` times across u in
+        // [0, 1].  An edge spanning |dU| of u length therefore makes
+        // ~|dU|·wraps revolutions around the parent — for tritone
+        // (wraps=6) bridges that's nearly a full revolution, which
+        // 18 samples cannot resolve smoothly.  Scale up.
+        const cableWraps = cfg.parentPc !== null ? cfg.wraps : 0;
+        const samples = Math.max(NSAMPLES,
+          Math.ceil(Math.abs(dU) * (1 + cableWraps) * 24));
         points = [];
-        for (let s = 0; s <= NSAMPLES; s++) {
-          const u = ((uA + (s / NSAMPLES) * dU) % 1 + 1) % 1;
+        for (let s = 0; s <= samples; s++) {
+          const u = ((uA + (s / samples) * dU) % 1 + 1) % 1;
           points.push(sampleKnotCurve(cfg, parentCfg, u));
         }
         mid = points[Math.floor(points.length / 2)];

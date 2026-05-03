@@ -798,7 +798,11 @@ export function buildCylinderLattice(
         intervalR: 0,
         parentPc,
         wraps: info.modSemis,
-        cableOffset: parentCfg.r * 0.45,
+        // Distance from the parent's tube centre.  Push cables well
+        // clear of the parent (and of each other for stacked
+        // modulations) so the lattice doesn't crowd up around the
+        // anchor when the user opens several modulations.
+        cableOffset: parentCfg.r * 1.6,
         cableTOffset: 0,
         sourceNodeId: info.sourceNodeId,
       };
