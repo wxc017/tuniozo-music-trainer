@@ -308,7 +308,7 @@ export default function ScalarTab({
                    style={{ color: activeFamilyColor }}>
                   {level.name.toUpperCase()}
                 </p>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {level.chords.map((entry, i) => {
                     const key = `${level.name}-${i}`;
                     const lit = highlightedChordKey === key;
@@ -319,7 +319,7 @@ export default function ScalarTab({
                           title={entry.steps
                             ? `Play ${entry.label} — ${entry.steps.join(", ")}`
                             : entry.label}
-                          className="px-3 py-1.5 text-sm font-semibold rounded-l border-y border-l border-[#2a2a2a] bg-[#141414] text-[#bbb] hover:text-white hover:border-[#444] transition-colors">
+                          className="px-4 py-2.5 text-xl font-semibold rounded-l border-y border-l border-[#2a2a2a] bg-[#141414] text-[#bbb] hover:text-white hover:border-[#444] transition-colors">
                           {formatRomanNumeral(entry.label)}
                         </button>
                         <button
@@ -327,7 +327,7 @@ export default function ScalarTab({
                           title={lit
                             ? `Click to clear highlight on ${entry.label}`
                             : `Highlight ${entry.label} on keyboard — stays until clicked again`}
-                          className="px-1.5 py-1.5 text-[10px] rounded-r border-y border-r transition-colors"
+                          className="px-2 py-2.5 text-[11px] rounded-r border-y border-r transition-colors"
                           style={lit
                             ? { borderColor: activeFamilyColor,
                                 background: activeFamilyColor + "30",
