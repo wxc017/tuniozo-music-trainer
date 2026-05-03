@@ -872,36 +872,43 @@ export function buildCylinderLattice(
   const edges: LatticeEdge[] = [];
   void Z_EDGE_COLOR;
 
-  // Bridge edges: connect the last node of each arc to the first
-  // node of the next arc, forming a 7-cycle around the knot.  Each
-  // bridge is labelled with the alt distance of its further-from-anchor
-  // endpoint, giving anchor two outgoing thin edges: "+1" forward to
-  // arc 1 and "+6" backward via the closing edge from arc 6.
-  const arcFirstNode: (LatticeNode | null)[] =
-    Array.from({ length: ALT_LEVELS }, () => null);
-  const arcLastNode: (LatticeNode | null)[] =
-    Array.from({ length: ALT_LEVELS }, () => null);
+  // Bridge edges: per-pc.  Group nodes by their rootPc and generate
+  // a 7-cycle of bridges WITHIN each pc, so the main knot has its
+  // own +1..+6 bridges AND every modulation cable has its own
+  // bridges between its arc transitions — they don't get tangled
+  // across pcs.
+  const nodesByPc = new Map<number, LatticeNode[]>();
   for (const node of nodes) {
-    const a = node.altLevel ?? -1;
-    if (a < 0 || a >= ALT_LEVELS) continue;
-    if (arcFirstNode[a] === null) arcFirstNode[a] = node;
-    arcLastNode[a] = node;
+    let arr = nodesByPc.get(node.rootPc);
+    if (!arr) { arr = []; nodesByPc.set(node.rootPc, arr); }
+    arr.push(node);
   }
-  for (let alt = 0; alt < ALT_LEVELS; alt++) {
-    const fromArc = alt;
-    const toArc = (alt + 1) % ALT_LEVELS;
-    const from = arcLastNode[fromArc];
-    const to = arcFirstNode[toArc];
-    if (!from || !to) continue;
-    // Label = alt of the further-from-anchor endpoint (so the
-    // forward step labels +1, +2, ..., +6 and the closing step
-    // labels +6 because its further endpoint is still arc 6).
-    const labelAlt = Math.max(fromArc, toArc) || ALT_LEVELS - 1;
-    edges.push({
-      fromId: from.id, toId: to.id, type: "bridge",
-      alt: labelAlt,
-      color: "#aabbcc",
-    });
+  for (const [, pcNodes] of nodesByPc) {
+    const arcFirstNode: (LatticeNode | null)[] =
+      Array.from({ length: ALT_LEVELS }, () => null);
+    const arcLastNode: (LatticeNode | null)[] =
+      Array.from({ length: ALT_LEVELS }, () => null);
+    for (const node of pcNodes) {
+      const a = node.altLevel ?? -1;
+      if (a < 0 || a >= ALT_LEVELS) continue;
+      if (arcFirstNode[a] === null) arcFirstNode[a] = node;
+      arcLastNode[a] = node;
+    }
+    for (let alt = 0; alt < ALT_LEVELS; alt++) {
+      const fromArc = alt;
+      const toArc = (alt + 1) % ALT_LEVELS;
+      const from = arcLastNode[fromArc];
+      const to = arcFirstNode[toArc];
+      if (!from || !to) continue;
+      // Label = alt of the further-from-anchor endpoint (forward
+      // step labels +1..+6; closing step labels +6).
+      const labelAlt = Math.max(fromArc, toArc) || ALT_LEVELS - 1;
+      edges.push({
+        fromId: from.id, toId: to.id, type: "bridge",
+        alt: labelAlt,
+        color: "#aabbcc",
+      });
+    }
   }
 
   let minX = Infinity, maxX = -Infinity;
