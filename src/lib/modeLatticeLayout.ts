@@ -159,25 +159,19 @@ function buildEdges(nodes: ModeNode[], anchorKey: string | null): ModeEdge[] {
   return out;
 }
 
-// Alteration-axis layout.  Every non-anchor mode is placed on the axis
-// dedicated to its alteration distance from the anchor — so 1-alt
-// modes (regardless of family) all line up on one axis, 2-alt on
-// another axis, and so on.  This is what makes "C Mel Minor is 1-alt
-// from C Ionian" visually obvious: it sits right next to anchor on
-// the 1-alt line, not buried halfway down a separate "Mel Minor"
-// axis.
+// Concentric-ring layout.  The anchor sits at the origin.  Each
+// alteration distance forms a RING around the anchor at a radius
+// proportional to that distance — so all 1-alt modes are equidistant
+// from anchor, rotated around it, all 2-alt modes form the next
+// ring out, etc.
 //
-// Within each alt-axis the modes are ordered by brightness so the
-// reading direction "darker → brighter" stays consistent.
+// Within each ring, modes are spread evenly by brightness so the
+// reading goes "darker on one side, brighter on the other".  The user
+// gets clear visual paths: spokes from anchor cross multiple rings,
+// arcs along a ring stay at the same alteration distance.
 //
-// Axis direction per alteration distance:
-//   0 (relatives, same notes) → -Y (below anchor)
-//   1                          → +Y (directly above)
-//   2                          → +X (right)
-//   3                          → -X (left)
-//   4                          → +Z (forward)
-//   5                          → -Z (back)
-//   6+                         → diagonal
+// Rings are interleaved with small Y biases (alternating up/down) so
+// the structure reads as 3D rather than a flat target board.
 function familyAxisLayout(
   nodes: ModeNode[],
   anchorKey: string | null,
@@ -197,68 +191,38 @@ function familyAxisLayout(
     byAlt.get(alt)!.push(node);
   }
 
-  // Each alteration distance gets its own world-axis direction.  This
-  // is what gives the "1-alt up, 2-alt right" reading pattern.  Higher
-  // distances (rare) cycle through diagonal directions.
-  const ALT_DIR: [number, number, number][] = [
-    [0, -1, 0],                     // 0  — relatives, same notes (below)
-    [0,  1, 0],                     // 1  — up
-    [1,  0, 0],                     // 2  — right
-    [-1, 0, 0],                     // 3  — left
-    [0,  0,  1],                    // 4  — forward
-    [0,  0, -1],                    // 5  — back
-    [ 0.7,  0.7,  0],               // 6  — diagonal up-right
-    [-0.7,  0.7,  0],               // 7  — diagonal up-left
-    [ 0.7, -0.7,  0],               // 8  — diagonal down-right
-    [-0.7, -0.7,  0],               // 9  — diagonal down-left
-  ];
-
-  const SPACING = 1.3;
-  // Number of "lanes" per axis — if more than this many modes share an
-  // alt distance, they're spread on a small disc perpendicular to the
-  // axis so they don't pile on top of each other.
-  const LANE_PERP_SPREAD = 0.85;
+  // Tunable: ring radii and the per-ring Y bias that gives the structure
+  // some 3D depth.  Even-numbered alt-rings tilt slightly down, odd up.
+  const RING_BASE = 1.6;
+  const RING_STEP = 1.2;
 
   for (const [alt, group] of byAlt) {
-    const dir = ALT_DIR[alt] ?? ALT_DIR[ALT_DIR.length - 1];
-    // Order by brightness ascending: darker mode closer to anchor,
-    // brighter mode further out.
-    group.sort((a, b) => a.brightness - b.brightness);
+    const radius = RING_BASE + alt * RING_STEP;
+    // Within each ring, sort by brightness ascending then group by
+    // family so families form arcs on the ring.
+    group.sort((a, b) => {
+      if (a.family !== b.family) {
+        return FAMILY_ORDER.indexOf(a.family) - FAMILY_ORDER.indexOf(b.family);
+      }
+      return a.brightness - b.brightness;
+    });
 
-    // Build a perpendicular basis for spreading nodes that share the
-    // same axis position.
-    const upGuess: [number, number, number] = Math.abs(dir[1]) > 0.95 ? [1, 0, 0] : [0, 1, 0];
-    let p1: [number, number, number] = [
-      dir[1] * upGuess[2] - dir[2] * upGuess[1],
-      dir[2] * upGuess[0] - dir[0] * upGuess[2],
-      dir[0] * upGuess[1] - dir[1] * upGuess[0],
-    ];
-    const p1Len = Math.hypot(p1[0], p1[1], p1[2]) || 1;
-    p1 = [p1[0] / p1Len, p1[1] / p1Len, p1[2] / p1Len];
-    const p2: [number, number, number] = [
-      dir[1] * p1[2] - dir[2] * p1[1],
-      dir[2] * p1[0] - dir[0] * p1[2],
-      dir[0] * p1[1] - dir[1] * p1[0],
-    ];
+    // Stagger Y per ring: alt 0 below, alt 1 above, alt 2 below, ...
+    // gives a 3D corkscrew rather than a flat target.
+    const yBias = (alt % 2 === 0 ? -1 : 1) * 0.35 * Math.min(alt + 1, 4);
 
-    // Place modes along the axis.  At each axial position, fan a small
-    // perpendicular ring if the axis has many modes — clusters of more
-    // than ~3 nodes per axial slot get rotated around the axis so they
-    // don't stack.
     const N = group.length;
     for (let i = 0; i < N; i++) {
-      const axialDist = (i + 1) * SPACING;
-      // Optional fan: nodes with the same axialDist offset get angular
-      // spread.  Here we just leave them on the axis since brightness
-      // is already a discriminator; each mode gets its own axialDist.
-      const px = dir[0] * axialDist;
-      const py = dir[1] * axialDist;
-      const pz = dir[2] * axialDist;
-      group[i].pos = [px, py, pz];
+      // Per-ring rotational offset so the rings don't all start their
+      // first node at the same azimuth — keeps spokes from overlapping.
+      const startOffset = alt * 0.31;
+      const angle = (i / Math.max(1, N)) * Math.PI * 2 + startOffset;
+      group[i].pos = [
+        Math.cos(angle) * radius,
+        yBias,
+        Math.sin(angle) * radius,
+      ];
     }
-    // Suppress unused warnings about p2/LANE_PERP_SPREAD reserved for
-    // a future fan-out enhancement.
-    void p2; void LANE_PERP_SPREAD;
   }
 }
 
