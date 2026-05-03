@@ -319,6 +319,164 @@ export function findLatticeNode(
   return null;
 }
 
+// ── Single-key torus layout ─────────────────────────────────────────────
+// All 49 modes (7 families × 7 modes) for ONE key — the user's tonic.
+// Each (family, mode) pair lands on the surface of a twisted torus:
+//   u (major circle) → which family.   Anchor's family at u = 0.
+//   v (minor circle) → mode brightness rank within family.
+//   v_twisted = v + TWIST · u so the cross-section rotates as we go
+//   around — gives a twisted-torus topology rather than a flat ring.
+//
+// Y-edges = same family, brightness ±1 (arcs along the minor circle).
+// Z-edges = cross-family pairs whose pitch sets differ by 1 note
+// (chord across the surface, often a short tube between adjacent
+// family rings).  No X-edges — this view is locked to a single key.
+//
+// Torus parameters: R = 4 (major radius), r = 1.5 (minor), TWIST = 1
+// (one full minor-circle rotation per major loop).
+export const TORUS_PARAMS = { R: 4.0, r: 1.5, TWIST: 1 };
+
+export function buildSingleKeyLattice(
+  edo: number,
+  tonicPc: number,
+  anchorFamilyName: string | null,
+  anchorModeName: string | null,
+): TonalityLattice {
+  const families = LATTICE_FAMILIES;
+  const modes = new Map<string, LatticeMode[]>();
+  for (const family of families) {
+    const modeNames = PATTERN_SCALE_FAMILIES[family.familyName] ?? [];
+    const list: LatticeMode[] = [];
+    for (const modeName of modeNames) {
+      const m = buildMode(family, modeName, edo);
+      if (m) list.push(m);
+    }
+    modes.set(family.id, list);
+  }
+
+  // Brightness ranks within each family (0 = darkest, 6 = brightest).
+  const familyRank = new Map<string, Map<string, number>>();
+  for (const family of families) {
+    const list = (modes.get(family.id) ?? []).slice()
+      .sort((a, b) => a.brightness - b.brightness);
+    const rmap = new Map<string, number>();
+    list.forEach((m, i) => rmap.set(m.name, i));
+    familyRank.set(family.id, rmap);
+  }
+
+  const anchorFamily = anchorFamilyName
+    ? families.find(f => f.familyName === anchorFamilyName) ?? null
+    : null;
+  const anchorRank = anchorFamily && anchorModeName
+    ? familyRank.get(anchorFamily.id)?.get(anchorModeName) ?? 0
+    : 0;
+
+  // Synthetic "key" for this view — only its pc matters.
+  const synthKey: LatticeKey = {
+    letter: "",
+    accidental: "",
+    name: "",
+    pc: ((tonicPc % edo) + edo) % edo,
+  };
+
+  const { R, r, TWIST } = TORUS_PARAMS;
+  const FAM_N = families.length;
+  const MODE_N = 7;
+
+  const nodes: LatticeNode[] = [];
+  const nodeMap = new Map<string, LatticeNode>();
+
+  for (const family of families) {
+    const modeList = modes.get(family.id) ?? [];
+    for (const mode of modeList) {
+      const id = `0::${family.id}::${mode.name}`;
+
+      // Family rotation around the major circle, anchor's family at u = 0.
+      const familyOffset = anchorFamily
+        ? family.zOrd - anchorFamily.zOrd
+        : family.zOrd;
+      const u = (familyOffset / FAM_N) * Math.PI * 2;
+
+      // Mode rotation around the minor circle, anchor's mode at v = 0.
+      const modeRank = familyRank.get(family.id)?.get(mode.name) ?? 0;
+      const modeOffset = modeRank - anchorRank;
+      const v = (modeOffset / MODE_N) * Math.PI * 2;
+
+      // Twist so the cross-section rotates as we travel around the
+      // major circle — gives the twisted-torus look.
+      const vTwisted = v + TWIST * u;
+      const cosV = Math.cos(vTwisted);
+      const x = (R + r * cosV) * Math.cos(u);
+      const y = r * Math.sin(vTwisted);
+      const z = (R + r * cosV) * Math.sin(u);
+
+      const node: LatticeNode = {
+        id,
+        key: synthKey,
+        keyIdx: 0,
+        family,
+        mode,
+        pos: [x, y, z],
+        rootPc: synthKey.pc,
+      };
+      nodes.push(node);
+      nodeMap.set(id, node);
+    }
+  }
+
+  // Y-edges: same family, brightness-adjacent modes.
+  const edges: LatticeEdge[] = [];
+  for (const family of families) {
+    const list = (modes.get(family.id) ?? []).slice()
+      .sort((a, b) => a.brightness - b.brightness);
+    for (let i = 0; i < list.length - 1; i++) {
+      const fromId = `0::${family.id}::${list[i].name}`;
+      const toId   = `0::${family.id}::${list[i + 1].name}`;
+      if (nodeMap.has(fromId) && nodeMap.has(toId)) {
+        edges.push({ fromId, toId, type: "y", alt: 0, color: family.color });
+      }
+    }
+  }
+
+  // Z-edges: cross-family pairs at the same key with 1-alt distance.
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      if (a.family === b.family) continue;
+      const setA = new Set(a.mode.scale.map(s => ((tonicPc + s) % edo + edo) % edo));
+      const setB = new Set(b.mode.scale.map(s => ((tonicPc + s) % edo + edo) % edo));
+      let symdiff = 0;
+      for (const v of setA) if (!setB.has(v)) symdiff++;
+      for (const v of setB) if (!setA.has(v)) symdiff++;
+      if (symdiff / 2 === 1) {
+        edges.push({ fromId: a.id, toId: b.id, type: "z", alt: 1, color: Z_EDGE_COLOR });
+      }
+    }
+  }
+
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  for (const n of nodes) {
+    if (n.pos[0] < minX) minX = n.pos[0];
+    if (n.pos[0] > maxX) maxX = n.pos[0];
+    if (n.pos[1] < minY) minY = n.pos[1];
+    if (n.pos[1] > maxY) maxY = n.pos[1];
+    if (n.pos[2] < minZ) minZ = n.pos[2];
+    if (n.pos[2] > maxZ) maxZ = n.pos[2];
+  }
+
+  return {
+    keys: [synthKey],
+    families,
+    modes,
+    nodes,
+    edges,
+    nodeMap,
+    bounds: { minX, maxX, minY, maxY, minZ, maxZ },
+  };
+}
+
 // Filter the full lattice down to "anchor's neighbourhood": every node
 // reachable from the anchor within `maxHops` edge steps, with positions
 // recentred so the anchor lands at world origin.  Used when the user
