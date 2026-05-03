@@ -319,14 +319,21 @@ interface NodeMeshProps {
 
 function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHover, onClick }: NodeMeshProps) {
   const meshRef = useRef<THREE.Mesh>(null);
-  // Dim darker modes dramatically by lerping the family color toward
-  // black on the rank scale — rank 0 (brightest) keeps the full
-  // family hue, rank 6 (darkest) is mostly black.  Combined with the
-  // opacity falloff this gives a strong visual "bright vs dark" read.
+  // Per-mode colour ramp.  Brightest mode in the family pops as a
+  // neon-bright (lerped well past the family hue toward white);
+  // mid-rank stays at the family hue; darkest fades into near-black.
+  // The neon push is what stops the brighter modes from blending
+  // into the bluish knot-tube colour behind them.
   const rankT = node.modeRank / 6;
   const baseColor = useMemo(() => {
     const c = new THREE.Color(node.family.color);
-    c.lerp(new THREE.Color("#000000"), rankT * 0.85);
+    if (rankT < 0.5) {
+      // Brighten upper half of the rank scale toward white.
+      c.lerp(new THREE.Color("#ffffff"), (0.5 - rankT) * 1.1);  // up to 0.55 white at rank 0
+    } else {
+      // Darken lower half toward black.
+      c.lerp(new THREE.Color("#000000"), (rankT - 0.5) * 1.8);  // up to 0.9 black at rank 6
+    }
     return c;
   }, [node.family.color, rankT]);
   const emissive = baseColor;
@@ -359,9 +366,14 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
         <meshStandardMaterial
           color={baseColor}
           emissive={emissive}
-          emissiveIntensity={(isActive ? 0.9 : isAnchor ? 0.55 : 0.18) * dim}
-          roughness={0.35}
-          metalness={0.4}
+          // Boost emissive on the brightest ranks so they actually
+          // glow against the knot tube; dim it on darker ranks.
+          emissiveIntensity={
+            (isActive ? 1.3 : isAnchor ? 0.9 : 0.45)
+            * (rankT < 0.5 ? 1 + (0.5 - rankT) * 3 : Math.max(0.05, 1 - (rankT - 0.5) * 1.8))
+          }
+          roughness={0.3}
+          metalness={0.45}
           transparent
           opacity={opacity} />
       </mesh>
