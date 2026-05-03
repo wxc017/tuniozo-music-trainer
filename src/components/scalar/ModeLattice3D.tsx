@@ -16,7 +16,7 @@ import { OrbitControls, Line, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { audioEngine } from "@/lib/audioEngine";
 import {
-  buildTonalityLattice, findLatticeNode, filterToAnchor, LATTICE_FAMILIES,
+  buildSingleKeyLattice, LATTICE_FAMILIES, TORUS_PARAMS,
   type TonalityLattice, type LatticeNode,
 } from "@/lib/tonalityLatticeLayout";
 import { formatHalfAccidentals, getSolfege } from "@/lib/edoData";
@@ -126,26 +126,24 @@ interface SceneProps {
 }
 
 function Scene({ lattice, anchorId, activeId, hoveredId, showFamilies, showEdges, onHover, onClick }: SceneProps) {
-  // Edges grouped by type for separate render passes.
-  const edgesByType = useMemo(() => {
-    const out: Record<string, LatticeNode["pos"][]> = { x: [], y: [], z: [] };
+  // Edges that survive family + type filtering, in render order
+  // (z-edges last so they sit on top).
+  const visibleEdges = useMemo(() => {
+    type Pair = { color: string; type: "y" | "z"; points: [LatticeNode["pos"], LatticeNode["pos"]] };
+    const out: Pair[] = [];
     for (const e of lattice.edges) {
+      if (e.type === "x") continue;   // single-key view has no X-edges
       const a = lattice.nodeMap.get(e.fromId);
       const b = lattice.nodeMap.get(e.toId);
       if (!a || !b) continue;
       if (!showFamilies[a.family.id] || !showFamilies[b.family.id]) continue;
       if (!showEdges[e.type]) continue;
-      const arr = out[e.type];
-      arr.push(a.pos);
-      arr.push(b.pos);
+      out.push({ color: e.color, type: e.type as "y" | "z", points: [a.pos, b.pos] });
     }
+    // Render y edges first, z edges last (so cross-family links sit on top).
+    out.sort((a, b) => (a.type === "z" ? 1 : 0) - (b.type === "z" ? 1 : 0));
     return out;
   }, [lattice, showFamilies, showEdges]);
-
-  // Build edge geometry.  We push pairs of points and let Line draw them.
-  const xPts = edgesByType.x;
-  const yPts = edgesByType.y;
-  const zPts = edgesByType.z;
 
   return (
     <>
@@ -154,33 +152,23 @@ function Scene({ lattice, anchorId, activeId, hoveredId, showFamilies, showEdges
       <pointLight position={[-10, -5, -10]} intensity={0.7} />
       <pointLight position={[0, 0, 14]} intensity={0.6} />
 
-      {/* X-edges (key fifths) — thin, dashed, low opacity */}
-      {xPts.length > 1 && Array.from({ length: xPts.length / 2 }).map((_, i) => (
-        <Line key={`x-${i}`}
-          points={[xPts[i * 2], xPts[i * 2 + 1]]}
-          color="#1f3146" lineWidth={0.8} dashed dashScale={30} gapSize={0.4}
-          transparent opacity={0.4} />
-      ))}
+      {/* Twisted-torus scaffold — wireframe so the underlying surface
+          structure is visible but doesn't compete with the nodes.  The
+          nodes sit ON this surface (with twist applied), so the user can
+          see the topology that organises them. */}
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[TORUS_PARAMS.R, TORUS_PARAMS.r, 24, 64]} />
+        <meshBasicMaterial color="#1a2540" wireframe transparent opacity={0.18} />
+      </mesh>
 
-      {/* Y-edges (brightness within family) — family color, thin */}
-      {yPts.length > 1 && Array.from({ length: yPts.length / 2 }).map((_, i) => {
-        const a = yPts[i * 2];
-        const b = yPts[i * 2 + 1];
-        // Find which family by its position (z); we look up via the
-        // y-pts come in family order, so just match z to a family color.
-        const z = a[2];
-        const fam = LATTICE_FAMILIES.find(f => Math.abs((f.zOrd - (LATTICE_FAMILIES.length - 1) / 2) * 1.5 - z) < 0.01);
-        const color = fam?.color ?? "#445d7a";
-        return (
-          <Line key={`y-${i}`} points={[a, b]} color={color} lineWidth={1.0} transparent opacity={0.32} />
-        );
-      })}
-
-      {/* Z-edges (cross-family, 1-alt) — bright accent */}
-      {zPts.length > 1 && Array.from({ length: zPts.length / 2 }).map((_, i) => (
-        <Line key={`z-${i}`}
-          points={[zPts[i * 2], zPts[i * 2 + 1]]}
-          color="#22ddaa" lineWidth={1.5} transparent opacity={0.55} />
+      {visibleEdges.map((e, i) => (
+        e.type === "y" ? (
+          <Line key={`y-${i}`} points={e.points} color={e.color}
+            lineWidth={1.0} transparent opacity={0.45} />
+        ) : (
+          <Line key={`z-${i}`} points={e.points} color={e.color}
+            lineWidth={1.6} transparent opacity={0.7} />
+        )
       ))}
 
       {lattice.nodes.map(node => {
@@ -213,35 +201,33 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
     Object.fromEntries(LATTICE_FAMILIES.map(f => [f.id, true]))
   );
   const [showEdges, setShowEdges] = useState<Record<string, boolean>>({
-    x: true, y: true, z: true,
+    y: true, z: true,
   });
-  // Anchor-neighbourhood radius: 0 = anchor only, 1 = direct neighbours,
-  // 2 = adds 2-hop, etc.  null = show full lattice (no filter).
-  const [anchorHops, setAnchorHops] = useState<number | null>(2);
 
-  const fullLattice = useMemo(() => buildTonalityLattice(edo), [edo]);
+  // Parse the anchor's family + mode out of the picker selection.
+  const [anchorFamilyName, anchorModeName] = useMemo(() => {
+    if (!anchorKey) return [null, null] as [string | null, string | null];
+    const [f, m] = anchorKey.split("::");
+    return [f ?? null, m ?? null] as [string | null, string | null];
+  }, [anchorKey]);
 
-  // Resolve the user's selected tonality from the picker into a lattice
-  // node so we can highlight it.  Look up against the FULL lattice
-  // first — the filter step happens after.
-  const fullAnchorId = useMemo(() => {
-    if (!anchorKey) return null;
-    const [familyName, modeName] = anchorKey.split("::");
-    if (!familyName || !modeName) return null;
-    const node = findLatticeNode(fullLattice, familyName, modeName, tonicPc);
-    return node?.id ?? null;
-  }, [fullLattice, anchorKey, tonicPc]);
+  // Single-key torus lattice — 49 nodes (7 families × 7 modes), all
+  // positioned on the surface of a twisted torus, anchor at front
+  // (u=0, v=0).
+  const lattice = useMemo(
+    () => buildSingleKeyLattice(edo, tonicPc, anchorFamilyName, anchorModeName),
+    [edo, tonicPc, anchorFamilyName, anchorModeName]
+  );
 
-  // Either show the whole lattice, or filter it down to "anchor's
-  // neighbourhood within N hops" centred on the anchor.
-  const lattice = useMemo(() => {
-    if (anchorHops === null || !fullAnchorId) return fullLattice;
-    return filterToAnchor(fullLattice, fullAnchorId, anchorHops);
-  }, [fullLattice, fullAnchorId, anchorHops]);
-
-  // After filtering, the anchor's id is unchanged but its position is
-  // now at world origin.
-  const anchorId = fullAnchorId;
+  // The anchor in this lattice always sits at (0, 0, R+r) — the
+  // anchor's family is the one rotated to u = 0.  Compute its id for
+  // highlighting.
+  const anchorId = useMemo(() => {
+    if (!anchorFamilyName || !anchorModeName) return null;
+    const family = LATTICE_FAMILIES.find(f => f.familyName === anchorFamilyName);
+    if (!family) return null;
+    return `0::${family.id}::${anchorModeName}`;
+  }, [anchorFamilyName, anchorModeName]);
 
   useEffect(() => {
     return () => { audioEngine.stopDrone(); };
@@ -314,27 +300,8 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
     <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded overflow-hidden">
       <div className="px-3 py-2 flex items-center gap-2 flex-wrap border-b border-[#1a1a1a]">
         <p className="text-[10px] tracking-wider font-semibold text-[#888] mr-2">
-          TONALITY LATTICE
-          {anchorHops !== null && fullAnchorId
-            ? ` · ANCHOR + ${anchorHops}-HOP NEIGHBOURHOOD (${lattice.nodes.length} NODES)`
-            : ` · ALL ${lattice.nodes.length} NODES`}
+          TONALITY LATTICE · TWISTED TORUS · 7 FAMILIES × 7 MODES
         </p>
-        {/* Anchor-radius selector */}
-        <div className="flex items-center gap-1 mr-2">
-          <span className="text-[8px] text-[#444]">RADIUS</span>
-          {([1, 2, 3, null] as (number | null)[]).map((h, i) => (
-            <button key={i}
-              onClick={() => setAnchorHops(h)}
-              className="text-[9px] px-2 py-0.5 rounded border transition-colors"
-              style={{
-                borderColor: anchorHops === h ? "#7173e6" : "#222",
-                background: anchorHops === h ? "#1a1a2e" : "transparent",
-                color: anchorHops === h ? "#9999ee" : "#444",
-              }}>
-              {h === null ? "all" : `${h}`}
-            </button>
-          ))}
-        </div>
         {LATTICE_FAMILIES.map(f => (
           <button key={f.id}
             onClick={() => setShowFamilies(s => ({ ...s, [f.id]: !s[f.id] }))}
@@ -355,7 +322,6 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
         <span className="ml-2 text-[8px] text-[#444]">EDGES</span>
         {[
           { id: "y", label: "Y · brightness", color: "#445d7a" },
-          { id: "x", label: "X · fifths",     color: "#1f3146" },
           { id: "z", label: "Z · alteration", color: "#22ddaa" },
         ].map(e => (
           <button key={e.id}
