@@ -803,6 +803,11 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   // the chosen node — overrides the default focus heuristic
   // (active → selected → anchor) until it's reset.
   const [cameraFocusId, setCameraFocusId] = useState<string | null>(null);
+  // Set when handleExpand spawns a new satellite — focusPos will pan
+  // the orbit target to that satellite's centre as soon as it's been
+  // built into the lattice, then user-driven focus (active drone /
+  // selected node / shift-click) takes over again on the next click.
+  const [pendingFocusPc, setPendingFocusPc] = useState<number | null>(null);
 
   // When the picker (external anchorKey / tonicPc) changes, drop any
   // internal lattice re-anchor so the picker selection takes over.
@@ -838,6 +843,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
     setSelectedId(null);
     setShowRays(false);
     setCameraFocusId(null);
+    setPendingFocusPc(null);
   }, [anchorRootPc, anchorFamilyName, anchorModeName]);
 
   // Per-pc-knot lattice rebuilds when the effective anchor changes,
@@ -909,12 +915,14 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
     if (shift) {
       // Shift+click: focus the camera on this node.
       setCameraFocusId(node.id);
+      setPendingFocusPc(null);
       return;
     }
     // Every click updates selectedId so alt labels + (when on) the
     // modulation ray overlay always shift to the last-clicked node.
     const alreadyOnForThis = showRays && selectedId === node.id;
     setSelectedId(node.id);
+    setPendingFocusPc(null);
     if (ctrl) {
       // Ctrl+click: toggle the ray overlay.  If rays were already
       // showing FOR THIS node, turn them off; otherwise turn on so
@@ -968,6 +976,10 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
         });
         return next;
       });
+      // Pan the orbit camera to the new satellite knot's centre so the
+      // user actually sees the spawned knot — satellites land 30 units
+      // off in space and the user's view often won't include them.
+      setPendingFocusPc(norm);
     }
     // Hide the modulation-spoke overlay once the user has picked a
     // direction — the cable has spawned, the spokes have done their job.
@@ -1014,6 +1026,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
     setSelectedId(null);
     setShowRays(false);
     setCameraFocusId(null);
+    setPendingFocusPc(null);
     setLatticeAnchor(null);
     setExpandedRoots(new Set([((tonicPc % edo) + edo) % edo]));
     setPcExpansionInfo(new Map());
@@ -1026,11 +1039,19 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   // the user's centre of attention — active drone, then selected
   // node, then anchor.
   const focusPos = useMemo<[number, number, number] | null>(() => {
+    // After a modulation, focus the new satellite knot's centre once
+    // the lattice has been rebuilt with it.  Falls through to the
+    // usual focus chain (shift-click → active → selected → anchor)
+    // for normal interactions.
+    if (pendingFocusPc !== null) {
+      const cfg = lattice.pcKnots.get(pendingFocusPc);
+      if (cfg) return cfg.center;
+    }
     const id = cameraFocusId ?? activeId ?? selectedId ?? anchorId;
     if (!id) return null;
     const node = lattice.nodeMap.get(id);
     return node ? node.pos : null;
-  }, [cameraFocusId, activeId, selectedId, anchorId, lattice]);
+  }, [pendingFocusPc, cameraFocusId, activeId, selectedId, anchorId, lattice]);
 
   const updateGain = useCallback((index: number, value: number) => {
     if (!activeNode) return;
