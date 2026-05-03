@@ -105,7 +105,7 @@ function CameraFocusCenter({ targetPos }: { targetPos: [number, number, number] 
 }
 import { audioEngine } from "@/lib/audioEngine";
 import {
-  buildCylinderLattice, LATTICE_FAMILIES, CYLINDER_PARAMS,
+  buildCylinderLattice, LATTICE_FAMILIES, knotPoint,
   scaleNoteNames, computeModulationEdges,
   type TonalityLattice, type LatticeNode, type ModulationEdge,
 } from "@/lib/tonalityLatticeLayout";
@@ -152,20 +152,6 @@ function altDistance(a: LatticeNode, b: LatticeNode, edo: number): number {
   return symdiff / 2;
 }
 
-// Per-family torus-knot params.  All (p, q) pairs are coprime so the
-// knot closes as a single string winding through the family layer.
-// Each family gets a distinct knot so the user can read them by shape
-// as well as colour.
-const FAMILY_KNOTS: Record<string, { p: number; q: number }> = {
-  major:       { p: 2, q: 3 },   // trefoil
-  harmonic:    { p: 3, q: 2 },
-  melodic:     { p: 3, q: 4 },
-  subminor:    { p: 2, q: 5 },
-  neutral:     { p: 3, q: 5 },
-  supermajor:  { p: 4, q: 3 },
-  subharmonic: { p: 5, q: 2 },
-};
-
 interface NodeMeshProps {
   node: LatticeNode;
   edo: number;
@@ -174,7 +160,7 @@ interface NodeMeshProps {
   isHovered: boolean;
   isSelected: boolean;
   onHover: (id: string | null) => void;
-  onClick: (node: LatticeNode) => void;
+  onClick: (node: LatticeNode, ev: ThreeEvent<MouseEvent>) => void;
 }
 
 function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHover, onClick }: NodeMeshProps) {
@@ -198,7 +184,7 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
         ref={meshRef}
         onPointerOver={(e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); onHover(node.id); }}
         onPointerOut={() => onHover(null)}
-        onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onClick(node); }}>
+        onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onClick(node, e); }}>
         <sphereGeometry args={[r, 18, 14]} />
         <meshStandardMaterial
           color={baseColor}
@@ -272,7 +258,7 @@ interface SceneProps {
   showEdges: Record<string, boolean>;
   modulationEdges: ModulationEdge[];
   onHover: (id: string | null) => void;
-  onClick: (node: LatticeNode) => void;
+  onClick: (node: LatticeNode, ev: ThreeEvent<MouseEvent>) => void;
   onExpand: (rootPc: number) => void;
   onCollapse: (rootPc: number) => void;
 }
@@ -281,9 +267,6 @@ function Scene({
   lattice, edo, anchorId, anchorRootPc, activeId, hoveredId, selectedId, expandedRoots,
   showFamilies, showEdges, modulationEdges, onHover, onClick, onExpand, onCollapse,
 }: SceneProps) {
-  const anchorFamilyId = anchorId
-    ? lattice.nodeMap.get(anchorId)?.family.id ?? null
-    : null;
   // Show every y/z edge between currently-visible nodes (those whose
   // root pc has been expanded).  Each edge is annotated with its
   // pitch-set symmetric distance so the user can see the alteration
@@ -324,27 +307,30 @@ function Scene({
       <pointLight position={[-10, -5, -10]} intensity={0.7} />
       <pointLight position={[0, 0, 14]} intensity={0.7} />
 
-      {/* Per-family torus knots.  Each family is a single closed string
-          that winds around its own torus — the knot's (p, q) makes
-          each family visually distinct, while the carrying torus's
-          radius matches where that family's nodes live.  Rendered with
-          axis along Y so the knots stack concentrically the same way
-          the cylinders did. */}
-      {LATTICE_FAMILIES.map(f => {
-        const r = CYLINDER_PARAMS.R0 + f.zOrd * CYLINDER_PARAMS.DR;
-        const knot = FAMILY_KNOTS[f.id] ?? { p: 2, q: 3 };
-        const isAnchorFamily = f.id === anchorFamilyId;
+      {/* One twisted torus knot per expanded root pc.  All 49
+          tonalities sharing that root — every parallel mode and every
+          modal-interchange option — sit on a single knot.  Modulating
+          to a new root creates a new knot offset in 3D, with a string
+          (modulation ray) connecting them.  Anchor's knot is rendered
+          prominently; secondary roots dimmer. */}
+      {Array.from(lattice.pcKnots.values()).map(cfg => {
+        if (!expandedRoots.has(cfg.pc)) return null;
+        const isAnchorPc = cfg.pc === anchorRootPc;
+        // Sample the full closed knot as a polyline.
+        const NSAMPLES = 220;
+        const pts: [number, number, number][] = [];
+        for (let s = 0; s <= NSAMPLES; s++) {
+          const t = (s / NSAMPLES) * 2 * Math.PI;
+          const [lx, ly, lz] = knotPoint(cfg.R, cfg.r, cfg.P, cfg.Q, t);
+          pts.push([cfg.center[0] + lx, cfg.center[1] + ly, cfg.center[2] + lz]);
+        }
         return (
-          <mesh key={`knot-${f.id}`} rotation={[Math.PI / 2, 0, 0]}>
-            <torusKnotGeometry args={[r, 0.05, 220, 8, knot.p, knot.q]} />
-            <meshStandardMaterial
-              color={f.color}
-              emissive={f.color}
-              emissiveIntensity={isAnchorFamily ? 0.7 : 0.25}
-              transparent
-              opacity={isAnchorFamily ? 0.85 : 0.45}
-              depthWrite={false} />
-          </mesh>
+          <Line key={`pcknot-${cfg.pc}`}
+            points={pts}
+            color={isAnchorPc ? "#88bbff" : "#5577aa"}
+            lineWidth={isAnchorPc ? 2.4 : 1.4}
+            transparent
+            opacity={isAnchorPc ? 0.85 : 0.45} />
         );
       })}
 
@@ -446,19 +432,16 @@ function Scene({
           <Line points={e.points} color={e.color}
             lineWidth={e.type === "z" ? 2.0 : 1.6}
             transparent opacity={e.type === "z" ? 0.9 : 0.75} />
-          <Html position={e.mid} center distanceFactor={14}
+          <Html position={e.mid} center distanceFactor={48}
                 style={{ pointerEvents: "none" }}>
             <div style={{
-              background: "#0a0a0acc",
-              border: `1px solid ${e.color}`,
               color: e.color,
-              padding: "0 3px",
-              borderRadius: 3,
-              fontSize: 8,
+              fontSize: 4,
               fontWeight: 700,
-              lineHeight: "11px",
-              letterSpacing: 0.3,
+              lineHeight: "4px",
               whiteSpace: "nowrap",
+              opacity: 0.7,
+              textShadow: "0 0 2px #000",
             }}>
               +{e.alt}
             </div>
@@ -595,10 +578,16 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
     audioEngine.startDrone(notes, edo, 0.06 * playVol * 4, gains);
   }, [rootPitch, tonicPc, edo, playVol]);
 
-  const handleClick = useCallback((node: LatticeNode) => {
-    // Clicking a node serves two roles: select it (revealing its
-    // modulation rays) and toggle its drone.
-    setSelectedId(node.id);
+  const handleClick = useCallback((node: LatticeNode, ev: ThreeEvent<MouseEvent>) => {
+    const ctrl = ev.ctrlKey || ev.metaKey;
+    if (ctrl) {
+      // Ctrl/⌘+click: toggle the modulation overlay for this node.
+      // Doesn't affect the drone — keeps the picker / mixer intact.
+      setSelectedId(prev => prev === node.id ? null : node.id);
+      return;
+    }
+    // Plain click: toggle the drone for this node.  Modulation rays
+    // stay hidden (or attached to whichever node was last Ctrl-clicked).
     if (activeId === node.id) {
       audioEngine.stopDrone();
       setActiveId(null);
@@ -688,16 +677,10 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
 
   const solfege = useMemo(() => getSolfege(edo), [edo]);
 
-  // Initial camera position — pull back along +Z far enough to see the
-  // outermost cylinder, raised slightly so we look at the "front" of
-  // the structure (anchor's column).
-  const cameraPos = useMemo<[number, number, number]>(() => {
-    const w = lattice.bounds.maxX - lattice.bounds.minX;
-    const h = lattice.bounds.maxY - lattice.bounds.minY;
-    const d = lattice.bounds.maxZ - lattice.bounds.minZ;
-    const dist = Math.max(w, h, d) * 1.4;
-    return [0, 1.5, dist + 6];
-  }, [lattice]);
+  // Initial camera position — close enough to see the anchor knot
+  // clearly at startup; the user zooms out (or expands neighbouring
+  // roots) as they grow the structure.
+  const cameraPos: [number, number, number] = [3, 3, 11];
 
   return (
     <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded overflow-hidden">
@@ -838,7 +821,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
       })()}
 
       <div className="px-3 py-1.5 text-[9px] text-[#555] border-t border-[#1a1a1a] flex items-center gap-3">
-        <span>Click any node to drone its tonality.  Drag to orbit, scroll to zoom, arrow keys to pan.  Click "+" to grow a key into the lattice; click "×" on the mid-edge to collapse it back.</span>
+        <span>Click a node to drone it; <b>Ctrl+click</b> to show its modulation rays.  Drag to orbit, scroll to zoom, arrow keys to pan.  Click "+" to grow a key into the lattice; click "×" on the mid-edge to collapse it back.</span>
         {activeNode && (
           <span style={{ color: activeNode.family.color }}>
             playing: {activeNode.key.name} {formatHalfAccidentals(activeNode.mode.name)}
