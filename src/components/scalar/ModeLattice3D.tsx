@@ -373,34 +373,36 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
           depthWrite={false} />
       </mesh>
       <Html center
-            // Prominent labels (hover/active/anchor/selected) render at
-            // a *fixed screen size* — no distanceFactor — so they don't
-            // balloon to fill the canvas when the user zooms in close.
-            // Idle labels keep distanceFactor so they shrink at distance
-            // and don't clutter the wide view.
-            distanceFactor={isHovered || isActive || isAnchor || isSelected ? undefined : 11}
+            // All labels use distanceFactor so they scale with the
+            // lattice — moving the camera away shrinks them along with
+            // the rest of the geometry (instead of staying a fixed
+            // screen size that ends up dwarfing the receding lattice).
+            // The OrbitControls minDistance clamp keeps close-zoom
+            // labels from ballooning.  Prominent labels are slightly
+            // larger than idle ones (lower distanceFactor = bigger).
+            distanceFactor={isHovered || isActive || isAnchor || isSelected ? 14 : 11}
             style={{ pointerEvents: "none" }}>
         {isHovered || isActive || isAnchor || isSelected ? (
           <div style={{
             background: "#0a0a0aee",
             border: `1px solid ${palette}`,
             color: palette,
-            padding: "1px 4px",
-            borderRadius: 2,
-            fontSize: 8,
+            padding: "0 2px",
+            borderRadius: 1,
+            fontSize: 5,
             fontWeight: 700,
             whiteSpace: "nowrap",
-            transform: "translate(0, -16px)",
+            transform: "translate(0, -10px)",
             textAlign: "center",
-            lineHeight: "10px",
+            lineHeight: "6px",
           }}>
             <div>
-              <span style={{ color: "#ddd", marginRight: 3 }}>{node.key.name}</span>
+              <span style={{ color: "#ddd", marginRight: 2 }}>{node.key.name}</span>
               {formatHalfAccidentals(node.mode.name)}
             </div>
             <div style={{
-              fontSize: 6.5, fontWeight: 500, color: "#bbb",
-              marginTop: 1, letterSpacing: 0.5,
+              fontSize: 4, fontWeight: 500, color: "#bbb",
+              marginTop: 0.5, letterSpacing: 0.3,
             }}>
               {scaleNoteNames(node.rootPc, node.mode.scale, edo).join(" · ")}
             </div>
