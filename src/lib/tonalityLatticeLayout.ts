@@ -142,18 +142,24 @@ export interface LatticeNode {
   knotT: number;              // parameter on the family's torus knot, [0, 2π)
 }
 
-// One (P, Q) twisted torus knot per root pc.  Each knot holds all 49
-// (family × mode) tonalities for that root — every parallel-mode and
-// modal-interchange option lives on a single knot.  Different roots
-// get different knots, scattered in 3D and connected by modulation
-// strings as the user grows the lattice outward.
+// One twisted torus knot T(P, Q, r, n) per root pc.  Each knot holds
+// all 49 (family × mode) tonalities for that root — every parallel-
+// mode and modal-interchange option lives on a single knot.  (P, Q)
+// is fixed across every pc (a (3, 5) trefoil-style backbone); the
+// per-pc parameter is `intervalR` — the interval class from the
+// anchor — which the renderer turns into r helical strands twisting
+// around the backbone with one full twist (n = 1).  So anchor's knot
+// is unwound, m3-away knots have 3 strands twisting, TT-away has 6.
 export interface KnotConfig {
   pc: number;
   center: [number, number, number];
   R: number;                  // major radius of the carrying torus
   r: number;                  // minor radius (tube radius)
-  P: number;                  // long-way wraps
-  Q: number;                  // short-way wraps
+  P: number;                  // long-way wraps (constant across pcs)
+  Q: number;                  // short-way wraps (constant across pcs)
+  intervalR: number;          // interval class from anchor: 0 (unison),
+                              // 1 (m2/M7), 2 (M2/m7), 3 (m3/M6),
+                              // 4 (M3/m6), 5 (P4/P5), 6 (TT)
 }
 
 export interface LatticeEdge {
@@ -395,38 +401,39 @@ export function findLatticeNode(
 }
 
 // ── Knot lattice (one twisted torus knot per root pc) ──────────────────
-// Each root note (pitch class) is a single (P, Q) twisted torus knot
-// in 3D space.  All 49 tonalities sharing that root — 7 families × 7
-// modes, i.e. every parallel-mode and modal-interchange option — sit
-// on one knot together.  The user's anchor pc lands at the origin;
-// modulating to a different root grows the structure with a new knot
-// offset in the modulation's direction (P5 east, P4 west, M3 up,
-// m3 NE, ...).
+// Each root note (pitch class) is a single twisted torus knot
+// T(P, Q, r, n) in 3D space.  All 49 tonalities sharing that root — 7
+// families × 7 modes, i.e. every parallel-mode and modal-interchange
+// option — sit on one knot together.  The user's anchor pc lands at
+// the origin; modulating to a different root grows the structure with
+// a new knot offset in the modulation's direction.
 //
 // (R, r) match three.js's TorusKnotGeometry (whose tube centre
 // oscillates from R/2 to 3R/2 from origin), so the renderer can use
-// TorusKnotGeometry directly for a visible 3D-tube surface and our
-// nodes land exactly on it.
+// TorusKnotGeometry directly for the unwound backbone and our nodes
+// land exactly on it.
 //
-// (P, Q) varies per pc by *alteration distance from anchor*: P = alt+2,
-// Q = alt+3.  Anchor (alt=0) is a (2,3) trefoil; one-alt-away modulations
-// (P5/P4) give a (3,4) knot; tritone (alt=6) gives a (8,9) — close
-// modulations read as simpler shapes, distant ones as denser/twistier.
-// (alt+2, alt+3) are consecutive integers and therefore always coprime.
+// (P, Q) is constant across every pc — a (3, 5) backbone.  The per-
+// pc variation is the *twist count*: r = interval class from anchor
+// (0..6).  m3 modulation gives 3 strands twisted around the backbone;
+// tritone gives 6.  Anchor (r = 0) is unwound.
 const KNOT_R = 5.0;
 const KNOT_r = KNOT_R / 2;
+const KNOT_P = 3;
+const KNOT_Q = 5;
 const KNOT_N = 49;             // 7 families × 7 modes per root
 
-// 12-EDO semitone → pitch-set alteration count between same-family/mode
-// scales rooted at pcs that interval apart.  Uniquely determined by
-// the chain-of-fifths distance.
-const SEMIS_TO_ALT: Record<number, number> = {
-  0: 0,  7: 1,  5: 1,  2: 2,  10: 2, 3: 3,
-  9: 3,  4: 4,  8: 4,  1: 5,  11: 5, 6: 6,
+// 12-EDO semitone interval → interval class (= twist strand count r).
+// Inversion-symmetric: m2 and M7 both give r = 1, P4 and P5 both r = 5.
+const SEMIS_TO_INTERVAL_CLASS: Record<number, number> = {
+  0: 0,
+  1: 1,  11: 1,    // m2 / M7
+  2: 2,  10: 2,    // M2 / m7
+  3: 3,  9:  3,    // m3 / M6
+  4: 4,  8:  4,    // M3 / m6
+  5: 5,  7:  5,    // P4 / P5
+  6: 6,            // TT
 };
-function knotPQForAlt(alt: number): { P: number; Q: number } {
-  return { P: alt + 2, Q: alt + 3 };
-}
 
 // 3D offset (unit-vector × spacing) for each interval from anchor.
 // Indexed by 12-EDO-equivalent semitones modulo 12 — for 31-EDO we
@@ -523,8 +530,7 @@ export function buildCylinderLattice(
   for (const { key } of uniqueKeys) {
     const semis = semis12From(anchorPc, key.pc);
     const dir = PC_OFFSET_BY_SEMIS[semis] ?? [0, 0, 0];
-    const alt = SEMIS_TO_ALT[semis] ?? 0;
-    const { P, Q } = knotPQForAlt(alt);
+    const intervalR = SEMIS_TO_INTERVAL_CLASS[semis] ?? 0;
     pcKnots.set(key.pc, {
       pc: key.pc,
       center: [
@@ -532,7 +538,7 @@ export function buildCylinderLattice(
         dir[1] * PC_KNOT_SPACING,
         dir[2] * PC_KNOT_SPACING,
       ],
-      R: KNOT_R, r: KNOT_r, P, Q,
+      R: KNOT_R, r: KNOT_r, P: KNOT_P, Q: KNOT_Q, intervalR,
     });
   }
 
