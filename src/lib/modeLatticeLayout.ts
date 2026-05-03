@@ -150,107 +150,82 @@ function buildEdges(nodes: ModeNode[]): ModeEdge[] {
   return out;
 }
 
-// Radial shell layout.  Anchor at origin.  Each non-anchor node sits on
-// a shell whose radius is proportional to its alteration distance from
-// the anchor.  Within a shell, the Fibonacci spiral spreads nodes
-// evenly across the sphere; each shell's spiral starts from a different
-// "pole" (rotated golden-angle offset) so the alteration classes occupy
-// visually distinct axes — the user reads the structure as a complex
-// many-axis sphere rather than concentric rings.
-function radialLayout(
+// Family-axis layout.  Anchor at origin.  Seven family axes radiate
+// out from the centre in a hexagonal-star arrangement: Major straight
+// up the +Y axis, the other six families distributed evenly around the
+// equator at 60° apart.  Along each axis the family's modes line up
+// ordered DARKEST (closest to centre) → BRIGHTEST (far end).
+//
+// The anchor's six relatives (modes sharing the anchor's pitch set on
+// other roots — D Dorian, E Phrygian, etc. for C Major) live on a
+// dedicated axis pointing -Y, so the user can read them as a single
+// "same notes" line distinct from the family axes.
+function familyAxisLayout(
   nodes: ModeNode[],
   anchorKey: string | null,
 ) {
-  const anchorIdx = anchorKey ? nodes.findIndex(n => n.key === anchorKey) : -1;
-  const anchor = anchorIdx >= 0 ? nodes[anchorIdx] : null;
+  const anchor = anchorKey ? nodes.find(n => n.key === anchorKey) : null;
 
-  // Group nodes by distance bucket.
-  const buckets = new Map<number, ModeNode[]>();
+  // Hexagonal-star directions: Major up, 6 others equally spaced around
+  // the equator.  The wide angular separation makes the structure
+  // unambiguously read as 7 distinct axes radiating from the centre.
+  const familyDirs = new Map<string, [number, number, number]>();
+  for (let i = 0; i < FAMILY_ORDER.length; i++) {
+    const family = FAMILY_ORDER[i];
+    if (i === 0) {
+      familyDirs.set(family, [0, 1, 0]);  // Major straight up
+    } else {
+      // Six equatorial directions at 60° intervals, starting at +X.
+      const angle = ((i - 1) * Math.PI * 2) / 6;
+      familyDirs.set(family, [Math.cos(angle), 0, Math.sin(angle)]);
+    }
+  }
+
+  // Brightness ranks within each family (darkest = 0, brightest = 6).
+  const familyRank = new Map<string, Map<string, number>>();
+  for (const family of FAMILY_ORDER) {
+    const familyModes = (PATTERN_SCALE_FAMILIES[family] ?? []).slice();
+    const bright = new Map<string, number>();
+    for (const m of familyModes) {
+      const node = nodes.find(n => n.family === family && n.mode === m && !n.isRelative);
+      bright.set(m, node?.brightness ?? 0);
+    }
+    familyModes.sort((a, b) => (bright.get(a) ?? 0) - (bright.get(b) ?? 0));
+    const rankMap = new Map<string, number>();
+    familyModes.forEach((m, idx) => rankMap.set(m, idx));
+    familyRank.set(family, rankMap);
+  }
+
+  const SPACING = 1.4;
+
+  // Place every node.
   for (const node of nodes) {
     if (anchor && node.key === anchor.key) {
       node.pos = [0, 0, 0];
       continue;
     }
-    const d = anchor ? pitchSetDistance(anchor.pitchSet, node.pitchSet) : 1;
-    if (!buckets.has(d)) buckets.set(d, []);
-    buckets.get(d)!.push(node);
-  }
 
-  const SHELL_RADIUS = (d: number) => 0.7 + d * 1.4;
-  const GOLDEN = Math.PI * (1 + Math.sqrt(5));
-
-  // Brightness range for the per-node Y bias.
-  let bMin = Infinity, bMax = -Infinity;
-  for (const n of nodes) { bMin = Math.min(bMin, n.brightness); bMax = Math.max(bMax, n.brightness); }
-  const bRange = Math.max(1, bMax - bMin);
-
-  for (const [d, bucket] of buckets) {
-    const r = SHELL_RADIUS(d);
-    // Per-shell rotation offset so the alteration classes occupy
-    // different axes — 0-alt clusters near +Y, 1-alt near +X, 2-alt
-    // near +Z, 3-alt diagonal.
-    const polarTilt = (d * 1.05) % (Math.PI * 0.95);
-    const azimuthOffset = d * 1.7;
-
-    const N = bucket.length;
-    for (let i = 0; i < N; i++) {
-      const k = i + 0.5;
-      // Standard Fibonacci-sphere spiral with per-shell tilt + offset.
-      const yFrac = 1 - 2 * k / N;
-      const phi = Math.acos(yFrac);
-      const theta = GOLDEN * k + azimuthOffset;
-
-      // Rotate the spiral's "north pole" so each shell points along a
-      // different cardinal direction.  d = 0 → +Y, 1 → +X, 2 → -Y,
-      // 3 → +Z, 4 → -X, 5 → -Z, then repeats.
-      const POLE_DIRS: [number, number, number][] = [
-        [0, 1, 0], [1, 0, 0], [0, -1, 0], [0, 0, 1], [-1, 0, 0], [0, 0, -1],
-      ];
-      const poleIdx = d % POLE_DIRS.length;
-      const pole = POLE_DIRS[poleIdx];
-
-      // Build a local frame (u, v, w=pole) and place the spiral on it.
-      // pre-rotated point on canonical sphere (north pole at +Y)
-      const px = Math.sin(phi) * Math.cos(theta);
-      const py = Math.cos(phi);
-      const pz = Math.sin(phi) * Math.sin(theta);
-
-      // Rotate canonical (+Y pole) frame into pole direction.  Build
-      // rotation that maps (0,1,0) → pole.
-      let rx: number, ry: number, rz: number;
-      if (Math.abs(pole[1] - 1) < 1e-9) {
-        // Already at +Y pole.
-        rx = px; ry = py; rz = pz;
-      } else if (Math.abs(pole[1] + 1) < 1e-9) {
-        // Flip to -Y.
-        rx = px; ry = -py; rz = -pz;
-      } else {
-        // Rodrigues for general rotation from (0,1,0) to pole.
-        const ax = pole[2];
-        const ay = 0;
-        const az = -pole[0];
-        const al = Math.sqrt(ax * ax + az * az) || 1;
-        const axis = [ax / al, ay / al, az / al];
-        const cos = pole[1];
-        const sin = al;
-        const k1 = (axis[0] * px + axis[1] * py + axis[2] * pz) * (1 - cos);
-        rx = px * cos + (axis[1] * pz - axis[2] * py) * sin + axis[0] * k1;
-        ry = py * cos + (axis[2] * px - axis[0] * pz) * sin + axis[1] * k1;
-        rz = pz * cos + (axis[0] * py - axis[1] * px) * sin + axis[2] * k1;
-      }
-
-      // Apply per-shell polar tilt — small wobble so shells don't
-      // perfectly nest.
-      const ct = Math.cos(polarTilt), st = Math.sin(polarTilt);
-      const fx = rx * ct + rz * st;
-      const fy = ry;
-      const fz = -rx * st + rz * ct;
-
-      // Brightness Y bias (within shell, bright floats up).
-      const bBias = ((bucket[i].brightness - bMin) / bRange - 0.5) * 0.6;
-
-      bucket[i].pos = [fx * r, fy * r + bBias, fz * r];
+    // Relative satellites get their own dedicated axis pointing -Y so
+    // the user reads them as one clean "same notes" line: D Dorian,
+    // E Phrygian, F Lydian, G Mixolydian, A Aeolian, B Locrian.
+    if (node.isRelative) {
+      const ranks = familyRank.get(node.family);
+      const rank = ranks?.get(node.mode) ?? 0;
+      const dist = (rank + 1) * SPACING;
+      // Direction = straight down so it doesn't clash with Major (+Y).
+      node.pos = [0, -dist, 0];
+      continue;
     }
+
+    const dir = familyDirs.get(node.family);
+    const ranks = familyRank.get(node.family);
+    if (!dir || !ranks) {
+      node.pos = [0, 0, 0];
+      continue;
+    }
+    const rank = ranks.get(node.mode) ?? 0;
+    const dist = (rank + 1) * SPACING;
+    node.pos = [dir[0] * dist, dir[1] * dist, dir[2] * dist];
   }
 }
 
@@ -275,7 +250,7 @@ export function getModeLattice(
     : null;
 
   const edges = buildEdges(nodes);
-  radialLayout(nodes, anchorKey);
+  familyAxisLayout(nodes, anchorKey);
 
   const byKey = new Map(nodes.map(n => [n.key, n]));
   const lattice: ModeLattice = { nodes, edges, byKey };

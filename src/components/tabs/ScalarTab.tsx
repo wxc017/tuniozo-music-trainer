@@ -386,14 +386,7 @@ export default function ScalarTab({
       <ModeLattice3D
         edo={edo}
         rootPitch={baseTonic}
-        rootName={(() => {
-          // Closest 12-EDO letter for the root pitch class.  Always show
-          // a name on each node so the user reads e.g. "C Phrygian Dominant"
-          // rather than a bare "Phrygian Dominant".
-          const NAMES = ["C","D♭","D","E♭","E","F","G♭","G","A♭","A","B♭","B"];
-          const pc12 = Math.round((tonicPc / edo) * 12) % 12;
-          return NAMES[((pc12 % 12) + 12) % 12] ?? "";
-        })()}
+        tonicPc={tonicPc}
         anchorKey={anchorKey}
         playVol={playVol} />
     </div>
