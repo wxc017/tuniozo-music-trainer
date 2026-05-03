@@ -23,7 +23,9 @@ function CameraReset({ resetKey }: { resetKey: number }) {
   useEffect(() => {
     if (resetKey !== prevKey.current) {
       prevKey.current = resetKey;
-      camera.position.set(10, 10, 36);
+      // Default 3/4 view sized to fit the anchor knot plus several
+      // side-by-side satellites (each ~28 units offset on its axis).
+      camera.position.set(40, 30, 70);
       camera.lookAt(0, 0, 0);
       const c = controls as { target?: { set: (x: number, y: number, z: number) => void }; update?: () => void } | null;
       if (c?.target) { c.target.set(0, 0, 0); c.update?.(); }
@@ -922,6 +924,11 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
     // direction — otherwise the spokes keep hovering over the source
     // node after the satellite is already on screen.
     setShowRays(false);
+    // Snap the camera back to the default 3/4 view so the user sees
+    // the new side-by-side satellite knot — otherwise it spawns ~28
+    // units away and is offscreen if the camera was zoomed in on the
+    // anchor.
+    setCameraResetKey(k => k + 1);
   }, [edo]);
 
   // Click the mid-edge "×" on an expanded modulation to collapse that
@@ -999,10 +1006,10 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
 
   const solfege = useMemo(() => getSolfege(edo), [edo]);
 
-  // Initial camera position — close enough to see the anchor knot
-  // clearly at startup; the user zooms out (or expands neighbouring
-  // roots) as they grow the structure.
-  const cameraPos: [number, number, number] = [10, 10, 36];
+  // Initial camera position — wide enough to fit the anchor knot
+  // plus several side-by-side satellite knots (each ~28 units offset
+  // on its axis) when the user spawns modulations.
+  const cameraPos: [number, number, number] = [40, 30, 70];
 
   return (
     <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded overflow-hidden">
