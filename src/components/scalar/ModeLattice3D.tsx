@@ -398,17 +398,21 @@ function Scene({
   showFamilies, showEdges, modulationEdges, onHover, onClick, onExpand, onCollapse,
 }: SceneProps) {
   // Show every y/z edge between currently-visible nodes (those whose
-  // root pc has been expanded).  Each edge is annotated with its
-  // pitch-set symmetric distance so the user can see the alteration
-  // cost of each connection at a glance.
+  // root pc has been expanded).  Each edge curves along the torus
+  // surface that holds both endpoints — we interpolate (φ, θ) along
+  // the shortest angular path between the two nodes' coordinates and
+  // sample the torus formula at each step.  Each edge is annotated
+  // with its pitch-set symmetric distance at the curved midpoint.
   const visibleEdges = useMemo(() => {
     type Pair = {
       color: string;
       type: "y" | "z";
-      points: [LatticeNode["pos"], LatticeNode["pos"]];
+      points: [number, number, number][];
       mid: [number, number, number];
       alt: number;
     };
+    const NSAMPLES = 18;
+    const TWO_PI = 2 * Math.PI;
     const out: Pair[] = [];
     for (const e of lattice.edges) {
       if (e.type === "x") continue;
@@ -418,13 +422,48 @@ function Scene({
       if (!expandedRoots.has(a.rootPc) || !expandedRoots.has(b.rootPc)) continue;
       if (!showFamilies[a.family.id] || !showFamilies[b.family.id]) continue;
       if (!showEdges[e.type]) continue;
+      // y/z edges always live within a single pc-knot — same root,
+      // so both endpoints sit on the same torus.  Interpolate (φ, θ)
+      // along the shortest angular path and sample 3D positions back
+      // out of the torus parameterisation.
+      const cfg = lattice.pcKnots.get(a.rootPc);
+      let points: [number, number, number][];
+      let mid: [number, number, number];
+      if (cfg && a.rootPc === b.rootPc) {
+        const phiA = cfg.P * a.knotT;
+        const thetaA = cfg.Q * a.knotT;
+        const phiB = cfg.P * b.knotT;
+        const thetaB = cfg.Q * b.knotT;
+        let dPhi = phiB - phiA;
+        if (dPhi >  Math.PI) dPhi -= TWO_PI;
+        if (dPhi < -Math.PI) dPhi += TWO_PI;
+        let dTheta = thetaB - thetaA;
+        if (dTheta >  Math.PI) dTheta -= TWO_PI;
+        if (dTheta < -Math.PI) dTheta += TWO_PI;
+        points = [];
+        for (let s = 0; s <= NSAMPLES; s++) {
+          const u = s / NSAMPLES;
+          const phi = phiA + u * dPhi;
+          const theta = thetaA + u * dTheta;
+          const ringR = cfg.R + cfg.r * Math.cos(theta);
+          points.push([
+            cfg.center[0] + ringR * Math.cos(phi),
+            cfg.center[1] - cfg.r * Math.sin(theta),
+            cfg.center[2] + ringR * Math.sin(phi),
+          ]);
+        }
+        mid = points[Math.floor(points.length / 2)];
+      } else {
+        // Fallback (shouldn't happen for y/z which are within-knot).
+        points = [a.pos, b.pos];
+        mid = [
+          (a.pos[0] + b.pos[0]) / 2,
+          (a.pos[1] + b.pos[1]) / 2,
+          (a.pos[2] + b.pos[2]) / 2,
+        ];
+      }
       const alt = altDistance(a, b, edo);
-      const mid: [number, number, number] = [
-        (a.pos[0] + b.pos[0]) / 2,
-        (a.pos[1] + b.pos[1]) / 2,
-        (a.pos[2] + b.pos[2]) / 2,
-      ];
-      out.push({ color: e.color, type: e.type as "y" | "z", points: [a.pos, b.pos], mid, alt });
+      out.push({ color: e.color, type: e.type as "y" | "z", points, mid, alt });
     }
     out.sort((a, b) => (a.type === "z" ? 1 : 0) - (b.type === "z" ? 1 : 0));
     return out;
