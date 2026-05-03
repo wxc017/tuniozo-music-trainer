@@ -813,12 +813,12 @@ function Scene({
       })}
 
       {visibleEdges.map((e, i) => {
-        // Bridge edges (between alt arcs) always show their +N
-        // label.  Other edges only show their label when one
-        // endpoint is the selected node.
+        // Both bridge edges (between arcs) and y-edges (alt 1/2
+        // pairs) show their +N label persistently — they're the
+        // lattice's primary structural readout of "how far apart are
+        // these two tonalities".
         const isBridge = e.type === "bridge";
-        const labelVisible = isBridge
-          || (!!selectedId && (e.fromId === selectedId || e.toId === selectedId));
+        const labelVisible = isBridge || e.type === "y" || e.type === "z";
         return (
           <group key={`${e.type}-${i}`}>
             <Line points={e.points} color={e.color}
