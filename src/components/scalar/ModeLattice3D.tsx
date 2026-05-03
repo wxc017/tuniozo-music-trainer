@@ -357,10 +357,10 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
           // brightest mode glows hard, darkest barely glows.  No
           // opacity transparency — the dimming is entirely in light.
           emissiveIntensity={
-            (isActive ? 1.3 : isAnchor ? 0.9 : 0.45) * (1 - rankT * 0.85)
+            (isActive ? 1.6 : isAnchor ? 1.1 : 0.7) * (1 - rankT * 0.85)
           }
-          roughness={0.3}
-          metalness={0.45} />
+          roughness={0.6}
+          metalness={0} />
       </mesh>
       <Html center distanceFactor={isHovered || isActive || isAnchor || isSelected ? 8 : 11}
             style={{ pointerEvents: "none" }}>
@@ -631,7 +631,7 @@ function Scene({
           <Line points={e.points} color={e.color}
             lineWidth={e.type === "z" ? 2.0 : 1.6}
             transparent opacity={e.type === "z" ? 0.9 : 0.75} />
-          <Html position={e.mid} center distanceFactor={15}
+          <Html position={e.mid} center distanceFactor={9}
                 style={{ pointerEvents: "none" }}>
             <div style={{
               background: "#0a0a0acc",
