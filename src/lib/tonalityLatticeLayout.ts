@@ -710,16 +710,15 @@ export function buildCylinderLattice(
   };
   pcKnots.set(anchorPc, unifiedCfg);
 
-  function placeNode(t: Tonality, knotT: number, alt: number): LatticeNode {
+  function placeNode(t: Tonality, knotT: number, alt: number, arcRank: number): LatticeNode {
     const [lx, ly, lz] = knotPoint(KNOT_R, KNOT_r, KNOT_P, KNOT_Q, knotT);
     const id = `${t.keyIdx}::${t.family.id}::${t.mode.name}`;
-    const modeIdx = familyRank.get(t.family.id)?.get(t.mode.name) ?? 0;
     const node: LatticeNode = {
       id, key: t.key, keyIdx: t.keyIdx,
       family: t.family, mode: t.mode,
       pos: [lx, ly, lz],
       rootPc: t.pc,
-      knotT, modeRank: modeIdx,
+      knotT, modeRank: arcRank,
       altLevel: alt,
     };
     nodes.push(node);
@@ -729,17 +728,23 @@ export function buildCylinderLattice(
 
   // Arc 0 holds the anchor alone, parked at the centre of its arc.
   if (anchorTonality) {
-    placeNode(anchorTonality, 0.5 * ARC_T, 0);
+    placeNode(anchorTonality, 0.5 * ARC_T, 0, 0);
   }
 
-  // Arcs 1..6 hold the alt-N tonalities, evenly spread along the arc.
+  // Arcs 1..6 hold alt-N tonalities, sorted brightest-first so the
+  // arc reads "lightest → darkest" along the knot.  modeRank within
+  // the arc maps that to a [0, 6] colour ramp — so brighter modes
+  // in any arc are lighter, darker modes are darker, regardless of
+  // which family they came from.
   for (let alt = 1; alt < ALT_LEVELS; alt++) {
     const arc = arcs[alt];
     if (arc.length === 0) continue;
+    arc.sort((a, b) => b.mode.brightness - a.mode.brightness);
     const arcStart = alt * ARC_T;
     for (let i = 0; i < arc.length; i++) {
       const knotT = arcStart + ARC_T * (i + 0.5) / arc.length;
-      placeNode(arc[i], knotT, alt);
+      const rank = arc.length > 1 ? (i / (arc.length - 1)) * 6 : 0;
+      placeNode(arc[i], knotT, alt, rank);
     }
   }
 
