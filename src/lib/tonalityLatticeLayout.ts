@@ -551,6 +551,110 @@ export const CYLINDER_PARAMS = {
   BRIGHTNESS_UNIT: CYL_BRIGHTNESS,
 };
 
+// ── Modulation edges from a chosen anchor ───────────────────────────────
+// For an anchor tonality, generate "modulation edges" pointing at every
+// nearby destination — common key-modulation intervals (P5, P4, M2, m2,
+// M3, m3, tritone), parallel-mode shifts within the same family, and
+// modal-interchange siblings (same root, different family).  The
+// renderer draws these as labelled rays from the anchor so the user can
+// see the network of related tonalities at a glance.
+export interface ModulationEdge {
+  fromNode: LatticeNode;
+  toNode: LatticeNode;
+  kind: "interval" | "parallel" | "interchange";
+  label: string;        // short label for display, e.g. "+P5", "Lyd", "Mel"
+  color: string;
+}
+
+function intervalSteps(edo: number, semitones12: number): number {
+  // Map 12-EDO semitones to the active EDO's step count.
+  if (edo === 12) return semitones12;
+  if (edo === 31) {
+    const map12to31: Record<number, number> = {
+      0: 0, 1: 2, 2: 5, 3: 8, 4: 10, 5: 13,
+      6: 15, 7: 18, 8: 21, 9: 23, 10: 26, 11: 28,
+    };
+    return map12to31[semitones12] ?? Math.round((semitones12 / 12) * edo);
+  }
+  return Math.round((semitones12 / 12) * edo);
+}
+
+const INTERVAL_MODULATIONS: { semis12: number; label: string; color: string }[] = [
+  { semis12: 7,  label: "+5",   color: "#9966ff" },   // up a fifth
+  { semis12: 5,  label: "+4",   color: "#9966ff" },   // up a fourth
+  { semis12: 2,  label: "+M2",  color: "#ff5588" },   // up a major 2nd
+  { semis12: 10, label: "−M2",  color: "#ff5588" },   // down a major 2nd
+  { semis12: 4,  label: "+M3",  color: "#22ddaa" },   // up a major 3rd
+  { semis12: 8,  label: "−M3",  color: "#22ddaa" },   // down a major 3rd
+  { semis12: 3,  label: "+m3",  color: "#3aafff" },   // up a minor 3rd
+  { semis12: 9,  label: "−m3",  color: "#3aafff" },   // down a minor 3rd
+  { semis12: 6,  label: "TT",   color: "#ff9933" },   // tritone
+];
+
+export function computeModulationEdges(
+  lattice: TonalityLattice,
+  anchor: LatticeNode,
+  edo: number,
+): ModulationEdge[] {
+  const out: ModulationEdge[] = [];
+
+  // 1. Interval-based key modulations: same family + same mode, root
+  //    shifted by each common interval.
+  for (const iv of INTERVAL_MODULATIONS) {
+    const targetPc = (anchor.rootPc + intervalSteps(edo, iv.semis12)) % edo;
+    const target = lattice.nodes.find(n =>
+      n.family.id === anchor.family.id
+      && n.mode.name === anchor.mode.name
+      && n.rootPc === targetPc
+    );
+    if (target && target.id !== anchor.id) {
+      out.push({
+        fromNode: anchor,
+        toNode: target,
+        kind: "interval",
+        label: iv.label,
+        color: iv.color,
+      });
+    }
+  }
+
+  // 2. Parallel-mode shifts within the same family: same rootPc,
+  //    different mode of the same family.
+  for (const node of lattice.nodes) {
+    if (node.id === anchor.id) continue;
+    if (node.family.id !== anchor.family.id) continue;
+    if (node.rootPc !== anchor.rootPc) continue;
+    out.push({
+      fromNode: anchor,
+      toNode: node,
+      kind: "parallel",
+      label: node.mode.short,
+      color: anchor.family.color,
+    });
+  }
+
+  // 3. Modal interchange: same rootPc, different family.  We add one
+  //    edge per family — to that family's brightness-matched mode if
+  //    available, otherwise its parent (rank 0).
+  const seenFamilies = new Set<string>([anchor.family.id]);
+  for (const node of lattice.nodes) {
+    if (node.id === anchor.id) continue;
+    if (node.rootPc !== anchor.rootPc) continue;
+    if (seenFamilies.has(node.family.id)) continue;
+    if (node.mode.brightness !== anchor.mode.brightness) continue;
+    seenFamilies.add(node.family.id);
+    out.push({
+      fromNode: anchor,
+      toNode: node,
+      kind: "interchange",
+      label: node.family.short,
+      color: node.family.color,
+    });
+  }
+
+  return out;
+}
+
 // ── Single-key torus layout ─────────────────────────────────────────────
 // All 49 modes (7 families × 7 modes) for ONE key — the user's tonic.
 // Each (family, mode) pair lands on the surface of a twisted torus:

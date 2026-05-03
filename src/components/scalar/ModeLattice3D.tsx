@@ -17,8 +17,8 @@ import * as THREE from "three";
 import { audioEngine } from "@/lib/audioEngine";
 import {
   buildCylinderLattice, LATTICE_FAMILIES, CYLINDER_PARAMS,
-  scaleNoteNames,
-  type TonalityLattice, type LatticeNode,
+  scaleNoteNames, computeModulationEdges,
+  type TonalityLattice, type LatticeNode, type ModulationEdge,
 } from "@/lib/tonalityLatticeLayout";
 import { formatHalfAccidentals, getSolfege } from "@/lib/edoData";
 import { formatRomanNumeral } from "@/lib/formatRoman";
@@ -152,11 +152,15 @@ interface SceneProps {
   hoveredId: string | null;
   showFamilies: Record<string, boolean>;
   showEdges: Record<string, boolean>;
+  modulationEdges: ModulationEdge[];
   onHover: (id: string | null) => void;
   onClick: (node: LatticeNode) => void;
 }
 
-function Scene({ lattice, edo, anchorId, activeId, hoveredId, showFamilies, showEdges, onHover, onClick }: SceneProps) {
+function Scene({ lattice, edo, anchorId, activeId, hoveredId, showFamilies, showEdges, modulationEdges, onHover, onClick }: SceneProps) {
+  const anchorFamilyId = anchorId
+    ? lattice.nodeMap.get(anchorId)?.family.id ?? null
+    : null;
   // Edges are filtered to those touching the user's focus — the
   // anchor (picker selection), the active drone, or the hovered node.
   // This keeps the surface readable: only the current scale's
@@ -191,24 +195,40 @@ function Scene({ lattice, edo, anchorId, activeId, hoveredId, showFamilies, show
       <pointLight position={[-10, -5, -10]} intensity={0.7} />
       <pointLight position={[0, 0, 14]} intensity={0.7} />
 
-      {/* Family cylinders — translucent shells underneath each family's
-          ring of nodes, so the user can see "Major is the inner family,
-          Subharmonic Diatonic is the outermost", etc. */}
+      {/* Family cylinders.  Anchor's family renders prominently as the
+          "main" cylinder; the others fade to near-invisible so the
+          anchor's home reads as the central structure. */}
       {LATTICE_FAMILIES.map(f => {
         const r = CYLINDER_PARAMS.R0 + f.zOrd * CYLINDER_PARAMS.DR;
         const height = (lattice.bounds.maxY - lattice.bounds.minY) + 1;
         const yMid = (lattice.bounds.maxY + lattice.bounds.minY) / 2;
+        const isAnchorFamily = f.id === anchorFamilyId;
         return (
           <mesh key={`cyl-${f.id}`} position={[0, yMid, 0]}>
-            <cylinderGeometry args={[r, r, height, 48, 1, true]} />
+            <cylinderGeometry args={[r, r, height, 64, 1, true]} />
             <meshBasicMaterial
               color={f.color}
-              transparent opacity={0.045}
+              transparent
+              opacity={isAnchorFamily ? 0.18 : 0.025}
               side={THREE.DoubleSide}
               depthWrite={false} />
           </mesh>
         );
       })}
+
+      {/* Modulation edges from the anchor.  Drawn last so they sit on
+          top of the regular Y/Z edges and read as the dominant visual
+          link from the anchor outward. */}
+      {modulationEdges.map((m, i) => (
+        <Line
+          key={`mod-${i}`}
+          points={[m.fromNode.pos, m.toNode.pos]}
+          color={m.color}
+          lineWidth={2.4}
+          transparent
+          opacity={0.95}
+        />
+      ))}
 
       {visibleEdges.map((e, i) => (
         e.type === "y" ? (
@@ -285,6 +305,15 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
     }
     return null;
   }, [lattice, anchorFamilyName, anchorModeName, tonicPc, edo]);
+
+  // Modulation edges: rays from the anchor to common destination
+  // tonalities (key shifts, parallel modes, modal interchange).
+  const modulationEdges = useMemo<ModulationEdge[]>(() => {
+    if (!anchorId) return [];
+    const anchorNode = lattice.nodeMap.get(anchorId);
+    if (!anchorNode) return [];
+    return computeModulationEdges(lattice, anchorNode, edo);
+  }, [lattice, anchorId, edo]);
 
   useEffect(() => {
     return () => { audioEngine.stopDrone(); };
@@ -405,6 +434,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
             hoveredId={hoveredId}
             showFamilies={showFamilies}
             showEdges={showEdges}
+            modulationEdges={modulationEdges}
             onHover={setHoveredId}
             onClick={handleClick} />
         </Canvas>
