@@ -180,7 +180,7 @@ export interface KnotConfig {
 export interface LatticeEdge {
   fromId: string;
   toId: string;
-  type: "x" | "y" | "z";
+  type: "x" | "y" | "z" | "bridge";
   alt: number;
   color: string;
 }
@@ -589,9 +589,9 @@ export function buildCylinderLattice(
     modes.set(family.id, list);
   }
 
-  // Brightness ranks within each family (rank 0 = brightest).  Each
-  // root's torus knot orders modes within a family by this rank so
-  // adjacent ranks land at adjacent positions on the knot's short way.
+  // Within-family brightness rank (rank 0 = brightest).  Used purely
+  // for node-colour shading; node *positions* on each P-knot are now
+  // ordered by global brightness across families, not by family.
   const familyRank = new Map<string, Map<string, number>>();
   for (const family of families) {
     const list = (modes.get(family.id) ?? []).slice()
@@ -604,9 +604,6 @@ export function buildCylinderLattice(
   const anchorFamily = anchorFamilyName
     ? families.find(f => f.familyName === anchorFamilyName) ?? null
     : null;
-  const anchorModeIdx = anchorFamily && anchorModeName
-    ? familyRank.get(anchorFamily.id)?.get(anchorModeName) ?? 0
-    : 0;
   const anchorPc = ((tonicPc % edo) + edo) % edo;
 
   // Pick one canonical key per unique pc (so we don't build duplicate
@@ -620,134 +617,92 @@ export function buildCylinderLattice(
     uniqueKeys.push({ keyIdx: ki, key: k });
   }
 
-  // Knot centre per pc.  Anchor pc at origin; everything else placed
-  // at PC_OFFSET_BY_SEMIS × spacing in 3D — close consonances (P5/P4)
-  // sit east/west of anchor, M3/m3 above/diagonal, M2/m2 in front of
-  // / behind, tritone furthest.
-  const TWO_PI = 2 * Math.PI;
-  function semis12From(pcA: number, pcB: number): number {
-    const delta = ((pcB - pcA) % edo + edo) % edo;
-    return ((Math.round((delta / edo) * 12) % 12) + 12) % 12;
+  // Build a flat list of all (family × mode) sorted by brightness
+  // ASCENDING (darkest first).  Each P-knot uses this same global
+  // ordering for its 49 nodes' t-positions on the torus knot —
+  // family is irrelevant for ordering; only brightness matters.
+  type FamMode = { family: LatticeFamily; mode: LatticeMode };
+  const allModes: FamMode[] = [];
+  for (const family of families) {
+    for (const mode of (modes.get(family.id) ?? [])) {
+      allModes.push({ family, mode });
+    }
   }
-  // Order on each pc-knot: k = familyIdx · 7 + modeIdx, so each
-  // family is a contiguous 7-mode arc on the knot.  Shift t so the
-  // user's anchor (familyIdx, modeIdx) lands at t = 0 for every knot
-  // — that way "the same tonality" sits at the front of every root's
-  // knot (or aligns with the source node, for cables).
-  const anchorFamilyIdx = anchorFamily?.zOrd ?? 0;
-  const tAnchor = ((anchorFamilyIdx * 7 + anchorModeIdx) / KNOT_N) * TWO_PI;
+  allModes.sort((a, b) => a.mode.brightness - b.mode.brightness);
+  const NK = allModes.length;
+  const TWO_PI = 2 * Math.PI;
+
+  // Find the user's anchor (family, mode) in the sorted list — this
+  // index lands at t = 0 (front of the knot) on every P-knot.
+  let anchorSortedIdx = allModes.findIndex(am =>
+    am.family.familyName === anchorFamilyName && am.mode.name === anchorModeName
+  );
+  if (anchorSortedIdx < 0) anchorSortedIdx = 0;
 
   const pcKnots = new Map<number, KnotConfig>();
   const nodes: LatticeNode[] = [];
   const nodeMap = new Map<string, LatticeNode>();
 
-  // Build all nodes for one pc-knot, given its KnotConfig.  Position
-  // is sampled from the appropriate curve (torus or cable).
-  function buildPcNodes(key: LatticeKey, keyIdx: number, cfg: KnotConfig): void {
-    const parentCfg = cfg.parentPc !== null ? pcKnots.get(cfg.parentPc) ?? null : null;
-    for (const family of families) {
-      const modeList = modes.get(family.id) ?? [];
-      const familyIdx = family.zOrd;
-      for (const mode of modeList) {
-        const modeIdx = familyRank.get(family.id)?.get(mode.name) ?? 0;
-        const k = familyIdx * 7 + modeIdx;
-        const tRaw = (k / KNOT_N) * TWO_PI;
-        const t = ((tRaw - tAnchor) % TWO_PI + TWO_PI) % TWO_PI;
-        const u = t / TWO_PI;
-        const pos = sampleKnotCurve(cfg, parentCfg, u);
-        const id = `${keyIdx}::${family.id}::${mode.name}`;
-        const node: LatticeNode = {
-          id, key, keyIdx, family, mode, pos,
-          rootPc: key.pc,
-          knotT: t,
-          modeRank: modeIdx,
-        };
-        nodes.push(node);
-        nodeMap.set(id, node);
-      }
-    }
-  }
+  // Layout: 7 P-knots in a horizontal chain.  alt level 0 = anchor at
+  // origin; alt level k = +k fifths up (alt 1 = closest modulation,
+  // alt 6 = tritone, the farthest pitch-set distance).  Each knot is
+  // centred along the +X axis at k·ALT_SPACING_X.  The chain reads
+  // left → right as "main scale → progressively more chromatic".
+  const ALT_LEVELS = 7;             // 0..6
+  const ALT_SPACING_X = KNOT_R * 3.0;
 
-  // 1. Build the anchor pc as a plain torus knot at the origin.
-  const anchorKeyEntry = uniqueKeys.find(uk => uk.key.pc === anchorPc);
-  if (anchorKeyEntry) {
+  // alt level k → 12-EDO semitone offset from anchor (going up by P5).
+  const altLevelToSemis = (k: number): number => (k * 7) % 12;
+
+  function buildPcKnotAtAlt(alt: number, pc: number, key: LatticeKey, keyIdx: number): KnotConfig {
     const cfg: KnotConfig = {
-      pc: anchorPc, center: [0, 0, 0],
+      pc,
+      center: [alt * ALT_SPACING_X, 0, 0],
       R: KNOT_R, r: KNOT_r, P: KNOT_P, Q: KNOT_Q,
-      intervalR: 0,
+      intervalR: alt,
       parentPc: null, wraps: 0, cableOffset: 0, cableTOffset: 0,
       sourceNodeId: null,
     };
-    pcKnots.set(anchorPc, cfg);
-    buildPcNodes(anchorKeyEntry.key, anchorKeyEntry.keyIdx, cfg);
-  }
-
-  // 2. BFS-process expansions: each pc whose source node is already
-  //    built becomes a cable knot wrapping the source's pc-knot.
-  let progress = true;
-  while (progress) {
-    progress = false;
-    for (const [childPc, info] of expansionInfo) {
-      if (pcKnots.has(childPc)) continue;
-      const sourceNode = nodeMap.get(info.sourceNodeId);
-      if (!sourceNode) continue;     // wait until parent is built
-      const parentPc = sourceNode.rootPc;
-      const parentCfg = pcKnots.get(parentPc);
-      if (!parentCfg) continue;
-      const childKeyEntry = uniqueKeys.find(uk => uk.key.pc === childPc);
-      if (!childKeyEntry) continue;
-      const cfg: KnotConfig = {
-        pc: childPc, center: [0, 0, 0],   // unused for cable knots
-        R: KNOT_R, r: KNOT_r, P: KNOT_P, Q: KNOT_Q,
-        intervalR: 0,
-        parentPc,
-        wraps: info.modSemis,
-        cableOffset: parentCfg.r * 0.45,
-        cableTOffset: sourceNode.knotT / TWO_PI,
-        sourceNodeId: info.sourceNodeId,
+    pcKnots.set(pc, cfg);
+    // Place 49 nodes on this knot, ordered globally by brightness.
+    for (let idx = 0; idx < NK; idx++) {
+      const { family, mode } = allModes[idx];
+      const t = (((idx - anchorSortedIdx) % NK + NK) % NK) / NK * TWO_PI;
+      const [lx, ly, lz] = knotPoint(KNOT_R, KNOT_r, KNOT_P, KNOT_Q, t);
+      const id = `${keyIdx}::${family.id}::${mode.name}`;
+      const modeIdx = familyRank.get(family.id)?.get(mode.name) ?? 0;
+      const node: LatticeNode = {
+        id, key, keyIdx, family, mode,
+        pos: [cfg.center[0] + lx, cfg.center[1] + ly, cfg.center[2] + lz],
+        rootPc: pc,
+        knotT: t,
+        modeRank: modeIdx,
       };
-      pcKnots.set(childPc, cfg);
-      buildPcNodes(childKeyEntry.key, childKeyEntry.keyIdx, cfg);
-      progress = true;
+      nodes.push(node);
+      nodeMap.set(id, node);
     }
+    return cfg;
   }
 
-  // 3. Remaining pcs (no expansion info or unresolved): fall back to
-  //    a standalone torus knot at the static PC_OFFSET_BY_SEMIS slot.
-  //    These are the pcs the user hasn't yet expanded; they're built
-  //    so the lattice has them but the renderer hides them.
-  for (const { key, keyIdx } of uniqueKeys) {
-    if (pcKnots.has(key.pc)) continue;
-    const semis = semis12From(anchorPc, key.pc);
-    const dir = PC_OFFSET_BY_SEMIS[semis] ?? [0, 0, 0];
-    const cfg: KnotConfig = {
-      pc: key.pc,
-      center: [dir[0] * PC_KNOT_SPACING, dir[1] * PC_KNOT_SPACING, dir[2] * PC_KNOT_SPACING],
-      R: KNOT_R, r: KNOT_r, P: KNOT_P, Q: KNOT_Q,
-      intervalR: SEMIS_TO_INTERVAL_CLASS[semis] ?? 0,
-      parentPc: null, wraps: 0, cableOffset: 0, cableTOffset: 0,
-      sourceNodeId: null,
-    };
-    pcKnots.set(key.pc, cfg);
-    buildPcNodes(key, keyIdx, cfg);
+  // Build each alt-level P-knot.
+  for (let alt = 0; alt < ALT_LEVELS; alt++) {
+    const semis = altLevelToSemis(alt);
+    const pc = (anchorPc + intervalSteps(edo, semis)) % edo;
+    const keyEntry =
+      uniqueKeys.find(uk => uk.key.pc === pc) ?? uniqueKeys[0];
+    if (!keyEntry) continue;
+    buildPcKnotAtAlt(alt, pc, keyEntry.key, keyEntry.keyIdx);
   }
 
-  // Edges (same musical relationships as before; only positions changed).
+  // (Used to silence unused-var noise from the simplified layout.)
+  void PC_OFFSET_BY_SEMIS;
+  void SEMIS_TO_INTERVAL_CLASS;
+  void PC_KNOT_SPACING;
+  void sampleKnotCurve;
+  void expansionInfo;
+  void X_EDGE_COLOR;
+
   const edges: LatticeEdge[] = [];
-
-  // X-edges: same family + same mode, adjacent key.
-  for (const family of families) {
-    const modeList = modes.get(family.id) ?? [];
-    for (const mode of modeList) {
-      for (let ki = 0; ki < keys.length - 1; ki++) {
-        const fromId = `${ki}::${family.id}::${mode.name}`;
-        const toId = `${ki + 1}::${family.id}::${mode.name}`;
-        if (nodeMap.has(fromId) && nodeMap.has(toId)) {
-          edges.push({ fromId, toId, type: "x", alt: 0, color: X_EDGE_COLOR });
-        }
-      }
-    }
-  }
 
   // Helper: pitch-set symmetric distance / 2 between two nodes.
   const altOf = (a: LatticeNode, b: LatticeNode): number => {
@@ -759,37 +714,31 @@ export function buildCylinderLattice(
     return symdiff / 2;
   };
 
-  // Y-edges: every brightness-rank-adjacent same-family pair, so each
-  // family arc is unbroken on the knot — no matter how chromatic the
-  // family is, all 7 of its modes are connected in a chain.  alt is
-  // computed and stored so the renderer can show its actual value.
-  for (const family of families) {
-    const sorted = (modes.get(family.id) ?? []).slice()
-      .sort((a, b) => b.brightness - a.brightness);
-    for (let ki = 0; ki < keys.length; ki++) {
-      for (let i = 0; i < sorted.length - 1; i++) {
-        const fromId = `${ki}::${family.id}::${sorted[i].name}`;
-        const toId = `${ki}::${family.id}::${sorted[i + 1].name}`;
-        const a = nodeMap.get(fromId);
-        const b = nodeMap.get(toId);
-        if (!a || !b) continue;
-        edges.push({
-          fromId, toId, type: "y",
-          alt: altOf(a, b),
-          color: family.color,
-        });
-      }
+  // Y-edges: brightness-adjacent within each P-knot, cutting across
+  // families.  Every pair of consecutive modes (in the global
+  // brightness order that drives node positions) gets one edge —
+  // produces a chain that follows the knot path through all 49 modes
+  // from darkest to brightest.
+  for (const cfg of pcKnots.values()) {
+    const pcNodes = nodes.filter(n => n.rootPc === cfg.pc);
+    pcNodes.sort((a, b) => a.mode.brightness - b.mode.brightness);
+    for (let i = 0; i < pcNodes.length - 1; i++) {
+      const a = pcNodes[i], b = pcNodes[i + 1];
+      edges.push({
+        fromId: a.id, toId: b.id, type: "y",
+        alt: altOf(a, b),
+        color: a.family.color,
+      });
     }
   }
 
-  // Z-edges: every same-root-pc pair whose alteration distance is 1
-  // or 2, across families (modal-interchange neighbours).  Reads as
-  // "the closest tonalities at this root in other families".
-  for (let ki = 0; ki < keys.length; ki++) {
-    const subset = nodes.filter(n => n.keyIdx === ki);
-    for (let i = 0; i < subset.length; i++) {
-      for (let j = i + 1; j < subset.length; j++) {
-        const a = subset[i], b = subset[j];
+  // Z-edges: same root pc, cross-family, alt distance 1 or 2.  These
+  // are the modal-interchange shortcuts within each P-knot.
+  for (const cfg of pcKnots.values()) {
+    const pcNodes = nodes.filter(n => n.rootPc === cfg.pc);
+    for (let i = 0; i < pcNodes.length; i++) {
+      for (let j = i + 1; j < pcNodes.length; j++) {
+        const a = pcNodes[i], b = pcNodes[j];
         if (a.family === b.family) continue;
         const alt = altOf(a, b);
         if (alt !== 1 && alt !== 2) continue;
@@ -799,6 +748,28 @@ export function buildCylinderLattice(
           color: Z_EDGE_COLOR,
         });
       }
+    }
+  }
+
+  // Bridge edges: connect the anchor-equivalent mode of each
+  // alt-level P-knot to the anchor-equivalent mode of the next.
+  // These are the "+1 alteration step" links in the chain — each
+  // bridge represents one unit of harmonic distance.
+  if (anchorFamily && anchorModeName) {
+    for (let alt = 0; alt < ALT_LEVELS - 1; alt++) {
+      const pcA = (anchorPc + intervalSteps(edo, altLevelToSemis(alt))) % edo;
+      const pcB = (anchorPc + intervalSteps(edo, altLevelToSemis(alt + 1))) % edo;
+      const keyA = uniqueKeys.find(uk => uk.key.pc === pcA);
+      const keyB = uniqueKeys.find(uk => uk.key.pc === pcB);
+      if (!keyA || !keyB) continue;
+      const fromId = `${keyA.keyIdx}::${anchorFamily.id}::${anchorModeName}`;
+      const toId   = `${keyB.keyIdx}::${anchorFamily.id}::${anchorModeName}`;
+      if (!nodeMap.has(fromId) || !nodeMap.has(toId)) continue;
+      edges.push({
+        fromId, toId, type: "bridge",
+        alt: 1,
+        color: "#aabbcc",
+      });
     }
   }
 
