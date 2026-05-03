@@ -305,20 +305,36 @@ interface NodeMeshProps {
   onClick: (node: LatticeNode, ev: ThreeEvent<MouseEvent>) => void;
 }
 
+// One colour per alteration distance from anchor.  arc 0 (anchor) is
+// neutral white; arcs 1..6 progress through a hue ramp so close
+// modulations read cool and distant ones hot.
+const ALT_LEVEL_COLORS = [
+  "#f5f5f5",   // alt 0: anchor — white
+  "#88bbff",   // alt 1: P5/P4 — light blue
+  "#22ddaa",   // alt 2: M2/m7 — teal
+  "#9966ff",   // alt 3: m3/M6 — purple
+  "#ff9933",   // alt 4: M3/m6 — orange
+  "#ff5588",   // alt 5: m2/M7 — pink
+  "#ffcc33",   // alt 6: TT — yellow
+];
+function altColor(altLevel: number | undefined): string {
+  if (altLevel === undefined || altLevel < 0) return "#888";
+  return ALT_LEVEL_COLORS[Math.min(altLevel, ALT_LEVEL_COLORS.length - 1)];
+}
+
 function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHover, onClick }: NodeMeshProps) {
   const meshRef = useRef<THREE.Mesh>(null);
-  // Single smooth colour ramp from "neon" (rank 0: family hue lerped
-  // ~55% toward white) to "deep but readable" (rank 6: family hue
-  // lerped only ~45% toward black, so it still reads as the family
-  // colour, not just dark grey).  No opacity scaling — gradient lives
-  // entirely in colour + emissive intensity so nodes stay fully solid.
+  // Colour by alt distance from anchor — drops the family-colour ramp
+  // entirely.  Brightness rank still applies a subtle dim so darker
+  // modes within an arc are slightly muted.
   const rankT = node.modeRank / 6;
+  const palette = altColor(node.altLevel);
   const baseColor = useMemo(() => {
-    const family = new THREE.Color(node.family.color);
-    const neon = family.clone().lerp(new THREE.Color("#ffffff"), 0.55);
-    const dark = family.clone().lerp(new THREE.Color("#000000"), 0.45);
+    const c = new THREE.Color(palette);
+    const neon = c.clone().lerp(new THREE.Color("#ffffff"), 0.35);
+    const dark = c.clone().lerp(new THREE.Color("#000000"), 0.4);
     return neon.lerp(dark, rankT);
-  }, [node.family.color, rankT]);
+  }, [palette, rankT]);
   const emissive = baseColor;
 
   useFrame((_, delta) => {
@@ -360,8 +376,8 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
         {isHovered || isActive || isAnchor || isSelected ? (
           <div style={{
             background: "#0a0a0aee",
-            border: `1px solid ${node.family.color}`,
-            color: node.family.color,
+            border: `1px solid ${palette}`,
+            color: palette,
             padding: "3px 7px",
             borderRadius: 3,
             fontSize: 11,
@@ -387,7 +403,7 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
           // name (e.g. "D Dor", "B♭ Mix", "F♯ HMn") so the user can
           // identify every node by sight without hovering.
           <div style={{
-            color: node.family.color,
+            color: palette,
             opacity: 0.82,
             fontSize: 8.5,
             fontWeight: 600,
