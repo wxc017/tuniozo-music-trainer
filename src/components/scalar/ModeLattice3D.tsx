@@ -926,8 +926,11 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   }, [rootPitch, tonicPc, edo, playVol]);
 
   const handleClick = useCallback((node: LatticeNode, ev: ThreeEvent<MouseEvent>) => {
-    const ctrl = ev.ctrlKey || ev.metaKey;
-    const shift = ev.shiftKey;
+    // Read the underlying DOM event for modifier keys — matches the
+    // harmonic lattice's pattern, which is reliable across R3F versions.
+    const native = ev.nativeEvent as MouseEvent;
+    const ctrl = native.ctrlKey || native.metaKey;
+    const shift = native.shiftKey;
     if (shift) {
       // Shift+click: focus the camera on this node.
       setCameraFocusId(node.id);
