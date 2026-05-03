@@ -32,15 +32,31 @@ function CameraReset({ resetKey }: { resetKey: number }) {
   return null;
 }
 
-// Arrow-key panning: move the orbit target in camera-relative directions.
+// Arrow-key / WASD panning: move the orbit target in camera-relative
+// directions.  Pan speed is scaled by camera distance so navigation
+// stays usable as the user zooms in or out across the lattice.
 function KeyboardPan() {
   const { controls, camera } = useThree();
   const pressed = useRef<Set<string>>(new Set());
   useEffect(() => {
-    const d = (e: KeyboardEvent) => {
-      if (e.key.startsWith("Arrow")) { e.preventDefault(); pressed.current.add(e.key); }
+    const isTyping = (target: EventTarget | null) => {
+      const el = target as HTMLElement | null;
+      if (!el) return false;
+      const tag = el.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
     };
-    const u = (e: KeyboardEvent) => pressed.current.delete(e.key);
+    const d = (e: KeyboardEvent) => {
+      if (isTyping(e.target)) return;
+      const k = e.key.toLowerCase();
+      if (e.key.startsWith("Arrow") || k === "w" || k === "a" || k === "s" || k === "d") {
+        e.preventDefault();
+        pressed.current.add(e.key.startsWith("Arrow") ? e.key : k);
+      }
+    };
+    const u = (e: KeyboardEvent) => {
+      pressed.current.delete(e.key);
+      pressed.current.delete(e.key.toLowerCase());
+    };
     window.addEventListener("keydown", d);
     window.addEventListener("keyup", u);
     return () => {
@@ -54,11 +70,15 @@ function KeyboardPan() {
     if (!c.target) return;
     const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).normalize();
     const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1).normalize();
+    // Scale step by orbit-target distance so panning feels consistent
+    // whether zoomed in on a single knot or zoomed out on the whole lattice.
+    const dist = camera.position.distanceTo(c.target);
+    const step = Math.max(0.4, dist * 0.02);
     const d = new THREE.Vector3();
-    if (pressed.current.has("ArrowLeft"))  d.addScaledVector(right, -0.4);
-    if (pressed.current.has("ArrowRight")) d.addScaledVector(right,  0.4);
-    if (pressed.current.has("ArrowUp"))    d.addScaledVector(up,     0.4);
-    if (pressed.current.has("ArrowDown"))  d.addScaledVector(up,    -0.4);
+    if (pressed.current.has("ArrowLeft")  || pressed.current.has("a")) d.addScaledVector(right, -step);
+    if (pressed.current.has("ArrowRight") || pressed.current.has("d")) d.addScaledVector(right,  step);
+    if (pressed.current.has("ArrowUp")    || pressed.current.has("w")) d.addScaledVector(up,     step);
+    if (pressed.current.has("ArrowDown")  || pressed.current.has("s")) d.addScaledVector(up,    -step);
     c.target.add(d);
     camera.position.add(d);
   });
@@ -434,12 +454,17 @@ function Scene({
         const thetaA = cfg.Q * a.knotT;
         const phiB = cfg.P * b.knotT;
         const thetaB = cfg.Q * b.knotT;
-        let dPhi = phiB - phiA;
-        if (dPhi >  Math.PI) dPhi -= TWO_PI;
-        if (dPhi < -Math.PI) dPhi += TWO_PI;
-        let dTheta = thetaB - thetaA;
-        if (dTheta >  Math.PI) dTheta -= TWO_PI;
-        if (dTheta < -Math.PI) dTheta += TWO_PI;
+        // Reduce to the shortest signed angular difference in [-π, π].
+        // φ and θ are multi-wound (φ goes up to P·2π) so a single 2π
+        // shift isn't enough — first take the difference modulo 2π,
+        // then flip sign if it exceeds π.
+        const shortestAngle = (raw: number): number => {
+          let x = ((raw % TWO_PI) + TWO_PI) % TWO_PI;
+          if (x > Math.PI) x -= TWO_PI;
+          return x;
+        };
+        const dPhi = shortestAngle(phiB - phiA);
+        const dTheta = shortestAngle(thetaB - thetaA);
         points = [];
         for (let s = 0; s <= NSAMPLES; s++) {
           const u = s / NSAMPLES;
@@ -994,7 +1019,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
       })()}
 
       <div className="px-3 py-1.5 text-[9px] text-[#555] border-t border-[#1a1a1a] flex items-center gap-3">
-        <span>Click a node to drone it; <b>Ctrl+click</b> to show its modulation rays; <b>Shift+click</b> to focus the camera on it.  Drag to orbit, scroll to zoom, arrow keys to pan.  Click "+" to grow a key into the lattice; click "×" on the mid-edge to collapse it back.</span>
+        <span>Click a node to drone it; <b>Ctrl+click</b> to show its modulation rays; <b>Shift+click</b> to focus the camera on it.  Drag to orbit, scroll to zoom, <b>WASD / arrow keys</b> to pan.  Click "+" to grow a key into the lattice; click "×" on the mid-edge to collapse it back.</span>
         {activeNode && (
           <span style={{ color: activeNode.family.color }}>
             playing: {activeNode.key.name} {formatHalfAccidentals(activeNode.mode.name)}
