@@ -672,8 +672,8 @@ function Scene({
         return (
           <group key={`${e.type}-${i}`}>
             <Line points={e.points} color={e.color}
-              lineWidth={e.type === "z" ? 2.0 : 1.6}
-              transparent opacity={e.type === "z" ? 0.9 : 0.75} />
+              lineWidth={e.type === "z" ? 3.2 : 2.6}
+              transparent opacity={e.type === "z" ? 1 : 0.9} />
             {labelVisible && (
               <Html position={e.mid} center distanceFactor={9}
                     style={{ pointerEvents: "none" }}>
