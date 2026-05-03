@@ -139,6 +139,21 @@ export interface LatticeNode {
   mode: LatticeMode;
   pos: [number, number, number];
   rootPc: number;             // absolute pc for this (key, mode) instance
+  knotT: number;              // parameter on the family's torus knot, [0, 2π)
+}
+
+// One (P, Q) twisted torus knot per root pc.  Each knot holds all 49
+// (family × mode) tonalities for that root — every parallel-mode and
+// modal-interchange option lives on a single knot.  Different roots
+// get different knots, scattered in 3D and connected by modulation
+// strings as the user grows the lattice outward.
+export interface KnotConfig {
+  pc: number;
+  center: [number, number, number];
+  R: number;                  // major radius of the carrying torus
+  r: number;                  // minor radius (tube radius)
+  P: number;                  // long-way wraps
+  Q: number;                  // short-way wraps
 }
 
 export interface LatticeEdge {
@@ -156,6 +171,10 @@ export interface TonalityLattice {
   nodes: LatticeNode[];
   edges: LatticeEdge[];
   nodeMap: Map<string, LatticeNode>;
+  // Per-root-pc knot configuration.  Lets the renderer draw a single
+  // twisted-torus-knot tube for each expanded root, with all 49
+  // (family × mode) tonalities of that root sampled along the knot.
+  pcKnots: Map<number, KnotConfig>;
   // World-space extents (for camera framing).
   bounds: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
 }
@@ -221,6 +240,7 @@ export function buildTonalityLattice(edo: number): TonalityLattice {
           id, key, keyIdx: ki, family, mode,
           pos: [x, y, z],
           rootPc: key.pc,
+          knotT: 0,
         };
         nodes.push(node);
         nodeMap.set(id, node);
@@ -290,6 +310,7 @@ export function buildTonalityLattice(edo: number): TonalityLattice {
 
   const lattice: TonalityLattice = {
     keys, families, modes, nodes, edges, nodeMap,
+    pcKnots: new Map(),         // unused for the flat grid layout
     bounds: { minX, maxX, minY, maxY, minZ, maxZ },
   };
   _cached = { edo, lattice };
@@ -373,25 +394,48 @@ export function findLatticeNode(
   return null;
 }
 
-// ── Cylinder lattice ────────────────────────────────────────────────────
-// All (key, family, mode) tonalities — 15 keys × 7 families × 7 modes
-// = 735 nodes — laid out on seven concentric vertical cylinders, one
-// per family.  The active EDO determines the per-key pc, but the
-// number of keys (15, the chain-of-fifths span) and the cylinder
-// topology are fixed:
-//   - Around each cylinder (θ): which key.  Anchor's key rotates to
-//     θ = 0 (front of every cylinder).
-//   - Vertical (Y): brightness.  Anchor's brightness is centred at
-//     y = 0 so the anchor sits dead-front-and-centre.
-//   - Radial (cylinder index → r): family.  Major nearest the axis,
-//     Subharmonic Diatonic on the outermost cylinder.
-//
-// This lets the user see e.g. D Dorian, E Phrygian, B Locrian s2 s5 s6
-// — all the relatives and modulations alongside the parallel modes —
-// instead of being restricted to a single key column.
-const CYL_R0 = 3.5;            // innermost family cylinder
-const CYL_DR = 1.2;            // radius increment per family layer
-const CYL_BRIGHTNESS = 1.0;    // vertical units per brightness step
+// ── Knot lattice (one twisted torus knot per root pc) ──────────────────
+// Each root note (pitch class) is a single (P, Q) torus knot in 3D
+// space.  All 49 tonalities sharing that root — 7 families × 7 modes,
+// i.e. every parallel-mode and modal-interchange option — sit on one
+// knot together.  The user's anchor pc lands at the origin; modulating
+// to a different root grows the structure with a new knot offset in
+// the modulation's direction (P5 east, P4 west, M3 up, m3 NE, ...).
+const KNOT_R = 2.0;            // major radius of each root's torus
+const KNOT_r = 0.7;            // minor (tube) radius
+const KNOT_P = 3;              // long-way wraps — coprime with Q
+const KNOT_Q = 7;              // short-way wraps
+const KNOT_N = 49;             // 7 families × 7 modes per root
+
+// 3D offset (unit-vector × spacing) for each interval from anchor.
+// Indexed by 12-EDO-equivalent semitones modulo 12 — for 31-EDO we
+// quantize the EDO interval to its nearest 12-EDO semitone for
+// placement only (the actual pitch maths still uses the full EDO).
+const PC_OFFSET_BY_SEMIS: Record<number, [number, number, number]> = {
+  0:  [ 0,    0,    0],         // anchor
+  7:  [ 1,    0,    0],         // +P5
+  5:  [-1,    0,    0],         // +P4 (= −P5)
+  4:  [ 0,    1,    0],         // +M3
+  8:  [ 0,   -1,    0],         // −M3 (= +m6)
+  3:  [ 0,    0.7,  0.7],       // +m3
+  9:  [ 0,   -0.7, -0.7],       // −m3 (= +M6)
+  2:  [ 0,    0,    1],         // +M2
+  10: [ 0,    0,   -1],         // −M2 (= +m7)
+  1:  [ 0.5,  0,    0.7],       // +m2
+  11: [-0.5,  0,   -0.7],       // −m2 (= +M7)
+  6:  [ 0.7,  0,   -0.7],       // tritone
+};
+const PC_KNOT_SPACING = 9;
+
+// Local position on a (P, Q) torus knot at parameter t, relative to
+// the knot's centre.  Used both at node-build time and at render time
+// (the renderer samples this to draw tube segments connecting nodes).
+export function knotPoint(R: number, r: number, P: number, Q: number, t: number): [number, number, number] {
+  const phi   = P * t;
+  const theta = Q * t;
+  const ringR = R + r * Math.cos(theta);
+  return [ringR * Math.cos(phi), r * Math.sin(theta), ringR * Math.sin(phi)];
+}
 
 export function buildCylinderLattice(
   edo: number,
@@ -412,58 +456,90 @@ export function buildCylinderLattice(
     modes.set(family.id, list);
   }
 
-  // Locate the anchor's column (keyIdx) on the chain of fifths and its
-  // brightness within its family — both used to recentre the lattice
-  // so the anchor lands at θ = 0, y = 0.
+  // Brightness ranks within each family (rank 0 = brightest).  Each
+  // root's torus knot orders modes within a family by this rank so
+  // adjacent ranks land at adjacent positions on the knot's short way.
+  const familyRank = new Map<string, Map<string, number>>();
+  for (const family of families) {
+    const list = (modes.get(family.id) ?? []).slice()
+      .sort((a, b) => b.brightness - a.brightness);
+    const rmap = new Map<string, number>();
+    list.forEach((m, i) => rmap.set(m.name, i));
+    familyRank.set(family.id, rmap);
+  }
+
   const anchorFamily = anchorFamilyName
     ? families.find(f => f.familyName === anchorFamilyName) ?? null
     : null;
-  const anchorMode = anchorFamily && anchorModeName
-    ? (modes.get(anchorFamily.id) ?? []).find(m => m.name === anchorModeName) ?? null
-    : null;
-  const anchorBrightness = anchorMode?.brightness ?? 0;
-  // Anchor's key column: prefer the one whose pc matches tonicPc; if
-  // multiple spellings share a pc (12-EDO), prefer the natural-letter
-  // one near the centre.
-  let anchorKeyIdx = -1;
-  for (let i = 0; i < keys.length; i++) {
-    if (keys[i].pc === ((tonicPc % edo) + edo) % edo) {
-      // Prefer no-accidental, then closest to the middle of the list.
-      if (anchorKeyIdx === -1
-          || (keys[i].accidental === "" && keys[anchorKeyIdx].accidental !== "")
-          || Math.abs(i - 7) < Math.abs(anchorKeyIdx - 7)) {
-        anchorKeyIdx = i;
-      }
-    }
-  }
-  if (anchorKeyIdx < 0) anchorKeyIdx = 8;   // fall back to "C" column
+  const anchorModeIdx = anchorFamily && anchorModeName
+    ? familyRank.get(anchorFamily.id)?.get(anchorModeName) ?? 0
+    : 0;
+  const anchorPc = ((tonicPc % edo) + edo) % edo;
 
-  const N = keys.length;
-  const ANGLE_STEP = (Math.PI * 2) / N;
+  // Pick one canonical key per unique pc (so we don't build duplicate
+  // knots for enharmonic spellings like F♭ and E in 12-EDO).
+  const seenPcs = new Set<number>();
+  const uniqueKeys: { keyIdx: number; key: LatticeKey }[] = [];
+  for (let ki = 0; ki < keys.length; ki++) {
+    const k = keys[ki];
+    if (seenPcs.has(k.pc)) continue;
+    seenPcs.add(k.pc);
+    uniqueKeys.push({ keyIdx: ki, key: k });
+  }
+
+  // Knot centre per pc.  Anchor pc at origin; everything else placed
+  // at PC_OFFSET_BY_SEMIS × spacing in 3D — close consonances (P5/P4)
+  // sit east/west of anchor, M3/m3 above/diagonal, M2/m2 in front of
+  // / behind, tritone furthest.
+  const TWO_PI = 2 * Math.PI;
+  function semis12From(pcA: number, pcB: number): number {
+    const delta = ((pcB - pcA) % edo + edo) % edo;
+    return ((Math.round((delta / edo) * 12) % 12) + 12) % 12;
+  }
+  const pcKnots = new Map<number, KnotConfig>();
+  for (const { key } of uniqueKeys) {
+    const semis = semis12From(anchorPc, key.pc);
+    const dir = PC_OFFSET_BY_SEMIS[semis] ?? [0, 0, 0];
+    pcKnots.set(key.pc, {
+      pc: key.pc,
+      center: [
+        dir[0] * PC_KNOT_SPACING,
+        dir[1] * PC_KNOT_SPACING,
+        dir[2] * PC_KNOT_SPACING,
+      ],
+      R: KNOT_R, r: KNOT_r, P: KNOT_P, Q: KNOT_Q,
+    });
+  }
+
+  // Order on each pc-knot: k = familyIdx · 7 + modeIdx, so each
+  // family is a contiguous 7-mode arc on the knot and modal-
+  // interchange neighbours are 7 nodes apart.  Shift t so the user's
+  // anchor (familyIdx, modeIdx) lands at t = 0 for every knot — that
+  // way "the same tonality" sits at the front of every root's knot.
+  const anchorFamilyIdx = anchorFamily?.zOrd ?? 0;
+  const tAnchor = ((anchorFamilyIdx * 7 + anchorModeIdx) / KNOT_N) * TWO_PI;
 
   const nodes: LatticeNode[] = [];
   const nodeMap = new Map<string, LatticeNode>();
 
-  for (let ki = 0; ki < keys.length; ki++) {
-    const key = keys[ki];
-    const theta = (ki - anchorKeyIdx) * ANGLE_STEP;
-    const cosT = Math.cos(theta);
-    const sinT = Math.sin(theta);
-
+  for (const { keyIdx, key } of uniqueKeys) {
+    const cfg = pcKnots.get(key.pc)!;
     for (const family of families) {
-      const r = CYL_R0 + family.zOrd * CYL_DR;
-      const x = cosT * r;
-      const z = sinT * r;
-
       const modeList = modes.get(family.id) ?? [];
+      const familyIdx = family.zOrd;
       for (const mode of modeList) {
-        const y = (mode.brightness - anchorBrightness) * CYL_BRIGHTNESS;
-        const id = `${ki}::${family.id}::${mode.name}`;
+        const modeIdx = familyRank.get(family.id)?.get(mode.name) ?? 0;
+        const k = familyIdx * 7 + modeIdx;
+        const tRaw = (k / KNOT_N) * TWO_PI;
+        const t = ((tRaw - tAnchor) % TWO_PI + TWO_PI) % TWO_PI;
+        const [lx, ly, lz] = knotPoint(cfg.R, cfg.r, cfg.P, cfg.Q, t);
+        const id = `${keyIdx}::${family.id}::${mode.name}`;
         const node: LatticeNode = {
           id,
-          key, keyIdx: ki, family, mode,
-          pos: [x, y, z],
+          key, keyIdx, family, mode,
+          pos: [cfg.center[0] + lx, cfg.center[1] + ly, cfg.center[2] + lz],
           rootPc: key.pc,
+          knotT: t,
         };
         nodes.push(node);
         nodeMap.set(id, node);
@@ -471,12 +547,10 @@ export function buildCylinderLattice(
     }
   }
 
-  // Edges (same logic as the flat grid, only the node positions change).
+  // Edges (same musical relationships as before; only positions changed).
   const edges: LatticeEdge[] = [];
 
-  // X-edges: same family + same mode, adjacent key — chords across the
-  // cylinder.  Skip the closing wrap-around so we don't draw the long
-  // diameter through the centre.
+  // X-edges: same family + same mode, adjacent key.
   for (const family of families) {
     const modeList = modes.get(family.id) ?? [];
     for (const mode of modeList) {
@@ -505,7 +579,8 @@ export function buildCylinderLattice(
     }
   }
 
-  // Z-edges: same key, 1-alt cross-family pairs.
+  // Z-edges: same key, 1-alt cross-family pairs (modulation strings
+  // that connect different family knots in 3D).
   for (let ki = 0; ki < keys.length; ki++) {
     const subset = nodes.filter(n => n.keyIdx === ki);
     for (let i = 0; i < subset.length; i++) {
@@ -538,17 +613,17 @@ export function buildCylinderLattice(
 
   return {
     keys, families, modes,
-    nodes, edges, nodeMap,
+    nodes, edges, nodeMap, pcKnots,
     bounds: { minX, maxX, minY, maxY, minZ, maxZ },
   };
 }
 
-// Cylinder geometry params exposed so the renderer can draw the family
-// shells underneath as visual scaffolding.
+// Knot params (kept under the old name so callers don't need to be
+// rewritten — the renderer just reads R/r off the per-family config now).
 export const CYLINDER_PARAMS = {
-  R0: CYL_R0,
-  DR: CYL_DR,
-  BRIGHTNESS_UNIT: CYL_BRIGHTNESS,
+  R0: KNOT_R,
+  DR: 0,
+  BRIGHTNESS_UNIT: 1.0,
 };
 
 // ── Modulation edges from a chosen anchor ───────────────────────────────
@@ -756,6 +831,7 @@ export function buildSingleKeyLattice(
         mode,
         pos: [x, y, z],
         rootPc: synthKey.pc,
+        knotT: 0,
       };
       nodes.push(node);
       nodeMap.set(id, node);
@@ -811,6 +887,7 @@ export function buildSingleKeyLattice(
     nodes,
     edges,
     nodeMap,
+    pcKnots: new Map(),
     bounds: { minX, maxX, minY, maxY, minZ, maxZ },
   };
 }
@@ -876,6 +953,7 @@ export function filterToAnchor(
     nodes,
     edges,
     nodeMap,
+    pcKnots: lattice.pcKnots,
     bounds: { minX, maxX, minY, maxY, minZ, maxZ },
   };
 }
