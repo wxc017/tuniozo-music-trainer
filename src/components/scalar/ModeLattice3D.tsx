@@ -791,7 +791,7 @@ function Scene({
         );
       })}
 
-      <OrbitControls enableDamping dampingFactor={0.15} />
+      <OrbitControls makeDefault enableDamping dampingFactor={0.15} />
     </>
   );
 }
