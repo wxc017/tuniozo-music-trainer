@@ -583,6 +583,100 @@ export interface PcExpansion {
   modSemis: number;
 }
 
+// ── Family Lattice — alternative flat layout ───────────────────────────
+// Each family becomes a concentric ring; modes within a family are
+// placed around the ring by brightness.  Edges connect any two modes
+// (within or across rings) whose pitch-class sets differ by exactly
+// one alteration.  Single-pc lattice (no modulation cables) — this
+// is a "structural map" view of all family×mode tonalities at the
+// user's tonic, organised by family relationship and 1-alt edges.
+export function buildFamilyLattice(
+  edo: number,
+  tonicPc: number,
+): TonalityLattice {
+  const keys = buildKeys(edo);
+  const families = LATTICE_FAMILIES;
+  const modes = new Map<string, LatticeMode[]>();
+  for (const family of families) {
+    const modeNames = PATTERN_SCALE_FAMILIES[family.familyName] ?? [];
+    const list: LatticeMode[] = [];
+    for (const modeName of modeNames) {
+      const m = buildMode(family, modeName, edo);
+      if (m) list.push(m);
+    }
+    modes.set(family.id, list);
+  }
+
+  const tonicNorm = ((tonicPc % edo) + edo) % edo;
+  const tonicKeyIdx = keys.findIndex(k => k.pc === tonicNorm);
+  const tonicKey = tonicKeyIdx >= 0 ? keys[tonicKeyIdx] : keys[8];
+
+  const RING_SPACING = 6.5;
+  const RING_R0 = 7;
+  const nodes: LatticeNode[] = [];
+  const nodeMap = new Map<string, LatticeNode>();
+
+  for (const family of families) {
+    const familyModes = modes.get(family.id) ?? [];
+    if (familyModes.length === 0) continue;
+    const sorted = [...familyModes].sort((a, b) => b.brightness - a.brightness);
+    const radius = RING_R0 + family.zOrd * RING_SPACING;
+    for (let i = 0; i < sorted.length; i++) {
+      const mode = sorted[i];
+      const angle = (i / sorted.length) * 2 * Math.PI - Math.PI / 2;
+      const x = radius * Math.cos(angle);
+      const y = radius * Math.sin(angle);
+      const id = `${tonicKeyIdx}::${family.id}::${mode.name}`;
+      const node: LatticeNode = {
+        id, key: tonicKey, keyIdx: tonicKeyIdx,
+        family, mode,
+        pos: [x, y, 0],
+        rootPc: tonicNorm,
+        knotT: angle, modeRank: i,
+        altLevel: undefined,
+      };
+      nodes.push(node);
+      nodeMap.set(id, node);
+    }
+  }
+
+  // 1-alteration edges: any pair of nodes whose pitch-class sets
+  // differ by exactly one note.  This forms the lattice's web.
+  const edges: LatticeEdge[] = [];
+  const pcSets = nodes.map(n => {
+    const s = new Set<number>();
+    for (const step of n.mode.scale) s.add(((n.rootPc + step) % edo + edo) % edo);
+    return s;
+  });
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      let symdiff = 0;
+      for (const v of pcSets[i]) if (!pcSets[j].has(v)) symdiff++;
+      for (const v of pcSets[j]) if (!pcSets[i].has(v)) symdiff++;
+      if (symdiff / 2 === 1) {
+        edges.push({
+          fromId: nodes[i].id, toId: nodes[j].id,
+          type: "y", alt: 1, color: "#aabbcc",
+        });
+      }
+    }
+  }
+
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  for (const n of nodes) {
+    if (n.pos[0] < minX) minX = n.pos[0];
+    if (n.pos[0] > maxX) maxX = n.pos[0];
+    if (n.pos[1] < minY) minY = n.pos[1];
+    if (n.pos[1] > maxY) maxY = n.pos[1];
+  }
+  return {
+    keys, families, modes,
+    nodes, edges, nodeMap, pcKnots: new Map(),
+    bounds: { minX, maxX, minY, maxY, minZ: 0, maxZ: 0 },
+  };
+}
+
 export function buildCylinderLattice(
   edo: number,
   tonicPc: number,

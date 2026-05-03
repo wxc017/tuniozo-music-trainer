@@ -17,18 +17,21 @@ import * as THREE from "three";
 
 // ── Navigation helpers (ported from the harmonic lattice) ──────────────
 // Reset the camera to a default 3/4 view whenever resetKey changes.
-function CameraReset({ resetKey }: { resetKey: number }) {
+function CameraReset({ resetKey, position }: {
+  resetKey: number;
+  position: [number, number, number];
+}) {
   const { camera, controls } = useThree();
   const prevKey = useRef(resetKey);
   useEffect(() => {
     if (resetKey !== prevKey.current) {
       prevKey.current = resetKey;
-      camera.position.set(40, 30, 80);
+      camera.position.set(position[0], position[1], position[2]);
       camera.lookAt(0, 0, 0);
       const c = controls as { target?: { set: (x: number, y: number, z: number) => void }; update?: () => void } | null;
       if (c?.target) { c.target.set(0, 0, 0); c.update?.(); }
     }
-  }, [resetKey, camera, controls]);
+  }, [resetKey, camera, controls, position]);
   return null;
 }
 
@@ -125,7 +128,7 @@ function CameraFocusCenter({ targetPos }: { targetPos: [number, number, number] 
 }
 import { audioEngine } from "@/lib/audioEngine";
 import {
-  buildCylinderLattice, LATTICE_FAMILIES,
+  buildCylinderLattice, buildFamilyLattice, LATTICE_FAMILIES,
   scaleNoteNames, computeModulationEdges, sampleKnotCurve, cablePoint,
   intervalSteps,
   type TonalityLattice, type LatticeNode, type ModulationEdge,
@@ -775,6 +778,10 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   // render the modulation-ray overlay.  Plain clicks update selectedId
   // (so the alt labels shift to that node) but don't switch rays on.
   const [showRays, setShowRays] = useState(false);
+  // Which lattice variant to render: the alteration lattice (the
+  // unified torus knot organised by alt-distance arcs) or the family
+  // lattice (concentric rings, one per family, edges = 1-alt pairs).
+  const [latticeView, setLatticeView] = useState<"alteration" | "family">("alteration");
   // Plain-click re-anchor: stores an internal lattice anchor that
   // overrides the picker prop.  When the user plain-clicks a node,
   // the lattice reorients with that node as "main scale" and arcs
@@ -848,10 +855,12 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
 
   // Per-pc-knot lattice rebuilds when the effective anchor changes,
   // so plain-clicking a node reorients the entire alt-arc structure.
-  const lattice = useMemo(
-    () => buildCylinderLattice(edo, effectiveTonicPc, anchorFamilyName, anchorModeName, pcExpansionInfo),
-    [edo, effectiveTonicPc, anchorFamilyName, anchorModeName, pcExpansionInfo]
-  );
+  const lattice = useMemo(() => {
+    if (latticeView === "family") {
+      return buildFamilyLattice(edo, effectiveTonicPc);
+    }
+    return buildCylinderLattice(edo, effectiveTonicPc, anchorFamilyName, anchorModeName, pcExpansionInfo);
+  }, [latticeView, edo, effectiveTonicPc, anchorFamilyName, anchorModeName, pcExpansionInfo]);
 
   const anchorId = useMemo(() => {
     if (!anchorFamilyName || !anchorModeName) return null;
@@ -1074,14 +1083,39 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   // clearly at startup; the user zooms out (or expands neighbouring
   // roots) as they grow the structure.
   // Sized for the bigger anchor (R=14) — fits the full anchor plus
-  // a few overlapping satellites in view at startup.
-  const cameraPos: [number, number, number] = [40, 30, 80];
+  // a few overlapping satellites in view at startup.  Family-lattice
+  // view uses a top-down camera since its rings live flat in XY.
+  const cameraPos: [number, number, number] = latticeView === "family"
+    ? [0, 0, 90]
+    : [40, 30, 80];
 
   return (
     <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded overflow-hidden">
       <div className="px-3 py-2 flex items-center gap-2 flex-wrap border-b border-[#1a1a1a]">
+        <div className="flex items-center gap-1 mr-2">
+          <button
+            onClick={() => { setLatticeView("alteration"); setCameraResetKey(k => k + 1); }}
+            className={`text-[9px] px-2 py-0.5 rounded border ${
+              latticeView === "alteration"
+                ? "border-[#88bbff] bg-[#1a2230] text-[#cfe6ff]"
+                : "border-[#2a2a2a] bg-[#141414] text-[#888] hover:text-[#ccc]"
+            }`}>
+            Alteration
+          </button>
+          <button
+            onClick={() => { setLatticeView("family"); setCameraResetKey(k => k + 1); }}
+            className={`text-[9px] px-2 py-0.5 rounded border ${
+              latticeView === "family"
+                ? "border-[#88bbff] bg-[#1a2230] text-[#cfe6ff]"
+                : "border-[#2a2a2a] bg-[#141414] text-[#888] hover:text-[#ccc]"
+            }`}>
+            Family
+          </button>
+        </div>
         <p className="text-[10px] tracking-wider font-semibold text-[#888] mr-2">
-          ALTERATION LATTICE · {expandedRoots.size} {expandedRoots.size === 1 ? "KEY" : "KEYS"} EXPANDED
+          {latticeView === "alteration"
+            ? <>ALTERATION LATTICE · {expandedRoots.size} {expandedRoots.size === 1 ? "KEY" : "KEYS"} EXPANDED</>
+            : <>FAMILY LATTICE · {lattice.nodes.length} TONALITIES</>}
         </p>
         <button
           onClick={handleReset}
@@ -1098,7 +1132,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
 
       <div style={{ height: 540, background: "#050b16" }}>
         <Canvas camera={{ position: cameraPos, fov: 45 }}>
-          <CameraReset resetKey={cameraResetKey} />
+          <CameraReset resetKey={cameraResetKey} position={cameraPos} />
           <KeyboardPan />
           <CameraFocusCenter targetPos={focusPos} />
           <Scene
