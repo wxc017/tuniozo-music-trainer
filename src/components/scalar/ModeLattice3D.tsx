@@ -453,7 +453,7 @@ function Scene({
   const visibleEdges = useMemo(() => {
     type Pair = {
       color: string;
-      type: "y" | "z";
+      type: "y" | "z" | "bridge";
       points: [number, number, number][];
       mid: [number, number, number];
       alt: number;
@@ -534,7 +534,7 @@ function Scene({
       }
       const alt = altDistance(a, b, edo);
       out.push({
-        color: e.color, type: e.type as "y" | "z",
+        color: e.color, type: e.type as "y" | "z" | "bridge",
         points, mid, alt,
         fromId: a.id, toId: b.id,
       });
@@ -734,33 +734,35 @@ function Scene({
       })}
 
       {visibleEdges.map((e, i) => {
-        // Only show the alteration label on edges that touch the
-        // currently-selected node — so the boxes always read as
-        // "alt distance from the selected node" and shift as the
-        // user clicks different nodes.  Edges between non-selected
-        // pairs still draw their line, just no label.
-        const labelVisible = !!selectedId && (e.fromId === selectedId || e.toId === selectedId);
+        // Bridge edges (between alt arcs) always show their +N
+        // label.  Other edges only show their label when one
+        // endpoint is the selected node.
+        const isBridge = e.type === "bridge";
+        const labelVisible = isBridge
+          || (!!selectedId && (e.fromId === selectedId || e.toId === selectedId));
         return (
           <group key={`${e.type}-${i}`}>
             <Line points={e.points} color={e.color}
-              lineWidth={e.type === "z" ? 3.2 : 2.6}
-              transparent opacity={e.type === "z" ? 1 : 0.9}
+              lineWidth={isBridge ? 3.6 : e.type === "z" ? 3.2 : 2.6}
+              transparent opacity={isBridge ? 0.95 : e.type === "z" ? 1 : 0.9}
               renderOrder={2}
               depthTest={false}
               depthWrite={false} />
             {labelVisible && (
-              <Html position={e.mid} center distanceFactor={9}
-                    style={{ pointerEvents: "none" }}>
+              <Html position={e.mid} center distanceFactor={isBridge ? 32 : 9}
+                    style={{ pointerEvents: "none" }}
+                    zIndexRange={[100, 0]}>
                 <div style={{
-                  background: "#0a0a0acc",
-                  border: `1px solid ${e.color}`,
-                  color: e.color,
-                  padding: "0 1px",
-                  borderRadius: 1,
-                  fontSize: 5,
-                  fontWeight: 700,
-                  lineHeight: "6px",
+                  background: "#0a0a0aee",
+                  border: `1.5px solid ${isBridge ? "#ddeeff" : e.color}`,
+                  color: isBridge ? "#ffffff" : e.color,
+                  padding: isBridge ? "2px 6px" : "0 1px",
+                  borderRadius: isBridge ? 4 : 1,
+                  fontSize: isBridge ? 11 : 5,
+                  fontWeight: 800,
+                  lineHeight: isBridge ? "13px" : "6px",
                   whiteSpace: "nowrap",
+                  boxShadow: isBridge ? "0 0 6px rgba(255,255,255,0.3)" : undefined,
                 }}>
                   +{e.alt}
                 </div>
