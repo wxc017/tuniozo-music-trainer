@@ -424,6 +424,8 @@ function Scene({
       points: [number, number, number][];
       mid: [number, number, number];
       alt: number;
+      fromId: string;
+      toId: string;
     };
     const NSAMPLES = 18;
     const TWO_PI = 2 * Math.PI;
@@ -498,7 +500,11 @@ function Scene({
         ];
       }
       const alt = altDistance(a, b, edo);
-      out.push({ color: e.color, type: e.type as "y" | "z", points, mid, alt });
+      out.push({
+        color: e.color, type: e.type as "y" | "z",
+        points, mid, alt,
+        fromId: a.id, toId: b.id,
+      });
     }
     out.sort((a, b) => (a.type === "z" ? 1 : 0) - (b.type === "z" ? 1 : 0));
     return out;
@@ -656,29 +662,39 @@ function Scene({
         );
       })}
 
-      {visibleEdges.map((e, i) => (
-        <group key={`${e.type}-${i}`}>
-          <Line points={e.points} color={e.color}
-            lineWidth={e.type === "z" ? 2.0 : 1.6}
-            transparent opacity={e.type === "z" ? 0.9 : 0.75} />
-          <Html position={e.mid} center distanceFactor={9}
-                style={{ pointerEvents: "none" }}>
-            <div style={{
-              background: "#0a0a0acc",
-              border: `1px solid ${e.color}`,
-              color: e.color,
-              padding: "0 1px",
-              borderRadius: 1,
-              fontSize: 5,
-              fontWeight: 700,
-              lineHeight: "6px",
-              whiteSpace: "nowrap",
-            }}>
-              +{e.alt}
-            </div>
-          </Html>
-        </group>
-      ))}
+      {visibleEdges.map((e, i) => {
+        // Only show the alteration label on edges that touch the
+        // currently-selected node — so the boxes always read as
+        // "alt distance from the selected node" and shift as the
+        // user clicks different nodes.  Edges between non-selected
+        // pairs still draw their line, just no label.
+        const labelVisible = !!selectedId && (e.fromId === selectedId || e.toId === selectedId);
+        return (
+          <group key={`${e.type}-${i}`}>
+            <Line points={e.points} color={e.color}
+              lineWidth={e.type === "z" ? 2.0 : 1.6}
+              transparent opacity={e.type === "z" ? 0.9 : 0.75} />
+            {labelVisible && (
+              <Html position={e.mid} center distanceFactor={9}
+                    style={{ pointerEvents: "none" }}>
+                <div style={{
+                  background: "#0a0a0acc",
+                  border: `1px solid ${e.color}`,
+                  color: e.color,
+                  padding: "0 1px",
+                  borderRadius: 1,
+                  fontSize: 5,
+                  fontWeight: 700,
+                  lineHeight: "6px",
+                  whiteSpace: "nowrap",
+                }}>
+                  +{e.alt}
+                </div>
+              </Html>
+            )}
+          </group>
+        );
+      })}
 
       {lattice.nodes.map(node => {
         if (!showFamilies[node.family.id]) return null;
