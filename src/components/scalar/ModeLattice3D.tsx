@@ -249,43 +249,32 @@ function PcKnot({ cfg, parentCfg, isAnchorPc }: {
   const NODE_CABLE_RADIUS = 0.09;
 
   if (isCable && cableCurve) {
-    // Cable knot — TubeGeometry along the cable curve.  No shell;
-    // the parent's tube is the visible carrier.
+    // Cable knot — TubeGeometry along the cable curve.  Opaque so its
+    // colour stays vivid against the shell from any angle, and gets
+    // proper depth sorting (shell behind cable is occluded; shell in
+    // front blends over it but doesn't wash it out).
     return (
-      <mesh>
+      <mesh renderOrder={1}>
         <tubeGeometry args={[cableCurve, 320, NODE_CABLE_RADIUS, 10, true]} />
         <meshStandardMaterial
           color={color} emissive={emissive}
           emissiveIntensity={emissiveIntensity}
-          roughness={0.55} metalness={0}
-          transparent opacity={opacity}
-          depthWrite={false} />
+          roughness={0.55} metalness={0} />
       </mesh>
     );
   }
 
-  // Standalone torus knot (anchor or fallback).  Rendered with a
-  // faint carrying-torus shell so the (R, r) shape reads.
+  // Standalone torus knot (anchor or fallback).  No carrying-torus
+  // shell — just the knot tube itself, so the colour and curve read
+  // cleanly from any angle without competing with a translucent surface.
   return (
     <group position={cfg.center}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[cfg.R, cfg.r, 22, 96]} />
-        <meshStandardMaterial
-          color={isAnchorPc ? "#6e7480" : "#555a64"}
-          transparent opacity={0.55}
-          roughness={0.85}
-          metalness={0}
-          side={THREE.DoubleSide}
-          depthWrite={false} />
-      </mesh>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
+      <mesh rotation={[Math.PI / 2, 0, 0]} renderOrder={1}>
         <torusKnotGeometry args={[cfg.R, TUBE_RADIUS, 240, 14, cfg.P, cfg.Q]} />
         <meshStandardMaterial
           color={color} emissive={emissive}
           emissiveIntensity={emissiveIntensity}
-          roughness={0.55} metalness={0}
-          transparent opacity={opacity}
-          depthWrite={false} />
+          roughness={0.55} metalness={0} />
       </mesh>
     </group>
   );
@@ -567,6 +556,15 @@ function Scene({
           : fromV.clone().add(dir.multiplyScalar(Math.min(GHOST_DISTANCE, dirLen * 0.4) / dirLen));
         // Midpoint marker (for the "×" collapse toggle when expanded).
         const midV = fromV.clone().lerp(toV, 0.5);
+        // Alt-distance label: how many notes differ between the
+        // source's scale and the target's.  Placed at the midpoint of
+        // the *actually drawn* line — between source and target if the
+        // target's expanded, or between source and ghost otherwise —
+        // so it sits on the visible ray.
+        const rayMidV = expanded
+          ? fromV.clone().lerp(toV, 0.5)
+          : fromV.clone().lerp(ghostV, 0.5);
+        const altFromSelected = altDistance(m.fromNode, m.toNode, edo);
         return (
           <group key={`mod-${i}`}>
             <Line
