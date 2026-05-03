@@ -23,9 +23,7 @@ function CameraReset({ resetKey }: { resetKey: number }) {
   useEffect(() => {
     if (resetKey !== prevKey.current) {
       prevKey.current = resetKey;
-      // Default 3/4 view sized to fit the anchor knot plus several
-      // side-by-side satellites (each ~28 units offset on its axis).
-      camera.position.set(40, 30, 70);
+      camera.position.set(10, 10, 36);
       camera.lookAt(0, 0, 0);
       const c = controls as { target?: { set: (x: number, y: number, z: number) => void }; update?: () => void } | null;
       if (c?.target) { c.target.set(0, 0, 0); c.update?.(); }
@@ -128,7 +126,7 @@ function CameraFocusCenter({ targetPos }: { targetPos: [number, number, number] 
 import { audioEngine } from "@/lib/audioEngine";
 import {
   buildCylinderLattice, LATTICE_FAMILIES,
-  scaleNoteNames, computeModulationEdges, sampleKnotCurve,
+  scaleNoteNames, computeModulationEdges, sampleKnotCurve, cablePoint,
   intervalSteps,
   type TonalityLattice, type LatticeNode, type ModulationEdge,
   type KnotConfig, type PcExpansion,
@@ -206,29 +204,84 @@ function darken(hex: string, amount: number): string {
   return `#${c.getHexString()}`;
 }
 
-// Render one pc-knot.  Every pc renders as a plain (P, Q) torus knot
-// — the anchor at the origin and each modulation satellite at an
-// offset centre, so all the same-mode points (e.g. all the Ionians)
-// line up at the same parameter t across knots.
-function PcKnot({ cfg, isAnchorPc }: {
+// THREE.Curve subclass for a cable-knot path.  Defers to cablePoint
+// from the layout so we use exactly the same curve at render time
+// and at node-build time — guarantees nodes land on the rendered tube.
+class CableKnotCurve extends THREE.Curve<THREE.Vector3> {
+  constructor(
+    private parentR: number, private parentr: number,
+    private parentP: number, private parentQ: number,
+    private parentCenter: [number, number, number],
+    private wraps: number, private cableOffset: number,
+    private cableTOffset: number,
+  ) { super(); }
+
+  override getPoint(u: number, optionalTarget?: THREE.Vector3): THREE.Vector3 {
+    const target = optionalTarget ?? new THREE.Vector3();
+    const uParent = (u + this.cableTOffset) % 1;
+    const [x, y, z] = cablePoint(
+      this.parentR, this.parentr, this.parentP, this.parentQ, this.parentCenter,
+      this.wraps, this.cableOffset, uParent,
+    );
+    return target.set(x, y, z);
+  }
+}
+
+// Render one pc-knot.  Anchor and any pc the user hasn't expanded via
+// a modulation render as a plain (P, Q) torus knot mesh (their own
+// carrying torus, with a faint shell).  Pcs expanded via interval
+// modulations render as cable knots wrapping their parent's tube —
+// the cable is a TubeGeometry along a CableKnotCurve, which makes the
+// parent-child relationship geometric: the new knot literally rides
+// on the parent.
+function PcKnot({ cfg, parentCfg, isAnchorPc }: {
   cfg: KnotConfig;
+  parentCfg: KnotConfig | null;
   isAnchorPc: boolean;
 }) {
-  // Every pc-knot is a standalone (P, Q) torus knot — the anchor sits
-  // at the origin and each modulation satellite sits at an offset
-  // centre.  Same arc structure on every knot, so the anchor-mode
-  // (e.g. all the Ionians) lines up at the same parameter t across
-  // every knot in the scene.
-  const isSatellite = !isAnchorPc;
-  const satelliteColor = isSatellite ? (SEMIS_TO_MOD_COLOR[cfg.wraps] ?? "#a4d4ff") : "#a4d4ff";
-  const color = isAnchorPc ? "#88bbff" : satelliteColor;
-  const emissive = isAnchorPc ? "#264466" : darken(satelliteColor, 0.7);
-  const emissiveIntensity = isSatellite ? 1.4 : 0.55;
+  const isCable = cfg.parentPc !== null && parentCfg !== null;
 
-  // Bump satellite tube thickness so the new knot reads at a glance
-  // when it spawns alongside the anchor.
-  const TUBE_RADIUS = isSatellite ? 0.45 : 0.18;
+  const cableCurve = useMemo(() => {
+    if (!isCable || !parentCfg) return null;
+    return new CableKnotCurve(
+      parentCfg.R, parentCfg.r, parentCfg.P, parentCfg.Q, parentCfg.center,
+      cfg.wraps, cfg.cableOffset, cfg.cableTOffset,
+    );
+  }, [isCable, parentCfg, cfg.wraps, cfg.cableOffset, cfg.cableTOffset]);
 
+  const cableColor = isCable ? (SEMIS_TO_MOD_COLOR[cfg.wraps] ?? "#a4d4ff") : "#a4d4ff";
+  const color = isAnchorPc ? "#88bbff" : isCable ? cableColor : "#5577aa";
+  const emissive = isAnchorPc ? "#264466"
+                : isCable ? darken(cableColor, 0.7)
+                : "#101a26";
+  const emissiveIntensity = isAnchorPc ? 0.55 : isCable ? 0.55 : 0.25;
+  const opacity = isAnchorPc ? 0.75 : isCable ? 0.85 : 0.45;
+
+  // Tube radii: match the anchor backbone to the cable thickness so
+  // they read at the same visual weight.  Node spheres are bigger
+  // (anchor 0.55, others 0.22) and always-on-top so they stay visible.
+  const TUBE_RADIUS = 0.18;
+  const NODE_CABLE_RADIUS = 0.18;
+
+  if (isCable && cableCurve) {
+    // Cable knot — TubeGeometry along the cable curve.  Opaque so its
+    // colour stays vivid against the shell from any angle, and gets
+    // proper depth sorting (shell behind cable is occluded; shell in
+    // front blends over it but doesn't wash it out).
+    return (
+      <mesh renderOrder={1}>
+        <tubeGeometry args={[cableCurve, 320, NODE_CABLE_RADIUS, 10, true]} />
+        <meshStandardMaterial
+          color={color} emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+          roughness={0.55} metalness={0} />
+      </mesh>
+    );
+  }
+
+  // Standalone torus knot (anchor or fallback).  No carrying-torus
+  // shell — just the knot tube itself, so the colour and curve read
+  // cleanly from any angle without competing with a translucent surface.
   return (
     <group position={cfg.center}>
       <mesh rotation={[Math.PI / 2, 0, 0]} renderOrder={1}>
@@ -486,9 +539,13 @@ function Scene({
           a direct visual readout of *which* modulation got you here. */}
       {Array.from(lattice.pcKnots.values()).map(cfg => {
         if (!expandedRoots.has(cfg.pc)) return null;
+        const parentCfg = cfg.parentPc !== null
+          ? lattice.pcKnots.get(cfg.parentPc) ?? null
+          : null;
         return (
           <PcKnot key={`pcknot-${cfg.pc}`}
                   cfg={cfg}
+                  parentCfg={parentCfg}
                   isAnchorPc={cfg.pc === anchorRootPc} />
         );
       })}
@@ -499,22 +556,16 @@ function Scene({
           "this cable is +1 alt from its parent" directly off the
           structure, without having to Ctrl-click to see rays. */}
       {Array.from(lattice.pcKnots.values()).map(cfg => {
-        // Tag each satellite knot with its modulation interval (the
-        // semis from the parent's anchor pc) so the user can read
-        // "this is the +M2 knot" off the layout.  Anchor has
-        // sourceNodeId === null and is skipped.
-        if (!cfg.sourceNodeId) return null;
+        if (cfg.parentPc === null) return null;
         if (!expandedRoots.has(cfg.pc)) return null;
+        if (!cfg.sourceNodeId) return null;
+        const sourceNode = lattice.nodeMap.get(cfg.sourceNodeId);
+        if (!sourceNode) return null;
         const altCount = SEMIS_TO_ALT[cfg.wraps] ?? 0;
         const cableColor = SEMIS_TO_MOD_COLOR[cfg.wraps] ?? "#a4d4ff";
-        const labelPos: [number, number, number] = [
-          cfg.center[0],
-          cfg.center[1] + cfg.R + cfg.r + 1.2,
-          cfg.center[2],
-        ];
         return (
-          <Html key={`sat-alt-${cfg.pc}`}
-                position={labelPos} center distanceFactor={9}
+          <Html key={`cable-alt-${cfg.pc}`}
+                position={sourceNode.pos} center distanceFactor={9}
                 style={{ pointerEvents: "none" }}>
             <div style={{
               background: "#0a0a0add",
@@ -526,6 +577,7 @@ function Scene({
               fontWeight: 700,
               lineHeight: "7px",
               whiteSpace: "nowrap",
+              transform: "translate(0, -10px)",
             }}>
               +{altCount}
             </div>
@@ -651,11 +703,11 @@ function Scene({
                     background: "#0a0a0aee",
                     border: "1px solid #ccddee",
                     color: "#ffffff",
-                    padding: "0 2px",
-                    borderRadius: 1,
-                    fontSize: 5,
+                    padding: "1px 4px",
+                    borderRadius: 2,
+                    fontSize: 8,
                     fontWeight: 700,
-                    lineHeight: "6px",
+                    lineHeight: "9px",
                     whiteSpace: "nowrap",
                   }}>
                     +{e.alt}
@@ -922,15 +974,6 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
         return next;
       });
     }
-    // Hide the modulation-spoke overlay once the user has picked a
-    // direction — otherwise the spokes keep hovering over the source
-    // node after the satellite is already on screen.
-    setShowRays(false);
-    // Snap the camera back to the default 3/4 view so the user sees
-    // the new side-by-side satellite knot — otherwise it spawns ~28
-    // units away and is offscreen if the camera was zoomed in on the
-    // anchor.
-    setCameraResetKey(k => k + 1);
   }, [edo]);
 
   // Click the mid-edge "×" on an expanded modulation to collapse that
@@ -1008,10 +1051,10 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
 
   const solfege = useMemo(() => getSolfege(edo), [edo]);
 
-  // Initial camera position — wide enough to fit the anchor knot
-  // plus several side-by-side satellite knots (each ~28 units offset
-  // on its axis) when the user spawns modulations.
-  const cameraPos: [number, number, number] = [40, 30, 70];
+  // Initial camera position — close enough to see the anchor knot
+  // clearly at startup; the user zooms out (or expands neighbouring
+  // roots) as they grow the structure.
+  const cameraPos: [number, number, number] = [10, 10, 36];
 
   return (
     <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded overflow-hidden">
