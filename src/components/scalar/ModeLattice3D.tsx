@@ -23,7 +23,7 @@ function CameraReset({ resetKey }: { resetKey: number }) {
   useEffect(() => {
     if (resetKey !== prevKey.current) {
       prevKey.current = resetKey;
-      camera.position.set(10, 10, 36);
+      camera.position.set(40, 30, 80);
       camera.lookAt(0, 0, 0);
       const c = controls as { target?: { set: (x: number, y: number, z: number) => void }; update?: () => void } | null;
       if (c?.target) { c.target.set(0, 0, 0); c.update?.(); }
@@ -750,7 +750,7 @@ function Scene({
       })}
 
       <OrbitControls makeDefault enableDamping dampingFactor={0.15}
-        minDistance={6} maxDistance={120} />
+        minDistance={10} maxDistance={220} />
     </>
   );
 }
@@ -1073,9 +1073,9 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   // Initial camera position — close enough to see the anchor knot
   // clearly at startup; the user zooms out (or expands neighbouring
   // roots) as they grow the structure.
-  // Wide enough to fit the anchor knot plus a satellite ~30 units off
-  // along any axis without needing to zoom out.
-  const cameraPos: [number, number, number] = [28, 22, 56];
+  // Sized for the bigger anchor (R=14) — fits the full anchor plus
+  // a few overlapping satellites in view at startup.
+  const cameraPos: [number, number, number] = [40, 30, 80];
 
   return (
     <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded overflow-hidden">
