@@ -395,17 +395,38 @@ export function findLatticeNode(
 }
 
 // ── Knot lattice (one twisted torus knot per root pc) ──────────────────
-// Each root note (pitch class) is a single (P, Q) torus knot in 3D
-// space.  All 49 tonalities sharing that root — 7 families × 7 modes,
-// i.e. every parallel-mode and modal-interchange option — sit on one
-// knot together.  The user's anchor pc lands at the origin; modulating
-// to a different root grows the structure with a new knot offset in
-// the modulation's direction (P5 east, P4 west, M3 up, m3 NE, ...).
-const KNOT_R = 2.0;            // major radius of each root's torus
-const KNOT_r = 0.7;            // minor (tube) radius
-const KNOT_P = 3;              // long-way wraps — coprime with Q
-const KNOT_Q = 7;              // short-way wraps
+// Each root note (pitch class) is a single (P, Q) twisted torus knot
+// in 3D space.  All 49 tonalities sharing that root — 7 families × 7
+// modes, i.e. every parallel-mode and modal-interchange option — sit
+// on one knot together.  The user's anchor pc lands at the origin;
+// modulating to a different root grows the structure with a new knot
+// offset in the modulation's direction (P5 east, P4 west, M3 up,
+// m3 NE, ...).
+//
+// (R, r) match three.js's TorusKnotGeometry (whose tube centre
+// oscillates from R/2 to 3R/2 from origin), so the renderer can use
+// TorusKnotGeometry directly for a visible 3D-tube surface and our
+// nodes land exactly on it.
+//
+// (P, Q) varies per pc by *alteration distance from anchor*: P = alt+2,
+// Q = alt+3.  Anchor (alt=0) is a (2,3) trefoil; one-alt-away modulations
+// (P5/P4) give a (3,4) knot; tritone (alt=6) gives a (8,9) — close
+// modulations read as simpler shapes, distant ones as denser/twistier.
+// (alt+2, alt+3) are consecutive integers and therefore always coprime.
+const KNOT_R = 5.0;
+const KNOT_r = KNOT_R / 2;
 const KNOT_N = 49;             // 7 families × 7 modes per root
+
+// 12-EDO semitone → pitch-set alteration count between same-family/mode
+// scales rooted at pcs that interval apart.  Uniquely determined by
+// the chain-of-fifths distance.
+const SEMIS_TO_ALT: Record<number, number> = {
+  0: 0,  7: 1,  5: 1,  2: 2,  10: 2, 3: 3,
+  9: 3,  4: 4,  8: 4,  1: 5,  11: 5, 6: 6,
+};
+function knotPQForAlt(alt: number): { P: number; Q: number } {
+  return { P: alt + 2, Q: alt + 3 };
+}
 
 // 3D offset (unit-vector × spacing) for each interval from anchor.
 // Indexed by 12-EDO-equivalent semitones modulo 12 — for 31-EDO we
@@ -425,16 +446,18 @@ const PC_OFFSET_BY_SEMIS: Record<number, [number, number, number]> = {
   11: [-0.5,  0,   -0.7],       // −m2 (= +M7)
   6:  [ 0.7,  0,   -0.7],       // tritone
 };
-const PC_KNOT_SPACING = 9;
+const PC_KNOT_SPACING = 20;
 
 // Local position on a (P, Q) torus knot at parameter t, relative to
-// the knot's centre.  Used both at node-build time and at render time
-// (the renderer samples this to draw tube segments connecting nodes).
+// the knot's centre.  Matches three.js's TorusKnotGeometry path so
+// that nodes built here land exactly on the rendered tube — the
+// renderer applies a rotation of π/2 around X to put the carrying
+// torus's axis along Y, and we negate y here to compensate.
 export function knotPoint(R: number, r: number, P: number, Q: number, t: number): [number, number, number] {
   const phi   = P * t;
   const theta = Q * t;
   const ringR = R + r * Math.cos(theta);
-  return [ringR * Math.cos(phi), r * Math.sin(theta), ringR * Math.sin(phi)];
+  return [ringR * Math.cos(phi), -r * Math.sin(theta), ringR * Math.sin(phi)];
 }
 
 export function buildCylinderLattice(
@@ -500,6 +523,8 @@ export function buildCylinderLattice(
   for (const { key } of uniqueKeys) {
     const semis = semis12From(anchorPc, key.pc);
     const dir = PC_OFFSET_BY_SEMIS[semis] ?? [0, 0, 0];
+    const alt = SEMIS_TO_ALT[semis] ?? 0;
+    const { P, Q } = knotPQForAlt(alt);
     pcKnots.set(key.pc, {
       pc: key.pc,
       center: [
@@ -507,7 +532,7 @@ export function buildCylinderLattice(
         dir[1] * PC_KNOT_SPACING,
         dir[2] * PC_KNOT_SPACING,
       ],
-      R: KNOT_R, r: KNOT_r, P: KNOT_P, Q: KNOT_Q,
+      R: KNOT_R, r: KNOT_r, P, Q,
     });
   }
 

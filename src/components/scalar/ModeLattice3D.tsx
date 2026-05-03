@@ -23,7 +23,7 @@ function CameraReset({ resetKey }: { resetKey: number }) {
   useEffect(() => {
     if (resetKey !== prevKey.current) {
       prevKey.current = resetKey;
-      camera.position.set(10, 7, 16);
+      camera.position.set(6, 6, 22);
       camera.lookAt(0, 0, 0);
       const c = controls as { target?: { set: (x: number, y: number, z: number) => void }; update?: () => void } | null;
       if (c?.target) { c.target.set(0, 0, 0); c.update?.(); }
@@ -175,7 +175,7 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
     meshRef.current.scale.setScalar(cur + (target - cur) * Math.min(1, delta * 8));
   });
 
-  const r = isAnchor ? 0.18 : 0.13;
+  const r = isAnchor ? 0.32 : 0.22;
   const opacity = isAnchor || isActive || isHovered || isSelected ? 1 : 0.85;
 
   return (
@@ -309,28 +309,30 @@ function Scene({
 
       {/* One twisted torus knot per expanded root pc.  All 49
           tonalities sharing that root — every parallel mode and every
-          modal-interchange option — sit on a single knot.  Modulating
-          to a new root creates a new knot offset in 3D, with a string
-          (modulation ray) connecting them.  Anchor's knot is rendered
-          prominently; secondary roots dimmer. */}
+          modal-interchange option — sit on a single knot.  The (P, Q)
+          parameters of each knot are driven by the root's alteration
+          distance from the anchor: closer modulations read as simpler
+          shapes, distant ones as denser/twistier knots.  Rendered as
+          a real 3D-tube mesh so the surface is visible (rotated π/2
+          on X so the carrying torus's axis aligns with our world Y). */}
       {Array.from(lattice.pcKnots.values()).map(cfg => {
         if (!expandedRoots.has(cfg.pc)) return null;
         const isAnchorPc = cfg.pc === anchorRootPc;
-        // Sample the full closed knot as a polyline.
-        const NSAMPLES = 220;
-        const pts: [number, number, number][] = [];
-        for (let s = 0; s <= NSAMPLES; s++) {
-          const t = (s / NSAMPLES) * 2 * Math.PI;
-          const [lx, ly, lz] = knotPoint(cfg.R, cfg.r, cfg.P, cfg.Q, t);
-          pts.push([cfg.center[0] + lx, cfg.center[1] + ly, cfg.center[2] + lz]);
-        }
         return (
-          <Line key={`pcknot-${cfg.pc}`}
-            points={pts}
-            color={isAnchorPc ? "#88bbff" : "#5577aa"}
-            lineWidth={isAnchorPc ? 2.4 : 1.4}
-            transparent
-            opacity={isAnchorPc ? 0.85 : 0.45} />
+          <mesh key={`pcknot-${cfg.pc}`}
+                position={cfg.center}
+                rotation={[Math.PI / 2, 0, 0]}>
+            <torusKnotGeometry args={[cfg.R, 0.18, 240, 14, cfg.P, cfg.Q]} />
+            <meshStandardMaterial
+              color={isAnchorPc ? "#88bbff" : "#5577aa"}
+              emissive={isAnchorPc ? "#264466" : "#101a26"}
+              emissiveIntensity={isAnchorPc ? 0.55 : 0.25}
+              roughness={0.55}
+              metalness={0.35}
+              transparent
+              opacity={isAnchorPc ? 0.7 : 0.45}
+              depthWrite={false} />
+          </mesh>
         );
       })}
 
@@ -432,16 +434,18 @@ function Scene({
           <Line points={e.points} color={e.color}
             lineWidth={e.type === "z" ? 2.0 : 1.6}
             transparent opacity={e.type === "z" ? 0.9 : 0.75} />
-          <Html position={e.mid} center distanceFactor={48}
+          <Html position={e.mid} center distanceFactor={36}
                 style={{ pointerEvents: "none" }}>
             <div style={{
+              background: "#0a0a0acc",
+              border: `1px solid ${e.color}`,
               color: e.color,
+              padding: "0 1px",
+              borderRadius: 1,
               fontSize: 4,
               fontWeight: 700,
-              lineHeight: "4px",
+              lineHeight: "5px",
               whiteSpace: "nowrap",
-              opacity: 0.7,
-              textShadow: "0 0 2px #000",
             }}>
               +{e.alt}
             </div>
@@ -680,7 +684,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   // Initial camera position — close enough to see the anchor knot
   // clearly at startup; the user zooms out (or expands neighbouring
   // roots) as they grow the structure.
-  const cameraPos: [number, number, number] = [3, 3, 11];
+  const cameraPos: [number, number, number] = [6, 6, 22];
 
   return (
     <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded overflow-hidden">
