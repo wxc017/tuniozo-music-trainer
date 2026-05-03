@@ -319,7 +319,16 @@ interface NodeMeshProps {
 
 function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHover, onClick }: NodeMeshProps) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const baseColor = useMemo(() => new THREE.Color(node.family.color), [node.family.color]);
+  // Dim darker modes dramatically by lerping the family color toward
+  // black on the rank scale — rank 0 (brightest) keeps the full
+  // family hue, rank 6 (darkest) is mostly black.  Combined with the
+  // opacity falloff this gives a strong visual "bright vs dark" read.
+  const rankT = node.modeRank / 6;
+  const baseColor = useMemo(() => {
+    const c = new THREE.Color(node.family.color);
+    c.lerp(new THREE.Color("#000000"), rankT * 0.85);
+    return c;
+  }, [node.family.color, rankT]);
   const emissive = baseColor;
 
   useFrame((_, delta) => {
@@ -330,11 +339,13 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
   });
 
   const r = isAnchor ? 0.32 : 0.22;
-  // Within each family, modes are ranked by brightness (rank 0 =
-  // brightest, rank 6 = darkest).  Dim darker modes proportionally
-  // so the per-family brightness order reads visually.
-  const dim = 1 - (node.modeRank / 6) * 0.65;     // 1.0 (Lyd) → 0.35 (Loc)
-  const baseOpacity = isAnchor || isActive || isHovered || isSelected ? 1 : 0.85;
+  // Dramatic opacity dim on top of the colour lerp: brightest mode at
+  // full opacity, darkest at ~10%.  Active / hovered / selected nodes
+  // ignore the dim so the user can still see what they're focused on.
+  const dim = isAnchor || isActive || isHovered || isSelected
+    ? 1
+    : 1 - rankT * 0.9;                            // 1.0 (Lyd) → 0.1 (Loc)
+  const baseOpacity = isAnchor || isActive || isHovered || isSelected ? 1 : 0.9;
   const opacity = baseOpacity * dim;
 
   return (
