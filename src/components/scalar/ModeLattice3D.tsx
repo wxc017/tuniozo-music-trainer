@@ -772,9 +772,9 @@ function Scene({
 
       {lattice.nodes.map(node => {
         if (!showFamilies[node.family.id]) return null;
-        // Hide nodes whose root pc isn't expanded — only the anchor's
-        // tonic (and any user-expanded neighbourhood roots) should show.
-        if (!expandedRoots.has(node.rootPc)) return null;
+        // All 588 tonalities live on the unified knot now (organised
+        // by alt distance from anchor) — there's no expansion gate
+        // anymore, every node is visible by default.
         return (
           <NodeMesh
             key={node.id}
