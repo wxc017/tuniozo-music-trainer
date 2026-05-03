@@ -483,7 +483,18 @@ function Scene({
         : null;
       let points: [number, number, number][];
       let mid: [number, number, number];
-      if (cfg && a.rootPc === b.rootPc) {
+      if (e.type === "bridge") {
+        // Bridges (between alt arcs): straight line.  The midpoint is
+        // the linear midpoint between the two endpoint nodes — that's
+        // where the +N alteration label lives, so the box always sits
+        // visually between the two adjacent arcs.
+        points = [a.pos, b.pos];
+        mid = [
+          (a.pos[0] + b.pos[0]) / 2,
+          (a.pos[1] + b.pos[1]) / 2,
+          (a.pos[2] + b.pos[2]) / 2,
+        ];
+      } else if (cfg && a.rootPc === b.rootPc) {
         if (cfg.parentPc !== null && parentCfg) {
           // Cable knot: sample cablePoint at u-values between A and B.
           const uA = a.knotT / TWO_PI;
