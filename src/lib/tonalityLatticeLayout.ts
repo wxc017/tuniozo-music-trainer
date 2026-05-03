@@ -790,7 +790,9 @@ export function buildCylinderLattice(
       // modulation interval's direction so e.g. +P5 sits along +X
       // from the parent.  The spacing leaves a clear gap between tubes
       // (knot fits in a sphere of radius R + r ≈ 12).
-      const SATELLITE_SPACING = 28;
+      // Spacing chosen so satellite tubes sit just outside the anchor
+      // knot's bounding sphere (R + r = 12) with a small visible gap.
+      const SATELLITE_SPACING = 22;
       const dirRaw = PC_OFFSET_BY_SEMIS[((info.modSemis % 12) + 12) % 12]
         ?? [1, 0, 0];
       const dirLen = Math.hypot(dirRaw[0], dirRaw[1], dirRaw[2]) || 1;

@@ -223,9 +223,11 @@ function PcKnot({ cfg, isAnchorPc }: {
   const satelliteColor = isSatellite ? (SEMIS_TO_MOD_COLOR[cfg.wraps] ?? "#a4d4ff") : "#a4d4ff";
   const color = isAnchorPc ? "#88bbff" : satelliteColor;
   const emissive = isAnchorPc ? "#264466" : darken(satelliteColor, 0.7);
-  const emissiveIntensity = 0.55;
+  const emissiveIntensity = isSatellite ? 1.4 : 0.55;
 
-  const TUBE_RADIUS = 0.18;
+  // Bump satellite tube thickness so the new knot reads at a glance
+  // when it spawns alongside the anchor.
+  const TUBE_RADIUS = isSatellite ? 0.45 : 0.18;
 
   return (
     <group position={cfg.center}>
