@@ -440,7 +440,10 @@ export function findLatticeNode(
 // pc variation is the *twist count*: r = interval class from anchor
 // (0..6).  m3 modulation gives 3 strands twisted around the backbone;
 // tritone gives 6.  Anchor (r = 0) is unwound.
-const KNOT_R = 8.0;
+// Main knot is sized big enough that satellite knots can nest inside
+// its volume offset by a small amount, instead of sitting way off to
+// the side.  Keep r = R/2 so the (P, Q) knot shape stays familiar.
+const KNOT_R = 14.0;
 const KNOT_r = KNOT_R / 2;
 // (3, 7) torus knot: 3 long-way wraps, 7 short-way wraps.  Q = 7
 // because the lattice now divides the knot into 7 arcs — one per
@@ -791,14 +794,13 @@ export function buildCylinderLattice(
       // tube, alt-1 alongside alt-1, etc.  This is the "symmetric"
       // alignment: same arc layout on both knots, same parametric
       // position for corresponding modes.
-      // Modulated pcs render as their own *full torus knot* — same R,
-      // r, P, Q as the anchor — translated to a fresh position in
-      // space so the user reads them as "the same knot, copy-pasted".
-      // Direction comes from the modulation interval (PC_OFFSET_BY_SEMIS),
-      // spacing is wide enough to leave a clear gap between the anchor
-      // and the satellite.  parentPc=null + cableOffset/cableTOffset=0
-      // routes sampleKnotCurve through the standalone branch.
-      const SATELLITE_SPACING = 30;
+      // Modulated pcs render as their own full torus knot, same R/r/
+      // P/Q as the anchor, translated by a small offset along the
+      // modulation interval's direction so the satellite sits *inside*
+      // / overlapping the anchor's volume — not way off to the side.
+      // parentPc=null + cableOffset/cableTOffset=0 routes
+      // sampleKnotCurve through the standalone branch.
+      const SATELLITE_SPACING = 8;
       const dirRaw = PC_OFFSET_BY_SEMIS[((info.modSemis % 12) + 12) % 12]
         ?? [1, 0, 0];
       const dirLen = Math.hypot(dirRaw[0], dirRaw[1], dirRaw[2]) || 1;
