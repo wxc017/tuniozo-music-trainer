@@ -134,15 +134,24 @@ function buildRelativeNodes(
   return out;
 }
 
-// Edges: every pair within 3 alterations gets one.  Relatives share the
-// anchor's pitch set so their distance is 0 from the anchor (the
-// "same-notes" edge).
-function buildEdges(nodes: ModeNode[]): ModeEdge[] {
+// Edges: every pair within 3 alterations gets one.  Relatives all
+// share the anchor's pitch set, so every relative-relative pair is
+// also 0-alt — but rendering all 21 of those creates a gold hairball.
+// We restrict 0-alt edges to *spokes from the anchor* so the
+// "same-notes" relationship reads cleanly.
+function buildEdges(nodes: ModeNode[], anchorKey: string | null): ModeEdge[] {
   const out: ModeEdge[] = [];
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const d = pitchSetDistance(nodes[i].pitchSet, nodes[j].pitchSet);
-      if (d === 0 || d === 1 || d === 2 || d === 3) {
+      if (d === 0) {
+        const involvesAnchor = nodes[i].key === anchorKey || nodes[j].key === anchorKey;
+        if (involvesAnchor) {
+          out.push({ fromKey: nodes[i].key, toKey: nodes[j].key, alterations: 0 });
+        }
+        continue;
+      }
+      if (d === 1 || d === 2 || d === 3) {
         out.push({ fromKey: nodes[i].key, toKey: nodes[j].key, alterations: d });
       }
     }
@@ -150,38 +159,82 @@ function buildEdges(nodes: ModeNode[]): ModeEdge[] {
   return out;
 }
 
-// Family-axis layout.  Anchor at origin.  Seven family axes radiate
-// out from the centre in a hexagonal-star arrangement: Major straight
-// up the +Y axis, the other six families distributed evenly around the
-// equator at 60° apart.  Along each axis the family's modes line up
-// ordered DARKEST (closest to centre) → BRIGHTEST (far end).
+// Anchor-relative axis layout.  The anchor's own family always gets
+// the primary axis (+Y straight up).  Every other family is assigned
+// an axis whose polar angle from +Y grows with that family's minimum
+// alteration distance to the anchor — so 1-alteration families sit
+// near the primary axis, 2-alt families ring the equator, and 3+ alt
+// families fall toward the southern hemisphere.  Within a polar
+// "ring", families with the same min-alteration distance are spread
+// evenly around the azimuth.
 //
-// The anchor's six relatives (modes sharing the anchor's pitch set on
-// other roots — D Dorian, E Phrygian, etc. for C Major) live on a
-// dedicated axis pointing -Y, so the user can read them as a single
-// "same notes" line distinct from the family axes.
+// Along each axis the family's seven modes line up ordered BRIGHTEST
+// (closest to centre) → DARKEST (far end).  The anchor itself sits at
+// the world origin and is not duplicated on its family axis.
+// Relatives (D Dorian, E Phrygian, etc. for C Major) line up on a
+// dedicated -Y axis ordered by brightness.
 function familyAxisLayout(
   nodes: ModeNode[],
   anchorKey: string | null,
 ) {
   const anchor = anchorKey ? nodes.find(n => n.key === anchorKey) : null;
+  const anchorFamily = anchor?.family ?? FAMILY_ORDER[0];
 
-  // Hexagonal-star directions: Major up, 6 others equally spaced around
-  // the equator.  The wide angular separation makes the structure
-  // unambiguously read as 7 distinct axes radiating from the centre.
+  // For each family OTHER than the anchor's, compute the minimum
+  // alteration distance from anchor to any of that family's parallel
+  // modes.  This decides the polar angle (closer to anchor = closer
+  // to the primary +Y axis).
+  const familyMinAlt = new Map<string, number>();
+  for (const family of FAMILY_ORDER) {
+    if (family === anchorFamily) continue;
+    let minD = Infinity;
+    if (anchor) {
+      for (const node of nodes) {
+        if (node.family !== family || node.isRelative) continue;
+        const d = pitchSetDistance(anchor.pitchSet, node.pitchSet);
+        if (d < minD) minD = d;
+      }
+    }
+    familyMinAlt.set(family, minD === Infinity ? 4 : minD);
+  }
+
+  // Group non-anchor families by min-alt level so families at the
+  // same level can be distributed around the azimuth at that polar
+  // angle.  Sort levels ascending.
+  const levels = new Map<number, string[]>();
+  for (const [family, minAlt] of familyMinAlt) {
+    if (!levels.has(minAlt)) levels.set(minAlt, []);
+    levels.get(minAlt)!.push(family);
+  }
+  const sortedLevels = Array.from(levels.keys()).sort((a, b) => a - b);
+
+  // Compute axis direction per family.
+  //   - Anchor's family → +Y (polar angle 0).
+  //   - Each other family → polar angle = (minAlt / 4) * 0.85 * π
+  //     (so 1-alt sits ~22°, 2-alt at ~45°, 3-alt at ~67°, 4-alt at
+  //     ~90° equator).
+  //   - Within a level, families fan evenly around the azimuth.
   const familyDirs = new Map<string, [number, number, number]>();
-  for (let i = 0; i < FAMILY_ORDER.length; i++) {
-    const family = FAMILY_ORDER[i];
-    if (i === 0) {
-      familyDirs.set(family, [0, 1, 0]);  // Major straight up
-    } else {
-      // Six equatorial directions at 60° intervals, starting at +X.
-      const angle = ((i - 1) * Math.PI * 2) / 6;
-      familyDirs.set(family, [Math.cos(angle), 0, Math.sin(angle)]);
+  familyDirs.set(anchorFamily, [0, 1, 0]);
+
+  for (const level of sortedLevels) {
+    const fams = levels.get(level)!;
+    const polar = Math.min(0.95 * Math.PI, (level / 4) * 0.85 * Math.PI);
+    for (let i = 0; i < fams.length; i++) {
+      const azimuth = (i / fams.length) * Math.PI * 2 + level * 0.4;
+      const sinP = Math.sin(polar);
+      const cosP = Math.cos(polar);
+      familyDirs.set(fams[i], [
+        sinP * Math.cos(azimuth),
+        cosP,
+        sinP * Math.sin(azimuth),
+      ]);
     }
   }
 
   // Brightness ranks within each family (darkest = 0, brightest = 6).
+  // Ordering on axis: BRIGHTEST closest to centre → DARKEST at far end
+  // (axis position = total ranks - rank).
   const familyRank = new Map<string, Map<string, number>>();
   for (const family of FAMILY_ORDER) {
     const familyModes = (PATTERN_SCALE_FAMILIES[family] ?? []).slice();
@@ -196,7 +249,7 @@ function familyAxisLayout(
     familyRank.set(family, rankMap);
   }
 
-  const SPACING = 1.4;
+  const SPACING = 1.6;
 
   // Place every node.
   for (const node of nodes) {
@@ -205,14 +258,14 @@ function familyAxisLayout(
       continue;
     }
 
-    // Relative satellites get their own dedicated axis pointing -Y so
-    // the user reads them as one clean "same notes" line: D Dorian,
-    // E Phrygian, F Lydian, G Mixolydian, A Aeolian, B Locrian.
+    // Relative satellites get their own dedicated axis pointing -Y.
+    // Brightest closest to centre, darkest at the far end — same
+    // ordering convention as the family axes.
     if (node.isRelative) {
       const ranks = familyRank.get(node.family);
       const rank = ranks?.get(node.mode) ?? 0;
-      const dist = (rank + 1) * SPACING;
-      // Direction = straight down so it doesn't clash with Major (+Y).
+      const TOTAL = 7;
+      const dist = (TOTAL - rank) * SPACING;
       node.pos = [0, -dist, 0];
       continue;
     }
@@ -224,7 +277,10 @@ function familyAxisLayout(
       continue;
     }
     const rank = ranks.get(node.mode) ?? 0;
-    const dist = (rank + 1) * SPACING;
+    // Brightest (highest rank) closest to centre at distance 1*SPACING;
+    // darkest (rank 0) at the far end at distance 7*SPACING.
+    const TOTAL = 7;
+    const dist = (TOTAL - rank) * SPACING;
     node.pos = [dir[0] * dist, dir[1] * dist, dir[2] * dist];
   }
 }
@@ -249,7 +305,7 @@ export function getModeLattice(
     ? `${anchorFamily}::${anchorMode}::r0`
     : null;
 
-  const edges = buildEdges(nodes);
+  const edges = buildEdges(nodes, anchorKey);
   familyAxisLayout(nodes, anchorKey);
 
   const byKey = new Map(nodes.map(n => [n.key, n]));
