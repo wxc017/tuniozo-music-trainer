@@ -373,6 +373,184 @@ export function findLatticeNode(
   return null;
 }
 
+// ── Cylinder lattice ────────────────────────────────────────────────────
+// All (key, family, mode) tonalities — 15 keys × 7 families × 7 modes
+// = 735 nodes — laid out on seven concentric vertical cylinders, one
+// per family.  The active EDO determines the per-key pc, but the
+// number of keys (15, the chain-of-fifths span) and the cylinder
+// topology are fixed:
+//   - Around each cylinder (θ): which key.  Anchor's key rotates to
+//     θ = 0 (front of every cylinder).
+//   - Vertical (Y): brightness.  Anchor's brightness is centred at
+//     y = 0 so the anchor sits dead-front-and-centre.
+//   - Radial (cylinder index → r): family.  Major nearest the axis,
+//     Subharmonic Diatonic on the outermost cylinder.
+//
+// This lets the user see e.g. D Dorian, E Phrygian, B Locrian s2 s5 s6
+// — all the relatives and modulations alongside the parallel modes —
+// instead of being restricted to a single key column.
+const CYL_R0 = 3.5;            // innermost family cylinder
+const CYL_DR = 1.2;            // radius increment per family layer
+const CYL_BRIGHTNESS = 1.0;    // vertical units per brightness step
+
+export function buildCylinderLattice(
+  edo: number,
+  tonicPc: number,
+  anchorFamilyName: string | null,
+  anchorModeName: string | null,
+): TonalityLattice {
+  const keys = buildKeys(edo);
+  const families = LATTICE_FAMILIES;
+  const modes = new Map<string, LatticeMode[]>();
+  for (const family of families) {
+    const modeNames = PATTERN_SCALE_FAMILIES[family.familyName] ?? [];
+    const list: LatticeMode[] = [];
+    for (const modeName of modeNames) {
+      const m = buildMode(family, modeName, edo);
+      if (m) list.push(m);
+    }
+    modes.set(family.id, list);
+  }
+
+  // Locate the anchor's column (keyIdx) on the chain of fifths and its
+  // brightness within its family — both used to recentre the lattice
+  // so the anchor lands at θ = 0, y = 0.
+  const anchorFamily = anchorFamilyName
+    ? families.find(f => f.familyName === anchorFamilyName) ?? null
+    : null;
+  const anchorMode = anchorFamily && anchorModeName
+    ? (modes.get(anchorFamily.id) ?? []).find(m => m.name === anchorModeName) ?? null
+    : null;
+  const anchorBrightness = anchorMode?.brightness ?? 0;
+  // Anchor's key column: prefer the one whose pc matches tonicPc; if
+  // multiple spellings share a pc (12-EDO), prefer the natural-letter
+  // one near the centre.
+  let anchorKeyIdx = -1;
+  for (let i = 0; i < keys.length; i++) {
+    if (keys[i].pc === ((tonicPc % edo) + edo) % edo) {
+      // Prefer no-accidental, then closest to the middle of the list.
+      if (anchorKeyIdx === -1
+          || (keys[i].accidental === "" && keys[anchorKeyIdx].accidental !== "")
+          || Math.abs(i - 7) < Math.abs(anchorKeyIdx - 7)) {
+        anchorKeyIdx = i;
+      }
+    }
+  }
+  if (anchorKeyIdx < 0) anchorKeyIdx = 8;   // fall back to "C" column
+
+  const N = keys.length;
+  const ANGLE_STEP = (Math.PI * 2) / N;
+
+  const nodes: LatticeNode[] = [];
+  const nodeMap = new Map<string, LatticeNode>();
+
+  for (let ki = 0; ki < keys.length; ki++) {
+    const key = keys[ki];
+    const theta = (ki - anchorKeyIdx) * ANGLE_STEP;
+    const cosT = Math.cos(theta);
+    const sinT = Math.sin(theta);
+
+    for (const family of families) {
+      const r = CYL_R0 + family.zOrd * CYL_DR;
+      const x = cosT * r;
+      const z = sinT * r;
+
+      const modeList = modes.get(family.id) ?? [];
+      for (const mode of modeList) {
+        const y = (mode.brightness - anchorBrightness) * CYL_BRIGHTNESS;
+        const id = `${ki}::${family.id}::${mode.name}`;
+        const node: LatticeNode = {
+          id,
+          key, keyIdx: ki, family, mode,
+          pos: [x, y, z],
+          rootPc: key.pc,
+        };
+        nodes.push(node);
+        nodeMap.set(id, node);
+      }
+    }
+  }
+
+  // Edges (same logic as the flat grid, only the node positions change).
+  const edges: LatticeEdge[] = [];
+
+  // X-edges: same family + same mode, adjacent key — chords across the
+  // cylinder.  Skip the closing wrap-around so we don't draw the long
+  // diameter through the centre.
+  for (const family of families) {
+    const modeList = modes.get(family.id) ?? [];
+    for (const mode of modeList) {
+      for (let ki = 0; ki < keys.length - 1; ki++) {
+        const fromId = `${ki}::${family.id}::${mode.name}`;
+        const toId = `${ki + 1}::${family.id}::${mode.name}`;
+        if (nodeMap.has(fromId) && nodeMap.has(toId)) {
+          edges.push({ fromId, toId, type: "x", alt: 0, color: X_EDGE_COLOR });
+        }
+      }
+    }
+  }
+
+  // Y-edges: same family + same key, brightness-adjacent modes.
+  for (const family of families) {
+    const sorted = (modes.get(family.id) ?? []).slice()
+      .sort((a, b) => b.brightness - a.brightness);
+    for (let ki = 0; ki < keys.length; ki++) {
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const fromId = `${ki}::${family.id}::${sorted[i].name}`;
+        const toId = `${ki}::${family.id}::${sorted[i + 1].name}`;
+        if (nodeMap.has(fromId) && nodeMap.has(toId)) {
+          edges.push({ fromId, toId, type: "y", alt: 0, color: family.color });
+        }
+      }
+    }
+  }
+
+  // Z-edges: same key, 1-alt cross-family pairs.
+  for (let ki = 0; ki < keys.length; ki++) {
+    const subset = nodes.filter(n => n.keyIdx === ki);
+    for (let i = 0; i < subset.length; i++) {
+      for (let j = i + 1; j < subset.length; j++) {
+        const a = subset[i], b = subset[j];
+        if (a.family === b.family) continue;
+        const setA = new Set(a.mode.scale.map(s => ((a.rootPc + s) % edo + edo) % edo));
+        const setB = new Set(b.mode.scale.map(s => ((b.rootPc + s) % edo + edo) % edo));
+        let symdiff = 0;
+        for (const v of setA) if (!setB.has(v)) symdiff++;
+        for (const v of setB) if (!setA.has(v)) symdiff++;
+        if (symdiff / 2 === 1) {
+          edges.push({ fromId: a.id, toId: b.id, type: "z", alt: 1, color: Z_EDGE_COLOR });
+        }
+      }
+    }
+  }
+
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  for (const n of nodes) {
+    if (n.pos[0] < minX) minX = n.pos[0];
+    if (n.pos[0] > maxX) maxX = n.pos[0];
+    if (n.pos[1] < minY) minY = n.pos[1];
+    if (n.pos[1] > maxY) maxY = n.pos[1];
+    if (n.pos[2] < minZ) minZ = n.pos[2];
+    if (n.pos[2] > maxZ) maxZ = n.pos[2];
+  }
+
+  return {
+    keys, families, modes,
+    nodes, edges, nodeMap,
+    bounds: { minX, maxX, minY, maxY, minZ, maxZ },
+  };
+}
+
+// Cylinder geometry params exposed so the renderer can draw the family
+// shells underneath as visual scaffolding.
+export const CYLINDER_PARAMS = {
+  R0: CYL_R0,
+  DR: CYL_DR,
+  BRIGHTNESS_UNIT: CYL_BRIGHTNESS,
+};
+
 // ── Single-key torus layout ─────────────────────────────────────────────
 // All 49 modes (7 families × 7 modes) for ONE key — the user's tonic.
 // Each (family, mode) pair lands on the surface of a twisted torus:

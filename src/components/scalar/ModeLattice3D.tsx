@@ -16,7 +16,7 @@ import { OrbitControls, Line, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { audioEngine } from "@/lib/audioEngine";
 import {
-  buildSingleKeyLattice, LATTICE_FAMILIES, TORUS_PARAMS,
+  buildCylinderLattice, LATTICE_FAMILIES, CYLINDER_PARAMS,
   scaleNoteNames,
   type TonalityLattice, type LatticeNode,
 } from "@/lib/tonalityLatticeLayout";
@@ -121,12 +121,13 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, onHover, onClick }
             </div>
           </div>
         ) : (
-          // Discrete always-on label — short mode name only, dim,
-          // small, no background.  Lets the user scan every node by
-          // sight without having to hover each one.
+          // Discrete always-on label — small, dim, no background.
+          // Includes the key's root letter alongside the mode short
+          // name (e.g. "D Dor", "B♭ Mix", "F♯ HMn") so the user can
+          // identify every node by sight without hovering.
           <div style={{
             color: node.family.color,
-            opacity: 0.78,
+            opacity: 0.82,
             fontSize: 8.5,
             fontWeight: 600,
             whiteSpace: "nowrap",
@@ -134,6 +135,7 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, onHover, onClick }
             textShadow: "0 0 4px #000, 0 0 4px #000",
             letterSpacing: 0.2,
           }}>
+            <span style={{ color: "#ddd", marginRight: 3 }}>{node.key.name}</span>
             {formatHalfAccidentals(node.mode.short)}
           </div>
         )}
@@ -189,22 +191,24 @@ function Scene({ lattice, edo, anchorId, activeId, hoveredId, showFamilies, show
       <pointLight position={[-10, -5, -10]} intensity={0.7} />
       <pointLight position={[0, 0, 14]} intensity={0.7} />
 
-      {/* Twisted-torus surface — solid + translucent.  Renders the
-          actual surface the nodes live on rather than just a wireframe
-          guide; depth-sorted material so nodes embedded in the surface
-          are still visible from the camera's side. */}
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[TORUS_PARAMS.R, TORUS_PARAMS.r, 48, 128]} />
-        <meshStandardMaterial
-          color="#13243d"
-          emissive="#0a1830"
-          emissiveIntensity={0.4}
-          roughness={0.55}
-          metalness={0.2}
-          transparent opacity={0.55}
-          side={THREE.DoubleSide}
-          depthWrite={false} />
-      </mesh>
+      {/* Family cylinders — translucent shells underneath each family's
+          ring of nodes, so the user can see "Major is the inner family,
+          Subharmonic Diatonic is the outermost", etc. */}
+      {LATTICE_FAMILIES.map(f => {
+        const r = CYLINDER_PARAMS.R0 + f.zOrd * CYLINDER_PARAMS.DR;
+        const height = (lattice.bounds.maxY - lattice.bounds.minY) + 1;
+        const yMid = (lattice.bounds.maxY + lattice.bounds.minY) / 2;
+        return (
+          <mesh key={`cyl-${f.id}`} position={[0, yMid, 0]}>
+            <cylinderGeometry args={[r, r, height, 48, 1, true]} />
+            <meshBasicMaterial
+              color={f.color}
+              transparent opacity={0.045}
+              side={THREE.DoubleSide}
+              depthWrite={false} />
+          </mesh>
+        );
+      })}
 
       {visibleEdges.map((e, i) => (
         e.type === "y" ? (
@@ -257,23 +261,30 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
     return [f ?? null, m ?? null] as [string | null, string | null];
   }, [anchorKey]);
 
-  // Single-key torus lattice — 49 nodes (7 families × 7 modes), all
-  // positioned on the surface of a twisted torus, anchor at front
-  // (u=0, v=0).
+  // Multi-key cylinder lattice — 15 keys × 7 families × 7 modes = 735
+  // nodes, distributed on 7 concentric vertical cylinders (one per
+  // family), with the anchor's key rotated to θ = 0 and its brightness
+  // centred at y = 0 so it lands at front-and-centre.
   const lattice = useMemo(
-    () => buildSingleKeyLattice(edo, tonicPc, anchorFamilyName, anchorModeName),
+    () => buildCylinderLattice(edo, tonicPc, anchorFamilyName, anchorModeName),
     [edo, tonicPc, anchorFamilyName, anchorModeName]
   );
 
-  // The anchor in this lattice always sits at (0, 0, R+r) — the
-  // anchor's family is the one rotated to u = 0.  Compute its id for
-  // highlighting.
+  // Find the anchor's id within the cylinder lattice — its keyIdx
+  // depends on which spelling matches tonicPc.
   const anchorId = useMemo(() => {
     if (!anchorFamilyName || !anchorModeName) return null;
     const family = LATTICE_FAMILIES.find(f => f.familyName === anchorFamilyName);
     if (!family) return null;
-    return `0::${family.id}::${anchorModeName}`;
-  }, [anchorFamilyName, anchorModeName]);
+    for (const n of lattice.nodes) {
+      if (n.family.id === family.id
+          && n.mode.name === anchorModeName
+          && n.rootPc === ((tonicPc % edo) + edo) % edo) {
+        return n.id;
+      }
+    }
+    return null;
+  }, [lattice, anchorFamilyName, anchorModeName, tonicPc, edo]);
 
   useEffect(() => {
     return () => { audioEngine.stopDrone(); };
@@ -333,20 +344,22 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
 
   const solfege = useMemo(() => getSolfege(edo), [edo]);
 
-  // Initial camera position scaled to the lattice extents — pull back
-  // along +Z so the whole grid is visible from the front.
+  // Initial camera position — pull back along +Z far enough to see the
+  // outermost cylinder, raised slightly so we look at the "front" of
+  // the structure (anchor's column).
   const cameraPos = useMemo<[number, number, number]>(() => {
     const w = lattice.bounds.maxX - lattice.bounds.minX;
     const h = lattice.bounds.maxY - lattice.bounds.minY;
-    const dist = Math.max(w, h) * 0.85;
-    return [0, 0, dist + 8];
+    const d = lattice.bounds.maxZ - lattice.bounds.minZ;
+    const dist = Math.max(w, h, d) * 1.4;
+    return [0, 1.5, dist + 6];
   }, [lattice]);
 
   return (
     <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded overflow-hidden">
       <div className="px-3 py-2 flex items-center gap-2 flex-wrap border-b border-[#1a1a1a]">
         <p className="text-[10px] tracking-wider font-semibold text-[#888] mr-2">
-          TONALITY LATTICE · TWISTED TORUS · 7 FAMILIES × 7 MODES
+          TONALITY LATTICE · 15 KEYS × 7 FAMILIES × 7 MODES
         </p>
         {LATTICE_FAMILIES.map(f => (
           <button key={f.id}
