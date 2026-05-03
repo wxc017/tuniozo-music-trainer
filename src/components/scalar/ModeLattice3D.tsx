@@ -1081,38 +1081,6 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
           title="Reset camera view (orbit position, zoom, target)">
           reset view
         </button>
-        {LATTICE_FAMILIES.map(f => (
-          <button key={f.id}
-            onClick={() => setShowFamilies(s => ({ ...s, [f.id]: !s[f.id] }))}
-            className="text-[9px] px-2 py-0.5 rounded border transition-colors"
-            style={{
-              borderColor: showFamilies[f.id] ? f.color : "#222",
-              background: showFamilies[f.id] ? f.dim : "transparent",
-              color: showFamilies[f.id] ? f.color : "#444",
-            }}>
-            <span style={{
-              display: "inline-block", width: 6, height: 6,
-              borderRadius: "50%", background: f.color, marginRight: 4,
-              opacity: showFamilies[f.id] ? 1 : 0.3,
-            }} />
-            {f.short}
-          </button>
-        ))}
-        <span className="ml-2 text-[8px] text-[#444]">EDGES</span>
-        {[
-          { id: "y", label: "Y · brightness", color: "#445d7a" },
-          { id: "z", label: "Z · alteration", color: "#22ddaa" },
-        ].map(e => (
-          <button key={e.id}
-            onClick={() => setShowEdges(s => ({ ...s, [e.id]: !s[e.id] }))}
-            className="text-[9px] px-2 py-0.5 rounded border transition-colors"
-            style={{
-              borderColor: showEdges[e.id] ? e.color : "#222",
-              color: showEdges[e.id] ? e.color : "#444",
-            }}>
-            {e.label}
-          </button>
-        ))}
       </div>
 
       <div style={{ height: 540, background: "#050b16" }}>
