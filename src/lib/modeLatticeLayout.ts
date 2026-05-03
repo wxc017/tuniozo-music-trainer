@@ -159,70 +159,183 @@ function buildEdges(nodes: ModeNode[], anchorKey: string | null): ModeEdge[] {
   return out;
 }
 
-// Concentric-ring layout.  The anchor sits at the origin.  Each
-// alteration distance forms a RING around the anchor at a radius
-// proportional to that distance — so all 1-alt modes are equidistant
-// from anchor, rotated around it, all 2-alt modes form the next
-// ring out, etc.
+// Hierarchical family-cluster layout.
 //
-// Within each ring, modes are spread evenly by brightness so the
-// reading goes "darker on one side, brighter on the other".  The user
-// gets clear visual paths: spokes from anchor cross multiple rings,
-// arcs along a ring stay at the same alteration distance.
+//   - Anchor at the origin.
+//   - Anchor's own family forms a small ring directly around the
+//     anchor (its 6 other modes orbit it).
+//   - Every other family becomes a satellite cluster: a "centroid"
+//     positioned at a distance proportional to that family's minimum
+//     alteration distance to the anchor, with that family's 7 modes
+//     orbiting on a small ring around the centroid.
+//   - Multiple families at the same min-alt distance fan out
+//     angularly so they don't stack on each other.
 //
-// Rings are interleaved with small Y biases (alternating up/down) so
-// the structure reads as 3D rather than a flat target board.
+// This is what gives the user a clean reading:
+//   "anchor in the middle, its own family circling it, then 1-alt
+//    families each as their own little ring nearby, 2-alt families
+//    further out, etc."
 function familyAxisLayout(
   nodes: ModeNode[],
   anchorKey: string | null,
 ) {
   const anchor = anchorKey ? nodes.find(n => n.key === anchorKey) : null;
+  if (!anchor) {
+    for (const n of nodes) n.pos = [0, 0, 0];
+    return;
+  }
+  const anchorFamily = anchor.family;
 
-  // Group every non-anchor node by its alteration distance to the
-  // anchor.  Anchor itself sits at the origin.
-  const byAlt = new Map<number, ModeNode[]>();
+  // 1. Min alteration distance per non-anchor family.
+  const familyMinAlt = new Map<string, number>();
+  for (const family of FAMILY_ORDER) {
+    if (family === anchorFamily) continue;
+    let minD = Infinity;
+    for (const n of nodes) {
+      if (n.family === family && !n.isRelative) {
+        const d = pitchSetDistance(anchor.pitchSet, n.pitchSet);
+        if (d < minD) minD = d;
+      }
+    }
+    familyMinAlt.set(family, minD === Infinity ? 4 : minD);
+  }
+
+  // 2. Place each family's centroid.  Anchor's family sits AT origin
+  //    (anchor itself), so its modes orbit anchor directly.  Other
+  //    families' centroids land at distance = ALT_BASE + (alt-1)*ALT_STEP
+  //    from anchor, distributed angularly with families at the same
+  //    alt-level fanning evenly + a small Y bias for 3D depth.
+  const familyCentroid = new Map<string, [number, number, number]>();
+  familyCentroid.set(anchorFamily, [0, 0, 0]);
+
+  // Group non-anchor families by min-alt level so we can spread
+  // multiple families at the same alt level around their shared shell.
+  const altLevels = new Map<number, string[]>();
+  for (const [family, alt] of familyMinAlt) {
+    if (!altLevels.has(alt)) altLevels.set(alt, []);
+    altLevels.get(alt)!.push(family);
+  }
+
+  const ALT_BASE = 4.0;
+  const ALT_STEP = 2.6;
+  for (const [alt, fams] of altLevels) {
+    fams.sort((a, b) => FAMILY_ORDER.indexOf(a) - FAMILY_ORDER.indexOf(b));
+    const r = ALT_BASE + Math.max(0, alt - 1) * ALT_STEP;
+    const N = fams.length;
+    for (let i = 0; i < N; i++) {
+      const angle = (i / N) * Math.PI * 2 + alt * 0.4;
+      const yBias = (alt % 2 === 0 ? -1 : 1) * 0.6 * alt;
+      familyCentroid.set(fams[i], [
+        Math.cos(angle) * r,
+        yBias,
+        Math.sin(angle) * r,
+      ]);
+    }
+  }
+
+  // 3. Brightness rank per family — modes within a cluster orbit in
+  //    brightness order around their centroid.
+  const familyRank = new Map<string, Map<string, number>>();
+  for (const family of FAMILY_ORDER) {
+    const fmodes = (PATTERN_SCALE_FAMILIES[family] ?? []).slice();
+    const bright = new Map<string, number>();
+    for (const m of fmodes) {
+      const node = nodes.find(n => n.family === family && n.mode === m && !n.isRelative);
+      bright.set(m, node?.brightness ?? 0);
+    }
+    fmodes.sort((a, b) => (bright.get(a) ?? 0) - (bright.get(b) ?? 0));
+    const rmap = new Map<string, number>();
+    fmodes.forEach((m, i) => rmap.set(m, i));
+    familyRank.set(family, rmap);
+  }
+
+  // 4. Place every node on its family's orbit.
+  const ANCHOR_ORBIT_R = 1.9;     // anchor's family modes orbit this far from anchor
+  const SATELLITE_ORBIT_R = 1.1;  // other families' modes orbit their centroid this tight
+
+  // Build a perpendicular basis given an axis direction (used to lay
+  // out a satellite cluster's orbit perpendicular to its anchor-line).
+  const perpBasis = (axis: [number, number, number]): [
+    [number, number, number],
+    [number, number, number],
+  ] => {
+    const upGuess: [number, number, number] = Math.abs(axis[1]) > 0.95 ? [1, 0, 0] : [0, 1, 0];
+    let p1: [number, number, number] = [
+      axis[1] * upGuess[2] - axis[2] * upGuess[1],
+      axis[2] * upGuess[0] - axis[0] * upGuess[2],
+      axis[0] * upGuess[1] - axis[1] * upGuess[0],
+    ];
+    const p1L = Math.hypot(p1[0], p1[1], p1[2]) || 1;
+    p1 = [p1[0] / p1L, p1[1] / p1L, p1[2] / p1L];
+    const p2: [number, number, number] = [
+      axis[1] * p1[2] - axis[2] * p1[1],
+      axis[2] * p1[0] - axis[0] * p1[2],
+      axis[0] * p1[1] - axis[1] * p1[0],
+    ];
+    return [p1, p2];
+  };
+
   for (const node of nodes) {
-    if (anchor && node.key === anchor.key) {
+    if (node.key === anchor.key) {
       node.pos = [0, 0, 0];
       continue;
     }
-    const alt = anchor ? pitchSetDistance(anchor.pitchSet, node.pitchSet) : 1;
-    if (!byAlt.has(alt)) byAlt.set(alt, []);
-    byAlt.get(alt)!.push(node);
-  }
 
-  // Tunable: ring radii and the per-ring Y bias that gives the structure
-  // some 3D depth.  Even-numbered alt-rings tilt slightly down, odd up.
-  const RING_BASE = 1.6;
-  const RING_STEP = 1.2;
+    const ranks = familyRank.get(node.family);
+    const rank = ranks?.get(node.mode) ?? 0;
+    const centroid = familyCentroid.get(node.family) ?? [0, 0, 0];
 
-  for (const [alt, group] of byAlt) {
-    const radius = RING_BASE + alt * RING_STEP;
-    // Within each ring, sort by brightness ascending then group by
-    // family so families form arcs on the ring.
-    group.sort((a, b) => {
-      if (a.family !== b.family) {
-        return FAMILY_ORDER.indexOf(a.family) - FAMILY_ORDER.indexOf(b.family);
-      }
-      return a.brightness - b.brightness;
-    });
+    const isAnchorFamily = node.family === anchorFamily;
+    const orbitR = isAnchorFamily ? ANCHOR_ORBIT_R : SATELLITE_ORBIT_R;
 
-    // Stagger Y per ring: alt 0 below, alt 1 above, alt 2 below, ...
-    // gives a 3D corkscrew rather than a flat target.
-    const yBias = (alt % 2 === 0 ? -1 : 1) * 0.35 * Math.min(alt + 1, 4);
-
-    const N = group.length;
-    for (let i = 0; i < N; i++) {
-      // Per-ring rotational offset so the rings don't all start their
-      // first node at the same azimuth — keeps spokes from overlapping.
-      const startOffset = alt * 0.31;
-      const angle = (i / Math.max(1, N)) * Math.PI * 2 + startOffset;
-      group[i].pos = [
-        Math.cos(angle) * radius,
-        yBias,
-        Math.sin(angle) * radius,
-      ];
+    // Choose a basis for the orbit ring.  Anchor's family orbits in the
+    // XZ plane (so it's clearly the central ring); satellite clusters
+    // orient their orbit perpendicular to (centroid → anchor) so the
+    // ring "faces" the anchor.
+    let bx: [number, number, number];
+    let bz: [number, number, number];
+    if (isAnchorFamily || node.isRelative) {
+      bx = [1, 0, 0];
+      bz = [0, 0, 1];
+    } else {
+      const len = Math.hypot(centroid[0], centroid[1], centroid[2]) || 1;
+      const cn: [number, number, number] = [centroid[0] / len, centroid[1] / len, centroid[2] / len];
+      [bx, bz] = perpBasis(cn);
     }
+
+    // For the anchor's family ring, anchor occupies one of the 7 mode
+    // slots — we just leave that slot empty by skipping the anchor's
+    // own rank when assigning angles.  Other modes fill the remaining
+    // 6 slots.  For satellite families, all 7 modes participate.
+    const anchorRank = familyRank.get(anchorFamily)?.get(anchor.mode) ?? 0;
+    let slotIdx: number;
+    let slotN: number;
+    if (isAnchorFamily) {
+      // Skip anchor's slot — modes with rank > anchorRank shift up by one.
+      slotIdx = rank > anchorRank ? rank - 1 : rank;
+      slotN = 7;  // 7 slots total but anchor's slot is left empty
+    } else if (node.isRelative) {
+      // Relatives ride at half-step positions on the anchor's family
+      // ring — between parallel modes, sorted by brightness.
+      slotIdx = rank;
+      slotN = 7;
+    } else {
+      slotIdx = rank;
+      slotN = 7;
+    }
+
+    let angle = (slotIdx / slotN) * Math.PI * 2;
+    if (node.isRelative) angle += Math.PI / slotN;  // half-step offset
+
+    const ox = bx[0] * Math.cos(angle) * orbitR + bz[0] * Math.sin(angle) * orbitR;
+    const oy = bx[1] * Math.cos(angle) * orbitR + bz[1] * Math.sin(angle) * orbitR;
+    const oz = bx[2] * Math.cos(angle) * orbitR + bz[2] * Math.sin(angle) * orbitR;
+
+    node.pos = [
+      centroid[0] + ox,
+      centroid[1] + oy,
+      centroid[2] + oz,
+    ];
   }
 }
 
