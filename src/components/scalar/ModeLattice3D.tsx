@@ -105,9 +105,10 @@ function CameraFocusCenter({ targetPos }: { targetPos: [number, number, number] 
 }
 import { audioEngine } from "@/lib/audioEngine";
 import {
-  buildCylinderLattice, LATTICE_FAMILIES, knotPoint,
+  buildCylinderLattice, LATTICE_FAMILIES,
   scaleNoteNames, computeModulationEdges,
   type TonalityLattice, type LatticeNode, type ModulationEdge,
+  type KnotConfig,
 } from "@/lib/tonalityLatticeLayout";
 import { formatHalfAccidentals, getSolfege } from "@/lib/edoData";
 import { formatRomanNumeral } from "@/lib/formatRoman";
@@ -150,6 +151,117 @@ function altDistance(a: LatticeNode, b: LatticeNode, edo: number): number {
   for (const v of setA) if (!setB.has(v)) symdiff++;
   for (const v of setB) if (!setA.has(v)) symdiff++;
   return symdiff / 2;
+}
+
+// One strand of a T(P, Q, r, n) twisted torus knot — a helical path
+// that orbits the (P, Q) backbone with `twistN` full twists per
+// t-loop, indexed as one of `strandCount` adjacent strands offset by
+// `strandOffset` from the spine.  When r ≥ 2 we render `r` of these
+// in parallel so the bundle visibly twists around itself.
+class TwistedTorusKnotStrand extends THREE.Curve<THREE.Vector3> {
+  constructor(
+    private R: number, private r: number,
+    private P: number, private Q: number,
+    private strandIdx: number, private strandCount: number,
+    private twistN: number, private strandOffset: number,
+  ) { super(); }
+
+  override getPoint(u: number, optionalTarget?: THREE.Vector3): THREE.Vector3 {
+    const target = optionalTarget ?? new THREE.Vector3();
+    const t = u * 2 * Math.PI;
+    // (P, Q) torus knot path — matches three.js TorusKnotGeometry
+    // (rotated π/2 around X so the carrying torus's axis is +Y).
+    const phi = this.P * t;
+    const theta = this.Q * t;
+    const ringR = this.R + this.r * Math.cos(theta);
+    const cx = ringR * Math.cos(phi);
+    const cy = -this.r * Math.sin(theta);
+    const cz = ringR * Math.sin(phi);
+    // Tangent via tiny finite difference.
+    const dt = 0.0005;
+    const t2 = (u + dt) * 2 * Math.PI;
+    const phi2 = this.P * t2;
+    const theta2 = this.Q * t2;
+    const ringR2 = this.R + this.r * Math.cos(theta2);
+    let tx = ringR2 * Math.cos(phi2) - cx;
+    let ty = -this.r * Math.sin(theta2) - cy;
+    let tz = ringR2 * Math.sin(phi2) - cz;
+    const tlen = Math.hypot(tx, ty, tz) || 1;
+    tx /= tlen; ty /= tlen; tz /= tlen;
+    // Normal = up × tangent.
+    let nx = -tz, ny = 0, nz = tx;
+    const nlen = Math.hypot(nx, ny, nz) || 1;
+    nx /= nlen; ny /= nlen; nz /= nlen;
+    // Binormal = tangent × normal.
+    const bx = ty * nz - tz * ny;
+    const by = tz * nx - tx * nz;
+    const bz = tx * ny - ty * nx;
+    // Strand angle: base offset by strand index, plus n full twists
+    // accumulated over the t-loop.
+    const alpha = (this.strandIdx / this.strandCount) * 2 * Math.PI + this.twistN * t;
+    const ca = Math.cos(alpha), sa = Math.sin(alpha);
+    return target.set(
+      cx + this.strandOffset * (ca * nx + sa * bx),
+      cy + this.strandOffset * (ca * ny + sa * by),
+      cz + this.strandOffset * (ca * nz + sa * bz),
+    );
+  }
+}
+
+// Render one pc's knot as either a plain (P, Q) torus knot (anchor,
+// r = 0) or as `r` strands twisting around the (P, Q) backbone with
+// one full twist (r ≥ 2).  Twist count = interval class from anchor:
+// m3 modulations are 3-stranded, TT modulations are 6-stranded.
+function PcKnot({ cfg, isAnchorPc }: { cfg: KnotConfig; isAnchorPc: boolean }) {
+  const r = cfg.intervalR;
+  const strandCount = Math.max(2, r);
+  const TWIST_N = 1;
+  const STRAND_OFFSET = 0.55;
+
+  const strands = useMemo(() => {
+    if (r === 0) return [];
+    return Array.from({ length: strandCount }, (_, i) =>
+      new TwistedTorusKnotStrand(
+        cfg.R, cfg.r, cfg.P, cfg.Q,
+        i, strandCount, TWIST_N, STRAND_OFFSET,
+      )
+    );
+  }, [cfg.R, cfg.r, cfg.P, cfg.Q, r, strandCount]);
+
+  const color = isAnchorPc ? "#88bbff" : "#5577aa";
+  const emissive = isAnchorPc ? "#264466" : "#101a26";
+  const emissiveIntensity = isAnchorPc ? 0.55 : 0.25;
+  const opacity = isAnchorPc ? 0.75 : 0.5;
+
+  if (r === 0) {
+    return (
+      <mesh position={cfg.center} rotation={[Math.PI / 2, 0, 0]}>
+        <torusKnotGeometry args={[cfg.R, 0.18, 240, 14, cfg.P, cfg.Q]} />
+        <meshStandardMaterial
+          color={color} emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+          roughness={0.55} metalness={0.35}
+          transparent opacity={opacity}
+          depthWrite={false} />
+      </mesh>
+    );
+  }
+
+  return (
+    <group position={cfg.center}>
+      {strands.map((curve, i) => (
+        <mesh key={i}>
+          <tubeGeometry args={[curve, 280, 0.08, 6, true]} />
+          <meshStandardMaterial
+            color={color} emissive={emissive}
+            emissiveIntensity={emissiveIntensity}
+            roughness={0.55} metalness={0.35}
+            transparent opacity={opacity}
+            depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+  );
 }
 
 interface NodeMeshProps {
@@ -307,32 +419,18 @@ function Scene({
       <pointLight position={[-10, -5, -10]} intensity={0.7} />
       <pointLight position={[0, 0, 14]} intensity={0.7} />
 
-      {/* One twisted torus knot per expanded root pc.  All 49
-          tonalities sharing that root — every parallel mode and every
-          modal-interchange option — sit on a single knot.  The (P, Q)
-          parameters of each knot are driven by the root's alteration
-          distance from the anchor: closer modulations read as simpler
-          shapes, distant ones as denser/twistier knots.  Rendered as
-          a real 3D-tube mesh so the surface is visible (rotated π/2
-          on X so the carrying torus's axis aligns with our world Y). */}
+      {/* One twisted torus knot T(P, Q, r, n) per expanded root pc.
+          (P, Q) is constant — a (3, 5) trefoil-style backbone — and
+          the per-pc parameter is r = interval class from anchor:
+          anchor's knot stays unwound; m3 modulations spiral with 3
+          strands; tritone modulations spiral with 6.  Twist count is
+          a direct visual readout of *which* modulation got you here. */}
       {Array.from(lattice.pcKnots.values()).map(cfg => {
         if (!expandedRoots.has(cfg.pc)) return null;
-        const isAnchorPc = cfg.pc === anchorRootPc;
         return (
-          <mesh key={`pcknot-${cfg.pc}`}
-                position={cfg.center}
-                rotation={[Math.PI / 2, 0, 0]}>
-            <torusKnotGeometry args={[cfg.R, 0.18, 240, 14, cfg.P, cfg.Q]} />
-            <meshStandardMaterial
-              color={isAnchorPc ? "#88bbff" : "#5577aa"}
-              emissive={isAnchorPc ? "#264466" : "#101a26"}
-              emissiveIntensity={isAnchorPc ? 0.55 : 0.25}
-              roughness={0.55}
-              metalness={0.35}
-              transparent
-              opacity={isAnchorPc ? 0.7 : 0.45}
-              depthWrite={false} />
-          </mesh>
+          <PcKnot key={`pcknot-${cfg.pc}`}
+                  cfg={cfg}
+                  isAnchorPc={cfg.pc === anchorRootPc} />
         );
       })}
 
