@@ -758,36 +758,6 @@ export function buildCylinderLattice(
   void intervalSteps;
 
   const edges: LatticeEdge[] = [];
-
-  // Helper: pitch-set symmetric distance / 2 between two nodes.
-  const altOf = (a: LatticeNode, b: LatticeNode): number => {
-    const setA = new Set(a.mode.scale.map(s => ((a.rootPc + s) % edo + edo) % edo));
-    const setB = new Set(b.mode.scale.map(s => ((b.rootPc + s) % edo + edo) % edo));
-    let symdiff = 0;
-    for (const v of setA) if (!setB.has(v)) symdiff++;
-    for (const v of setB) if (!setA.has(v)) symdiff++;
-    return symdiff / 2;
-  };
-
-  // Y-edges: every same-root pair whose pitch-sets differ by 1 or 2
-  // notes.  Persistently rendered with a "+1" or "+2" label between
-  // them so the user can read the closest neighbours of any
-  // tonality without Ctrl-clicking — e.g. between C Ionian and
-  // C Lydian (alt 1) you'll see +1; between C Melodic Minor and
-  // C Lydian #2 (alt 2) you'll see +2.
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-      const a = nodes[i], b = nodes[j];
-      const alt = altOf(a, b);
-      if (alt !== 1 && alt !== 2) continue;
-      edges.push({
-        fromId: a.id, toId: b.id,
-        type: "y",
-        alt,
-        color: alt === 1 ? "#88bbff" : "#aabbcc",
-      });
-    }
-  }
   void Z_EDGE_COLOR;
 
   // Bridge edges: connect the last node of each arc to the first
