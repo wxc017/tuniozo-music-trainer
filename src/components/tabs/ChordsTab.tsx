@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
 import type { TabSettingsSnapshot } from "@/App";
@@ -28,7 +28,7 @@ import { JI_SCALE_NAMES, getJiScaleCents, getJiScaleDegrees } from "@/lib/jiScal
 import { analyzeJiScale, COMMA_DRIFT_CATALOG } from "@/lib/jiChordAnalysis";
 import { chordQualityFromSteps, voicingFor, voicingToSteps, coerceTo5Limit } from "@/lib/jiLattice";
 import { limitForJiTonality } from "@/lib/jiTonalityFamilies";
-import { tracePathDrifts, driftCentsToSteps, stripChordLabel, tracePath, latticePosToRatio } from "@/lib/jiLattice";
+import { tracePathDrifts, driftCentsToSteps, stripChordLabel, chordQualityFromSteps } from "@/lib/jiLattice";
 import FloatingPanel from "@/components/FloatingPanel";
 import JiScaleLattice from "@/components/JiScaleLattice";
 import PianoKeyboard from "@/components/PianoKeyboard";
@@ -38,11 +38,7 @@ import LumatoneKeyboard from "@/components/LumatoneKeyboard";
 import type { LayoutResult, ComputedKey } from "@/lib/lumatoneLayout";
 import type { VisualizerType } from "@/App";
 import { piperSpeak } from "@/lib/piperSpeech";
-
-// LatticeView is the full Harmonic-Lattice 3D viewer (~6k lines + Three.js
-// scene); lazy-import so the JS only loads when the user actually opens
-// Show Answer — most chord-tab sessions never need it.
-const LatticeView = lazy(() => import("@/components/LatticeView"));
+import ChordTraceLattice from "@/components/ChordTraceLattice";
 
 const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
 
@@ -1957,37 +1953,42 @@ export default function ChordsTab({
                   </button>
                 </div>
                 <div style={{ flex: 1, minHeight: 0, overflow: "auto", position: "relative" }}>
-                  <Suspense fallback={
-                    <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#666", fontSize: 11 }}>
-                      Loading harmonic lattice…
-                    </div>
-                  }>
-                    {(() => {
-                      // Compute the lattice walk for the current
-                      // progression and convert each chord-root position
-                      // into the "n/d" ratio key that LatticeView's
-                      // MonzoScene uses for highlights.  Adaptive and
-                      // Pure-5limit modes both produce drifting walks;
-                      // Frozen mode collapses every chord onto its
-                      // canonical position so the trace still highlights
-                      // the chords' tonal-centre cells (the user can see
-                      // the structure even without drift).
-                      const trace = latticeDriftsRef.current;
-                      const prog = trace?.progression ?? null;
-                      const positions = prog ? tracePath(prog) : [];
-                      const ratioKeys = positions.map(p => latticePosToRatio(p));
-                      const highlightSet = new Set(ratioKeys);
-                      const activeKey = currentChordIdx >= 0 && currentChordIdx < ratioKeys.length
-                        ? ratioKeys[currentChordIdx]
-                        : null;
+                  {(() => {
+                    // Build the focused chord-trace lattice from the
+                    // last-played progression.  Each chord's voicing
+                    // quality is inferred from its played pitches via
+                    // chordQualityFromSteps so the lattice can plot the
+                    // full chord (root + 3rd + 5th + 7th when present),
+                    // not just the root.
+                    const prog = fhAnswer?.progression ?? null;
+                    if (!prog || prog.length === 0) {
                       return (
-                        <LatticeView
-                          externalHighlights={highlightSet}
-                          activeNodeKey={activeKey}
-                        />
+                        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 11 }}>
+                          No progression to trace yet.
+                        </div>
                       );
-                    })()}
-                  </Suspense>
+                    }
+                    const qualities = (fhAnswer?.chords ?? []).map(c => {
+                      const inferred = chordQualityFromSteps(c.notes, edo);
+                      if (inferred) return inferred;
+                      // Fall back to Roman-numeral case heuristics so
+                      // chords whose voicings aren't classifiable still
+                      // get a sensible voicing on the lattice.
+                      const stripped = stripChordLabel(c.numeral);
+                      if (stripped.endsWith("°")) return "dim";
+                      if (stripped.endsWith("ø")) return "m7b5";
+                      const isMajor = /^[A-Z]/.test(stripped);
+                      return isMajor ? "major" : "minor";
+                    });
+                    return (
+                      <ChordTraceLattice
+                        progression={prog}
+                        qualities={qualities}
+                        currentIdx={currentChordIdx}
+                        accent="#5cca8a"
+                      />
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -2171,8 +2172,8 @@ export default function ChordsTab({
                 accent="#5b5be6"
                 storageKey="lt_crd_answer_viz_collapsed"
                 bottomOffset={16}
-                maxWidth="55vw"
-                maxHeight="32vh"
+                maxWidth="92vw"
+                maxHeight="42vh"
               >
                 {edo === 12 && vizType === "piano" ? (
                   <PianoKeyboard

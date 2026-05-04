@@ -224,6 +224,14 @@ export function driftCentsToSteps(driftCents: number, edo: number): number {
   return Math.round((driftCents / 1200) * edo);
 }
 
+/** Canonical (non-drifted) lattice position for a chord — its tonal-
+ *  center-relative position before any progression motion.  Returns
+ *  the origin for any chord whose Roman numeral isn't in the chord-
+ *  root table (rare; usually a sign of an exotic borrowed chord). */
+export function canonicalChordRoot(label: string): LatticePos {
+  return CHORD_ROOT_POSITION[stripChordLabel(label)] ?? LATTICE_ORIGIN;
+}
+
 /** Convert a lattice position to its octave-reduced "n/d" ratio string —
  *  the same key format LatticeView's MonzoScene uses internally for
  *  `highlightedRatios`.  Powers the chord-progression highlight overlay
