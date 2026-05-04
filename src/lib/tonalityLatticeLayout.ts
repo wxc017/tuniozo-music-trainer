@@ -440,12 +440,12 @@ export function findLatticeNode(
 // pc variation is the *twist count*: r = interval class from anchor
 // (0..6).  m3 modulation gives 3 strands twisted around the backbone;
 // tritone gives 6.  Anchor (r = 0) is unwound.
-// Main knot is sized big enough that satellite knots can nest inside
-// its volume offset by just a small amount along the modulation
-// direction — they read as the same knot copied and shifted slightly,
-// not as a second knot off to the side.  Keep r = R/2.
-const KNOT_R = 28.0;
-const KNOT_r = KNOT_R / 2;
+// Base size of the main knot when no modulations are active.  When a
+// modulation expands a satellite, the lattice scales up (see
+// LATTICE_SCALE_WITH_MODS below) so satellites can nest inside the
+// anchor's volume offset by a small amount without crowding.
+const KNOT_R_BASE = 14.0;
+const KNOT_R_MOD  = 28.0;   // anchor R when one or more modulations exist
 // (3, 7) torus knot: 3 long-way wraps, 7 short-way wraps.  Q = 7
 // because the lattice now divides the knot into 7 arcs — one per
 // alteration level (anchor + alt 1..6).
@@ -685,6 +685,11 @@ export function buildCylinderLattice(
   anchorModeName: string | null,
   expansionInfo: Map<number, PcExpansion> = new Map(),
 ): TonalityLattice {
+  // Anchor size scales up when modulations exist so satellites have
+  // room to nest inside without crowding.  No mods → compact lattice;
+  // 1+ mods → big anchor with satellites barely offset inside.
+  const KNOT_R = expansionInfo.size > 0 ? KNOT_R_MOD : KNOT_R_BASE;
+  const KNOT_r = KNOT_R / 2;
   const keys = buildKeys(edo);
   const families = LATTICE_FAMILIES;
   const modes = new Map<string, LatticeMode[]>();
@@ -1069,7 +1074,7 @@ export function buildCylinderLattice(
 // Knot params (kept under the old name so callers don't need to be
 // rewritten — the renderer just reads R/r off the per-family config now).
 export const CYLINDER_PARAMS = {
-  R0: KNOT_R,
+  R0: KNOT_R_BASE,
   DR: 0,
   BRIGHTNESS_UNIT: 1.0,
 };
