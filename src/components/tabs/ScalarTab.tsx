@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import { useLS } from "@/lib/storage";
 import { formatHalfAccidentals, getModeDegreeMap, getSolfege, getHeathwaiteSolfege } from "@/lib/edoData";
@@ -103,6 +103,23 @@ export default function ScalarTab({
 }: Props) {
   const [selected, setSelected] = useLS<string>("lt_scalar_tonality", "Major");
   const [activeFamilyColor, setActiveFamilyColor] = useState<string>("#6a9aca");
+  // Recover from a stale tonality selection.  If the user previously
+  // picked a tonality that doesn't exist in the current EDO's banks
+  // (e.g. selected "JI Ionian" in 41-EDO, then switched to 31-EDO
+  // where it's not registered), `view` would resolve to null and
+  // none of the per-tonality UI (scale row, chord pool, lattice) would
+  // render — making the whole tab look broken.  Snap to "Major" in
+  // that case so the picker stays usable.
+  useEffect(() => {
+    // tonalityBanks is built from getTonalityBanks(edo) above; we recompute
+    // it here rather than depending on it directly to keep the effect
+    // narrow on edo changes only.
+    const banks = getTonalityBanks(edo, true);
+    if (!banks.some(b => b.name === selected)) {
+      setSelected("Major");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edo]);
   // Solfege system toggle — two options:
   //   "heathwaite" — Andrew Heathwaite's solfege (the canonical do-re-mi
   //                   system, with consistent tetrachordal vowel mirroring
