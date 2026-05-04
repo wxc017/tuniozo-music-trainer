@@ -21,6 +21,7 @@ import {
 import { getTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS, type TonalityBank, type ChordEntry, type ApproachKind } from "@/lib/tonalityBanks";
 import { xenIntervalsForEdo, bankToScaleFamMode } from "@/lib/tonalityChordPool";
 import { formatRomanNumeral } from "@/lib/formatRoman";
+import { JI_LIMIT_GROUPS } from "@/lib/jiTonalityFamilies";
 
 interface Props {
   tonicPc: number;
@@ -46,7 +47,9 @@ const REGISTER_MODES = ["Fixed Register","Random Bass Octave","Random Full Regis
 // Major / Harmonic Minor / Melodic Minor groups.  All seven modes of
 // each parent scale are listed; tonalities not exposed by tonalityBanks
 // for the current EDO are filtered out at render time.
-const TONALITY_FAMILIES: { key: string; label: string; color: string; tonalities: string[] }[] = [
+interface TonalityFamilyGroup { key: string; label: string; color: string; tonalities: string[] }
+
+const TONALITY_FAMILIES: TonalityFamilyGroup[] = [
   { key: "major",    label: "MAJOR",          color: "#6a9aca",
     tonalities: ["Major","Dorian","Phrygian","Lydian","Mixolydian","Aeolian","Locrian"] },
   { key: "harmonic", label: "HARMONIC MINOR", color: "#c09050",
@@ -74,6 +77,22 @@ const TONALITY_FAMILIES: { key: string; label: string; color: string; tonalities
       "Whole-Half Diminished (Half-Flat)",
     ] },
 ];
+
+// JI temperaments (Pythagorean / Schismatic) get a separate family list
+// derived from JI_LIMIT_GROUPS — one row per limit (3 / 5 / 7 / 11).
+// Each row's tonalities are the flattened scales across that limit's
+// sub-families (DIATONIC, HARMONIC MINOR, MAQAM, etc.).
+const JI_TONALITY_FAMILIES: TonalityFamilyGroup[] = JI_LIMIT_GROUPS.map(g => ({
+  key: `limit-${g.limit}`,
+  label: g.label,
+  color: g.color,
+  tonalities: g.families.flatMap(f => f.tonalities),
+}));
+
+function tonalityFamiliesForEdo(edo: number): TonalityFamilyGroup[] {
+  if (edo === 41 || edo === 53) return JI_TONALITY_FAMILIES;
+  return TONALITY_FAMILIES;
+}
 
 // Standard third qualities are always shown in the 3RDS panel; xenharmonic
 // thirds (subminor/neutral/supermajor/classic min/maj) move into a separate
@@ -1252,7 +1271,7 @@ export default function ChordsTab({
           <button onClick={() => setTonalitySet(new Set())}
             className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5 ml-auto">Clear</button>
         </div>
-        {TONALITY_FAMILIES.map(group => {
+        {tonalityFamiliesForEdo(edo).map(group => {
           const available = group.tonalities.filter(t => banksByName[t]);
           if (available.length === 0) return null;
           return (
@@ -1445,7 +1464,7 @@ export default function ChordsTab({
         {Array.from(tonalitySet).map(t => {
           const bank = banksByName[t];
           if (!bank) return null;
-          const family = TONALITY_FAMILIES.find(f => f.tonalities.includes(t));
+          const family = tonalityFamiliesForEdo(edo).find(f => f.tonalities.includes(t));
           const accent = family?.color ?? "#7173e6";
           return (
             <ChordSelectionPanel
