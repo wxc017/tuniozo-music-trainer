@@ -313,6 +313,52 @@ export default function ScalarTab({
 
   return (
     <div className="space-y-4">
+      {/* ── Floating chord-analysis overlay — appears top-right when
+          a JI tonality is selected AND a chord is highlighted in the
+          chord-pool below.  Mirrors the same panel ChordsTab uses so
+          the user gets identical chord-purity info while exploring
+          scales without switching tabs.  Meantone EDOs (12/19/31)
+          don't trigger it — wolves don't appear there. ── */}
+      {selected && JI_SCALE_NAMES_SET.has(selected) && highlightedChordKey && (() => {
+        const analysis = analyzeJiScale(selected);
+        if (!analysis) return null;
+        const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"];
+        const tagColor = (k: string) => {
+          if (k === "wolf") return "#cc6a8a";
+          if (k === "off-grid") return "#c8aa50";
+          if (k === "pure-3") return "#9999cc";
+          if (k === "pure-5") return "#6acca0";
+          if (k === "pure-7") return "#cc8855";
+          if (k === "pure-11") return "#9a66c0";
+          return "#888";
+        };
+        return (
+          <FloatingPanel
+            position="top-right"
+            title={`CHORD ANALYSIS · ${selected}`}
+            accent="#5b5be6"
+            storageKey="lt_scalar_analysis_panel_collapsed"
+          >
+            <div className="grid grid-cols-[28px_1fr_1fr_60px] gap-x-2 gap-y-1 text-[10px]">
+              <span className="text-[#555] font-medium">Ch</span>
+              <span className="text-[#555] font-medium">Third</span>
+              <span className="text-[#555] font-medium">Fifth</span>
+              <span className="text-[#555] font-medium">Status</span>
+              {analysis.map((row, i) => (
+                <span key={i} style={{ display: "contents" }}>
+                  <span className="text-[#aaa] font-mono">{ROMAN[i]}</span>
+                  <span style={{ color: tagColor(row.third.kind) }}>{row.third.ratio}</span>
+                  <span style={{ color: tagColor(row.fifth.kind) }}>{row.fifth.ratio}</span>
+                  <span style={{ color: row.pure ? "#5cca5c" : "#cc6a8a", fontWeight: 600 }}>
+                    {row.pure ? "✓" : "✗ Wolf"}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </FloatingPanel>
+        );
+      })()}
+
       {/* ── Info panel for the selected tonality (renders right below
           the sticky visualizer at the top of the tab). ── */}
       {view && (
