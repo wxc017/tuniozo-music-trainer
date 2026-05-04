@@ -99,7 +99,78 @@ const IPA_TO_ORTHO: Record<string, string> = {
   "veɪl":   "vale",
   // Octave less diesis / comma
   "di":     "dee",
+
+  // ── Heathwaite solfege ─────────────────────────────────────────────
+  // The Heathwaite microtonal solfege uses the classical Do-Re-Mi
+  // syllables plus vowel-mirrored extensions (Du, Ru, Mu, Fu …) for
+  // microtonal alterations.  Pronunciation follows the standard sung
+  // solfege convention: Do is /doʊ/ (English "doh"), NOT /duː/ (the
+  // English verb "do").  Each row lists IPA → orthographic spelling
+  // that the eSpeak en-US phonemizer pronounces correctly.
+  // ───────────────────────────────────────────────────────────────────
+  "doʊ":    "doh",       // Do  — root
+  "diː":    "dee",       // Di  — raised root  (also covers "di" already above)
+  "duː":    "doo",       // Du  — half-raised (31-EDO)
+  "reɪ":    "ray",       // Re  — major 2nd
+  "riː":    "ree",       // Ri  — augmented 2nd
+  "rɑː":    "rah",       // Ra  — minor 2nd
+  "ruː":    "roo",       // Ru  — half-raised 2nd (31-EDO)
+  "roʊ":    "row",       // Ro  — half-flat 2nd / lowered (31-EDO)
+  "raɪ":    "rye",       // Rai — wide 2nd (41-EDO)
+  "miː":    "mee",       // Mi  — major 3rd
+  "mɛ":     "meh",       // Me  — minor 3rd
+  "muː":    "moo",       // Mu  — half-raised 3rd (31-EDO)
+  "moʊ":    "mow",       // Mo  — high 3rd (31-EDO)
+  "mɑː":    "mah",       // Ma  — diminished 3rd / half-flat
+  "maɪ":    "my",        // Mai — wide 3rd (41-EDO)
+  "fɑː":    "fah",       // Fa  — perfect 4th
+  "fiː":    "fee",       // Fi  — augmented 4th
+  "fɛ":     "feh",       // Fe  — diminished 4th
+  "fuː":    "foo",       // Fu  — half-raised 4th (31-EDO)
+  "faɪ":    "fye",       // Fai — wide 4th (41-EDO)
+  "soʊl":   "sole",      // Sol — perfect 5th
+  "soʊ":    "soh",       // So  — alternate 5th (31-EDO)
+  "siː":    "see",       // Si  — augmented 5th
+  "sɛ":     "seh",       // Se  — diminished 5th
+  "suː":    "soo",       // Su  — half-raised 5th (31-EDO)
+  "saɪ":    "sigh",      // Sai — wide 5th (41-EDO)
+  "lɑː":    "lah",       // La  — major 6th
+  "liː":    "lee",       // Li  — augmented 6th
+  "lɛ":     "leh",       // Le  — minor 6th
+  "luː":    "loo",       // Lu  — half-raised 6th (31-EDO)
+  "loʊ":    "low",       // Lo  — diminished / half-flat 6th
+  "laɪ":    "lye",       // Lai — wide 6th (41-EDO)
+  "tiː":    "tee",       // Ti  — major 7th
+  "tɛ":     "teh",       // Te  — minor 7th
+  "tɑː":    "tah",       // Ta  — diminished 7th / half-flat
+  "tuː":    "too",       // Tu  — half-raised 7th (31-EDO)
+  "toʊ":    "toe",       // To  — high 7th (31-EDO)
+  "taɪ":    "tie",       // Tai — wide 7th (41-EDO)
+  "dɑː":    "dah",       // Da  — half-flat octave (31-EDO)
 };
+
+/** IPA pronunciation for each Heathwaite solfege syllable.  The display
+ *  table in edoData.ts stores just the syllable name (e.g. "Do", "Re",
+ *  "Mi"); this map gives the IPA the user actually wants to hear when
+ *  they click the syllable.  Without it, piper's eSpeak en-US rules
+ *  read "Do" as the verb /duː/ rather than the sung /doʊ/. */
+const HEATHWAITE_IPA: Record<string, string> = {
+  Do: "doʊ",  Di: "diː",  Du: "duː",
+  Re: "reɪ",  Ri: "riː",  Ru: "ruː",  Ra: "rɑː",  Ro: "roʊ",  Rai: "raɪ",
+  Mi: "miː",  Me: "mɛ",   Mu: "muː",  Ma: "mɑː",  Mo: "moʊ",  Mai: "maɪ",
+  Fa: "fɑː",  Fi: "fiː",  Fe: "fɛ",   Fu: "fuː",  Fai: "faɪ",
+  Sol: "soʊl", So: "soʊ", Si: "siː",  Se: "sɛ",   Su: "suː",  Sai: "saɪ",
+  La: "lɑː",  Li: "liː",  Le: "lɛ",   Lu: "luː",  Lo: "loʊ",  Lai: "laɪ",
+  Ti: "tiː",  Te: "tɛ",   Ta: "tɑː",  Tu: "tuː",  To: "toʊ",  Tai: "taɪ",
+  Da: "dɑː",
+};
+
+/** Look up the IPA for a Heathwaite syllable, e.g. heathwaiteIpa("Do") →
+ *  "doʊ".  Returns null when the syllable isn't in the Heathwaite
+ *  table (caller can fall back to plain text). */
+export function heathwaiteIpa(syllable: string): string | null {
+  return HEATHWAITE_IPA[syllable] ?? null;
+}
 
 /** Convert an IPA string to its English-orthography approximation that
  *  the Web Speech API will pronounce correctly.  Returns the IPA
