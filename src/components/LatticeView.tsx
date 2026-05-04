@@ -5163,6 +5163,7 @@ export default function LatticeView() {
         <div className="flex gap-1 flex-wrap mb-3">
           {(Object.keys(MODE_LABELS) as ViewMode[]).filter(m =>
             (m !== "chain" || betaIntervalChain) && (m !== "comma" || betaComma)
+            && m !== "harmonic" && m !== "otonal"
           ).map(m => (
             <button key={m} onClick={() => switchMode(m)}
               className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
