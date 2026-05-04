@@ -6,6 +6,8 @@ import {
 } from "@/lib/musicTheory";
 import { useLS } from "@/lib/storage";
 import { recordAnswer } from "@/lib/stats";
+import { JI_FAMILY, JI_SCALE_NAMES, getJiScaleDegrees } from "@/lib/jiScaleData";
+import { JI_LIMIT_GROUPS } from "@/lib/jiTonalityFamilies";
 
 interface Props {
   tonicPc: number;
@@ -241,7 +243,32 @@ const ALL_MODES: ModeInfo[] = [
   // sub/neu/sup alterations don't survive rotation).  All scale-degree
   // labels come from the rotation maps in PATTERN_SCALE_MAPS_31.
   ...buildXenRotationInfos(),
+  // ── JI scales (Pythagorean / Schismatic — 41-EDO + 53-EDO) ──────────
+  // 19 scales registered as "JI Family" by jiScaleData.ts.  Character
+  // tones are inferred from accidentals in the degree spelling; chord
+  // option uses the first four scale degrees as a 7th-chord stand-in.
+  // Same scales work for both EDOs since getModeDegreeMap routes through
+  // the EDO-specific pattern maps.
+  ...buildJiInfos(),
 ];
+
+function buildJiInfos(): ModeInfo[] {
+  return JI_SCALE_NAMES.map(name => {
+    const degs = getJiScaleDegrees(name) ?? ["1"];
+    const isStandard = (d: string) => /^[1-7]$/.test(d);
+    const character = degs.filter(d => !isStandard(d) && d !== "1");
+    const has5 = degs.includes("5");
+    return {
+      name,
+      family: JI_FAMILY,
+      displayName: name,
+      scaleDegrees: degs,
+      character: character.length ? character : [degs[2] ?? "b3"],
+      stable: has5 ? ["1", "5"] : ["1"],
+      chordOptions: [{ name, degrees: degs.slice(0, 4) }],
+    };
+  });
+}
 
 function buildXenRotationInfos(): ModeInfo[] {
   const families = [
@@ -283,6 +310,7 @@ const FAMILY_MAP: Record<string, ModeInfo[]> = {
   neutral:  ALL_MODES.filter(m => m.family === "Neutral Diatonic Family"),
   supermajor: ALL_MODES.filter(m => m.family === "Supermajor Diatonic Family"),
   subharmonic: ALL_MODES.filter(m => m.family === "Subharmonic Diatonic Family"),
+  ji:       ALL_MODES.filter(m => m.family === JI_FAMILY),
   all:      ALL_MODES,
 };
 
@@ -928,11 +956,25 @@ export default function ModeIdentificationTab({
     });
   };
 
-  const FAMILY_GROUPS: { key: string; label: string; color: string; modes: ModeInfo[] }[] = [
-    { key: "major",    label: "MAJOR",          color: "#6a9aca", modes: FAMILY_MAP.major    },
-    { key: "harmonic", label: "HARMONIC MINOR", color: "#c09050", modes: FAMILY_MAP.harmonic },
-    { key: "melodic",  label: "MELODIC MINOR",  color: "#c06090", modes: FAMILY_MAP.melodic  },
-  ];
+  // Family groups switch per EDO: 41/53 (Pythagorean / Schismatic) show
+  // the JI scales grouped by limit (3 / 5 / 7 / 11); other EDOs show the
+  // standard meantone-flavoured trio of Major / Harmonic Minor / Melodic.
+  const FAMILY_GROUPS: { key: string; label: string; color: string; modes: ModeInfo[] }[] =
+    (edo === 41 || edo === 53)
+      ? JI_LIMIT_GROUPS.map(g => ({
+          key: `limit-${g.limit}`,
+          label: g.label,
+          color: g.color,
+          modes: g.families
+            .flatMap(f => f.tonalities)
+            .map(t => ALL_MODES.find(m => m.name === t))
+            .filter((m): m is ModeInfo => !!m),
+        }))
+      : [
+          { key: "major",    label: "MAJOR",          color: "#6a9aca", modes: FAMILY_MAP.major    },
+          { key: "harmonic", label: "HARMONIC MINOR", color: "#c09050", modes: FAMILY_MAP.harmonic },
+          { key: "melodic",  label: "MELODIC MINOR",  color: "#c06090", modes: FAMILY_MAP.melodic  },
+        ];
 
   return (
     <div className="space-y-4">
