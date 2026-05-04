@@ -112,6 +112,69 @@ const JI_SCALES: JiScaleSpec[] = [
   { name: "Maqam Hijaz",
     // Two augmented seconds — characteristic Hijaz "exotic" sound.
     steps: [["1",0],["b2",111.7],["3",386.3],["4",498.0],["5",702.0],["b6",813.7],["b7",996.1]] },
+  // Additional 11-limit Maqamat — both feature the 11/8 wide 4th or
+  // 11-prime-derived intervals that don't reduce cleanly to lower limits.
+  { name: "Maqam Saba",
+    // Saba's hallmark is the dropped 4th (here 11/8 wide instead of 4/3)
+    // creating an unstable, longing colour.  Common in Iraqi / Egyptian Maqam.
+    steps: [["1",0],["2",203.9],["b3",315.6],["#4",551.3],["5",702.0],["b6",813.7],["b7",1017.6]] },
+  { name: "Maqam Huzam",
+    // Built on Sikah; uses a neutral 3rd (11/9) and a wide minor 6th (11/7).
+    steps: [["1",0],["b2",165.0],["b3",347.4],["4",498.0],["5",702.0],["b6",782.5],["b7",1017.6]] },
+
+  // ── 13-LIMIT (Tridecimal) ────────────────────────────────────────────
+  // Adds 13/8 (~840¢, wide neutral 6), 13/11 (~289¢, supraminor 3rd),
+  // 16/13 (~359¢, low neutral 3rd).  Most musically meaningful in the
+  // 6th-degree position — Tridecimal Major's 6 lands between 5/3 and
+  // 27/16 in a place that doesn't exist in 5-limit at all.
+  { name: "Tridecimal Major",
+    steps: [["1",0],["2",203.9],["3",386.3],["4",498.0],["5",702.0],["6",840.5],["7",1088.3]] },
+  { name: "Tridecimal Minor",
+    // 13/11 m3 + 13/8 b6 — the m3 and b6 share a 13-prime kinship that
+    // makes this a coherent "tridecimal minor" rather than just a
+    // 5-limit minor with one altered note.
+    steps: [["1",0],["2",203.9],["b3",289.2],["4",498.0],["5",702.0],["b6",840.5],["b7",996.1]] },
+  { name: "Maqam Sikah",
+    // The neutral 3rd / 6th Maqam family Sikah belongs to.  In 13-limit
+    // the b3 (16/13 ≈ 359¢) sits a touch lower than the 11-limit
+    // neutral 3rd (11/9 ≈ 347¢), giving a darker, more melodic colour.
+    steps: [["1",0],["2",203.9],["b3",359.5],["4",498.0],["5",702.0],["b6",840.5],["b7",1049.4]] },
+
+  // ── 17-LIMIT (Heptadecimal) ──────────────────────────────────────────
+  // 17/16 (~105¢) sits between the just minor 2nd (16/15 ≈ 112¢) and
+  // pure unison.  Useful as a "small leading-tone" in scales where the
+  // 5-limit b2 feels too wide.  41-EDO approximates 17/16 cleanly.
+  { name: "Heptadecimal",
+    // 17/16 b2, 5-limit core in the middle, 17/9 leading tone.
+    steps: [["1",0],["b2",105.0],["3",386.3],["4",498.0],["5",702.0],["6",884.4],["7",1101.0]] },
+
+  // ── 19-LIMIT (Nonadecimal) ───────────────────────────────────────────
+  // 19/16 (~298¢) is fractionally below the Pythagorean m3 (32/27 ≈ 294¢)
+  // and the 5-limit m3 (6/5 ≈ 316¢) — its own colour rather than just
+  // an approximation of either.  Distinctive in 41-EDO.
+  { name: "Nonadecimal Minor",
+    steps: [["1",0],["2",203.9],["b3",297.5],["4",498.0],["5",702.0],["b6",813.7],["b7",996.1]] },
+
+  // ── 23 / 29 / 31-LIMIT (demonstrative) ───────────────────────────────
+  // No established repertoire uses these primes as a scale's organising
+  // principle — they're included so the user can audition each prime's
+  // characteristic interval colour.  Each scale anchors a 5-limit
+  // diatonic spine and substitutes one or two degrees with the higher-
+  // prime version (e.g. 23/19 in place of the 6/5 minor third).  41-EDO
+  // approximates 23 well, 29 / 31 less so but still distinguishable.
+  { name: "23-Limit Demo",
+    // 23/19 (~329¢) supraminor 3rd + 23/14 (~859¢) wide minor 6th.
+    steps: [["1",0],["2",203.9],["b3",329.2],["4",498.0],["5",702.0],["6",859.4],["b7",996.1]] },
+  { name: "29-Limit Demo",
+    // Anchored on the diatonic 2 / 4 / 5 spine; 29-prime colour at b3
+    // (29/24 ≈ 328¢) and b6 (29/18 ≈ 770¢) so the scale walks like a
+    // recognisable minor with two notes shifted into 29-territory.
+    steps: [["1",0],["2",203.9],["b3",327.6],["4",498.0],["5",702.0],["b6",770.5],["b7",1029.6]] },
+  { name: "31-Limit Demo",
+    // Same diatonic 2 / 4 / 5 spine; 31-prime colour at b3 (31/26 ≈ 338¢)
+    // and b6 (31/20 ≈ 766¢) — sounds like a minor scale tilted into a
+    // distinct 31-flavour without abandoning its tonal centre.
+    steps: [["1",0],["2",203.9],["b3",338.0],["4",498.0],["5",702.0],["b6",765.5],["b7",895.7]] },
 ];
 
 // ── Build per-EDO ScaleFamilyMaps ────────────────────────────────────────

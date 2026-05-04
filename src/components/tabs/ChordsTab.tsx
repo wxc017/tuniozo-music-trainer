@@ -21,7 +21,7 @@ import {
 import { getTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS, type TonalityBank, type ChordEntry, type ApproachKind } from "@/lib/tonalityBanks";
 import { xenIntervalsForEdo, bankToScaleFamMode } from "@/lib/tonalityChordPool";
 import { formatRomanNumeral } from "@/lib/formatRoman";
-import { JI_LIMIT_GROUPS } from "@/lib/jiTonalityFamilies";
+import { JI_LIMIT_GROUPS, jiLimitGroupsForEdo } from "@/lib/jiTonalityFamilies";
 import { JI_SCALE_NAMES } from "@/lib/jiScaleData";
 import { analyzeJiScale, adaptiveTriadFor, COMMA_DRIFT_CATALOG } from "@/lib/jiChordAnalysis";
 import { limitForJiTonality } from "@/lib/jiTonalityFamilies";
@@ -85,18 +85,20 @@ const TONALITY_FAMILIES: TonalityFamilyGroup[] = [
 ];
 
 // JI temperaments (Pythagorean / Schismatic) get a separate family list
-// derived from JI_LIMIT_GROUPS — one row per limit (3 / 5 / 7 / 11).
+// derived from JI_LIMIT_GROUPS — one row per limit (3 / 5 / 7 / 11 …).
 // Each row's tonalities are the flattened scales across that limit's
-// sub-families (DIATONIC, HARMONIC MINOR, MAQAM, etc.).
-const JI_TONALITY_FAMILIES: TonalityFamilyGroup[] = JI_LIMIT_GROUPS.map(g => ({
-  key: `limit-${g.limit}`,
-  label: g.label,
-  color: g.color,
-  tonalities: g.families.flatMap(f => f.tonalities),
-}));
-
+// sub-families (DIATONIC, HARMONIC MINOR, MAQAM, etc.).  Filtered per
+// EDO via JI_LIMITS_PER_EDO so 53-EDO only shows the limits it
+// approximates well.
 function tonalityFamiliesForEdo(edo: number): TonalityFamilyGroup[] {
-  if (edo === 41 || edo === 53) return JI_TONALITY_FAMILIES;
+  if (edo === 41 || edo === 53) {
+    return jiLimitGroupsForEdo(edo).map(g => ({
+      key: `limit-${g.limit}`,
+      label: g.label,
+      color: g.color,
+      tonalities: g.families.flatMap(f => f.tonalities),
+    }));
+  }
   return TONALITY_FAMILIES;
 }
 

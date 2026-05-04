@@ -7,7 +7,7 @@ import {
 import { useLS } from "@/lib/storage";
 import { recordAnswer } from "@/lib/stats";
 import { JI_FAMILY, JI_SCALE_NAMES, getJiScaleDegrees } from "@/lib/jiScaleData";
-import { JI_LIMIT_GROUPS } from "@/lib/jiTonalityFamilies";
+import { jiLimitGroupsForEdo } from "@/lib/jiTonalityFamilies";
 
 interface Props {
   tonicPc: number;
@@ -961,7 +961,7 @@ export default function ModeIdentificationTab({
   // standard meantone-flavoured trio of Major / Harmonic Minor / Melodic.
   const FAMILY_GROUPS: { key: string; label: string; color: string; modes: ModeInfo[] }[] =
     (edo === 41 || edo === 53)
-      ? JI_LIMIT_GROUPS.map(g => ({
+      ? jiLimitGroupsForEdo(edo).map(g => ({
           key: `limit-${g.limit}`,
           label: g.label,
           color: g.color,

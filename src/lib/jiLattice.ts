@@ -22,6 +22,19 @@
 // 7-limit and 11-limit motions are deferred; this module handles 5-limit
 // only.  Chord labels with suffixes (V/IV, I~neu, etc.) are stripped
 // down to their core Roman numeral before lookup.
+//
+// TODO (deferred follow-up): true 7-/11-/13-axis support requires
+// per-NOTE lattice tracking, not per-CHORD-ROOT — most 7/11/13-prime
+// motions arise from chord QUALITY changes (e.g. dom7's 7/4 resolving
+// to a major 3rd of the next chord) rather than chord-root motion on
+// those axes.  Doing this honestly means tracking each note in each
+// chord as its own lattice position and propagating through voice-
+// leading.  The 5-limit lattice covers the famous syntonic-comma
+// pumps that make up 95% of audible drift in tonal music; higher-axis
+// extensions add septimal, tridecimal, undecimal pumps that are real
+// but rarer.  For now the lattice tracks 5-limit; the higher-limit
+// scales (11/13/17/19/23/29/31) play correctly at their static cents
+// but their progressions don't pump on their characteristic commas.
 
 export type LatticePos = readonly [number, number];   // [3-axis, 5-axis]
 
