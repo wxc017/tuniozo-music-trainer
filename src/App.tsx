@@ -696,6 +696,7 @@ export default function App() {
                   { id: "melodic-patterns",     label: "Melodic Patterns" },
                   { id: "harmony-workshop",     label: "Harmony Workshop" },
                   { id: "chord-chart",          label: "Chord Chart" },
+                  { id: "temperament-explorer", label: "Temperament Explorer" },
                   { id: "note-entry",           label: "Scoring" },
                   // Beta-gated
                   { id: "vocal-percussion",     label: "Vocal Percussion",     beta: true },
@@ -706,7 +707,6 @@ export default function App() {
                   { id: "phrase-decomposition", label: "Phrase Decomposition", beta: true },
                   { id: "interval-browser",     label: "Interval Browser",     beta: true },
                   { id: "microwave",            label: "Microwave",            beta: true },
-                  { id: "temperament-explorer", label: "Temperament Explorer", beta: true },
                 ];
                 const visible = SECTION_BUTTONS.filter(b => !b.beta || betaMode);
                 if (betaMathLab) visible.push({ id: "math-lab", label: "Math Lab", beta: true });
@@ -1647,7 +1647,7 @@ export default function App() {
               const BETA_SECTIONS = new Set([
                 "vocal-percussion","mixed-groups","drill-response","uncommon-meters",
                 "konnakol","phrase-decomposition","interval-browser",
-                "microwave","temperament-explorer",
+                "microwave",
               ]);
               if (BETA_SECTIONS.has(section)) setSection("ear-trainer");
             }
