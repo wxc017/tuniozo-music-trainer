@@ -5,7 +5,7 @@
 // Chord entries are label-only references — actual shapes come from
 // getBaseChords(edo) or are built dynamically from getChordShapes(edo).
 
-import { getChordShapes } from "./edoData";
+import { getChordShapes, getModeDegreeMap } from "./edoData";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -449,7 +449,66 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
     // whose case reflects the 3rd quality.  The 7th-quality suffix is
     // hidden by default; pass showSevenths=true to expose it.
     ...(edo === 31 ? buildXenFamilyBanks(edo, showSevenths) : []),
+
+    // ── Double Harmonic family (all EDOs) ──────────────────────────────
+    // Heptatonic scale with two augmented seconds.  Modes generated from
+    // the degree map registered in edoData.ts, then run through the
+    // EDO-agnostic `buildModeFromScale` which auto-labels triads by their
+    // actual third + fifth qualities.  Mark I/IV/V as primary like the
+    // other heptatonic families.
+    ...DBLH_MODES.map(modeName => buildBankFromRegisteredFamily(
+      "Double Harmonic Family", modeName, edo, [0, 3, 4], buildModeFromScale,
+    )),
+
+    // ── Symmetric family (all EDOs) ────────────────────────────────────
+    // Non-heptatonic.  Whole Tone has 6 notes, the two Diminished modes
+    // have 8 each.  `buildModeFromScale` already handles variable scale
+    // length via `% scale.length`; chord qualities surface naturally
+    // (Whole Tone → all augmented triads; Diminished → all diminished
+    // triads).  Only the tonic gets the "Primary" tier since I/IV/V
+    // semantics don't carry over to symmetric scales.
+    ...symmetricModesForEdo(edo).map(modeName => buildBankFromRegisteredFamily(
+      "Symmetric Family", modeName, edo, [0], buildModeFromScale,
+    )),
   ];
+}
+
+// Mode-name lists used to expand the new families inside getTonalityBanks.
+// Kept in sync with PATTERN_SCALE_FAMILIES in musicTheory.ts and the
+// degree-map builders in edoData.ts.
+const DBLH_MODES = [
+  "Double Harmonic Major","Lydian #2 #6","Ultraphrygian","Hungarian Minor",
+  "Oriental","Ionian #2 #5","Locrian bb3 bb7",
+];
+const SYMMETRIC_MODES_BASE = [
+  "Whole Tone","Half-Whole Diminished","Whole-Half Diminished",
+];
+// 31-EDO exposes a second spelling of each symmetric scale using its
+// half-sharp / half-flat tier (one diesis off the chromatic).  Other EDOs
+// don't distinguish these from the base versions.
+const SYMMETRIC_MODES_31_EXTRA = [
+  "Whole Tone (half-sharp)","Half-Whole Diminished (half-sharp)","Whole-Half Diminished (half-sharp)",
+];
+function symmetricModesForEdo(edo: number): string[] {
+  return edo === 31 ? [...SYMMETRIC_MODES_BASE, ...SYMMETRIC_MODES_31_EXTRA] : SYMMETRIC_MODES_BASE;
+}
+
+// Pull a registered family/mode's degree map and feed it into the closure-
+// scoped `buildModeFromScale` helper.  Hoisted so the body of
+// getTonalityBanks can call it before its closures are defined; the
+// `builder` parameter is the closure (different `edo` capture per call).
+function buildBankFromRegisteredFamily(
+  familyName: string,
+  modeName: string,
+  edo: number,
+  primaryIdx: number[],
+  builder: (name: string, degLabels: string[], scaleSemis: number[], primaryIdx: number[]) => TonalityBank,
+): TonalityBank {
+  const degMap = getModeDegreeMap(edo, familyName, modeName);
+  const entries = Object.entries(degMap).sort((a, b) => a[1] - b[1]);
+  const degLabels = entries.map(([deg]) => deg);
+  const semis = entries.map(([, step]) => step);
+  return builder(modeName, degLabels, semis, primaryIdx);
 }
 
 // ── Septimal / Neutral diatonic families ─────────────────────────────

@@ -36,6 +36,16 @@ export const TONALITY_FAMILIES: { key: string; label: string; color: string; ton
     tonalities: ["Supermajor Diatonic","Dorian S2 ##5 S6","Subminor Phrygian","Lydian S3 b5 S7","Supermajor Mixolydian m7","Subminor Aeolian M2 bb4","Subminor Locrian m7"] },
   { key: "subharmonic",label: "SUBHARMONIC DIATONIC M7",color: "#4a9ac7",
     tonalities: ["Subharmonic Diatonic M7","Locrian s2 s5 N6","Supermajor Ionian #5","Dorian s3 ##4 s7","Phrygian s2 N3 s6","Supermajor Lydian #2 b5","Neutral Dorian b4 bb5 bb7"] },
+  // ── Double Harmonic family (12-EDO native, available in all EDOs) ─────
+  { key: "doubleharmonic", label: "DOUBLE HARMONIC", color: "#e08040",
+    tonalities: ["Double Harmonic Major","Lydian #2 #6","Ultraphrygian","Hungarian Minor","Oriental","Ionian #2 #5","Locrian bb3 bb7"] },
+  // ── Symmetric scales (non-heptatonic) ─────────────────────────────────
+  { key: "symmetric", label: "SYMMETRIC", color: "#5ab9b0",
+    tonalities: [
+      "Whole Tone","Half-Whole Diminished","Whole-Half Diminished",
+      // 31-EDO half-sharp variants (filtered out in other EDOs by banksByName)
+      "Whole Tone (half-sharp)","Half-Whole Diminished (half-sharp)","Whole-Half Diminished (half-sharp)",
+    ] },
 ];
 
 // Tonality bank name → (scaleFamily, scaleMode) used by the melody pool builder.
@@ -49,6 +59,8 @@ export function bankToScaleFamMode(tonality: string): [string, string] {
     neutral: "Neutral Diatonic Family",
     supermajor: "Supermajor Diatonic Family",
     subharmonic: "Subharmonic Diatonic Family",
+    doubleharmonic: "Double Harmonic Family",
+    symmetric: "Symmetric Family",
   };
   for (const f of TONALITY_FAMILIES) {
     if (f.tonalities.includes(tonality)) {
@@ -63,10 +75,17 @@ export function bankToMajMinBoth(tonality: string): Tonality {
   const [, mode] = bankToScaleFamMode(tonality);
   const major = new Set([
     "Ionian","Lydian","Mixolydian","Ionian #5","Lydian Augmented","Lydian Dominant","Mixolydian b6","Lydian #2",
+    // Double Harmonic family — modes with M3 over the tonic
+    "Double Harmonic Major","Lydian #2 #6","Oriental","Ionian #2 #5",
   ]);
   const minor = new Set([
     "Aeolian","Dorian","Phrygian","Locrian","Harmonic Minor","Locrian #6","Dorian #4","Phrygian Dominant",
     "Ultralocrian","Melodic Minor","Dorian b2","Locrian #2",
+    // Double Harmonic family — modes with m3 over the tonic
+    "Ultraphrygian","Hungarian Minor","Locrian bb3 bb7",
+    // Symmetric Diminished modes resolve to minor-ish tonics (dim triads)
+    "Half-Whole Diminished","Whole-Half Diminished",
+    "Half-Whole Diminished (half-sharp)","Whole-Half Diminished (half-sharp)",
   ]);
   if (major.has(mode)) return "major";
   if (minor.has(mode)) return "minor";

@@ -2121,6 +2121,41 @@ export const PATTERN_SCALE_FAMILIES: Record<string, string[]> = {
     "Supermajor Lydian #2 b5",
     "Neutral Dorian b4 bb5 bb7",
   ],
+  // ── Double Harmonic family (12-EDO native, EDO-agnostic) ─────────────
+  // Heptatonic scale with two augmented seconds; basis of Byzantine,
+  // Arabic, Klezmer, Romani, flamenco, and Eastern European repertoire.
+  // Hungarian Minor (Double Harmonic Minor) is its 4th mode — the family
+  // contains both the major and minor flavours plus the five other
+  // rotations, mirroring how Harmonic Minor exposes Phrygian Dominant et al.
+  "Double Harmonic Family": [
+    "Double Harmonic Major",
+    "Lydian #2 #6",
+    "Ultraphrygian",
+    "Hungarian Minor",
+    "Oriental",
+    "Ionian #2 #5",
+    "Locrian bb3 bb7",
+  ],
+  // ── Symmetric scales (non-heptatonic) ────────────────────────────────
+  // Whole Tone (6 notes) and the two octatonic Diminished modes (8 notes
+  // each).  Treated as a "family" for UI grouping even though each entry
+  // is a distinct scale rather than a rotation of a parent.  These don't
+  // tile a 31-EDO octave evenly; the EDO-specific degree maps fall back
+  // to the closest standard chromatic positions, so the scale closes the
+  // octave but the step pattern is only approximately symmetric outside
+  // 12-EDO.
+  "Symmetric Family": [
+    "Whole Tone",
+    "Half-Whole Diminished",
+    "Whole-Half Diminished",
+    // 31-EDO half-sharp variants — same scale degrees one diesis shifted
+    // toward the natural.  Collapse to the chromatic versions in 12-EDO,
+    // so they're filtered out of the picker UI when the bank doesn't
+    // materialize (existing TONALITY_FAMILIES + banksByName guard).
+    "Whole Tone (half-sharp)",
+    "Half-Whole Diminished (half-sharp)",
+    "Whole-Half Diminished (half-sharp)",
+  ],
 };
 
 export const PATTERN_SEQUENCE_FAMILIES = [
