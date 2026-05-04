@@ -43,8 +43,10 @@ export const TONALITY_FAMILIES: { key: string; label: string; color: string; ton
   { key: "symmetric", label: "SYMMETRIC", color: "#5ab9b0",
     tonalities: [
       "Whole Tone","Half-Whole Diminished","Whole-Half Diminished",
-      // 31-EDO half-sharp variants (filtered out in other EDOs by banksByName)
-      "Whole Tone (half-sharp)","Half-Whole Diminished (half-sharp)","Whole-Half Diminished (half-sharp)",
+      // 31-EDO half-sharp / half-flat variants (filtered out elsewhere).
+      "Whole Tone (Half-Sharp)",
+      "Half-Whole Diminished (Half-Sharp)",
+      "Whole-Half Diminished (Half-Flat)",
     ] },
 ];
 
@@ -85,7 +87,7 @@ export function bankToMajMinBoth(tonality: string): Tonality {
     "Ultraphrygian","Hungarian Minor","Locrian bb3 bb7",
     // Symmetric Diminished modes resolve to minor-ish tonics (dim triads)
     "Half-Whole Diminished","Whole-Half Diminished",
-    "Half-Whole Diminished (half-sharp)","Whole-Half Diminished (half-sharp)",
+    "Half-Whole Diminished (Half-Sharp)","Whole-Half Diminished (Half-Flat)",
   ]);
   if (major.has(mode)) return "major";
   if (minor.has(mode)) return "minor";

@@ -483,11 +483,12 @@ const DBLH_MODES = [
 const SYMMETRIC_MODES_BASE = [
   "Whole Tone","Half-Whole Diminished","Whole-Half Diminished",
 ];
-// 31-EDO exposes a second spelling of each symmetric scale using its
-// half-sharp / half-flat tier (one diesis off the chromatic).  Other EDOs
-// don't distinguish these from the base versions.
+// 31-EDO adds one half-sharp / half-flat variant per scale, varying the
+// tritone-region accidental by one diesis.  Other EDOs collapse to base.
 const SYMMETRIC_MODES_31_EXTRA = [
-  "Whole Tone (half-sharp)","Half-Whole Diminished (half-sharp)","Whole-Half Diminished (half-sharp)",
+  "Whole Tone (Half-Sharp)",
+  "Half-Whole Diminished (Half-Sharp)",
+  "Whole-Half Diminished (Half-Flat)",
 ];
 function symmetricModesForEdo(edo: number): string[] {
   return edo === 31 ? [...SYMMETRIC_MODES_BASE, ...SYMMETRIC_MODES_31_EXTRA] : SYMMETRIC_MODES_BASE;

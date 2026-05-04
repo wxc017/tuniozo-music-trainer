@@ -2145,16 +2145,17 @@ export const PATTERN_SCALE_FAMILIES: Record<string, string[]> = {
   // octave but the step pattern is only approximately symmetric outside
   // 12-EDO.
   "Symmetric Family": [
+    // Standard chromatic versions — used in all EDOs.
     "Whole Tone",
     "Half-Whole Diminished",
     "Whole-Half Diminished",
-    // 31-EDO half-sharp variants — same scale degrees one diesis shifted
-    // toward the natural.  Collapse to the chromatic versions in 12-EDO,
-    // so they're filtered out of the picker UI when the bank doesn't
-    // materialize (existing TONALITY_FAMILIES + banksByName guard).
-    "Whole Tone (half-sharp)",
-    "Half-Whole Diminished (half-sharp)",
-    "Whole-Half Diminished (half-sharp)",
+    // 31-EDO microtonal variants — tritone-region accidentals shifted by
+    // one diesis (half-sharp / half-flat).  Collapse to the chromatic
+    // version in 12-EDO so they're filtered out of the picker UI by the
+    // banksByName guard.
+    "Whole Tone (Half-Sharp)",
+    "Half-Whole Diminished (Half-Sharp)",
+    "Whole-Half Diminished (Half-Flat)",
   ],
 };
 
