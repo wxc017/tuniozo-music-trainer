@@ -2055,6 +2055,7 @@ export default function ChordsTab({
                             externalHighlights={highlightSet}
                             activeNodeKey={activeKey}
                             temperingForEdo={edo}
+                            chromeless
                           />
                         </div>
                       </div>

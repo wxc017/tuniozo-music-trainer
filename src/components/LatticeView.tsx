@@ -3710,9 +3710,16 @@ interface LatticeViewProps {
    *  squash 32805/32768, 12-EDO squashes everything in sight, etc.
    *  Drives the "you can understand tuning systems" view. */
   temperingForEdo?: number;
+  /** When true, hide all controls (header, mode-tabs, drone /
+   *  preset / temper / tuning panel, layers, etc.) and render only
+   *  the 3D canvas.  Used when LatticeView is embedded as a
+   *  read-only visualization in another panel where the parent has
+   *  already configured tempering — the user doesn't need to see
+   *  options that have been pre-decided for them. */
+  chromeless?: boolean;
 }
 
-export default function LatticeView({ externalHighlights, activeNodeKey, temperingForEdo }: LatticeViewProps = {}) {
+export default function LatticeView({ externalHighlights, activeNodeKey, temperingForEdo, chromeless = false }: LatticeViewProps = {}) {
   const [droneNodes, setDroneNodes] = useState<Set<string>>(new Set());
   // When the parent supplies an `activeNodeKey`, surface it through the
   // standard droneNodes set so it picks up the same pulsing/highlight
@@ -5074,7 +5081,11 @@ export default function LatticeView({ externalHighlights, activeNodeKey, temperi
   const activeDroneCount = isOtonalMode ? stackActiveNodes.size : droneNodes.size;
 
   return (
-    <div className="w-full py-2 px-4 flex flex-col" style={{ minHeight: "calc(100vh - 48px)" }}>
+    <div
+      className={chromeless ? "w-full h-full flex flex-col" : "w-full py-2 px-4 flex flex-col"}
+      style={chromeless ? undefined : { minHeight: "calc(100vh - 48px)" }}
+    >
+      {!chromeless && (
       <div className="flex-shrink-0">
         <div className="flex items-center gap-2 mb-1">
           <h2 className="text-sm font-semibold text-[#888] uppercase tracking-widest">
@@ -6260,9 +6271,14 @@ export default function LatticeView({ externalHighlights, activeNodeKey, temperi
           return inner;
         })()}
       </div>
+      )}{/* /chromeless gate on controls block */}
 
       {/* 3D Canvas */}
-      <div ref={canvasContainerRef} className={`rounded-xl border border-[#1a1a1a] bg-[#080808] relative ${isCommaMode ? "overflow-auto" : "overflow-hidden"}`} style={{ height: "80vh" }}>
+      <div
+        ref={canvasContainerRef}
+        className={`rounded-xl border border-[#1a1a1a] bg-[#080808] relative ${isCommaMode ? "overflow-auto" : "overflow-hidden"}`}
+        style={chromeless ? { flex: 1, minHeight: 0 } : { height: "80vh" }}
+      >
         {/* Navigation help */}
         {(
           <div className="absolute top-2 left-2 z-10 px-2.5 py-1.5 rounded text-[9px] bg-[#111]/70 text-[#555] backdrop-blur-sm border border-[#222] leading-relaxed">
@@ -6541,6 +6557,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, temperi
         )}
       </div>
 
+      {!chromeless && (<>
       {/* Voice Leading panel */}
       {viewMode === "lattice" && droneNodes.size >= 3 && droneNodes.size <= 3 && chordMoves.length > 0 && (
         <details className="mt-3 flex-shrink-0" open>
@@ -6681,6 +6698,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, temperi
           }
         </div>
       </details>
+      </>)}{/* /chromeless gate on auxiliary panels */}
     </div>
   );
 }
