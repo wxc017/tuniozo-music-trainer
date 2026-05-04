@@ -617,17 +617,30 @@ function Scene({
           lifts each node by FAMILY_RING_TUBE so they sit on the
           donut, not floating beside it).  Default torus orientation
           puts the ring in XY, matching the node-pos plane. */}
-      {(lattice.familyRings ?? []).map(ring => (
-        <mesh key={`ring-${ring.familyId}`}>
-          <torusGeometry args={[ring.radius, 0.18, 10, 128]} />
-          <meshStandardMaterial
-            color={ring.color}
-            emissive={ring.color}
-            emissiveIntensity={0.15}
-            roughness={0.7} metalness={0}
-            transparent opacity={0.85} />
-        </mesh>
-      ))}
+      {(lattice.familyRings ?? []).map(ring => {
+        // Cut a small hole in each ring between Lydian (brightest) and
+        // Locrian (darkest) — that closing step is ~6 alterations
+        // (the full chain of fifths), not +1, so the ring shouldn't
+        // connect those two endpoints.  Arc spans 6/7 of the circle.
+        const TWO_PI = 2 * Math.PI;
+        const SEG = TWO_PI / 7;
+        const arcSpan = SEG * 6; // covers six +1 steps
+        // Rotate so the arc starts at the darkest mode's angle (bottom,
+        // -π/2 in our layout).  TorusGeometry's arc default starts at
+        // +X going CCW; offset by -π/2 to align the start with the
+        // first node position.
+        return (
+          <mesh key={`ring-${ring.familyId}`} rotation={[0, 0, -Math.PI / 2]}>
+            <torusGeometry args={[ring.radius, 0.08, 8, 144, arcSpan]} />
+            <meshStandardMaterial
+              color={ring.color}
+              emissive={ring.color}
+              emissiveIntensity={0.6}
+              roughness={0.55} metalness={0}
+              transparent opacity={0.95} />
+          </mesh>
+        );
+      })}
 
       {/* For every expanded cable, drop a small label at its source
           (the spot on the parent's tube the cable was spawned from)

@@ -620,7 +620,7 @@ export function buildFamilyLattice(
   // Tighter packing: rings closer together, smaller inner radius,
   // so the whole lattice fits a more readable area without forcing
   // the user to zoom out.  Tube stays thin so node spheres dominate.
-  const FAMILY_RING_TUBE = 0.18;
+  const FAMILY_RING_TUBE = 0.08;
   const RING_SPACING = 3.5;
   const RING_R0 = 4;
   const nodes: LatticeNode[] = [];
@@ -630,12 +630,14 @@ export function buildFamilyLattice(
   for (const family of families) {
     const familyModes = modes.get(family.id) ?? [];
     if (familyModes.length === 0) continue;
-    const sorted = [...familyModes].sort((a, b) => b.brightness - a.brightness);
+    // Sort darkest → brightest so going clockwise around the ring
+    // the modes ramp from light/flat (e.g. Locrian) to bright/sharp
+    // (Lydian).  modeRank inverts so colour ramp still puts dark
+    // tones on dark modes and vivid tones on bright modes.
+    const sorted = [...familyModes].sort((a, b) => a.brightness - b.brightness);
+    const lastIdx = Math.max(1, sorted.length - 1);
     const radius = RING_R0 + family.zOrd * RING_SPACING;
-    // Rings render grey — colour now lives on the 1-alt edges,
-    // with rings as a neutral backbone so the coloured edges read
-    // as the structural information.
-    familyRings.push({ familyId: family.id, color: "#666", radius });
+    familyRings.push({ familyId: family.id, color: family.color, radius });
     for (let i = 0; i < sorted.length; i++) {
       const mode = sorted[i];
       const angle = (i / sorted.length) * 2 * Math.PI - Math.PI / 2;
@@ -649,7 +651,10 @@ export function buildFamilyLattice(
         // on the torus rather than being buried inside it.
         pos: [x, y, FAMILY_RING_TUBE],
         rootPc: tonicNorm,
-        knotT: angle, modeRank: i,
+        knotT: angle,
+        // Invert: brightest mode (last in sort) gets modeRank 0
+        // (vivid colour); darkest gets modeRank 6 (dimmed).
+        modeRank: ((lastIdx - i) / lastIdx) * 6,
         altLevel: undefined,
       };
       nodes.push(node);
