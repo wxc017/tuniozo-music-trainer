@@ -28,7 +28,7 @@ import { JI_SCALE_NAMES, getJiScaleCents, getJiScaleDegrees } from "@/lib/jiScal
 import { analyzeJiScale, COMMA_DRIFT_CATALOG } from "@/lib/jiChordAnalysis";
 import { chordQualityFromSteps, voicingFor } from "@/lib/jiLattice";
 import { limitForJiTonality } from "@/lib/jiTonalityFamilies";
-import { tracePathDrifts, driftCentsToSteps, stripChordLabel, tracePath, latticeAdd, latticePosToRatio } from "@/lib/jiLattice";
+import { tracePathDrifts, driftCentsToSteps, stripChordLabel, tracePath, latticeAdd, latticePosToRatio, latticeToEdoStep } from "@/lib/jiLattice";
 import FloatingPanel from "@/components/FloatingPanel";
 import JiScaleLattice from "@/components/JiScaleLattice";
 import PianoKeyboard from "@/components/PianoKeyboard";
@@ -2018,12 +2018,20 @@ export default function ChordsTab({
                     // nodes directly without any chain-of-fifths
                     // remapping.
                     const positions = tracePath(fhAnswer.progression);
-                    const ratioKeys = positions.map(p => latticePosToRatio(p));
-                    // Per-chord tone sets (root + 3rd + 5th + 7th).
-                    // The active chord's full set lights up at once
-                    // on the lattice, mirroring the keyboard which
-                    // shows all chord pitches during a chord's slot.
-                    const allTonesPerChord: Set<string>[] = positions.map((root, i) => {
+                    // Per-chord chord-tone EDO classes — drives the
+                    // lattice highlight by EDO step instead of by
+                    // exact JI ratio.  Walking `positions` already
+                    // accumulates comma drift (tracePath is the
+                    // adaptive walk), so the resulting EDO class
+                    // for each tone reflects whatever comma offset
+                    // the progression has built up.  Where the EDO
+                    // tempers the comma (12-/19-/31-EDO meantone)
+                    // the drifted class equals the canonical class
+                    // and the highlight collapses; where it doesn't
+                    // (41-/53-EDO) the drifted tone lights up a
+                    // genuinely different rep, making the drift
+                    // visible on the lattice.
+                    const classesPerChord: Set<number>[] = positions.map((root, i) => {
                       const chord = fhAnswer.chords[i];
                       let quality = chord ? chordQualityFromSteps(chord.notes, edo) : null;
                       if (!quality) {
@@ -2033,16 +2041,11 @@ export default function ChordsTab({
                         else quality = /^[A-Z]/.test(stripped) ? "major" : "minor";
                       }
                       const v = voicingFor(quality) ?? voicingFor("major")!;
-                      return new Set(v.voices.map(vp => latticePosToRatio(latticeAdd(root, vp))));
+                      return new Set(v.voices.map(vp => latticeToEdoStep(latticeAdd(root, vp), edo)));
                     });
-                    // Union of all chord-tone keys = the full trace
-                    // (used for the persistent dim-highlight set).
-                    const allTraceKeys = new Set<string>(ratioKeys);
-                    for (const set of allTonesPerChord) for (const k of set) allTraceKeys.add(k);
-                    // Active set = the playing chord's chord-tones.
-                    const activeTones = currentChordIdx >= 0 && currentChordIdx < allTonesPerChord.length
-                      ? allTonesPerChord[currentChordIdx]
-                      : new Set<string>();
+                    const activeClasses = currentChordIdx >= 0 && currentChordIdx < classesPerChord.length
+                      ? classesPerChord[currentChordIdx]
+                      : new Set<number>();
                     return (
                       <div className="rounded border border-[#3a3a5a] bg-[#0a0a14] mt-2 overflow-hidden">
                         <div className="px-3 py-2 border-b border-[#3a3a5a] flex items-baseline gap-2">
@@ -2053,7 +2056,7 @@ export default function ChordsTab({
                         </div>
                         <div style={{ width: "100%", height: "70vh", overflow: "hidden" }}>
                           <LatticeView
-                            activeNodeKeys={activeTones}
+                            activeClassIds={activeClasses}
                             temperingForEdo={edo}
                             chromeless
                           />
