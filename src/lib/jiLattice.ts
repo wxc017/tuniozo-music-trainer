@@ -224,6 +224,32 @@ export function driftCentsToSteps(driftCents: number, edo: number): number {
   return Math.round((driftCents / 1200) * edo);
 }
 
+/** Convert a lattice position to its octave-reduced "n/d" ratio string —
+ *  the same key format LatticeView's MonzoScene uses internally for
+ *  `highlightedRatios`.  Powers the chord-progression highlight overlay
+ *  in Show Answer: each chord's lattice position is converted into a
+ *  ratio key so the existing Harmonic-Lattice viewer can light it up
+ *  without us reinventing its node-resolution logic.  Higher-prime axes
+ *  are honoured (so e.g. a 7-axis position yields a ratio with 7 in
+ *  numerator/denominator), but in practice the chord-trace mode walks
+ *  only on the 3+5 axes. */
+export function latticePosToRatio(pos: LatticePos): string {
+  let num = 1, den = 1;
+  for (let i = 0; i < pos.length; i++) {
+    const exp = pos[i] ?? 0;
+    if (exp === 0) continue;
+    const prime = PRIME_AXES[i];
+    if (exp > 0) num *= prime ** exp;
+    else den *= prime ** -exp;
+  }
+  // Octave-reduce into [1, 2).
+  while (num >= den * 2) den *= 2;
+  while (num < den) num *= 2;
+  // Reduce any leftover shared factors of 2.
+  while (num % 2 === 0 && den % 2 === 0) { num /= 2; den /= 2; }
+  return `${num}/${den}`;
+}
+
 // ── Per-note voicings (for limit-aware Adaptive JI retuning) ────────────
 //
 // Each chord quality maps to a list of per-voice lattice positions

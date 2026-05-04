@@ -28,7 +28,7 @@ import { JI_SCALE_NAMES, getJiScaleCents, getJiScaleDegrees } from "@/lib/jiScal
 import { analyzeJiScale, COMMA_DRIFT_CATALOG } from "@/lib/jiChordAnalysis";
 import { chordQualityFromSteps, voicingFor, voicingToSteps, coerceTo5Limit } from "@/lib/jiLattice";
 import { limitForJiTonality } from "@/lib/jiTonalityFamilies";
-import { tracePathDrifts, driftCentsToSteps, stripChordLabel } from "@/lib/jiLattice";
+import { tracePathDrifts, driftCentsToSteps, stripChordLabel, tracePath, latticePosToRatio } from "@/lib/jiLattice";
 import FloatingPanel from "@/components/FloatingPanel";
 import JiScaleLattice from "@/components/JiScaleLattice";
 import PianoKeyboard from "@/components/PianoKeyboard";
@@ -382,6 +382,16 @@ export default function ChordsTab({
     // suppress it.
     if (fhShowAnswer) setLatticeOverlayOpen(true);
   }, [fhShowAnswer]);
+  // Index of the chord whose lattice node is currently lit during
+  // playback.  Driven by the same chord-onset timer that highlightAll
+  // Voices uses (see playLoopIteration) so the lattice walk on screen
+  // is synchronized with what the user hears.  -1 means no chord is
+  // active right now.
+  const [currentChordIdx, setCurrentChordIdx] = useState(-1);
+  // Stable ref so playback timers can read the current progression
+  // length without forcing the playback callbacks to re-create
+  // whenever the progression changes.
+  const currentLoopLenRef = useRef(0);
   // Structured answer data — drives the rebuilt Show Answer reveal
   // (clickable tones + Heathwaite + Microtonal solfege per note + a
   // floating lattice box at top showing the active scale's lattice).
@@ -423,7 +433,7 @@ export default function ChordsTab({
   // when Adaptive JI is on, so the drift indicator UI can read it back
   // without recomputing.  Stored as a ref instead of state to avoid a
   // re-render every loop iteration.
-  const latticeDriftsRef = useRef<{ progression: string[]; drifts: number[] } | null>(null);
+  const latticeDriftsRef = useRef<{ progression: string[]; drifts: number[] | null } | null>(null);
   // Re-render trigger so the drift indicator updates after each
   // buildLoopFrames call (refs alone don't trigger re-renders).
   const [latticeRevision, setLatticeRevision] = useState(0);
@@ -1097,11 +1107,14 @@ export default function ChordsTab({
     // is the audible drift.  Frozen mode keeps drifts at 0.
     const useLattice = (jiMode === "adaptive" || jiMode === "pure5") && (edo === 41 || edo === 53);
     const driftsCents = useLattice ? tracePathDrifts(progression) : null;
-    if (useLattice && driftsCents) {
-      latticeDriftsRef.current = { progression, drifts: driftsCents };
-    } else {
-      latticeDriftsRef.current = null;
-    }
+    // Always record the progression on the lattice ref so the harmonic
+    // lattice overlay can plot the chord-root walk regardless of which
+    // JI mode is active (in Frozen mode the drift doesn't get applied
+    // to playback, but the conceptual walk is still meaningful for the
+    // visualization).  `drifts` is null in Frozen mode to make the
+    // distinction explicit for downstream consumers.
+    latticeDriftsRef.current = { progression, drifts: driftsCents };
+    currentLoopLenRef.current = progression.length;
     setLatticeRevision(v => v + 1);
 
     // Thread each chord's voicing into the next so voiceChord can run its
@@ -1277,7 +1290,17 @@ export default function ChordsTab({
         const id = setTimeout(() => onHighlight(notes), t);
         frameTimers.current.push(id);
       }
+      // Lattice progression-trace pulse: fires once per chord onset so
+      // the harmonic-lattice overlay can light up the chord's lattice
+      // position as the user hears it.  Cleared along with the rest
+      // of frameTimers when playback stops or restarts.
+      const latticeId = setTimeout(() => setCurrentChordIdx(slot), slot * gapMs);
+      frameTimers.current.push(latticeId);
     }
+    // Drop the active highlight just after the final chord's onset so
+    // the lattice doesn't stay frozen on the last node forever.
+    const clearId = setTimeout(() => setCurrentChordIdx(-1), n * gapMs + 100);
+    frameTimers.current.push(clearId);
   }, [onHighlight, textureLayers]);
 
   const playLoopIteration = useCallback((voices: { chords: number[][]; bass: number[][] }, gapMs: number, noteDur: number) => {
@@ -1939,7 +1962,31 @@ export default function ChordsTab({
                       Loading harmonic lattice…
                     </div>
                   }>
-                    <LatticeView />
+                    {(() => {
+                      // Compute the lattice walk for the current
+                      // progression and convert each chord-root position
+                      // into the "n/d" ratio key that LatticeView's
+                      // MonzoScene uses for highlights.  Adaptive and
+                      // Pure-5limit modes both produce drifting walks;
+                      // Frozen mode collapses every chord onto its
+                      // canonical position so the trace still highlights
+                      // the chords' tonal-centre cells (the user can see
+                      // the structure even without drift).
+                      const trace = latticeDriftsRef.current;
+                      const prog = trace?.progression ?? null;
+                      const positions = prog ? tracePath(prog) : [];
+                      const ratioKeys = positions.map(p => latticePosToRatio(p));
+                      const highlightSet = new Set(ratioKeys);
+                      const activeKey = currentChordIdx >= 0 && currentChordIdx < ratioKeys.length
+                        ? ratioKeys[currentChordIdx]
+                        : null;
+                      return (
+                        <LatticeView
+                          externalHighlights={highlightSet}
+                          activeNodeKey={activeKey}
+                        />
+                      );
+                    })()}
                   </Suspense>
                 </div>
               </div>
@@ -2003,9 +2050,10 @@ export default function ChordsTab({
                   {(jiMode === "adaptive" || jiMode === "pure5") && (edo === 41 || edo === 53) && (() => {
                     void latticeRevision;
                     const trace = latticeDriftsRef.current;
-                    if (!trace) return null;
-                    const finalDrift = trace.drifts[trace.drifts.length - 1] ?? 0;
-                    const maxAbsDrift = Math.max(...trace.drifts.map(d => Math.abs(d)));
+                    if (!trace || !trace.drifts) return null;
+                    const drifts = trace.drifts;
+                    const finalDrift = drifts[drifts.length - 1] ?? 0;
+                    const maxAbsDrift = Math.max(...drifts.map(d => Math.abs(d)));
                     return (
                       <div className="rounded border border-[#3a8a5a] bg-[#0e1a14] p-3">
                         <div className="flex items-baseline gap-2 mb-2">
@@ -2020,7 +2068,7 @@ export default function ChordsTab({
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {trace.progression.map((chord, i) => {
-                            const drift = trace.drifts[i];
+                            const drift = drifts[i];
                             const driftAbs = Math.abs(drift);
                             const driftColor = driftAbs < 1 ? "#5cca8a" : driftAbs < 15 ? "#c8aa50" : "#cc6a8a";
                             return (
@@ -2123,6 +2171,8 @@ export default function ChordsTab({
                 accent="#5b5be6"
                 storageKey="lt_crd_answer_viz_collapsed"
                 bottomOffset={16}
+                maxWidth="55vw"
+                maxHeight="32vh"
               >
                 {edo === 12 && vizType === "piano" ? (
                   <PianoKeyboard
