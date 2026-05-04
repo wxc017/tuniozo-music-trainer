@@ -34,6 +34,8 @@ import {
   getAllEDOs,
   TEMPERAMENT_FAMILIES,
   FIFTH_TUNING_FAMILIES,
+  classifyFifthTuningFamily,
+  groupEdosByFifthFamily,
   classifyCommasForEdo,
   getEdoIntervals,
   findCommaBasis,
@@ -204,6 +206,62 @@ export default function TemperamentExplorer() {
         {subTab === "ring-map" && <RingMap onSelectEdo={navigateToEdoTemper} />}
         {subTab === "theory" && <TheoryPanel />}
       </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Family-grouped EDO selector — used inside EDO Temper.
+// Every EDO 5..99 falls into exactly one fifth-tuning family
+// (or "Other" if its best-fifth lands outside any band).  Inside
+// each family, EDOs sort by fifth cents narrow → wide.
+// ═══════════════════════════════════════════════════════════════
+
+function FamilyGroupedEdoSelector({
+  selectedEdo, onPick,
+}: { selectedEdo: number; onPick: (edo: number) => void }) {
+  const allEdos = Array.from({ length: 95 }, (_, i) => i + 5);
+  const groups = useMemo(() => groupEdosByFifthFamily(allEdos, EDO_DATA), []);
+  return (
+    <div className="bg-[#0e0e0e] border border-[#222] rounded p-3 space-y-2">
+      <div className="text-[10px] text-[#888] uppercase tracking-wider mb-1">
+        Fifth-tuning families
+      </div>
+      {groups.map(g => {
+        const fam = g.family;
+        const minF = fam ? fam.fifthRange[0] : 0;
+        const maxF = fam ? fam.fifthRange[1] : 0;
+        const rangeLabel = fam
+          ? (minF === maxF ? `${minF.toFixed(1)} ¢` : `${minF.toFixed(1)}–${maxF.toFixed(1)} ¢`)
+          : "outside spectrum";
+        return (
+          <div key={fam?.name ?? "other"} className="border-l-2 border-[#2a2a4a] pl-2.5">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-[#cfe6ff]">
+                {fam?.name ?? "Other"}
+              </span>
+              <span className="text-[10px] text-[#666] font-mono">5th: {rangeLabel}</span>
+            </div>
+            {fam?.blurb && (
+              <div className="text-[10px] text-[#777] leading-snug mb-1.5">{fam.blurb}</div>
+            )}
+            <div className="flex gap-1 flex-wrap">
+              {g.edos.map(({ edo, fifthCents }) => (
+                <button key={edo} onClick={() => onPick(edo)}
+                  title={`${edo}-EDO · 5th = ${fifthCents.toFixed(2)} ¢`}
+                  className={`px-2 py-0.5 text-[10px] rounded font-mono border ${
+                    selectedEdo === edo
+                      ? "bg-[#7173e6] text-white border-[#7173e6]"
+                      : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"
+                  }`}>
+                  {edo}
+                  <span className="text-[8px] text-[#888] ml-1">{fifthCents.toFixed(1)}¢</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1357,19 +1415,18 @@ function EdoTemper({ selectedEdo, setSelectedEdo }: { selectedEdo: number; setSe
 
   return (
     <div className="p-4 space-y-4">
-      {/* Selector */}
+      {/* EDO selector grouped by fifth-tuning family — every EDO 5..99
+          falls into exactly one band based on its actual best-fifth
+          cents.  Inside each group, EDOs are sorted by fifth size. */}
+      <FamilyGroupedEdoSelector
+        selectedEdo={selectedEdo}
+        onPick={n => { setSelectedEdo(n); setExpandedDesc(false); stopAllDrones(); }} />
       <div className="flex items-center gap-3 flex-wrap">
-        <label className="text-xs text-[#888] font-medium">Select EDO</label>
+        <label className="text-xs text-[#888] font-medium">Or jump to</label>
         <select value={selectedEdo} onChange={e => { setSelectedEdo(+e.target.value); setExpandedDesc(false); stopAllDrones(); }}
           className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
           {Array.from({ length: 95 }, (_, i) => i + 5).map(n => <option key={n} value={n}>{n}-EDO</option>)}
         </select>
-        <div className="flex gap-1 flex-wrap">
-          {[5, 7, 10, 12, 15, 17, 19, 22, 24, 31, 41, 46, 53, 72].map(n => (
-            <button key={n} onClick={() => { setSelectedEdo(n); setExpandedDesc(false); stopAllDrones(); }}
-              className={`px-2 py-0.5 text-[10px] rounded font-mono ${selectedEdo === n ? "bg-[#7173e6] text-white" : "bg-[#1a1a1a] text-[#888] border border-[#2a2a2a] hover:text-white"}`}>{n}</button>
-          ))}
-        </div>
       </div>
 
       {/* Summary + badges */}
