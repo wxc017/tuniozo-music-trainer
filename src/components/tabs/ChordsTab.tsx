@@ -22,6 +22,10 @@ import { getTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS, t
 import { xenIntervalsForEdo, bankToScaleFamMode } from "@/lib/tonalityChordPool";
 import { formatRomanNumeral } from "@/lib/formatRoman";
 import { JI_LIMIT_GROUPS } from "@/lib/jiTonalityFamilies";
+import { JI_SCALE_NAMES } from "@/lib/jiScaleData";
+import { analyzeJiScale, adaptiveTriadFor } from "@/lib/jiChordAnalysis";
+
+const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
 
 interface Props {
   tonicPc: number;
@@ -118,6 +122,13 @@ export default function ChordsTab({
   // Derived below from `checkedByTonality` ∪ approach chords across all
   // active tonalities.
   const [regMode, setRegMode] = useLS<string>("lt_crd_regMode", "Fixed Register");
+  // JI progression mode (only meaningful in 41/53 EDO).  "frozen" uses
+  // the scale's actual step values so chords on certain scale degrees
+  // contain wolf intervals (the syntonic comma manifests on the ii of a
+  // 5-limit major, etc.).  "adaptive" retunes each chord's third and
+  // fifth to pure JI ratios on the fly — every chord is internally
+  // consonant but progressions can drift the tonal centre by a comma.
+  const [jiMode, setJiMode] = useLS<"frozen" | "adaptive">("lt_crd_jiMode", "frozen");
   const [extTendency, setExtTendency] = useLS<string>("lt_crd_extTend", "Any");
   // "7th" is intentionally excluded from the extension UI — the 7th is
   // already carried by seventh-chord voicing patterns (1 3 5 7, etc.).
@@ -424,8 +435,34 @@ export default function ChordsTab({
         if (!map[k]) map[k] = v;
       }
     }
+    // Adaptive JI retuning: in 41/53 EDO with adaptive mode on, replace
+    // each triad's third and fifth with pure JI ratios computed from the
+    // chord root.  Quality (M/m/dim/etc.) is inferred from the frozen
+    // chord's third/fifth so the substitution preserves the chord
+    // identity.  4-note voicings retune the triad portion only — the 7th
+    // and any extensions stay where the scale puts them.
+    if (jiMode === "adaptive" && (edo === 41 || edo === 53)) {
+      const out: Record<string, number[]> = {};
+      for (const [label, steps] of Object.entries(map)) {
+        if (steps.length < 3) { out[label] = steps; continue; }
+        const root = steps[0];
+        const thirdC = ((steps[1] - root) / edo) * 1200;
+        const fifthC = ((steps[2] - root) / edo) * 1200;
+        // Inline classification — avoids exposing private analyzer state
+        const cls = (c: number) => ({ cents: c, ratio: "", name: "", kind: "off-grid" as const });
+        const adaptive = adaptiveTriadFor(cls(thirdC), cls(fifthC), edo);
+        if (!adaptive) { out[label] = steps; continue; }
+        out[label] = [
+          root,
+          root + adaptive.steps[1],
+          root + adaptive.steps[2],
+          ...steps.slice(3),
+        ];
+      }
+      return out;
+    }
     return map;
-  }, [baseChordMap, tonalitySet, buildChordMapForTonality]);
+  }, [baseChordMap, tonalitySet, buildChordMapForTonality, jiMode, edo]);
 
   const effectiveChecked = useMemo(() => {
     const s = new Set<string>();
@@ -1260,8 +1297,104 @@ export default function ChordsTab({
 
   // ── Render ──────────────────────────────────────────────────────────
 
+  // Selected JI tonalities (subset of tonalitySet whose names are in the
+  // JI scale catalog) — drives the per-tonality chord-status panel below.
+  const selectedJiTonalities = (edo === 41 || edo === 53)
+    ? Array.from(tonalitySet).filter(t => JI_SCALE_NAMES_SET.has(t))
+    : [];
+
   return (
     <div className="space-y-5">
+      {/* JI progression mode toggle (41/53 EDO only).  Frozen JI uses the
+          scale's actual step values (chord wolves baked in); Adaptive JI
+          retunes each chord to pure ratios on the fly (tonic may drift
+          across the progression). */}
+      {(edo === 41 || edo === 53) && (
+        <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 flex items-center gap-2 flex-wrap">
+          <p className="text-xs text-[#888] font-medium mr-1">PROGRESSION MODE</p>
+          {([
+            { id: "frozen",   label: "Frozen JI Progressions",   blurb: "Scale steps are fixed; one chord per scale wolfs (the comma is baked in)." },
+            { id: "adaptive", label: "Adaptive JI Progressions", blurb: "Each chord retunes to pure ratios; tonic may drift by a comma." },
+          ] as const).map(opt => (
+            <button key={opt.id}
+              onClick={() => setJiMode(opt.id)}
+              title={opt.blurb}
+              className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${
+                jiMode === opt.id
+                  ? "bg-[#3a3a8a] text-white border border-[#5b5be6]"
+                  : "bg-[#111] text-[#666] hover:text-[#aaa] border border-[#222]"
+              }`}>
+              {opt.label}
+            </button>
+          ))}
+          <span className="text-[10px] text-[#555] italic ml-1">
+            {jiMode === "frozen"
+              ? "Hover any selected JI tonality below for its chord-purity table."
+              : "Every chord plays as pure 4:5:6 / 10:12:15 / etc.  Drift is the trade-off."}
+          </span>
+        </div>
+      )}
+
+      {/* Per-selected-JI-tonality chord-purity table.  Walks each scale-
+          degree triad, classifies the third and fifth against the JI
+          interval catalog, marks pure vs wolf positions.  Same data
+          regardless of EDO (41 vs 53) since the analysis lives on the
+          underlying JI ratios, not the EDO step rounding. */}
+      {selectedJiTonalities.length > 0 && (
+        <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-3 space-y-3">
+          <p className="text-[10px] text-[#888] font-medium tracking-wider">CHORD ANALYSIS</p>
+          {selectedJiTonalities.map(tonality => {
+            const analysis = analyzeJiScale(tonality);
+            if (!analysis) return null;
+            const ROMAN = ["I","II","III","IV","V","VI","VII"];
+            return (
+              <div key={tonality}>
+                <p className="text-[11px] text-[#aaa] font-medium mb-1">{tonality}</p>
+                <div className="grid grid-cols-[40px_70px_120px_120px_90px_1fr] gap-x-2 gap-y-0.5 text-[10px]">
+                  <span className="text-[#555] font-medium">Chord</span>
+                  <span className="text-[#555] font-medium">Quality</span>
+                  <span className="text-[#555] font-medium">Third</span>
+                  <span className="text-[#555] font-medium">Fifth</span>
+                  <span className="text-[#555] font-medium">Status</span>
+                  <span></span>
+                  {analysis.map((row, i) => {
+                    const numeral = ROMAN[i];
+                    const tagFor = (k: string) => {
+                      if (k === "wolf") return { color: "#cc6a8a", label: "WOLF" };
+                      if (k === "off-grid") return { color: "#c8aa50", label: "off" };
+                      if (k === "pure-3") return { color: "#9999cc", label: "3-lim" };
+                      if (k === "pure-5") return { color: "#6acca0", label: "5-lim" };
+                      if (k === "pure-7") return { color: "#cc8855", label: "7-lim" };
+                      if (k === "pure-11") return { color: "#9a66c0", label: "11-lim" };
+                      return { color: "#888", label: k };
+                    };
+                    const tThird = tagFor(row.third.kind);
+                    const tFifth = tagFor(row.fifth.kind);
+                    const statusColor = row.pure ? "#5cca5c" : "#cc6a8a";
+                    return (
+                      <span key={i} style={{ display: "contents" }}>
+                        <span className="text-[#aaa] font-mono">{numeral}{row.rootDegree !== "1" ? <span className="text-[#555]"> ({row.rootDegree})</span> : null}</span>
+                        <span className="text-[#888]">{row.quality}</span>
+                        <span style={{ color: tThird.color }}>
+                          {row.third.name} <span className="opacity-60">({row.third.ratio})</span>
+                        </span>
+                        <span style={{ color: tFifth.color }}>
+                          {row.fifth.name} <span className="opacity-60">({row.fifth.ratio})</span>
+                        </span>
+                        <span style={{ color: statusColor, fontWeight: 600 }}>
+                          {row.pure ? "✓ Pure" : "✗ Wolf"}
+                        </span>
+                        <span></span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Tonality multi-select — family-grouped boxes (Mode ID style).
           Click a mode to add it to the pool. At play time a random
           tonality is chosen and only its chord pool is used. */}
