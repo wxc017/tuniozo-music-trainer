@@ -38,6 +38,7 @@ import LumatoneKeyboard from "@/components/LumatoneKeyboard";
 import type { LayoutResult, ComputedKey } from "@/lib/lumatoneLayout";
 import type { VisualizerType } from "@/App";
 import { piperSpeak, piperPrewarm } from "@/lib/piperSpeech";
+import { heathwaiteIpa } from "@/lib/solfegeSpeech";
 import LatticeView from "@/components/LatticeView";
 
 const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
@@ -1939,7 +1940,7 @@ export default function ChordsTab({
                               <span className="text-[10px] text-[#e0c860] font-bold leading-tight">
                                 {intervalChord}
                               </span>
-                              <SaySpan text={heathwaiteChord} ipa={null}
+                              <SaySpan text={heathwaiteChord} ipa={heathwaiteIpa(heathwaiteChord)}
                                 className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
                                 title={`Hear "${heathwaiteChord}" spoken`} />
                               <SaySpan text={microChord.label} ipa={microChord.ipa}
@@ -1950,7 +1951,7 @@ export default function ChordsTab({
                               <span className="text-[10px] text-[#c896c8] font-bold leading-tight">
                                 {intervalScale}
                               </span>
-                              <SaySpan text={heathwaiteScale} ipa={null}
+                              <SaySpan text={heathwaiteScale} ipa={heathwaiteIpa(heathwaiteScale)}
                                 className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
                                 title={`Hear "${heathwaiteScale}" spoken`} />
                               <SaySpan text={microScale.label} ipa={microScale.ipa}

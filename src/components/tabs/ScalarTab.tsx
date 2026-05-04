@@ -4,6 +4,7 @@ import { useLS } from "@/lib/storage";
 import { formatHalfAccidentals, getModeDegreeMap, getSolfege, getHeathwaiteSolfege, getBaseChords, getChordShapes } from "@/lib/edoData";
 import { syllableForEdoStep } from "@/lib/microtonalSolfege";
 import { piperSpeak, piperPrewarm } from "@/lib/piperSpeech";
+import { heathwaiteIpa } from "@/lib/solfegeSpeech";
 import { getTonalityBanks, type TonalityBank } from "@/lib/tonalityBanks";
 import { bankToScaleFamMode } from "@/lib/tonalityChordPool";
 import { jiLimitGroupsForEdo } from "@/lib/jiTonalityFamilies";
@@ -629,10 +630,13 @@ export default function ScalarTab({
                     onClick={e => {
                       e.stopPropagation();
                       e.preventDefault();
-                      piperSpeak(
-                        labelText,
-                        solfegeKind === "microtonal" ? { ipa: microtonal.ipa } : undefined,
-                      );
+                      // Heathwaite syllables get their IPA from the
+                      // heathwaiteIpa() lookup so "Do" reads as
+                      // /doʊ/ (sung "doh") not /duː/ (English "do").
+                      const ipa = solfegeKind === "microtonal"
+                        ? microtonal.ipa
+                        : heathwaiteIpa(labelText);
+                      piperSpeak(labelText, ipa ? { ipa } : undefined);
                     }}
                     className="inline-block bg-white/5 border border-white/10 rounded px-2 py-0.5 text-base font-bold cursor-pointer hover:underline"
                     style={{ color: activeFamilyColor }}
