@@ -91,7 +91,9 @@ const TONALITY_FAMILIES: TonalityFamilyGroup[] = [
 // Each row's tonalities are the flattened scales across that limit's
 // sub-families (DIATONIC, HARMONIC MINOR, MAQAM, etc.).  Filtered per
 // EDO via JI_LIMITS_PER_EDO so 53-EDO only shows the limits it
-// approximates well.
+// approximates well.  (Kept for back-compat callers; the new picker
+// render uses tonalitySectionsForEdo below for the LIMIT > FAMILY >
+// MODES hierarchy.)
 function tonalityFamiliesForEdo(edo: number): TonalityFamilyGroup[] {
   if (edo === 41 || edo === 53) {
     return jiLimitGroupsForEdo(edo).map(g => ({
@@ -102,6 +104,64 @@ function tonalityFamiliesForEdo(edo: number): TonalityFamilyGroup[] {
     }));
   }
   return TONALITY_FAMILIES;
+}
+
+// ── LIMIT > FAMILY > MODES sectioning for the picker ─────────────────────
+// The picker renders three nested levels.  Each section is one LIMIT
+// (5-LIMIT, 7-LIMIT, etc.); inside each section the existing families
+// (MAJOR / HARMONIC MINOR / DIATONIC / TERTIAN / MAQAM / etc.) keep
+// their current sub-grouping; tonality buttons sit at the bottom level.
+//
+// For Meantone EDOs (12 / 19 / 31), we group the existing flat
+// TONALITY_FAMILIES into limit sections by family key.  Xen-flavoured
+// families (Subminor / Supermajor / Subharmonic / Neutral / Symmetric)
+// only materialise in 31-EDO because they need 31's intervallic
+// resolution; Symmetric appears in both 12 and 31.
+//
+// For JI EDOs (41 / 53), JI_LIMIT_GROUPS already carries the limit →
+// family → tonalities structure, so the conversion is one-for-one.
+
+interface TonalitySection {
+  key: string;
+  label: string;          // e.g. "5-LIMIT (MEANTONE)" or "PYTHAGOREAN"
+  color: string;
+  families: { key: string; label: string; tonalities: string[] }[];
+}
+
+const MEANTONE_LIMIT_SECTIONS: { key: string; label: string; color: string; familyKeys: string[] }[] = [
+  { key: "lim5",  label: "5-LIMIT (MEANTONE)", color: "#6a9aca",
+    familyKeys: ["major", "harmonic", "melodic", "doubleharmonic"] },
+  { key: "lim7",  label: "7-LIMIT (SEPTIMAL)", color: "#7aaa6a",
+    familyKeys: ["subminor", "supermajor", "subharmonic"] },
+  { key: "lim11", label: "11-LIMIT (NEUTRAL)", color: "#9a66c0",
+    familyKeys: ["neutral"] },
+  { key: "sym",   label: "SYMMETRIC",          color: "#5ab9b0",
+    familyKeys: ["symmetric"] },
+];
+
+function tonalitySectionsForEdo(edo: number): TonalitySection[] {
+  if (edo === 41 || edo === 53) {
+    return jiLimitGroupsForEdo(edo).map(g => ({
+      key: `limit-${g.limit}`,
+      label: g.label,
+      color: g.color,
+      families: g.families.map(f => ({ key: f.key, label: f.label, tonalities: f.tonalities })),
+    }));
+  }
+  // Meantone (12 / 19 / 31) — group the flat TONALITY_FAMILIES into
+  // limit sections, dropping any section with no families that have
+  // available banks for this EDO.
+  return MEANTONE_LIMIT_SECTIONS
+    .map(sec => ({
+      key: sec.key,
+      label: sec.label,
+      color: sec.color,
+      families: sec.familyKeys
+        .map(fk => TONALITY_FAMILIES.find(f => f.key === fk))
+        .filter((f): f is TonalityFamilyGroup => !!f)
+        .map(f => ({ key: f.key, label: f.label, tonalities: f.tonalities })),
+    }))
+    .filter(sec => sec.families.length > 0);
 }
 
 // Standard third qualities are always shown in the 3RDS panel; xenharmonic
@@ -1581,37 +1641,51 @@ export default function ChordsTab({
           <button onClick={() => setTonalitySet(new Set())}
             className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5 ml-auto">Clear</button>
         </div>
-        {tonalityFamiliesForEdo(edo).map(group => {
-          const available = group.tonalities.filter(t => banksByName[t]);
-          if (available.length === 0) return null;
+        {tonalitySectionsForEdo(edo).map(section => {
+          // Filter families to those with at least one bank-backed
+          // tonality available for this EDO; drop empty sections so the
+          // picker doesn't render headers for limits with no scales.
+          const usableFamilies = section.families
+            .map(f => ({ ...f, tonalities: f.tonalities.filter(t => banksByName[t]) }))
+            .filter(f => f.tonalities.length > 0);
+          if (usableFamilies.length === 0) return null;
           return (
-            <div key={group.key}>
-              <p className="text-[9px] mb-1 font-medium tracking-wider"
-                 style={{ color: group.color }}>{group.label}</p>
-              <div className="flex flex-wrap gap-1">
-                {available.map(t => {
-                  const on = tonalitySet.has(t);
-                  return (
-                    <span key={t} className="inline-flex items-stretch">
-                      <button onClick={() => toggleTonality(t)}
-                        className={`px-2 py-1 text-[10px] rounded-l border-y border-l transition-colors ${
-                          on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                        }`}
-                        style={on ? { backgroundColor: group.color + "30", borderColor: group.color, color: group.color } : {}}>
-                        {formatHalfAccidentals(t)}
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); previewTonalityScale(t); }}
-                        title="Preview scale"
-                        className={`px-1.5 py-1 text-[9px] rounded-r border-y border-r transition-colors ${
-                          on ? "" : "bg-[#0a0a0a] border-[#2a2a2a] text-[#555] hover:text-[#aaa]"
-                        }`}
-                        style={on ? { backgroundColor: group.color + "20", borderColor: group.color, color: group.color } : {}}>
-                        ▶
-                      </button>
-                    </span>
-                  );
-                })}
-              </div>
+            <div key={section.key} className="space-y-1.5">
+              {/* Section header — the LIMIT name (5-LIMIT, 7-LIMIT, etc.). */}
+              <p className="text-[10px] font-bold tracking-widest border-b border-[#1a1a1a] pb-0.5"
+                 style={{ color: section.color }}>{section.label}</p>
+              {usableFamilies.map(family => (
+                <div key={family.key} className="ml-2">
+                  {/* Family sub-header (DIATONIC / TERTIAN / MAQAM / etc.) */}
+                  <p className="text-[9px] mb-1 font-medium tracking-wider text-[#666]">
+                    {family.label}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {family.tonalities.map(t => {
+                      const on = tonalitySet.has(t);
+                      return (
+                        <span key={t} className="inline-flex items-stretch">
+                          <button onClick={() => toggleTonality(t)}
+                            className={`px-2 py-1 text-[10px] rounded-l border-y border-l transition-colors ${
+                              on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                            }`}
+                            style={on ? { backgroundColor: section.color + "30", borderColor: section.color, color: section.color } : {}}>
+                            {formatHalfAccidentals(t)}
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); previewTonalityScale(t); }}
+                            title="Preview scale"
+                            className={`px-1.5 py-1 text-[9px] rounded-r border-y border-r transition-colors ${
+                              on ? "" : "bg-[#0a0a0a] border-[#2a2a2a] text-[#555] hover:text-[#aaa]"
+                            }`}
+                            style={on ? { backgroundColor: section.color + "20", borderColor: section.color, color: section.color } : {}}>
+                            ▶
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           );
         })}

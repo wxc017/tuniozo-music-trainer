@@ -97,6 +97,14 @@ const JI_SCALES: JiScaleSpec[] = [
     steps: [["1",0],["2",203.9],["b3",266.9],["4",498.0],["5",702.0],["b6",813.7],["b7",968.8]] },
   { name: "Septimal Diminished",
     steps: [["1",0],["2",203.9],["b3",266.9],["4",498.0],["b5",582.5],["b6",813.7],["b7",968.8]] },
+  { name: "Septimal Lydian",
+    // 5-limit Lydian spine; #4 lifts to 7/5 (~582¢) — septimal tritone,
+    // sharper and more "blue" than the 5-limit 45/32.
+    steps: [["1",0],["2",203.9],["3",386.3],["#4",582.5],["5",702.0],["6",884.4],["7",1088.3]] },
+  { name: "Septimal Phrygian",
+    // Phrygian darkness with 7-limit b3 (7/6 ≈ 267¢) — recognisable as
+    // Phrygian but with a "subminor" colour at the third.
+    steps: [["1",0],["b2",111.7],["b3",266.9],["4",498.0],["5",702.0],["b6",813.7],["b7",968.8]] },
 
   // ── 11-LIMIT (Neutral / Maqam) ───────────────────────────────────────
   // Adds 11/9 (neutral 3rd, ~347¢), 11/8 (wide 4th, ~551¢), 12/11
@@ -121,6 +129,20 @@ const JI_SCALES: JiScaleSpec[] = [
   { name: "Maqam Huzam",
     // Built on Sikah; uses a neutral 3rd (11/9) and a wide minor 6th (11/7).
     steps: [["1",0],["b2",165.0],["b3",347.4],["4",498.0],["5",702.0],["b6",782.5],["b7",1017.6]] },
+  { name: "Maqam Nahawand",
+    // 5-limit Aeolian / natural minor as Maqam — included here because
+    // the Maqam tradition treats it as one of its own, with subtle
+    // 11-limit inflections in performance practice (the tonic chord
+    // can take the 11-limit neutral 9th as a colour tone).
+    steps: [["1",0],["2",203.9],["b3",315.6],["4",498.0],["5",702.0],["b6",813.7],["b7",1017.6]] },
+  { name: "Maqam Kurd",
+    // Phrygian-flavoured Maqam — 5-limit b2 anchor with neutral 3 and
+    // 11-limit b6 at 11/7.
+    steps: [["1",0],["b2",111.7],["b3",315.6],["4",498.0],["5",702.0],["b6",782.5],["b7",1017.6]] },
+  { name: "Maqam Nikriz",
+    // Augmented-second Maqam (cousin of Hijaz, distinct in its 4 and 6).
+    // Uses 11-limit colour in upper tetrachord.
+    steps: [["1",0],["2",203.9],["b3",315.6],["#4",582.5],["5",702.0],["6",884.4],["b7",1017.6]] },
 
   // ── 13-LIMIT (Tridecimal) ────────────────────────────────────────────
   // Adds 13/8 (~840¢, wide neutral 6), 13/11 (~289¢, supraminor 3rd),
@@ -145,20 +167,41 @@ const JI_SCALES: JiScaleSpec[] = [
     // (~637¢) as a tridecimal augmented-4th alternative; closes with
     // 13/8 (~841¢) at the 6th.  Distinct from Sikah in its sharpened 4.
     steps: [["1",0],["2",203.9],["b3",359.5],["#4",636.6],["5",702.0],["b6",840.5],["b7",996.1]] },
+  { name: "Tridecimal Lydian",
+    // Lydian colour with 13-limit #4 (13/9 ≈ 637¢) and 13/8 b6.
+    steps: [["1",0],["2",203.9],["3",386.3],["#4",636.6],["5",702.0],["6",840.5],["7",1088.3]] },
 
   // ── 17-LIMIT (Heptadecimal) ──────────────────────────────────────────
   // 17/16 (~105¢) sits between the just minor 2nd (16/15 ≈ 112¢) and
   // pure unison.  Useful as a "small leading-tone" in scales where the
   // 5-limit b2 feels too wide.  41-EDO approximates 17/16 cleanly.
-  { name: "Heptadecimal",
-    // 17/16 b2, 5-limit core in the middle, 17/9 leading tone.
-    steps: [["1",0],["b2",105.0],["3",386.3],["4",498.0],["5",702.0],["6",884.4],["7",1101.0]] },
+  { name: "Heptadecimal Major",
+    // 17/9 leading-tone (~1101¢) — slightly flat of the 5-limit Just M7
+    // (15/8 ≈ 1088¢)... wait, 17/9 is actually wider than 15/8.  17/9
+    // gives a stronger pull to tonic than 15/8.
+    steps: [["1",0],["2",203.9],["3",386.3],["4",498.0],["5",702.0],["6",884.4],["7",1101.0]] },
+  { name: "Heptadecimal Minor",
+    // 5-limit minor spine; b2 lifts to 17/16 (~105¢) — small supraminor
+    // 2nd, brighter than the standard b2.  b6 uses 17/10 (~919¢ – wait,
+    // that's the M6 region) — let me use a proper b6: keep at 8/5.
+    // 17-prime colour at the b2 only.
+    steps: [["1",0],["b2",105.0],["b3",315.6],["4",498.0],["5",702.0],["b6",813.7],["b7",1017.6]] },
+  { name: "Heptadecimal Hijaz",
+    // Hijaz with 17-limit b2 (17/16 instead of the standard 16/15).
+    // The smaller b2 makes the Hijaz aug-2nd feel even more distant.
+    steps: [["1",0],["b2",105.0],["3",386.3],["4",498.0],["5",702.0],["b6",813.7],["b7",996.1]] },
 
   // ── 19-LIMIT (Nonadecimal) ───────────────────────────────────────────
   // 19/16 (~298¢) is fractionally below the Pythagorean m3 (32/27 ≈ 294¢)
   // and the 5-limit m3 (6/5 ≈ 316¢) — its own colour rather than just
   // an approximation of either.  Distinctive in 41-EDO.
+  { name: "Nonadecimal Major",
+    // 5-limit Major spine; M3 borrows 19/15 (~409¢) — between the
+    // Pythagorean M3 (81/64 ≈ 408¢) and a wide M3.  Subtle but creates
+    // a "tense" major character.
+    steps: [["1",0],["2",203.9],["3",409.2],["4",498.0],["5",702.0],["6",884.4],["7",1088.3]] },
   { name: "Nonadecimal Minor",
+    // 5-limit Minor spine; b3 uses 19/16 — fractionally below Just m3.
     steps: [["1",0],["2",203.9],["b3",297.5],["4",498.0],["5",702.0],["b6",813.7],["b7",996.1]] },
 
   // ── 23 / 29 / 31-LIMIT (Major + Minor with higher-prime colour) ──────
