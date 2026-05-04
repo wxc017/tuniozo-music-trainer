@@ -2010,7 +2010,7 @@ export default function ChordsTab({
                         ) : edo === 12 && vizType === "bass" ? (
                           <BassFretboard highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
                         ) : layout ? (
-                          <LumatoneKeyboard layout={layout} highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
+                          <LumatoneKeyboard layout={layout} highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} maxHeight={null} />
                         ) : (
                           <div className="text-[10px] text-[#666] italic p-3">Loading keyboard…</div>
                         )}
