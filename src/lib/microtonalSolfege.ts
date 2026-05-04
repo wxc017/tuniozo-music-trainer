@@ -34,7 +34,10 @@ export interface MicrotonalSyllable {
   centsHigh: number;
   /** Pseudo-syllable label (Sais, Sai, Sail, Soos, Says, etc.) */
   label: string;
-  /** IPA pronunciation guide. */
+  /** IPA pronunciation guide.  Used for both display and TTS — when
+   *  Web Speech API is asked to speak `label` it interprets the
+   *  syllable as an English word; the IPA serves as the canonical
+   *  pronunciation reference. */
   ipa: string;
 }
 

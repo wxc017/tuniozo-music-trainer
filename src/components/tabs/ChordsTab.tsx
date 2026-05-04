@@ -35,6 +35,42 @@ import PianoKeyboard from "@/components/PianoKeyboard";
 
 const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
 
+// ── Inline TTS helper ────────────────────────────────────────────────────
+// Speaks the supplied text via the browser's Web Speech API.  When an
+// IPA string is provided we still pass the orthographic `text` to
+// SpeechSynthesisUtterance — the Web Speech API doesn't natively
+// pronounce IPA characters, but the IPA shows in the tooltip as the
+// authoritative pronunciation reference.  stopPropagation on
+// mousedown/click prevents the parent <button> (which plays the
+// chord-tone pitch) from firing simultaneously.
+function SaySpan({
+  text, ipa, className, title,
+}: { text: string; ipa: string | null; className?: string; title?: string }) {
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      onMouseDown={e => e.stopPropagation()}
+      onTouchStart={e => e.stopPropagation()}
+      onClick={e => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (typeof window === "undefined" || !window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const utt = new SpeechSynthesisUtterance(text);
+        utt.rate = 0.9;
+        utt.pitch = 1.0;
+        utt.lang = "en-US";
+        window.speechSynthesis.speak(utt);
+      }}
+      title={title ?? `Hear "${text}"${ipa ? ` /${ipa}/` : ""} spoken`}
+      className={className}
+    >
+      {text}
+    </span>
+  );
+}
+
 interface SharedHighlightProps {
   highlightedPitches?: Set<number>;
 }
@@ -1945,32 +1981,37 @@ export default function ChordsTab({
                                 audioEngine.playNote(pitch, edo, 0.7, 0.6);
                               }}
                               title={
-                                `▶ click to play\n` +
+                                `▶ click main button to play pitch\n` +
+                                `Click any syllable to hear it spoken.\n` +
                                 `chord-relative: ${intervalChord} · ${heathwaiteChord} · ${microChord.label} /${microChord.ipa}/\n` +
                                 `scale-relative: ${intervalScale} · ${heathwaiteScale} · ${microScale.label} /${microScale.ipa}/`
                               }
                               className="flex flex-col items-center px-2 py-1 rounded border border-[#3a3a1a] bg-[#2a1a0a] hover:bg-[#3a2a1a] hover:border-[#c8a850] transition-colors min-w-[64px]">
-                              {/* Chord-relative block (gold) */}
+                              {/* Chord-relative block (gold).  Each syllable
+                                  is an independent clickable that triggers
+                                  TTS via the browser's Web Speech API.
+                                  stopPropagation prevents the parent button
+                                  from also firing the pitch-play handler. */}
                               <span className="text-[10px] text-[#e0c860] font-bold leading-tight">
                                 {intervalChord}
                               </span>
-                              <span className="text-[9px] text-[#aaa] leading-tight">
-                                {heathwaiteChord}
-                              </span>
-                              <span className="text-[8px] text-[#777] font-mono leading-tight">
-                                {microChord.label}
-                              </span>
+                              <SaySpan text={heathwaiteChord} ipa={null}
+                                className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
+                                title={`Hear "${heathwaiteChord}" spoken`} />
+                              <SaySpan text={microChord.label} ipa={microChord.ipa}
+                                className="text-[8px] text-[#777] font-mono leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
+                                title={`Hear "${microChord.label}" /${microChord.ipa}/ spoken`} />
                               <span className="block w-full border-t border-[#3a3a1a] my-1"></span>
                               {/* Scale-relative block (mauve) */}
                               <span className="text-[10px] text-[#c896c8] font-bold leading-tight">
                                 {intervalScale}
                               </span>
-                              <span className="text-[9px] text-[#aaa] leading-tight">
-                                {heathwaiteScale}
-                              </span>
-                              <span className="text-[8px] text-[#777] font-mono leading-tight">
-                                {microScale.label}
-                              </span>
+                              <SaySpan text={heathwaiteScale} ipa={null}
+                                className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
+                                title={`Hear "${heathwaiteScale}" spoken`} />
+                              <SaySpan text={microScale.label} ipa={microScale.ipa}
+                                className="text-[8px] text-[#777] font-mono leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
+                                title={`Hear "${microScale.label}" /${microScale.ipa}/ spoken`} />
                             </button>
                           );
                         })}
@@ -1981,10 +2022,34 @@ export default function ChordsTab({
               );
             })()}
 
-            {/* Floating lattice box — top-right of viewport.  Shows the
-                JI lattice for the active tonality (if it's a JI scale)
-                so the user can see the scale's lattice positions alongside
-                the chord-tone reveal. */}
+            {/* Floating mini-visualizer — top-right of viewport, mirrors
+                the main keyboard with the live highlighted pitches so
+                the user can see what's being played while scrolled past
+                the sticky keyboard at the top.  PianoKeyboard's SVG uses
+                viewBox + width=100% so it scales to the panel width
+                without horizontal scrolling.  12-EDO only since
+                PianoKeyboard is 12-EDO native. */}
+            {fhShowAnswer && fhAnswer && edo === 12 && highlightedPitches && (
+              <FloatingPanel
+                position="top-right"
+                title="VISUALIZER"
+                accent="#5b5be6"
+                storageKey="lt_crd_answer_viz_collapsed"
+                topOffset={20}
+              >
+                <PianoKeyboard
+                  highlightedPitches={highlightedPitches}
+                  pitchMin={tonicPc - 12}
+                  pitchMax={tonicPc + 24}
+                />
+              </FloatingPanel>
+            )}
+
+            {/* Floating lattice box — top-right of viewport, stacked
+                below the mini-visualizer.  Shows the JI lattice for
+                the active tonality (if it's a JI scale) so the user
+                can see the scale's lattice positions alongside the
+                chord-tone reveal. */}
             {fhShowAnswer && fhAnswer?.scaleTonality && (() => {
               const cents = getJiScaleCents(fhAnswer.scaleTonality);
               const degs = getJiScaleDegrees(fhAnswer.scaleTonality);
@@ -1996,7 +2061,7 @@ export default function ChordsTab({
                   title={`SCALE LATTICE · ${fhAnswer.scaleTonality}`}
                   accent="#c8a850"
                   storageKey="lt_crd_answer_lattice_collapsed"
-                  topOffset={80}
+                  topOffset={edo === 12 ? 220 : 80}
                 >
                   <JiScaleLattice tones={tones} accent="#c8a850" compact />
                 </FloatingPanel>
