@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import { useLS } from "@/lib/storage";
-import { formatHalfAccidentals, getModeDegreeMap, getSolfege, getHeathwaiteSolfege, getBaseChords } from "@/lib/edoData";
+import { formatHalfAccidentals, getModeDegreeMap, getSolfege, getHeathwaiteSolfege, getBaseChords, getChordShapes } from "@/lib/edoData";
 import { syllableForEdoStep } from "@/lib/microtonalSolfege";
 import { getTonalityBanks, type TonalityBank } from "@/lib/tonalityBanks";
 import { bankToScaleFamMode } from "@/lib/tonalityChordPool";
@@ -402,19 +402,77 @@ export default function ScalarTab({
           the user gets identical chord-purity info while exploring
           scales without switching tabs.  Meantone EDOs (12/19/31)
           don't trigger it — wolves don't appear there. ── */}
-      {selected && JI_SCALE_NAMES_SET.has(selected) && highlightedChordKey && (() => {
-        const analysis = analyzeJiScale(selected);
-        if (!analysis) return null;
-        const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"];
-        const tagColor = (k: string) => {
-          if (k === "wolf") return "#cc6a8a";
-          if (k === "off-grid") return "#c8aa50";
-          if (k === "pure-3") return "#9999cc";
-          if (k === "pure-5") return "#6acca0";
-          if (k === "pure-7") return "#cc8855";
-          if (k === "pure-11") return "#9a66c0";
-          return "#888";
-        };
+      {selected && highlightedChordKey && view && (() => {
+        // JI scales: full per-degree purity table with wolf detection.
+        // Meantone scales: simpler chord-quality table per degree
+        // (every triad reads as Major / Minor / Diminished / Augmented
+        // since meantone tempers out the syntonic comma, so wolves
+        // don't surface).  Both render the same FloatingPanel shape.
+        const isJi = JI_SCALE_NAMES_SET.has(selected);
+        const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+
+        if (isJi) {
+          const analysis = analyzeJiScale(selected);
+          if (!analysis) return null;
+          const tagColor = (k: string) => {
+            if (k === "wolf") return "#cc6a8a";
+            if (k === "off-grid") return "#c8aa50";
+            if (k === "pure-3") return "#9999cc";
+            if (k === "pure-5") return "#6acca0";
+            if (k === "pure-7") return "#cc8855";
+            if (k === "pure-11") return "#9a66c0";
+            return "#888";
+          };
+          return (
+            <FloatingPanel
+              position="top-right"
+              title={`CHORD ANALYSIS · ${selected}`}
+              accent="#5b5be6"
+              storageKey="lt_scalar_analysis_panel_collapsed"
+            >
+              <div className="grid grid-cols-[28px_1fr_1fr_60px] gap-x-2 gap-y-1 text-[10px]">
+                <span className="text-[#555] font-medium">Ch</span>
+                <span className="text-[#555] font-medium">Third</span>
+                <span className="text-[#555] font-medium">Fifth</span>
+                <span className="text-[#555] font-medium">Status</span>
+                {analysis.map((row, i) => (
+                  <span key={i} style={{ display: "contents" }}>
+                    <span className="text-[#aaa] font-mono">{ROMAN[i]}</span>
+                    <span style={{ color: tagColor(row.third.kind) }}>{row.third.ratio}</span>
+                    <span style={{ color: tagColor(row.fifth.kind) }}>{row.fifth.ratio}</span>
+                    <span style={{ color: row.pure ? "#5cca5c" : "#cc6a8a", fontWeight: 600 }}>
+                      {row.pure ? "✓" : "✗ Wolf"}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </FloatingPanel>
+          );
+        }
+
+        // Meantone fallback — walk the scale, build each scale-degree
+        // triad, classify quality from the third + fifth interval sizes
+        // in the active EDO.
+        const sh = getChordShapes(edo);
+        const scaleSemis = view.scale.map(s => s.step);
+        const N = scaleSemis.length;
+        type Row = { numeral: string; quality: string; thirdLabel: string; fifthLabel: string; color: string };
+        const rows: Row[] = scaleSemis.map((root, i) => {
+          const third = scaleSemis[(i + 2) % N] + ((i + 2) >= N ? edo : 0);
+          const fifth = scaleSemis[(i + 4) % N] + ((i + 4) >= N ? edo : 0);
+          const t3 = third - root;
+          const t5 = fifth - root;
+          const isMaj3 = t3 === sh.M3, isMin3 = t3 === sh.m3;
+          const isPerf5 = t5 === sh.P5, isDim5 = t5 === sh.d5, isAug5 = t5 === sh.M3 + sh.M3;
+          let quality = "?", color = "#888";
+          if (isMaj3 && isPerf5)      { quality = "Major";      color = "#6acca0"; }
+          else if (isMin3 && isPerf5) { quality = "Minor";      color = "#9999cc"; }
+          else if (isMin3 && isDim5)  { quality = "Diminished"; color = "#cc8855"; }
+          else if (isMaj3 && isAug5)  { quality = "Augmented";  color = "#cc6a8a"; }
+          const thirdLabel = isMaj3 ? "M3" : isMin3 ? "m3" : `${t3}\\${edo}`;
+          const fifthLabel = isPerf5 ? "P5" : isDim5 ? "d5" : isAug5 ? "A5" : `${t5}\\${edo}`;
+          return { numeral: ROMAN[i] ?? `${i + 1}`, quality, thirdLabel, fifthLabel, color };
+        });
         return (
           <FloatingPanel
             position="top-right"
@@ -422,19 +480,17 @@ export default function ScalarTab({
             accent="#5b5be6"
             storageKey="lt_scalar_analysis_panel_collapsed"
           >
-            <div className="grid grid-cols-[28px_1fr_1fr_60px] gap-x-2 gap-y-1 text-[10px]">
+            <div className="grid grid-cols-[28px_50px_50px_1fr] gap-x-2 gap-y-1 text-[10px]">
               <span className="text-[#555] font-medium">Ch</span>
-              <span className="text-[#555] font-medium">Third</span>
-              <span className="text-[#555] font-medium">Fifth</span>
-              <span className="text-[#555] font-medium">Status</span>
-              {analysis.map((row, i) => (
+              <span className="text-[#555] font-medium">3rd</span>
+              <span className="text-[#555] font-medium">5th</span>
+              <span className="text-[#555] font-medium">Quality</span>
+              {rows.map((r, i) => (
                 <span key={i} style={{ display: "contents" }}>
-                  <span className="text-[#aaa] font-mono">{ROMAN[i]}</span>
-                  <span style={{ color: tagColor(row.third.kind) }}>{row.third.ratio}</span>
-                  <span style={{ color: tagColor(row.fifth.kind) }}>{row.fifth.ratio}</span>
-                  <span style={{ color: row.pure ? "#5cca5c" : "#cc6a8a", fontWeight: 600 }}>
-                    {row.pure ? "✓" : "✗ Wolf"}
-                  </span>
+                  <span className="text-[#aaa] font-mono">{r.numeral}</span>
+                  <span className="text-[#aaa]">{r.thirdLabel}</span>
+                  <span className="text-[#aaa]">{r.fifthLabel}</span>
+                  <span style={{ color: r.color, fontWeight: 600 }}>{r.quality}</span>
                 </span>
               ))}
             </div>
