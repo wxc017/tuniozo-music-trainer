@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import { randomChoice } from "@/lib/musicTheory";
 import { getIntervalNames } from "@/lib/edoData";
+import { getModeDegreeMap, PATTERN_SCALE_FAMILIES } from "@/lib/musicTheory";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
 import { weightedRandomChoice, getOptionStats } from "@/lib/stats";
 import type { TabSettingsSnapshot } from "@/App";
@@ -339,6 +340,56 @@ export default function IntervalsTab({
       {infoText && !showTarget && (
         <div className="bg-[#141414] border border-[#2a2a2a] rounded p-3 text-xs text-[#888] font-mono whitespace-pre">{infoText}</div>
       )}
+
+      {/* Tonality quick-fill — clicking auto-checks every interval that
+          appears in the chosen scale.  Saves the user from manually
+          ticking each interval when they want to drill the diatonic
+          set of a specific mode.  Excludes the unison (step 0) since
+          unison-vs-something quizzes are degenerate. */}
+      <div>
+        <p className="text-xs text-[#555] mb-2">Quick fill from a tonality:</p>
+        <div className="flex flex-wrap gap-1 mb-3">
+          {(() => {
+            // Curated common-scale list — same names work in every EDO
+            // because PATTERN_SCALE_FAMILIES is keyed by family + mode.
+            const QUICK: { family: string; mode: string; label: string; color: string }[] = [
+              { family: "Major Family",          mode: "Ionian",            label: "Major",          color: "#6a9aca" },
+              { family: "Major Family",          mode: "Aeolian",           label: "Natural Minor",  color: "#6a9aca" },
+              { family: "Major Family",          mode: "Dorian",            label: "Dorian",         color: "#6a9aca" },
+              { family: "Major Family",          mode: "Phrygian",          label: "Phrygian",       color: "#6a9aca" },
+              { family: "Major Family",          mode: "Lydian",            label: "Lydian",         color: "#6a9aca" },
+              { family: "Major Family",          mode: "Mixolydian",        label: "Mixolydian",     color: "#6a9aca" },
+              { family: "Harmonic Minor Family", mode: "Harmonic Minor",    label: "Harmonic Minor", color: "#c09050" },
+              { family: "Harmonic Minor Family", mode: "Phrygian Dominant", label: "Phrygian Dom",   color: "#c09050" },
+              { family: "Melodic Minor Family",  mode: "Melodic Minor",     label: "Melodic Minor",  color: "#c06090" },
+              { family: "Melodic Minor Family",  mode: "Lydian Dominant",   label: "Lydian Dom",     color: "#c06090" },
+              { family: "Double Harmonic Family",mode: "Double Harmonic Major", label: "Dbl Harmonic", color: "#e08040" },
+            ];
+            return QUICK.map(({ family, mode, label, color }) => {
+              // Verify the family/mode exists for this EDO (some xen
+              // families are 31-EDO only, etc.).
+              if (!PATTERN_SCALE_FAMILIES[family]?.includes(mode)) return null;
+              const map = getModeDegreeMap(edo, family, mode);
+              const steps = Object.values(map).filter(s => s > 0); // drop unison
+              if (steps.length === 0) return null;
+              return (
+                <button key={`${family}-${mode}`}
+                  onClick={() => setChecked(new Set(steps))}
+                  title={`Auto-check ${label}'s diatonic intervals (${steps.length} steps)`}
+                  className="px-2 py-1 text-[10px] rounded border border-[#2a2a2a] bg-[#111] text-[#888] hover:text-[#fff] hover:border-[#5b5be6] transition-colors"
+                  style={{ borderLeftWidth: 3, borderLeftColor: color }}>
+                  {label}
+                </button>
+              );
+            });
+          })()}
+          <button onClick={() => setChecked(new Set())}
+            title="Clear all selected intervals"
+            className="px-2 py-1 text-[10px] rounded border border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa] transition-colors">
+            Clear
+          </button>
+        </div>
+      </div>
 
       {/* Interval selection — toggle buttons matching the Mode ID /
           Chords-tab picker style. */}
