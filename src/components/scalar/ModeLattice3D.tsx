@@ -531,15 +531,16 @@ function Scene({
         // Family-lattice mode: arc the edge up out of the XY plane so
         // cross-ring 1-alt edges don't pile up flat on top of each
         // other.  Quadratic Bezier through a midpoint lifted in +Z by
-        // a fraction of the planar distance — keeps the lattice
-        // readable when you look at it from the default top-down view.
-        const ax = a.pos[0], ay = a.pos[1];
-        const bx = b.pos[0], by = b.pos[1];
+        // a fraction of the planar distance.  Endpoints use the
+        // node's actual z (which sits above the family ring's tube)
+        // so the arch starts and ends ON the rings, not below them.
+        const ax = a.pos[0], ay = a.pos[1], az = a.pos[2];
+        const bx = b.pos[0], by = b.pos[1], bz = b.pos[2];
         const planar = Math.hypot(bx - ax, by - ay);
-        const lift = Math.max(1.5, planar * 0.4);
+        const lift = Math.max(2, planar * 0.45);
         const cx = (ax + bx) / 2;
         const cy = (ay + by) / 2;
-        const cz = lift;
+        const cz = (az + bz) / 2 + lift;
         const NS = 16;
         points = [];
         for (let s = 0; s <= NS; s++) {
@@ -547,7 +548,7 @@ function Scene({
           const omt = 1 - t;
           const x = omt * omt * ax + 2 * omt * t * cx + t * t * bx;
           const y = omt * omt * ay + 2 * omt * t * cy + t * t * by;
-          const z = omt * omt * 0  + 2 * omt * t * cz + t * t * 0;
+          const z = omt * omt * az + 2 * omt * t * cz + t * t * bz;
           points.push([x, y, z]);
         }
         mid = points[Math.floor(points.length / 2)];
@@ -598,18 +599,19 @@ function Scene({
       })}
 
       {/* Family-lattice rings: one coloured torus per family ring,
-          mode nodes sitting on top.  Each ring's hue matches the
-          family colour so the lattice reads as concentric coloured
-          bands. */}
+          mode nodes living on the top surface (placeFamilyNode
+          lifts each node by FAMILY_RING_TUBE so they sit on the
+          donut, not floating beside it).  Default torus orientation
+          puts the ring in XY, matching the node-pos plane. */}
       {(lattice.familyRings ?? []).map(ring => (
-        <mesh key={`ring-${ring.familyId}`} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[ring.radius, 0.35, 16, 96]} />
+        <mesh key={`ring-${ring.familyId}`}>
+          <torusGeometry args={[ring.radius, 1.1, 18, 128]} />
           <meshStandardMaterial
             color={ring.color}
             emissive={ring.color}
-            emissiveIntensity={0.55}
-            roughness={0.5} metalness={0}
-            transparent opacity={0.85} />
+            emissiveIntensity={0.45}
+            roughness={0.55} metalness={0}
+            transparent opacity={0.9} />
         </mesh>
       ))}
 
