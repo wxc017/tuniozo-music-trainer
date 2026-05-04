@@ -32,6 +32,7 @@ import { tracePathDrifts, driftCentsToSteps, stripChordLabel } from "@/lib/jiLat
 import FloatingPanel from "@/components/FloatingPanel";
 import JiScaleLattice from "@/components/JiScaleLattice";
 import PianoKeyboard from "@/components/PianoKeyboard";
+import { speakSyllable } from "@/lib/solfegeSpeech";
 
 const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
 
@@ -55,13 +56,13 @@ function SaySpan({
       onClick={e => {
         e.stopPropagation();
         e.preventDefault();
-        if (typeof window === "undefined" || !window.speechSynthesis) return;
-        window.speechSynthesis.cancel();
-        const utt = new SpeechSynthesisUtterance(text);
-        utt.rate = 0.9;
-        utt.pitch = 1.0;
-        utt.lang = "en-US";
-        window.speechSynthesis.speak(utt);
+        // For microtonal syllables we pass the IPA so speakSyllable
+        // can substitute its English-orthography equivalent (Sais →
+        // 'sice', Vail → 'vile' etc.) and the TTS engine produces the
+        // intended IPA sound instead of reading the syllable like an
+        // English word.  Heathwaite syllables (Do / Re / Mi …) pass
+        // the text directly since their orthography already matches.
+        speakSyllable(text, ipa ? { ipa } : undefined);
       }}
       title={title ?? `Hear "${text}"${ipa ? ` /${ipa}/` : ""} spoken`}
       className={className}
