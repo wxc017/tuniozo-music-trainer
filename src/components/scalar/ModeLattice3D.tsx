@@ -376,29 +376,29 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
             // The OrbitControls minDistance clamp keeps close-zoom
             // labels from ballooning.  Prominent labels are slightly
             // larger than idle ones (lower distanceFactor = bigger).
-            distanceFactor={isHovered || isActive || isAnchor || isSelected ? 14 : 11}
+            distanceFactor={isHovered || isActive || isAnchor || isSelected ? 7 : 11}
             style={{ pointerEvents: "none" }}>
         {isHovered || isActive || isAnchor || isSelected ? (
           <div style={{
             background: "#0a0a0aee",
             border: `1px solid ${palette}`,
             color: palette,
-            padding: "0 2px",
-            borderRadius: 1,
-            fontSize: 5,
+            padding: "4px 8px",
+            borderRadius: 4,
+            fontSize: 14,
             fontWeight: 700,
             whiteSpace: "nowrap",
-            transform: "translate(0, -10px)",
+            transform: "translate(0, -32px)",
             textAlign: "center",
-            lineHeight: "6px",
+            lineHeight: "16px",
           }}>
             <div>
-              <span style={{ color: "#ddd", marginRight: 2 }}>{node.key.name}</span>
+              <span style={{ color: "#ddd", marginRight: 4 }}>{node.key.name}</span>
               {formatHalfAccidentals(node.mode.name)}
             </div>
             <div style={{
-              fontSize: 4, fontWeight: 500, color: "#bbb",
-              marginTop: 0.5, letterSpacing: 0.3,
+              fontSize: 11, fontWeight: 500, color: "#bbb",
+              marginTop: 2, letterSpacing: 0.6,
             }}>
               {scaleNoteNames(node.rootPc, node.mode.scale, edo).join(" · ")}
             </div>
