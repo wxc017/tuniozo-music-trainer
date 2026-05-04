@@ -1610,104 +1610,9 @@ export default function ChordsTab({
         </div>
       )}
 
-      {/* Comma Drift Reference — shown only in Adaptive mode.  Lists the
-          cadences where the active limit's comma manifests as tonic
-          drift, with cents and the comma's name.  Educational; the
-          numbers are well-known JI results, not measured from playback.
-          Filtered to cadences relevant to the active scale's limit
-          (5-limit pumps don't apply to a 3-limit Pythagorean scale, etc.). */}
-      {jiMode === "adaptive" && (edo === 41 || edo === 53) && selectedJiTonalities.length > 0 && (() => {
-        const limits = new Set(
-          selectedJiTonalities.map(t => limitForJiTonality(t)).filter((x): x is 3 | 5 | 7 | 11 => x !== null)
-            .map(l => `${l}-limit` as const)
-        );
-        const relevant = COMMA_DRIFT_CATALOG.filter(c =>
-          c.applies.some(a => limits.has(a))
-        );
-        if (relevant.length === 0) return null;
-        return (
-          <div className="bg-[#0e1a14] border border-[#3a8a5a] rounded p-3 space-y-1.5">
-            <div className="flex items-baseline gap-2">
-              <p className="text-[10px] text-[#5cca8a] font-semibold tracking-wider">COMMA DRIFT REFERENCE</p>
-              <span className="text-[9px] text-[#666] italic">
-                Expected tonic drift in true Adaptive JI for these cadences.
-              </span>
-            </div>
-            <div className="grid grid-cols-[1fr_70px_140px_2fr] gap-x-3 gap-y-1 text-[10px]">
-              <span className="text-[#555] font-medium">Cadence</span>
-              <span className="text-[#555] font-medium text-right">Drift</span>
-              <span className="text-[#555] font-medium">Comma</span>
-              <span className="text-[#555] font-medium">Why</span>
-              {relevant.map(c => {
-                const sign = c.driftCents > 0 ? "+" : c.driftCents < 0 ? "" : "";
-                const driftColor = c.driftCents === 0 ? "#5cca8a" : "#cc6a8a";
-                return (
-                  <span key={c.cadence} style={{ display: "contents" }}>
-                    <span className="text-[#aaa] font-mono">{c.cadence}</span>
-                    <span className="text-right font-mono" style={{ color: driftColor }}>
-                      {sign}{c.driftCents.toFixed(1)}¢
-                    </span>
-                    <span className="text-[#888]">{c.comma}</span>
-                    <span className="text-[#666] italic">{c.blurb}</span>
-                  </span>
-                );
-              })}
-            </div>
-            <p className="text-[9px] text-[#555] italic mt-1.5">
-              The drifts above are well-known JI results.  As of this build, the Adaptive engine
-              <em> does</em> apply lattice motion — start a progression with I-vi-ii-V-I or
-              I-IV-ii-V-I and watch the live trace below to see the comma accumulate per chord.
-            </p>
-
-            {/* Live lattice trace from the most recent buildLoopFrames call.
-                Empty until the user plays a progression in Adaptive mode.
-                Reads from latticeDriftsRef + latticeRevision so the panel
-                updates each loop iteration without polling. */}
-            {(() => {
-              void latticeRevision;  // subscribe
-              const trace = latticeDriftsRef.current;
-              if (!trace) {
-                return (
-                  <p className="text-[9px] text-[#555] italic mt-1">
-                    Live trace: <span className="text-[#666]">play a progression to see the lattice walk.</span>
-                  </p>
-                );
-              }
-              const finalDrift = trace.drifts[trace.drifts.length - 1] ?? 0;
-              const maxAbsDrift = Math.max(...trace.drifts.map(d => Math.abs(d)));
-              return (
-                <div className="mt-2 pt-2 border-t border-[#1f3a2a]">
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <p className="text-[10px] text-[#5cca8a] font-semibold tracking-wider">LIVE LATTICE TRACE</p>
-                    <span className="text-[9px] text-[#888]">
-                      Final drift: <span className="font-mono" style={{ color: Math.abs(finalDrift) < 1 ? "#5cca8a" : "#cc6a8a" }}>
-                        {finalDrift >= 0 ? "+" : ""}{finalDrift.toFixed(1)}¢
-                      </span>
-                      {" · "}
-                      Peak excursion: <span className="font-mono text-[#ccc]">{maxAbsDrift.toFixed(1)}¢</span>
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {trace.progression.map((chord, i) => {
-                      const drift = trace.drifts[i];
-                      const driftAbs = Math.abs(drift);
-                      const driftColor = driftAbs < 1 ? "#5cca8a" : driftAbs < 15 ? "#c8aa50" : "#cc6a8a";
-                      return (
-                        <div key={i} className="flex flex-col items-center px-2 py-1 rounded border border-[#222] bg-[#0a1410]">
-                          <span className="text-[10px] text-[#aaa] font-mono">{stripChordLabel(chord)}</span>
-                          <span className="text-[9px] font-mono" style={{ color: driftColor }}>
-                            {drift >= 0 ? "+" : ""}{drift.toFixed(1)}¢
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        );
-      })()}
+      {/* Comma Drift Reference catalog removed — the Live Lattice
+          Trace now lives inside the Show Answer reveal further down,
+          gated on Adaptive JI mode + 41/53 EDO + an active progression. */}
 
       {/* Per-selected-JI-tonality chord-purity table.  Walks each scale-
           degree triad, classifies the third and fifth against the JI
@@ -1953,6 +1858,46 @@ export default function ChordsTab({
                       />
                     </div>
                   )}
+                  {/* Live lattice trace — only meaningful in Adaptive
+                      JI on 41/53-EDO.  Shows each chord in the
+                      progression with its accumulated drift in cents,
+                      colour-coded green / amber / pink by magnitude. */}
+                  {jiMode === "adaptive" && (edo === 41 || edo === 53) && (() => {
+                    void latticeRevision;
+                    const trace = latticeDriftsRef.current;
+                    if (!trace) return null;
+                    const finalDrift = trace.drifts[trace.drifts.length - 1] ?? 0;
+                    const maxAbsDrift = Math.max(...trace.drifts.map(d => Math.abs(d)));
+                    return (
+                      <div className="rounded border border-[#3a8a5a] bg-[#0e1a14] p-3">
+                        <div className="flex items-baseline gap-2 mb-2">
+                          <p className="text-[10px] text-[#5cca8a] font-semibold tracking-wider">LIVE LATTICE TRACE</p>
+                          <span className="text-[9px] text-[#888]">
+                            Final drift: <span className="font-mono" style={{ color: Math.abs(finalDrift) < 1 ? "#5cca8a" : "#cc6a8a" }}>
+                              {finalDrift >= 0 ? "+" : ""}{finalDrift.toFixed(1)}¢
+                            </span>
+                            {" · "}
+                            Peak: <span className="font-mono text-[#ccc]">{maxAbsDrift.toFixed(1)}¢</span>
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {trace.progression.map((chord, i) => {
+                            const drift = trace.drifts[i];
+                            const driftAbs = Math.abs(drift);
+                            const driftColor = driftAbs < 1 ? "#5cca8a" : driftAbs < 15 ? "#c8aa50" : "#cc6a8a";
+                            return (
+                              <div key={i} className="flex flex-col items-center px-2 py-1 rounded border border-[#222] bg-[#0a1410]">
+                                <span className="text-[10px] text-[#aaa] font-mono">{stripChordLabel(chord)}</span>
+                                <span className="text-[9px] font-mono" style={{ color: driftColor }}>
+                                  {drift >= 0 ? "+" : ""}{drift.toFixed(1)}¢
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {fhAnswer.chords.map(chord => (
                     <div key={chord.index} className="space-y-1">
                       <p className="text-[10px] text-[#c8a850] font-medium">
