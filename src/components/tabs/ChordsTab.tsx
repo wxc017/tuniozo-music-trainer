@@ -1750,8 +1750,11 @@ export default function ChordsTab({
                 buttons stay reachable while the user scrolls down
                 through the chord-tone reveal and harmonic lattice
                 further below.  Stays inside the section column so
-                it never overlaps content from neighbouring tabs. */}
-            <div className="flex gap-2 flex-wrap items-center sticky top-0 z-20 bg-[#0d0d0d] py-2 -mx-2 px-2 border-b border-[#1e1e1e]">
+                it never overlaps content from neighbouring tabs.
+                z-50 so the row paints above the LatticeView 3D
+                canvas (which can otherwise create its own stacking
+                context that hides the bar mid-scroll). */}
+            <div className="flex gap-2 flex-wrap items-center sticky top-0 z-50 bg-[#0d0d0d] py-2 -mx-4 px-4 border-b border-[#1e1e1e] shadow-md shadow-black/40">
               <button onClick={startFunctionalLoop} disabled={isLooping || !canPlay}
                 title={disabledReason ?? undefined}
                 className="bg-[#e0a040] hover:bg-[#c89030] disabled:opacity-50 disabled:cursor-not-allowed text-black px-5 py-2 rounded text-sm font-bold transition-colors">
@@ -1974,9 +1977,16 @@ export default function ChordsTab({
                       column's height so the empty space below the
                       keyboard fills with a soft background instead
                       of being blank. */}
-                  <div className="lg:w-[28%] lg:flex-shrink-0 lg:self-start flex flex-col gap-2">
+                  {/* Right column claims half the width on lg+ and
+                      stretches vertically so the visualizer can fill
+                      the empty space alongside the chord-tone tables
+                      on the left.  No self-start, no max-height — the
+                      sticky inner pins the keyboard at the column top
+                      while the column itself stretches to match the
+                      left side's chord-tone reveal height. */}
+                  <div className="lg:flex-1 lg:flex-shrink-0 flex flex-col gap-2 lg:min-w-[45%]">
                     {highlightedPitches && (
-                      <div className="rounded border border-[#3a3a1a] overflow-hidden bg-[#0a0a0a] sticky top-2" style={{ maxWidth: "100%", maxHeight: "32vh" }}>
+                      <div className="rounded border border-[#3a3a1a] overflow-hidden bg-[#0a0a0a] sticky top-2 w-full">
                         {edo === 12 && vizType === "piano" ? (
                           <PianoKeyboard highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
                         ) : edo === 12 && vizType === "guitar" ? (
