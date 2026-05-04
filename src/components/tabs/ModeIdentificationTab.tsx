@@ -6,8 +6,9 @@ import {
 } from "@/lib/musicTheory";
 import { useLS } from "@/lib/storage";
 import { recordAnswer } from "@/lib/stats";
-import { JI_FAMILY, JI_SCALE_NAMES, getJiScaleDegrees } from "@/lib/jiScaleData";
-import { jiLimitGroupsForEdo } from "@/lib/jiTonalityFamilies";
+import { JI_FAMILY, JI_SCALE_NAMES, getJiScaleDegrees, getJiScaleCents } from "@/lib/jiScaleData";
+import { jiLimitGroupsForEdo, limitForJiTonality } from "@/lib/jiTonalityFamilies";
+import JiScaleLattice from "@/components/JiScaleLattice";
 
 interface Props {
   tonicPc: number;
@@ -1095,6 +1096,26 @@ export default function ModeIdentificationTab({
               </span>
             )}
           </div>
+
+          {/* JI lattice viewer — appears for any JI-family answer (the 19
+              JI scales registered in jiScaleData).  Plots each scale tone
+              on the (3-axis × 5-axis) 5-limit lattice.  Higher-prime tones
+              (7-, 11-, 13-, 17-, 19-, 23-, 29-, 31-limit) get projected
+              onto their nearest 5-limit cell with a purple chip + footnote
+              listing the exact cents and offset. */}
+          {curMode.current.family === JI_FAMILY && (() => {
+            const cents = getJiScaleCents(curMode.current.name);
+            const degs = getJiScaleDegrees(curMode.current.name);
+            if (!cents || !degs) return null;
+            const tones = degs.map((degree, i) => ({ degree, cents: cents[i] }));
+            const limit = limitForJiTonality(curMode.current.name);
+            return (
+              <JiScaleLattice
+                title={`5-LIMIT LATTICE PROJECTION${limit ? ` · ${limit}-limit scale` : ""}`}
+                tones={tones}
+              />
+            );
+          })()}
           {/* Degrees played / chord tones / scale, with characteristic tones highlighted */}
           {curDegrees.current.length > 0 && (
             <div className="flex gap-1 items-center flex-wrap">
