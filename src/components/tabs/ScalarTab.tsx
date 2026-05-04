@@ -7,7 +7,7 @@ import { speakSyllable } from "@/lib/solfegeSpeech";
 import { getTonalityBanks, type TonalityBank } from "@/lib/tonalityBanks";
 import { bankToScaleFamMode } from "@/lib/tonalityChordPool";
 import { jiLimitGroupsForEdo } from "@/lib/jiTonalityFamilies";
-import { analyzeJiScale } from "@/lib/jiChordAnalysis";
+import { KNOWN_INTERVALS } from "@/lib/jiChordAnalysis";
 import { JI_SCALE_NAMES } from "@/lib/jiScaleData";
 import FloatingPanel from "@/components/FloatingPanel";
 
@@ -397,104 +397,120 @@ export default function ScalarTab({
         </div>
       </div>
 
-      {/* ── Floating chord-analysis overlay — appears top-right when
-          a JI tonality is selected AND a chord is highlighted in the
-          chord-pool below.  Mirrors the same panel ChordsTab uses so
-          the user gets identical chord-purity info while exploring
-          scales without switching tabs.  Meantone EDOs (12/19/31)
-          don't trigger it — wolves don't appear there. ── */}
+      {/* ── Floating chord-analysis overlay — top-right when a chord
+          is highlighted in the chord-pool below.  Shows per-interval
+          info for ONLY the highlighted chord (not the whole scale):
+          for each note, the cents from chord root, the closest JI
+          ratio with its exact cents, the EDO-step approximation in
+          this tuning, and the cents error of the EDO step from the
+          ideal JI ratio.  Mirrors the EDO Temper interval table in
+          Temperament Explorer. ── */}
       {selected && highlightedChordKey && view && (() => {
-        // JI scales: full per-degree purity table with wolf detection.
-        // Meantone scales: simpler chord-quality table per degree
-        // (every triad reads as Major / Minor / Diminished / Augmented
-        // since meantone tempers out the syntonic comma, so wolves
-        // don't surface).  Both render the same FloatingPanel shape.
-        const isJi = JI_SCALE_NAMES_SET.has(selected);
-        const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+        // Resolve the highlighted chord.  highlightedChordKey is
+        // shaped "<level>-<index>" (e.g. "Primary-0", "Diatonic-2"),
+        // matching the bank-level grouping the picker renders.
+        const [levelName, idxStr] = highlightedChordKey.split("-");
+        const level = view.bank.levels.find(l => l.name === levelName);
+        const idx = Number(idxStr);
+        const entry = level?.chords[idx];
+        if (!entry) return null;
+        const steps = resolveChordSteps(entry.label, entry.steps);
+        if (!steps || steps.length === 0) return null;
 
-        if (isJi) {
-          const analysis = analyzeJiScale(selected);
-          if (!analysis) return null;
-          const tagColor = (k: string) => {
-            if (k === "wolf") return "#cc6a8a";
-            if (k === "off-grid") return "#c8aa50";
-            if (k === "pure-3") return "#9999cc";
-            if (k === "pure-5") return "#6acca0";
-            if (k === "pure-7") return "#cc8855";
-            if (k === "pure-11") return "#9a66c0";
-            return "#888";
+        // Build the per-interval rows.  Convert each step to cents
+        // from the chord root (steps[0]), find the closest entry in
+        // the JI catalog, compute the EDO-step error.
+        const stepCents = 1200 / edo;
+        type Row = {
+          position: string;       // root / 3rd / 5th / etc.
+          stepFromRoot: number;   // EDO-step distance from chord root
+          edoCents: number;       // cents of the EDO step
+          jiRatio: string;        // closest known JI ratio
+          jiCents: number;        // exact cents of that JI ratio
+          jiName: string;         // human-readable name (Just M3 etc.)
+          jiKind: string;         // pure-3 / pure-5 / pure-7 / pure-11 / wolf
+          errorCents: number;     // edoCents - jiCents
+        };
+        const POS_NAMES = ["Root", "3rd", "5th", "7th", "9th", "11th", "13th"];
+        const rootStep = steps[0];
+        const rows: Row[] = steps.map((s, i) => {
+          const stepFromRoot = ((s - rootStep) % edo + edo) % edo;
+          const edoCents = stepFromRoot * stepCents;
+          // Find the JI interval with smallest cents distance
+          // (octave-reduce both before comparing).
+          const target = ((edoCents % 1200) + 1200) % 1200;
+          let best = KNOWN_INTERVALS[0];
+          let bestErr = Infinity;
+          for (const iv of KNOWN_INTERVALS) {
+            const ivc = ((iv.cents % 1200) + 1200) % 1200;
+            const e = Math.abs(ivc - target);
+            const wrapped = Math.min(e, 1200 - e);
+            if (wrapped < bestErr) { bestErr = wrapped; best = iv; }
+          }
+          return {
+            position: POS_NAMES[i] ?? `Tone ${i + 1}`,
+            stepFromRoot,
+            edoCents,
+            jiRatio: best.ratio,
+            jiCents: best.cents,
+            jiName: best.name,
+            jiKind: best.kind,
+            errorCents: edoCents - best.cents,
           };
-          return (
-            <FloatingPanel
-              position="top-right"
-              title={`CHORD ANALYSIS · ${selected}`}
-              accent="#5b5be6"
-              storageKey="lt_scalar_analysis_panel_collapsed"
-            >
-              <div className="grid grid-cols-[28px_1fr_1fr_60px] gap-x-2 gap-y-1 text-[10px]">
-                <span className="text-[#555] font-medium">Ch</span>
-                <span className="text-[#555] font-medium">Third</span>
-                <span className="text-[#555] font-medium">Fifth</span>
-                <span className="text-[#555] font-medium">Status</span>
-                {analysis.map((row, i) => (
-                  <span key={i} style={{ display: "contents" }}>
-                    <span className="text-[#aaa] font-mono">{ROMAN[i]}</span>
-                    <span style={{ color: tagColor(row.third.kind) }}>{row.third.ratio}</span>
-                    <span style={{ color: tagColor(row.fifth.kind) }}>{row.fifth.ratio}</span>
-                    <span style={{ color: row.pure ? "#5cca5c" : "#cc6a8a", fontWeight: 600 }}>
-                      {row.pure ? "✓" : "✗ Wolf"}
-                    </span>
-                  </span>
-                ))}
-              </div>
-            </FloatingPanel>
-          );
-        }
-
-        // Meantone fallback — walk the scale, build each scale-degree
-        // triad, classify quality from the third + fifth interval sizes
-        // in the active EDO.
-        const sh = getChordShapes(edo);
-        const scaleSemis = view.scale.map(s => s.step);
-        const N = scaleSemis.length;
-        type Row = { numeral: string; quality: string; thirdLabel: string; fifthLabel: string; color: string };
-        const rows: Row[] = scaleSemis.map((root, i) => {
-          const third = scaleSemis[(i + 2) % N] + ((i + 2) >= N ? edo : 0);
-          const fifth = scaleSemis[(i + 4) % N] + ((i + 4) >= N ? edo : 0);
-          const t3 = third - root;
-          const t5 = fifth - root;
-          const isMaj3 = t3 === sh.M3, isMin3 = t3 === sh.m3;
-          const isPerf5 = t5 === sh.P5, isDim5 = t5 === sh.d5, isAug5 = t5 === sh.M3 + sh.M3;
-          let quality = "?", color = "#888";
-          if (isMaj3 && isPerf5)      { quality = "Major";      color = "#6acca0"; }
-          else if (isMin3 && isPerf5) { quality = "Minor";      color = "#9999cc"; }
-          else if (isMin3 && isDim5)  { quality = "Diminished"; color = "#cc8855"; }
-          else if (isMaj3 && isAug5)  { quality = "Augmented";  color = "#cc6a8a"; }
-          const thirdLabel = isMaj3 ? "M3" : isMin3 ? "m3" : `${t3}\\${edo}`;
-          const fifthLabel = isPerf5 ? "P5" : isDim5 ? "d5" : isAug5 ? "A5" : `${t5}\\${edo}`;
-          return { numeral: ROMAN[i] ?? `${i + 1}`, quality, thirdLabel, fifthLabel, color };
         });
+
+        const tagColor = (k: string) => {
+          if (k === "wolf") return "#cc6a8a";
+          if (k === "pure-3") return "#9999cc";
+          if (k === "pure-5") return "#6acca0";
+          if (k === "pure-7") return "#cc8855";
+          if (k === "pure-11") return "#9a66c0";
+          return "#888";
+        };
+        const errColor = (e: number) => {
+          const a = Math.abs(e);
+          if (a < 3) return "#5cca8a";
+          if (a < 8) return "#c8aa50";
+          return "#cc6a8a";
+        };
+
         return (
           <FloatingPanel
             position="top-right"
-            title={`CHORD ANALYSIS · ${selected}`}
+            title={`CHORD: ${entry.label} · ${selected}`}
             accent="#5b5be6"
             storageKey="lt_scalar_analysis_panel_collapsed"
           >
-            <div className="grid grid-cols-[28px_50px_50px_1fr] gap-x-2 gap-y-1 text-[10px]">
-              <span className="text-[#555] font-medium">Ch</span>
-              <span className="text-[#555] font-medium">3rd</span>
-              <span className="text-[#555] font-medium">5th</span>
-              <span className="text-[#555] font-medium">Quality</span>
+            <div className="grid grid-cols-[42px_60px_1fr_60px_50px] gap-x-2 gap-y-1 text-[10px] items-baseline">
+              <span className="text-[#555] font-medium">Pos</span>
+              <span className="text-[#555] font-medium">EDO</span>
+              <span className="text-[#555] font-medium">JI</span>
+              <span className="text-[#555] font-medium text-right">JI ¢</span>
+              <span className="text-[#555] font-medium text-right">Err</span>
               {rows.map((r, i) => (
                 <span key={i} style={{ display: "contents" }}>
-                  <span className="text-[#aaa] font-mono">{r.numeral}</span>
-                  <span className="text-[#aaa]">{r.thirdLabel}</span>
-                  <span className="text-[#aaa]">{r.fifthLabel}</span>
-                  <span style={{ color: r.color, fontWeight: 600 }}>{r.quality}</span>
+                  <span className="text-[#aaa] font-mono">{r.position}</span>
+                  <span className="text-[#aaa] font-mono">
+                    {r.stepFromRoot}\{edo}
+                    <span className="text-[#666] ml-1">({r.edoCents.toFixed(0)}¢)</span>
+                  </span>
+                  <span className="font-mono" style={{ color: tagColor(r.jiKind) }}>
+                    {r.jiRatio}
+                    <span className="text-[#666] ml-1 font-sans not-italic">{r.jiName}</span>
+                  </span>
+                  <span className="text-[#888] font-mono text-right">{r.jiCents.toFixed(1)}</span>
+                  <span className="font-mono text-right font-semibold" style={{ color: errColor(r.errorCents) }}>
+                    {r.errorCents >= 0 ? "+" : ""}{r.errorCents.toFixed(1)}¢
+                  </span>
                 </span>
               ))}
             </div>
+            <p className="text-[9px] text-[#666] italic mt-2">
+              Each row: the chord-tone's EDO step (cents in parens),
+              closest just-intonation ratio + name, that ratio's exact
+              cents, and the EDO step's error from it.  Green = close
+              (&lt;3¢), amber = moderate, pink = poor or wolf.
+            </p>
           </FloatingPanel>
         );
       })()}
