@@ -281,6 +281,112 @@ export interface TemperamentFamily {
   limit: number;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Fifth-tuning families — organize EDOs by their fifth size,
+// matching the Xenharmonic Wiki / Inthar's "diatonic spectrum of
+// fifth tunings" classification.  Bands run narrow → wide, and
+// each EDO falls into exactly one band based on its best fifth.
+// ═══════════════════════════════════════════════════════════════
+
+export interface FifthTuningFamily {
+  /** Display name */
+  name: string;
+  /** One-line summary */
+  blurb: string;
+  /** Multi-paragraph description */
+  description: string;
+  /** Inclusive cents range for the fifth */
+  fifthRange: [number, number];
+  /** EDOs canonically classified in this family, in order of fifth size */
+  edos: number[];
+  /** Just-intonation / non-EDO anchors that share this family's flavour */
+  jiAnchors?: { name: string; cents: number }[];
+}
+
+export const FIFTH_TUNING_FAMILIES: FifthTuningFamily[] = [
+  {
+    name: "Equal heptatonic / Neutral diatonic",
+    blurb: "Seven equal steps — fifths sit at 4/7 of an octave (~685.7 ¢).",
+    description:
+      "7-TET is the boundary case where every step is the same size, so the diatonic and chromatic intervals collapse into one neutral spectrum. Used as the reference floor of the fifth-tuning spectrum.",
+    fifthRange: [685, 690],
+    edos: [7],
+  },
+  {
+    name: "Flattone",
+    blurb: "Narrower-than-meantone fifths; 4:7 is a diminished 7th (-9 fifths).",
+    description:
+      "Flattone is technically inside the meantone spectrum but with fifths flat enough that 4:7 is best mapped to the diminished seventh rather than the augmented sixth. M2 maps closer to 9:10 than 8:9. 19-TET is the upper boundary; 26-TET is the canonical example.",
+    fifthRange: [690, 696.5],
+    edos: [47, 40, 33, 26, 45],
+  },
+  {
+    name: "Meantone",
+    blurb: "Most popular tuning family — tempers 80:81, four fifths ≈ 5/4.",
+    description:
+      "Meantone tempers the syntonic comma (80:81), so four fifths land near a 5:4 major third. Tunings sit between 1/3-comma (~694.8 ¢) and 1/4-comma (~696.6 ¢), with 19-TET, 31-TET, 50-TET as standout examples.",
+    fifthRange: [696.5, 700],
+    edos: [19, 50, 81, 31, 43, 55],
+  },
+  {
+    name: "Dominant",
+    blurb: "12-TET — fifths essentially Pythagorean, 1/11-comma meantone.",
+    description:
+      "12 equal divisions per octave, fifth at 700 ¢. Effectively meantone but with the Pythagorean comma circulated, which is why 12-TET sits at the meantone/Pythagorean boundary.",
+    fifthRange: [700, 700],
+    edos: [12],
+  },
+  {
+    name: "Schismatic",
+    blurb: "Tempers 32805:32768 (schisma); 4:5 is the diminished fourth.",
+    description:
+      "Schismatic tunings sit at or just below Pythagorean, where the schisma (32805:32768) is tempered out and 4:5 is approximated by the diminished fourth (-8 fifths). 53-TET is the canonical example, very close to pure Pythagorean.",
+    fifthRange: [700, 703.6],
+    edos: [53, 94, 41],
+    jiAnchors: [{ name: "Pythagorean (3-limit JI)", cents: 701.955 }],
+  },
+  {
+    name: "Gentle (Zalzalian Schismatic)",
+    blurb: "Slightly heightened Pythagorean — augmented intervals sound supraminor.",
+    description:
+      "Margo Schulter's 'gentle' region: fifths a bit wider than pure 2:3, so augmented intervals push toward neutral territory and diminished intervals push toward submajor. Suits Turkish makam and other neutral-interval musics. 17-TET sits at the upper boundary.",
+    fifthRange: [703.6, 705.9],
+    edos: [29, 46, 63, 80],
+  },
+  {
+    name: "Supra (boundary)",
+    blurb: "17-TET — the gentle/inverse-gentle boundary.",
+    description:
+      "17-TET represents the boundary between gentle and inverse gentle; neutral intervals sit exactly between minor and major.",
+    fifthRange: [705.9, 705.9],
+    edos: [17],
+  },
+  {
+    name: "Inverse gentle (Inverse Zalzalian Schismatic)",
+    blurb: "Wider fifths still — A2 reads supramajor third, d4 reads supraminor.",
+    description:
+      "Inverse gentle has fifths between ~706 ¢ and ~709 ¢. Compared to gentle, the dd3/A1 ordering flips: d3 < A1, d4 < A2. Around 22-TET A2 starts to read like a classic 5:4 and d4 like a classic 5:6.",
+    fifthRange: [705.9, 709],
+    edos: [56, 39],
+  },
+  {
+    name: "Archy / Superpyth",
+    blurb: "Superpythagorean — major thirds approximate 7:9, minor thirds 6:7.",
+    description:
+      "Wide-fifth tunings where M3 ≈ 7:9 and m3 ≈ 6:7, so major triads approximate 14:18:21 and minor triads 6:7:9. The septimal (Archytan) comma 63:64 is tempered out. 22-TET and 27-TET are the most prominent examples.",
+    fifthRange: [709, 720],
+    edos: [22, 49, 27, 32, 37, 47],
+  },
+  {
+    name: "Equal pentatonic",
+    blurb: "5-TET — five equal steps; fifth at 3/5 octave (~720 ¢).",
+    description:
+      "5-TET is the boundary at the wide end of the spectrum. The fifth lands at 720 ¢, much wider than even the most extreme superpyth.",
+    fifthRange: [720, 720],
+    edos: [5],
+  },
+];
+
 export const TEMPERAMENT_FAMILIES: TemperamentFamily[] = [
   { name: "Meantone", commas: [{ n: 81, d: 80 }], description: "Four 3/2 fifths ≈ 5/4 major third", limit: 5 },
   { name: "Schismatic", commas: [{ n: 32805, d: 32768 }], description: "Eight 3/2 fifths down ≈ 5/4", limit: 5 },

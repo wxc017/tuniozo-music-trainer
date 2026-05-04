@@ -33,6 +33,7 @@ import {
   EDO_DATA,
   getAllEDOs,
   TEMPERAMENT_FAMILIES,
+  FIFTH_TUNING_FAMILIES,
   classifyCommasForEdo,
   getEdoIntervals,
   findCommaBasis,
@@ -168,11 +169,17 @@ function PlayBtn({ onClick, title, small }: { onClick: () => void; title?: strin
 
 // ═══════════════════════════════════════════════════════════════
 
-type SubTab = "edo-temper" | "fifth-quality" | "ring-map" | "theory";
-const SUB_TAB_LABELS: Record<SubTab, string> = { "edo-temper": "EDO Temper", "fifth-quality": "Fifth Quality", "ring-map": "Ring Structure", "theory": "Theory" };
+type SubTab = "families" | "edo-temper" | "fifth-quality" | "ring-map" | "theory";
+const SUB_TAB_LABELS: Record<SubTab, string> = {
+  "families": "Families",
+  "edo-temper": "EDO Temper",
+  "fifth-quality": "Fifth Quality",
+  "ring-map": "Ring Structure",
+  "theory": "Theory",
+};
 
 export default function TemperamentExplorer() {
-  const [subTab, setSubTab] = useState<SubTab>("edo-temper");
+  const [subTab, setSubTab] = useState<SubTab>("families");
   const [selectedEdo, setSelectedEdo] = useState(12);
 
   const navigateToEdoTemper = useCallback((edo: number) => {
@@ -191,10 +198,72 @@ export default function TemperamentExplorer() {
         ))}
       </div>
       <div className="flex-1 min-h-0 overflow-auto">
+        {subTab === "families" && <FamiliesPanel onSelectEdo={navigateToEdoTemper} />}
         {subTab === "edo-temper" && <EdoTemper selectedEdo={selectedEdo} setSelectedEdo={setSelectedEdo} />}
         {subTab === "fifth-quality" && <FifthQuality onSelectEdo={navigateToEdoTemper} />}
         {subTab === "ring-map" && <RingMap onSelectEdo={navigateToEdoTemper} />}
         {subTab === "theory" && <TheoryPanel />}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Fifth-tuning Families panel
+// ═══════════════════════════════════════════════════════════════
+
+function FamiliesPanel({ onSelectEdo }: { onSelectEdo: (edo: number) => void }) {
+  return (
+    <div className="px-4 py-4 max-w-5xl mx-auto">
+      <h2 className="text-sm font-semibold text-[#aaa] tracking-wider uppercase mb-2">
+        Diatonic spectrum of fifth tunings
+      </h2>
+      <p className="text-xs text-[#888] mb-5 leading-relaxed">
+        Each EDO sits in exactly one fifth-tuning family based on the size of
+        its best fifth.  Bands run from narrow (top) to wide (bottom) — the
+        same ordering used in the Xenharmonic Wiki classification.  Click any
+        EDO to open its full breakdown in EDO Temper.
+      </p>
+      <div className="space-y-4">
+        {FIFTH_TUNING_FAMILIES.map(fam => {
+          const minF = fam.fifthRange[0];
+          const maxF = fam.fifthRange[1];
+          const rangeLabel = minF === maxF
+            ? `${minF.toFixed(1)} ¢`
+            : `${minF.toFixed(1)}–${maxF.toFixed(1)} ¢`;
+          return (
+            <div key={fam.name}
+                 className="bg-[#0e0e0e] border border-[#222] rounded p-3">
+              <div className="flex items-baseline gap-2 flex-wrap mb-1">
+                <h3 className="text-sm font-semibold text-[#cfe6ff]">{fam.name}</h3>
+                <span className="text-[10px] text-[#666] font-mono">5th: {rangeLabel}</span>
+              </div>
+              <p className="text-xs text-[#aaa] leading-relaxed mb-2">{fam.blurb}</p>
+              <p className="text-[11px] text-[#777] leading-relaxed mb-3">{fam.description}</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {fam.edos.map(edo => {
+                  const data = EDO_DATA.get(edo);
+                  const fifthC = data?.ring.fifthCents.toFixed(1) ?? "—";
+                  return (
+                    <button key={edo} onClick={() => onSelectEdo(edo)}
+                      title={`${edo}-TET · 5th = ${fifthC} ¢`}
+                      className="px-2.5 py-1 rounded bg-[#1a1a1a] hover:bg-[#252550] border border-[#2a2a2a] hover:border-[#7173e6] transition-colors">
+                      <span className="text-xs font-semibold text-[#ddd]">{edo}-TET</span>
+                      <span className="text-[9px] text-[#666] ml-1.5 font-mono">{fifthC}¢</span>
+                    </button>
+                  );
+                })}
+                {fam.jiAnchors?.map(a => (
+                  <span key={a.name}
+                    className="px-2.5 py-1 rounded bg-[#0a0a0a] border border-[#1a1a1a] italic">
+                    <span className="text-xs text-[#888]">{a.name}</span>
+                    <span className="text-[9px] text-[#555] ml-1.5 font-mono">{a.cents.toFixed(2)}¢</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
