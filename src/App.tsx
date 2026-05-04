@@ -198,6 +198,21 @@ export default function App() {
     return () => window.removeEventListener("app-navigate", handleNav);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Listen for cross-component EDO change requests (used by ScalarTab's
+  // inline family-grouped EDO selector since it doesn't have direct
+  // access to setEdo).
+  useEffect(() => {
+    function handleSetEdo(e: Event) {
+      const n = (e as CustomEvent).detail as number;
+      if (typeof n === "number" && Number.isFinite(n)) {
+        stopAllAudio();
+        setEdo(n);
+      }
+    }
+    window.addEventListener("app-set-edo", handleSetEdo);
+    return () => window.removeEventListener("app-set-edo", handleSetEdo);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [edo, setEdo] = useLS<number>("lt_app_edo", 31);
 
   // Temperament state for the Tonal Audiation section.  Driven from the

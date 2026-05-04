@@ -365,13 +365,13 @@ export default function ScalarTab({
               const active = edo === n;
               const fifthCents = n === 12 ? 700.0 : 696.77;
               return (
-                <button key={n} onClick={() => {/* edo change handled at App level */}}
-                  disabled
-                  title={`${n}-EDO · 5th = ${fifthCents.toFixed(2)} ¢ — switch via the EDO selector at top.`}
-                  className={`px-2 py-0.5 text-[10px] rounded font-mono border ${
+                <button key={n}
+                  onClick={() => window.dispatchEvent(new CustomEvent("app-set-edo", { detail: n }))}
+                  title={`${n}-EDO · 5th = ${fifthCents.toFixed(2)} ¢`}
+                  className={`px-2 py-0.5 text-[10px] rounded font-mono border transition-colors ${
                     active
                       ? "bg-[#7173e6] text-white border-[#7173e6]"
-                      : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a]"
+                      : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"
                   }`}>
                   {n}
                   <span className="text-[8px] text-[#888] ml-1">{fifthCents.toFixed(1)}¢</span>
@@ -528,9 +528,9 @@ export default function ScalarTab({
                   <span className="text-[10px] text-[#888] mt-0.5">
                     {formatHalfAccidentals(s.degree)}
                   </span>
-                  <span className="text-[9px] text-[#555]">
-                    {droning ? "🔊 drone" : `▶ step ${s.step}`}
-                  </span>
+                  {droning && (
+                    <span className="text-[9px] text-[#5cca8a]">🔊 drone</span>
+                  )}
                 </button>
               );
             })}
