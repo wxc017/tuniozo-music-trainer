@@ -907,12 +907,85 @@ const MEL_DEGREE_NAMES = [
   ["1","b2","#2","3","b5","#5","b7"],
 ];
 
+// Double Harmonic Major and its 7 modes.  Step pattern uses two augmented
+// seconds (A2 = T + A1), which is what gives the family its Byzantine /
+// Hungarian flavour.  Mode 1 is the parent (DH Major); mode 4 is Hungarian
+// Minor.  Degree spellings use the strict one-name-per-scale-position
+// convention, so unusual labels like bb3 / bb7 / b4 surface where two
+// notes would otherwise share a slot.
+const DBLH_MODE_NAMES = [
+  "Double Harmonic Major","Lydian #2 #6","Ultraphrygian","Hungarian Minor",
+  "Oriental","Ionian #2 #5","Locrian bb3 bb7"
+];
+const DBLH_DEGREE_NAMES = [
+  ["1","b2","3","4","5","b6","7"],
+  ["1","#2","3","#4","5","#6","7"],
+  ["1","b2","b3","b4","5","b6","bb7"],
+  ["1","2","b3","#4","5","b6","7"],
+  ["1","b2","3","4","b5","6","b7"],
+  ["1","#2","3","4","#5","6","7"],
+  ["1","b2","bb3","4","b5","b6","bb7"],
+];
+
+// Symmetric scales — Whole Tone (6 notes) plus the two Diminished modes
+// (8 notes each).  Each "mode" is a distinct scale rather than a rotation
+// of a single parent, so they're built directly from chromatic degrees
+// instead of via buildDiatonicModes.  Outside 12-EDO they don't tile the
+// octave evenly; the resulting scale closes the octave but with a small
+// approximation in the step pattern (e.g. 31-EDO Whole Tone = 5,5,5,5,5,6).
+function buildSymmetricFamily(edo: number): ScaleFamilyMap {
+  const dm = getDegreeMap(edo);
+  const result: ScaleFamilyMap = {
+    "Whole Tone": {
+      "1": dm["1"], "2": dm["2"], "3": dm["3"],
+      "#4": dm["#4"], "#5": dm["#5"], "b7": dm["b7"],
+    },
+    "Half-Whole Diminished": {
+      "1": dm["1"], "b2": dm["b2"], "b3": dm["b3"], "3": dm["3"],
+      "#4": dm["#4"], "5": dm["5"], "6": dm["6"], "b7": dm["b7"],
+    },
+    "Whole-Half Diminished": {
+      "1": dm["1"], "2": dm["2"], "b3": dm["b3"], "4": dm["4"],
+      "b5": dm["b5"], "b6": dm["b6"], "6": dm["6"], "7": dm["7"],
+    },
+  };
+
+  // 31-EDO has a half-sharp / half-flat tier (one diesis = 1\31 ≈ 39¢)
+  // sitting between the natural and chromatic accidentals.  This gives a
+  // distinct second spelling for each symmetric scale: same scale degrees,
+  // shifted one diesis toward the natural.  The notation convention used
+  // in the rest of the codebase is "##X" = half-sharp (one step above
+  // natural X) and "bbX" = half-flat (one step below natural X) — see
+  // labelStep31ForPosition() in musicTheory.ts.  In 12-EDO these collapse
+  // to the same chromatic positions, so we only register them here.
+  if (edo === 31) {
+    const P4 = dm["4"], P5 = dm["5"], M6 = dm["6"], NATb7 = dm["b7"];
+    const M2 = dm["2"];
+    // Half-sharp = natural + 1 diesis; half-flat = natural - 1 diesis.
+    const hs = (deg: number) => deg + 1;
+    const hf = (deg: number) => deg - 1;
+    result["Whole Tone (half-sharp)"] = {
+      "1": dm["1"], "2": M2, "3": dm["3"],
+      "##4": hs(P4), "##5": hs(P5), "##6": hs(M6),
+    };
+    result["Half-Whole Diminished (half-sharp)"] = {
+      "1": dm["1"], "bb2": hf(M2), "bb3": hf(dm["3"]), "3": dm["3"],
+      "##4": hs(P4), "5": P5, "6": M6, "bb7": hf(NATb7) ?? NATb7 - 1,
+    };
+    result["Whole-Half Diminished (half-sharp)"] = {
+      "1": dm["1"], "2": M2, "bb3": hf(dm["3"]), "4": P4,
+      "##4": hs(P4), "bb6": hf(M6), "6": M6, "7": dm["7"],
+    };
+  }
+  return result;
+}
+
 function getPatternMaps(edo: number): Record<string, ScaleFamilyMap> {
   const p = DIATONIC[edo] ?? DIATONIC[31];
   const T = p.T, s = p.s, A1 = p.A1;
   const A2 = T + A1; // augmented second interval
 
-  let ionianPat: number[], harmPat: number[], melPat: number[];
+  let ionianPat: number[], harmPat: number[], melPat: number[], dblHarmPat: number[];
 
   if (edo === 53) {
     // 5-limit Ionian: [0,9,17,22,31,39,48], pattern [9,8,5,9,8,9,5]
@@ -921,16 +994,23 @@ function getPatternMaps(edo: number): Record<string, ScaleFamilyMap> {
     harmPat = [9, 5, 8, 9, 5, 12, 5];
     // Melodic minor: [0,9,14,22,31,39,48], pattern [9,5,8,9,8,9,5]
     melPat = [9, 5, 8, 9, 8, 9, 5];
+    // Double harmonic: [0,5,14,22,31,36,48], pattern [5,9,3,9,5,12,5]?
+    // Use strict A2 derivation so the augmented-second character survives
+    // in 53-EDO's microtonal step grid: A2 = T(9) + A1(4) = 13.
+    dblHarmPat = [5, 13, 5, 8, 5, 13, 5];  // s, A2, s, T, s, A2, s with 53-EDO step sizes
   } else {
-    ionianPat = [T, T, s, T, T, T, s];
-    harmPat   = [T, s, T, T, s, A2, s];
-    melPat    = [T, s, T, T, T, T, s];
+    ionianPat  = [T, T, s, T, T, T, s];
+    harmPat    = [T, s, T, T, s, A2, s];
+    melPat     = [T, s, T, T, T, T, s];
+    dblHarmPat = [s, A2, s, T, s, A2, s];
   }
 
   const out: Record<string, ScaleFamilyMap> = {
-    "Major Family":         buildDiatonicModes(ionianPat, DIATONIC_MODE_NAMES, DIATONIC_DEGREE_NAMES),
-    "Harmonic Minor Family":buildDiatonicModes(harmPat,   HARM_MODE_NAMES,     HARM_DEGREE_NAMES),
-    "Melodic Minor Family": buildDiatonicModes(melPat,    MEL_MODE_NAMES,      MEL_DEGREE_NAMES),
+    "Major Family":          buildDiatonicModes(ionianPat,  DIATONIC_MODE_NAMES, DIATONIC_DEGREE_NAMES),
+    "Harmonic Minor Family": buildDiatonicModes(harmPat,    HARM_MODE_NAMES,     HARM_DEGREE_NAMES),
+    "Melodic Minor Family":  buildDiatonicModes(melPat,     MEL_MODE_NAMES,      MEL_DEGREE_NAMES),
+    "Double Harmonic Family":buildDiatonicModes(dblHarmPat, DBLH_MODE_NAMES,     DBLH_DEGREE_NAMES),
+    "Symmetric Family":      buildSymmetricFamily(edo),
   };
 
   // Xen families (septimal / neutral diatonics) — registered at module

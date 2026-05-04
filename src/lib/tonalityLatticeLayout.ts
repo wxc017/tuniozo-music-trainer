@@ -89,13 +89,19 @@ export interface LatticeFamily {
 }
 
 export const LATTICE_FAMILIES: LatticeFamily[] = [
-  { id: "major",       label: "Major / Diatonic",     short: "Maj",  color: "#5bc8f5", dim: "#0b1e35", zOrd: 0, familyName: "Major Family" },
-  { id: "harmonic",    label: "Harmonic Minor",       short: "Hrm",  color: "#f5b030", dim: "#281804", zOrd: 1, familyName: "Harmonic Minor Family" },
-  { id: "melodic",     label: "Melodic Minor",        short: "Mel",  color: "#4de898", dim: "#041f10", zOrd: 2, familyName: "Melodic Minor Family" },
-  { id: "subminor",    label: "Subminor Diatonic",    short: "Sub",  color: "#7aaa6a", dim: "#13260c", zOrd: 3, familyName: "Subminor Diatonic Family" },
-  { id: "neutral",     label: "Neutral Diatonic",     short: "Neu",  color: "#9a66c0", dim: "#1b0e26", zOrd: 4, familyName: "Neutral Diatonic Family" },
-  { id: "supermajor",  label: "Supermajor Diatonic",  short: "Sup",  color: "#cc6a8a", dim: "#260e16", zOrd: 5, familyName: "Supermajor Diatonic Family" },
-  { id: "subharmonic", label: "Subharmonic Diatonic", short: "Shr",  color: "#4a9ac7", dim: "#0b2030", zOrd: 6, familyName: "Subharmonic Diatonic Family" },
+  { id: "major",          label: "Major / Diatonic",     short: "Maj",  color: "#5bc8f5", dim: "#0b1e35", zOrd: 0, familyName: "Major Family" },
+  { id: "harmonic",       label: "Harmonic Minor",       short: "Hrm",  color: "#f5b030", dim: "#281804", zOrd: 1, familyName: "Harmonic Minor Family" },
+  { id: "melodic",        label: "Melodic Minor",        short: "Mel",  color: "#4de898", dim: "#041f10", zOrd: 2, familyName: "Melodic Minor Family" },
+  { id: "subminor",       label: "Subminor Diatonic",    short: "Sub",  color: "#7aaa6a", dim: "#13260c", zOrd: 3, familyName: "Subminor Diatonic Family" },
+  { id: "neutral",        label: "Neutral Diatonic",     short: "Neu",  color: "#9a66c0", dim: "#1b0e26", zOrd: 4, familyName: "Neutral Diatonic Family" },
+  { id: "supermajor",     label: "Supermajor Diatonic",  short: "Sup",  color: "#cc6a8a", dim: "#260e16", zOrd: 5, familyName: "Supermajor Diatonic Family" },
+  { id: "subharmonic",    label: "Subharmonic Diatonic", short: "Shr",  color: "#4a9ac7", dim: "#0b2030", zOrd: 6, familyName: "Subharmonic Diatonic Family" },
+  { id: "doubleharmonic", label: "Double Harmonic",      short: "DbH",  color: "#e08040", dim: "#2a160a", zOrd: 7, familyName: "Double Harmonic Family" },
+  // Symmetric Family is intentionally omitted from the lattice: its scales
+  // are non-heptatonic (6 / 8 notes), and the brightness-relative-to-Major
+  // axis is meaningless for symmetric, key-ambiguous scales.  Symmetric
+  // tonalities still appear in every other UI surface (picker, chord pool,
+  // melodic patterns, scale playback, solfège).
 ];
 
 // ── Modes ───────────────────────────────────────────────────────────────
@@ -110,6 +116,14 @@ const MODE_SHORT: Record<string, string> = {
   "Neutral Diatonic": "NeD",
   "Supermajor Diatonic": "SpD",
   "Subharmonic Diatonic M7": "ShD",
+  // Double Harmonic family
+  "Double Harmonic Major": "DhM",
+  "Lydian #2 #6": "L2♯6",
+  "Ultraphrygian": "UPh",
+  "Hungarian Minor": "HuM",
+  "Oriental": "Ori",
+  "Ionian #2 #5": "I2♯5",
+  "Locrian bb3 bb7": "Lbb",
 };
 
 function modeShortLabel(modeName: string): string {
