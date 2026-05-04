@@ -241,3 +241,12 @@ export function getJiScaleDegrees(scaleName: string): string[] | null {
   if (!spec) return null;
   return spec.steps.map(([deg]) => deg);
 }
+
+/** Cent values for a JI scale, in scale order.  Useful for the lattice
+ *  viewer which projects exact cents onto the (3,5) lattice rather than
+ *  rounding through any specific EDO grid. */
+export function getJiScaleCents(scaleName: string): number[] | null {
+  const spec = JI_SCALES.find(s => s.name === scaleName);
+  if (!spec) return null;
+  return spec.steps.map(([, c]) => c);
+}
