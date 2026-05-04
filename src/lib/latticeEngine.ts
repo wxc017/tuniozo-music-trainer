@@ -421,17 +421,26 @@ export function monzoTo3DHelical(
 
 /** Toroidal / Tonescape "3,5-primespace" projection.
  *
- *  Places each (3,5)-monzo cell on a torus where:
- *    u (major angle) = 2π · exp3 · P5_step / edo
- *    v (minor angle) = 2π · exp5 · M3_step / edo
+ *  When the EDO's M3-chain length (edo / gcd(edo, M3_step)) and
+ *  M3-chain count (gcd(edo, M3_step)) are coprime — true for 12-EDO
+ *  with M3_step=4 (chain length 3, chain count 4) — every EDO step
+ *  decomposes into a unique (u_idx, v_idx) on a (count × length)
+ *  grid by CRT.  Wrapping that grid onto a torus gives the
+ *  Tonalsoft 12-edo 5-limit toroidal lattice exactly:
  *
- *  In an EDO, both the chain of fifths and the chain of thirds
- *  close after `edo` steps, so cells related by the EDO's vanishing
- *  commas (e.g. 81/80 in meantone) wrap onto the same torus
- *  coordinate — the canonical Tonalsoft "5-limit toroidal lattice"
- *  shape.  The chain of fifths becomes a tight magenta spiral
- *  threading the major circumference; the chain of thirds becomes a
- *  wider green spiral around the minor circumference.
+ *    u = 2π · (step mod chain_count) / chain_count
+ *    v = 2π · (step mod chain_length) / chain_length
+ *
+ *  Each augmented triad (M3-chain) becomes a vertical stack of
+ *  `chain_length` cells at one of `chain_count` distinct major
+ *  angles, and the chain of fifths weaves between them as a
+ *  smooth closed spiral that visits every cell once.
+ *
+ *  For prime EDOs (19, 31, 41, 53 — the M3 step is coprime to
+ *  the EDO so chain_count = 1), the formula degenerates to a
+ *  single major-circle parameterisation: u = 2π · step / edo,
+ *  v stays 0.  No torus structure is forced where the lattice
+ *  doesn't have one.
  *
  *  Falls back to the linear sum projection when `edo` is null. */
 export function monzoTo3DToroidal(
@@ -442,20 +451,49 @@ export function monzoTo3DToroidal(
   if (edo === null || edo <= 0) {
     return monzoTo3D(exps, primes, DEFAULT_PROJECTIONS);
   }
-  const idx3 = primes.indexOf(3);
-  const idx5 = primes.indexOf(5);
-  const exp3 = idx3 >= 0 ? exps[idx3] ?? 0 : 0;
-  const exp5 = idx5 >= 0 ? exps[idx5] ?? 0 : 0;
-  const p5Step = Math.round(edo * Math.log2(3 / 2));
+  const val = primes.map(p => Math.round(edo * Math.log2(p)));
+  let step = 0;
+  for (let i = 0; i < primes.length; i++) step += val[i] * (exps[i] ?? 0);
+  step = ((step % edo) + edo) % edo;
+
   const m3Step = Math.round(edo * Math.log2(5 / 4));
-  const R = 5.0;   // major (fifth-chain) radius
-  const r = 2.0;   // minor (third-chain) radius
-  const u = 2 * Math.PI * exp3 * p5Step / edo;
-  const v = 2 * Math.PI * exp5 * m3Step / edo;
-  const x = (R + r * Math.cos(v)) * Math.cos(u);
-  const y = r * Math.sin(v);
-  const z = (R + r * Math.cos(v)) * Math.sin(u);
-  return [x, y, z];
+  const g = gcd(edo, m3Step);
+  const chainCount = g;                  // number of distinct M3-chains
+  const chainLength = edo / g;           // cells per chain
+  const R = 5.0;
+  const r = 2.0;
+
+  // CRT-decomposable case (12-EDO etc.): use (step mod chainCount,
+  // step mod chainLength) as the torus coordinates.
+  if (chainCount > 1 && chainLength > 1 && gcd(chainCount, chainLength) === 1) {
+    const u = 2 * Math.PI * (step % chainCount) / chainCount;
+    const v = 2 * Math.PI * (step % chainLength) / chainLength;
+    const x = (R + r * Math.cos(v)) * Math.cos(u);
+    const y = r * Math.sin(v);
+    const z = (R + r * Math.cos(v)) * Math.sin(u);
+    return [x, y, z];
+  }
+
+  // Prime / non-decomposable EDOs (19, 31, 41, 53 …): walk the
+  // chain of fifths as a helix on a cylinder.  Each fifth advances
+  // the major angle by 2π/edo and lifts the z height by one slice
+  // of the cylinder.  After `edo` fifths the helix closes.  The
+  // `k` index is the cell's position along the fifth chain — found
+  // by inverting the P5 step modulo the EDO so class N is at
+  // helix-index k = N · P5⁻¹ (mod edo).
+  let invP5 = 0;
+  for (let i = 1; i < edo; i++) {
+    if (((Math.round(edo * Math.log2(3 / 2)) * i) % edo + edo) % edo === 1) {
+      invP5 = i;
+      break;
+    }
+  }
+  const k = ((step * invP5) % edo + edo) % edo;
+  const u = 2 * Math.PI * k / edo;
+  const cylR = R + r;
+  const verticalSpan = (R + r) * 2.0;
+  const z = (k / edo) * verticalSpan;
+  return [cylR * Math.cos(u), z - verticalSpan / 2, cylR * Math.sin(u)];
 }
 
 // ═══════════════════════════════════════════════════════════════
