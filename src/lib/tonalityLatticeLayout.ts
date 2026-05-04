@@ -617,12 +617,11 @@ export function buildFamilyLattice(
   const tonicKeyIdx = keys.findIndex(k => k.pc === tonicNorm);
   const tonicKey = tonicKeyIdx >= 0 ? keys[tonicKeyIdx] : keys[8];
 
-  // Tube radius and ring spacing have to be coordinated: rings need
-  // to be far enough apart that adjacent tubes don't touch, and node
-  // spheres lift above each ring's top surface so they "live on" the
-  // donut.  Keep these in sync with the torusGeometry args in the
-  // renderer (FAMILY_RING_TUBE).
-  const FAMILY_RING_TUBE = 1.1;
+  // Tube radius has to be coordinated with the renderer's
+  // torusGeometry.  Keep tubes thinner than node spheres (~0.55)
+  // so nodes read as the prominent points and rings as connecting
+  // tracks underneath.
+  const FAMILY_RING_TUBE = 0.3;
   const RING_SPACING = 6.5;
   const RING_R0 = 7;
   const nodes: LatticeNode[] = [];
