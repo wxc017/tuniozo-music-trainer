@@ -421,14 +421,14 @@ export default function ScalarTab({
                   <p className="text-[9px] mb-1 font-medium tracking-wider text-[#666]">
                     {family.label}
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1">
                     {family.tonalities.map(t => {
                       const on = selected === t;
                       return (
                         <button key={t}
                           onClick={() => { setSelected(t); setActiveFamilyColor(section.color); }}
-                          className={`px-3 py-2 text-sm font-semibold rounded border transition-colors ${
-                            on ? "" : "bg-[#111] border-[#2a2a2a] text-[#888] hover:text-[#ccc] hover:border-[#444]"
+                          className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                            on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
                           }`}
                           style={on
                             ? { backgroundColor: section.color + "30", borderColor: section.color, color: section.color }
