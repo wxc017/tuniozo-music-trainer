@@ -4,10 +4,13 @@
 const C4_FREQ = 261.63;
 
 // Drone harmonic amplitudes — fundamental-dominant with natural rolloff,
-// like a mellow bowed string or organ pipe. Each harmonic ~55% of the previous.
-// h=1..10: 1.00, 0.55, 0.30, 0.16, 0.09, 0.05, 0.03, 0.015, 0.008, 0.004
+// like a mellow bowed string or organ pipe.  Each harmonic ~55% of the
+// previous.  Extended to h=1..20 so the upper partials are present
+// (very faint but contribute air to the timbre).
 const TAMBURA_REAL = new Float32Array([
-  0, 1.00, 0.55, 0.30, 0.16, 0.09, 0.05, 0.030, 0.015, 0.008, 0.004
+  0,
+  1.00,    0.55,    0.30,    0.16,    0.09,    0.05,    0.030,   0.015,   0.008,   0.004,
+  0.0022,  0.0012,  0.00067, 0.00037, 0.00020, 0.00011, 0.00006, 0.000034,0.000019,0.00001,
 ]);
 const TAMBURA_IMAG = new Float32Array(TAMBURA_REAL.length); // all zeros = cosine phases
 
