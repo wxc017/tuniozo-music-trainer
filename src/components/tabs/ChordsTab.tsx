@@ -371,11 +371,6 @@ export default function ChordsTab({
   // walk on screen is synchronized with what the user hears.  -1
   // means no chord is active right now.
   const [currentChordIdx, setCurrentChordIdx] = useState(-1);
-  // Within the active chord, which tone is currently lit on the
-  // lattice — drives the per-chord arpeggio sweep so nodes light
-  // up one at a time (root → 3rd → 5th → 7th) instead of all at
-  // once.  -1 means no tone is active.
-  const [currentToneIdx, setCurrentToneIdx] = useState(-1);
   // Structured answer data — drives the rebuilt Show Answer reveal
   // (clickable tones + Heathwaite + Microtonal solfege per note + a
   // floating lattice box at top showing the active scale's lattice).
@@ -1251,29 +1246,17 @@ export default function ChordsTab({
         const id = setTimeout(() => onHighlight(notes), t);
         frameTimers.current.push(id);
       }
-      // Lattice highlight sweep — one node at a time per chord.
-      // Across each chord's slot the lattice walks through the
-      // chord's tones (root → 3rd → 5th → 7th) one at a time so
-      // the user can see WHICH note is sounding at each moment
-      // instead of everything lighting up at once.
-      const chordPitches = voices.chords[slot] ?? [];
-      const toneCount = Math.max(1, chordPitches.length);
-      const tonePer = gapMs / toneCount;
-      for (let j = 0; j < toneCount; j++) {
-        const tToneOnset = slot * gapMs + j * tonePer;
-        const id = setTimeout(() => {
-          setCurrentChordIdx(slot);
-          setCurrentToneIdx(j);
-        }, tToneOnset);
-        frameTimers.current.push(id);
-      }
+      // Lattice chord-onset pulse — fires once per chord boundary.
+      // Each chord lights up ALL its chord-tones at once on the
+      // lattice (mirroring the keyboard, which lights all chord
+      // pitches during the same slot).  When the next chord starts
+      // its slot, the lattice switches to that chord's tones.
+      const id = setTimeout(() => setCurrentChordIdx(slot), slot * gapMs);
+      frameTimers.current.push(id);
     }
-    // Drop the active highlight just after the final chord's onset so
-    // the lattice doesn't stay frozen on the last node forever.
-    const clearId = setTimeout(() => {
-      setCurrentChordIdx(-1);
-      setCurrentToneIdx(-1);
-    }, n * gapMs + 100);
+    // Drop the active highlight just after the final chord's onset
+    // so the lattice doesn't stay frozen on the last chord forever.
+    const clearId = setTimeout(() => setCurrentChordIdx(-1), n * gapMs + 100);
     frameTimers.current.push(clearId);
   }, [onHighlight, textureLayers]);
 
@@ -2031,10 +2014,11 @@ export default function ChordsTab({
                     // remapping.
                     const positions = tracePath(fhAnswer.progression);
                     const ratioKeys = positions.map(p => latticePosToRatio(p));
-                    // Per-chord ordered tone arrays (root → 3rd →
-                    // 5th → 7th).  Order matters so the per-tone
-                    // sequencer can step through them in order.
-                    const allTonesPerChord: string[][] = positions.map((root, i) => {
+                    // Per-chord tone sets (root + 3rd + 5th + 7th).
+                    // The active chord's full set lights up at once
+                    // on the lattice, mirroring the keyboard which
+                    // shows all chord pitches during a chord's slot.
+                    const allTonesPerChord: Set<string>[] = positions.map((root, i) => {
                       const chord = fhAnswer.chords[i];
                       let quality = chord ? chordQualityFromSteps(chord.notes, edo) : null;
                       if (!quality) {
@@ -2044,19 +2028,15 @@ export default function ChordsTab({
                         else quality = /^[A-Z]/.test(stripped) ? "major" : "minor";
                       }
                       const v = voicingFor(quality) ?? voicingFor("major")!;
-                      return v.voices.map(vp => latticePosToRatio(latticeAdd(root, vp)));
+                      return new Set(v.voices.map(vp => latticePosToRatio(latticeAdd(root, vp))));
                     });
                     // Union of all chord-tone keys = the full trace
                     // (used for the persistent dim-highlight set).
                     const allTraceKeys = new Set<string>(ratioKeys);
-                    for (const arr of allTonesPerChord) for (const k of arr) allTraceKeys.add(k);
-                    // Active set = single tone at (chord, tone) cursor.
-                    // Empty when nothing is playing.
-                    const chordTones = currentChordIdx >= 0 && currentChordIdx < allTonesPerChord.length
+                    for (const set of allTonesPerChord) for (const k of set) allTraceKeys.add(k);
+                    // Active set = the playing chord's chord-tones.
+                    const activeTones = currentChordIdx >= 0 && currentChordIdx < allTonesPerChord.length
                       ? allTonesPerChord[currentChordIdx]
-                      : [];
-                    const activeTones = currentToneIdx >= 0 && currentToneIdx < chordTones.length
-                      ? new Set<string>([chordTones[currentToneIdx]])
                       : new Set<string>();
                     return (
                       <div className="rounded border border-[#3a3a5a] bg-[#0a0a14] mt-2 overflow-hidden">
