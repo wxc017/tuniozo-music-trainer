@@ -203,6 +203,90 @@ export interface AdaptiveTriad {
   cents: [number, number, number];
 }
 
+// ── Comma-drift reference catalog ───────────────────────────────────────
+//
+// Expected tonic drift (in cents) for common cadences when *true*
+// Adaptive JI is used — each chord's root inferred from the previous
+// chord's pure-interval motion, accumulating commas as the chain
+// progresses.  These figures are well-known JI results: the classic
+// I-vi-ii-V-I "comma pump" drifts the tonic 81/80 ≈ 21.5¢ flat in
+// 5-limit; analogous pumps exist in 7-limit / 11-limit at their own
+// commas.  3-limit (Pythagorean) doesn't pump on diatonic cadences
+// since every chord motion is a pure fifth.
+//
+// The current Adaptive-JI implementation in ChordsTab is the milder
+// "Pure Triads" variant — chord roots stay anchored to the scale, only
+// the third + fifth are retuned — so these drifts represent what would
+// happen under *true* Adaptive (chord roots derived from pure-interval
+// chains), shown here as a reference.
+
+export interface CadenceDrift {
+  cadence: string;        // e.g. "I - vi - ii - V - I"
+  driftCents: number;     // signed cents (negative = flat, positive = sharp)
+  comma: string;          // name of the comma involved
+  applies: ("3-limit" | "5-limit" | "7-limit" | "11-limit")[];
+  blurb: string;          // one-line explanation
+}
+
+export const COMMA_DRIFT_CATALOG: CadenceDrift[] = [
+  {
+    cadence: "I - V - I",
+    driftCents: 0,
+    comma: "—",
+    applies: ["3-limit", "5-limit", "7-limit", "11-limit"],
+    blurb: "Pure plagal motion; both fifths cancel.",
+  },
+  {
+    cadence: "I - IV - V - I",
+    driftCents: 0,
+    comma: "—",
+    applies: ["3-limit", "5-limit", "7-limit", "11-limit"],
+    blurb: "Plain authentic cadence; no chord chain enters the comma zone.",
+  },
+  {
+    cadence: "I - vi - ii - V - I",
+    driftCents: -21.5,
+    comma: "Syntonic (81/80)",
+    applies: ["5-limit"],
+    blurb: "The classic comma pump.  vi→ii forces a 10/9 motion where 9/8 was expected.",
+  },
+  {
+    cadence: "I - IV - ii - V - I",
+    driftCents: -21.5,
+    comma: "Syntonic (81/80)",
+    applies: ["5-limit"],
+    blurb: "ii substituted for IV creates the same comma-pump motion vi→ii does.",
+  },
+  {
+    cadence: "I - iii - vi - ii - V - I",
+    driftCents: -21.5,
+    comma: "Syntonic (81/80)",
+    applies: ["5-limit"],
+    blurb: "Extended turnaround through every diatonic chord; one syntonic comma flat.",
+  },
+  {
+    cadence: "I - bVII - IV - I",
+    driftCents: -21.5,
+    comma: "Syntonic (81/80)",
+    applies: ["5-limit"],
+    blurb: "Modal-mixture pump; bVII as a JI 16/9 from a JI tonic doesn't quite return.",
+  },
+  {
+    cadence: "i - bVII - bVI - V - i  (Andalusian)",
+    driftCents: 0,
+    comma: "—",
+    applies: ["5-limit"],
+    blurb: "Pure stepwise descending bass — no comma motion.",
+  },
+  {
+    cadence: "I - V/IV - IV - I  (V/IV with 7/4)",
+    driftCents: -27.3,
+    comma: "Septimal (64/63)",
+    applies: ["7-limit"],
+    blurb: "Septimal V/IV uses the harmonic 7th (7/4); its resolution to IV pumps the septimal comma.",
+  },
+];
+
 /**
  * Retune a triad to pure JI based on the chord quality inferred from the
  * frozen-JI third and fifth.  Returns null for unrecognised qualities so
