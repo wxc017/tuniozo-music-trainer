@@ -1896,6 +1896,23 @@ export default function ChordsTab({
                       </p>
                     )}
                   </div>
+                  {/* Embedded visualizer — mirrors the main visualizer at
+                      the top of the page so the user can see what's
+                      highlighted while scrolled down to read the answer.
+                      PianoKeyboard's SVG uses viewBox + width="100%" so
+                      it scales to fit the box without horizontal scroll.
+                      Restricted to 12-EDO since PianoKeyboard is 12-EDO
+                      native; for 31-EDO/etc. the chord-tone buttons below
+                      already serve the visualization role. */}
+                  {edo === 12 && highlightedPitches && (
+                    <div className="rounded border border-[#3a3a1a] overflow-hidden" style={{ maxWidth: "100%" }}>
+                      <PianoKeyboard
+                        highlightedPitches={highlightedPitches}
+                        pitchMin={tonicPc - 12}
+                        pitchMax={tonicPc + 24}
+                      />
+                    </div>
+                  )}
                   {fhAnswer.chords.map(chord => (
                     <div key={chord.index} className="space-y-1">
                       <p className="text-[10px] text-[#c8a850] font-medium">
