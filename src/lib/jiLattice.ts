@@ -224,6 +224,16 @@ export function driftCentsToSteps(driftCents: number, edo: number): number {
   return Math.round((driftCents / 1200) * edo);
 }
 
+/** EDO class (step number 0..edo-1) for a JI lattice position.  This
+ *  is the val-mapped pitch class — same for any cell that the EDO's
+ *  kernel maps to the same step.  Used to highlight chord tones on
+ *  the tempered lattice by class rather than by exact JI ratio so
+ *  drifted positions still light up the right rep cell. */
+export function latticeToEdoStep(pos: LatticePos, edo: number): number {
+  const cents = latticeToCents(pos);
+  return ((Math.round(cents / 1200 * edo)) % edo + edo) % edo;
+}
+
 /** Canonical (non-drifted) lattice position for a chord — its tonal-
  *  center-relative position before any progression motion.  Returns
  *  the origin for any chord whose Roman numeral isn't in the chord-

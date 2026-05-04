@@ -3862,6 +3862,13 @@ interface LatticeViewProps {
    *  simultaneously, mirroring what the keyboard highlights during
    *  playback.  Pass an empty Set / undefined when nothing is active. */
   activeNodeKeys?: Set<string>;
+  /** Active EDO step numbers (0..edo-1) to highlight.  Resolved
+   *  through `lattice.classMap` so the rep cell of each class gets
+   *  the active treatment regardless of which exact JI ratio the
+   *  caller passed.  Lets chord-tone highlighting work even when
+   *  comma drift moves a chord tone to a non-canonical JI cell —
+   *  the EDO step stays well-defined and the right rep lights up. */
+  activeClassIds?: Set<number>;
   /** When supplied, the monzo lattice's equivalence-class assignment
    *  switches to val-based for this EDO — i.e. every JI cell is
    *  coloured by which one of `edo` pitch classes it maps to, while
@@ -3881,7 +3888,7 @@ interface LatticeViewProps {
   chromeless?: boolean;
 }
 
-export default function LatticeView({ externalHighlights, activeNodeKey, activeNodeKeys, temperingForEdo, chromeless = false }: LatticeViewProps = {}) {
+export default function LatticeView({ externalHighlights, activeNodeKey, activeNodeKeys, activeClassIds, temperingForEdo, chromeless = false }: LatticeViewProps = {}) {
   const [droneNodes, setDroneNodes] = useState<Set<string>>(new Set());
   // When the parent supplies `activeNodeKeys` (plural) or
   // `activeNodeKey` (singular), surface them through the standard
@@ -4354,6 +4361,26 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   const monzoLattice = useMemo(() => buildLattice(effectiveConfig), [effectiveConfig]);
   const monzoTopology = useMemo(() => detectTopology(effectiveConfig), [effectiveConfig]);
   const monzoInfo = useMemo(() => latticeInfo(monzoLattice), [monzoLattice]);
+
+  // Resolve activeClassIds (EDO step numbers) to actual node keys
+  // through the lattice's classMap.  Drives the same droneNodes set
+  // as activeNodeKey/Keys, so the visual treatment is identical —
+  // but the caller can highlight by EDO class instead of exact JI
+  // ratio, which is what makes comma drift visible: a drifted chord
+  // tone that lands on a non-canonical JI cell still resolves to
+  // its EDO step and lights up that step's class rep.
+  useEffect(() => {
+    if (activeClassIds === undefined) return;
+    if (activeClassIds.size === 0) {
+      setDroneNodes(new Set());
+      return;
+    }
+    const keys = new Set<string>();
+    for (const [key, classId] of monzoLattice.classMap) {
+      if (activeClassIds.has(classId)) keys.add(key);
+    }
+    setDroneNodes(keys);
+  }, [activeClassIds, monzoLattice.classMap]);
 
   // Projection loss: ratio of variance lost when tempering collapses dimensions
   const projectionLoss = useMemo(() => {
