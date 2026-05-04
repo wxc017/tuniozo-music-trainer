@@ -6,6 +6,7 @@
 // getBaseChords(edo) or are built dynamically from getChordShapes(edo).
 
 import { getChordShapes, getModeDegreeMap } from "./edoData";
+import { JI_FAMILY, JI_SCALE_NAMES } from "./jiScaleData";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -470,6 +471,17 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
     ...symmetricModesForEdo(edo).map(modeName => buildBankFromRegisteredFamily(
       "Symmetric Family", modeName, edo, [0], buildModeFromScale,
     )),
+
+    // ── JI scales (Pythagorean / Schismatic temperaments) ──────────────
+    // 41-EDO and 53-EDO get the 19 curated JI scales registered as the
+    // "JI Family" in jiScaleData.ts.  Tonic-only as the primary tier
+    // since I/IV/V semantics don't carry uniformly across all 19 (e.g.
+    // Garibaldi[7] and Septimal Diminished have a tritone where the 5th
+    // would sit).  All seven scale-degree triads still surface under
+    // Diatonic.
+    ...(edo === 41 || edo === 53 ? JI_SCALE_NAMES.map(modeName => buildBankFromRegisteredFamily(
+      JI_FAMILY, modeName, edo, [0], buildModeFromScale,
+    )) : []),
   ];
 }
 
