@@ -3916,23 +3916,28 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   // the spiral has room to wrap several times without being clipped.
   useEffect(() => {
     if (typeof temperingForEdo !== "number") return;
-    // Tonescape "3,5-primespace toroidal lattice", matched to the
-    // tonespace XML files shipped with Tonalsoft Tonescape Studio.
-    // Per those files: each cell at (a, b, c) is positioned by its
-    // monzo coordinates directly via the standard linear prime-axis
-    // projection — no parametric torus formula, no V⊥ collapse.
-    // The toroidal *shape* emerges from the topology: with the
-    // EDO's val driving class assignment and the simplest cell per
-    // class chosen as the rep, the 12 (or 31, 41, 53…) reps land
-    // at scattered 3D positions and the prime-axis edges connecting
-    // them sweep out the torus.  We supply temperedCommas only as
-    // metadata / hints; positions are not collapsed.
+    // Tonescape "3,5-primespace toroidal lattice", matched to
+    // 12-edo_3-5-space_tm-basis.tonespace.  Crucially:
+    //  - octaveEquivalence: FALSE (prime-2 is a real spatial axis).
+    //    With it ON, all cells project to a flat (b, c) plane —
+    //    that's why the shape was a 2D rectangle instead of a 3D
+    //    torus.  Off, prime-2 supplies the depth dimension and
+    //    each cell sits at its (a, b, c) monzo coordinate via the
+    //    standard linear projection.
+    //  - showPrime2: TRUE (prime-2 edges drawn).
+    //  - bounds 2:[-3, 4] is the same prime-2 span the .tonespace
+    //    file uses for its 12 TM-basis cells.
+    //  - gridType "square" → linear monzoTo3D projection.
+    //  - temperedCommas: [] → the val drives class assignment;
+    //    positions are NOT collapsed via V⊥ projection.
+    //  - The class-rep filter on the render loop drops non-rep
+    //    cells so 12-EDO renders 12 nodes, 31-EDO 31, etc.
     setMonzoConfig(prev => ({
       ...prev,
       primes: [2, 3, 5],
-      bounds: { 2: [-1, 1], 3: [-6, 6], 5: [-3, 3] },
-      octaveEquivalence: true,
-      showPrime2: false,
+      bounds: { 2: [-3, 4], 3: [-3, 3], 5: [-2, 2] },
+      octaveEquivalence: false,
+      showPrime2: true,
       edo: temperingForEdo,
       temperedCommas: [],
       gridType: "square",
