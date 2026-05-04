@@ -112,7 +112,7 @@ const TEMPERAMENT_LABELS: Record<Temperament, string> = {
   schismatic:  "Schismatic",
 };
 const TEMPERAMENT_EDOS: Record<Temperament, number[]> = {
-  meantone:    [12, 31],
+  meantone:    [12, 19, 31],   // 19-EDO is textbook 1/3-comma meantone
   pythagorean: [41],
   schismatic:  [53],
 };

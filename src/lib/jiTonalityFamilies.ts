@@ -11,7 +11,16 @@
 // Scale interval data is registered separately in edoData.ts via
 // registerJiScales() so this file can stay UI-agnostic.
 
-export type JiLimit = 3 | 5 | 7 | 11;
+export type JiLimit = 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 29 | 31;
+
+// Per-EDO limit availability.  41-EDO has decent approximations for every
+// prime up to 31; 53-EDO is excellent on 5 / 13 and decent on 7 / 19 but
+// poor on 11 / 17 / 23 / 29 / 31, so we restrict its picker to limits
+// where the rounded-to-EDO scales remain musically faithful.
+export const JI_LIMITS_PER_EDO: Record<number, JiLimit[]> = {
+  41: [3, 5, 7, 11, 13, 17, 19, 23, 29, 31],
+  53: [3, 5, 7, 11, 13, 19],
+};
 
 export interface JiFamily {
   /** Stable id for state persistence */
@@ -141,11 +150,111 @@ export const JI_LIMIT_GROUPS: JiLimitGroup[] = [
           "Maqam Rast",
           "Maqam Bayati",
           "Maqam Hijaz",
+          "Maqam Saba",
+          "Maqam Huzam",
         ],
       },
     ],
   },
+  {
+    limit: 13,
+    label: "13-LIMIT (Tridecimal)",
+    color: "#c84a8a",
+    blurb: "Adds 13:8 (~841¢) and 13:11 (~289¢) — the supraminor / wide-6th colour.",
+    families: [
+      {
+        key: "tridecimal-tertian",
+        label: "TERTIAN",
+        tonalities: [
+          "Tridecimal Major",
+          "Tridecimal Minor",
+        ],
+      },
+      {
+        key: "tridecimal-maqam",
+        label: "MAQAM",
+        tonalities: [
+          "Maqam Sikah",
+        ],
+      },
+    ],
+  },
+  {
+    limit: 17,
+    label: "17-LIMIT (Heptadecimal)",
+    color: "#5a9aca",
+    blurb: "Adds 17:16 (~105¢) — a tiny supraminor 2nd / leading-tone alternative.",
+    families: [
+      {
+        key: "heptadecimal",
+        label: "HEPTADECIMAL",
+        tonalities: ["Heptadecimal"],
+      },
+    ],
+  },
+  {
+    limit: 19,
+    label: "19-LIMIT (Nonadecimal)",
+    color: "#5acca0",
+    blurb: "19:16 (~298¢) lands fractionally between Pythagorean and 5-limit minor 3rds.",
+    families: [
+      {
+        key: "nonadecimal",
+        label: "NONADECIMAL",
+        tonalities: ["Nonadecimal Minor"],
+      },
+    ],
+  },
+  {
+    limit: 23,
+    label: "23-LIMIT (Vicesimotertial)",
+    color: "#caac5a",
+    blurb: "Demonstrative — 23:19 (~329¢) supraminor 3rd, 23:14 (~859¢) wide minor 6th.",
+    families: [
+      {
+        key: "23-demo",
+        label: "DEMO",
+        tonalities: ["23-Limit Demo"],
+      },
+    ],
+  },
+  {
+    limit: 29,
+    label: "29-LIMIT (Vicenovenal)",
+    color: "#aa6a5a",
+    blurb: "Demonstrative — 29:24 (~328¢), 29:18 (~770¢), 29:16 (~1030¢) all distinct.",
+    families: [
+      {
+        key: "29-demo",
+        label: "DEMO",
+        tonalities: ["29-Limit Demo"],
+      },
+    ],
+  },
+  {
+    limit: 31,
+    label: "31-LIMIT (Trigesimoprimal)",
+    color: "#ca6acc",
+    blurb: "Demonstrative — 31:26 (~338¢), 31:20 (~766¢), 31:19 (~896¢) — three 31-prime tones.",
+    families: [
+      {
+        key: "31-demo",
+        label: "DEMO",
+        tonalities: ["31-Limit Demo"],
+      },
+    ],
+  },
 ];
+
+/** JI limit groups available for a given EDO.  41-EDO sees everything;
+ *  53-EDO is filtered to limits where the EDO-rounded scale stays
+ *  musically faithful (5-limit core + 7 / 11 / 13 / 19 it handles well). */
+export function jiLimitGroupsForEdo(edo: number): JiLimitGroup[] {
+  const allowed = JI_LIMITS_PER_EDO[edo];
+  if (!allowed) return JI_LIMIT_GROUPS;
+  const set = new Set(allowed);
+  return JI_LIMIT_GROUPS.filter(g => set.has(g.limit));
+}
 
 /** Flat list of every JI tonality across every limit / family. */
 export function allJiTonalities(): string[] {
