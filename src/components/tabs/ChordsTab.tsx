@@ -28,7 +28,7 @@ import { JI_SCALE_NAMES, getJiScaleCents, getJiScaleDegrees } from "@/lib/jiScal
 import { analyzeJiScale, COMMA_DRIFT_CATALOG } from "@/lib/jiChordAnalysis";
 import { chordQualityFromSteps, voicingFor, voicingToSteps, coerceTo5Limit } from "@/lib/jiLattice";
 import { limitForJiTonality } from "@/lib/jiTonalityFamilies";
-import { tracePathDrifts, driftCentsToSteps, stripChordLabel } from "@/lib/jiLattice";
+import { tracePathDrifts, driftCentsToSteps, stripChordLabel, tracePath, latticePosToRatio } from "@/lib/jiLattice";
 import FloatingPanel from "@/components/FloatingPanel";
 import JiScaleLattice from "@/components/JiScaleLattice";
 import PianoKeyboard from "@/components/PianoKeyboard";
@@ -38,7 +38,7 @@ import LumatoneKeyboard from "@/components/LumatoneKeyboard";
 import type { LayoutResult, ComputedKey } from "@/lib/lumatoneLayout";
 import type { VisualizerType } from "@/App";
 import { piperSpeak } from "@/lib/piperSpeech";
-import ChordTraceLattice from "@/components/ChordTraceLattice";
+import LatticeView from "@/components/LatticeView";
 
 const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
 
@@ -1881,27 +1881,14 @@ export default function ChordsTab({
                       </p>
                     )}
                   </div>
-                  {/* Embedded visualizer — mirrors whichever main
-                      visualizer the user has selected (piano, guitar,
-                      bass, or Lumatone) for any EDO.  Lives inline
-                      inside the Show Answer box so the user gets a
-                      large, persistent live view of highlighted
-                      pitches without any floating chrome. */}
-                  {highlightedPitches && (
-                    <div className="rounded border border-[#3a3a1a] overflow-hidden bg-[#0a0a0a]" style={{ maxWidth: "100%" }}>
-                      {edo === 12 && vizType === "piano" ? (
-                        <PianoKeyboard highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
-                      ) : edo === 12 && vizType === "guitar" ? (
-                        <GuitarFretboard highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
-                      ) : edo === 12 && vizType === "bass" ? (
-                        <BassFretboard highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
-                      ) : layout ? (
-                        <LumatoneKeyboard layout={layout} highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
-                      ) : (
-                        <div className="text-[10px] text-[#666] italic p-3">Loading keyboard…</div>
-                      )}
-                    </div>
-                  )}
+                  {/* Two-column body — chord-tone reveal on the left
+                      (drift trace + per-chord rows), live visualizer
+                      mirror on the right.  At narrow widths the row
+                      stacks vertically (visualizer above answer) so
+                      tablets / portrait phones still get a usable
+                      layout. */}
+                  <div className="flex flex-col lg:flex-row gap-3">
+                  <div className="flex-1 space-y-3 min-w-0">
                   {/* Live lattice trace — meaningful in Adaptive and
                       Pure 3/5-limit modes on 41/53-EDO.  Shows each
                       chord in the progression with its accumulated
@@ -2013,32 +2000,61 @@ export default function ChordsTab({
                       </div>
                     </div>
                   ))}
-                  {/* Inline Harmonic-Lattice section — replaces the
-                      old fixed-position top overlay.  Sits at the
-                      bottom of the Show Answer box so the user can
-                      scroll through the chord-tone reveal first, then
-                      see the lattice walk for the same progression
-                      with EDO tempering applied. */}
+                  </div>{/* end LEFT chord-tone column */}
+
+                  {/* RIGHT column — live visualizer mirror */}
+                  <div className="lg:w-[40%] lg:flex-shrink-0 space-y-2">
+                    {highlightedPitches && (
+                      <div className="rounded border border-[#3a3a1a] overflow-hidden bg-[#0a0a0a] sticky top-2" style={{ maxWidth: "100%" }}>
+                        {edo === 12 && vizType === "piano" ? (
+                          <PianoKeyboard highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
+                        ) : edo === 12 && vizType === "guitar" ? (
+                          <GuitarFretboard highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
+                        ) : edo === 12 && vizType === "bass" ? (
+                          <BassFretboard highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
+                        ) : layout ? (
+                          <LumatoneKeyboard layout={layout} highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
+                        ) : (
+                          <div className="text-[10px] text-[#666] italic p-3">Loading keyboard…</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  </div>{/* end two-column flex row */}
+
+                  {/* Full-width Harmonic Lattice — re-uses the main
+                      LatticeView (3D Tonnetz / Monzo viewer) and
+                      auto-tempers it to the active EDO so the
+                      visualization matches the playback (12-EDO
+                      heavily collapses cells; 41/53-EDO mostly
+                      preserves distinctions; meantone EDOs squash
+                      81/80 specifically).  Each chord-root in the
+                      progression converts to an "n/d" ratio key and
+                      is fed in as `externalHighlights`; the
+                      currently-sounding chord becomes
+                      `activeNodeKey` so the same chord-onset timer
+                      that drives the keyboard highlight also drives
+                      the lattice's pulsing node. */}
                   {fhAnswer.progression.length > 0 && (() => {
-                    const qualities = (fhAnswer.chords ?? []).map(c => {
-                      const inferred = chordQualityFromSteps(c.notes, edo);
-                      if (inferred) return inferred;
-                      const stripped = stripChordLabel(c.numeral);
-                      if (stripped.endsWith("°")) return "dim";
-                      if (stripped.endsWith("ø")) return "m7b5";
-                      const isMajor = /^[A-Z]/.test(stripped);
-                      return isMajor ? "major" : "minor";
-                    });
+                    const positions = tracePath(fhAnswer.progression);
+                    const ratioKeys = positions.map(p => latticePosToRatio(p));
+                    const highlightSet = new Set(ratioKeys);
+                    const activeKey = currentChordIdx >= 0 && currentChordIdx < ratioKeys.length
+                      ? ratioKeys[currentChordIdx]
+                      : null;
                     return (
-                      <div className="rounded border border-[#3a3a5a] bg-[#0a0a14] p-3 mt-2">
-                        <p className="text-[10px] text-[#7a7af0] font-semibold tracking-wider mb-2">HARMONIC LATTICE</p>
-                        <div style={{ width: "100%", height: "55vh", overflow: "auto" }}>
-                          <ChordTraceLattice
-                            progression={fhAnswer.progression}
-                            qualities={qualities}
-                            currentIdx={currentChordIdx}
-                            edo={edo}
-                            accent="#7a7af0"
+                      <div className="rounded border border-[#3a3a5a] bg-[#0a0a14] mt-2 overflow-hidden">
+                        <div className="px-3 py-2 border-b border-[#3a3a5a] flex items-baseline gap-2">
+                          <p className="text-[10px] text-[#7a7af0] font-semibold tracking-wider">HARMONIC LATTICE</p>
+                          <p className="text-[10px] text-[#666] italic">
+                            auto-tempered for {edo}-EDO · cells the temperament collapses share a position
+                          </p>
+                        </div>
+                        <div style={{ width: "100%", height: "70vh", overflow: "hidden" }}>
+                          <LatticeView
+                            externalHighlights={highlightSet}
+                            activeNodeKey={activeKey}
+                            temperingForEdo={edo}
                           />
                         </div>
                       </div>
