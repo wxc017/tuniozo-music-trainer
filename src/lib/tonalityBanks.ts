@@ -591,6 +591,11 @@ function buildOneXenMode(parent: number[], rotIdx: number, modeName: string, edo
     // chord quality in xenharmonic practice.
     const upper = q3 === "M" || q3 === "sup" || q3 === "neu";
     let roman = upper ? XEN_ROMAN[i] : XEN_ROMAN[i].toLowerCase();
+    // Subminor 3rds get a leading subscript "ₛ" (U+209B) in front of
+    // the lowercase roman numeral so the chord reads visibly as
+    // subminor rather than plain minor.  The redundant "s3" suffix
+    // is then dropped (see below).
+    if (q3 === "sub") roman = "ₛ" + roman;
     // 5th-quality marker.  ° / + remain reserved for the chromatic
     // flat-5 / sharp-5 (the canonical diminished / augmented chord
     // qualities).  31-EDO's half-flat (bb5) and half-sharp (##5) 5ths,
@@ -613,8 +618,8 @@ function buildOneXenMode(parent: number[], rotIdx: number, modeName: string, edo
     if (q5 === "hd") supParts.push("bb5");      // half-flat 5
     else if (q5 === "hA") supParts.push("##5"); // half-sharp 5
     else if (q5 === "subP") { supParts.push("no5"); supParts.push("#4"); }
-    if (q3 === "sub") supParts.push("s3");
-    else if (q3 === "neu") supParts.push("N3");
+    // (q3 === "sub" handled by the ₛ-prefix above; no s3 suffix.)
+    if (q3 === "neu") supParts.push("N3");
     else if (q3 === "sup") supParts.push("S3");
     if (showSevenths) {
       if (q7 === "sub") supParts.push("s7");

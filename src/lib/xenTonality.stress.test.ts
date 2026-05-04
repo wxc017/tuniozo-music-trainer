@@ -228,10 +228,9 @@ describe("Xen tonality banks — Roman-numeral labels", () => {
       const tonic = primary.chords.find(c => c.steps?.[0] === 0)!;
       return tonic.label;
     };
-    // Subminor Diatonic — s3 + s7
+    // Subminor Diatonic — ₛi prefix (subminor 3rd) + s7 (subminor 7th)
     const subTonic = tonicLabel("Subminor Diatonic");
-    expect(subTonic.startsWith("i")).toBe(true);
-    expect(subTonic).toContain("s3");
+    expect(subTonic.startsWith("ₛi")).toBe(true);
     expect(subTonic).toContain("s7");
     // Supermajor Diatonic — S3 + S7
     const supTonic = tonicLabel("Supermajor Diatonic");
@@ -242,9 +241,9 @@ describe("Xen tonality banks — Roman-numeral labels", () => {
     const neuTonic = tonicLabel("Neutral Diatonic");
     expect(neuTonic).toContain("N3");
     expect(neuTonic).toContain("N7");
-    // Subharmonic Diatonic M7 — s3 + mM7 (subminor 3rd, major 7th)
+    // Subharmonic Diatonic M7 — ₛi prefix (subminor 3rd) + mM7 (major 7th)
     const shTonic = tonicLabel("Subharmonic Diatonic M7");
-    expect(shTonic).toContain("s3");
+    expect(shTonic.startsWith("ₛi")).toBe(true);
     expect(shTonic).toContain("mM7");
   });
 
@@ -256,10 +255,10 @@ describe("Xen tonality banks — Roman-numeral labels", () => {
       const primary = bank.levels.find(l => l.name === "Primary")!;
       return primary.chords.find(c => c.steps?.[0] === 0)!.label;
     };
-    // Subminor Diatonic with no sevenths exposed: only the s3 suffix
-    // shows; no s7 / m7 / 7 / Maj7 should appear.
+    // Subminor Diatonic with no sevenths exposed: only the ₛ prefix
+    // marks the chord as subminor; no s7 / m7 / 7 / Maj7 should appear.
     const subTonic = tonicLabel("Subminor Diatonic");
-    expect(subTonic).toContain("s3");
+    expect(subTonic.startsWith("ₛi")).toBe(true);
     expect(subTonic).not.toMatch(/s7|m7|N7|S7|M7/);
   });
 });
