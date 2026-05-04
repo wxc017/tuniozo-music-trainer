@@ -17,7 +17,9 @@ import {
   formatHalfAccidentals,
   getAvailableThirdQualities,
   getModeDegreeMap,
+  getHeathwaiteSolfege,
 } from "@/lib/edoData";
+import { syllableForEdoStep } from "@/lib/microtonalSolfege";
 import { getTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS, type TonalityBank, type ChordEntry, type ApproachKind } from "@/lib/tonalityBanks";
 import { xenIntervalsForEdo, bankToScaleFamMode } from "@/lib/tonalityChordPool";
 import { formatRomanNumeral } from "@/lib/formatRoman";
@@ -285,6 +287,24 @@ export default function ChordsTab({
   const [loopInfo, setLoopInfo] = useState<string>("");
   const [fhDetailInfo, setFhDetailInfo] = useState<string>("");
   const [fhShowAnswer, setFhShowAnswer] = useState(false);
+  // Structured answer data — drives the rebuilt Show Answer reveal
+  // (clickable tones + Heathwaite + Microtonal solfege per note + a
+  // floating lattice box at top showing the active scale's lattice).
+  // fhDetailInfo (the legacy text representation) is kept around for
+  // back-compat / debugging but no longer rendered.
+  type FhAnswerChord = {
+    index: number;
+    numeral: string;
+    quality: string;
+    notes: number[];          // absolute pitches in playback order
+    chordRootPc: number;      // pitch-class of the chord root
+  };
+  interface FhAnswer {
+    progression: string[];
+    chords: FhAnswerChord[];
+    scaleTonality: string | null;   // first selected tonality (for the lattice box)
+  }
+  const [fhAnswer, setFhAnswer] = useState<FhAnswer | null>(null);
   const fhFramesRef = useRef<number[][] | null>(null);
 
   // ── Polyphonic Realization state ────────────────────────────────────
@@ -1326,6 +1346,23 @@ export default function ChordsTab({
     const info = progression.join(" → ");
     setLoopInfo(info);
     setFhDetailInfo(detailLines.join("\n"));
+    // Build the structured answer for the rebuilt Show Answer panel.
+    // Per-chord pitches come straight from voices.chords (sorted) so
+    // each tone button in the UI plays the exact pitch the loop heard.
+    const structuredChords: FhAnswerChord[] = progression.map((rn, idx) => {
+      const applied = voices.appliedShapes[idx];
+      const quality = applied ? triadQuality(applied, edo) : "?";
+      const notes = voices.chords[idx]?.length
+        ? [...voices.chords[idx]].sort((a, b) => a - b)
+        : [];
+      const chordRootPc = applied ? ((applied[0] % edo) + edo) % edo : 0;
+      return { index: idx + 1, numeral: rn, quality, notes, chordRootPc };
+    });
+    setFhAnswer({
+      progression,
+      chords: structuredChords,
+      scaleTonality: pickedTonality ?? null,
+    });
     setFhShowAnswer(false);
     fhFramesRef.current = voices.chords;
     fhVoicesRef.current = voices;
@@ -1833,10 +1870,91 @@ export default function ChordsTab({
               {answerButtons}
             </div>
 
-            {/* Answer — only visible after clicking Show Answer */}
-            {fhShowAnswer && fhDetailInfo && (
-              <div className="bg-[#1a1a0a] border border-[#3a3a1a] rounded p-3 text-xs text-[#c8a850] font-mono whitespace-pre">{fhDetailInfo}</div>
-            )}
+            {/* Answer — only visible after clicking Show Answer.
+                Per-chord rows with clickable tone buttons; each tone
+                shows its interval-from-tonic name plus both solfege
+                systems (Heathwaite + Microtonal IPA) so the user can
+                see the same note labelled three ways at once.  Click
+                the tone to hear it through the audio engine. */}
+            {fhShowAnswer && fhAnswer && (() => {
+              const heathwaiteTable = getHeathwaiteSolfege(edo);
+              return (
+                <div className="bg-[#1a1a0a] border border-[#3a3a1a] rounded p-3 space-y-3">
+                  <div className="flex items-baseline gap-2 pb-1.5 border-b border-[#3a3a1a]">
+                    <p className="text-[10px] text-[#888] font-semibold tracking-wider">LOOP</p>
+                    <p className="text-[12px] text-[#c8a850] font-mono">
+                      {fhAnswer.progression.join(" → ")}
+                    </p>
+                    {fhAnswer.scaleTonality && (
+                      <p className="text-[10px] text-[#888] ml-auto italic">
+                        Scale: {fhAnswer.scaleTonality}
+                      </p>
+                    )}
+                  </div>
+                  {fhAnswer.chords.map(chord => (
+                    <div key={chord.index} className="space-y-1">
+                      <p className="text-[10px] text-[#c8a850] font-medium">
+                        [{chord.index}] <span className="font-mono text-[12px]">{chord.numeral}</span>
+                        <span className="text-[#888] ml-2">({chord.quality})</span>
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {chord.notes.map((pitch, i) => {
+                          const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
+                          const intervalName = intervalLabel(pcFromTonic, edo);
+                          const heathwaite = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
+                          const micro = syllableForEdoStep(pcFromTonic, edo);
+                          return (
+                            <button key={i}
+                              onClick={async () => {
+                                await ensureAudio();
+                                audioEngine.playNote(pitch, edo, 0.7, 0.6);
+                              }}
+                              title={`Click to play.  ${intervalName} · Heathwaite: ${heathwaite} · Microtonal: ${micro.label} /${micro.ipa}/`}
+                              className="flex flex-col items-center px-2 py-1 rounded border border-[#3a3a1a] bg-[#2a1a0a] hover:bg-[#3a2a1a] hover:border-[#c8a850] transition-colors min-w-[58px]">
+                              <span className="text-[11px] text-[#e0c860] font-bold leading-tight">
+                                {intervalName}
+                              </span>
+                              <span className="text-[9px] text-[#aaa] leading-tight">
+                                {heathwaite}
+                              </span>
+                              <span className="text-[8px] text-[#777] font-mono leading-tight">
+                                {micro.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-[9px] text-[#666] italic pt-1 border-t border-[#3a3a1a]">
+                    Each chord's tones are clickable — middle row shows
+                    Heathwaite solfege, bottom row shows Microtonal IPA syllable.
+                  </p>
+                </div>
+              );
+            })()}
+
+            {/* Floating lattice box — top-right of viewport, appears when
+                Show Answer is open.  Shows the JI lattice for the active
+                tonality (if it's a JI scale) so the user can see the
+                scale's lattice positions alongside the chord-tone reveal. */}
+            {fhShowAnswer && fhAnswer?.scaleTonality && (() => {
+              const cents = getJiScaleCents(fhAnswer.scaleTonality);
+              const degs = getJiScaleDegrees(fhAnswer.scaleTonality);
+              if (!cents || !degs) return null;
+              const tones = degs.map((degree, i) => ({ degree, cents: cents[i] }));
+              return (
+                <FloatingPanel
+                  position="top-right"
+                  title={`SCALE LATTICE · ${fhAnswer.scaleTonality}`}
+                  accent="#c8a850"
+                  storageKey="lt_crd_answer_lattice_collapsed"
+                  topOffset={80}
+                >
+                  <JiScaleLattice tones={tones} accent="#c8a850" compact />
+                </FloatingPanel>
+              );
+            })()}
           </div>
 
           {/* Extensions + Voicings (shared controls) */}

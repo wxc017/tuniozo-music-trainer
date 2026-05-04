@@ -98,16 +98,15 @@ export default function ScalarTab({
 }: Props) {
   const [selected, setSelected] = useLS<string>("lt_scalar_tonality", "Major");
   const [activeFamilyColor, setActiveFamilyColor] = useState<string>("#6a9aca");
-  // Solfege system toggle.  Three options:
-  //   "standard"   — the existing EDO-specific do-re-mi-style table
-  //                   (Do / Du / Di / Ra / Rai / … in 31-EDO).
-  //   "heathwaite" — Andrew Heathwaite's 31-EDO solfege with consistent
-  //                   tetrachordal mirroring (Do / Di / Ro / Ra / …).
-  //                   Falls back to standard outside 31-EDO.
+  // Solfege system toggle — two options:
+  //   "heathwaite" — Andrew Heathwaite's solfege (the canonical do-re-mi
+  //                   system, with consistent tetrachordal vowel mirroring
+  //                   between the lower and upper tetrachords).  Falls back
+  //                   to the legacy EDO solfege outside 31-EDO.
   //   "microtonal" — IPA-derived interval-name system keyed by cents
   //                   (Sais / Sai / Sail / Soos / …); works in any EDO.
-  const [solfegeKind, setSolfegeKind] = useLS<"standard" | "heathwaite" | "microtonal">(
-    "lt_scalar_solfege_kind", "standard"
+  const [solfegeKind, setSolfegeKind] = useLS<"heathwaite" | "microtonal">(
+    "lt_scalar_solfege_kind", "heathwaite"
   );
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -333,16 +332,13 @@ export default function ScalarTab({
             </button>
           </div>
 
-          {/* Solfege system toggle — Standard (do-re-mi), Heathwaite's
-              (31-EDO consistent-vowel system), or Microtonal IPA
-              (interval-name system from cents). */}
+          {/* Solfege system toggle — Heathwaite (default Do-Re-Mi-style)
+              or Microtonal (IPA interval-name system from cents). */}
           <div className="flex items-center gap-1 mb-1 flex-wrap">
             <span className="text-[10px] text-[#666] mr-1">SOLFEGE</span>
-            {(["standard", "heathwaite", "microtonal"] as const).map(k => {
+            {(["heathwaite", "microtonal"] as const).map(k => {
               const active = solfegeKind === k;
-              const label = k === "standard" ? "Standard"
-                : k === "heathwaite" ? "Heathwaite"
-                : "Microtonal";
+              const label = k === "heathwaite" ? "Heathwaite" : "Microtonal";
               return (
                 <button key={k}
                   onClick={() => setSolfegeKind(k)}
@@ -366,14 +362,12 @@ export default function ScalarTab({
               const microtonal = syllableForEdoStep(s.step, edo);
               const heathwaiteTable = getHeathwaiteSolfege(edo);
               const heathwaiteLabel = heathwaiteTable ? heathwaiteTable[s.step] : null;
-              const labelText = solfegeKind === "microtonal" ? microtonal.label
-                : solfegeKind === "heathwaite" ? (heathwaiteLabel ?? s.solfege)
-                : s.solfege;
+              const labelText = solfegeKind === "microtonal"
+                ? microtonal.label
+                : (heathwaiteLabel ?? s.solfege);  // heathwaite, falling back to legacy EDO solfege
               const tooltipDetail = solfegeKind === "microtonal"
                 ? `${microtonal.label}  /${microtonal.ipa}/  ·  ${microtonal.category}${microtonal.subcategory ? " · " + microtonal.subcategory : ""}`
-                : solfegeKind === "heathwaite" && heathwaiteLabel
-                ? `${heathwaiteLabel} (Heathwaite)`
-                : s.solfege;
+                : `${labelText} (Heathwaite)`;
               return (
                 <button key={s.step}
                   onMouseDown={() => onSyllablePressStart(s.step)}
