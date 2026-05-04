@@ -42,6 +42,7 @@ import {
   xenIntervalName, xenIntervalNames,
 } from "@/lib/xenIntervals";
 import { accidentalText } from "@/lib/hejiNotation";
+import { COMMA_DB, edoTempersComma } from "@/lib/edoTemperamentData";
 
 // ── Cents → nearest 12-TET note + deviation ─────────────────────
 // ═══════════════════════════════════════════════════════════════
@@ -3700,9 +3701,18 @@ interface LatticeViewProps {
    *  caller animate a step-by-step walk by changing this value over
    *  time.  Pass null / undefined when no step is active. */
   activeNodeKey?: string | null;
+  /** When supplied, the monzo lattice auto-tempers itself for this EDO:
+   *  every comma in COMMA_DB that vanishes in the EDO is added to
+   *  `temperedCommas`, and `monzoConfig.edo` is wired through so the
+   *  equivalence classes use val-based classification.  The result is
+   *  a 3D lattice that physically collapses cells the EDO maps to the
+   *  same step — i.e. meantone EDOs squash 81/80, schismatic EDOs
+   *  squash 32805/32768, 12-EDO squashes everything in sight, etc.
+   *  Drives the "you can understand tuning systems" view. */
+  temperingForEdo?: number;
 }
 
-export default function LatticeView({ externalHighlights, activeNodeKey }: LatticeViewProps = {}) {
+export default function LatticeView({ externalHighlights, activeNodeKey, temperingForEdo }: LatticeViewProps = {}) {
   const [droneNodes, setDroneNodes] = useState<Set<string>>(new Set());
   // When the parent supplies an `activeNodeKey`, surface it through the
   // standard droneNodes set so it picks up the same pulsing/highlight
@@ -3830,6 +3840,39 @@ export default function LatticeView({ externalHighlights, activeNodeKey }: Latti
   // Monzo lattice mode state
   const [monzoPreset, setMonzoPreset] = useState<string>("7-limit");
   const [monzoConfig, setMonzoConfig] = useState<LatticeConfig>(PRESET_CONFIGS["7-limit"]);
+
+  // ── EDO auto-tempering ─────────────────────────────────────────────
+  // When the parent supplies `temperingForEdo`, configure monzoConfig
+  // so the 3D lattice physically collapses cells the EDO maps to the
+  // same step.  We restrict the comma set to a small "characteristic"
+  // shortlist (syntonic, schisma, septimal kleisma, septimal comma):
+  // adding every COMMA_DB entry that vanishes would over-temper a
+  // 2D-or-3D lattice down to a point.  This shortlist is enough to
+  // classify each EDO into its temperament family — meantone EDOs
+  // collapse 81/80, schismatic EDOs collapse 32805/32768, 12-EDO
+  // collapses everything (which is exactly what 12-EDO does), and
+  // higher EDOs in unusual families pass through unmodified at 5/7
+  // limit so the user can still see most cells distinct.
+  useEffect(() => {
+    if (typeof temperingForEdo !== "number") return;
+    const KEY_COMMAS: { n: number; d: number; name: string }[] = [
+      { n: 81,    d: 80,    name: "Syntonic comma (81/80)"      },
+      { n: 32805, d: 32768, name: "Schisma (32805/32768)"        },
+      { n: 225,   d: 224,   name: "Septimal kleisma (225/224)"   },
+      { n: 64,    d: 63,    name: "Septimal comma (64/63)"       },
+    ];
+    const commas = KEY_COMMAS.filter(c => edoTempersComma(temperingForEdo, c.n, c.d));
+    setMonzoConfig(prev => ({
+      ...prev,
+      primes: [2, 3, 5, 7],
+      bounds: { 2: [-1, 1], 3: [-4, 4], 5: [-2, 2], 7: [-1, 1] },
+      octaveEquivalence: true,
+      showPrime2: false,
+      edo: temperingForEdo,
+      temperedCommas: commas,
+    }));
+    setMonzoPreset(`${temperingForEdo}-EDO auto-tempered`);
+  }, [temperingForEdo]);
   // monzoLabelMode removed — now individual layer toggles
   const [monzoShowTopo, setMonzoShowTopo] = useState(true);
   const [monzoGridType, setMonzoGridType] = useState<GridType>("square");
