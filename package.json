@@ -70,6 +70,7 @@
     "vaul": "^1.1.2",
     "vite": "^7.3.0",
     "vite-plugin-singlefile": "^2.3.3",
+    "vite-plugin-static-copy": "^4.1.0",
     "vitest": "^4.1.4",
     "wouter": "^3.3.5",
     "zod": "^3.25.76"
@@ -83,6 +84,7 @@
     "html-to-image": "^1.11.13",
     "jspdf": "^4.2.1",
     "pdfjs-dist": "^5.5.207",
+    "piper-wasm": "^0.1.4",
     "svg2pdf.js": "^2.7.0",
     "three": "^0.183.2",
     "vexflow": "^5.0.0"
