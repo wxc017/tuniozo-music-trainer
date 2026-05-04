@@ -2344,19 +2344,69 @@ function MonzoScene({ lattice, topology, droneNodes, hoveredNode, onHover, onCli
         // In path mode with no hover/pinned, show nothing
         if (pathMode && !combinedEdgeSet) return null;
         const posMap = layers.classes ? lattice.jiPositions : (topoPositions ?? lattice.positions);
-        // Same class-rep filter the node loop uses, so M3/P5 edges
-        // only connect cells the user can actually see.
-        const edoClassRepFilter = lattice.classMap.size > 0
-          && lattice.config.temperedCommas.length === 0;
-        const isHidden = (key: string) => edoClassRepFilter
-          && siblingsMap.has(key)
-          && !classRepSet.has(key);
         const byPrime = new Map<number, [number, number, number][]>();
+
+        // EDO mode: synthesise edges between class reps by EDO step
+        // relationship (rep@N → rep@(N+P5_step) for fifths, rep@N
+        // → rep@(N+M3_step) for thirds).  The JI lattice's
+        // generator edges only connect cells differing by ONE
+        // prime-axis exponent — but the visible reps mostly DON'T
+        // differ by one prime axis from their neighbours, so those
+        // edges go off into hidden non-rep cells.  Drawing edges
+        // straight between reps recovers the Tonescape look where
+        // every visible node has its P5 + M3 neighbours connected.
+        const edoMode = lattice.classMap.size > 0
+          && lattice.config.temperedCommas.length === 0
+          && typeof lattice.config.edo === "number";
+        if (edoMode) {
+          const edo = lattice.config.edo!;
+          // Map from class id → visible rep key.  For multi-cell
+          // classes the rep is in classRepSet; for single-cell
+          // classes the only member is the rep.
+          const classToRep = new Map<number, string>();
+          const memberByClass = new Map<number, string[]>();
+          for (const [key, classId] of lattice.classMap) {
+            if (!memberByClass.has(classId)) memberByClass.set(classId, []);
+            memberByClass.get(classId)!.push(key);
+          }
+          for (const [classId, members] of memberByClass) {
+            const rep = members.find(k => classRepSet.has(k))
+              ?? (members.length === 1 ? members[0] : null);
+            if (rep) classToRep.set(classId, rep);
+          }
+          const p5Step = ((Math.round(edo * Math.log2(3 / 2)) % edo) + edo) % edo;
+          const m3Step = ((Math.round(edo * Math.log2(5 / 4)) % edo) + edo) % edo;
+          const draw = (fromClass: number, stepDelta: number, prime: number) => {
+            const fromRep = classToRep.get(fromClass);
+            const toRep = classToRep.get(((fromClass + stepDelta) % edo + edo) % edo);
+            if (!fromRep || !toRep) return;
+            const a = posMap.get(fromRep), b = posMap.get(toRep);
+            if (!a || !b) return;
+            if (!byPrime.has(prime)) byPrime.set(prime, []);
+            byPrime.get(prime)!.push(a, b);
+          };
+          for (const classId of classToRep.keys()) {
+            draw(classId, p5Step, 3);  // chain of fifths (magenta)
+            draw(classId, m3Step, 5);  // chain of thirds (green)
+          }
+          return [...byPrime.entries()].map(([prime, pts]) => (
+            <lineSegments key={`ge-${prime}`} frustumCulled={false}>
+              <bufferGeometry>
+                <bufferAttribute
+                  attach="attributes-position"
+                  args={[new Float32Array(pts.flat()), 3]}
+                />
+              </bufferGeometry>
+              <lineBasicMaterial color={MONZO_PRIME_COLORS[prime] ?? "#555"} transparent opacity={0.85} />
+            </lineSegments>
+          ));
+        }
+
+        // Non-EDO path: original prime-axis edges from the JI lattice.
         for (const edge of lattice.edges) {
           if (edge.type !== "generator") continue;
           if (pathMode && combinedEdgeSet && !combinedEdgeSet.has(edge)) continue;
           if (dedupVisibleSet.size > 0 && (!dedupVisibleSet.has(edge.from) || !dedupVisibleSet.has(edge.to))) continue;
-          if (isHidden(edge.from) || isHidden(edge.to)) continue;
           const a = posMap.get(edge.from), b = posMap.get(edge.to);
           if (!a || !b) continue;
           if (!byPrime.has(edge.prime)) byPrime.set(edge.prime, []);
@@ -3958,6 +4008,13 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       edo: temperingForEdo,
       temperedCommas: [],
       gridType: "square",
+      // Override DEFAULT_PROJECTIONS — the default puts prime-2 at
+      // (1.5, 1.5, -1) which shears x and y together (both grow by
+      // 1.5 per `a`), squashing the lattice onto a near-plane.
+      // Three orthogonal axes give the parallelepiped shape from
+      // the Tonescape screenshots: prime-3 → +x (chain of fifths),
+      // prime-5 → +y (chain of thirds), prime-2 → +z (octave depth).
+      projections: { 2: [0, 0, 3], 3: [3, 0, 0], 5: [0, 3, 0] },
     }));
     setMonzoGridType("square");
     setMonzoPreset(`${temperingForEdo}-EDO 3,5-primespace toroidal lattice`);
