@@ -2113,7 +2113,7 @@ export const PATTERN_SCALE_FAMILIES: Record<string, string[]> = {
     "Subminor Locrian m7",
   ],
   "Subharmonic Diatonic Family": [
-    "Subharmonic Diatonic",
+    "Subharmonic Diatonic M7",
     "Locrian s2 s5 N6",
     "Supermajor Ionian #5",
     "Dorian s3 ##4 s7",

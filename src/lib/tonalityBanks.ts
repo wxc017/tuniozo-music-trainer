@@ -495,7 +495,7 @@ function buildXenFamilyBanks(edo: number, showSevenths: boolean): TonalityBank[]
     "Subminor Locrian m7",
   ];
   const SUBHARMONIC_MODES = [
-    "Subharmonic Diatonic",
+    "Subharmonic Diatonic M7",
     "Locrian s2 s5 N6",
     "Supermajor Ionian #5",
     "Dorian s3 ##4 s7",

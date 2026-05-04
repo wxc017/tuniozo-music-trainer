@@ -109,7 +109,7 @@ const MODE_SHORT: Record<string, string> = {
   "Subminor Diatonic": "SbD",
   "Neutral Diatonic": "NeD",
   "Supermajor Diatonic": "SpD",
-  "Subharmonic Diatonic": "ShD",
+  "Subharmonic Diatonic M7": "ShD",
 };
 
 function modeShortLabel(modeName: string): string {
