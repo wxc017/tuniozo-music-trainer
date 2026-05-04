@@ -23,7 +23,8 @@ import { xenIntervalsForEdo, bankToScaleFamMode } from "@/lib/tonalityChordPool"
 import { formatRomanNumeral } from "@/lib/formatRoman";
 import { JI_LIMIT_GROUPS } from "@/lib/jiTonalityFamilies";
 import { JI_SCALE_NAMES } from "@/lib/jiScaleData";
-import { analyzeJiScale, adaptiveTriadFor } from "@/lib/jiChordAnalysis";
+import { analyzeJiScale, adaptiveTriadFor, COMMA_DRIFT_CATALOG } from "@/lib/jiChordAnalysis";
+import { limitForJiTonality } from "@/lib/jiTonalityFamilies";
 
 const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
 
@@ -1305,35 +1306,99 @@ export default function ChordsTab({
 
   return (
     <div className="space-y-5">
-      {/* JI progression mode toggle (41/53 EDO only).  Frozen JI uses the
-          scale's actual step values (chord wolves baked in); Adaptive JI
-          retunes each chord to pure ratios on the fly (tonic may drift
-          across the progression). */}
+      {/* JI progression mode selector (41/53 EDO only).  Two genuinely
+          separate modes — distinct visual treatment so the user knows
+          which world they're in:
+            FROZEN   — scale-anchored chord pool; wolves are baked in.
+                       Border + accent in muted blue.
+            ADAPTIVE — each triad retuned to pure ratios from its root.
+                       Border + accent in green; the Comma Drift Reference
+                       panel appears below to make the trade-off explicit. */}
       {(edo === 41 || edo === 53) && (
-        <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 flex items-center gap-2 flex-wrap">
-          <p className="text-xs text-[#888] font-medium mr-1">PROGRESSION MODE</p>
-          {([
-            { id: "frozen",   label: "Frozen JI Progressions",   blurb: "Scale steps are fixed; one chord per scale wolfs (the comma is baked in)." },
-            { id: "adaptive", label: "Adaptive JI Progressions", blurb: "Each chord retunes to pure ratios; tonic may drift by a comma." },
-          ] as const).map(opt => (
-            <button key={opt.id}
-              onClick={() => setJiMode(opt.id)}
-              title={opt.blurb}
-              className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${
-                jiMode === opt.id
-                  ? "bg-[#3a3a8a] text-white border border-[#5b5be6]"
-                  : "bg-[#111] text-[#666] hover:text-[#aaa] border border-[#222]"
-              }`}>
-              {opt.label}
-            </button>
-          ))}
-          <span className="text-[10px] text-[#555] italic ml-1">
+        <div className={`rounded border-2 p-3 transition-colors ${
+          jiMode === "frozen"
+            ? "border-[#3a3a8a] bg-[#0e0e1a]"
+            : "border-[#3a8a5a] bg-[#0e1a14]"
+        }`}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[10px] text-[#888] font-semibold tracking-wider mr-1">PROGRESSION MODE</p>
+            {([
+              { id: "frozen",   label: "Frozen JI Progressions",   color: "#5b5be6" },
+              { id: "adaptive", label: "Adaptive JI Progressions", color: "#5cca8a" },
+            ] as const).map(opt => (
+              <button key={opt.id}
+                onClick={() => setJiMode(opt.id)}
+                className={`px-3 py-1.5 rounded text-[11px] font-medium transition-colors border-2 ${
+                  jiMode === opt.id
+                    ? "text-white"
+                    : "bg-[#111] text-[#666] hover:text-[#aaa] border-[#2a2a2a]"
+                }`}
+                style={jiMode === opt.id ? { backgroundColor: opt.color + "30", borderColor: opt.color, color: opt.color } : {}}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-[#888] italic mt-2">
             {jiMode === "frozen"
-              ? "Hover any selected JI tonality below for its chord-purity table."
-              : "Every chord plays as pure 4:5:6 / 10:12:15 / etc.  Drift is the trade-off."}
-          </span>
+              ? "Each scale's chord pool uses the scale's actual step values verbatim.  One chord per scale wolfs (look for ✗ in the analysis below) — that's the syntonic comma made audible.  Tonic stays put."
+              : "Each triad's third + fifth get retuned to pure ratios from the chord root.  Wolves disappear — but in true Adaptive JI, chord progressions can drift the tonic.  See the Comma Drift Reference panel below for which cadences pump and by how much."}
+          </p>
         </div>
       )}
+
+      {/* Comma Drift Reference — shown only in Adaptive mode.  Lists the
+          cadences where the active limit's comma manifests as tonic
+          drift, with cents and the comma's name.  Educational; the
+          numbers are well-known JI results, not measured from playback.
+          Filtered to cadences relevant to the active scale's limit
+          (5-limit pumps don't apply to a 3-limit Pythagorean scale, etc.). */}
+      {jiMode === "adaptive" && (edo === 41 || edo === 53) && selectedJiTonalities.length > 0 && (() => {
+        const limits = new Set(
+          selectedJiTonalities.map(t => limitForJiTonality(t)).filter((x): x is 3 | 5 | 7 | 11 => x !== null)
+            .map(l => `${l}-limit` as const)
+        );
+        const relevant = COMMA_DRIFT_CATALOG.filter(c =>
+          c.applies.some(a => limits.has(a))
+        );
+        if (relevant.length === 0) return null;
+        return (
+          <div className="bg-[#0e1a14] border border-[#3a8a5a] rounded p-3 space-y-1.5">
+            <div className="flex items-baseline gap-2">
+              <p className="text-[10px] text-[#5cca8a] font-semibold tracking-wider">COMMA DRIFT REFERENCE</p>
+              <span className="text-[9px] text-[#666] italic">
+                Expected tonic drift in true Adaptive JI for these cadences.
+              </span>
+            </div>
+            <div className="grid grid-cols-[1fr_70px_140px_2fr] gap-x-3 gap-y-1 text-[10px]">
+              <span className="text-[#555] font-medium">Cadence</span>
+              <span className="text-[#555] font-medium text-right">Drift</span>
+              <span className="text-[#555] font-medium">Comma</span>
+              <span className="text-[#555] font-medium">Why</span>
+              {relevant.map(c => {
+                const sign = c.driftCents > 0 ? "+" : c.driftCents < 0 ? "" : "";
+                const driftColor = c.driftCents === 0 ? "#5cca8a" : "#cc6a8a";
+                return (
+                  <span key={c.cadence} style={{ display: "contents" }}>
+                    <span className="text-[#aaa] font-mono">{c.cadence}</span>
+                    <span className="text-right font-mono" style={{ color: driftColor }}>
+                      {sign}{c.driftCents.toFixed(1)}¢
+                    </span>
+                    <span className="text-[#888]">{c.comma}</span>
+                    <span className="text-[#666] italic">{c.blurb}</span>
+                  </span>
+                );
+              })}
+            </div>
+            <p className="text-[9px] text-[#555] italic mt-1.5">
+              Note: the current Adaptive implementation keeps chord roots anchored to the scale,
+              so what you hear is the milder "Pure Triads" variant — every chord is locally consonant
+              but the tonic doesn't actually drift.  The cadence drifts above show what would happen
+              under <em>true</em> Adaptive JI (chord roots inferred from previous chord's pure-interval motion).
+              Building that engine is the next chunk.
+            </p>
+          </div>
+        );
+      })()}
 
       {/* Per-selected-JI-tonality chord-purity table.  Walks each scale-
           degree triad, classifies the third and fifth against the JI
