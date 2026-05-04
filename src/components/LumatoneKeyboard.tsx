@@ -5,6 +5,11 @@ interface Props {
   layout: LayoutResult;
   highlightedPitches: Set<number>;
   onKeyClick?: (key: ComputedKey) => void;
+  /** SVG max-height in px.  Default 220 keeps the global header
+   *  visualizer compact; pass a larger number (or null to remove
+   *  the cap entirely) when embedding inside a tall column that
+   *  should be filled with hex keys. */
+  maxHeight?: number | null;
 }
 
 function hexPoints(cx: number, cy: number, r: number): string {
@@ -30,7 +35,7 @@ function darkenHex(hex: string): string {
   return `rgb(${Math.round(r * 0.28)},${Math.round(g * 0.28)},${Math.round(b * 0.28)})`;
 }
 
-export default function LumatoneKeyboard({ layout, highlightedPitches, onKeyClick }: Props) {
+export default function LumatoneKeyboard({ layout, highlightedPitches, onKeyClick, maxHeight = 220 }: Props) {
   const pad = 32;
   const hasHighlight = highlightedPitches.size > 0;
 
@@ -46,7 +51,7 @@ export default function LumatoneKeyboard({ layout, highlightedPitches, onKeyClic
       <svg
         width="100%"
         viewBox={viewBox}
-        style={{ maxHeight: 220, display: "block", transform: "rotate(-2.5deg)", transformOrigin: "center center" }}
+        style={{ ...(maxHeight !== null ? { maxHeight } : {}), display: "block", transform: "rotate(-2.5deg)", transformOrigin: "center center" }}
         xmlns="http://www.w3.org/2000/svg"
       >
         {layout.keys.map((key, i) => {
