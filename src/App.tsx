@@ -85,6 +85,19 @@ const TAB_LABELS: Record<Tab, string> = {
 const OCT_OPTIONS = [1,2,3,4,5,6,7];
 const VALID_TABS: Tab[] = ["intervals","chords","modeid","melody","jazz","patterns","drone"];
 
+// Display titles for the Tonal Audiation game-mode tabs.  Used by both the
+// normal tab-content render block and the 41/53-EDO Work-in-Progress
+// placeholder so the heading matches what the user clicked.
+const TONAL_TAB_TITLES: Record<string, string> = {
+  intervals: "Intervals",
+  chords:    "Chord Progressions",
+  melody:    "Melody Recognition",
+  jazz:      "Jazz Cells",
+  patterns:  "Pattern Sequences",
+  drone:     "Chord Drone",
+  modeid:    "Mode Identification",
+};
+
 // ── Settings snapshot types (shared with tabs) ──────────────────────
 export interface SettingsGroup {
   label: string;
@@ -1417,56 +1430,85 @@ export default function App() {
         })()}
 
         <div ref={tabContentRef} className="flex-1 pb-8">
-          {activeTab === "intervals" && (
+          {/* 41-EDO and 53-EDO are not yet supported in the Tonal Audiation
+              game modes — the chord/scale infrastructure these tabs depend on
+              (interval naming, chord-quality tables, mode rotations) is
+              partially implemented for those tunings.  Show a placeholder
+              instead of routing into the tab so the user knows it's planned
+              rather than broken.  Other sections (Scalar Explorations,
+              Harmonic Lattice, etc.) handle 41/53 independently. */}
+          {(edo === 41 || edo === 53) ? (
             <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Intervals</h2>
-              <IntervalsTab key={tabKey} {...sharedTabProps} />
+              <h2 className="font-semibold mb-4">{TONAL_TAB_TITLES[activeTab] ?? activeTab}</h2>
+              <div className="flex items-center justify-center py-16">
+                <div className="text-center max-w-md">
+                  <div className="inline-block px-4 py-2 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-300 text-xs font-semibold tracking-wider mb-4">
+                    WORK IN PROGRESS
+                  </div>
+                  <p className="text-[#888] text-sm">
+                    {edo}-EDO support for the Tonal Audiation game modes isn't ready yet.
+                  </p>
+                  <p className="text-[#555] text-xs mt-2">
+                    Switch to 12, 17, 19, 22, or 31-EDO to use this tab. Other sections
+                    (Scalar Explorations, Harmonic Lattice, Temperament Explorer) work in {edo}-EDO.
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
+          ) : (
+            <>
+              {activeTab === "intervals" && (
+                <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+                  <h2 className="font-semibold mb-4">Intervals</h2>
+                  <IntervalsTab key={tabKey} {...sharedTabProps} />
+                </div>
+              )}
 
-          {activeTab === "chords" && (
-            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Chord Progressions</h2>
-              <ChordsTab key={tabKey} {...sharedTabProps} />
-            </div>
-          )}
+              {activeTab === "chords" && (
+                <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+                  <h2 className="font-semibold mb-4">Chord Progressions</h2>
+                  <ChordsTab key={tabKey} {...sharedTabProps} />
+                </div>
+              )}
 
-          {activeTab === "melody" && (
-            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Melody Recognition</h2>
-              <MelodyTab key={tabKey} {...sharedTabProps} />
-            </div>
-          )}
+              {activeTab === "melody" && (
+                <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+                  <h2 className="font-semibold mb-4">Melody Recognition</h2>
+                  <MelodyTab key={tabKey} {...sharedTabProps} />
+                </div>
+              )}
 
-          {activeTab === "jazz" && (
-            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Jazz Cells</h2>
-              <JazzTab key={tabKey} {...sharedTabProps} />
-            </div>
-          )}
+              {activeTab === "jazz" && (
+                <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+                  <h2 className="font-semibold mb-4">Jazz Cells</h2>
+                  <JazzTab key={tabKey} {...sharedTabProps} />
+                </div>
+              )}
 
-          {activeTab === "patterns" && (
-            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Pattern Sequences</h2>
-              <PatternsTab key={tabKey} {...sharedTabProps} />
-            </div>
-          )}
+              {activeTab === "patterns" && (
+                <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+                  <h2 className="font-semibold mb-4">Pattern Sequences</h2>
+                  <PatternsTab key={tabKey} {...sharedTabProps} />
+                </div>
+              )}
 
-          {activeTab === "drone" && (
-            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Chord Drone</h2>
-              <DroneTab key={tabKey} tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch}
-                edo={edo} onHighlight={handleHighlight} onResult={handleResult}
-                onPlay={handlePlay} onAnswer={trackAnswer} lastPlayed={lastPlayed} ensureAudio={ensureAudio}
-                onDroneStateChange={(active) => { if (!active) setDroneIsOn(false); }} />
-            </div>
-          )}
+              {activeTab === "drone" && (
+                <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+                  <h2 className="font-semibold mb-4">Chord Drone</h2>
+                  <DroneTab key={tabKey} tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch}
+                    edo={edo} onHighlight={handleHighlight} onResult={handleResult}
+                    onPlay={handlePlay} onAnswer={trackAnswer} lastPlayed={lastPlayed} ensureAudio={ensureAudio}
+                    onDroneStateChange={(active) => { if (!active) setDroneIsOn(false); }} />
+                </div>
+              )}
 
-          {activeTab === "modeid" && (
-            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Mode Identification</h2>
-              <ModeIdentificationTab key={tabKey} {...sharedTabProps} />
-            </div>
+              {activeTab === "modeid" && (
+                <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+                  <h2 className="font-semibold mb-4">Mode Identification</h2>
+                  <ModeIdentificationTab key={tabKey} {...sharedTabProps} />
+                </div>
+              )}
+            </>
           )}
 
         </div>

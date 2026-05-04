@@ -935,6 +935,10 @@ const DBLH_DEGREE_NAMES = [
 // approximation in the step pattern (e.g. 31-EDO Whole Tone = 5,5,5,5,5,6).
 function buildSymmetricFamily(edo: number): ScaleFamilyMap {
   const dm = getDegreeMap(edo);
+  // Same note count as 12-EDO across every EDO: Whole Tone (6),
+  // Half-Whole Diminished (8), Whole-Half Diminished (8).  Outside 12-EDO
+  // the step pattern can't tile the octave perfectly evenly; the scale
+  // closes the octave with a small approximation in one step.
   const result: ScaleFamilyMap = {
     "Whole Tone": {
       "1": dm["1"], "2": dm["2"], "3": dm["3"],
@@ -950,31 +954,38 @@ function buildSymmetricFamily(edo: number): ScaleFamilyMap {
     },
   };
 
-  // 31-EDO has a half-sharp / half-flat tier (one diesis = 1\31 ≈ 39¢)
-  // sitting between the natural and chromatic accidentals.  This gives a
-  // distinct second spelling for each symmetric scale: same scale degrees,
-  // shifted one diesis toward the natural.  The notation convention used
-  // in the rest of the codebase is "##X" = half-sharp (one step above
-  // natural X) and "bbX" = half-flat (one step below natural X) — see
-  // labelStep31ForPosition() in musicTheory.ts.  In 12-EDO these collapse
-  // to the same chromatic positions, so we only register them here.
+  // 31-EDO exposes a half-sharp / half-flat tier (one diesis = 1\31 ≈ 39¢)
+  // sitting between natural and chromatic accidentals.  Each symmetric
+  // scale gets one additional variant where the tritone-region accidental
+  // is shifted by one diesis toward the natural tones.  In 12-EDO these
+  // collapse to the chromatic version so we only register them here.
+  // Naming convention: "##X" = half-sharp (one diesis above natural),
+  // "bbX" = half-flat (one diesis below natural) — matches
+  // labelStep31ForPosition(), NOT standard double-sharp/double-flat.
   if (edo === 31) {
-    const P4 = dm["4"], P5 = dm["5"], M6 = dm["6"], NATb7 = dm["b7"];
-    const M2 = dm["2"];
-    // Half-sharp = natural + 1 diesis; half-flat = natural - 1 diesis.
-    const hs = (deg: number) => deg + 1;
-    const hf = (deg: number) => deg - 1;
-    result["Whole Tone (half-sharp)"] = {
-      "1": dm["1"], "2": M2, "3": dm["3"],
-      "##4": hs(P4), "##5": hs(P5), "##6": hs(M6),
+    const M2 = dm["2"], M3 = dm["3"], P4 = dm["4"], P5 = dm["5"], M6 = dm["6"], NATb7 = dm["b7"], M7 = dm["7"];
+    const hs = (deg: number) => deg + 1;   // half-sharp: natural + 1 step
+    const hf = (deg: number) => deg - 1;   // half-flat:  natural − 1 step
+
+    // Whole Tone (Half-Sharp) — shifts #4/#5 down by one diesis to ##4/##5.
+    // No flat/half-flat variant since whole tone has no natural "5" to flatten;
+    // the same scale spelled with flats only changes which side of the
+    // tritone gets named.
+    result["Whole Tone (Half-Sharp)"] = {
+      "1": dm["1"], "2": M2, "3": M3,
+      "##4": hs(P4), "##5": hs(P5), "b7": NATb7,
     };
-    result["Half-Whole Diminished (half-sharp)"] = {
-      "1": dm["1"], "bb2": hf(M2), "bb3": hf(dm["3"]), "3": dm["3"],
-      "##4": hs(P4), "5": P5, "6": M6, "bb7": hf(NATb7) ?? NATb7 - 1,
+
+    // Half-Whole Diminished (Half-Sharp) — shifts #4 down to ##4.
+    result["Half-Whole Diminished (Half-Sharp)"] = {
+      "1": dm["1"], "b2": dm["b2"], "b3": dm["b3"], "3": M3,
+      "##4": hs(P4), "5": P5, "6": M6, "b7": NATb7,
     };
-    result["Whole-Half Diminished (half-sharp)"] = {
-      "1": dm["1"], "2": M2, "bb3": hf(dm["3"]), "4": P4,
-      "##4": hs(P4), "bb6": hf(M6), "6": M6, "7": dm["7"],
+
+    // Whole-Half Diminished (Half-Flat) — base uses b5; variant shifts to bb5.
+    result["Whole-Half Diminished (Half-Flat)"] = {
+      "1": dm["1"], "2": M2, "b3": dm["b3"], "4": P4,
+      "bb5": hf(P5), "b6": dm["b6"], "6": M6, "7": M7,
     };
   }
   return result;

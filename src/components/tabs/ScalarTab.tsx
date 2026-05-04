@@ -37,7 +37,9 @@ const TONALITY_FAMILIES: { key: string; label: string; color: string; tonalities
   { key: "symmetric", label: "SYMMETRIC", color: "#5ab9b0",
     tonalities: [
       "Whole Tone","Half-Whole Diminished","Whole-Half Diminished",
-      "Whole Tone (half-sharp)","Half-Whole Diminished (half-sharp)","Whole-Half Diminished (half-sharp)",
+      "Whole Tone (Half-Sharp)",
+      "Half-Whole Diminished (Half-Sharp)",
+      "Whole-Half Diminished (Half-Flat)",
     ] },
 ];
 
