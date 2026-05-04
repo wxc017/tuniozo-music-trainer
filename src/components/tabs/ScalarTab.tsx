@@ -3,7 +3,7 @@ import { audioEngine } from "@/lib/audioEngine";
 import { useLS } from "@/lib/storage";
 import { formatHalfAccidentals, getModeDegreeMap, getSolfege, getHeathwaiteSolfege, getBaseChords, getChordShapes } from "@/lib/edoData";
 import { syllableForEdoStep } from "@/lib/microtonalSolfege";
-import { speakSyllable } from "@/lib/solfegeSpeech";
+import { piperSpeak } from "@/lib/piperSpeech";
 import { getTonalityBanks, type TonalityBank } from "@/lib/tonalityBanks";
 import { bankToScaleFamMode } from "@/lib/tonalityChordPool";
 import { jiLimitGroupsForEdo } from "@/lib/jiTonalityFamilies";
@@ -603,11 +603,7 @@ export default function ScalarTab({
                     onClick={e => {
                       e.stopPropagation();
                       e.preventDefault();
-                      // For microtonal syllables route through speakSyllable
-                      // with the IPA so the English-orthography mapping
-                      // (Sais → "sice", Soos → "soose", etc.) is applied.
-                      // Heathwaite syllables read correctly as plain text.
-                      speakSyllable(
+                      piperSpeak(
                         labelText,
                         solfegeKind === "microtonal" ? { ipa: microtonal.ipa } : undefined,
                       );
