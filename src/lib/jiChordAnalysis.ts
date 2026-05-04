@@ -29,7 +29,7 @@ interface KnownInterval {
   kind: "pure-3" | "pure-5" | "pure-7" | "pure-11" | "wolf";
 }
 
-const KNOWN_INTERVALS: KnownInterval[] = [
+export const KNOWN_INTERVALS: KnownInterval[] = [
   { ratio: "1/1",      cents: 0,       name: "Unison",      kind: "pure-3" },
   // 2nds
   { ratio: "16/15",    cents: 111.7,   name: "Just m2",     kind: "pure-5" },
