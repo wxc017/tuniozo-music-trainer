@@ -715,7 +715,17 @@ export default function App() {
                   return (
                     <button
                       key={b.id}
-                      onClick={() => { if (!active) { stopAllAudio(); setSection(b.id); } }}
+                      onClick={() => {
+                        if (active) return;
+                        stopAllAudio();
+                        // Scalar Explorations only supports 12 / 31 EDO
+                        // (xen pattern maps registered for those).
+                        // Snap if the user was on something else.
+                        if (b.id === "scalar-exploration" && edo !== 12 && edo !== 31) {
+                          setEdo(31);
+                        }
+                        setSection(b.id);
+                      }}
                       className={`px-2 py-1 text-xs rounded border transition-colors ${
                         active
                           ? "bg-[#7173e618] border-[#7173e6] text-[#9999ee]"
@@ -932,9 +942,13 @@ export default function App() {
               <select value={edo} onChange={e => setEdo(Number(e.target.value))}
                 className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
                 {/* Tonal Audiation only exposes EDOs that belong to the
-                    active temperament; other sections (Scalar Explorations,
-                    Harmonic Lattice, etc.) always see the full EDO list. */}
-                {(section === "ear-trainer" ? TEMPERAMENT_EDOS[temperament] : EDO_OPTIONS)
+                    active temperament; Scalar Explorations only supports
+                    12-EDO and 31-EDO since the alteration / family
+                    lattices' xen pattern maps are registered for those
+                    two; other sections see the full EDO list. */}
+                {(section === "ear-trainer" ? TEMPERAMENT_EDOS[temperament]
+                  : section === "scalar-exploration" ? [12, 31]
+                  : EDO_OPTIONS)
                   .map(n => <option key={n} value={n}>{n}</option>)}
               </select>
               {edo === 12 && (

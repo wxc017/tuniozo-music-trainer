@@ -303,6 +303,60 @@ export interface FifthTuningFamily {
   jiAnchors?: { name: string; cents: number }[];
 }
 
+/**
+ * Map a fifth size (in cents) to its fifth-tuning family.  The
+ * canonical band cutoffs follow the spectrum in
+ * FIFTH_TUNING_FAMILIES (narrow → wide).  Returns null if the
+ * fifth falls outside any band (which only happens for fifths
+ * narrower than ~685 ¢ or wider than 720 ¢).
+ */
+export function classifyFifthTuningFamily(fifthCents: number): FifthTuningFamily | null {
+  for (const fam of FIFTH_TUNING_FAMILIES) {
+    if (fifthCents >= fam.fifthRange[0] && fifthCents <= fam.fifthRange[1]) {
+      return fam;
+    }
+  }
+  return null;
+}
+
+/**
+ * Group every EDO in `edos` by its fifth-tuning family using each
+ * EDO's actual best-fifth cents.  EDOs whose fifth lands outside
+ * the canonical band get bucketed under "Other".  Returns the
+ * groups in family-spectrum order (narrow fifths → wide fifths),
+ * with EDOs inside each group sorted by fifth cents.
+ */
+export function groupEdosByFifthFamily(
+  edos: number[],
+  edoData: Map<number, EDOData>,
+): { family: FifthTuningFamily | null; edos: { edo: number; fifthCents: number }[] }[] {
+  const buckets = new Map<string | null, { edo: number; fifthCents: number }[]>();
+  for (const edo of edos) {
+    const data = edoData.get(edo);
+    if (!data) continue;
+    const fifth = data.ring.fifthCents;
+    const fam = classifyFifthTuningFamily(fifth);
+    const key = fam?.name ?? null;
+    const arr = buckets.get(key) ?? [];
+    arr.push({ edo, fifthCents: fifth });
+    buckets.set(key, arr);
+  }
+  const out: { family: FifthTuningFamily | null; edos: { edo: number; fifthCents: number }[] }[] = [];
+  for (const fam of FIFTH_TUNING_FAMILIES) {
+    const list = buckets.get(fam.name);
+    if (list) {
+      list.sort((a, b) => a.fifthCents - b.fifthCents);
+      out.push({ family: fam, edos: list });
+    }
+  }
+  const others = buckets.get(null);
+  if (others) {
+    others.sort((a, b) => a.fifthCents - b.fifthCents);
+    out.push({ family: null, edos: others });
+  }
+  return out;
+}
+
 export const FIFTH_TUNING_FAMILIES: FifthTuningFamily[] = [
   {
     name: "Equal heptatonic / Neutral diatonic",
