@@ -753,7 +753,7 @@ function Scene({
       })}
 
       <OrbitControls makeDefault enableDamping dampingFactor={0.15}
-        minDistance={20} maxDistance={400} />
+        minDistance={3} maxDistance={400} />
     </>
   );
 }
@@ -933,10 +933,12 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
     setSelectedId(node.id);
     setPendingFocusPc(null);
     if (ctrl) {
-      // Ctrl+click: toggle the ray overlay.  If rays were already
-      // showing FOR THIS node, turn them off; otherwise turn on so
-      // the new node's rays appear.
+      // Ctrl+click: toggle the ray overlay AND pan the camera focus
+      // to this node so the user can immediately see the spokes
+      // sticking out around it (otherwise the spokes appear off
+      // wherever the camera was last pointing).
       setShowRays(!alreadyOnForThis);
+      setCameraFocusId(node.id);
       return;
     }
     // Plain click: re-anchor the lattice on this node (so it becomes
@@ -1082,12 +1084,14 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   // Initial camera position — close enough to see the anchor knot
   // clearly at startup; the user zooms out (or expands neighbouring
   // roots) as they grow the structure.
-  // Sized for the bigger anchor (R=28) — fits the anchor plus the
-  // small-offset satellites at default zoom.  Family-lattice view
-  // uses a top-down camera since its rings live flat in XY.
+  // Camera default depends on the view AND on whether modulations
+  // are active — the alteration lattice scales up (R 14 → 28) when
+  // satellites exist, so the camera pulls back accordingly.
   const cameraPos: [number, number, number] = latticeView === "family"
     ? [0, 0, 90]
-    : [80, 60, 160];
+    : pcExpansionInfo.size > 0
+      ? [80, 60, 160]
+      : [40, 30, 80];
 
   return (
     <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded overflow-hidden">
