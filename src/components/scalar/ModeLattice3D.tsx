@@ -605,13 +605,13 @@ function Scene({
           puts the ring in XY, matching the node-pos plane. */}
       {(lattice.familyRings ?? []).map(ring => (
         <mesh key={`ring-${ring.familyId}`}>
-          <torusGeometry args={[ring.radius, 1.1, 18, 128]} />
+          <torusGeometry args={[ring.radius, 0.3, 12, 128]} />
           <meshStandardMaterial
             color={ring.color}
             emissive={ring.color}
-            emissiveIntensity={0.45}
+            emissiveIntensity={0.5}
             roughness={0.55} metalness={0}
-            transparent opacity={0.9} />
+            transparent opacity={0.95} />
         </mesh>
       ))}
 
