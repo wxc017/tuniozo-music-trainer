@@ -4022,16 +4022,18 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       showPrime2: true,
       edo: temperingForEdo,
       temperedCommas: [],
-      gridType: "square",
-      // Override DEFAULT_PROJECTIONS — the default puts prime-2 at
-      // (1.5, 1.5, -1) which shears x and y together (both grow by
-      // 1.5 per `a`), squashing the lattice onto a near-plane.
-      // Three orthogonal axes give the parallelepiped shape from
-      // the Tonescape screenshots: prime-3 → +x (chain of fifths),
-      // prime-5 → +y (chain of thirds), prime-2 → +z (octave depth).
-      projections: { 2: [0, 0, 3], 3: [3, 0, 0], 5: [0, 3, 0] },
+      // Parametric torus.  Cells project onto a torus surface
+      // where each fifth advances the major angle by P5_step/edo
+      // and each third advances the minor angle by M3_step/edo
+      // (full turn).  After class-rep filtering, every visible
+      // rep lands at its own clean (u, v) point on the torus,
+      // and the synthesised P5 + M3 edges trace continuous
+      // cycles around the surface instead of cutting chaotically
+      // through 3D space.
+      gridType: "toroidal",
+      projections: DEFAULT_PROJECTIONS,
     }));
-    setMonzoGridType("square");
+    setMonzoGridType("toroidal");
     setMonzoPreset(`${temperingForEdo}-EDO 3,5-primespace toroidal lattice`);
     // EDO context: keep prime edges visible (the M3 / P5 chains are
     // exactly what makes the toroidal structure legible), and
