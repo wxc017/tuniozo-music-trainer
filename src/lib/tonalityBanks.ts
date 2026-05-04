@@ -515,6 +515,43 @@ function buildXenFamilyBanks(edo: number, showSevenths: boolean): TonalityBank[]
 // Roman numerals for scale degrees 1-7
 const XEN_ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"];
 
+// Major-scale reference (31-EDO and 12-EDO) used to compute the
+// scale-degree alteration prefix on each chord's roman numeral.
+// E.g. a chord whose root sits on a subminor 2nd is labelled ₛII
+// (one chromatic step + one half-step below major II's expected
+// position), mirroring how Western theory uses bIII to mean a III
+// chord with a flat-2 root from major.
+const MAJOR_REF_31 = [0, 5, 10, 13, 18, 23, 28];
+const MAJOR_REF_12 = [0, 2, 4, 5, 7, 9, 11];
+
+function rootDegreePrefix(rootStep: number, degreeIdx: number, edo: number): string {
+  const ref = edo === 31 ? MAJOR_REF_31 : MAJOR_REF_12;
+  const expected = ref[degreeIdx] ?? 0;
+  const diff = rootStep - expected;
+  if (edo === 31) {
+    // Use the same single-letter family used in the superscripts:
+    // s = sub (-3), N = neutral (-1), S = sup (+1).  Chromatic flats
+    // and sharps still get b / # / bb / ##.
+    if (diff ===  0) return "";
+    if (diff === -1) return "N";   // half-flat (neutral) below major
+    if (diff === -2) return "b";    // chromatic flat
+    if (diff === -3) return "s";   // subminor (one half-step below ♭)
+    if (diff === -4) return "bb";   // double flat
+    if (diff === +1) return "S";   // half-sharp (super) above major
+    if (diff === +2) return "#";    // chromatic sharp
+    if (diff === +3) return "S#";  // sup-sharp
+    if (diff === +4) return "##";   // double sharp
+    return "";
+  }
+  // 12-EDO
+  if (diff ===  0) return "";
+  if (diff === -1) return "b";
+  if (diff === -2) return "bb";
+  if (diff === +1) return "#";
+  if (diff === +2) return "##";
+  return "";
+}
+
 // Classify a 3rd-interval (in 31-EDO) into one of: "sub", "m", "neu", "M", "sup", "?"
 function classify3rd(thirdSemis: number): "sub" | "m" | "neu" | "M" | "sup" | "?" {
   if (thirdSemis === 7)  return "sub";
@@ -596,6 +633,12 @@ function buildOneXenMode(parent: number[], rotIdx: number, modeName: string, edo
     // subminor rather than plain minor.  The redundant "s3" suffix
     // is then dropped (see below).
     if (q3 === "sub") roman = "ₛ" + roman;
+    // Scale-degree alteration: prepend ♭/♯/ₛ/ˢ etc. to the roman
+    // numeral when the chord's root doesn't sit on the major-scale
+    // expected position for that degree.  Mirrors Western theory's
+    // bIII / #IV / etc. convention.
+    const degPrefix = rootDegreePrefix(r, i, edo);
+    if (degPrefix) roman = degPrefix + roman;
     // 5th-quality marker.  ° / + remain reserved for the chromatic
     // flat-5 / sharp-5 (the canonical diminished / augmented chord
     // qualities).  31-EDO's half-flat (bb5) and half-sharp (##5) 5ths,
