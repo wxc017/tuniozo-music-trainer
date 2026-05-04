@@ -531,6 +531,34 @@ export default function ScalarTab({
                   {droning && (
                     <span className="text-[9px] text-[#5cca8a]">🔊 drone</span>
                   )}
+                  {/* TTS sub-button — speaks the syllable using the
+                      browser's Web Speech API.  Click without triggering
+                      the parent's play-tone handler via stopPropagation.
+                      For microtonal syllables we fall back to the IPA
+                      string (which TTS engines pronounce more accurately
+                      than the orthographic form for Sais / Soos / etc.). */}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onMouseDown={e => e.stopPropagation()}
+                    onTouchStart={e => e.stopPropagation()}
+                    onClick={e => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      if (typeof window === "undefined" || !window.speechSynthesis) return;
+                      window.speechSynthesis.cancel();
+                      const text = solfegeKind === "microtonal"
+                        ? microtonal.label
+                        : labelText;
+                      const utt = new SpeechSynthesisUtterance(text);
+                      utt.rate = 0.85;
+                      utt.pitch = 1.0;
+                      window.speechSynthesis.speak(utt);
+                    }}
+                    title={`Hear "${solfegeKind === "microtonal" ? microtonal.label : labelText}" spoken`}
+                    className="mt-0.5 px-1.5 py-0.5 text-[9px] rounded border border-[#3a3a3a] bg-[#0e0e0e] text-[#888] hover:text-[#fff] hover:bg-[#1a1a1a] hover:border-[#5b5be6] cursor-pointer select-none">
+                    🗣 say
+                  </span>
                 </button>
               );
             })}
