@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import { useLS } from "@/lib/storage";
-import { formatHalfAccidentals, getModeDegreeMap, getSolfege, getHeathwaiteSolfege } from "@/lib/edoData";
+import { formatHalfAccidentals, getModeDegreeMap, getSolfege, getHeathwaiteSolfege, getBaseChords } from "@/lib/edoData";
 import { syllableForEdoStep } from "@/lib/microtonalSolfege";
 import { getTonalityBanks, type TonalityBank } from "@/lib/tonalityBanks";
 import { bankToScaleFamMode } from "@/lib/tonalityChordPool";
@@ -241,6 +241,19 @@ export default function ScalarTab({
   // action (another chord click, a different highlight, or Clear)
   // overrides it.  No timed auto-clear, matching the Highlight Scale
   // button's sticky behaviour.
+  // Base chord map for the current EDO — used as a fallback when a
+  // chord entry has steps: null (e.g. ref("I") / ref("IV") in the Major
+  // bank, which intentionally defer to the EDO-wide base map).  Without
+  // this fallback those chord buttons did nothing because the call
+  // site short-circuited on `(() => { const s = resolveChordSteps(entry.label, entry.steps); if (s) playChord(s); })()`.
+  const baseChordMap = useMemo<Record<string, number[]>>(
+    () => Object.fromEntries(getBaseChords(edo)),
+    [edo],
+  );
+  const resolveChordSteps = useCallback((label: string, steps: number[] | null): number[] | null => {
+    return steps ?? baseChordMap[label] ?? null;
+  }, [baseChordMap]);
+
   const playChord = useCallback(async (steps: number[]) => {
     if (!steps || steps.length === 0) return;
     await ensureAudio();
@@ -330,6 +343,59 @@ export default function ScalarTab({
 
   return (
     <div className="space-y-4">
+      {/* ── Tuning-family EDO selector — Temperament-Explorer style.
+          Currently shows just MEANTONE since that's the only family
+          whose alteration / family-lattice xen pattern maps are
+          registered for Scalar Explorations.  Pythagorean (41) /
+          Schismatic (53) families will be added when their pattern
+          maps land. ── */}
+      <div className="bg-[#0e0e0e] border border-[#222] rounded p-3 space-y-2">
+        <div className="text-[10px] text-[#888] uppercase tracking-wider">Tuning families</div>
+        <div className="border-l-2 border-[#2a2a4a] pl-2.5">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-[#cfe6ff]">Meantone</span>
+            <span className="text-[10px] text-[#666] font-mono">5th ≈ 696–702 ¢</span>
+          </div>
+          <div className="text-[10px] text-[#777] leading-snug mb-1.5">
+            Syntonic comma vanishes; pure thirds emerge from stacks of slightly-flat fifths.
+            Standard Western functional harmony works without comma adjustments.
+          </div>
+          <div className="flex gap-1 flex-wrap">
+            {[12, 31].map(n => {
+              const active = edo === n;
+              const fifthCents = n === 12 ? 700.0 : 696.77;
+              return (
+                <button key={n} onClick={() => {/* edo change handled at App level */}}
+                  disabled
+                  title={`${n}-EDO · 5th = ${fifthCents.toFixed(2)} ¢ — switch via the EDO selector at top.`}
+                  className={`px-2 py-0.5 text-[10px] rounded font-mono border ${
+                    active
+                      ? "bg-[#7173e6] text-white border-[#7173e6]"
+                      : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a]"
+                  }`}>
+                  {n}
+                  <span className="text-[8px] text-[#888] ml-1">{fifthCents.toFixed(1)}¢</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="border-l-2 border-[#1a1a2a] pl-2.5 opacity-50">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-[#888]">Pythagorean</span>
+            <span className="text-[10px] text-[#555] font-mono">5th ≈ 702 ¢</span>
+            <span className="text-[9px] text-[#5a5a5a] italic">(coming soon)</span>
+          </div>
+        </div>
+        <div className="border-l-2 border-[#1a1a2a] pl-2.5 opacity-50">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-[#888]">Schismatic</span>
+            <span className="text-[10px] text-[#555] font-mono">5th ≈ 702 ¢</span>
+            <span className="text-[9px] text-[#5a5a5a] italic">(coming soon)</span>
+          </div>
+        </div>
+      </div>
+
       {/* ── Floating chord-analysis overlay — appears top-right when
           a JI tonality is selected AND a chord is highlighted in the
           chord-pool below.  Mirrors the same panel ChordsTab uses so
@@ -487,15 +553,16 @@ export default function ScalarTab({
                     return (
                       <span key={key} className="inline-flex items-stretch">
                         <button
-                          onClick={() => entry.steps && playChord(entry.steps)}
-                          title={entry.steps
-                            ? `Play ${entry.label} — ${entry.steps.join(", ")}`
-                            : entry.label}
+                          onClick={() => { const s = resolveChordSteps(entry.label, entry.steps); if (s) playChord(s); }}
+                          title={(() => {
+                            const s = resolveChordSteps(entry.label, entry.steps);
+                            return s ? `Play ${entry.label} — ${s.join(", ")}` : entry.label;
+                          })()}
                           className="px-4 py-2.5 text-xl font-semibold rounded-l border-y border-l border-[#2a2a2a] bg-[#141414] text-[#bbb] hover:text-white hover:border-[#444] transition-colors">
                           {formatRomanNumeral(entry.label)}
                         </button>
                         <button
-                          onClick={() => entry.steps && toggleChordHighlight(key, entry.steps)}
+                          onClick={() => { const s = resolveChordSteps(entry.label, entry.steps); if (s) toggleChordHighlight(key, s); }}
                           title={lit
                             ? `Click to clear highlight on ${entry.label}`
                             : `Highlight ${entry.label} on keyboard — stays until clicked again`}
