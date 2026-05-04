@@ -25,6 +25,7 @@ import { JI_LIMIT_GROUPS } from "@/lib/jiTonalityFamilies";
 import { JI_SCALE_NAMES } from "@/lib/jiScaleData";
 import { analyzeJiScale, adaptiveTriadFor, COMMA_DRIFT_CATALOG } from "@/lib/jiChordAnalysis";
 import { limitForJiTonality } from "@/lib/jiTonalityFamilies";
+import { tracePathDrifts, driftCentsToSteps, stripChordLabel } from "@/lib/jiLattice";
 
 const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
 
@@ -238,6 +239,14 @@ export default function ChordsTab({
   // args — meaning xenList=[] for every chord on iteration 2+, and
   // qrt/qnt toggles never fired again.
   const loopChordMapRef = useRef<Record<string, number[]> | null>(null);
+  // Latest progression's lattice-drift trace.  Populated by buildLoopFrames
+  // when Adaptive JI is on, so the drift indicator UI can read it back
+  // without recomputing.  Stored as a ref instead of state to avoid a
+  // re-render every loop iteration.
+  const latticeDriftsRef = useRef<{ progression: string[]; drifts: number[] } | null>(null);
+  // Re-render trigger so the drift indicator updates after each
+  // buildLoopFrames call (refs alone don't trigger re-renders).
+  const [latticeRevision, setLatticeRevision] = useState(0);
   const loopXenMapRef = useRef<Record<string, string[]> | null>(null);
   const loopScaleRootsRef = useRef<number[] | null>(null);
   // Recency tracking for tonality picking — bias toward tonalities the
@@ -899,15 +908,41 @@ export default function ChordsTab({
     const useMap = chordMapOverride ?? chordMap;
     const chords: number[][] = [];
     const appliedShapes: (number[] | null)[] = [];
+
+    // Adaptive JI lattice: compute the cumulative comma drift for each
+    // chord in the progression by tracing chord transitions on the
+    // 5-limit (3-axis, 5-axis) prime lattice.  When the chain pumps
+    // (e.g. I-vi-ii-V-I), each chord after the pump carries a syntonic-
+    // comma offset that shifts its absolute pitch by a few cents — this
+    // is the audible drift.  Frozen mode keeps drifts at 0.
+    const useLattice = jiMode === "adaptive" && (edo === 41 || edo === 53);
+    const driftsCents = useLattice ? tracePathDrifts(progression) : null;
+    if (useLattice && driftsCents) {
+      latticeDriftsRef.current = { progression, drifts: driftsCents };
+    } else {
+      latticeDriftsRef.current = null;
+    }
+    setLatticeRevision(v => v + 1);
+
     // Thread each chord's voicing into the next so voiceChord can run its
     // voice-leading checklist against the previous chord's actual pitches.
     let prevVoicing: number[] | null = null;
-    for (const rn of progression) {
+    for (let i = 0; i < progression.length; i++) {
+      const rn = progression[i];
       const xenList = xenForNumeral?.[rn] ?? [];
       const result = voiceChord(rn, null, useMap, prevVoicing, xenList, scaleRootsOverride);
-      chords.push(result ? result.chordAbs : []);
+      let chordAbs = result ? result.chordAbs : [];
+      // Shift the chord's absolute pitches by the lattice drift offset
+      // so the played chord lands at its true comma-shifted pitch.  The
+      // round-to-EDO-step is unavoidable approximation — 41-EDO resolves
+      // the syntonic comma to ~1\41 (~29¢), 53-EDO to ~1\53 (~23¢).
+      if (useLattice && driftsCents && chordAbs.length > 0) {
+        const offsetSteps = driftCentsToSteps(driftsCents[i], edo);
+        if (offsetSteps !== 0) chordAbs = chordAbs.map(p => p + offsetSteps);
+      }
+      chords.push(chordAbs);
       appliedShapes.push(result ? result.appliedShape : null);
-      if (result && result.chordAbs.length > 0) prevVoicing = result.chordAbs;
+      if (chordAbs.length > 0) prevVoicing = chordAbs;
     }
     // Derive octave indices from the absolute-pitch range — generateBassLine
     // and generateMelodyLine still take octave indices internally.
@@ -979,7 +1014,7 @@ export default function ChordsTab({
     }
 
     return { chords, bass, melody, appliedShapes };
-  }, [voiceChord, chordMap, bassLineMode, melodyMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, layoutPitchRange, passingTones]);
+  }, [voiceChord, chordMap, bassLineMode, melodyMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, layoutPitchRange, passingTones, jiMode]);
 
   /** Play all active texture voices using the multi-voice scheduler.
    *  CHORD_BOOST compensates for the playMultiVoice 1/sqrt(noteCount)
@@ -1390,12 +1425,57 @@ export default function ChordsTab({
               })}
             </div>
             <p className="text-[9px] text-[#555] italic mt-1.5">
-              Note: the current Adaptive implementation keeps chord roots anchored to the scale,
-              so what you hear is the milder "Pure Triads" variant — every chord is locally consonant
-              but the tonic doesn't actually drift.  The cadence drifts above show what would happen
-              under <em>true</em> Adaptive JI (chord roots inferred from previous chord's pure-interval motion).
-              Building that engine is the next chunk.
+              The drifts above are well-known JI results.  As of this build, the Adaptive engine
+              <em> does</em> apply lattice motion — start a progression with I-vi-ii-V-I or
+              I-IV-ii-V-I and watch the live trace below to see the comma accumulate per chord.
             </p>
+
+            {/* Live lattice trace from the most recent buildLoopFrames call.
+                Empty until the user plays a progression in Adaptive mode.
+                Reads from latticeDriftsRef + latticeRevision so the panel
+                updates each loop iteration without polling. */}
+            {(() => {
+              void latticeRevision;  // subscribe
+              const trace = latticeDriftsRef.current;
+              if (!trace) {
+                return (
+                  <p className="text-[9px] text-[#555] italic mt-1">
+                    Live trace: <span className="text-[#666]">play a progression to see the lattice walk.</span>
+                  </p>
+                );
+              }
+              const finalDrift = trace.drifts[trace.drifts.length - 1] ?? 0;
+              const maxAbsDrift = Math.max(...trace.drifts.map(d => Math.abs(d)));
+              return (
+                <div className="mt-2 pt-2 border-t border-[#1f3a2a]">
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <p className="text-[10px] text-[#5cca8a] font-semibold tracking-wider">LIVE LATTICE TRACE</p>
+                    <span className="text-[9px] text-[#888]">
+                      Final drift: <span className="font-mono" style={{ color: Math.abs(finalDrift) < 1 ? "#5cca8a" : "#cc6a8a" }}>
+                        {finalDrift >= 0 ? "+" : ""}{finalDrift.toFixed(1)}¢
+                      </span>
+                      {" · "}
+                      Peak excursion: <span className="font-mono text-[#ccc]">{maxAbsDrift.toFixed(1)}¢</span>
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {trace.progression.map((chord, i) => {
+                      const drift = trace.drifts[i];
+                      const driftAbs = Math.abs(drift);
+                      const driftColor = driftAbs < 1 ? "#5cca8a" : driftAbs < 15 ? "#c8aa50" : "#cc6a8a";
+                      return (
+                        <div key={i} className="flex flex-col items-center px-2 py-1 rounded border border-[#222] bg-[#0a1410]">
+                          <span className="text-[10px] text-[#aaa] font-mono">{stripChordLabel(chord)}</span>
+                          <span className="text-[9px] font-mono" style={{ color: driftColor }}>
+                            {drift >= 0 ? "+" : ""}{drift.toFixed(1)}¢
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         );
       })()}
