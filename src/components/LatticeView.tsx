@@ -1756,7 +1756,10 @@ function MonzoNodeMesh({ node, pos, isActive, isHovered, isFocused, showLabel = 
     // colour map.  All cells render in a single resting colour so
     // the only thing that draws the eye is the active chord-tone
     // pulse (isActive above) — exactly what the user asked for.
-    if (edo !== undefined) return "#3a3a4a";
+    // Brighter than the original "#3a3a4a" so the dots stand out
+    // against the black background; was barely above background
+    // luminance and hard to spot.
+    if (edo !== undefined) return "#7a7a8a";
     if (isUnison) return "#9395ea";
     if (node.monzo.isComma) return "#553344";
     if (temperedClass !== undefined) return classColorMap.get(temperedClass) ?? "#3a3a4a";
@@ -2513,8 +2516,16 @@ function MonzoScene({ lattice, topology, droneNodes, hoveredNode, onHover, onCli
           return true;
         })
         .map(node => {
-        const origin = focusKey ?? "1/1";
-        const nodeIsEndpoint = pinnedTargets.has(node.key) || hoveredNode === node.key || node.key === origin || (autoPathTargets?.has(node.key) ?? false);
+        // Path-endpoint highlight only fires when the user has
+        // explicitly focused / hovered / pinned a node.  Previously
+        // `focusKey ?? "1/1"` made the unison cell *always* count as
+        // an origin endpoint, which kept it stuck in the cyan path-
+        // endpoint colour even when no focus was set — exactly the
+        // "1/1 always lit" bug.
+        const nodeIsEndpoint = pinnedTargets.has(node.key)
+          || hoveredNode === node.key
+          || (focusKey != null && node.key === focusKey)
+          || (autoPathTargets?.has(node.key) ?? false);
         const isNonRep = siblingsMap.has(node.key) && !classRepSet.has(node.key);
         return (
         <MonzoNodeMesh
