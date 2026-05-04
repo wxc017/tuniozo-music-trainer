@@ -27,6 +27,13 @@ interface Props {
   topOffset?: number;
   /** Pixel offset from the bottom edge — ignored for top-right panels. */
   bottomOffset?: number;
+  /** Override the default 25vw cap.  Useful for keyboard mirrors that
+   *  need more horizontal room than a sidebar widget — pass e.g.
+   *  "55vw" to roughly halve the viewport width.  Accepts any valid
+   *  CSS max-width value. */
+  maxWidth?: string;
+  /** Override the default 45vh cap on panel height. */
+  maxHeight?: string;
   children: React.ReactNode;
 }
 
@@ -37,6 +44,8 @@ export default function FloatingPanel({
   storageKey,
   topOffset = 16,
   bottomOffset = 16,
+  maxWidth = "25vw",
+  maxHeight = "45vh",
   children,
 }: Props) {
   // localStorage-backed collapse state when storageKey is provided.
@@ -62,9 +71,9 @@ export default function FloatingPanel({
       style={{
         position: "fixed",
         zIndex: 30,
-        maxWidth: "25vw",
+        maxWidth,
         minWidth: 260,
-        maxHeight: "45vh",
+        maxHeight,
         display: "flex",
         flexDirection: "column",
         background: "#0a0a0a",

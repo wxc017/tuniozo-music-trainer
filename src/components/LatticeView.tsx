@@ -3686,8 +3686,37 @@ const LIMIT_OPTIONS = [0, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 5
 
 type LatticeDroneMode = "Off" | "Single" | "Root+5th" | "Tanpura";
 
-export default function LatticeView() {
+interface LatticeViewProps {
+  /** Optional set of node keys (n/d ratio strings) to highlight from
+   *  outside.  When provided, takes precedence over the internal
+   *  custom-ratio / note-filter highlight pipeline so external callers
+   *  (e.g. ChordsTab's Show-Answer overlay) can drive node highlights
+   *  for a chord-progression trace.  Pass undefined / empty Set to fall
+   *  back to the built-in highlighting behaviour. */
+  externalHighlights?: Set<string>;
+  /** Node key (n/d ratio string) for the currently active step in the
+   *  external trace.  Surfaced as a transient drone-node so it pulses
+   *  using the same visual treatment a clicked node gets — letting the
+   *  caller animate a step-by-step walk by changing this value over
+   *  time.  Pass null / undefined when no step is active. */
+  activeNodeKey?: string | null;
+}
+
+export default function LatticeView({ externalHighlights, activeNodeKey }: LatticeViewProps = {}) {
   const [droneNodes, setDroneNodes] = useState<Set<string>>(new Set());
+  // When the parent supplies an `activeNodeKey`, surface it through the
+  // standard droneNodes set so it picks up the same pulsing/highlight
+  // visual treatment a clicked node gets.  Each change replaces the
+  // drone set with just the active key — the parent retains exclusive
+  // control of which step is "live" without us having to teach the
+  // scene a new highlight category.  Internal user clicks (which also
+  // mutate droneNodes) are clobbered while the external override is
+  // active, which matches the rest of the externalHighlights override
+  // semantics.
+  useEffect(() => {
+    if (activeNodeKey === undefined) return;
+    setDroneNodes(activeNodeKey ? new Set([activeNodeKey]) : new Set());
+  }, [activeNodeKey]);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [audioReady, setAudioReady] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("monzo");
@@ -6323,8 +6352,16 @@ export default function LatticeView() {
               labelLOD={monzoLabelLOD}
               labelDist={monzoLabelDist}
               rootPc={latticeDroneRoot}
-              highlightedRatios={customRatiosActive ? parsedCustomRatios : noteFilterTargets ?? undefined}
-              autoPathTargets={customRatiosActive ? parsedCustomRatios : noteFilterTargets ?? undefined}
+              highlightedRatios={
+                externalHighlights && externalHighlights.size > 0
+                  ? externalHighlights
+                  : (customRatiosActive ? parsedCustomRatios : noteFilterTargets ?? undefined)
+              }
+              autoPathTargets={
+                externalHighlights && externalHighlights.size > 0
+                  ? externalHighlights
+                  : (customRatiosActive ? parsedCustomRatios : noteFilterTargets ?? undefined)
+              }
               clearPinnedKey={clearPinnedKey}
             />
           </Canvas>
