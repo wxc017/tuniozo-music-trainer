@@ -1878,7 +1878,10 @@ function MonzoNodeMesh({ node, pos, isActive, isHovered, isFocused, showLabel = 
             {showNoteNames && (
               <div style={{
                 color: hi ? "#f0a0ff" : "#c070d0",
-                fontSize: isSmall ? 9 : 14,
+                // Bigger note names in EDO mode — easier to read at
+                // arm's length when the lattice is the focus of
+                // attention, not just an ornament.
+                fontSize: edo !== undefined ? (isSmall ? 14 : 20) : (isSmall ? 9 : 14),
                 fontFamily: "Inter, system-ui, sans-serif",
                 fontWeight: 700,
               }}>
@@ -1918,7 +1921,10 @@ function MonzoNodeMesh({ node, pos, isActive, isHovered, isFocused, showLabel = 
             {showClassId && temperedClass !== undefined && (
               <div style={{
                 color: classColorMap.get(temperedClass) ?? "#888",
-                fontSize: isSmall ? 9 : 11,
+                // Larger step labels in EDO mode (e.g. "0\12") so
+                // the user can read them at arm's length without
+                // squinting.
+                fontSize: edo !== undefined ? (isSmall ? 12 : 16) : (isSmall ? 9 : 11),
                 fontFamily: "Inter, system-ui, sans-serif",
                 fontWeight: 700,
               }}>
@@ -2508,6 +2514,21 @@ function MonzoScene({ lattice, topology, droneNodes, hoveredNode, onHover, onCli
              simplest-ratio rep per equivalence class. */}
       {layers.nodes && lattice.nodes
         .filter(node => {
+          // EDO mode (val-based class assignment, no commas
+          // applied) is owned exclusively by the class-rep filter
+          // — drop the dedup filter so the two don't disagree.
+          // (dedup picks smallest n*d at a 3D position, classRep
+          // picks the octave-reduced cell preferring [1, 2) — for
+          // most classes those two fight and the node is hidden
+          // by one filter or the other, which is why most reps
+          // weren't rendering.)
+          const edoOwned = lattice.classMap.size > 0
+            && lattice.config.temperedCommas.length === 0
+            && typeof lattice.config.edo === "number";
+          if (edoOwned) {
+            if (siblingsMap.has(node.key) && !classRepSet.has(node.key)) return false;
+            return true;
+          }
           if (dedupVisibleSet.size > 0 && !dedupVisibleSet.has(node.key)) return false;
           if (lattice.classMap.size > 0
               && lattice.config.temperedCommas.length === 0
