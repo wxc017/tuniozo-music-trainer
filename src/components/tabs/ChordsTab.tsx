@@ -257,10 +257,6 @@ export default function ChordsTab({
   //                applied.  Demonstrates the classical syntonic-comma
   //                pump in the cleanest form.
   const [jiMode, setJiMode] = useLS<"frozen" | "adaptive" | "pure5">("lt_crd_jiMode", "frozen");
-  // Active tab index in the chord-analysis floating panel — only used
-  // when multiple JI tonalities are selected.  Reset to 0 when the
-  // selected set changes.
-  const [analysisTabIdx, setAnalysisTabIdx] = useState(0);
   const [extTendency, setExtTendency] = useLS<string>("lt_crd_extTend", "Any");
   // "7th" is intentionally excluded from the extension UI — the 7th is
   // already carried by seventh-chord voicing patterns (1 3 5 7, etc.).
@@ -1524,82 +1520,12 @@ export default function ChordsTab({
 
   return (
     <div className="space-y-5">
-      {/* JI floating side-panels — chord-analysis table (top-right) and
-          5-limit lattice viewer (bottom-right).  Both render only when at
-          least one JI tonality is selected in 41/53 EDO.  Capped at
-          25 vw width by FloatingPanel so the in-flow tonality picker /
-          chord pool below stays readable. */}
-      {selectedJiTonalities.length > 0 && (() => {
-        // When multiple JI tonalities are selected, the chord-analysis
-        // panel gets a tab strip so the user can switch which scale's
-        // table they're seeing without hiding the others.  When only
-        // one is selected the strip degenerates into a single label.
-        // The active tab persists across renders via state below.
-        const activeIdx = analysisTabIdx < selectedJiTonalities.length
-          ? analysisTabIdx
-          : 0;
-        const tonality = selectedJiTonalities[activeIdx];
-        const analysis = analyzeJiScale(tonality);
-        if (!analysis) return null;
-        const ROMAN = ["I","II","III","IV","V","VI","VII"];
-        const tagColor = (k: string) => {
-          if (k === "wolf") return "#cc6a8a";
-          if (k === "off-grid") return "#c8aa50";
-          if (k === "pure-3") return "#9999cc";
-          if (k === "pure-5") return "#6acca0";
-          if (k === "pure-7") return "#cc8855";
-          if (k === "pure-11") return "#9a66c0";
-          return "#888";
-        };
-        return (
-          <FloatingPanel
-            position="top-right"
-            title={`CHORD ANALYSIS${selectedJiTonalities.length === 1 ? ` · ${tonality}` : ""}`}
-            accent="#5b5be6"
-            storageKey="lt_crd_analysis_panel_collapsed"
-            topOffset={68}
-          >
-            {selectedJiTonalities.length > 1 && (
-              <div className="flex flex-wrap gap-1 mb-2 pb-1.5 border-b border-[#1a1a1a]">
-                {selectedJiTonalities.map((t, i) => (
-                  <button key={t}
-                    onClick={() => setAnalysisTabIdx(i)}
-                    className={`px-2 py-0.5 text-[9px] rounded border transition-colors ${
-                      i === activeIdx
-                        ? "bg-[#3a3a8a] text-white border-[#5b5be6]"
-                        : "bg-[#0e0e0e] text-[#888] border-[#222] hover:text-[#aaa]"
-                    }`}>
-                    {t}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="grid grid-cols-[28px_1fr_1fr_60px] gap-x-2 gap-y-1 text-[10px]">
-              <span className="text-[#555] font-medium">Ch</span>
-              <span className="text-[#555] font-medium">Third</span>
-              <span className="text-[#555] font-medium">Fifth</span>
-              <span className="text-[#555] font-medium">Status</span>
-              {analysis.map((row, i) => {
-                const numeral = ROMAN[i];
-                return (
-                  <span key={i} style={{ display: "contents" }}>
-                    <span className="text-[#aaa] font-mono">{numeral}</span>
-                    <span style={{ color: tagColor(row.third.kind) }}>
-                      {row.third.ratio}
-                    </span>
-                    <span style={{ color: tagColor(row.fifth.kind) }}>
-                      {row.fifth.ratio}
-                    </span>
-                    <span style={{ color: row.pure ? "#5cca5c" : "#cc6a8a", fontWeight: 600 }}>
-                      {row.pure ? "✓" : "✗ Wolf"}
-                    </span>
-                  </span>
-                );
-              })}
-            </div>
-          </FloatingPanel>
-        );
-      })()}
+      {/* Chord-analysis is no longer rendered as an always-on
+          floating panel — instead, when the user opens Show Answer
+          each chord row pulls its own analysis row (3rd / 5th /
+          pure-vs-wolf) from analyzeJiScale of the active scale
+          tonality and displays it inline.  See the chord-row map
+          inside the Show Answer reveal further down. */}
 
       {/* JI progression mode selector (41/53 EDO only).  Three modes:
             FROZEN   — scale-anchored chord pool; wolves baked in; tonic
@@ -1868,6 +1794,33 @@ export default function ChordsTab({
                 the tone to hear it through the audio engine. */}
             {fhShowAnswer && fhAnswer && (() => {
               const heathwaiteTable = getHeathwaiteSolfege(edo);
+              // JI chord-row analysis (3rd / 5th / pure vs wolf) for
+              // the currently-played scale tonality, when it's a JI
+              // tonality.  Indexed by Roman numeral so each chord row
+              // can show its own row inline instead of relying on a
+              // separate floating panel.
+              const ROMAN_INDEX: Record<string, number> = {
+                I: 0, II: 1, III: 2, IV: 3, V: 4, VI: 5, VII: 6,
+              };
+              const tagColor = (k: string) => {
+                if (k === "wolf") return "#cc6a8a";
+                if (k === "off-grid") return "#c8aa50";
+                if (k === "pure-3") return "#9999cc";
+                if (k === "pure-5") return "#6acca0";
+                if (k === "pure-7") return "#cc8855";
+                if (k === "pure-11") return "#9a66c0";
+                return "#888";
+              };
+              const jiAnalysis = fhAnswer.scaleTonality && JI_SCALE_NAMES_SET.has(fhAnswer.scaleTonality)
+                ? analyzeJiScale(fhAnswer.scaleTonality)
+                : null;
+              const analysisForChord = (numeral: string) => {
+                if (!jiAnalysis) return null;
+                const stripped = stripChordLabel(numeral);
+                const idx = ROMAN_INDEX[stripped.replace(/[^IVX]/gi, "").toUpperCase()];
+                if (idx === undefined) return null;
+                return jiAnalysis[idx] ?? null;
+              };
               return (
                 <div className="bg-[#1a1a0a] border border-[#3a3a1a] rounded p-3 space-y-3">
                   <div className="flex items-baseline gap-2 pb-1.5 border-b border-[#3a3a1a]">
@@ -1931,11 +1884,26 @@ export default function ChordsTab({
                       </div>
                     );
                   })()}
-                  {fhAnswer.chords.map(chord => (
+                  {fhAnswer.chords.map(chord => {
+                    const ana = analysisForChord(chord.numeral);
+                    return (
                     <div key={chord.index} className="space-y-1">
-                      <p className="text-[10px] text-[#c8a850] font-medium">
-                        [{chord.index}] <span className="font-mono text-[12px]">{chord.numeral}</span>
-                        <span className="text-[#888] ml-2">({chord.quality})</span>
+                      <p className="text-[10px] text-[#c8a850] font-medium flex items-baseline gap-2 flex-wrap">
+                        <span>[{chord.index}] <span className="font-mono text-[12px]">{chord.numeral}</span></span>
+                        <span className="text-[#888]">({chord.quality})</span>
+                        {ana && (
+                          <span className="text-[9px] flex items-baseline gap-1 ml-2 px-1.5 py-0.5 rounded border border-[#222] bg-[#0a0a0a]">
+                            <span className="text-[#555]">3rd</span>
+                            <span className="font-mono" style={{ color: tagColor(ana.third.kind) }}>{ana.third.ratio}</span>
+                            <span className="text-[#333]">·</span>
+                            <span className="text-[#555]">5th</span>
+                            <span className="font-mono" style={{ color: tagColor(ana.fifth.kind) }}>{ana.fifth.ratio}</span>
+                            <span className="text-[#333]">·</span>
+                            <span style={{ color: ana.pure ? "#5cca5c" : "#cc6a8a", fontWeight: 600 }}>
+                              {ana.pure ? "✓" : "✗ Wolf"}
+                            </span>
+                          </span>
+                        )}
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {chord.notes.map((pitch, i) => {
@@ -1999,7 +1967,8 @@ export default function ChordsTab({
                         })}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                   </div>{/* end LEFT chord-tone column */}
 
                   {/* RIGHT column — live visualizer mirror */}
