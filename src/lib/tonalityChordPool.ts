@@ -15,6 +15,10 @@ import {
   type ApproachKind,
 } from "@/lib/tonalityBanks";
 import { getBaseChords, getChordShapes, getEdoChordTypes } from "@/lib/edoData";
+import { JI_SCALE_NAMES } from "@/lib/jiScaleData";
+
+// Set form of JI_SCALE_NAMES for O(1) lookup in bankToScaleFamMode.
+const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
 
 // ── Tonality families (mirrors ChordsTab) ────────────────────────────
 export const TONALITY_FAMILIES: { key: string; label: string; color: string; tonalities: string[] }[] = [
@@ -69,6 +73,10 @@ export function bankToScaleFamMode(tonality: string): [string, string] {
       return [KEY_TO_FAMILY[f.key] ?? "Major Family", tonality];
     }
   }
+  // JI scales (41-EDO Pythagorean, 53-EDO Schismatic) live under a single
+  // "JI Family" bucket — see jiScaleData.ts for the catalog.  Names like
+  // "Pythagorean Ionian" or "Maqam Rast" land here.
+  if (JI_SCALE_NAMES_SET.has(tonality)) return ["JI Family", tonality];
   return ["Major Family", "Ionian"];
 }
 
