@@ -4053,10 +4053,23 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     //    positions are NOT collapsed via V⊥ projection.
     //  - The class-rep filter on the render loop drops non-rep
     //    cells so 12-EDO renders 12 nodes, 31-EDO 31, etc.
+    // Bounds must produce a (b, c) lattice large enough that the
+    // step = (val[3]·b + val[5]·c) mod edo map covers every one of
+    // the `edo` equivalence classes — otherwise high-EDO views are
+    // missing nodes (53-EDO with the old [-3, 3] × [-2, 2] grid hit
+    // only ~35 of the 53 classes since prime-2's val of 53 ≡ 0
+    // mod 53 contributes nothing).  Walking the chain of fifths
+    // alone covers all classes once `b` spans `edo` consecutive
+    // values, so scale the prime-3 bound to ⌈edo/2⌉ for any EDO
+    // where the default range falls short, and keep c at ±3 so
+    // each b gets a vertical band of major-third neighbours.
+    const halfEdo = Math.ceil(temperingForEdo / 2);
+    const b3Bound = Math.max(3, halfEdo);
+    const b5Bound = temperingForEdo >= 19 ? 3 : 2;
     setMonzoConfig(prev => ({
       ...prev,
       primes: [2, 3, 5],
-      bounds: { 2: [-3, 4], 3: [-3, 3], 5: [-2, 2] },
+      bounds: { 2: [-3, 4], 3: [-b3Bound, b3Bound], 5: [-b5Bound, b5Bound] },
       octaveEquivalence: false,
       showPrime2: true,
       edo: temperingForEdo,
