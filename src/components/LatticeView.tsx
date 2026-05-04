@@ -1752,11 +1752,16 @@ function MonzoNodeMesh({ node, pos, isActive, isHovered, isFocused, showLabel = 
     if (isFocused) return "#e0a030";
     if (isActive) return "#7173e6";
     if (isPathEndpoint) return "#7df";
+    // EDO context: suppress the unison-tonic accent + per-class
+    // colour map.  All cells render in a single resting colour so
+    // the only thing that draws the eye is the active chord-tone
+    // pulse (isActive above) — exactly what the user asked for.
+    if (edo !== undefined) return "#3a3a4a";
     if (isUnison) return "#9395ea";
     if (node.monzo.isComma) return "#553344";
     if (temperedClass !== undefined) return classColorMap.get(temperedClass) ?? "#3a3a4a";
     return "#3a3a4a";
-  }, [isActive, isUnison, isFocused, isOnPath, isPathEndpoint, isHighlighted, node.monzo.isComma, temperedClass, classColorMap]);
+  }, [isActive, isUnison, isFocused, isOnPath, isPathEndpoint, isHighlighted, node.monzo.isComma, temperedClass, classColorMap, edo]);
 
   const emissive = useMemo(() => {
     if (isHighlighted) return "#44ddff";
@@ -2376,28 +2381,38 @@ function MonzoScene({ lattice, topology, droneNodes, hoveredNode, onHover, onCli
           }
           const p5Step = ((Math.round(edo * Math.log2(3 / 2)) % edo) + edo) % edo;
           const m3Step = ((Math.round(edo * Math.log2(5 / 4)) % edo) + edo) % edo;
-          const draw = (fromClass: number, stepDelta: number, prime: number) => {
+          // Tonescape colour convention: P5 chain in magenta /
+          // pink, M3 chain in green.  Hardcoded so the user reads
+          // the chains by colour the same way as in the Tonescape
+          // screenshots — bypasses MONZO_PRIME_COLORS which has
+          // prime-3 as orange.
+          const COLOR_P5 = "#e85ad0";  // magenta
+          const COLOR_M3 = "#5cca5c";  // green
+          const buckets: { color: string; pts: [number, number, number][] }[] = [
+            { color: COLOR_P5, pts: [] },
+            { color: COLOR_M3, pts: [] },
+          ];
+          const drawBucket = (fromClass: number, stepDelta: number, bucketIdx: number) => {
             const fromRep = classToRep.get(fromClass);
             const toRep = classToRep.get(((fromClass + stepDelta) % edo + edo) % edo);
             if (!fromRep || !toRep) return;
             const a = posMap.get(fromRep), b = posMap.get(toRep);
             if (!a || !b) return;
-            if (!byPrime.has(prime)) byPrime.set(prime, []);
-            byPrime.get(prime)!.push(a, b);
+            buckets[bucketIdx].pts.push(a, b);
           };
           for (const classId of classToRep.keys()) {
-            draw(classId, p5Step, 3);  // chain of fifths (magenta)
-            draw(classId, m3Step, 5);  // chain of thirds (green)
+            drawBucket(classId, p5Step, 0);
+            drawBucket(classId, m3Step, 1);
           }
-          return [...byPrime.entries()].map(([prime, pts]) => (
-            <lineSegments key={`ge-${prime}`} frustumCulled={false}>
+          return buckets.map(({ color, pts }, i) => pts.length === 0 ? null : (
+            <lineSegments key={`ge-edo-${i}`} frustumCulled={false}>
               <bufferGeometry>
                 <bufferAttribute
                   attach="attributes-position"
                   args={[new Float32Array(pts.flat()), 3]}
                 />
               </bufferGeometry>
-              <lineBasicMaterial color={MONZO_PRIME_COLORS[prime] ?? "#555"} transparent opacity={0.85} />
+              <lineBasicMaterial color={color} transparent opacity={0.85} linewidth={2} />
             </lineSegments>
           ));
         }
