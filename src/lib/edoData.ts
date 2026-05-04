@@ -337,11 +337,48 @@ const HEATHWAITE_SOLFEGE_31 = [
   "Da", "Do",                         // 30-31  octaves
 ];
 
+// 12-EDO chromatic solfege — the conventional Heathwaite subset used in
+// Western music (Do-Di/Ra-Re-Ri/Me-Mi-Fa-Fi/Se-Sol-Si/Le-La-Li/Te-Ti-Do).
+// One syllable per chromatic step; no semisharp / semiflat distinction
+// since 12-EDO doesn't expose those interval sizes.
+const HEATHWAITE_SOLFEGE_12 = [
+  "Do",            //  0
+  "Di",            //  1   (Di = Ra; we pick Di as the canonical raised-1)
+  "Re",            //  2
+  "Ri",            //  3   (Ri = Me)
+  "Mi",            //  4
+  "Fa",            //  5
+  "Fi",            //  6   (Fi = Se)
+  "Sol",           //  7
+  "Si",            //  8   (Si = Le)
+  "La",            //  9
+  "Li",            // 10   (Li = Te)
+  "Ti",            // 11
+  "Do",            // 12   (octave)
+];
+
+// 41-EDO Heathwaite solfege — derived from the 31-EDO system by adding
+// the schismatic-comma steps as additional alterations.  41-EDO has 41
+// steps per octave; the syllables follow the same vowel-mirroring
+// pattern as 31-EDO with extra positions for the inflected commas.
+const HEATHWAITE_SOLFEGE_41 = [
+  "Do", "Di", "Du",                                 //  0  1  2   unisons
+  "Ro", "Ra", "Rai", "Ru", "Re", "Ri",              //  3-8       2nds
+  "Ma", "Mai", "Me", "Mu", "Mi", "Mai", "Mo",       //  9-15      3rds
+  "Fe", "Fa", "Fai", "Fu", "Fi",                    // 16-20      4ths
+  "Se", "Su", "Sai", "So", "Si",                    // 21-25      5ths
+  "Lo", "Lai", "Le", "Lu", "La", "Lai", "Li",       // 26-32      6ths
+  "Ta", "Tai", "Te", "Tu", "Ti", "Tai", "To",       // 33-39      7ths
+  "Da", "Do",                                       // 40-41      octaves
+];
+
 /** Heathwaite-style solfege for the EDOs where it's defined.  Returns
  *  null for EDOs without a Heathwaite mapping (the caller should fall
- *  back to the standard solfege). */
+ *  back to the standard solfege or skip the syllable label). */
 export function getHeathwaiteSolfege(edo: number): string[] | null {
+  if (edo === 12) return HEATHWAITE_SOLFEGE_12;
   if (edo === 31) return HEATHWAITE_SOLFEGE_31;
+  if (edo === 41) return HEATHWAITE_SOLFEGE_41;
   return null;
 }
 

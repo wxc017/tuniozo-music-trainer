@@ -395,7 +395,7 @@ export default function ScalarTab({
                     {formatHalfAccidentals(s.degree)}
                   </span>
                   <span className="text-[9px] text-[#555]">
-                    {droning ? "🔊 drone" : `step ${s.step}`}
+                    {droning ? "🔊 drone" : `▶ step ${s.step}`}
                   </span>
                 </button>
               );

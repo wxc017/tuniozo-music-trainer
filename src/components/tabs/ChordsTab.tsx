@@ -1923,13 +1923,12 @@ export default function ChordsTab({
                                 audioEngine.playNote(pitch, edo, 0.7, 0.6);
                               }}
                               title={
-                                `Click to play.\n` +
-                                `In chord: ${intervalChord} · Heathwaite ${heathwaiteChord} · Microtonal ${microChord.label} /${microChord.ipa}/\n` +
-                                `In scale: ${intervalScale} · Heathwaite ${heathwaiteScale} · Microtonal ${microScale.label} /${microScale.ipa}/`
+                                `▶ click to play\n` +
+                                `chord-relative: ${intervalChord} · ${heathwaiteChord} · ${microChord.label} /${microChord.ipa}/\n` +
+                                `scale-relative: ${intervalScale} · ${heathwaiteScale} · ${microScale.label} /${microScale.ipa}/`
                               }
                               className="flex flex-col items-center px-2 py-1 rounded border border-[#3a3a1a] bg-[#2a1a0a] hover:bg-[#3a2a1a] hover:border-[#c8a850] transition-colors min-w-[64px]">
-                              {/* CHORD-relative block */}
-                              <span className="text-[8px] text-[#666] uppercase tracking-wider leading-tight">chord</span>
+                              {/* Chord-relative block (gold) */}
                               <span className="text-[10px] text-[#e0c860] font-bold leading-tight">
                                 {intervalChord}
                               </span>
@@ -1939,10 +1938,8 @@ export default function ChordsTab({
                               <span className="text-[8px] text-[#777] font-mono leading-tight">
                                 {microChord.label}
                               </span>
-                              {/* divider */}
                               <span className="block w-full border-t border-[#3a3a1a] my-1"></span>
-                              {/* SCALE-relative block */}
-                              <span className="text-[8px] text-[#666] uppercase tracking-wider leading-tight">scale</span>
+                              {/* Scale-relative block (mauve) */}
                               <span className="text-[10px] text-[#c896c8] font-bold leading-tight">
                                 {intervalScale}
                               </span>
@@ -1952,19 +1949,13 @@ export default function ChordsTab({
                               <span className="text-[8px] text-[#777] font-mono leading-tight">
                                 {microScale.label}
                               </span>
+                              <span className="text-[8px] text-[#5cca8a] leading-tight mt-0.5">▶</span>
                             </button>
                           );
                         })}
                       </div>
                     </div>
                   ))}
-                  <p className="text-[9px] text-[#666] italic pt-1 border-t border-[#3a3a1a]">
-                    Each tone is clickable — top half shows the note labelled
-                    relative to the chord root (interval · Heathwaite · Microtonal),
-                    bottom half shows the same note relative to the scale tonic.
-                    Both labels match for chord roots; they diverge for the 3rd,
-                    5th, etc. of non-tonic chords.
-                  </p>
                 </div>
               );
             })()}
