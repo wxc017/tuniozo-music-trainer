@@ -16,6 +16,7 @@
 // chord/scale character come from elsewhere.
 
 import { registerXenPatternMaps } from "./edoData";
+import { registerScaleCents } from "./jiChordAnalysis";
 
 type ModeMap = Record<string, number>;
 type ScaleFamilyMap = Record<string, ModeMap>;
@@ -148,6 +149,13 @@ function buildJiScalesForEdo(edo: number): ScaleFamilyMap {
 
 registerXenPatternMaps(41, buildJiScalesForEdo(41));
 registerXenPatternMaps(53, buildJiScalesForEdo(53));
+
+// Cent-value side-channel for the chord analyzer — avoids a circular
+// import by letting jiChordAnalysis.ts pull the underlying cents
+// without re-importing JI_SCALES.
+for (const scale of JI_SCALES) {
+  registerScaleCents(scale.name, scale.steps.map(([, c]) => c));
+}
 
 // ── Public helpers ──────────────────────────────────────────────────────
 
