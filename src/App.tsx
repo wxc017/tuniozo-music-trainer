@@ -87,7 +87,6 @@ const TAB_LABELS: Record<Tab, string> = {
   drone: "Chord Drone", modeid: "Mode ID",
 };
 
-const OCT_OPTIONS = [1,2,3,4,5,6,7];
 const VALID_TABS: Tab[] = ["intervals","chords","modeid","melody","jazz","patterns","drone"];
 
 // ── Temperament classification ──────────────────────────────────────────
@@ -245,7 +244,14 @@ export default function App() {
   const [rangePickStep, setRangePickStep] = useState<0 | 1 | 2>(0);
   const [responseMode, setResponseMode] = useLS<ResponseMode>("lt_app_responseMode", "Play Audio");
   // droneTonal removed — drone now uses tonicPc directly
-  const [droneOct, setDroneOct] = useLS<number>("lt_app_droneOct", 4);
+  // Drone octave is fixed at 3 (C3-B3 range, just below middle C) per
+  // direct user direction (2026-05-05): "they can stay in one octave
+  // as well as drones aren't all over the place for octaves" /
+  // "remove the octave settings".  Bagpipe / tanpura / cello / organ
+  // / sitar / harmonium / choir / voice all sit naturally in this
+  // register; pitch-shifting from each source's recorded fundamental
+  // to the user's tonic stays within ±6 semitones in this band.
+  const DRONE_OCT = 3;
   const [droneInstrument, setDroneInstrument] = useLS<DroneInstrument>("lt_app_droneInstrument", "tanpura");
   // Snap stale localStorage values (e.g. "violin", "pad_2_warm" from
   // an older catalog) to the default — otherwise the dropdown shows
@@ -521,15 +527,15 @@ export default function App() {
   // Single / Root+5th / Tanpura mode set is gone — per direct user
   // direction (2026-05-05): with real instrument samples we want a clean
   // bowed/sung tonic, not a synthesized chord stack.
-  const buildDroneNotes = (tonal: number, oct: number): { notes: number[]; gains?: number[] } => {
-    const abs = tonal + (oct - 4) * edo;
+  const buildDroneNotes = (tonal: number): { notes: number[]; gains?: number[] } => {
+    const abs = tonal + (DRONE_OCT - 4) * edo;
     return { notes: [abs] };
   };
 
   const startHeaderDrone = async () => {
     await ensureAudio();
     audioEngine.setInstrument(droneInstrument);
-    const { notes, gains } = buildDroneNotes(tonicPc, droneOct);
+    const { notes, gains } = buildDroneNotes(tonicPc);
     audioEngine.startDrone(notes, edo, droneVol, gains);
     setDroneIsOn(true);
   };
@@ -565,7 +571,7 @@ export default function App() {
           pulsePhase.current = "off";
           scheduleNext("off");
         } else {
-          const dn = buildDroneNotes(tonicPc, droneOct);
+          const dn = buildDroneNotes(tonicPc);
           audioEngine.startDrone(dn.notes, edo, droneVol, dn.gains);
           pulsePhase.current = "on";
           scheduleNext("on");
@@ -575,7 +581,7 @@ export default function App() {
     pulsePhase.current = "on";
     scheduleNext("on");
     return () => { if (pulseTimer.current) { clearTimeout(pulseTimer.current); pulseTimer.current = null; } };
-  }, [dronePulse, droneIsOn, dronePulseDur, tonicPc, droneOct, droneInstrument, droneVol, edo]);
+  }, [dronePulse, droneIsOn, dronePulseDur, tonicPc, droneInstrument, droneVol, edo]);
 
   const handleDroneVolChange = (v: number) => {
     setDroneVol(v);
@@ -873,13 +879,6 @@ export default function App() {
               </button>
               <div className="w-px h-4 bg-[#2a2a2a]" />
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Drone Oct</label>
-                <select value={droneOct} onChange={e => setDroneOct(Number(e.target.value))}
-                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
-                  {OCT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5">
                 <label className="text-xs text-[#666]">Instrument</label>
                 <select value={droneInstrument}
                   onChange={async e => {
@@ -887,7 +886,7 @@ export default function App() {
                     setDroneInstrument(inst);
                     audioEngine.setInstrument(inst);
                     if (droneIsOn) {
-                      const { notes, gains } = buildDroneNotes(tonicPc, droneOct);
+                      const { notes, gains } = buildDroneNotes(tonicPc);
                       audioEngine.startDrone(notes, edo, droneVol, gains);
                     }
                   }}

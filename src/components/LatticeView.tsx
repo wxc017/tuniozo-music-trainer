@@ -4161,7 +4161,11 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   const [latticeDroneInstrument, setLatticeDroneInstrument] = useLS<DroneInstrument>("lt_lattice_droneInstrument", "tanpura");
   const [latticeDroneVol, setLatticeDroneVol] = useLS<number>("lt_lattice_droneVol", 0.08);
   const [latticeDroneRoot, setLatticeDroneRoot] = useLS<number>("lt_lattice_droneRoot", 0); // 0-11 pitch class
-  const [latticeDroneOctave, setLatticeDroneOctave] = useLS<number>("lt_lattice_droneOctave", 4);
+  // Drone octave fixed at 3 per direct user direction (2026-05-05):
+  // "they can stay in one octave as well as drones aren't all over
+  // the place for octaves" / "remove the octave settings".  Multiplier
+  // for rootPcToFreq() is 2^(3-4) = 0.5 (one octave below middle).
+  const LATTICE_DRONE_OCT_MUL = 0.5;
   const [latticeDroneOn, setLatticeDroneOn] = useState(false);
   // Snap stale catalog values to the default (see App.tsx for context).
   useEffect(() => {
@@ -5385,10 +5389,10 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   // bowed/sung tonic, not a synthesized chord stack.
   const startLatticeDrone = useCallback(async (vol: number, rootPc: number, oct?: number) => {
     await ensureAudio();
-    const baseFreq = rootPcToFreq(rootPc) * Math.pow(2, (oct ?? latticeDroneOctave) - 4);
+    const baseFreq = rootPcToFreq(rootPc) * (oct !== undefined ? Math.pow(2, oct - 4) : LATTICE_DRONE_OCT_MUL);
     audioEngine.startRatioDrone([1], vol, baseFreq);
     setLatticeDroneOn(true);
-  }, [ensureAudio, latticeDroneOctave]);
+  }, [ensureAudio]);
 
   const stopLatticeDrone = useCallback(() => {
     audioEngine.stopDrone();
@@ -5413,7 +5417,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   // Restart drone when params change while it's on
   useEffect(() => {
     if (!latticeDroneOn) return;
-    const baseFreq = rootPcToFreq(latticeDroneRoot) * Math.pow(2, latticeDroneOctave - 4);
+    const baseFreq = rootPcToFreq(latticeDroneRoot) * LATTICE_DRONE_OCT_MUL;
     audioEngine.startRatioDrone([1], latticeDroneVol, baseFreq);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latticeDroneRoot, latticeDroneInstrument]);
@@ -5511,7 +5515,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     setNodeVolMap({});
     if (latticeDroneOn) {
       // Restart persistent drone (node-click may have overridden it)
-      audioEngine.startRatioDrone([1], latticeDroneVol, rootPcToFreq(latticeDroneRoot) * Math.pow(2, latticeDroneOctave - 4));
+      audioEngine.startRatioDrone([1], latticeDroneVol, rootPcToFreq(latticeDroneRoot) * LATTICE_DRONE_OCT_MUL);
     } else {
       audioEngine.stopDrone();
     }
@@ -5619,11 +5623,11 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     setClearPinnedKey(k => k + 1);
     // If persistent drone is active, restart it; otherwise stop all
     if (latticeDroneOn) {
-      audioEngine.startRatioDrone([1], latticeDroneVol, rootPcToFreq(latticeDroneRoot) * Math.pow(2, latticeDroneOctave - 4));
+      audioEngine.startRatioDrone([1], latticeDroneVol, rootPcToFreq(latticeDroneRoot) * LATTICE_DRONE_OCT_MUL);
     } else {
       audioEngine.stopDrone();
     }
-  }, [latticeDroneOn, latticeDroneVol, latticeDroneRoot, latticeDroneOctave]);
+  }, [latticeDroneOn, latticeDroneVol, latticeDroneRoot]);
 
   const toggleGen = (p: number) => setShowGen(prev => ({ ...prev, [p]: !prev[p] }));
 
@@ -5736,7 +5740,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                   // Briefly fade & restart so the new instrument plays
                   // immediately once its samples are available.
                   await ensureAudio();
-                  const baseFreq = rootPcToFreq(latticeDroneRoot) * Math.pow(2, latticeDroneOctave - 4);
+                  const baseFreq = rootPcToFreq(latticeDroneRoot) * LATTICE_DRONE_OCT_MUL;
                   audioEngine.startRatioDrone([1], latticeDroneVol, baseFreq);
                 }
               }}
@@ -5758,7 +5762,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                 setLatticeDroneRoot(pc);
                 if (latticeDroneOn) {
                   await ensureAudio();
-                  audioEngine.startRatioDrone([1], latticeDroneVol, rootPcToFreq(pc) * Math.pow(2, latticeDroneOctave - 4));
+                  audioEngine.startRatioDrone([1], latticeDroneVol, rootPcToFreq(pc) * LATTICE_DRONE_OCT_MUL);
                 }
               }}
               className="bg-[#141414] border border-[#333] text-white text-xs rounded px-1.5 py-0.5"
@@ -5768,27 +5772,6 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               ))}
             </select>
           </label>
-          <div className="w-px h-5 bg-[#222]" />
-          {/* Octave selector */}
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-[#555]">Oct</span>
-            {[2, 3, 4, 5, 6].map(o => (
-              <button key={o}
-                onClick={async () => {
-                  setLatticeDroneOctave(o);
-                  if (latticeDroneOn) {
-                    await startLatticeDrone(latticeDroneVol, latticeDroneRoot, o);
-                  }
-                }}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors border ${
-                  latticeDroneOctave === o
-                    ? "bg-[#7173e6] text-white border-[#7173e6]"
-                    : "bg-[#111] text-[#444] border-[#222] hover:text-[#aaa]"
-                }`}>
-                {o}
-              </button>
-            ))}
-          </div>
           <div className="w-px h-5 bg-[#222]" />
           {/* Volume slider */}
           <label className="text-[10px] text-[#555] flex items-center gap-1">
@@ -6905,7 +6888,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                   setEdoTonnetzSelectedTriad(null);
                   setClearPinnedKey(k => k + 1);
                   if (latticeDroneOn) {
-                    audioEngine.startRatioDrone([1], latticeDroneVol, rootPcToFreq(latticeDroneRoot) * Math.pow(2, latticeDroneOctave - 4));
+                    audioEngine.startRatioDrone([1], latticeDroneVol, rootPcToFreq(latticeDroneRoot) * LATTICE_DRONE_OCT_MUL);
                   } else {
                     audioEngine.stopDrone();
                   }
