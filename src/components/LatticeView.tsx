@@ -1689,6 +1689,10 @@ interface MonzoNodeMeshProps {
   node: LatticeNode;
   pos: [number, number, number];
   isActive: boolean;
+  /** Optional per-node override colour for the active highlight,
+   *  used by the chord-tab harmonic-lattice toggle buttons to paint
+   *  pinned chords each in their own colour. */
+  activeColor?: string;
   isHovered: boolean;
   isFocused?: boolean;
   showLabel?: boolean;
@@ -1738,7 +1742,7 @@ const TEMPER_CLASS_COLORS = [
   "#ff8844", "#44ff88", "#8844ff", "#ffaa66", "#66ffaa", "#aa66ff",
 ];
 
-function MonzoNodeMesh({ node, pos, isActive, isHovered, isFocused, showLabel = true, labelLOD = false, labelDist = 15, onHover, onClick, onFocus, onCtrlClick, primes, temperedClass, classColorMap, rootPc, showNoteNames = true, showIntervals = true, showRatios = true, showMonzo = false, showHeji = false, temperedSiblings, isClassRep, isOnPath, isPathEndpoint, isPinnedPath, isHighlighted, highlightMode, isNonRepClass, showClassId, edo }: MonzoNodeMeshProps) {
+function MonzoNodeMesh({ node, pos, isActive, activeColor, isHovered, isFocused, showLabel = true, labelLOD = false, labelDist = 15, onHover, onClick, onFocus, onCtrlClick, primes, temperedClass, classColorMap, rootPc, showNoteNames = true, showIntervals = true, showRatios = true, showMonzo = false, showHeji = false, temperedSiblings, isClassRep, isOnPath, isPathEndpoint, isPinnedPath, isHighlighted, highlightMode, isNonRepClass, showClassId, edo }: MonzoNodeMeshProps) {
   const isDimmed = (highlightMode && !isHighlighted && !isActive && !isFocused && !isOnPath) || isNonRepClass;
   // Bigger nodes by default — easier to read note labels and to
   // track which cells light up during chord playback.  In EDO
@@ -1752,7 +1756,7 @@ function MonzoNodeMesh({ node, pos, isActive, isHovered, isFocused, showLabel = 
     if (isHighlighted) return "#44ddff";
     if (isOnPath && !isPathEndpoint) return "#ffffff";
     if (isFocused) return "#e0a030";
-    if (isActive) return "#7173e6";
+    if (isActive) return activeColor ?? "#7173e6";
     if (isPathEndpoint) return "#7df";
     // EDO context: suppress the unison-tonic accent + per-class
     // colour map.  All cells render in a single resting colour
@@ -1764,17 +1768,17 @@ function MonzoNodeMesh({ node, pos, isActive, isHovered, isFocused, showLabel = 
     if (node.monzo.isComma) return "#553344";
     if (temperedClass !== undefined) return classColorMap.get(temperedClass) ?? "#3a3a4a";
     return "#3a3a4a";
-  }, [isActive, isUnison, isFocused, isOnPath, isPathEndpoint, isHighlighted, node.monzo.isComma, temperedClass, classColorMap, edo]);
+  }, [isActive, activeColor, isUnison, isFocused, isOnPath, isPathEndpoint, isHighlighted, node.monzo.isComma, temperedClass, classColorMap, edo]);
 
   const emissive = useMemo(() => {
     if (isHighlighted) return "#44ddff";
     if (isOnPath && !isPathEndpoint) return "#ffffff";
     if (isFocused) return "#e0a030";
-    if (isActive) return "#7173e6";
+    if (isActive) return activeColor ?? "#7173e6";
     if (isPathEndpoint) return "#7df";
     if (isHovered) return "#5a5cc8";
     return "#000000";
-  }, [isActive, isHovered, isFocused, isOnPath, isPathEndpoint, isHighlighted]);
+  }, [isActive, activeColor, isHovered, isFocused, isOnPath, isPathEndpoint, isHighlighted]);
 
   const noteName = useMemo(() => ratioToNoteName(node.monzo.n, node.monzo.d, rootPc ?? 0), [node.monzo.n, node.monzo.d, rootPc]);
 
@@ -2043,6 +2047,11 @@ interface MonzoSceneProps {
   lattice: BuiltLattice;
   topology: TopologyInfo;
   droneNodes: Set<string>;
+  /** Optional per-node colour override — paints `isActive` nodes in
+   *  the supplied colour instead of the default #7173e6.  Used by
+   *  the chord-tab harmonic-lattice toggle buttons to render each
+   *  pinned chord in a distinct colour. */
+  nodeColorOverrides?: Map<string, string>;
   hoveredNode: string | null;
   onHover: (key: string | null) => void;
   onClickNode: (node: LatticeNode) => void;
@@ -2059,7 +2068,7 @@ interface MonzoSceneProps {
   clearPinnedKey?: number;
 }
 
-function MonzoScene({ lattice, topology, droneNodes, hoveredNode, onHover, onClickNode, onFocusNode, focusKey, showTopoSurface, layers, pathMode, labelLOD, labelDist, rootPc, highlightedRatios, autoPathTargets, clearPinnedKey }: MonzoSceneProps) {
+function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, hoveredNode, onHover, onClickNode, onFocusNode, focusKey, showTopoSurface, layers, pathMode, labelLOD, labelDist, rootPc, highlightedRatios, autoPathTargets, clearPinnedKey }: MonzoSceneProps) {
   const useTopoPositions = showTopoSurface && (topology.type === "torus" || topology.type === "cylinder");
   const topoPositions = useMemo(() => {
     if (!useTopoPositions) return null;
@@ -2554,6 +2563,7 @@ function MonzoScene({ lattice, topology, droneNodes, hoveredNode, onHover, onCli
           node={node}
           pos={layers.classes ? lattice.jiPositions.get(node.key) ?? node.pos3d : (topoPositions ?? lattice.positions).get(node.key) ?? node.pos3d}
           isActive={droneNodes.has(node.key)}
+          activeColor={nodeColorOverrides?.get(node.key)}
           isHovered={hoveredNode === node.key}
           isFocused={focusKey === node.key}
           showLabel={layers.noteNames || layers.intervals || layers.ratios || layers.monzo || layers.heji}
@@ -3886,9 +3896,17 @@ interface LatticeViewProps {
    *  already configured tempering — the user doesn't need to see
    *  options that have been pre-decided for them. */
   chromeless?: boolean;
+  /** Multi-colour pinned-chord overlays.  Each entry highlights its
+   *  set of EDO equivalence classes in the supplied colour.  Used by
+   *  the chord-tab harmonic-lattice toggle buttons so the user can
+   *  pin two or more chords from the played progression and see each
+   *  one rendered in a distinct colour at the same time.  When a
+   *  single class appears in multiple overlays, the first overlay
+   *  in the array wins. */
+  pinnedChordOverlays?: Array<{ classes: Set<number>; color: string }>;
 }
 
-export default function LatticeView({ externalHighlights, activeNodeKey, activeNodeKeys, activeClassIds, temperingForEdo, chromeless = false }: LatticeViewProps = {}) {
+export default function LatticeView({ externalHighlights, activeNodeKey, activeNodeKeys, activeClassIds, temperingForEdo, chromeless = false, pinnedChordOverlays }: LatticeViewProps = {}) {
   const [droneNodes, setDroneNodes] = useState<Set<string>>(new Set());
   // When the parent supplies `activeNodeKeys` (plural) or
   // `activeNodeKey` (singular), surface them through the standard
@@ -4401,17 +4419,39 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   // tone that lands on a non-canonical JI cell still resolves to
   // its EDO step and lights up that step's class rep.
   useEffect(() => {
-    if (activeClassIds === undefined) return;
-    if (activeClassIds.size === 0) {
+    const liveActive = activeClassIds ?? new Set<number>();
+    const pinnedClasses = new Set<number>();
+    for (const overlay of pinnedChordOverlays ?? []) {
+      for (const c of overlay.classes) pinnedClasses.add(c);
+    }
+    if (activeClassIds === undefined && pinnedClasses.size === 0) return;
+    if (liveActive.size === 0 && pinnedClasses.size === 0) {
       setDroneNodes(new Set());
       return;
     }
     const keys = new Set<string>();
     for (const [key, classId] of monzoLattice.classMap) {
-      if (activeClassIds.has(classId)) keys.add(key);
+      if (liveActive.has(classId) || pinnedClasses.has(classId)) keys.add(key);
     }
     setDroneNodes(keys);
-  }, [activeClassIds, monzoLattice.classMap]);
+  }, [activeClassIds, pinnedChordOverlays, monzoLattice.classMap]);
+
+  // Per-node colour override map.  Walks pinnedChordOverlays in order
+  // and assigns each overlay's colour to all of its class members'
+  // node keys; first overlay wins on conflict.  Empty when no overlays
+  // are supplied, in which case MonzoNodeMesh falls back to the
+  // default active highlight colour.
+  const monzoNodeColorOverrides = useMemo(() => {
+    if (!pinnedChordOverlays || pinnedChordOverlays.length === 0) return undefined;
+    const map = new Map<string, string>();
+    for (const overlay of pinnedChordOverlays) {
+      for (const [key, classId] of monzoLattice.classMap) {
+        if (!overlay.classes.has(classId)) continue;
+        if (!map.has(key)) map.set(key, overlay.color);
+      }
+    }
+    return map.size > 0 ? map : undefined;
+  }, [pinnedChordOverlays, monzoLattice.classMap]);
 
   // Projection loss: ratio of variance lost when tempering collapses dimensions
   const projectionLoss = useMemo(() => {
@@ -6667,6 +6707,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               lattice={filteredMonzoLattice}
               topology={monzoTopology}
               droneNodes={droneNodes}
+              nodeColorOverrides={monzoNodeColorOverrides}
               hoveredNode={hoveredNode}
               onHover={setHoveredNode}
               onClickNode={handleMonzoNodeClick}

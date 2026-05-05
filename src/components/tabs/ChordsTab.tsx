@@ -381,6 +381,11 @@ export default function ChordsTab({
   // walk on screen is synchronized with what the user hears.  -1
   // means no chord is active right now.
   const [currentChordIdx, setCurrentChordIdx] = useState(-1);
+  // Indices of progression chords the user has pinned via the
+  // bottom-left toggle buttons on the harmonic lattice.  Each pinned
+  // chord renders its own colour overlay on the lattice so the user
+  // can compare two or more chords' EDO classes at a glance.
+  const [pinnedChordIdxs, setPinnedChordIdxs] = useState<Set<number>>(new Set());
   // Structured answer data — drives the rebuilt Show Answer reveal
   // (clickable tones + Heathwaite + Microtonal solfege per note + a
   // floating lattice box at top showing the active scale's lattice).
@@ -494,6 +499,7 @@ export default function ChordsTab({
     setFhShowAnswer(false);
     setFhDetailInfo("");
     fhFramesRef.current = null;
+    setPinnedChordIdxs(new Set());
     setTonalitySet(prev => {
       const filtered = [...prev].filter(t => banksByName[t]);
       if (filtered.length === prev.size) return prev;
@@ -2142,6 +2148,33 @@ export default function ChordsTab({
                     const activeClasses = currentChordIdx >= 0 && currentChordIdx < classesPerChord.length
                       ? classesPerChord[currentChordIdx]
                       : new Set<number>();
+                    // Per-pinned-chord overlay palette.  Picked from
+                    // distinct hues so 2-3 simultaneous toggles stay
+                    // visually distinguishable on the dark lattice
+                    // background; cycles past 8 pinned chords (rare).
+                    const PIN_PALETTE = [
+                      "#e85ad0",  // magenta
+                      "#5cca5c",  // green
+                      "#e0a040",  // amber
+                      "#5acca0",  // teal
+                      "#cc6a8a",  // rose
+                      "#9a66c0",  // violet
+                      "#c8aa50",  // gold
+                      "#5acce0",  // cyan
+                    ];
+                    const pinnedOverlays = [...pinnedChordIdxs]
+                      .filter(i => i >= 0 && i < classesPerChord.length)
+                      .map(i => ({
+                        classes: classesPerChord[i],
+                        color: PIN_PALETTE[i % PIN_PALETTE.length],
+                      }));
+                    const togglePin = (i: number) => {
+                      setPinnedChordIdxs(prev => {
+                        const next = new Set(prev);
+                        if (next.has(i)) next.delete(i); else next.add(i);
+                        return next;
+                      });
+                    };
                     return (
                       <div className="rounded border border-[#3a3a5a] bg-[#0a0a14] mt-2 overflow-hidden">
                         <div className="px-3 py-2 border-b border-[#3a3a5a] flex items-baseline gap-2">
@@ -2149,13 +2182,54 @@ export default function ChordsTab({
                           <p className="text-[10px] text-[#666] italic">
                             auto-tempered for {edo}-EDO · cells the temperament collapses share a position
                           </p>
+                          {pinnedChordIdxs.size > 0 && (
+                            <button
+                              onClick={() => setPinnedChordIdxs(new Set())}
+                              className="ml-auto text-[10px] px-2 py-0.5 rounded border border-[#3a3a5a] text-[#7a7af0] hover:bg-[#1a1a2a]"
+                            >Clear pins</button>
+                          )}
                         </div>
-                        <div style={{ width: "100%", height: "70vh", overflow: "hidden" }}>
+                        <div style={{ position: "relative", width: "100%", height: "70vh", overflow: "hidden" }}>
                           <LatticeView
                             activeClassIds={activeClasses}
+                            pinnedChordOverlays={pinnedOverlays}
                             temperingForEdo={edo}
                             chromeless
                           />
+                          {/* Per-chord toggle buttons in the bottom-
+                              left corner of the lattice canvas.  Each
+                              button is the chord's roman numeral; the
+                              accent border / fill matches the colour
+                              the lattice will use to highlight that
+                              chord's notes.  Multiple toggles render
+                              all pinned chords in their distinct
+                              colours simultaneously. */}
+                          <div
+                            className="absolute bottom-2 left-2 flex flex-wrap gap-1 z-10"
+                            style={{ maxWidth: "60%" }}
+                          >
+                            {fhAnswer.progression.map((rn, i) => {
+                              const on = pinnedChordIdxs.has(i);
+                              const color = PIN_PALETTE[i % PIN_PALETTE.length];
+                              const familyPrefix = (edo === 41 || edo === 53) && fhAnswer.scaleTonality
+                                ? familyAbbreviationForTonality(fhAnswer.scaleTonality)
+                                : null;
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={() => togglePin(i)}
+                                  title={on ? `Unpin ${rn}` : `Pin ${rn} — highlight in ${color}`}
+                                  className="px-2 py-1 text-[11px] font-mono rounded border-2 transition-colors bg-[#0a0a14cc] backdrop-blur-sm"
+                                  style={on
+                                    ? { borderColor: color, color: "#fff", backgroundColor: color + "40" }
+                                    : { borderColor: "#3a3a5a", color: "#888" }}
+                                >
+                                  <span className="mr-0.5 text-[8px] opacity-60">[{i + 1}]</span>
+                                  {formatRomanNumeralWithFamily(rn, familyPrefix)}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     );
