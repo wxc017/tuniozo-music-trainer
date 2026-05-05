@@ -2121,19 +2121,31 @@ export default function ChordsTab({
                     // nodes directly without any chain-of-fifths
                     // remapping.
                     const positions = tracePath(fhAnswer.progression);
+                    // Per-chord compensation step.  In Adaptive mode the
+                    // audio engine subtracts this from each chord-tone
+                    // before playback so the tonic stays anchored; the
+                    // visual highlight has to match what's actually
+                    // playing, so we apply the same subtraction here.
+                    // In Frozen mode the compensation is zero and the
+                    // chord plays at the drifted position verbatim.
+                    void latticeRevision;
+                    const driftsForCompPre = latticeDriftsRef.current?.drifts ?? null;
+                    const compStepPerChord: number[] = positions.map((_, i) => {
+                      if (jiMode !== "adaptive") return 0;
+                      if (!driftsForCompPre || i >= driftsForCompPre.length) return 0;
+                      return driftCentsToSteps(driftsForCompPre[i], edo);
+                    });
                     // Per-chord chord-tone EDO classes — drives the
-                    // lattice highlight by EDO step instead of by
-                    // exact JI ratio.  Walking `positions` already
-                    // accumulates comma drift (tracePath is the
-                    // adaptive walk), so the resulting EDO class
-                    // for each tone reflects whatever comma offset
-                    // the progression has built up.  Where the EDO
-                    // tempers the comma (12-/19-/31-EDO meantone)
-                    // the drifted class equals the canonical class
-                    // and the highlight collapses; where it doesn't
-                    // (41-/53-EDO) the drifted tone lights up a
-                    // genuinely different rep, making the drift
-                    // visible on the lattice.
+                    // lattice highlight.  Built from the lattice walk's
+                    // drifted positions, then shifted back by the per-
+                    // chord comp step so the highlight matches the
+                    // post-compensation pitches the audio actually
+                    // plays.  In Frozen mode comp step is 0 and the
+                    // highlight stays at the drifted position (which is
+                    // also what plays).  In Adaptive mode the highlight
+                    // lands on the compensated rep, leaving the drifted
+                    // rep free to receive a separate red marker from
+                    // the compensation-arc pipeline.
                     const classesPerChord: Set<number>[] = positions.map((root, i) => {
                       const chord = fhAnswer.chords[i];
                       let quality = chord ? chordQualityFromSteps(chord.notes, edo) : null;
@@ -2144,7 +2156,11 @@ export default function ChordsTab({
                         else quality = /^[A-Z]/.test(stripped) ? "major" : "minor";
                       }
                       const v = voicingFor(quality) ?? voicingFor("major")!;
-                      return new Set(v.voices.map(vp => latticeToEdoStep(latticeAdd(root, vp), edo)));
+                      const drifted = v.voices.map(vp => latticeToEdoStep(latticeAdd(root, vp), edo));
+                      const comp = compStepPerChord[i];
+                      const out = new Set<number>();
+                      for (const c of drifted) out.add(((c - comp) % edo + edo) % edo);
+                      return out;
                     });
                     const activeClasses = currentChordIdx >= 0 && currentChordIdx < classesPerChord.length
                       ? classesPerChord[currentChordIdx]
@@ -2174,17 +2190,25 @@ export default function ChordsTab({
                     // draw an arc from the chord's uncompensated root
                     // class to its compensated root class so the user
                     // can see the exact step the playback shifted by.
-                    // The drift is recorded on latticeDriftsRef when
-                    // the loop is built; we re-derive the integer
-                    // step here so the arc matches what the audio
-                    // engine actually played.
-                    void latticeRevision;
+                    // Gated on Adaptive mode — in Frozen mode no audio
+                    // compensation actually runs, so showing a red arc
+                    // would be misleading (the user would see "this is
+                    // being compensated" while still hearing the drift).
                     const driftsForArcs = latticeDriftsRef.current?.drifts ?? null;
                     const compensationArcs: Array<{ fromClassId: number; toClassId: number; color: string; chordIdx: number }> = [];
-                    if (driftsForArcs) {
+                    if (driftsForArcs && jiMode === "adaptive") {
                       for (let i = 0; i < positions.length && i < driftsForArcs.length; i++) {
-                        const compStep = driftCentsToSteps(driftsForArcs[i], edo);
+                        const compStep = compStepPerChord[i];
                         if (compStep === 0) continue;
+                        // Only render the compensation indicator on
+                        // chords the user is currently highlighting —
+                        // either the live-playback chord or one the
+                        // user pinned via the chord-toggle buttons.
+                        // Showing arrows for every drifted chord at
+                        // once would clutter the lattice with
+                        // information the user can't act on.
+                        const isHighlighted = currentChordIdx === i || pinnedChordIdxs.has(i);
+                        if (!isHighlighted) continue;
                         const rootClass = latticeToEdoStep(positions[i], edo);
                         const fromClassId = ((rootClass) % edo + edo) % edo;
                         const toClassId = ((rootClass - compStep) % edo + edo) % edo;
