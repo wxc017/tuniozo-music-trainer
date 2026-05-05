@@ -148,6 +148,7 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
   ): TonalityBank => {
     const triads: { label: string; steps: number[]; idx: number; kind: string }[] = [];
     const aug5 = P5 + A1;
+    const stepToCents = (steps: number) => (steps / edo) * 1200;
     for (let i = 0; i < scaleSemis.length; i++) {
       const root = scaleSemis[i];
       const third = scaleSemis[(i + 2) % scaleSemis.length] + (i + 2 >= scaleSemis.length ? edo : 0);
@@ -160,7 +161,31 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
       else if (t3 === m3 && t5 === P5)   { kind = "min"; steps = min(root); }
       else if (t3 === m3 && t5 === d5)   { kind = "dim"; steps = dim(root); }
       else if (t3 === M3 && t5 === aug5) { kind = "aug"; steps = aug(root); }
-      else { steps = [root, third, fifth]; }
+      else {
+        // Cent-zone fallback for prime-altered scale steps that don't
+        // round exactly to the EDO's canonical M3 / m3.  Used by 7+
+        // limit JI scales (Septimal / Tridecimal / Heptadecimal /
+        // Nonadecimal / …) whose 3rd / 6th / 7th carry the named
+        // prime.  Without this, e.g. Tridecimal Minor's i chord
+        // (b3 = 13/11 ≈ 289¢ → step 10 in 41-EDO) wouldn't match
+        // m3 (step 11) and the roman numeral would default to
+        // uppercase "I" — wrong for a minor tonic.  The chord shape
+        // stays as the actual scale tones [root, third, fifth] so the
+        // prime-altered colour plays back; only the label's
+        // upper/lowercase reflects the loosened classification.
+        const t3c = stepToCents(t3);
+        const t5c = stepToCents(t5);
+        const t3Min = t3c >= 220 && t3c < 355;   // sub3 → canonical m3 → low-neutral
+        const t3Maj = t3c >= 355 && t3c < 480;   // high-neutral → canonical M3 → super
+        const t5P5  = t5c >= 670 && t5c < 740;   // P5 ± ~32¢
+        const t5D5  = t5c >= 560 && t5c < 670;   // tritone / d5 band
+        const t5A5  = t5c >= 740 && t5c < 830;   // aug5 band
+        if (t3Maj && t5P5)      kind = "maj";
+        else if (t3Min && t5P5) kind = "min";
+        else if (t3Min && t5D5) kind = "dim";
+        else if (t3Maj && t5A5) kind = "aug";
+        steps = [root, third, fifth];
+      }
       triads.push({ label: labelTriad(degLabels[i], kind), steps, idx: i, kind });
     }
     const primarySet = new Set(primaryIdx);
