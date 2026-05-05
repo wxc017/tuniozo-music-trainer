@@ -1725,6 +1725,11 @@ interface MonzoNodeMeshProps {
   onCtrlClick?: (node: LatticeNode) => void;
   /** Whether this node matches a custom ratio entry */
   isHighlighted?: boolean;
+  /** When true, dim every node that isn't currently active /
+   *  hovered / focused.  Used when chord overlays are showing —
+   *  anything not in a pinned chord fades back so the chord-tone
+   *  classes pop. */
+  forceDim?: boolean;
   /** Whether highlight mode is active (dims non-highlighted nodes) */
   highlightMode?: boolean;
   /** Whether this is a non-representative node shown in class view (translucent) */
@@ -1742,8 +1747,10 @@ const TEMPER_CLASS_COLORS = [
   "#ff8844", "#44ff88", "#8844ff", "#ffaa66", "#66ffaa", "#aa66ff",
 ];
 
-function MonzoNodeMesh({ node, pos, isActive, activeColor, isHovered, isFocused, showLabel = true, labelLOD = false, labelDist = 15, onHover, onClick, onFocus, onCtrlClick, primes, temperedClass, classColorMap, rootPc, showNoteNames = true, showIntervals = true, showRatios = true, showMonzo = false, showHeji = false, temperedSiblings, isClassRep, isOnPath, isPathEndpoint, isPinnedPath, isHighlighted, highlightMode, isNonRepClass, showClassId, edo }: MonzoNodeMeshProps) {
-  const isDimmed = (highlightMode && !isHighlighted && !isActive && !isFocused && !isOnPath) || isNonRepClass;
+function MonzoNodeMesh({ node, pos, isActive, activeColor, isHovered, isFocused, showLabel = true, labelLOD = false, labelDist = 15, onHover, onClick, onFocus, onCtrlClick, primes, temperedClass, classColorMap, rootPc, showNoteNames = true, showIntervals = true, showRatios = true, showMonzo = false, showHeji = false, temperedSiblings, isClassRep, isOnPath, isPathEndpoint, isPinnedPath, isHighlighted, highlightMode, isNonRepClass, showClassId, edo, forceDim = false }: MonzoNodeMeshProps) {
+  const isDimmed = (highlightMode && !isHighlighted && !isActive && !isFocused && !isOnPath)
+    || (forceDim && !isActive && !isHovered && !isFocused && !isHighlighted)
+    || isNonRepClass;
   // Bigger nodes by default — easier to read note labels and to
   // track which cells light up during chord playback.  In EDO
   // mode the dots get a further bump so the 12 / 31 / 41 / 53
@@ -2416,30 +2423,35 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
           // prime-3 as orange.
           const COLOR_P5 = "#e85ad0";  // magenta
           const COLOR_M3 = "#5cca5c";  // green
-          const buckets: { color: string; pts: [number, number, number][] }[] = [
-            { color: COLOR_P5, pts: [] },
-            { color: COLOR_M3, pts: [] },
+          // Split each chain into BRIGHT (both endpoints belong to an
+          // active / pinned chord, i.e. both are in droneNodes — these
+          // are the "edges of the chords themselves" and the voice-
+          // leading edges between consecutive chord tones) and DIM
+          // (every other structural edge).  Without the split the
+          // chord motion drowns in the full P5 / M3 grid.
+          const buckets: { color: string; pts: [number, number, number][]; bright: boolean }[] = [
+            { color: COLOR_P5, pts: [], bright: true  },
+            { color: COLOR_M3, pts: [], bright: true  },
+            { color: COLOR_P5, pts: [], bright: false },
+            { color: COLOR_M3, pts: [], bright: false },
           ];
-          const drawBucket = (fromClass: number, stepDelta: number, bucketIdx: number) => {
+          const drawBucket = (fromClass: number, stepDelta: number, bucketBase: 0 | 1) => {
             const fromRep = classToRep.get(fromClass);
             const toRep = classToRep.get(((fromClass + stepDelta) % edo + edo) % edo);
             if (!fromRep || !toRep) return;
             const a = posMap.get(fromRep), b = posMap.get(toRep);
             if (!a || !b) return;
-            buckets[bucketIdx].pts.push(a, b);
+            const involved = dimGeneratorEdges
+              ? (droneNodes.has(fromRep) && droneNodes.has(toRep))
+              : true;
+            const idx = bucketBase + (involved ? 0 : 2);
+            buckets[idx].pts.push(a, b);
           };
           for (const classId of classToRep.keys()) {
             drawBucket(classId, p5Step, 0);
             drawBucket(classId, m3Step, 1);
           }
-          // When chord-related overlays are active (pinned chord
-          // overlays or compensation arcs), dim the structural P5 /
-          // M3 generator chains heavily so the chord-movement edges
-          // and red drifted nodes are easy to read.  Without the
-          // dim, all the chains blend together and the user can't
-          // pick out which lines correspond to chord motion.
-          const edgeOpacity = dimGeneratorEdges ? 0.18 : 0.85;
-          return buckets.map(({ color, pts }, i) => pts.length === 0 ? null : (
+          return buckets.map(({ color, pts, bright }, i) => pts.length === 0 ? null : (
             <lineSegments key={`ge-edo-${i}`} frustumCulled={false}>
               <bufferGeometry>
                 <bufferAttribute
@@ -2447,7 +2459,7 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
                   args={[new Float32Array(pts.flat()), 3]}
                 />
               </bufferGeometry>
-              <lineBasicMaterial color={color} transparent opacity={edgeOpacity} linewidth={2} />
+              <lineBasicMaterial color={color} transparent opacity={bright ? 0.95 : 0.12} linewidth={bright ? 3 : 1} />
             </lineSegments>
           ));
         }
@@ -2623,6 +2635,7 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
           pos={layers.classes ? lattice.jiPositions.get(node.key) ?? node.pos3d : (topoPositions ?? lattice.positions).get(node.key) ?? node.pos3d}
           isActive={droneNodes.has(node.key)}
           activeColor={nodeColorOverrides?.get(node.key)}
+          forceDim={dimGeneratorEdges === true}
           isHovered={hoveredNode === node.key}
           isFocused={focusKey === node.key}
           showLabel={layers.noteNames || layers.intervals || layers.ratios || layers.monzo || layers.heji}
