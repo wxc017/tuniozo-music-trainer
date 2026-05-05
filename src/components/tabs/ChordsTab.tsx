@@ -381,6 +381,14 @@ export default function ChordsTab({
   // walk on screen is synchronized with what the user hears.  -1
   // means no chord is active right now.
   const [currentChordIdx, setCurrentChordIdx] = useState(-1);
+  // The transition currently being previewed for voice-leading
+  // arrows.  When set to N, the harmonic lattice flashes arrows
+  // showing the voice motion from chord N → chord N+1.  Driven by
+  // the playback scheduler (see playLoopIteration / highlightAllVoices)
+  // so the arrows light up briefly *before* each chord onsets, giving
+  // the user a split-second preview of the voice motion that's about
+  // to happen.  null = no preview right now.
+  const [voiceLeadTransitionIdx, setVoiceLeadTransitionIdx] = useState<number | null>(null);
   // Indices of progression chords the user has pinned via the
   // bottom-left toggle buttons on the harmonic lattice.  Each pinned
   // chord renders its own colour overlay on the lattice so the user
@@ -1353,10 +1361,26 @@ export default function ChordsTab({
       const id = setTimeout(() => setCurrentChordIdx(slot), slot * gapMs);
       frameTimers.current.push(id);
     }
+    // Voice-leading preview window.  For each transition (chord N →
+    // N+1), show the voice-motion arrows on the harmonic lattice for
+    // a split second BEFORE chord N+1 onsets, then clear them when
+    // N+1 starts.  Arrow N is the move out of chord N (1-based); see
+    // voiceLeadingArrows in the harmonic-lattice render block below.
+    const VOICE_LEAD_PREVIEW_MS = 220;
+    for (let slot = 1; slot < n; slot++) {
+      const onsetMs = slot * gapMs;
+      const showAt = onsetMs - VOICE_LEAD_PREVIEW_MS;
+      if (showAt <= 0) continue;
+      const showId = setTimeout(() => setVoiceLeadTransitionIdx(slot - 1), showAt);
+      const hideId = setTimeout(() => setVoiceLeadTransitionIdx(null), onsetMs);
+      frameTimers.current.push(showId, hideId);
+    }
     // Drop the active highlight just after the final chord's onset
     // so the lattice doesn't stay frozen on the last chord forever.
     const clearId = setTimeout(() => setCurrentChordIdx(-1), n * gapMs + 100);
     frameTimers.current.push(clearId);
+    const clearVlId = setTimeout(() => setVoiceLeadTransitionIdx(null), n * gapMs + 100);
+    frameTimers.current.push(clearVlId);
   }, [onHighlight, textureLayers]);
 
   const playLoopIteration = useCallback((voices: { chords: number[][]; bass: number[][] }, gapMs: number, noteDur: number) => {
@@ -2220,6 +2244,58 @@ export default function ChordsTab({
                         });
                       }
                     }
+                    // Voice-leading arrows for the active preview
+                    // transition (set ~220ms before each chord onsets
+                    // by the playback scheduler in highlightAllVoices).
+                    // For each moving voice between chord N and N+1,
+                    // pair the source pitch class to the destination
+                    // pitch class via minimum-cost assignment so the
+                    // arrows trace the smallest-move voice leading.
+                    // Common tones (held voices) are filtered out and
+                    // get no arrow.  All arrows for the same transition
+                    // share `index = N+1` (1-based).
+                    let voiceLeadingArrows: Array<{ fromClassId: number; toClassId: number; index: number; color: string }> | undefined;
+                    if (voiceLeadTransitionIdx !== null
+                        && voiceLeadTransitionIdx >= 0
+                        && voiceLeadTransitionIdx + 1 < classesPerChord.length) {
+                      const fromSet = classesPerChord[voiceLeadTransitionIdx];
+                      const toSet = classesPerChord[voiceLeadTransitionIdx + 1];
+                      const fromOnly = [...fromSet].filter(p => !toSet.has(p));
+                      const toOnly = [...toSet].filter(p => !fromSet.has(p));
+                      const pairCount = Math.min(fromOnly.length, toOnly.length);
+                      if (pairCount > 0 && pairCount <= 5) {
+                        // Brute-force minimum-cost assignment.  Up to
+                        // 5! = 120 perms — trivial; chord pools rarely
+                        // exceed 4 moving voices.
+                        const permute = (arr: number[]): number[][] => {
+                          if (arr.length <= 1) return [arr.slice()];
+                          const out: number[][] = [];
+                          for (let i = 0; i < arr.length; i++) {
+                            const rest = arr.slice(0, i).concat(arr.slice(i + 1));
+                            for (const sub of permute(rest)) out.push([arr[i], ...sub]);
+                          }
+                          return out;
+                        };
+                        let bestPairs: Array<[number, number]> = [];
+                        let bestCost = Infinity;
+                        for (const perm of permute(toOnly)) {
+                          let cost = 0;
+                          for (let i = 0; i < pairCount; i++) {
+                            const diff = Math.abs(fromOnly[i] - perm[i]);
+                            cost += Math.min(diff, edo - diff);
+                          }
+                          if (cost < bestCost) {
+                            bestCost = cost;
+                            bestPairs = fromOnly.slice(0, pairCount).map((f, i) => [f, perm[i]] as [number, number]);
+                          }
+                        }
+                        const idx = voiceLeadTransitionIdx + 1;
+                        const color = PIN_PALETTE[voiceLeadTransitionIdx % PIN_PALETTE.length];
+                        voiceLeadingArrows = bestPairs.map(([f, t]) => ({
+                          fromClassId: f, toClassId: t, index: idx, color,
+                        }));
+                      }
+                    }
                     const togglePin = (i: number) => {
                       setPinnedChordIdxs(prev => {
                         const next = new Set(prev);
@@ -2246,6 +2322,7 @@ export default function ChordsTab({
                             activeClassIds={activeClasses}
                             pinnedChordOverlays={pinnedOverlays}
                             compensationArcs={compensationArcs}
+                            voiceLeadingArrows={voiceLeadingArrows}
                             temperingForEdo={edo}
                             chromeless
                           />

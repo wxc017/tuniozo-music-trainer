@@ -2066,6 +2066,14 @@ interface MonzoSceneProps {
    *  tonic anchored.  Arcs lift above the cylinder so they don't get
    *  visually confused with the in-plane P5 / M3 chains. */
   compensationArcs?: Array<{ fromClassId: number; toClassId: number; color: string; chordIdx: number }>;
+  /** Voice-leading arrows for the chord transition currently being
+   *  previewed (typically the ~200ms before the next chord onsets).
+   *  Each entry connects a moving voice's source class to its
+   *  destination class on the lattice; common tones (held voices)
+   *  are omitted.  `index` is the 1-based transition number — arrow 1
+   *  is the move from chord 1 → chord 2, arrow 2 is chord 2 → 3, etc.
+   *  All arrows for a single transition share the same `index`. */
+  voiceLeadingArrows?: Array<{ fromClassId: number; toClassId: number; index: number; color: string }>;
   /** When true, dim the structural P5 / M3 generator chains so
    *  chord-movement / compensation edges read clearly. */
   dimGeneratorEdges?: boolean;
@@ -2085,7 +2093,7 @@ interface MonzoSceneProps {
   clearPinnedKey?: number;
 }
 
-function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compensationArcs, dimGeneratorEdges, hoveredNode, onHover, onClickNode, onFocusNode, focusKey, showTopoSurface, layers, pathMode, labelLOD, labelDist, rootPc, highlightedRatios, autoPathTargets, clearPinnedKey }: MonzoSceneProps) {
+function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compensationArcs, voiceLeadingArrows, dimGeneratorEdges, hoveredNode, onHover, onClickNode, onFocusNode, focusKey, showTopoSurface, layers, pathMode, labelLOD, labelDist, rootPc, highlightedRatios, autoPathTargets, clearPinnedKey }: MonzoSceneProps) {
   const useTopoPositions = showTopoSurface && (topology.type === "torus" || topology.type === "cylinder");
   const topoPositions = useMemo(() => {
     if (!useTopoPositions) return null;
@@ -2528,6 +2536,80 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
             <lineBasicMaterial color="#ff5555" transparent opacity={0.9} linewidth={2} />
           </lineSegments>
         );
+      })()}
+
+      {/* Voice-leading arrows.  Rendered briefly (~200ms) just before
+          each chord onsets in playback so the user can preview the
+          per-voice motion that's about to happen.  Each arrow connects
+          a moving voice's source class-rep to its destination
+          class-rep on the lattice; common tones (held voices) are
+          omitted by the parent.  All arrows for a single transition
+          share the same `index` (1-based: arrow 1 = move from chord 1
+          → chord 2). */}
+      {voiceLeadingArrows && voiceLeadingArrows.length > 0 && (() => {
+        const posMap = topoPositions ?? lattice.positions;
+        const classToRep = new Map<number, string>();
+        const memberByClass = new Map<number, string[]>();
+        for (const [key, classId] of lattice.classMap) {
+          if (!memberByClass.has(classId)) memberByClass.set(classId, []);
+          memberByClass.get(classId)!.push(key);
+        }
+        for (const [classId, members] of memberByClass) {
+          const rep = members.find(k => classRepSet.has(k))
+            ?? (members.length === 1 ? members[0] : null);
+          if (rep) classToRep.set(classId, rep);
+        }
+        return voiceLeadingArrows.map((arrow, i) => {
+          const fromKey = classToRep.get(arrow.fromClassId);
+          const toKey = classToRep.get(arrow.toClassId);
+          if (!fromKey || !toKey) return null;
+          const a = posMap.get(fromKey);
+          const b = posMap.get(toKey);
+          if (!a || !b) return null;
+          const dirVec = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+          const lengthVec = dirVec.length();
+          if (lengthVec < 0.001) return null;
+          const dirNorm = dirVec.clone().normalize();
+          const quat = new THREE.Quaternion();
+          quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirNorm);
+          // Pull the arrowhead back ~0.18 units from the destination so
+          // it sits visibly on the line rather than buried inside the
+          // destination node sphere.
+          const arrowPos: [number, number, number] = [
+            b[0] - dirNorm.x * 0.18,
+            b[1] - dirNorm.y * 0.18,
+            b[2] - dirNorm.z * 0.18,
+          ];
+          const mid: [number, number, number] = [
+            (a[0] + b[0]) / 2,
+            (a[1] + b[1]) / 2 + 0.18,
+            (a[2] + b[2]) / 2,
+          ];
+          return (
+            <group key={`vl-${i}-${arrow.fromClassId}-${arrow.toClassId}`}>
+              <Line points={[a, b]} color={arrow.color} lineWidth={3} dashed={false} transparent opacity={0.95} />
+              <mesh position={arrowPos} quaternion={quat}>
+                <coneGeometry args={[0.13, 0.36, 12]} />
+                <meshBasicMaterial color={arrow.color} />
+              </mesh>
+              <Html position={mid} center distanceFactor={8} style={{ pointerEvents: "none" }} zIndexRange={[100, 0]}>
+                <div style={{
+                  background: arrow.color,
+                  color: "#000",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  padding: "1px 6px",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(0,0,0,0.6)",
+                  minWidth: "16px",
+                  textAlign: "center",
+                  whiteSpace: "nowrap",
+                  userSelect: "none",
+                }}>{arrow.index}</div>
+              </Html>
+            </group>
+          );
+        }).filter(Boolean);
       })()}
 
       {/* Tempered edges — batched */}
@@ -3982,9 +4064,15 @@ interface LatticeViewProps {
    *  compensated rep, so the user can see the exact EDO step the
    *  playback used to keep the tonic anchored. */
   compensationArcs?: Array<{ fromClassId: number; toClassId: number; color: string; chordIdx: number }>;
+  /** Voice-leading arrows for the upcoming chord transition.  Driven
+   *  by the parent so it can flash arrows for ~200ms just before each
+   *  chord onset, giving the user a preview of the voice motion that
+   *  is about to happen.  See MonzoSceneProps.voiceLeadingArrows for
+   *  the per-arrow shape. */
+  voiceLeadingArrows?: Array<{ fromClassId: number; toClassId: number; index: number; color: string }>;
 }
 
-export default function LatticeView({ externalHighlights, activeNodeKey, activeNodeKeys, activeClassIds, temperingForEdo, chromeless = false, pinnedChordOverlays, compensationArcs }: LatticeViewProps = {}) {
+export default function LatticeView({ externalHighlights, activeNodeKey, activeNodeKeys, activeClassIds, temperingForEdo, chromeless = false, pinnedChordOverlays, compensationArcs, voiceLeadingArrows }: LatticeViewProps = {}) {
   const [droneNodes, setDroneNodes] = useState<Set<string>>(new Set());
   // When the parent supplies `activeNodeKeys` (plural) or
   // `activeNodeKey` (singular), surface them through the standard
@@ -6809,6 +6897,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               droneNodes={droneNodes}
               nodeColorOverrides={monzoNodeColorOverrides}
               compensationArcs={compensationArcs}
+              voiceLeadingArrows={voiceLeadingArrows}
               dimGeneratorEdges={
                 (pinnedChordOverlays?.length ?? 0) > 0 ||
                 (compensationArcs?.length ?? 0) > 0 ||
