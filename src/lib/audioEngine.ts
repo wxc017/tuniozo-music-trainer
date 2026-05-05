@@ -595,8 +595,13 @@ export class AudioEngine {
    *  feedback (2026-05-05): the previous sync version was the root
    *  cause of the cello/sitar/bagpipe/voice "soundwave" complaints. */
   async startDrone(notes: number[], edo: number, gain = 0.4, perNoteGains?: number[]) {
+    // Stop any existing drone synchronously.  The previous version
+    // used fadeDrone(150) which scheduled a stopDrone() setTimeout 150ms
+    // out — that timeout fired AFTER the new drone was spawned and
+    // killed it (also bumping droneGeneration).  Result: lattice-node
+    // clicks produced silence (per direct user feedback 2026-05-05).
+    this.stopDrone();
     const myGen = ++this.droneGeneration;
-    this.fadeDrone(150); // brief fade to avoid click
     const ctx = this.getCtx();
 
     // Wait up to 5s for the active instrument's samples to be ready.
