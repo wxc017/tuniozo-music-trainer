@@ -3,10 +3,29 @@
 
 const C4_FREQ = 261.63;
 
-// Drone harmonic amplitudes — fundamental-dominant with natural rolloff,
-// like a mellow bowed string or organ pipe.  Each harmonic ~55% of the
-// previous.  Extended to h=1..20 so the upper partials are present
-// (very faint but contribute air to the timbre).
+// Drone harmonic amplitudes.
+//
+// CELLO_REAL is a cello-bowing spectrum (per direct user direction
+// 2026-05-05): wider partial spread than the tambura, with the 2nd
+// through 6th harmonics carrying significant energy — that's where
+// the "warm, reedy" cello body sits.  The 7th + 9th harmonics are
+// noticeably present too (cello has a faintly buzzy edge).  Above
+// h12 things drop off into "air" but stay non-zero.
+//
+// Reference shape (normalized):  h1:1.00  h2:0.85  h3:0.70  h4:0.62
+//   h5:0.50  h6:0.40  h7:0.30  h8:0.22  h9:0.18  h10:0.14  h11:0.10
+//   h12:0.07  h13:0.05  h14:0.035  h15:0.025  h16:0.018  h17+ trace.
+//
+// TAMBURA_REAL is kept as the legacy export (still used by the
+// per-note gain ramp in startRatioDrone), but the drone synth itself
+// now selects CELLO_REAL.
+const CELLO_REAL = new Float32Array([
+  0,
+  1.00,    0.85,    0.70,    0.62,    0.50,    0.40,    0.30,    0.22,    0.18,    0.14,
+  0.10,    0.07,    0.05,    0.035,   0.025,   0.018,   0.012,   0.008,   0.005,   0.003,
+]);
+const CELLO_IMAG = new Float32Array(CELLO_REAL.length); // cosine phases — even harmonic content stays in-phase
+
 const TAMBURA_REAL = new Float32Array([
   0,
   1.00,    0.55,    0.30,    0.16,    0.09,    0.05,    0.030,   0.015,   0.008,   0.004,
@@ -234,9 +253,13 @@ export class AudioEngine {
     }
   }
 
-  // Tambura-style sustained drone using PeriodicWave (harmonic synthesis).
-  // One oscillator per note, each using the tambura harmonic spectrum.
-  // This matches Python's synth_drone_buffer() harmonic series.
+  // Cello-style sustained drone (per direct user direction 2026-05-05):
+  // bowed-string spectrum (CELLO_REAL) with subtle vibrato per voice.
+  // One PeriodicWave oscillator per note carries the harmonic spectrum;
+  // a slow LFO (~4.5 Hz, ~5 cent depth) modulates each oscillator's
+  // detune to give the drone a living, slightly-vibrato feel rather
+  // than a static organ-like sustain.  All vibrato LFOs are tracked
+  // alongside the main oscillators so stopDrone() can shut them down.
   startDrone(notes: number[], edo: number, gain = 0.08, perNoteGains?: number[]) {
     this.fadeDrone(150); // brief fade to avoid click
     const ctx = this.getCtx();
@@ -245,7 +268,7 @@ export class AudioEngine {
     this.droneGainNode.gain.value = gain;
     this.droneGainNode.connect(this.masterGain ?? ctx.destination);
 
-    const wave = ctx.createPeriodicWave(TAMBURA_REAL, TAMBURA_IMAG, { disableNormalization: false });
+    const wave = ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
 
     for (let i = 0; i < notes.length; i++) {
       const noteGain = ctx.createGain();
@@ -255,11 +278,30 @@ export class AudioEngine {
       const osc = ctx.createOscillator();
       osc.setPeriodicWave(wave);
       osc.frequency.value = this.absToFreq(notes[i], edo);
+      this.attachVibrato(osc, ctx);
       osc.connect(noteGain);
       osc.start();
       this.droneNodes.push(osc);
       this.droneNoteGains.push(noteGain);
     }
+  }
+
+  /** Attach a slow ~4.5 Hz LFO to an oscillator's detune param so the
+   *  drone gets cello-like vibrato instead of a static sustain.  Each
+   *  voice picks an independent LFO phase via a small random rate
+   *  jitter so multi-voice drones don't pulsate in lockstep.  The LFO
+   *  oscillators are pushed onto droneNodes so stopDrone() tears them
+   *  down with the rest of the drone graph. */
+  private attachVibrato(target: OscillatorNode, ctx: AudioContext) {
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 4.4 + Math.random() * 0.4; // 4.4–4.8 Hz, slight per-voice spread
+    const depth = ctx.createGain();
+    depth.gain.value = 5;  // ±5 cents — subtle, classical-sounding
+    lfo.connect(depth);
+    depth.connect(target.detune);
+    lfo.start();
+    this.droneNodes.push(lfo);
   }
 
   stopDrone() {
@@ -405,25 +447,24 @@ export class AudioEngine {
     this.droneGainNode.connect(this.masterGain ?? ctx.destination);
 
     const freq = baseFreq ?? C4_FREQ;
+    // Cello spectrum + per-voice vibrato (per direct user direction
+    // 2026-05-05).  Each ratio gets one fundamental oscillator
+    // carrying the cello PeriodicWave; one LFO modulates its detune
+    // for the slight, living vibrato characteristic of bowed strings.
+    const wave = ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
 
     for (let i = 0; i < ratios.length; i++) {
       const noteGain = ctx.createGain();
       noteGain.gain.value = perNoteGains?.[i] ?? 1.0;
       noteGain.connect(this.droneGainNode);
 
-      const baseF = freq * ratios[i];
-      for (let h = 1; h <= 10; h++) {
-        const amp = TAMBURA_REAL[h] ?? (1 / h);
-        const hGain = ctx.createGain();
-        hGain.gain.value = amp;
-        hGain.connect(noteGain);
-        const osc = ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.value = baseF * h;
-        osc.connect(hGain);
-        osc.start();
-        this.droneNodes.push(osc);
-      }
+      const osc = ctx.createOscillator();
+      osc.setPeriodicWave(wave);
+      osc.frequency.value = freq * ratios[i];
+      this.attachVibrato(osc, ctx);
+      osc.connect(noteGain);
+      osc.start();
+      this.droneNodes.push(osc);
       this.droneNoteGains.push(noteGain);
     }
   }
@@ -463,13 +504,24 @@ export class AudioEngine {
     noteGain.gain.value = gain;
     noteGain.connect(master);
 
-    const wave = ctx.createPeriodicWave(TAMBURA_REAL, TAMBURA_IMAG, { disableNormalization: false });
+    // Cello spectrum + vibrato (matches startDrone / startRatioDrone).
+    const wave = ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
     const osc = ctx.createOscillator();
     osc.setPeriodicWave(wave);
     osc.frequency.value = freq;
     osc.connect(noteGain);
     osc.start();
-    this.intervalDrones.set(key, { osc, gain: noteGain, _extraOscs: [] } as any);
+    // Vibrato LFO — tracked in _extraOscs so stopIntervalDroneByKey
+    // tears it down with the main oscillator.
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 4.4 + Math.random() * 0.4;
+    const depth = ctx.createGain();
+    depth.gain.value = 5;
+    lfo.connect(depth);
+    depth.connect(osc.detune);
+    lfo.start();
+    this.intervalDrones.set(key, { osc, gain: noteGain, _extraOscs: [lfo] } as any);
   }
 
   stopIntervalDroneByKey(key: string) {
