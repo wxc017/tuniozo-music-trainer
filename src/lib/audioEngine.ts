@@ -58,13 +58,21 @@ const TAMBURA_IMAG = new Float32Array(TAMBURA_REAL.length); // all zeros = cosin
 const PHILHARMONIA_BASE = "https://cdn.jsdelivr.net/gh/skratchdot/philharmonia-samples@gh-pages/audio/";
 const TONEJS_BASE       = "https://nbrosowsky.github.io/tonejs-instruments/samples/";
 const MUSYNGKITE_BASE   = "https://gleitz.github.io/midi-js-soundfonts/MusyngKite/";
-// Single CC0 tanpura sample (luckylittleraven, Freesound 416605) — the
-// only redistributable hosted tanpura we found.  6.1 s long, recorded
-// at C#3 with the characteristic jvari buzz of a real Swar Sangam
-// hybrid tanpura (4 drone + 15 sympathetic strings).  Pitched up/down
-// at runtime via playbackRate; 1 sample point so distant tonics get
-// big pitch shifts, but tanpura's textural character survives that.
+// Direct-from-Freesound CC0 single-recording sources for instruments
+// that have no chromatic free mirror.  Each is a real human-played /
+// human-sung recording — far higher fidelity than the synthesized
+// MusyngKite SoundFont they replace.  All four URLs were curl-tested
+// (200 OK, audio/mpeg, Access-Control-Allow-Origin: *) at integration
+// time.  Single sample point per instrument; the crossfade looper
+// (spawnSampleLoop) handles the wider runtime pitch-shift gracefully
+// because tanpura/sitar/bagpipe/choir textures survive ±6-semitone
+// shifts well — the user explicitly requested this trade-off
+// (2026-05-05): "they can stay in one octave as well as drones
+// aren't all over the place for octaves".
 const FREESOUND_TANPURA_URL = "https://cdn.freesound.org/previews/416/416605_2112203-hq.mp3";
+const FREESOUND_SITAR_URL   = "https://cdn.freesound.org/previews/506/506312_408747-hq.mp3";
+const FREESOUND_BAGPIPE_URL = "https://cdn.freesound.org/previews/622/622929_931745-hq.mp3";
+const FREESOUND_CHOIR_URL   = "https://cdn.freesound.org/previews/763/763910_11744683-hq.mp3";
 
 /** Curated drone instrument list — canonical drones from the world
  *  music traditions per direct user direction (2026-05-05): cello +
@@ -163,23 +171,34 @@ const INSTRUMENT_SOURCES: Record<DroneInstrument, SourceConfig> = {
     url: n => `${TONEJS_BASE}organ/${n}.mp3`,
     notes: ["C2", "Ds2", "Fs2", "A2", "C3", "Ds3", "Fs3", "A3", "C4", "Ds4", "Fs4", "A4", "C5"],
   },
-  // MusyngKite fallbacks — sitar / bagpipe / voice / choir don't have
-  // chromatic mirrors on the free CDNs we use, so we get the standard
-  // 3-point sample set (C2 / C4 / C5).  The crossfade looper masks
-  // most of the pitch-shift artifacts on sustained drones.
+  // Real-instrument single-sample drone sources from Freesound (CC0).
+  // Replaces the MusyngKite SoundFont versions per direct user
+  // direction (2026-05-05): "high quality samples for all".  Pitch
+  // tags below are the recorded fundamentals — the closest-sample
+  // picker uses these for the runtime pitch shift.
   sitar: {
-    url: n => `${MUSYNGKITE_BASE}sitar-mp3/${n}.mp3`,
-    notes: ["C2", "C4", "C5"],
+    // Freesound 506312, 3:09 of steady sympathetic-string drone at Eb.
+    url: () => FREESOUND_SITAR_URL,
+    notes: ["Ds3"],
   },
   bagpipe: {
-    url: n => `${MUSYNGKITE_BASE}bagpipe-mp3/${n}.mp3`,
-    notes: ["C2", "C4", "C5"],
+    // Freesound 622929, 3:00 of sustained Highland-pipe drone at C.
+    url: () => FREESOUND_BAGPIPE_URL,
+    notes: ["C3"],
   },
   choir_aahs: {
-    url: n => `${MUSYNGKITE_BASE}choir_aahs-mp3/${n}.mp3`,
-    notes: ["C2", "C4", "C5"],
+    // Freesound 763910, ~5 s of multi-voice sustained "aah" at F.
+    // Crowd-singing rather than a trained choir, but a real recording
+    // and the only CC0 multi-voice source we found.
+    url: () => FREESOUND_CHOIR_URL,
+    notes: ["F3"],
   },
   voice_oohs: {
+    // MusyngKite fallback — no usable CC0 sustained-vowel solo voice
+    // recording surfaced (every Freesound match was either too short,
+    // wrong vowel, or had melodic contour baked in).  The MusyngKite
+    // voice_oohs is the synth-y fallback until a real recording is
+    // sourced.
     url: n => `${MUSYNGKITE_BASE}voice_oohs-mp3/${n}.mp3`,
     notes: ["C2", "C4", "C5"],
   },
