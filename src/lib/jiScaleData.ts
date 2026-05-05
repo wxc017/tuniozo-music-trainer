@@ -122,6 +122,49 @@ const JI_SCALES: JiScaleSpec[] = [
     // minor-mode modal tone is 13-prime.
     steps: [["1",0],["2",203.9],["b3",289.2],["4",498.0],["5",702.0],["b6",840.5],["b7",1071.7]] },
 
+  // ── 41-EDO curated diatonic tonalities ───────────────────────────────
+  // Per direct user direction (2026-05-05): the 41-EDO tonality picker
+  // is replaced with this focused 7-scale set.  All preserve the
+  // diatonic 9/8 / 4/3 / 3/2 backbone at 2 / 4 / 5 (hence "Diatonic"
+  // in every name); the named flavour lives in the 3rd / 6th / 7th
+  // alone.  Together they span the 7-prime septimal palette
+  // (Supermajor / Subminor / Subharmonic-Minor-M7), the classical
+  // 5-limit JI palette (Classic Major / Classic Minor / Harmonic
+  // Minor), and the 3-limit Pythagorean Major.  Covers every common
+  // tertian-triad colour without overlap.
+  { name: "Supermajor Diatonic",
+    // Septimal supermajor: 9/7 (435¢ wide M3), 12/7 (933¢ super M6),
+    // 27/14 (1137¢ super M7).  Triad sounds notably "bright" / brassy.
+    steps: [["1",0],["2",203.9],["3",435.1],["4",498.0],["5",702.0],["6",933.1],["7",1137.0]] },
+  { name: "Subminor Diatonic",
+    // Septimal subminor: 7/6 (267¢ sub m3), 14/9 (765¢ sub m6),
+    // 7/4 (969¢ harmonic 7).  Bluesy sub-minor flavour.
+    steps: [["1",0],["2",203.9],["b3",266.9],["4",498.0],["5",702.0],["b6",764.9],["b7",968.8]] },
+  { name: "Harmonic Minor Diatonic",
+    // 5-limit harmonic minor: b3 → 6/5, b6 → 8/5, 7 → 15/8 (raised
+    // M7 leading-tone over the natural-minor lower tetrachord).
+    steps: [["1",0],["2",203.9],["b3",315.6],["4",498.0],["5",702.0],["b6",813.7],["7",1088.3]] },
+  { name: "Major Diatonic",
+    // Pythagorean major (3-limit): 81/64 (408¢), 27/16 (906¢),
+    // 243/128 (1110¢).  Bright chain-of-fifths colour, contrasted
+    // with "Classic Major Diatonic" below which uses pure 5-limit
+    // thirds — the picker exposes both so the user can hear the
+    // commatic difference at the third.
+    steps: [["1",0],["2",203.9],["3",407.8],["4",498.0],["5",702.0],["6",905.9],["7",1109.8]] },
+  { name: "Subharmonic Minor M7 Diatonic",
+    // Subminor lower tetrachord (7/6, 14/9) with a raised M7 (15/8)
+    // — like Harmonic Minor but using septimal lower tones, so the
+    // M7 → tonic resolution still tugs but the 3 / 6 are sub-minor.
+    steps: [["1",0],["2",203.9],["b3",266.9],["4",498.0],["5",702.0],["b6",764.9],["7",1088.3]] },
+  { name: "Classic Major Diatonic",
+    // 5-limit JI Ionian — the canonical "just" major: 5/4 (386¢
+    // M3), 5/3 (884¢ M6), 15/8 (1088¢ M7).  Beat-free I/IV/V chords.
+    steps: [["1",0],["2",203.9],["3",386.3],["4",498.0],["5",702.0],["6",884.4],["7",1088.3]] },
+  { name: "Classic Minor Diatonic",
+    // 5-limit JI Aeolian — natural minor: 6/5 (316¢ m3), 8/5 (814¢
+    // m6), 9/5 (1018¢ m7).  Beat-free i / iv / v.
+    steps: [["1",0],["2",203.9],["b3",315.6],["4",498.0],["5",702.0],["b6",813.7],["b7",1017.6]] },
+
   // ── 17 / 19 / 23 / 29 / 31-LIMIT — pruned ────────────────────────────
   // Per direct user direction (2026-05-04): for each higher-limit
   // family, the named prime's third (or b3) must be DISTINCTIVE in the

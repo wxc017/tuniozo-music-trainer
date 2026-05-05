@@ -18,6 +18,7 @@ import {
   getAvailableThirdQualities,
   getModeDegreeMap,
   getHeathwaiteSolfege,
+  pcToNoteNameWithEnharmonic,
 } from "@/lib/edoData";
 import { syllableForEdoStep } from "@/lib/microtonalSolfege";
 import { getTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS, type TonalityBank, type ChordEntry, type ApproachKind } from "@/lib/tonalityBanks";
@@ -2049,6 +2050,36 @@ export default function ChordsTab({
                   })()}
                   {fhAnswer.chords.map(chord => {
                     const ana = analysisForChord(chord.numeral);
+                    // Comma-compensation note for this chord, if any.
+                    // Only fires when in Adaptive mode AND the chord
+                    // accumulated a non-zero EDO-step compensation; the
+                    // text spells out which root pitch was bent and by
+                    // how many cents to keep the tonic anchored.
+                    const driftsForNote = latticeDriftsRef.current?.drifts ?? null;
+                    let commaNote: { from: string; to: string; cents: number; steps: number } | null = null;
+                    if (jiMode === "adaptive" && driftsForNote && (edo === 41 || edo === 53)) {
+                      const idx = chord.index - 1;
+                      if (idx >= 0 && idx < driftsForNote.length) {
+                        const driftCents = driftsForNote[idx];
+                        const steps = driftCentsToSteps(driftCents, edo);
+                        if (steps !== 0) {
+                          // chord.chordRootPc is post-comp.  Pre-comp =
+                          // post + steps (the audio engine subtracted
+                          // `steps` from each tone, so the un-compensated
+                          // pitch sits `steps` higher).
+                          const postRootPc = chord.chordRootPc;
+                          const preRootPc = ((postRootPc + steps) % edo + edo) % edo;
+                          const preAbsPc = ((tonicPc + preRootPc) % edo + edo) % edo;
+                          const postAbsPc = ((tonicPc + postRootPc) % edo + edo) % edo;
+                          commaNote = {
+                            from: pcToNoteNameWithEnharmonic(preAbsPc, edo) ?? `${preAbsPc}\\${edo}`,
+                            to: pcToNoteNameWithEnharmonic(postAbsPc, edo) ?? `${postAbsPc}\\${edo}`,
+                            cents: -driftCents,
+                            steps: -steps,
+                          };
+                        }
+                      }
+                    }
                     return (
                     <div key={chord.index} className="space-y-1">
                       <p className="text-[10px] text-[#c8a850] font-medium flex items-baseline gap-2 flex-wrap">
@@ -2073,6 +2104,19 @@ export default function ChordsTab({
                           </span>
                         )}
                       </p>
+                      {commaNote && (
+                        <p className="text-[10px] text-[#cc6a8a] flex items-baseline gap-1.5 px-1.5 py-0.5 rounded border border-[#3a1a2a] bg-[#1a0a14]">
+                          <span className="font-semibold tracking-wider">COMMA FIX</span>
+                          <span className="text-[#aaa]">root</span>
+                          <span className="font-mono text-[#e0c860]">{commaNote.from}</span>
+                          <span className="text-[#cc6a8a]">→</span>
+                          <span className="font-mono text-[#5cca5c]">{commaNote.to}</span>
+                          <span className="text-[#888]">
+                            ({commaNote.steps > 0 ? "+" : ""}{commaNote.steps} step{Math.abs(commaNote.steps) !== 1 ? "s" : ""}, {commaNote.cents > 0 ? "+" : ""}{commaNote.cents.toFixed(1)}¢)
+                          </span>
+                          <span className="text-[#666] italic">— bent to keep the tonic anchored, otherwise this chord's root would drift away from {pcToNoteNameWithEnharmonic(tonicPc, edo) ?? "the tonic"}</span>
+                        </p>
+                      )}
                       <div className="flex flex-wrap gap-1.5">
                         {chord.notes.map((pitch, i) => {
                           // Two reference frames per tone:
@@ -2104,23 +2148,32 @@ export default function ChordsTab({
                                 `chord-relative: ${intervalChord} · ${heathwaiteChord} · ${microChord.label} /${microChord.ipa}/\n` +
                                 `scale-relative: ${intervalScale} · ${heathwaiteScale} · ${microScale.label} /${microScale.ipa}/`
                               }
-                              className="flex flex-col items-center px-2 py-1 rounded border border-[#3a3a1a] bg-[#2a1a0a] hover:bg-[#3a2a1a] hover:border-[#c8a850] transition-colors min-w-[64px]">
-                              {/* Chord-relative block (gold).  Each syllable
-                                  is an independent clickable that triggers
+                              className="flex flex-row items-center px-2 py-1 rounded border border-[#3a3a1a] bg-[#2a1a0a] hover:bg-[#3a2a1a] hover:border-[#c8a850] transition-colors gap-1.5">
+                              {/* Side-by-side: chord-relative (gold,
+                                  root=Do) on the LEFT, an arrow in the
+                                  middle, scale-relative (mauve, tonic=
+                                  Do) on the RIGHT.  Each syllable is an
+                                  independent clickable that triggers
                                   TTS via the browser's Web Speech API.
-                                  stopPropagation prevents the parent button
-                                  from also firing the pitch-play handler. */}
-                              <span className="text-[10px] text-[#e0c860] font-bold leading-tight">
-                                {intervalChord}
-                              </span>
-                              <SaySpan text={heathwaiteChord} ipa={heathwaiteIpa(heathwaiteChord)}
-                                className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
-                                title={`Hear "${heathwaiteChord}" spoken`} />
-                              <SaySpan text={microChord.label} ipa={microChord.ipa}
-                                className="text-[8px] text-[#777] font-mono leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
-                                title={`Hear "${microChord.label}" /${microChord.ipa}/ spoken`} />
-                              <span className="block w-full border-t border-[#3a3a1a] my-1"></span>
-                              {/* Scale-relative block (mauve) */}
+                                  stopPropagation prevents the parent
+                                  button from firing the pitch-play
+                                  handler. */}
+                              <div className="flex flex-col items-center min-w-[58px]">
+                                <span className="text-[10px] text-[#e0c860] font-bold leading-tight">
+                                  {intervalChord}
+                                </span>
+                                <SaySpan text={heathwaiteChord} ipa={heathwaiteIpa(heathwaiteChord)}
+                                  className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
+                                  title={`Hear "${heathwaiteChord}" spoken`} />
+                                <SaySpan text={microChord.label} ipa={microChord.ipa}
+                                  className="text-[8px] text-[#777] font-mono leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
+                                  title={`Hear "${microChord.label}" /${microChord.ipa}/ spoken`} />
+                              </div>
+                              {/* Arrow: chord-relative → scale-relative.
+                                  Visually anchors which side is "Do = chord
+                                  root" vs "Do = scale tonic". */}
+                              <span className="text-[#5a5a3a] text-[14px] leading-none select-none" aria-hidden>→</span>
+                              <div className="flex flex-col items-center min-w-[58px]">
                               <span className="text-[10px] text-[#c896c8] font-bold leading-tight">
                                 {intervalScale}
                               </span>
@@ -2130,6 +2183,7 @@ export default function ChordsTab({
                               <SaySpan text={microScale.label} ipa={microScale.ipa}
                                 className="text-[8px] text-[#777] font-mono leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
                                 title={`Hear "${microScale.label}" /${microScale.ipa}/ spoken`} />
+                              </div>
                             </button>
                           );
                         })}
