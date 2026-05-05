@@ -387,22 +387,6 @@ export default function ScalarTab({
 
   return (
     <div className="space-y-4">
-      {/* ── Reverb (dry/wet) — only Scalar Explorations exposes this
-          knob today; audioEngine.setReverbWet(0) is called on unmount
-          so other sections stay dry. */}
-      <div className="bg-[#0e0e0e] border border-[#222] rounded px-3 py-2 flex items-center gap-3">
-        <span className="text-[10px] text-[#888] uppercase tracking-wider">Reverb</span>
-        <span className="text-[10px] text-[#555]">Dry</span>
-        <input
-          type="range" min={0} max={1} step={0.01}
-          value={reverbWet}
-          onChange={e => setReverbWet(Number(e.target.value))}
-          className="w-40 accent-[#7173e6]"
-        />
-        <span className="text-[10px] text-[#555]">Wet</span>
-        <span className="text-[10px] text-[#666] font-mono w-10 text-right">{Math.round(reverbWet * 100)}%</span>
-      </div>
-
       {/* ── Tuning-family EDO selector — Temperament-Explorer style.
           Three families now supported here, mirroring Tonal Audiation:
           Meantone (12 / 19 / 31), Pythagorean (41), Schismatic (53). ── */}
@@ -795,6 +779,25 @@ export default function ScalarTab({
             </div>
           );
         })}
+      </div>
+
+      {/* ── Reverb (dry/wet) — sits next to the 3D mode lattice
+          because the wet send is most useful when previewing scale
+          alterations on click; per direct user direction (2026-05-05):
+          "this button should go near the alteration lattice not all
+          the way up here its for the lattice".  audioEngine.setReverbWet(0)
+          is called on unmount so other sections stay dry. */}
+      <div className="bg-[#0e0e0e] border border-[#222] rounded px-3 py-2 flex items-center gap-3">
+        <span className="text-[10px] text-[#888] uppercase tracking-wider">Reverb</span>
+        <span className="text-[10px] text-[#555]">Dry</span>
+        <input
+          type="range" min={0} max={1} step={0.01}
+          value={reverbWet}
+          onChange={e => setReverbWet(Number(e.target.value))}
+          className="w-40 accent-[#7173e6]"
+        />
+        <span className="text-[10px] text-[#555]">Wet</span>
+        <span className="text-[10px] text-[#666] font-mono w-10 text-right">{Math.round(reverbWet * 100)}%</span>
       </div>
 
       {/* ── 3D mode lattice ────────────────────────────────────────
