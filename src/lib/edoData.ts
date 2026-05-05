@@ -209,16 +209,16 @@ const INTERVAL_NAMES_31 = [
 //   S = supermajor     (e.g. S3 = 9/7)
 //
 // Per direct user direction (revision 2026-05-05): the unison /
-// fourth / fifth / octave region uses ONLY arrow notation — bare
-// degree numbers plus stacked ↑ / ↓.  No "P" prefix, no
-// "Aug"/"dim"/"neutral" word labels in this region.  4↑↑↑ /
-// 5↓↓↓ etc. cover the tritone area between P4 and P5 — three
-// steps each direction puts steps 20 / 21 right at the equidistant
-// midpoint, so they read symmetrically off whichever side is
-// musically closer.
+// fourth / fifth / octave region uses # and b accidentals (stackable
+// — ##, ###, bb, bbb) where the arrow notation previously sat.  Each
+// # / b denotes ±1 step (~29.27¢ in 41-EDO), so the canonical
+// Lydian #4 (one step above P4) reads as "#4" rather than "4↑", and
+// the more-altered tritone steps further from 4 / 5 stack additional
+// sharps or flats.  No "P" prefix on the perfect intervals — bare
+// degree numbers, with # / b carrying the alterations.
 const INTERVAL_NAMES_41 = [
   "1",                                                       // 0
-  "1↑",                                                      // 1
+  "#1",                                                      // 1
   "s2",                                                      // 2
   "m2",                                                      // 3
   "Cm2",                                                     // 4
@@ -233,16 +233,16 @@ const INTERVAL_NAMES_41 = [
   "C3",                                                      // 13
   "M3",                                                      // 14
   "S3",                                                      // 15
-  "4↓",                                                      // 16
+  "b4",                                                      // 16
   "4",                                                       // 17
-  "4↑",                                                      // 18
-  "4↑↑",                                                     // 19
-  "4↑↑↑",                                                    // 20
-  "5↓↓↓",                                                    // 21
-  "5↓↓",                                                     // 22
-  "5↓",                                                      // 23
+  "#4",                                                      // 18
+  "##4",                                                     // 19
+  "###4",                                                    // 20
+  "bbb5",                                                    // 21
+  "bb5",                                                     // 22
+  "b5",                                                      // 23
   "5",                                                       // 24
-  "5↑",                                                      // 25
+  "#5",                                                      // 25
   "s6",                                                      // 26
   "m6",                                                      // 27
   "Cm6",                                                     // 28
@@ -257,7 +257,7 @@ const INTERVAL_NAMES_41 = [
   "C7",                                                      // 37
   "M7",                                                      // 38
   "S7",                                                      // 39
-  "8↓",                                                      // 40
+  "b8",                                                      // 40
   "8",                                                       // 41
 ];
 
