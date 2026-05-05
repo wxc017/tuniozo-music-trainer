@@ -33,30 +33,45 @@ const TAMBURA_REAL = new Float32Array([
 ]);
 const TAMBURA_IMAG = new Float32Array(TAMBURA_REAL.length); // all zeros = cosine phases
 
-// Multi-sampled cello loaded from gleitz/midi-js-soundfonts (MusyngKite
-// SoundFont, MP3 format, hosted on GitHub Pages with permissive CORS).
-// Per direct user direction (2026-05-05): the synthesized PeriodicWave
-// drone sounded "alien" / unconvincing.  Real cello samples loop-shifted
-// to the target pitch land much closer to a usable practice drone.
+// Sampled drone instruments loaded from gleitz/midi-js-soundfonts
+// (MusyngKite SoundFont, MP3 format, hosted on GitHub Pages with
+// permissive CORS).  Per direct user direction (2026-05-05): the
+// synthesized PeriodicWave drone sounded "alien", so the drone now
+// streams real instrument samples and pitch-shifts via playbackRate.
 //
-// We load three sample points (C2 / C4 / C5) so any drone target picks
-// the closest sample and pitch-shifts at most ±6 semitones — keeps the
-// chipmunk effect away.  The samples are full-note recordings with
-// natural attack/sustain/release; we set loop=true on the
-// AudioBufferSourceNode so each voice continuously rebows.
-const CELLO_SAMPLE_BASE = "https://gleitz.github.io/midi-js-soundfonts/MusyngKite/cello-mp3/";
-const CELLO_SAMPLE_NOTES = ["C2", "C4", "C5"] as const;
-// MIDI numbers for the loaded sample points so we can pick the closest
-// one for each target pitch (C2 = 36, C4 = 60, C5 = 72).
-const CELLO_SAMPLE_MIDI: Record<string, number> = { C2: 36, C4: 60, C5: 72 };
+// Three sample points (C2 / C4 / C5) per instrument so any drone
+// target picks the closest sample and pitch-shifts at most ±6
+// semitones — keeps chipmunking / foghorning away.  Each instrument
+// loads lazily on first selection.
+const SOUNDFONT_BASE = "https://gleitz.github.io/midi-js-soundfonts/MusyngKite/";
+const SAMPLE_NOTES = ["C2", "C4", "C5"] as const;
+const SAMPLE_MIDI: Record<string, number> = { C2: 36, C4: 60, C5: 72 };
 
-interface CelloSample { midi: number; buffer: AudioBuffer }
+/** Curated drone instrument list — picks from MusyngKite SoundFont
+ *  presets that hold a continuous tone well.  `id` matches the gleitz
+ *  folder name (e.g. cello-mp3), `label` is what shows in the picker. */
+export const DRONE_INSTRUMENTS = [
+  { id: "cello",              label: "Cello" },
+  { id: "violin",             label: "Violin" },
+  { id: "viola",              label: "Viola" },
+  { id: "contrabass",         label: "Double Bass" },
+  { id: "string_ensemble_1",  label: "Strings" },
+  { id: "choir_aahs",         label: "Choir" },
+  { id: "voice_oohs",         label: "Voice (Oohs)" },
+  { id: "church_organ",       label: "Church Organ" },
+  { id: "pad_2_warm",         label: "Warm Synth Pad" },
+] as const;
+
+export type DroneInstrument = typeof DRONE_INSTRUMENTS[number]["id"];
+
+interface InstrumentSample { midi: number; buffer: AudioBuffer }
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private sampleBuffer: AudioBuffer | null = null;
-  private celloSamples: CelloSample[] = [];
-  private celloLoadPromise: Promise<void> | null = null;
+  private instrumentSamples: Map<string, InstrumentSample[]> = new Map();
+  private instrumentLoadPromises: Map<string, Promise<void>> = new Map();
+  private currentInstrument: DroneInstrument = "cello";
   private droneNodes: OscillatorNode[] = [];
   private droneSamples: AudioBufferSourceNode[] = [];
   private droneNoteGains: GainNode[] = [];
@@ -96,54 +111,75 @@ export class AudioEngine {
       console.warn("C4.wav not loaded, using synth fallback", e);
     }
 
-    // Kick off cello sample loading in the background.  We don't await
-    // it here so init() returns promptly; the drone synth will fall
-    // back to the PeriodicWave path if a drone fires before the
-    // samples finish loading.
-    this.loadCelloSamples();
+    // Kick off default-instrument sample loading in the background.  We
+    // don't await it here so init() returns promptly; the drone synth
+    // will fall back to the PeriodicWave path if a drone fires before
+    // the samples finish loading.
+    this.loadInstrumentSamples(this.currentInstrument);
   }
 
-  /** Fetch the multi-sampled cello from gleitz/midi-js-soundfonts.  Runs
-   *  once per AudioContext; subsequent calls return the existing
-   *  promise.  Failures are warned but non-fatal — the synth falls back
-   *  to the PeriodicWave cello if no samples loaded. */
-  private loadCelloSamples(): Promise<void> {
-    if (this.celloLoadPromise) return this.celloLoadPromise;
+  /** Switch the active drone instrument.  Triggers lazy sample loading
+   *  for the new instrument; does NOT restart any active drone — the
+   *  caller decides whether to fade and restart. */
+  setInstrument(instrument: DroneInstrument) {
+    this.currentInstrument = instrument;
+    if (this.ctx) this.loadInstrumentSamples(instrument);
+  }
+
+  getInstrument(): DroneInstrument { return this.currentInstrument; }
+
+  /** Fetch a multi-sampled instrument from gleitz/midi-js-soundfonts.
+   *  Runs once per (AudioContext × instrument); subsequent calls return
+   *  the existing promise.  Failures are warned but non-fatal — the
+   *  synth falls back to the PeriodicWave drone if no samples loaded. */
+  private loadInstrumentSamples(instrument: string): Promise<void> {
+    const existing = this.instrumentLoadPromises.get(instrument);
+    if (existing) return existing;
     if (!this.ctx) return Promise.resolve();
     const ctx = this.ctx;
-    this.celloLoadPromise = (async () => {
-      const loads = CELLO_SAMPLE_NOTES.map(async note => {
+    const samples: InstrumentSample[] = [];
+    this.instrumentSamples.set(instrument, samples);
+    const promise = (async () => {
+      const loads = SAMPLE_NOTES.map(async note => {
         try {
-          const resp = await fetch(`${CELLO_SAMPLE_BASE}${note}.mp3`);
+          const resp = await fetch(`${SOUNDFONT_BASE}${instrument}-mp3/${note}.mp3`);
           if (!resp.ok) throw new Error(`fetch failed ${resp.status}`);
           const arr = await resp.arrayBuffer();
           const buf = await ctx.decodeAudioData(arr);
-          this.celloSamples.push({ midi: CELLO_SAMPLE_MIDI[note], buffer: buf });
+          samples.push({ midi: SAMPLE_MIDI[note], buffer: buf });
         } catch (e) {
-          console.warn(`Cello sample ${note} failed to load`, e);
+          console.warn(`${instrument} sample ${note} failed to load`, e);
         }
       });
       await Promise.all(loads);
-      // Sort by MIDI ascending so pickClosestCelloSample's binary lookup is simple.
-      this.celloSamples.sort((a, b) => a.midi - b.midi);
+      // Sort by MIDI ascending so pickClosestSample's lookup is simple.
+      samples.sort((a, b) => a.midi - b.midi);
     })();
-    return this.celloLoadPromise;
+    this.instrumentLoadPromises.set(instrument, promise);
+    return promise;
   }
 
-  /** Pick whichever loaded cello sample is closest to the target MIDI
-   *  pitch, plus the playbackRate needed to retune it.  Returns null
-   *  when no samples are loaded yet (caller falls back to synth). */
-  private pickClosestCelloSample(targetMidi: number): { buffer: AudioBuffer; rate: number } | null {
-    if (this.celloSamples.length === 0) return null;
-    let best = this.celloSamples[0];
+  /** Pick whichever loaded sample of the current instrument is closest
+   *  to the target MIDI pitch, plus the playbackRate needed to retune
+   *  it.  Returns null when no samples are loaded yet (caller falls
+   *  back to synth). */
+  private pickClosestSample(targetMidi: number): { buffer: AudioBuffer; rate: number } | null {
+    const samples = this.instrumentSamples.get(this.currentInstrument);
+    if (!samples || samples.length === 0) return null;
+    let best = samples[0];
     let bestDist = Math.abs(targetMidi - best.midi);
-    for (const s of this.celloSamples) {
+    for (const s of samples) {
       const d = Math.abs(targetMidi - s.midi);
       if (d < bestDist) { best = s; bestDist = d; }
     }
     // playbackRate of 2^(semitones/12) shifts the sample to the target.
     const rate = Math.pow(2, (targetMidi - best.midi) / 12);
     return { buffer: best.buffer, rate };
+  }
+
+  private hasLoadedSamples(): boolean {
+    const samples = this.instrumentSamples.get(this.currentInstrument);
+    return !!samples && samples.length > 0;
   }
 
   /** Convert a frequency in Hz to a fractional MIDI number (A4=440 → 69). */
@@ -344,9 +380,9 @@ export class AudioEngine {
     this.droneGainNode.gain.value = gain;
     this.droneGainNode.connect(this.masterGain ?? ctx.destination);
 
-    // Use sampled cello when the buffers are loaded; fall back to the
-    // PeriodicWave synth (CELLO_REAL) until then.
-    const useSamples = this.celloSamples.length > 0;
+    // Use the active instrument's samples when loaded; fall back to
+    // the PeriodicWave synth (CELLO_REAL) until then.
+    const useSamples = this.hasLoadedSamples();
     const wave = useSamples ? null : ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
 
     for (let i = 0; i < notes.length; i++) {
@@ -360,14 +396,14 @@ export class AudioEngine {
     }
   }
 
-  /** Spawn one drone voice — either a looping cello sample pitched to
-   *  `targetFreq`, or a PeriodicWave oscillator with vibrato.  All
+  /** Spawn one drone voice — either a looping instrument sample pitched
+   *  to `targetFreq`, or a PeriodicWave oscillator with vibrato.  All
    *  generated nodes get pushed onto droneNodes / droneSamples so
    *  stopDrone() tears them down cleanly. */
   private spawnDroneVoice(ctx: AudioContext, targetFreq: number, noteGain: GainNode, useSamples: boolean, wave: PeriodicWave | null) {
     if (useSamples) {
       const targetMidi = this.freqToMidi(targetFreq);
-      const pick = this.pickClosestCelloSample(targetMidi);
+      const pick = this.pickClosestSample(targetMidi);
       if (pick) {
         const src = ctx.createBufferSource();
         src.buffer = pick.buffer;
@@ -378,7 +414,7 @@ export class AudioEngine {
         this.droneSamples.push(src);
         return;
       }
-      // pickClosestCelloSample returned null even though useSamples was
+      // pickClosestSample returned null even though useSamples was
       // true — race condition during loading.  Fall through to synth.
     }
     if (wave) {
@@ -558,10 +594,10 @@ export class AudioEngine {
     this.droneGainNode.connect(this.masterGain ?? ctx.destination);
 
     const freq = baseFreq ?? C4_FREQ;
-    // Sampled cello when buffers are loaded; PeriodicWave synth (with
-    // vibrato) as the fallback.  spawnDroneVoice handles the
+    // Sampled instrument when buffers are loaded; PeriodicWave synth
+    // (with vibrato) as the fallback.  spawnDroneVoice handles the
     // selection so the JI-ratio path and the EDO path stay in sync.
-    const useSamples = this.celloSamples.length > 0;
+    const useSamples = this.hasLoadedSamples();
     const wave = useSamples ? null : ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
 
     for (let i = 0; i < ratios.length; i++) {
