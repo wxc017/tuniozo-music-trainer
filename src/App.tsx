@@ -844,6 +844,78 @@ export default function App() {
             <CountdownTimer />
           </div>}
 
+          {/* Drone strip — visible in every non-academic section per
+              direct user direction (2026-05-05): "the drone should be
+              for all modes".  Always sounds a single tonic through the
+              chosen sampled instrument; tonic comes from the global
+              tonicPc state which persists across sections. */}
+          {!academicMode && (
+            <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[#888] tracking-widest uppercase">Drone</span>
+                {droneIsOn && <span className="w-2 h-2 rounded-full bg-[#7173e6] animate-pulse inline-block" />}
+              </div>
+              <button onClick={startHeaderDrone}
+                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${droneIsOn ? "bg-[#7173e6] border-[#7173e6] text-white" : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"}`}>
+                ON
+              </button>
+              <button onClick={stopHeaderDrone}
+                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${!droneIsOn ? "bg-[#3a1a1a] border-[#5a2a2a] text-[#cc6666]" : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"}`}>
+                OFF
+              </button>
+              <div className="w-px h-4 bg-[#2a2a2a]" />
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-[#666]">Drone Oct</label>
+                <select value={droneOct} onChange={e => setDroneOct(Number(e.target.value))}
+                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
+                  {OCT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-[#666]">Instrument</label>
+                <select value={droneInstrument}
+                  onChange={async e => {
+                    const inst = e.target.value as DroneInstrument;
+                    setDroneInstrument(inst);
+                    audioEngine.setInstrument(inst);
+                    if (droneIsOn) {
+                      const { notes, gains } = buildDroneNotes(tonicPc, droneOct);
+                      audioEngine.startDrone(notes, edo, droneVol, gains);
+                    }
+                  }}
+                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
+                  {DRONE_INSTRUMENTS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-[#666]">Drone Vol</label>
+                <input type="range" min={0} max={0.3} step={0.005} value={droneVol}
+                  onChange={e => handleDroneVolChange(Number(e.target.value))}
+                  className="w-20 accent-[#7173e6]" />
+                <span className="text-xs text-[#555] w-7">{Math.round(droneVol * 100 / 0.3)}%</span>
+              </div>
+              <div className="w-px h-4 bg-[#2a2a2a]" />
+              <button
+                onClick={() => setDronePulse(!dronePulse)}
+                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${
+                  dronePulse
+                    ? "bg-[#7173e6] border-[#7173e6] text-white"
+                    : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"
+                }`}>
+                Pulse
+              </button>
+              {dronePulse && (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number" min={1} max={60} value={dronePulseDur}
+                    onChange={e => setDronePulseDur(Math.max(1, Math.min(60, Number(e.target.value))))}
+                    className="w-12 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none text-center" />
+                  <span className="text-xs text-[#555]">sec</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {section === "ear-trainer" && (<>
           {/* Row 2: Ear-trainer controls */}
           <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 flex flex-col gap-2">
@@ -914,73 +986,6 @@ export default function App() {
                 title="Play and highlight tonic note">
                 ♪ Tonic
               </button>
-            </div>
-            {/* Bottom row: Drone — uses shared tonic, own octave */}
-            <div className="flex flex-wrap items-center gap-3 border-t border-[#1e1e1e] pt-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-[#888] tracking-widest uppercase">Drone</span>
-                {droneIsOn && <span className="w-2 h-2 rounded-full bg-[#7173e6] animate-pulse inline-block" />}
-              </div>
-              <button onClick={startHeaderDrone}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${droneIsOn ? "bg-[#7173e6] border-[#7173e6] text-white" : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"}`}>
-                ON
-              </button>
-              <button onClick={stopHeaderDrone}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${!droneIsOn ? "bg-[#3a1a1a] border-[#5a2a2a] text-[#cc6666]" : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"}`}>
-                OFF
-              </button>
-              <div className="w-px h-4 bg-[#2a2a2a]" />
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Drone Oct</label>
-                <select value={droneOct} onChange={e => setDroneOct(Number(e.target.value))}
-                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
-                  {OCT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Instrument</label>
-                <select value={droneInstrument}
-                  onChange={async e => {
-                    const inst = e.target.value as DroneInstrument;
-                    setDroneInstrument(inst);
-                    audioEngine.setInstrument(inst);
-                    if (droneIsOn) {
-                      // Restart so the new instrument plays immediately
-                      // once its samples come in.
-                      const { notes, gains } = buildDroneNotes(tonicPc, droneOct);
-                      audioEngine.startDrone(notes, edo, droneVol, gains);
-                    }
-                  }}
-                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
-                  {DRONE_INSTRUMENTS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Drone Vol</label>
-                <input type="range" min={0} max={0.3} step={0.005} value={droneVol}
-                  onChange={e => handleDroneVolChange(Number(e.target.value))}
-                  className="w-20 accent-[#7173e6]" />
-                <span className="text-xs text-[#555] w-7">{Math.round(droneVol * 100 / 0.3)}%</span>
-              </div>
-              <div className="w-px h-4 bg-[#2a2a2a]" />
-              <button
-                onClick={() => setDronePulse(!dronePulse)}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${
-                  dronePulse
-                    ? "bg-[#7173e6] border-[#7173e6] text-white"
-                    : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"
-                }`}>
-                Pulse
-              </button>
-              {dronePulse && (
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number" min={1} max={60} value={dronePulseDur}
-                    onChange={e => setDronePulseDur(Math.max(1, Math.min(60, Number(e.target.value))))}
-                    className="w-12 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none text-center" />
-                  <span className="text-xs text-[#555]">sec</span>
-                </div>
-              )}
             </div>
           </div>
 
@@ -1193,7 +1198,7 @@ export default function App() {
 
       {/* ── 11-Limit Lattice ── */}
       {section === "lattice" && (
-        <div className="flex-1 flex flex-col overflow-hidden px-4">
+        <div className="flex-1 flex flex-col overflow-y-auto px-4">
           <LatticeView />
         </div>
       )}
