@@ -184,7 +184,7 @@ const PARENT_COLORS: Record<string, string> = {
   "Diatonic Classic Harmonic Minor M7":  "#c08070",
   "Diatonic Subharmonic Minor M7":       "#4a9ac7",
   "Diatonic Supraharmonic Minor M7":     "#aa6a5a",
-  "Diatonic Neutral Major":              "#5b8ad0",
+  "Diatonic Neutral":              "#5b8ad0",
 };
 
 function familiesAsLimitGroups(

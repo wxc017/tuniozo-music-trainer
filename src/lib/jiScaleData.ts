@@ -101,26 +101,15 @@ const JI_SCALES: JiScaleSpec[] = [
   { name: "Mohajira",
     steps: [["1",0],["b2",150.6],["b3",347.4],["4",498.0],["5",702.0],["b6",852.6],["b7",1049.4]] },
 
-  // ── 13-LIMIT (Tridecimal) ────────────────────────────────────────────
-  // Per direct user direction (2026-05-04): a "13-limit" scale must
-  // carry the 13-prime at its 3rd, 6th, and 7th positions — that is
-  // what marks it as a faithful 13-limit scale rather than a 5-limit
-  // cousin.  Scales that preserve canonical 9/8 / 4/3 / 3/2 at 2 / 4 /
-  // 5 carry "Diatonic" in their name to flag the diatonic backbone;
-  // the higher-prime colour is in the modal-defining 3-6-7 only.
-  // Key 13-prime intervals: 13/12 (138¢), 13/11 (289¢ supraminor 3rd),
-  // 13/10 (454¢ supermajor 3rd), 13/9 (637¢ aug-4th), 13/8 (841¢ wide
-  // M6 / neutral 6), 13/7 (1072¢ subminor 7th).
-  { name: "Diatonic Tridecimal Major",
-    // 2 / 4 / 5 canonical (9/8, 4/3, 3/2) — the diatonic backbone.
-    // 3 → 13/10 (454¢ supermajor 3rd), 6 → 13/8 (841¢), 7 → 13/7
-    // (1072¢ — narrow M7 / wide subminor 7).  All three modal-
-    // defining tones are 13-prime.
-    steps: [["1",0],["2",203.9],["3",454.2],["4",498.0],["5",702.0],["6",840.5],["7",1071.7]] },
-  { name: "Diatonic Tridecimal Minor",
-    // 2 / 4 / 5 canonical.  b3 → 13/11, b6 → 13/8, b7 → 13/7 — every
-    // minor-mode modal tone is 13-prime.
-    steps: [["1",0],["2",203.9],["b3",289.2],["4",498.0],["5",702.0],["b6",840.5],["b7",1071.7]] },
+  // ── 13-LIMIT (Tridecimal) — removed ──────────────────────────────────
+  // Diatonic Tridecimal Major / Minor were orphaned when the 41/53-EDO
+  // pickers switched to curated parent + modes layouts (which don't
+  // include them), and per user direction (2026-05-05) they're now
+  // deleted from the catalog.  Tridecimal Major's 3 (13/10 = 454¢) is
+  // a "super-supermajor" wider than S3 = 9/7 (435¢); Tridecimal
+  // Minor's b3 (13/11 = 289¢) sits BELOW Pyth m3 (294¢), narrower
+  // than any of m / Cm / Sm / n.  Neither maps cleanly onto the new
+  // letter-code system.
 
   // ── 41-EDO curated diatonic tonalities ───────────────────────────────
   // Per direct user direction (2026-05-05): the 41-EDO tonality picker
@@ -181,7 +170,7 @@ const JI_SCALES: JiScaleSpec[] = [
   // Minor / Classic Harmonic Minor M7 / Subharmonic Minor M7).
   // All preserve canonical 1 / 4 / 5 (4/3, 3/2) — hence "Diatonic"
   // in every name.
-  { name: "Diatonic Neutral Major",
+  { name: "Diatonic Neutral",
     // Major-flavoured Mohajira-cousin: M2 instead of b2, n3 at the
     // 3rd (11/9), C6 / C7 at 6 / 7 (5-limit).  Tonic chord 1-n3-5
     // is a NEUTRAL triad.
@@ -342,7 +331,7 @@ const FIFTY_THREE_EDO_FAMILIES: FortyOneEdoFamilySpec[] = [
   { parent: "Diatonic Classic Harmonic Minor M7",  modeNames: HARMONIC_MINOR_ROTATION_NAMES },
   { parent: "Diatonic Subharmonic Minor M7",       modeNames: HARMONIC_MINOR_ROTATION_NAMES },
   { parent: "Diatonic Supraharmonic Minor M7",     modeNames: HARMONIC_MINOR_ROTATION_NAMES },
-  { parent: "Diatonic Neutral Major",              modeNames: IONIAN_ROTATION_NAMES },
+  { parent: "Diatonic Neutral",              modeNames: IONIAN_ROTATION_NAMES },
 ];
 
 /** Public list of (family-label → ordered mode tonalities) used by the
