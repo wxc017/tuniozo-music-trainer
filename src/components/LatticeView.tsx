@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Line, Html } from "@react-three/drei";
 import * as THREE from "three";
-import { audioEngine } from "@/lib/audioEngine";
+import { audioEngine, DRONE_INSTRUMENTS, type DroneInstrument } from "@/lib/audioEngine";
 import { useLS } from "@/lib/storage";
 import {
   NODES, GENERATOR_EDGES, COMMA_EDGES, OTONAL_EDGES, UTONAL_EDGES, OCTAVE_EDGES,
@@ -4063,8 +4063,6 @@ function modeDefaults(mode: ViewMode) {
 
 const LIMIT_OPTIONS = [0, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 127] as const;
 
-type LatticeDroneMode = "Off" | "Single" | "Root+5th" | "Tanpura";
-
 interface LatticeViewProps {
   /** Optional set of node keys (n/d ratio strings) to highlight from
    *  outside.  When provided, takes precedence over the internal
@@ -4159,8 +4157,8 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   const [betaIntervalChain] = useLS<boolean>("lt_beta_interval_chain", false);
   const [betaComma] = useLS<boolean>("lt_beta_comma", false);
 
-  // ── Persistent drone (tanpura / root+5th) ─────────────────────────
-  const [latticeDroneMode, setLatticeDroneMode] = useLS<LatticeDroneMode>("lt_lattice_droneMode", "Off");
+  // ── Persistent drone (sampled instrument tonic) ─────────────────────
+  const [latticeDroneInstrument, setLatticeDroneInstrument] = useLS<DroneInstrument>("lt_lattice_droneInstrument", "cello");
   const [latticeDroneVol, setLatticeDroneVol] = useLS<number>("lt_lattice_droneVol", 0.08);
   const [latticeDroneRoot, setLatticeDroneRoot] = useLS<number>("lt_lattice_droneRoot", 0); // 0-11 pitch class
   const [latticeDroneOctave, setLatticeDroneOctave] = useLS<number>("lt_lattice_droneOctave", 4);
@@ -5376,22 +5374,16 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       tonnetzData, edoTonnetzData, handleTonnetzPLRNavigate, handleEdoTonnetzPLRNavigate]);
 
   // ── Persistent drone helpers ──────────────────────────────────────
-  const buildLatticeDroneRatios = useCallback((mode: LatticeDroneMode): number[] => {
-    // Base frequency ratio = 1.0 (root). Shifted by rootPcToFreq for actual Hz.
-    if (mode === "Single")    return [1];
-    if (mode === "Root+5th")  return [1, 3 / 2];
-    if (mode === "Tanpura")   return [1, 3 / 2, 2]; // root, 5th, octave above
-    return [];
-  }, []);
-
-  const startLatticeDrone = useCallback(async (mode: LatticeDroneMode, vol: number, rootPc: number, oct?: number) => {
-    if (mode === "Off") { audioEngine.stopDrone(); setLatticeDroneOn(false); return; }
+  // Sampled-instrument drones always sound a single tonic.  The previous
+  // Root / Root+5th / Tanpura ratio modes are gone — per direct user
+  // direction (2026-05-05), with real instrument samples we want a clean
+  // bowed/sung tonic, not a synthesized chord stack.
+  const startLatticeDrone = useCallback(async (vol: number, rootPc: number, oct?: number) => {
     await ensureAudio();
-    const ratios = buildLatticeDroneRatios(mode);
     const baseFreq = rootPcToFreq(rootPc) * Math.pow(2, (oct ?? latticeDroneOctave) - 4);
-    audioEngine.startRatioDrone(ratios, vol, baseFreq);
+    audioEngine.startRatioDrone([1], vol, baseFreq);
     setLatticeDroneOn(true);
-  }, [ensureAudio, buildLatticeDroneRatios, latticeDroneOctave]);
+  }, [ensureAudio, latticeDroneOctave]);
 
   const stopLatticeDrone = useCallback(() => {
     audioEngine.stopDrone();
@@ -5415,13 +5407,11 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
 
   // Restart drone when params change while it's on
   useEffect(() => {
-    if (!latticeDroneOn || latticeDroneMode === "Off") return;
-    const ratios = buildLatticeDroneRatios(latticeDroneMode);
-    if (ratios.length === 0) return;
-    const baseFreq = rootPcToFreq(latticeDroneRoot);
-    audioEngine.startRatioDrone(ratios, latticeDroneVol, baseFreq);
+    if (!latticeDroneOn) return;
+    const baseFreq = rootPcToFreq(latticeDroneRoot) * Math.pow(2, latticeDroneOctave - 4);
+    audioEngine.startRatioDrone([1], latticeDroneVol, baseFreq);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latticeDroneMode, latticeDroneRoot]);
+  }, [latticeDroneRoot, latticeDroneInstrument]);
 
   // Update volume in real time
   useEffect(() => {
@@ -5514,10 +5504,9 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     setDroneNodes(new Set());
     setStackActiveNodes(new Set());
     setNodeVolMap({});
-    if (latticeDroneOn && latticeDroneMode !== "Off") {
+    if (latticeDroneOn) {
       // Restart persistent drone (node-click may have overridden it)
-      const ratios = buildLatticeDroneRatios(latticeDroneMode);
-      audioEngine.startRatioDrone(ratios, latticeDroneVol, rootPcToFreq(latticeDroneRoot));
+      audioEngine.startRatioDrone([1], latticeDroneVol, rootPcToFreq(latticeDroneRoot) * Math.pow(2, latticeDroneOctave - 4));
     } else {
       audioEngine.stopDrone();
     }
@@ -5624,13 +5613,12 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     setNodeVolMap({});
     setClearPinnedKey(k => k + 1);
     // If persistent drone is active, restart it; otherwise stop all
-    if (latticeDroneOn && latticeDroneMode !== "Off") {
-      const ratios = buildLatticeDroneRatios(latticeDroneMode);
-      audioEngine.startRatioDrone(ratios, latticeDroneVol, rootPcToFreq(latticeDroneRoot));
+    if (latticeDroneOn) {
+      audioEngine.startRatioDrone([1], latticeDroneVol, rootPcToFreq(latticeDroneRoot) * Math.pow(2, latticeDroneOctave - 4));
     } else {
       audioEngine.stopDrone();
     }
-  }, [latticeDroneOn, latticeDroneMode, latticeDroneVol, latticeDroneRoot, buildLatticeDroneRatios]);
+  }, [latticeDroneOn, latticeDroneVol, latticeDroneRoot, latticeDroneOctave]);
 
   const toggleGen = (p: number) => setShowGen(prev => ({ ...prev, [p]: !prev[p] }));
 
@@ -5710,30 +5698,50 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
           )}
         </p>
 
-        {/* ── Tanpura / Drone strip ── */}
+        {/* ── Drone strip ── */}
         <div className="flex flex-wrap gap-2 items-center mb-3 py-1.5 px-2 rounded bg-[#0c0c0c] border border-[#1a1a1a]">
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-semibold text-[#666] uppercase tracking-widest">Drone</span>
             {latticeDroneOn && <span className="w-2 h-2 rounded-full bg-[#7173e6] animate-pulse" />}
           </div>
-          {/* Mode buttons */}
-          {(["Off", "Single", "Root+5th", "Tanpura"] as LatticeDroneMode[]).map(m => (
-            <button key={m}
-              onClick={async () => {
-                setLatticeDroneMode(m);
-                if (m === "Off") { stopLatticeDrone(); }
-                else { await startLatticeDrone(m, latticeDroneVol, latticeDroneRoot); }
+          {/* On/Off toggle */}
+          <button
+            onClick={async () => {
+              if (latticeDroneOn) { stopLatticeDrone(); }
+              else { await startLatticeDrone(latticeDroneVol, latticeDroneRoot); }
+            }}
+            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors border ${
+              latticeDroneOn
+                ? "bg-[#7173e6] border-[#7173e6] text-white"
+                : "bg-[#111] border-[#222] text-[#888] hover:text-[#aaa] hover:border-[#444]"
+            }`}>
+            {latticeDroneOn ? "On" : "Off"}
+          </button>
+          <div className="w-px h-5 bg-[#222]" />
+          {/* Instrument selector */}
+          <label className="text-[10px] text-[#555] flex items-center gap-1">
+            Inst
+            <select
+              value={latticeDroneInstrument}
+              onChange={async (e) => {
+                const inst = e.target.value as DroneInstrument;
+                setLatticeDroneInstrument(inst);
+                audioEngine.setInstrument(inst);
+                if (latticeDroneOn) {
+                  // Briefly fade & restart so the new instrument plays
+                  // immediately once its samples are available.
+                  await ensureAudio();
+                  const baseFreq = rootPcToFreq(latticeDroneRoot) * Math.pow(2, latticeDroneOctave - 4);
+                  audioEngine.startRatioDrone([1], latticeDroneVol, baseFreq);
+                }
               }}
-              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors border ${
-                latticeDroneMode === m && (m === "Off" ? !latticeDroneOn : latticeDroneOn)
-                  ? m === "Off"
-                    ? "bg-[#1a1a1a] border-[#333] text-[#888]"
-                    : "bg-[#7173e6] border-[#7173e6] text-white"
-                  : "bg-[#111] border-[#222] text-[#444] hover:text-[#aaa] hover:border-[#444]"
-              }`}>
-              {m}
-            </button>
-          ))}
+              className="bg-[#141414] border border-[#333] text-white text-xs rounded px-1.5 py-0.5"
+            >
+              {DRONE_INSTRUMENTS.map(d => (
+                <option key={d.id} value={d.id}>{d.label}</option>
+              ))}
+            </select>
+          </label>
           <div className="w-px h-5 bg-[#222]" />
           {/* Root note selector */}
           <label className="text-[10px] text-[#555] flex items-center gap-1">
@@ -5743,10 +5751,9 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               onChange={async (e) => {
                 const pc = Number(e.target.value);
                 setLatticeDroneRoot(pc);
-                if (latticeDroneOn && latticeDroneMode !== "Off") {
+                if (latticeDroneOn) {
                   await ensureAudio();
-                  const ratios = buildLatticeDroneRatios(latticeDroneMode);
-                  audioEngine.startRatioDrone(ratios, latticeDroneVol, rootPcToFreq(pc));
+                  audioEngine.startRatioDrone([1], latticeDroneVol, rootPcToFreq(pc) * Math.pow(2, latticeDroneOctave - 4));
                 }
               }}
               className="bg-[#141414] border border-[#333] text-white text-xs rounded px-1.5 py-0.5"
@@ -5764,8 +5771,8 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               <button key={o}
                 onClick={async () => {
                   setLatticeDroneOctave(o);
-                  if (latticeDroneOn && latticeDroneMode !== "Off") {
-                    await startLatticeDrone(latticeDroneMode, latticeDroneVol, latticeDroneRoot, o);
+                  if (latticeDroneOn) {
+                    await startLatticeDrone(latticeDroneVol, latticeDroneRoot, o);
                   }
                 }}
                 className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors border ${
@@ -6892,9 +6899,8 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                   setTonnetzSelectedTriad(null);
                   setEdoTonnetzSelectedTriad(null);
                   setClearPinnedKey(k => k + 1);
-                  if (latticeDroneOn && latticeDroneMode !== "Off") {
-                    const ratios = buildLatticeDroneRatios(latticeDroneMode);
-                    audioEngine.startRatioDrone(ratios, latticeDroneVol, rootPcToFreq(latticeDroneRoot));
+                  if (latticeDroneOn) {
+                    audioEngine.startRatioDrone([1], latticeDroneVol, rootPcToFreq(latticeDroneRoot) * Math.pow(2, latticeDroneOctave - 4));
                   } else {
                     audioEngine.stopDrone();
                   }
