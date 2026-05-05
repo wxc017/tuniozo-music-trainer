@@ -304,23 +304,25 @@ export function limitForJiTonality(tonality: string): JiLimit | null {
 }
 
 /**
- * Short abbreviation per JI limit, used as a superscript family
- * marker on chord labels in 41/53-EDO so chords from different limit
- * families don't visually collide.  E.g. "Tridecimal Major" → "Tri",
- * "Heptadecimal Minor" → "Hep".  Three letters keeps the prefix
- * short enough to render inline without crowding the roman numeral.
+ * Per-limit superscript marker used to disambiguate roman-numeral
+ * chord labels across JI prime-limit families in 41/53-EDO.  The
+ * prime number itself (in Unicode superscript digits) is the most
+ * concise and universally-recognisable identifier — every xen
+ * source labels temperaments by their prime limit, so the user can
+ * read "I¹³" as "Tridecimal I" with no ambiguity.  Keeps the marker
+ * to 1–2 characters so chord labels stay scannable in dense pools.
  */
 const LIMIT_ABBREV: Record<JiLimit, string> = {
-  3: "Pyt",
-  5: "JI",
-  7: "Sep",
-  11: "Neu",
-  13: "Tri",
-  17: "Hep",
-  19: "Non",
-  23: "Vct",
-  29: "Vcn",
-  31: "Tgp",
+  3: "³",
+  5: "⁵",
+  7: "⁷",
+  11: "¹¹",
+  13: "¹³",
+  17: "¹⁷",
+  19: "¹⁹",
+  23: "²³",
+  29: "²⁹",
+  31: "³¹",
 };
 
 /** Family abbreviation for a tonality, or null if the tonality isn't
