@@ -2169,6 +2169,33 @@ export default function ChordsTab({
                         classes: classesPerChord[i],
                         color: PIN_PALETTE[i % PIN_PALETTE.length],
                       }));
+                    // Comma-compensation arcs.  For each chord that
+                    // ended up with a non-zero EDO-step compensation,
+                    // draw an arc from the chord's uncompensated root
+                    // class to its compensated root class so the user
+                    // can see the exact step the playback shifted by.
+                    // The drift is recorded on latticeDriftsRef when
+                    // the loop is built; we re-derive the integer
+                    // step here so the arc matches what the audio
+                    // engine actually played.
+                    void latticeRevision;
+                    const driftsForArcs = latticeDriftsRef.current?.drifts ?? null;
+                    const compensationArcs: Array<{ fromClassId: number; toClassId: number; color: string; chordIdx: number }> = [];
+                    if (driftsForArcs) {
+                      for (let i = 0; i < positions.length && i < driftsForArcs.length; i++) {
+                        const compStep = driftCentsToSteps(driftsForArcs[i], edo);
+                        if (compStep === 0) continue;
+                        const rootClass = latticeToEdoStep(positions[i], edo);
+                        const fromClassId = ((rootClass) % edo + edo) % edo;
+                        const toClassId = ((rootClass - compStep) % edo + edo) % edo;
+                        compensationArcs.push({
+                          fromClassId,
+                          toClassId,
+                          color: PIN_PALETTE[i % PIN_PALETTE.length],
+                          chordIdx: i,
+                        });
+                      }
+                    }
                     const togglePin = (i: number) => {
                       setPinnedChordIdxs(prev => {
                         const next = new Set(prev);
@@ -2194,6 +2221,7 @@ export default function ChordsTab({
                           <LatticeView
                             activeClassIds={activeClasses}
                             pinnedChordOverlays={pinnedOverlays}
+                            compensationArcs={compensationArcs}
                             temperingForEdo={edo}
                             chromeless
                           />

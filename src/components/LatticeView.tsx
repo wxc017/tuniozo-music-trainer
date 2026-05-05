@@ -2052,6 +2052,13 @@ interface MonzoSceneProps {
    *  the chord-tab harmonic-lattice toggle buttons to render each
    *  pinned chord in a distinct colour. */
   nodeColorOverrides?: Map<string, string>;
+  /** Curved arcs that arch up out of the lattice surface, one per
+   *  comma-drift-compensated chord.  Each arc connects the chord's
+   *  uncompensated class rep to its compensated rep so the user can
+   *  see exactly which step the playback shifted by to keep the
+   *  tonic anchored.  Arcs lift above the cylinder so they don't get
+   *  visually confused with the in-plane P5 / M3 chains. */
+  compensationArcs?: Array<{ fromClassId: number; toClassId: number; color: string; chordIdx: number }>;
   hoveredNode: string | null;
   onHover: (key: string | null) => void;
   onClickNode: (node: LatticeNode) => void;
@@ -2068,7 +2075,7 @@ interface MonzoSceneProps {
   clearPinnedKey?: number;
 }
 
-function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, hoveredNode, onHover, onClickNode, onFocusNode, focusKey, showTopoSurface, layers, pathMode, labelLOD, labelDist, rootPc, highlightedRatios, autoPathTargets, clearPinnedKey }: MonzoSceneProps) {
+function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compensationArcs, hoveredNode, onHover, onClickNode, onFocusNode, focusKey, showTopoSurface, layers, pathMode, labelLOD, labelDist, rootPc, highlightedRatios, autoPathTargets, clearPinnedKey }: MonzoSceneProps) {
   const useTopoPositions = showTopoSurface && (topology.type === "torus" || topology.type === "cylinder");
   const topoPositions = useMemo(() => {
     if (!useTopoPositions) return null;
@@ -2457,6 +2464,73 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, hovered
             <lineBasicMaterial color={MONZO_PRIME_COLORS[prime] ?? "#555"} transparent opacity={pathMode ? 0.9 : 0.5} />
           </lineSegments>
         ));
+      })()}
+
+      {/* Comma-compensation arcs — quadratic-Bezier curves that arch
+          up out of the cylinder surface to show, per chord, exactly
+          which EDO step the adaptive-JI playback used to compensate
+          for accumulated comma drift.  The lift puts them visibly
+          above the in-plane P5 / M3 generator edges so they don't
+          read as just another generator-chain segment. */}
+      {compensationArcs && compensationArcs.length > 0 && (() => {
+        const posMap = topoPositions ?? lattice.positions;
+        // Build a class-id → simplest-rep-key map identical to the
+        // one the EDO edge code uses, so the arcs land on the
+        // visible class reps and not on tempered siblings.
+        const classToRep = new Map<number, string>();
+        const memberByClass = new Map<number, string[]>();
+        for (const [key, classId] of lattice.classMap) {
+          if (!memberByClass.has(classId)) memberByClass.set(classId, []);
+          memberByClass.get(classId)!.push(key);
+        }
+        for (const [classId, members] of memberByClass) {
+          const rep = members.find(k => classRepSet.has(k))
+            ?? (members.length === 1 ? members[0] : null);
+          if (rep) classToRep.set(classId, rep);
+        }
+        return compensationArcs.map((arc, i) => {
+          const fromKey = classToRep.get(arc.fromClassId);
+          const toKey = classToRep.get(arc.toClassId);
+          if (!fromKey || !toKey) return null;
+          const a = posMap.get(fromKey);
+          const b = posMap.get(toKey);
+          if (!a || !b) return null;
+          // Quadratic Bezier with control point lifted above and
+          // pushed slightly outward so the arc clears any nodes
+          // between the endpoints.  Lift scales with the chord
+          // index so simultaneous arcs don't all sit at exactly
+          // the same height and become indistinguishable.
+          const mx = (a[0] + b[0]) / 2;
+          const my = (a[1] + b[1]) / 2;
+          const mz = (a[2] + b[2]) / 2;
+          const lift = 6 + (arc.chordIdx % 4) * 1.5;
+          // Push outward radially (away from cylinder centre at xz origin).
+          const radial = Math.hypot(mx, mz);
+          const outScale = radial > 0.001 ? (radial + 3) / radial : 1;
+          const cx = mx * outScale;
+          const cz = mz * outScale;
+          const cy = my + lift;
+          const SEGMENTS = 32;
+          const pts: [number, number, number][] = [];
+          for (let s = 0; s <= SEGMENTS; s++) {
+            const t = s / SEGMENTS;
+            const u = 1 - t;
+            const px = u * u * a[0] + 2 * u * t * cx + t * t * b[0];
+            const py = u * u * a[1] + 2 * u * t * cy + t * t * b[1];
+            const pz = u * u * a[2] + 2 * u * t * cz + t * t * b[2];
+            pts.push([px, py, pz]);
+          }
+          return (
+            <Line
+              key={`comp-arc-${i}`}
+              points={pts}
+              color={arc.color}
+              lineWidth={2.5}
+              transparent
+              opacity={0.95}
+            />
+          );
+        });
       })()}
 
       {/* Tempered edges — batched */}
@@ -3904,9 +3978,15 @@ interface LatticeViewProps {
    *  single class appears in multiple overlays, the first overlay
    *  in the array wins. */
   pinnedChordOverlays?: Array<{ classes: Set<number>; color: string }>;
+  /** Comma-compensation arcs — one per chord that needed a non-zero
+   *  drift offset.  Each arc renders as a curve arching up out of
+   *  the lattice from the chord's uncompensated rep to its
+   *  compensated rep, so the user can see the exact EDO step the
+   *  playback used to keep the tonic anchored. */
+  compensationArcs?: Array<{ fromClassId: number; toClassId: number; color: string; chordIdx: number }>;
 }
 
-export default function LatticeView({ externalHighlights, activeNodeKey, activeNodeKeys, activeClassIds, temperingForEdo, chromeless = false, pinnedChordOverlays }: LatticeViewProps = {}) {
+export default function LatticeView({ externalHighlights, activeNodeKey, activeNodeKeys, activeClassIds, temperingForEdo, chromeless = false, pinnedChordOverlays, compensationArcs }: LatticeViewProps = {}) {
   const [droneNodes, setDroneNodes] = useState<Set<string>>(new Set());
   // When the parent supplies `activeNodeKeys` (plural) or
   // `activeNodeKey` (singular), surface them through the standard
@@ -6708,6 +6788,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               topology={monzoTopology}
               droneNodes={droneNodes}
               nodeColorOverrides={monzoNodeColorOverrides}
+              compensationArcs={compensationArcs}
               hoveredNode={hoveredNode}
               onHover={setHoveredNode}
               onClickNode={handleMonzoNodeClick}
