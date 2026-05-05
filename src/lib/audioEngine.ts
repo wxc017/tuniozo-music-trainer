@@ -33,10 +33,32 @@ const TAMBURA_REAL = new Float32Array([
 ]);
 const TAMBURA_IMAG = new Float32Array(TAMBURA_REAL.length); // all zeros = cosine phases
 
+// Multi-sampled cello loaded from gleitz/midi-js-soundfonts (MusyngKite
+// SoundFont, MP3 format, hosted on GitHub Pages with permissive CORS).
+// Per direct user direction (2026-05-05): the synthesized PeriodicWave
+// drone sounded "alien" / unconvincing.  Real cello samples loop-shifted
+// to the target pitch land much closer to a usable practice drone.
+//
+// We load three sample points (C2 / C4 / C5) so any drone target picks
+// the closest sample and pitch-shifts at most ±6 semitones — keeps the
+// chipmunk effect away.  The samples are full-note recordings with
+// natural attack/sustain/release; we set loop=true on the
+// AudioBufferSourceNode so each voice continuously rebows.
+const CELLO_SAMPLE_BASE = "https://gleitz.github.io/midi-js-soundfonts/MusyngKite/cello-mp3/";
+const CELLO_SAMPLE_NOTES = ["C2", "C4", "C5"] as const;
+// MIDI numbers for the loaded sample points so we can pick the closest
+// one for each target pitch (C2 = 36, C4 = 60, C5 = 72).
+const CELLO_SAMPLE_MIDI: Record<string, number> = { C2: 36, C4: 60, C5: 72 };
+
+interface CelloSample { midi: number; buffer: AudioBuffer }
+
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private sampleBuffer: AudioBuffer | null = null;
+  private celloSamples: CelloSample[] = [];
+  private celloLoadPromise: Promise<void> | null = null;
   private droneNodes: OscillatorNode[] = [];
+  private droneSamples: AudioBufferSourceNode[] = [];
   private droneNoteGains: GainNode[] = [];
   private droneGainNode: GainNode | null = null;
   private intervalDrones: Map<string, { osc: OscillatorNode; gain: GainNode }> = new Map();
@@ -73,6 +95,60 @@ export class AudioEngine {
     } catch (e) {
       console.warn("C4.wav not loaded, using synth fallback", e);
     }
+
+    // Kick off cello sample loading in the background.  We don't await
+    // it here so init() returns promptly; the drone synth will fall
+    // back to the PeriodicWave path if a drone fires before the
+    // samples finish loading.
+    this.loadCelloSamples();
+  }
+
+  /** Fetch the multi-sampled cello from gleitz/midi-js-soundfonts.  Runs
+   *  once per AudioContext; subsequent calls return the existing
+   *  promise.  Failures are warned but non-fatal — the synth falls back
+   *  to the PeriodicWave cello if no samples loaded. */
+  private loadCelloSamples(): Promise<void> {
+    if (this.celloLoadPromise) return this.celloLoadPromise;
+    if (!this.ctx) return Promise.resolve();
+    const ctx = this.ctx;
+    this.celloLoadPromise = (async () => {
+      const loads = CELLO_SAMPLE_NOTES.map(async note => {
+        try {
+          const resp = await fetch(`${CELLO_SAMPLE_BASE}${note}.mp3`);
+          if (!resp.ok) throw new Error(`fetch failed ${resp.status}`);
+          const arr = await resp.arrayBuffer();
+          const buf = await ctx.decodeAudioData(arr);
+          this.celloSamples.push({ midi: CELLO_SAMPLE_MIDI[note], buffer: buf });
+        } catch (e) {
+          console.warn(`Cello sample ${note} failed to load`, e);
+        }
+      });
+      await Promise.all(loads);
+      // Sort by MIDI ascending so pickClosestCelloSample's binary lookup is simple.
+      this.celloSamples.sort((a, b) => a.midi - b.midi);
+    })();
+    return this.celloLoadPromise;
+  }
+
+  /** Pick whichever loaded cello sample is closest to the target MIDI
+   *  pitch, plus the playbackRate needed to retune it.  Returns null
+   *  when no samples are loaded yet (caller falls back to synth). */
+  private pickClosestCelloSample(targetMidi: number): { buffer: AudioBuffer; rate: number } | null {
+    if (this.celloSamples.length === 0) return null;
+    let best = this.celloSamples[0];
+    let bestDist = Math.abs(targetMidi - best.midi);
+    for (const s of this.celloSamples) {
+      const d = Math.abs(targetMidi - s.midi);
+      if (d < bestDist) { best = s; bestDist = d; }
+    }
+    // playbackRate of 2^(semitones/12) shifts the sample to the target.
+    const rate = Math.pow(2, (targetMidi - best.midi) / 12);
+    return { buffer: best.buffer, rate };
+  }
+
+  /** Convert a frequency in Hz to a fractional MIDI number (A4=440 → 69). */
+  private freqToMidi(freq: number): number {
+    return 69 + 12 * Math.log2(freq / 440);
   }
 
   async resume() { await this.ctx?.resume(); }
@@ -268,21 +344,51 @@ export class AudioEngine {
     this.droneGainNode.gain.value = gain;
     this.droneGainNode.connect(this.masterGain ?? ctx.destination);
 
-    const wave = ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
+    // Use sampled cello when the buffers are loaded; fall back to the
+    // PeriodicWave synth (CELLO_REAL) until then.
+    const useSamples = this.celloSamples.length > 0;
+    const wave = useSamples ? null : ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
 
     for (let i = 0; i < notes.length; i++) {
       const noteGain = ctx.createGain();
       noteGain.gain.value = perNoteGains?.[i] ?? 1.0;
       noteGain.connect(this.droneGainNode);
 
+      const freq = this.absToFreq(notes[i], edo);
+      this.spawnDroneVoice(ctx, freq, noteGain, useSamples, wave);
+      this.droneNoteGains.push(noteGain);
+    }
+  }
+
+  /** Spawn one drone voice — either a looping cello sample pitched to
+   *  `targetFreq`, or a PeriodicWave oscillator with vibrato.  All
+   *  generated nodes get pushed onto droneNodes / droneSamples so
+   *  stopDrone() tears them down cleanly. */
+  private spawnDroneVoice(ctx: AudioContext, targetFreq: number, noteGain: GainNode, useSamples: boolean, wave: PeriodicWave | null) {
+    if (useSamples) {
+      const targetMidi = this.freqToMidi(targetFreq);
+      const pick = this.pickClosestCelloSample(targetMidi);
+      if (pick) {
+        const src = ctx.createBufferSource();
+        src.buffer = pick.buffer;
+        src.loop = true;
+        src.playbackRate.value = pick.rate;
+        src.connect(noteGain);
+        src.start();
+        this.droneSamples.push(src);
+        return;
+      }
+      // pickClosestCelloSample returned null even though useSamples was
+      // true — race condition during loading.  Fall through to synth.
+    }
+    if (wave) {
       const osc = ctx.createOscillator();
       osc.setPeriodicWave(wave);
-      osc.frequency.value = this.absToFreq(notes[i], edo);
+      osc.frequency.value = targetFreq;
       this.attachVibrato(osc, ctx);
       osc.connect(noteGain);
       osc.start();
       this.droneNodes.push(osc);
-      this.droneNoteGains.push(noteGain);
     }
   }
 
@@ -310,6 +416,11 @@ export class AudioEngine {
       try { osc.disconnect(); } catch {}
     }
     this.droneNodes = [];
+    for (const src of this.droneSamples) {
+      try { src.stop(); } catch {}
+      try { src.disconnect(); } catch {}
+    }
+    this.droneSamples = [];
     for (const g of this.droneNoteGains) {
       try { g.disconnect(); } catch {}
     }
@@ -447,24 +558,18 @@ export class AudioEngine {
     this.droneGainNode.connect(this.masterGain ?? ctx.destination);
 
     const freq = baseFreq ?? C4_FREQ;
-    // Cello spectrum + per-voice vibrato (per direct user direction
-    // 2026-05-05).  Each ratio gets one fundamental oscillator
-    // carrying the cello PeriodicWave; one LFO modulates its detune
-    // for the slight, living vibrato characteristic of bowed strings.
-    const wave = ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
+    // Sampled cello when buffers are loaded; PeriodicWave synth (with
+    // vibrato) as the fallback.  spawnDroneVoice handles the
+    // selection so the JI-ratio path and the EDO path stay in sync.
+    const useSamples = this.celloSamples.length > 0;
+    const wave = useSamples ? null : ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
 
     for (let i = 0; i < ratios.length; i++) {
       const noteGain = ctx.createGain();
       noteGain.gain.value = perNoteGains?.[i] ?? 1.0;
       noteGain.connect(this.droneGainNode);
 
-      const osc = ctx.createOscillator();
-      osc.setPeriodicWave(wave);
-      osc.frequency.value = freq * ratios[i];
-      this.attachVibrato(osc, ctx);
-      osc.connect(noteGain);
-      osc.start();
-      this.droneNodes.push(osc);
+      this.spawnDroneVoice(ctx, freq * ratios[i], noteGain, useSamples, wave);
       this.droneNoteGains.push(noteGain);
     }
   }
