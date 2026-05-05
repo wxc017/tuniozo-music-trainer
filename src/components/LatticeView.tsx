@@ -5386,6 +5386,24 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
 
   const handleMonzoNodeClick = useCallback(async (node: LatticeNode) => {
     await ensureAudio();
+    // Chromeless mode (ChordsTab harmonic lattice): the parent already
+    // drives a chord progression through `pinnedChordOverlays` /
+    // `activeClassIds`, with its own live audio playback running.
+    // Toggling a persistent drone here would layer this clicked node
+    // on top of the live chord tones, producing the "completely
+    // broken" cacophony the user reported.  In chromeless mode we
+    // play a single-shot preview tone instead — the user gets to
+    // sample the node's pitch without it sticking around to fight
+    // the progression playback.
+    if (chromeless) {
+      const cfg = effectiveConfig;
+      const isTempered = cfg.temperedCommas.length > 0;
+      const ratio = isTempered
+        ? temperedRatio(node.monzo.exps, cfg.primes, cfg.temperedCommas, cfg.octaveEquivalence, cfg.tuningMethod)
+        : node.monzo.n / node.monzo.d;
+      audioEngine.playRatioNote(ratio, 0.8, 0.6);
+      return;
+    }
     const key = node.key;
     setDroneNodes(prev => {
       const next = new Set(prev);
@@ -5411,7 +5429,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       }
       return next;
     });
-  }, [ensureAudio, monzoLattice, effectiveConfig, startNodeDrone, nodeVolMap]);
+  }, [ensureAudio, chromeless, monzoLattice, effectiveConfig, startNodeDrone, nodeVolMap]);
 
   const defaults = modeDefaults(viewMode);
   const [showGen, setShowGen] = useState<Record<number, boolean>>(defaults.gen);
