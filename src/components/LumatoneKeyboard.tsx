@@ -47,10 +47,12 @@ export default function LumatoneKeyboard({ layout, highlightedPitches, onKeyClic
   }, [layout]);
 
   return (
-    <div className="w-full overflow-hidden bg-[#111111] rounded-xl border border-[#333]">
+    <div className="w-full h-full overflow-hidden bg-[#111111] rounded-xl border border-[#333]">
       <svg
         width="100%"
+        height={maxHeight === null ? "100%" : undefined}
         viewBox={viewBox}
+        preserveAspectRatio="xMidYMid meet"
         style={{ ...(maxHeight !== null ? { maxHeight } : {}), display: "block", transform: "rotate(-2.5deg)", transformOrigin: "center center" }}
         xmlns="http://www.w3.org/2000/svg"
       >
