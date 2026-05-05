@@ -5,7 +5,7 @@ import PianoKeyboard from "@/components/PianoKeyboard";
 import GuitarFretboard from "@/components/GuitarFretboard";
 import BassFretboard from "@/components/BassFretboard";
 import { computeLayout, LayoutResult, ComputedKey } from "@/lib/lumatoneLayout";
-import { audioEngine } from "@/lib/audioEngine";
+import { audioEngine, DRONE_INSTRUMENTS, type DroneInstrument } from "@/lib/audioEngine";
 import IntervalsTab from "@/components/tabs/IntervalsTab";
 import ChordsTab from "@/components/tabs/ChordsTab";
 import MelodyTab from "@/components/tabs/MelodyTab";
@@ -51,7 +51,7 @@ import { initFolderSync, getStatus as getFolderSyncStatus, reconnectFolder, type
 import { recordAnswer, getDayTotals, accuracy, setImportBias, getImportBias, clearImportBias, removeSlotAnswers } from "@/lib/stats";
 import { getSavedToken, downloadSync, uploadSync, clearToken } from "@/lib/googleDrive";
 import { buildSyncPayload, restoreFromSyncPayload } from "@/lib/syncData";
-import { getEDOIntervals, getLayoutFile, pcToNoteNameWithEnharmonic, formatHalfAccidentals } from "@/lib/edoData";
+import { getLayoutFile, pcToNoteNameWithEnharmonic, formatHalfAccidentals } from "@/lib/edoData";
 // Side-effect import: registers the 19 curated JI scales (Pythagorean,
 // 5-limit, septimal, neutral / Maqam) into edoData's pattern-map cache
 // for 41-EDO and 53-EDO so getModeDegreeMap() resolves them.  No exports
@@ -80,7 +80,6 @@ const VIZ_LABELS: Record<VisualizerType, string> = {
 
 type Tab = "intervals"|"chords"|"melody"|"jazz"|"patterns"|"drone"|"modeid";
 type ResponseMode = "Play Audio"|"Show Target (Sing It)";
-type DroneMode = "Single"|"Root+5th"|"Tanpura";
 
 const TAB_LABELS: Record<Tab, string> = {
   intervals: "Intervals", chords: "Chords",
@@ -247,7 +246,7 @@ export default function App() {
   const [responseMode, setResponseMode] = useLS<ResponseMode>("lt_app_responseMode", "Play Audio");
   // droneTonal removed — drone now uses tonicPc directly
   const [droneOct, setDroneOct] = useLS<number>("lt_app_droneOct", 4);
-  const [droneMode, setDroneMode] = useLS<DroneMode>("lt_app_droneMode", "Single");
+  const [droneInstrument, setDroneInstrument] = useLS<DroneInstrument>("lt_app_droneInstrument", "cello");
   const [droneVol, setDroneVol] = useLS<number>("lt_app_droneVol", 0.08);
   const [droneIsOn, setDroneIsOn] = useState(false);
   const [section, setSection] = useLS<string>("lt_app_section", "ear-trainer");
@@ -510,18 +509,19 @@ export default function App() {
   }, [playVol, audioReady]);
 
   // ── Drone helpers ──────────────────────────────────────────────────
-  const buildDroneNotes = (tonal: number, oct: number, mode: DroneMode): { notes: number[]; gains?: number[] } => {
+  // Sampled-instrument drones always sound a single tonic.  The previous
+  // Single / Root+5th / Tanpura mode set is gone — per direct user
+  // direction (2026-05-05): with real instrument samples we want a clean
+  // bowed/sung tonic, not a synthesized chord stack.
+  const buildDroneNotes = (tonal: number, oct: number): { notes: number[]; gains?: number[] } => {
     const abs = tonal + (oct - 4) * edo;
-    const P5 = getEDOIntervals(edo).P5;
-    if (mode === "Root+5th") return { notes: [abs, abs + P5] };
-    // Tanpura: lower Sa, Sa, Pa, upper Sa — balanced like a real tanpura
-    if (mode === "Tanpura")  return { notes: [abs - edo, abs, abs + P5, abs + edo], gains: [0.5, 1.0, 0.7, 0.8] };
     return { notes: [abs] };
   };
 
   const startHeaderDrone = async () => {
     await ensureAudio();
-    const { notes, gains } = buildDroneNotes(tonicPc, droneOct, droneMode);
+    audioEngine.setInstrument(droneInstrument);
+    const { notes, gains } = buildDroneNotes(tonicPc, droneOct);
     audioEngine.startDrone(notes, edo, droneVol, gains);
     setDroneIsOn(true);
   };
@@ -557,7 +557,7 @@ export default function App() {
           pulsePhase.current = "off";
           scheduleNext("off");
         } else {
-          const dn = buildDroneNotes(tonicPc, droneOct, droneMode);
+          const dn = buildDroneNotes(tonicPc, droneOct);
           audioEngine.startDrone(dn.notes, edo, droneVol, dn.gains);
           pulsePhase.current = "on";
           scheduleNext("on");
@@ -567,7 +567,7 @@ export default function App() {
     pulsePhase.current = "on";
     scheduleNext("on");
     return () => { if (pulseTimer.current) { clearTimeout(pulseTimer.current); pulseTimer.current = null; } };
-  }, [dronePulse, droneIsOn, dronePulseDur, tonicPc, droneOct, droneMode, droneVol, edo]);
+  }, [dronePulse, droneIsOn, dronePulseDur, tonicPc, droneOct, droneInstrument, droneVol, edo]);
 
   const handleDroneVolChange = (v: number) => {
     setDroneVol(v);
@@ -938,10 +938,21 @@ export default function App() {
                 </select>
               </div>
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Type</label>
-                <select value={droneMode} onChange={e => setDroneMode(e.target.value as DroneMode)}
+                <label className="text-xs text-[#666]">Instrument</label>
+                <select value={droneInstrument}
+                  onChange={async e => {
+                    const inst = e.target.value as DroneInstrument;
+                    setDroneInstrument(inst);
+                    audioEngine.setInstrument(inst);
+                    if (droneIsOn) {
+                      // Restart so the new instrument plays immediately
+                      // once its samples come in.
+                      const { notes, gains } = buildDroneNotes(tonicPc, droneOct);
+                      audioEngine.startDrone(notes, edo, droneVol, gains);
+                    }
+                  }}
                   className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
-                  <option>Single</option><option>Root+5th</option><option>Tanpura</option>
+                  {DRONE_INSTRUMENTS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
                 </select>
               </div>
               <div className="flex items-center gap-1.5">
