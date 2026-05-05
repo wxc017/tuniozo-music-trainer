@@ -145,25 +145,24 @@ const JI_SCALES: JiScaleSpec[] = [
     steps: [["1",0],["2",203.9],["b3",315.6],["#4",582.5],["5",702.0],["6",884.4],["b7",1017.6]] },
 
   // ── 13-LIMIT (Tridecimal) ────────────────────────────────────────────
-  // Higher-prime substitutions land at the 3rd / 6th / 7th degrees
-  // (and occasionally the 2nd) — the modal-defining tones.  4 and 5
-  // stay anchored at 4/3 and 3/2 so the lattice walks remain on the
-  // standard 5-limit spine.  Where a clean prime-flavoured M3 / M6 /
-  // M7 doesn't exist, the corresponding Major-mode degree falls back
-  // to 5-limit.  Key 13-prime intervals: 13/12 (138¢ small m2),
-  // 13/11 (289¢ supraminor 3rd), 13/9 (637¢ aug-4th), 13/8 (841¢ wide
-  // neutral 6), 13/7 (1072¢ subminor 7th).
+  // Per direct user direction: ALL of 3rd / 6th / 7th must be filled
+  // by the named prime — no fallback to 5-limit even where the prime's
+  // candidate isn't an idiomatic Major / minor third.  The result
+  // sometimes loosens the I-chord's traditional Major / minor quality
+  // (e.g. Tridecimal "Major" with 13/10 supermajor 3rd), but the
+  // scale's identity is the prime, not its 5-limit cousin.  4 and 5
+  // stay anchored at 4/3 and 3/2 throughout.
+  // Key 13-prime intervals: 13/12 (138¢), 13/11 (289¢ supraminor 3rd),
+  // 13/10 (454¢ supermajor 3rd), 13/9 (637¢ aug-4th), 13/8 (841¢ wide
+  // M6 / neutral 6), 13/7 (1072¢ subminor 7th).
   { name: "Tridecimal Major",
-    // 13-prime substitution at the 6th only (13/8 M6); no clean
-    // tridecimal M3 or M7 exists, so the rest of the scale stays
-    // 5-limit.  The single 13-prime tone is enough to colour the
-    // scale because the 6th drives the modal flavour.
-    steps: [["1",0],["2",203.9],["3",386.3],["4",498.0],["5",702.0],["6",840.5],["7",1088.3]] },
+    // 3 → 13/10 (454¢ supermajor 3rd), 6 → 13/8 (841¢), 7 → 13/7
+    // (1072¢ — narrow M7 / wide subminor 7).  All three modal-
+    // defining tones are 13-prime.
+    steps: [["1",0],["2",203.9],["3",454.2],["4",498.0],["5",702.0],["6",840.5],["7",1071.7]] },
   { name: "Tridecimal Minor",
-    // Three 13-prime substitutions (b3 = 13/11, b6 = 13/8, b7 = 13/7) —
-    // every modal tone of the minor mode tilts into the 13-prime,
-    // giving a much darker / more "tridecimal" minor than the 5-limit
-    // version.  4 and 5 stay anchored.
+    // b3 → 13/11, b6 → 13/8, b7 → 13/7 — every minor-mode modal tone
+    // tilts into the 13-prime.
     steps: [["1",0],["2",203.9],["b3",289.2],["4",498.0],["5",702.0],["b6",840.5],["b7",1071.7]] },
   { name: "Maqam Sikah",
     // The neutral 3rd / 6th Maqam family Sikah belongs to.  In 13-limit
