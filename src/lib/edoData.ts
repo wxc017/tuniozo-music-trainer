@@ -1206,11 +1206,25 @@ const DEGREE_TO_LETTER: Record<string, string> = {
 
 /**
  * Replace double-sharps/double-flats with half-sharp (𝄲) / half-flat (𝄳) glyphs.
- * Why: in 31-EDO displays, "##"/"bb" (and their 𝄪/𝄫 forms) read as visual clutter;
- * the half accidentals compress to a single glyph. Applied at display sites only —
- * parsing code still sees the raw ASCII form.
+ *
+ * In microtonal EDOs (31 / 41 / 53), "##" and "bb" in mode-name accidentals
+ * actually denote half-accidentals — a single EDO step away from the natural,
+ * not the diatonic double-sharp / double-flat.  The half-glyph is visually
+ * cleaner.
+ *
+ * In diatonic EDOs (12 / 19), "##" / "bb" mean genuine double-sharp / double-
+ * flat — half-accidentals don't exist there.  Pass `edo` and we'll either
+ * leave the ASCII form alone or substitute the proper double-sharp /
+ * double-flat glyphs (𝄪 / 𝄫) per direct user direction (2026-05-05).
  */
-export function formatHalfAccidentals(s: string): string {
+export function formatHalfAccidentals(s: string, edo?: number): string {
+  if (edo === 12 || edo === 19) {
+    // Diatonic — half-accidentals don't exist here.  Convert any pre-
+    // existing 𝄪 / 𝄫 glyphs back to ASCII "##" / "bb" for consistency,
+    // and leave any incoming "##" / "bb" literally alone.
+    return s.replace(/𝄪/g, "##").replace(/𝄫/g, "bb");
+  }
+  // Microtonal default: collapse to half-accidentals.
   return s
     .replace(/##/g, "𝄲")
     .replace(/bb/g, "𝄳")
