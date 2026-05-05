@@ -33,23 +33,35 @@ const TAMBURA_REAL = new Float32Array([
 ]);
 const TAMBURA_IMAG = new Float32Array(TAMBURA_REAL.length); // all zeros = cosine phases
 
-// Sampled drone instruments loaded from gleitz/midi-js-soundfonts
-// (MusyngKite SoundFont, MP3 format, hosted on GitHub Pages with
-// permissive CORS).  Per direct user direction (2026-05-05): the
-// synthesized PeriodicWave drone sounded "alien", so the drone now
+// Sampled drone instruments — per direct user direction (2026-05-05),
+// the synthesized PeriodicWave drone sounded "alien", so the drone now
 // streams real instrument samples and pitch-shifts via playbackRate.
 //
-// Three sample points (C2 / C4 / C5) per instrument so any drone
-// target picks the closest sample and pitch-shifts at most ±6
-// semitones — keeps chipmunking / foghorning away.  Each instrument
-// loads lazily on first selection.
-const SOUNDFONT_BASE = "https://gleitz.github.io/midi-js-soundfonts/MusyngKite/";
-const SAMPLE_NOTES = ["C2", "C4", "C5"] as const;
-const SAMPLE_MIDI: Record<string, number> = { C2: 36, C4: 60, C5: 72 };
+// Sources, picked per-instrument for highest fidelity:
+//   • Philharmonia Orchestra (skratchdot/philharmonia-samples mirror,
+//     CC-BY-SA, jsDelivr) — pro-recorded chromatic strings.  Used for
+//     cello and double bass: dense maps (~1-semitone resolution),
+//     arco-normal forte articulation, ~13-20 KB MP3 per note.  Pitch
+//     shift between samples stays ≤ 1 semitone so the loop region
+//     doesn't warp audibly.
+//   • tonejs-instruments (nbrosowsky/tonejs-instruments, MIT,
+//     GitHub Pages) — 4-per-octave MP3s for violin and church organ.
+//     Far better than MusyngKite's 3-points-total density.
+//   • MusyngKite SoundFont (gleitz/midi-js-soundfonts, GitHub Pages) —
+//     used as the legacy fallback for ensemble/choir/voice/pad
+//     instruments where no comparable free real-recording exists.
+//
+// Each instrument loads lazily on first selection.  The drone synth
+// falls back to the PeriodicWave path if a drone fires before the
+// samples finish loading.
 
-/** Curated drone instrument list — picks from MusyngKite SoundFont
- *  presets that hold a continuous tone well.  `id` matches the gleitz
- *  folder name (e.g. cello-mp3), `label` is what shows in the picker. */
+const PHILHARMONIA_BASE = "https://cdn.jsdelivr.net/gh/skratchdot/philharmonia-samples@gh-pages/audio/";
+const TONEJS_BASE       = "https://nbrosowsky.github.io/tonejs-instruments/samples/";
+const MUSYNGKITE_BASE   = "https://gleitz.github.io/midi-js-soundfonts/MusyngKite/";
+
+/** Curated drone instrument list — `id` is internal, `label` is what
+ *  shows in the picker.  Source dispatch (Philharmonia / tonejs /
+ *  MusyngKite) lives in INSTRUMENT_SOURCES below. */
 export const DRONE_INSTRUMENTS = [
   { id: "cello",              label: "Cello" },
   { id: "violin",             label: "Violin" },
@@ -65,6 +77,78 @@ export const DRONE_INSTRUMENTS = [
 export type DroneInstrument = typeof DRONE_INSTRUMENTS[number]["id"];
 
 interface InstrumentSample { midi: number; buffer: AudioBuffer }
+
+// Note-label parsing.  Both Philharmonia and tonejs-instruments use the
+// same convention — sharps as `s` suffix (e.g. "Cs3", "Fs4") and a
+// trailing octave number where C4 = MIDI 60.  MusyngKite uses the same
+// for its 3-point set (C2/C4/C5), so a single parser handles all sources.
+const NOTE_SEMITONE_OFFSET: Record<string, number> = {
+  C: 0, Cs: 1, D: 2, Ds: 3, E: 4, F: 5, Fs: 6, G: 7, Gs: 8, A: 9, As: 10, B: 11,
+};
+function noteLabelToMidi(label: string): number {
+  const m = label.match(/^([A-G]s?)(-?\d)$/);
+  if (!m) throw new Error(`audioEngine: bad note label "${label}"`);
+  return (Number(m[2]) + 1) * 12 + NOTE_SEMITONE_OFFSET[m[1]];
+}
+
+/** Per-instrument source config: which CDN, what URL pattern, which
+ *  notes to fetch.  Sample-note picks aim for ≤ 3-semitone gaps so any
+ *  drone target lands within a small pitch-shift of an actual recorded
+ *  pitch (close enough that the loop region doesn't audibly chipmunk). */
+interface SourceConfig {
+  url: (note: string) => string;
+  notes: readonly string[];
+}
+
+const INSTRUMENT_SOURCES: Record<DroneInstrument, SourceConfig> = {
+  // Philharmonia: pro-recorded chromatic cello, ~50 sample notes
+  // available; we pick a tight 3-semitone-spaced ladder across the
+  // useful drone range.  arco-normal forte has the warmest sustain.
+  cello: {
+    url: n => `${PHILHARMONIA_BASE}cello/cello_${n}_1_forte_arco-normal.mp3`,
+    notes: ["C2", "Ds2", "Fs2", "A2", "C3", "Ds3", "Fs3", "A3", "C4", "Ds4", "Fs4", "A4"],
+  },
+  // Philharmonia double bass — folder uses a literal space in the URL.
+  contrabass: {
+    url: n => `${PHILHARMONIA_BASE}double%20bass/double-bass_${n}_1_forte_arco-normal.mp3`,
+    notes: ["E1", "G1", "A1", "C2", "Ds2", "F2", "G2", "A2", "C3"],
+  },
+  // tonejs-instruments violin: A/C/E/G across octaves 3-6.
+  violin: {
+    url: n => `${TONEJS_BASE}violin/${n}.mp3`,
+    notes: ["G3", "A3", "C4", "E4", "G4", "A4", "C5", "E5", "G5", "A5", "C6"],
+  },
+  // tonejs-instruments organ: A/C/Ds/Fs across octaves 1-5 — denser
+  // than MusyngKite's 3-point map and warmer than Philharmonia organ
+  // (which isn't in the mirror anyway).
+  church_organ: {
+    url: n => `${TONEJS_BASE}organ/${n}.mp3`,
+    notes: ["C2", "Ds2", "Fs2", "A2", "C3", "Ds3", "Fs3", "A3", "C4", "Ds4", "Fs4", "A4", "C5"],
+  },
+  // MusyngKite fallbacks — Philharmonia has no viola, and ensemble /
+  // choir / voice / pad don't exist as real recordings in the free
+  // sources we can host.  3 sample points each (the MusyngKite default).
+  viola: {
+    url: n => `${MUSYNGKITE_BASE}viola-mp3/${n}.mp3`,
+    notes: ["C2", "C4", "C5"],
+  },
+  string_ensemble_1: {
+    url: n => `${MUSYNGKITE_BASE}string_ensemble_1-mp3/${n}.mp3`,
+    notes: ["C2", "C4", "C5"],
+  },
+  choir_aahs: {
+    url: n => `${MUSYNGKITE_BASE}choir_aahs-mp3/${n}.mp3`,
+    notes: ["C2", "C4", "C5"],
+  },
+  voice_oohs: {
+    url: n => `${MUSYNGKITE_BASE}voice_oohs-mp3/${n}.mp3`,
+    notes: ["C2", "C4", "C5"],
+  },
+  pad_2_warm: {
+    url: n => `${MUSYNGKITE_BASE}pad_2_warm-mp3/${n}.mp3`,
+    notes: ["C2", "C4", "C5"],
+  },
+};
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -128,25 +212,27 @@ export class AudioEngine {
 
   getInstrument(): DroneInstrument { return this.currentInstrument; }
 
-  /** Fetch a multi-sampled instrument from gleitz/midi-js-soundfonts.
+  /** Fetch a multi-sampled instrument from its configured source
+   *  (Philharmonia / tonejs / MusyngKite — see INSTRUMENT_SOURCES).
    *  Runs once per (AudioContext × instrument); subsequent calls return
    *  the existing promise.  Failures are warned but non-fatal — the
    *  synth falls back to the PeriodicWave drone if no samples loaded. */
-  private loadInstrumentSamples(instrument: string): Promise<void> {
+  private loadInstrumentSamples(instrument: DroneInstrument): Promise<void> {
     const existing = this.instrumentLoadPromises.get(instrument);
     if (existing) return existing;
     if (!this.ctx) return Promise.resolve();
     const ctx = this.ctx;
+    const cfg = INSTRUMENT_SOURCES[instrument];
     const samples: InstrumentSample[] = [];
     this.instrumentSamples.set(instrument, samples);
     const promise = (async () => {
-      const loads = SAMPLE_NOTES.map(async note => {
+      const loads = cfg.notes.map(async note => {
         try {
-          const resp = await fetch(`${SOUNDFONT_BASE}${instrument}-mp3/${note}.mp3`);
+          const resp = await fetch(cfg.url(note));
           if (!resp.ok) throw new Error(`fetch failed ${resp.status}`);
           const arr = await resp.arrayBuffer();
           const buf = await ctx.decodeAudioData(arr);
-          samples.push({ midi: SAMPLE_MIDI[note], buffer: buf });
+          samples.push({ midi: noteLabelToMidi(note), buffer: buf });
         } catch (e) {
           console.warn(`${instrument} sample ${note} failed to load`, e);
         }
