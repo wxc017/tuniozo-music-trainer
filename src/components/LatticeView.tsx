@@ -6003,7 +6003,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                       ? "bg-[#7173e6] text-white border-[#7173e6]"
                       : "bg-[#111] text-[#444] border-[#222] hover:text-[#aaa]"
                   }`}>
-                  {gt === "square" ? "Square (90\u00B0)" : gt === "triangle" ? "Triangle (60\u00B0)" : "Helical (Tonescape)"}
+                  {gt === "square" ? "Square (90\u00B0)" : gt === "triangle" ? "Triangle (60\u00B0)" : "Helical"}
                 </button>
               ))}
             </div>

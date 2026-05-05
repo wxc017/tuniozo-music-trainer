@@ -59,19 +59,20 @@ const PHILHARMONIA_BASE = "https://cdn.jsdelivr.net/gh/skratchdot/philharmonia-s
 const TONEJS_BASE       = "https://nbrosowsky.github.io/tonejs-instruments/samples/";
 const MUSYNGKITE_BASE   = "https://gleitz.github.io/midi-js-soundfonts/MusyngKite/";
 
-/** Curated drone instrument list — `id` is internal, `label` is what
- *  shows in the picker.  Source dispatch (Philharmonia / tonejs /
- *  MusyngKite) lives in INSTRUMENT_SOURCES below. */
+/** Curated drone instrument list — six canonical drone timbres per
+ *  direct user direction (2026-05-05): the picker should focus on the
+ *  instruments people actually drone with (vocal pads + sustained
+ *  bowed strings + organ + ambient pad), not the full orchestral
+ *  catalog.  Voice is explicitly included.  `id` is internal, `label`
+ *  is what shows in the picker.  Source dispatch (Philharmonia /
+ *  tonejs / MusyngKite) lives in INSTRUMENT_SOURCES below. */
 export const DRONE_INSTRUMENTS = [
+  { id: "voice_oohs",         label: "Voice" },
+  { id: "choir_aahs",         label: "Choir" },
   { id: "cello",              label: "Cello" },
   { id: "violin",             label: "Violin" },
-  { id: "viola",              label: "Viola" },
-  { id: "contrabass",         label: "Double Bass" },
-  { id: "string_ensemble_1",  label: "Strings" },
-  { id: "choir_aahs",         label: "Choir" },
-  { id: "voice_oohs",         label: "Voice (Oohs)" },
   { id: "church_organ",       label: "Church Organ" },
-  { id: "pad_2_warm",         label: "Warm Synth Pad" },
+  { id: "pad_2_warm",         label: "Synth Pad" },
 ] as const;
 
 export type DroneInstrument = typeof DRONE_INSTRUMENTS[number]["id"];
@@ -108,11 +109,6 @@ const INSTRUMENT_SOURCES: Record<DroneInstrument, SourceConfig> = {
     url: n => `${PHILHARMONIA_BASE}cello/cello_${n}_1_forte_arco-normal.mp3`,
     notes: ["C2", "Ds2", "Fs2", "A2", "C3", "Ds3", "Fs3", "A3", "C4", "Ds4", "Fs4", "A4"],
   },
-  // Philharmonia double bass — folder uses a literal space in the URL.
-  contrabass: {
-    url: n => `${PHILHARMONIA_BASE}double%20bass/double-bass_${n}_1_forte_arco-normal.mp3`,
-    notes: ["E1", "G1", "A1", "C2", "Ds2", "F2", "G2", "A2", "C3"],
-  },
   // tonejs-instruments violin: A/C/E/G across octaves 3-6.
   violin: {
     url: n => `${TONEJS_BASE}violin/${n}.mp3`,
@@ -125,17 +121,9 @@ const INSTRUMENT_SOURCES: Record<DroneInstrument, SourceConfig> = {
     url: n => `${TONEJS_BASE}organ/${n}.mp3`,
     notes: ["C2", "Ds2", "Fs2", "A2", "C3", "Ds3", "Fs3", "A3", "C4", "Ds4", "Fs4", "A4", "C5"],
   },
-  // MusyngKite fallbacks — Philharmonia has no viola, and ensemble /
-  // choir / voice / pad don't exist as real recordings in the free
-  // sources we can host.  3 sample points each (the MusyngKite default).
-  viola: {
-    url: n => `${MUSYNGKITE_BASE}viola-mp3/${n}.mp3`,
-    notes: ["C2", "C4", "C5"],
-  },
-  string_ensemble_1: {
-    url: n => `${MUSYNGKITE_BASE}string_ensemble_1-mp3/${n}.mp3`,
-    notes: ["C2", "C4", "C5"],
-  },
+  // MusyngKite fallbacks — choir / voice / pad don't exist as real
+  // recordings in the free sources we can host.  3 sample points each
+  // (the MusyngKite default).
   choir_aahs: {
     url: n => `${MUSYNGKITE_BASE}choir_aahs-mp3/${n}.mp3`,
     notes: ["C2", "C4", "C5"],
