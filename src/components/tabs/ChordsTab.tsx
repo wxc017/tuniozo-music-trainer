@@ -202,6 +202,62 @@ const MEANTONE_LIMIT_SECTIONS: { key: string; label: string; color: string; fami
     familyKeys: ["symmetric"] },
 ];
 
+// ── Per-EDO curated tonality lists ───────────────────────────────────────
+// Per direct user direction (2026-05-05): each EDO gets a focused
+// section list rather than the full prime-limit grouping.  Keys
+// reference TONALITY_FAMILIES family keys; section labels use the
+// "DIATONIC X" naming so all EDOs read with the same vocabulary even
+// though the underlying scales come from different sources.
+
+interface CuratedSection { key: string; label: string; color: string; familyKey: string }
+
+const TWELVE_EDO_SECTIONS: CuratedSection[] = [
+  { key: "12-major",      label: "DIATONIC MAJOR",                color: "#6a9aca", familyKey: "major" },
+  { key: "12-harmonic",   label: "DIATONIC HARMONIC MINOR",       color: "#c09050", familyKey: "harmonic" },
+  { key: "12-melodic",    label: "DIATONIC MELODIC MINOR",        color: "#c06090", familyKey: "melodic" },
+  { key: "12-doubleh",    label: "DIATONIC DOUBLE HARMONIC MINOR", color: "#e08040", familyKey: "doubleharmonic" },
+  { key: "12-sym",        label: "SYMMETRICAL",                   color: "#5ab9b0", familyKey: "symmetric" },
+];
+
+// 31-EDO drops Classic Major (a 41/53-only commatic distinction),
+// adds Diatonic Harmonic Minor (was missing) and Diatonic Neutral
+// (was missing).  The xen families (Subminor / Supermajor /
+// Subharmonic) are 31-EDO-native via buildXenFamilyBanks.
+const THIRTY_ONE_EDO_SECTIONS: CuratedSection[] = [
+  { key: "31-major",      label: "DIATONIC MAJOR",                color: "#6a9aca", familyKey: "major" },
+  { key: "31-harmonic",   label: "DIATONIC HARMONIC MINOR",       color: "#c09050", familyKey: "harmonic" },
+  { key: "31-melodic",    label: "DIATONIC MELODIC MINOR",        color: "#c06090", familyKey: "melodic" },
+  { key: "31-doubleh",    label: "DIATONIC DOUBLE HARMONIC MINOR", color: "#e08040", familyKey: "doubleharmonic" },
+  { key: "31-subminor",   label: "DIATONIC SUBMINOR",             color: "#7aaa6a", familyKey: "subminor" },
+  { key: "31-supermajor", label: "DIATONIC SUPERMAJOR",           color: "#cc6a8a", familyKey: "supermajor" },
+  { key: "31-subharm",    label: "DIATONIC SUBHARMONIC MINOR M7", color: "#4a9ac7", familyKey: "subharmonic" },
+  { key: "31-neutral",    label: "DIATONIC NEUTRAL",              color: "#9a66c0", familyKey: "neutral" },
+  { key: "31-sym",        label: "SYMMETRICAL",                   color: "#5ab9b0", familyKey: "symmetric" },
+];
+
+const NINETEEN_EDO_SECTIONS: CuratedSection[] = [
+  { key: "19-major",      label: "DIATONIC MAJOR",                color: "#6a9aca", familyKey: "major" },
+  { key: "19-harmonic",   label: "DIATONIC HARMONIC MINOR",       color: "#c09050", familyKey: "harmonic" },
+  { key: "19-melodic",    label: "DIATONIC MELODIC MINOR",        color: "#c06090", familyKey: "melodic" },
+  { key: "19-doubleh",    label: "DIATONIC DOUBLE HARMONIC MINOR", color: "#e08040", familyKey: "doubleharmonic" },
+  { key: "19-sym",        label: "SYMMETRICAL",                   color: "#5ab9b0", familyKey: "symmetric" },
+];
+
+function curatedSectionsToTonalitySections(curated: CuratedSection[]): TonalitySection[] {
+  return curated
+    .map(sec => {
+      const fam = TONALITY_FAMILIES.find(f => f.key === sec.familyKey);
+      if (!fam) return null;
+      return {
+        key: sec.key,
+        label: sec.label,
+        color: sec.color,
+        families: [{ key: fam.key, label: "MODES", tonalities: fam.tonalities }],
+      } as TonalitySection;
+    })
+    .filter((s): s is TonalitySection => s !== null);
+}
+
 function tonalitySectionsForEdo(edo: number): TonalitySection[] {
   if (edo === 41 || edo === 53) {
     return jiLimitGroupsForEdo(edo).map(g => ({
@@ -211,9 +267,10 @@ function tonalitySectionsForEdo(edo: number): TonalitySection[] {
       families: g.families.map(f => ({ key: f.key, label: f.label, tonalities: f.tonalities })),
     }));
   }
-  // Meantone (12 / 19 / 31) — group the flat TONALITY_FAMILIES into
-  // limit sections, dropping any section with no families that have
-  // available banks for this EDO.
+  if (edo === 12) return curatedSectionsToTonalitySections(TWELVE_EDO_SECTIONS);
+  if (edo === 31) return curatedSectionsToTonalitySections(THIRTY_ONE_EDO_SECTIONS);
+  if (edo === 19) return curatedSectionsToTonalitySections(NINETEEN_EDO_SECTIONS);
+  // Other EDOs fall back to the original prime-limit-grouped meantone layout.
   return MEANTONE_LIMIT_SECTIONS
     .map(sec => ({
       key: sec.key,
