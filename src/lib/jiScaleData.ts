@@ -398,28 +398,135 @@ const GREEK_MODE_REFS: Array<{ name: string; cents: number[] }> = [
   { name: "Locrian",    cents: [0, 90,  294, 498, 588, 792, 996] },
 ];
 
+/** Extract the letter prefix from a degree code.  "M3" → "M", "Cm6" →
+ *  "Cm", "s7" → "s", "##4" → "" (no letter; perfect-position with
+ *  accidentals).  Used for flavor inference and template matching. */
+function letterPrefix(code: string): string {
+  const match = code.match(/^([sSmMnCu]+)/);
+  if (!match) return "";
+  return match[1];
+}
+
+/** Apply a flavor's letter replacement to a Greek mode's reference
+ *  codes.  Sub / Classic Minor / Supraminor (minor-side flavors)
+ *  replace every m-tone in the template.  Classic Major / Super
+ *  (major-side flavors) replace every M-tone.  Neutral replaces
+ *  BOTH m and M with n.  The flavor is intentionally applied across
+ *  ALL letter-positions (2 / 3 / 6 / 7) — so e.g. "Sub Phrygian"
+ *  replaces Phrygian's m2 / m3 / m6 / m7 with s2 / s3 / s6 / s7
+ *  uniformly, matching the user's "1 s2 s3 4 5 s6 s7 = Subphrygian"
+ *  reading. */
+function applyFlavorToTemplate(refCodes: string[], flavorLetter: string): string[] {
+  const isMinorSide = flavorLetter === "s" || flavorLetter === "Cm" || flavorLetter === "u";
+  const isMajorSide = flavorLetter === "C" || flavorLetter === "S";
+  const isNeutral = flavorLetter === "n";
+  return refCodes.map(code => {
+    const prefix = letterPrefix(code);
+    const digit = code.slice(prefix.length);
+    if (isMinorSide && prefix === "m") return flavorLetter + digit;
+    if (isMajorSide && prefix === "M") return flavorLetter + digit;
+    if (isNeutral && (prefix === "m" || prefix === "M")) return "n" + digit;
+    return code;
+  });
+}
+
+/** Letter-code of the most common SPECIAL quality at positions 3 /
+ *  6 / 7 (≥2 occurrences, excluding the default m / M letters).
+ *  Returns null when no special letter has majority — which means
+ *  the rotation is "vanilla" (Pyth m / M tones) and shouldn't get
+ *  a flavor prefix. */
+function inferFlavorLetter(degreeCodes: string[]): string | null {
+  // degreeCodes is [code2, code3, code4, code5, code6, code7] — pull
+  // the letter prefixes at positions 3 / 6 / 7 (indices 1 / 4 / 5).
+  const letters = [degreeCodes[1], degreeCodes[4], degreeCodes[5]].map(letterPrefix);
+  const counts: Record<string, number> = {};
+  for (const l of letters) counts[l] = (counts[l] ?? 0) + 1;
+  const SPECIAL = new Set(["s", "Cm", "u", "n", "C", "S"]);
+  let best: string | null = null;
+  let bestCount = 1;  // need at least 2 to count as majority
+  for (const [letter, count] of Object.entries(counts)) {
+    if (!SPECIAL.has(letter)) continue;
+    if (count > bestCount) {
+      best = letter;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+/** Long-form name + compound rule for a flavor letter.  Compound = the
+ *  flavor's prefix concatenates onto the Greek-mode name (lowercased)
+ *  to form a single word — matching the user's "Subphrygian" /
+ *  "Superlydian" convention.  Otherwise the prefix sits as a separate
+ *  word ("Classic Major Lydian"). */
+const FLAVOR_INFO: Record<string, { compoundPrefix: string | null; longName: string; sideMatchesMode: (mode: string) => boolean }> = {
+  s:  { compoundPrefix: "Sub",   longName: "Subminor",       sideMatchesMode: m => m === "Phrygian" || m === "Locrian" || m === "Aeolian" || m === "Dorian" },
+  Cm: { compoundPrefix: null,    longName: "Classic Minor",  sideMatchesMode: () => false },
+  u:  { compoundPrefix: null,    longName: "Supraminor",     sideMatchesMode: () => false },
+  n:  { compoundPrefix: null,    longName: "Neutral",        sideMatchesMode: () => false },
+  C:  { compoundPrefix: null,    longName: "Classic Major",  sideMatchesMode: () => false },
+  S:  { compoundPrefix: "Super", longName: "Supermajor",     sideMatchesMode: m => m === "Ionian" || m === "Lydian" || m === "Mixolydian" },
+};
+
+function formatFlavoredName(flavorLetter: string | null, greekMode: string): string {
+  if (!flavorLetter) return greekMode;
+  const info = FLAVOR_INFO[flavorLetter];
+  if (!info) return greekMode;
+  if (info.compoundPrefix && info.sideMatchesMode(greekMode)) {
+    return info.compoundPrefix + greekMode.toLowerCase();
+  }
+  return `${info.longName} ${greekMode}`;
+}
+
 /** Build a mode name with interval-alteration suffix from a rotated
- *  cents pattern.  Picks the Greek mode that minimises the alteration
- *  count, then lists every degree whose letter-code differs from that
- *  reference mode's code.  Result is the Western mode name + space-
- *  separated alteration list — same format 31-EDO uses ("Locrian s2
- *  s5 s6", "Dorian S2 #5 S6", etc.). */
+ *  cents pattern.  For each candidate Greek mode, tries with no flavor
+ *  AND with the inferred flavor (if any), picks the combination with
+ *  fewest alterations.  Result format:
+ *    - "Diatonic <Greek>" when the rotation matches a pure Pyth Greek
+ *      mode template (0 alterations, no flavor needed)
+ *    - "<Compound> <alterations>" when sub/super flavor on a same-side
+ *      Greek mode beats the no-flavor alternative ("Subphrygian S6")
+ *    - "<Long flavor> <Greek> <alterations>" for cross-side flavors
+ *      ("Classic Major Lydian M6", "Supermajor Dorian #5")
+ *    - "<Greek> <alterations>" when no flavor reduces alterations
+ *      ("Dorian S2 #5 S6") */
 function buildModeNameFromCents(rotatedCents: number[]): string {
   const positions: Array<2 | 3 | 4 | 5 | 6 | 7> = [2, 3, 4, 5, 6, 7];
   const myCodes = positions.map((pos, i) => letterCodeForDegree(rotatedCents[i + 1], pos));
+  const flavorLetter = inferFlavorLetter(myCodes);
 
-  let best: { name: string; alterations: string[] } | null = null;
+  let best: { name: string; alterations: string[]; pure: boolean } | null = null;
   for (const ref of GREEK_MODE_REFS) {
     const refCodes = positions.map((pos, i) => letterCodeForDegree(ref.cents[i + 1], pos));
-    const alterations: string[] = [];
+
+    // Variant 1: pure Greek mode (no flavor)
+    const pureAlts: string[] = [];
     for (let i = 0; i < positions.length; i++) {
-      if (myCodes[i] !== refCodes[i]) alterations.push(myCodes[i]);
+      if (myCodes[i] !== refCodes[i]) pureAlts.push(myCodes[i]);
     }
-    if (best === null || alterations.length < best.alterations.length) {
-      best = { name: ref.name, alterations };
+    if (best === null || pureAlts.length < best.alterations.length) {
+      best = { name: ref.name, alterations: pureAlts, pure: true };
+    }
+
+    // Variant 2: with the inferred flavor letter applied
+    if (flavorLetter) {
+      const flavoredRef = applyFlavorToTemplate(refCodes, flavorLetter);
+      const flavoredAlts: string[] = [];
+      for (let i = 0; i < positions.length; i++) {
+        if (myCodes[i] !== flavoredRef[i]) flavoredAlts.push(myCodes[i]);
+      }
+      if (flavoredAlts.length < best.alterations.length) {
+        best = { name: formatFlavoredName(flavorLetter, ref.name), alterations: flavoredAlts, pure: false };
+      }
     }
   }
   if (best === null) return "?";
+
+  // "Diatonic <Greek>" only when the rotation matches a pure Pyth
+  // Greek-mode template with zero alterations and no flavor needed.
+  if (best.pure && best.alterations.length === 0) {
+    return `Diatonic ${best.name}`;
+  }
   return best.alterations.length === 0
     ? best.name
     : `${best.name} ${best.alterations.join(" ")}`;
@@ -490,8 +597,13 @@ function expandFamily(spec: FortyOneEdoFamilySpec, intoOut: { parent: string; to
   for (let r = 1; r < 7; r++) {
     const rotated = rotateScaleSteps(parentSpec.steps, r);
     const rotatedCents = rotated.map(([, c]) => c);
-    const calculatedName = buildModeNameFromCents(rotatedCents);
-    const modeName = `${spec.parent} ${calculatedName}`;
+    // Mode names no longer prepend the parent name — per direct user
+    // direction (2026-05-05), "Diatonic Major" rotations should read
+    // as "Diatonic Lydian" / "Diatonic Locrian" / etc., not "Diatonic
+    // Major Lydian".  The calculated name from buildModeNameFromCents
+    // captures the rotation's character (Greek mode + flavor +
+    // alterations) directly.
+    const modeName = buildModeNameFromCents(rotatedCents);
     if (!generatedModeNames.has(modeName)) {
       JI_SCALES.push({ name: modeName, steps: rotated });
       generatedModeNames.add(modeName);
