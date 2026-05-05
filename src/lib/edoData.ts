@@ -197,8 +197,9 @@ const INTERVAL_NAMES_31 = [
 
 // 41-EDO interval names: arrow / step accidentals + letter-prefix
 // quality codes per direct user direction (2026-05-05).  One step in
-// 41-EDO ≈ 29.27¢, so ↑ = +1 step, ↓ = −1 step (stackable).  Letter
-// prefixes encode the third / sixth / seventh quality varieties:
+// 41-EDO ≈ 29.27¢, so ↑ = +1 step, ↓ = −1 step (stackable).
+//
+// Letter prefixes encode the third / sixth / seventh quality varieties:
 //   s = subminor       (e.g. s3 = 7/6)
 //   m = minor          (Pythagorean, e.g. m3 = 32/27)
 //   Cm = classic minor (5-limit JI, e.g. Cm3 = 6/5)
@@ -206,13 +207,18 @@ const INTERVAL_NAMES_31 = [
 //   C = classic major  (5-limit JI, e.g. C3 = 5/4)
 //   M = major          (Pythagorean, e.g. M3 = 81/64)
 //   S = supermajor     (e.g. S3 = 9/7)
-// 4ths / 5ths sit in a tritone region with fewer canonical names —
-// they use ↑ / ↓ alterations off P4 / P5, plus n4 / n5 for the
-// distinctly-tritonal-flavoured neutral-region steps and the
-// traditional A4 / d5 markers at their canonical 41-EDO steps.
+//
+// Per direct user direction (revision 2026-05-05): the unison /
+// fourth / fifth / octave region uses ONLY arrow notation — bare
+// degree numbers plus stacked ↑ / ↓.  No "P" prefix, no
+// "Aug"/"dim"/"neutral" word labels in this region.  4↑↑↑ /
+// 5↓↓↓ etc. cover the tritone area between P4 and P5 — three
+// steps each direction puts steps 20 / 21 right at the equidistant
+// midpoint, so they read symmetrically off whichever side is
+// musically closer.
 const INTERVAL_NAMES_41 = [
-  "P1",                                                      // 0
-  "P1↑",                                                     // 1
+  "1",                                                       // 0
+  "1↑",                                                      // 1
   "s2",                                                      // 2
   "m2",                                                      // 3
   "Cm2",                                                     // 4
@@ -227,16 +233,16 @@ const INTERVAL_NAMES_41 = [
   "C3",                                                      // 13
   "M3",                                                      // 14
   "S3",                                                      // 15
-  "P4↓",                                                     // 16
-  "P4",                                                      // 17
-  "P4↑",                                                     // 18
-  "n4",                                                      // 19
-  "d5",                                                      // 20
-  "A4",                                                      // 21
-  "n5",                                                      // 22
-  "P5↓",                                                     // 23
-  "P5",                                                      // 24
-  "P5↑",                                                     // 25
+  "4↓",                                                      // 16
+  "4",                                                       // 17
+  "4↑",                                                      // 18
+  "4↑↑",                                                     // 19
+  "4↑↑↑",                                                    // 20
+  "5↓↓↓",                                                    // 21
+  "5↓↓",                                                     // 22
+  "5↓",                                                      // 23
+  "5",                                                       // 24
+  "5↑",                                                      // 25
   "s6",                                                      // 26
   "m6",                                                      // 27
   "Cm6",                                                     // 28
@@ -251,8 +257,8 @@ const INTERVAL_NAMES_41 = [
   "C7",                                                      // 37
   "M7",                                                      // 38
   "S7",                                                      // 39
-  "P8↓",                                                     // 40
-  "P8",                                                      // 41
+  "8↓",                                                      // 40
+  "8",                                                       // 41
 ];
 
 // 53-EDO: name key JI approximations, fill rest with step labels
