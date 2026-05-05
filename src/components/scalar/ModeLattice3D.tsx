@@ -116,8 +116,10 @@ function CameraFocusCenter({ targetPos }: { targetPos: [number, number, number] 
     startCamPos.current.copy(camera.position);
     goalTarget.current.set(...targetPos);
     // Place the camera CLOSE_FOCUS_DIST units back from the goal
-    // target along the current view direction.
-    const CLOSE_FOCUS_DIST = 6;
+    // target along the current view direction.  18 keeps the focused
+    // node centred without slamming the camera so close that the
+    // distance-factor labels balloon to fill the canvas.
+    const CLOSE_FOCUS_DIST = 18;
     const viewDir = new THREE.Vector3()
       .subVectors(camera.position, c.target).normalize();
     if (viewDir.lengthSq() < 1e-6) viewDir.set(0, 0, 1);
@@ -369,14 +371,14 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
           depthWrite={false} />
       </mesh>
       <Html center
-            // All labels use distanceFactor so they scale with the
-            // lattice — moving the camera away shrinks them along with
-            // the rest of the geometry (instead of staying a fixed
-            // screen size that ends up dwarfing the receding lattice).
-            // The OrbitControls minDistance clamp keeps close-zoom
-            // labels from ballooning.  Prominent labels are slightly
-            // larger than idle ones (lower distanceFactor = bigger).
-            distanceFactor={isHovered || isActive || isAnchor || isSelected ? 7 : 11}
+            // All labels use the same distanceFactor so prominent and
+            // idle states render at a comparable on-screen size — only
+            // the bg + note-list under the prominent variant tells the
+            // user "this one's the focus."  Earlier the prominent
+            // variant used distanceFactor 7 (≈55% larger than idle's
+            // 11), which combined with shift-click focus zoom to make
+            // the anchor / hovered label dwarf the canvas.
+            distanceFactor={11}
             style={{ pointerEvents: "none" }}>
         {isHovered || isActive || isAnchor || isSelected ? (
           <div style={{
@@ -385,12 +387,12 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
             color: palette,
             padding: "4px 8px",
             borderRadius: 4,
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: 700,
             whiteSpace: "nowrap",
             transform: "translate(0, -32px)",
             textAlign: "center",
-            lineHeight: "16px",
+            lineHeight: "15px",
           }}>
             <div>
               <span style={{ color: "#ddd", marginRight: 4 }}>{node.key.name}</span>
@@ -407,14 +409,18 @@ function NodeMesh({ node, edo, isAnchor, isActive, isHovered, isSelected, onHove
           // Discrete always-on label — small, dim, no background.
           // Uses the full mode name (e.g. "D Dorian", "B♭ Mixolydian",
           // "F♯ Harmonic Minor") so the user can identify every node
-          // by sight without hovering.
+          // by sight without hovering.  Family-view labels stay the
+          // same size as cylinder-view labels — earlier 22 px was
+          // tuned for sparse family layouts but ended up huge once
+          // the user shift-clicked / anchored a node and the camera
+          // pulled in close.
           <div style={{
             color: palette,
             opacity: 0.95,
-            fontSize: isFamilyView ? 22 : 13,
+            fontSize: 13,
             fontWeight: 700,
             whiteSpace: "nowrap",
-            transform: isFamilyView ? "translate(0, -34px)" : "translate(0, -22px)",
+            transform: isFamilyView ? "translate(0, -28px)" : "translate(0, -22px)",
             textShadow: "0 0 6px #000, 0 0 6px #000",
             letterSpacing: 0.3,
           }}>
