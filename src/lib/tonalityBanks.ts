@@ -700,11 +700,14 @@ function buildOneXenMode(parent: number[], rotIdx: number, modeName: string, edo
     // chord quality in xenharmonic practice.
     const upper = q3 === "M" || q3 === "sup" || q3 === "neu";
     let roman = upper ? XEN_ROMAN[i] : XEN_ROMAN[i].toLowerCase();
-    // Subminor 3rds get a leading subscript "ₛ" (U+209B) in front of
-    // the lowercase roman numeral so the chord reads visibly as
+    // Subminor 3rds get a regular-letter "s" prefix inline with the
+    // roman numeral (e.g. "siv") so the chord reads visibly as
     // subminor rather than plain minor.  The redundant "s3" suffix
-    // is then dropped (see below).
-    if (q3 === "sub") roman = "ₛ" + roman;
+    // is then dropped (see below).  Earlier this used the Unicode
+    // subscript "ₛ" but the user reported it rendered too small to
+    // read at chord-button sizes — kept as a regular character so
+    // it sits next to the numeral at full text size.
+    if (q3 === "sub") roman = "s" + roman;
     // Scale-degree alteration: prepend ♭/♯/ₛ/ˢ etc. to the roman
     // numeral when the chord's root doesn't sit on the major-scale
     // expected position for that degree.  Mirrors Western theory's

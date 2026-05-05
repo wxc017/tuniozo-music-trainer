@@ -1145,13 +1145,14 @@ export default function ChordsTab({
     // comma offset that shifts its absolute pitch by a few cents — this
     // is the audible drift.  Frozen mode keeps drifts at 0.
     const useLattice = jiMode === "adaptive" && (edo === 41 || edo === 53);
-    const driftsCents = useLattice ? tracePathDrifts(progression) : null;
-    // Always record the progression on the lattice ref so the harmonic
-    // lattice overlay can plot the chord-root walk regardless of which
-    // JI mode is active (in Frozen mode the drift doesn't get applied
-    // to playback, but the conceptual walk is still meaningful for the
-    // visualization).  `drifts` is null in Frozen mode to make the
-    // distinction explicit for downstream consumers.
+    // Always compute drift cents for 41/53-EDO progressions so the
+    // Live Lattice Trace surfaces the conceptual comma walk in both
+    // Frozen and Adaptive modes — only the playback-side compensation
+    // is gated on jiMode.  In Frozen mode the displayed drift is
+    // what *would* happen on a pure-intervals walk; in Adaptive mode
+    // the playback subtracts that drift so the tonic stays anchored.
+    const isJiEdo = edo === 41 || edo === 53;
+    const driftsCents = isJiEdo ? tracePathDrifts(progression) : null;
     latticeDriftsRef.current = { progression, drifts: driftsCents };
     setLatticeRevision(v => v + 1);
 
@@ -1966,7 +1967,7 @@ export default function ChordsTab({
                       chord in the progression with its accumulated
                       drift in cents, colour-coded green / amber / pink
                       by magnitude. */}
-                  {jiMode === "adaptive" && (edo === 41 || edo === 53) && (() => {
+                  {(edo === 41 || edo === 53) && (() => {
                     void latticeRevision;
                     const trace = latticeDriftsRef.current;
                     if (!trace || !trace.drifts) return null;
