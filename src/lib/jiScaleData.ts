@@ -145,17 +145,26 @@ const JI_SCALES: JiScaleSpec[] = [
     steps: [["1",0],["2",203.9],["b3",315.6],["#4",582.5],["5",702.0],["6",884.4],["b7",1017.6]] },
 
   // ── 13-LIMIT (Tridecimal) ────────────────────────────────────────────
-  // Adds 13/8 (~840¢, wide neutral 6), 13/11 (~289¢, supraminor 3rd),
-  // 16/13 (~359¢, low neutral 3rd).  Most musically meaningful in the
-  // 6th-degree position — Tridecimal Major's 6 lands between 5/3 and
-  // 27/16 in a place that doesn't exist in 5-limit at all.
+  // Higher-prime substitutions land at the 3rd / 6th / 7th degrees
+  // (and occasionally the 2nd) — the modal-defining tones.  4 and 5
+  // stay anchored at 4/3 and 3/2 so the lattice walks remain on the
+  // standard 5-limit spine.  Where a clean prime-flavoured M3 / M6 /
+  // M7 doesn't exist, the corresponding Major-mode degree falls back
+  // to 5-limit.  Key 13-prime intervals: 13/12 (138¢ small m2),
+  // 13/11 (289¢ supraminor 3rd), 13/9 (637¢ aug-4th), 13/8 (841¢ wide
+  // neutral 6), 13/7 (1072¢ subminor 7th).
   { name: "Tridecimal Major",
+    // 13-prime substitution at the 6th only (13/8 M6); no clean
+    // tridecimal M3 or M7 exists, so the rest of the scale stays
+    // 5-limit.  The single 13-prime tone is enough to colour the
+    // scale because the 6th drives the modal flavour.
     steps: [["1",0],["2",203.9],["3",386.3],["4",498.0],["5",702.0],["6",840.5],["7",1088.3]] },
   { name: "Tridecimal Minor",
-    // 13/11 m3 + 13/8 b6 — the m3 and b6 share a 13-prime kinship that
-    // makes this a coherent "tridecimal minor" rather than just a
-    // 5-limit minor with one altered note.
-    steps: [["1",0],["2",203.9],["b3",289.2],["4",498.0],["5",702.0],["b6",840.5],["b7",996.1]] },
+    // Three 13-prime substitutions (b3 = 13/11, b6 = 13/8, b7 = 13/7) —
+    // every modal tone of the minor mode tilts into the 13-prime,
+    // giving a much darker / more "tridecimal" minor than the 5-limit
+    // version.  4 and 5 stay anchored.
+    steps: [["1",0],["2",203.9],["b3",289.2],["4",498.0],["5",702.0],["b6",840.5],["b7",1071.7]] },
   { name: "Maqam Sikah",
     // The neutral 3rd / 6th Maqam family Sikah belongs to.  In 13-limit
     // the b3 (16/13 ≈ 359¢) sits a touch lower than the 11-limit
@@ -168,84 +177,98 @@ const JI_SCALES: JiScaleSpec[] = [
     // 13/8 (~841¢) at the 6th.  Distinct from Sikah in its sharpened 4.
     steps: [["1",0],["2",203.9],["b3",359.5],["#4",636.6],["5",702.0],["b6",840.5],["b7",996.1]] },
   { name: "Tridecimal Lydian",
-    // Lydian colour with 13-limit #4 (13/9 ≈ 637¢) and 13/8 b6.
+    // Lydian variant — the #4 (13/9 ≈ 637¢) is the Lydian-defining
+    // tone and is itself a 13-prime interval, so it stays in even
+    // though normally the 4 would be anchored.  The 6 also takes 13/8.
     steps: [["1",0],["2",203.9],["3",386.3],["#4",636.6],["5",702.0],["6",840.5],["7",1088.3]] },
 
   // ── 17-LIMIT (Heptadecimal) ──────────────────────────────────────────
-  // 17/16 (~105¢) sits between the just minor 2nd (16/15 ≈ 112¢) and
-  // pure unison.  Useful as a "small leading-tone" in scales where the
-  // 5-limit b2 feels too wide.  41-EDO approximates 17/16 cleanly.
+  // Key 17-prime intervals: 17/16 (105¢ small leading-tone m2),
+  // 17/14 (336¢ supraminor 3rd), 17/11 (754¢ b6), 17/10 (919¢ wide M6),
+  // 17/9 (1101¢ wide M7).  No clean 17-prime M3 — Major-mode 3 falls
+  // back to 5/4.
   { name: "Heptadecimal Major",
-    // 5-limit Major spine; the 7th uses 17/9 (~1101¢) — wider than the
-    // Just M7 (15/8 ≈ 1088¢), which gives a stronger pull-to-tonic
-    // resolution thanks to the larger semitone cap.
-    steps: [["1",0],["2",203.9],["3",386.3],["4",498.0],["5",702.0],["6",884.4],["7",1101.0]] },
+    // 6 → 17/10 (wide M6), 7 → 17/9 (wide leading-tone).  M3 stays at
+    // 5/4 (no clean 17-prime M3 candidate).  4 and 5 stay anchored.
+    // Two 17-prime tones at the modal-defining 6th and 7th.
+    steps: [["1",0],["2",203.9],["3",386.3],["4",498.0],["5",702.0],["6",918.6],["7",1101.0]] },
   { name: "Heptadecimal Minor",
-    // 5-limit Minor spine; b2 lifts to 17/16 (~105¢) — a small supraminor
-    // 2nd, brighter than the standard 16/15 b2.  17-prime colour at the
-    // b2 only; the rest of the scale stays 5-limit.
-    steps: [["1",0],["b2",105.0],["b3",315.6],["4",498.0],["5",702.0],["b6",813.7],["b7",1017.6]] },
+    // b3 → 17/14 (supraminor), b6 → 17/11.  b7 falls back to 16/9 (no
+    // clean 17-prime b7).  Optional 17-prime b2 (17/16) tightens the
+    // leading-tone region.
+    steps: [["1",0],["b2",105.0],["b3",336.1],["4",498.0],["5",702.0],["b6",753.6],["b7",996.1]] },
   { name: "Heptadecimal Hijaz",
-    // Hijaz with 17-limit b2 (17/16 instead of the standard 16/15).
-    // The smaller b2 makes the Hijaz aug-2nd feel even more distant.
-    steps: [["1",0],["b2",105.0],["3",386.3],["4",498.0],["5",702.0],["b6",813.7],["b7",996.1]] },
+    // Hijaz spine (b2 + M3 + b6 with augmented-2nd between b2 and M3).
+    // Substitute b2 → 17/16 and b6 → 17/11.  Two 17-prime tones; the
+    // signature aug-2nd ramp leans on the smaller 17/16.
+    steps: [["1",0],["b2",105.0],["3",386.3],["4",498.0],["5",702.0],["b6",753.6],["b7",996.1]] },
 
   // ── 19-LIMIT (Nonadecimal) ───────────────────────────────────────────
-  // 19/16 (~298¢) is fractionally below the Pythagorean m3 (32/27 ≈ 294¢)
-  // and the 5-limit m3 (6/5 ≈ 316¢) — its own colour rather than just
-  // an approximation of either.  Distinctive in 41-EDO.
+  // Key 19-prime intervals: 19/18 (94¢ small m2), 19/16 (298¢ m3),
+  // 19/15 (409¢ wide M3), 19/12 (795¢ b6), 19/11 (946¢ b7),
+  // 19/10 (1111¢ wide M7).  No clean 19-prime M6 — Major-mode 6
+  // falls back to 5/3.
   { name: "Nonadecimal Major",
-    // 5-limit Major spine; M3 borrows 19/15 (~409¢) — between the
-    // Pythagorean M3 (81/64 ≈ 408¢) and a wide M3.  Subtle but creates
-    // a "tense" major character.
-    steps: [["1",0],["2",203.9],["3",409.2],["4",498.0],["5",702.0],["6",884.4],["7",1088.3]] },
+    // 3 → 19/15 (wide M3 at 409¢, between Pyth 81/64 and a wide M3),
+    // 7 → 19/10 (wide leading-tone).  M6 stays at 5/3.  Two 19-prime
+    // substitutions on the modal-defining 3rd and 7th.
+    steps: [["1",0],["2",203.9],["3",409.2],["4",498.0],["5",702.0],["6",884.4],["7",1111.2]] },
   { name: "Nonadecimal Minor",
-    // 5-limit Minor spine; b3 uses 19/16 — fractionally below Just m3.
-    steps: [["1",0],["2",203.9],["b3",297.5],["4",498.0],["5",702.0],["b6",813.7],["b7",996.1]] },
+    // b3 → 19/16, b6 → 19/12, b7 → 19/11.  Three 19-prime substitutions
+    // span the entire modal palette of the minor mode.  4 and 5 stay
+    // anchored.
+    steps: [["1",0],["2",203.9],["b3",297.5],["4",498.0],["5",702.0],["b6",795.0],["b7",945.7]] },
 
-  // ── 23 / 29 / 31-LIMIT (Major + Minor with higher-prime colour) ──────
-  // No established repertoire treats these primes as scale generators,
-  // so the scales here use a 5-limit Major or Minor spine and
-  // substitute ONE characteristic note with the higher-prime interval.
-  // The result reads as a recognisable Major or Minor that's tilted
-  // into the prime's microtonal flavour at one degree.  41-EDO
-  // approximates each prime well enough to make the difference audible.
-  // 23-LIMIT
+  // ── 23 / 29 / 31-LIMIT (multi-prime higher-limit colour) ─────────────
+  // Each scale carries 3-4 intervals from its named prime — enough that
+  // the prime defines the modal colour, not just a single substituted
+  // tone.  Major / Minor labels reflect the 1-3-5 chord quality at the
+  // tonic so the I roman numeral renders as I (Major) or i (minor).
+  // 41-EDO approximates each prime to within a few cents; 53-EDO is
+  // accurate on 13 / 19 and weaker on 17 / 23 / 29 / 31, which is why
+  // those scales aren't surfaced for 53-EDO in JI_LIMITS_PER_EDO.
+
+  // 23-LIMIT  Key intervals: 23/22 (77¢ b2), 23/19 (329¢ supraminor 3),
+  //          23/18 (424¢ wide M3), 23/14 (859¢ b6), 23/12 (1126¢
+  //          extra-wide M7).  No clean 23-prime M6 or b7.
   { name: "Vicesimotertial Major",
-    // Standard 5-limit Major (1 9/8 5/4 4/3 3/2 5/3 …) but the 7th
-    // borrows 23/12 (~1126¢) — wider than both Just M7 (15/8 ≈ 1088¢)
-    // and Pyth M7 (243/128 ≈ 1110¢), giving an extra-stretched
-    // leading-tone with 23-prime colour.
-    steps: [["1",0],["2",203.9],["3",386.3],["4",498.0],["5",702.0],["6",884.4],["7",1126.3]] },
+    // 3 → 23/18 (wide M3, 424¢, brighter than Pyth 81/64 = 408¢),
+    // 7 → 23/12 (extra-stretched leading-tone, 1126¢).  M6 stays at
+    // 5/3, 4 and 5 anchored.  Two 23-prime tones at 3rd and 7th.
+    steps: [["1",0],["2",203.9],["3",424.4],["4",498.0],["5",702.0],["6",884.4],["7",1126.3]] },
   { name: "Vicesimotertial Minor",
-    // 5-limit Minor spine; b3 lifts to 23/19 (~329¢) — sits between
-    // Pyth m3 (294¢) and Just m3 (316¢), giving the b3 a brighter,
-    // supraminor character without leaving minor territory.
-    steps: [["1",0],["2",203.9],["b3",329.2],["4",498.0],["5",702.0],["b6",813.7],["b7",1017.6]] },
-  // 29-LIMIT
+    // b3 → 23/19 (329¢ supraminor), b6 → 23/14 (859¢).  b7 falls back
+    // to 16/9 (no clean 23-prime b7 candidate).  Two 23-prime tones at
+    // b3 and b6.
+    steps: [["1",0],["2",203.9],["b3",329.2],["4",498.0],["5",702.0],["b6",859.4],["b7",996.1]] },
+  // 29-LIMIT  Key intervals: 29/27 (124¢ small m2), 29/24 (328¢
+  //          supraminor 3rd), 29/23 (401¢ wide M3), 29/18 (770¢ b6),
+  //          29/17 (871¢ M6), 29/16 (1030¢ b7).  No clean 29-prime M7
+  //          — Major-mode 7 falls back to 15/8 OR Major adopts a
+  //          Mixolydian b7 to fit a 29-prime tone there.
   { name: "Vicenovenal Major",
-    // 5-limit Major spine; b7 substitutes 29/16 (~1030¢) for 16/9 / 9/5
-    // — a 29-flavoured "small minor 7th" giving a distinctive dominant-
-    // bluesy colour to V7 and IV7 chords built off this scale.
-    steps: [["1",0],["2",203.9],["3",386.3],["4",498.0],["5",702.0],["6",884.4],["b7",1029.6]] },
+    // 3 → 29/23 (401¢ wide M3), 6 → 29/17 (871¢), 7 → 29/16 (1030¢ b7,
+    // Mixolydian-leaning).  Three 29-prime tones at the modal-defining
+    // 3rd, 6th, and 7th.  4 and 5 anchored.
+    steps: [["1",0],["2",203.9],["3",401.3],["4",498.0],["5",702.0],["6",871.4],["b7",1029.6]] },
   { name: "Vicenovenal Minor",
-    // 5-limit Minor spine; b3 uses 29/24 (~328¢) and b6 uses 29/18
-    // (~770¢) — both supra-flat versions of the standard minor degrees,
-    // shifting the whole minor "mood" by ~10–15 cents at the modal
-    // tones.  Subtle but unmistakable in 41-EDO.
-    steps: [["1",0],["2",203.9],["b3",327.6],["4",498.0],["5",702.0],["b6",770.5],["b7",1017.6]] },
-  // 31-LIMIT
+    // b3 → 29/24 (328¢), b6 → 29/18 (770¢), b7 → 29/16 (1030¢).  Three
+    // 29-prime tones span the entire minor-mode modal palette.  4 and
+    // 5 anchored.
+    steps: [["1",0],["2",203.9],["b3",327.6],["4",498.0],["5",702.0],["b6",770.5],["b7",1029.6]] },
+  // 31-LIMIT  Key intervals: 31/29 (115¢ b2), 31/26 (336¢ supraminor 3),
+  //          31/25 (372¢ neutral-leaning M3), 31/20 (765¢ b6),
+  //          31/19 (905¢ M6), 31/17 (1010¢ b7), 31/16 (1145¢ extra-
+  //          wide M7).
   { name: "Trigesimoprimal Major",
-    // 5-limit Major spine; the 7th uses 31/16 (~1145¢) — a "wide" major
-    // 7th close to the Pythagorean 243/128 but with 31-prime character.
-    // Resolves with extra urgency to the tonic.
-    steps: [["1",0],["2",203.9],["3",386.3],["4",498.0],["5",702.0],["6",884.4],["7",1145.0]] },
+    // 3 → 31/25 (372¢, neutral-leaning M3 — still triadically Major
+    // because >350¢), 6 → 31/19 (905¢), 7 → 31/16 (1145¢ extra-wide
+    // leading-tone).  Three 31-prime tones at chord-tone positions.
+    steps: [["1",0],["2",203.9],["3",371.6],["4",498.0],["5",702.0],["6",904.6],["7",1145.0]] },
   { name: "Trigesimoprimal Minor",
-    // 5-limit Minor spine; b3 lifts to 31/26 (~338¢) — between Just m3
-    // and the neutral 11/9 — and b6 uses 31/20 (~765¢), slightly flat
-    // of the just minor 6th.  The scale walks like Aeolian with two
-    // notes nudged into 31-territory.
-    steps: [["1",0],["2",203.9],["b3",338.0],["4",498.0],["5",702.0],["b6",765.5],["b7",1017.6]] },
+    // b3 → 31/26 (336¢), b6 → 31/20 (765¢), b7 → 31/17 (1010¢).  Three
+    // 31-prime tones span the minor-mode modal palette.
+    steps: [["1",0],["2",203.9],["b3",336.0],["4",498.0],["5",702.0],["b6",765.5],["b7",1010.4]] },
 ];
 
 // ── Build per-EDO ScaleFamilyMaps ────────────────────────────────────────
