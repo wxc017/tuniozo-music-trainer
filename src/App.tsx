@@ -1086,7 +1086,15 @@ export default function App() {
           live at z-20–30, comp arcs / chord overlays even lower) so the
           visualizer always paints over scrolled-past content rather than
           getting visually overlapped by floating panels below it. */}
-      {(section === "ear-trainer" || section === "scalar-exploration") && (
+      {/* Ear-Trainer keeps the visualizer as a direct child of root so
+          it sticks to the top of the viewport for the full scroll
+          range.  Scalar Explorations renders the same visualizer
+          inside its own wrapper below so the sticky element's
+          containing block ends with the last chord — once the user
+          scrolls past that, the visualizer scrolls away (per direct
+          user direction 2026-05-05: "the visualizer should disappear
+          after i pass by the last chords"). */}
+      {section === "ear-trainer" && (
         <div id="main-visualizer" className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: 0 }}>
           {edo === 12 && vizType === "piano" ? (
             <PianoKeyboard highlightedPitches={highlighted}
@@ -1123,15 +1131,38 @@ export default function App() {
       )}
 
       {/* ── Scalar Exploration ── */}
-      {/* No inner overflow-y-auto — same reasoning as ear-trainer:
-          scrolling stays on the root so the sticky main visualizer
-          actually sticks. */}
+      {/* The visualizer + content live in the same wrapper here so
+          that the visualizer's sticky containing block ends with the
+          scalar content.  Once the user scrolls past the last chord,
+          the visualizer is released and scrolls away with the rest of
+          the page. */}
       {section === "scalar-exploration" && (
-        <div className="px-4 pt-3 flex-1 flex flex-col">
-          <div className="max-w-6xl mx-auto w-full">
-            <ScalarTab tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch}
-              edo={edo} onHighlight={handleHighlight}
-              ensureAudio={ensureAudio} playVol={playVol} />
+        <div className="flex-1 flex flex-col">
+          <div id="main-visualizer" className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: 0 }}>
+            {edo === 12 && vizType === "piano" ? (
+              <PianoKeyboard highlightedPitches={highlighted}
+                onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
+            ) : edo === 12 && vizType === "guitar" ? (
+              <GuitarFretboard highlightedPitches={highlighted}
+                onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
+            ) : edo === 12 && vizType === "bass" ? (
+              <BassFretboard highlightedPitches={highlighted}
+                onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
+            ) : layout ? (
+              <LumatoneKeyboard layout={layout} highlightedPitches={highlighted}
+                onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
+            ) : (
+              <div className="bg-[#111] rounded-xl border border-[#222] h-36 flex items-center justify-center text-[#444] text-xs">
+                Loading keyboard…
+              </div>
+            )}
+          </div>
+          <div className="px-4 pt-3">
+            <div className="max-w-6xl mx-auto w-full">
+              <ScalarTab tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch}
+                edo={edo} onHighlight={handleHighlight}
+                ensureAudio={ensureAudio} playVol={playVol} />
+            </div>
           </div>
         </div>
       )}
