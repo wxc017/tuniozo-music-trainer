@@ -305,14 +305,19 @@ export function limitForJiTonality(tonality: string): JiLimit | null {
 
 /**
  * Per-limit subscript marker used to disambiguate roman-numeral
- * chord labels across JI prime-limit families in 41/53-EDO.  Plain
- * digits — the <sub> element in formatRomanNumeralWithFamily does
- * the styling (font-size + vertical-align: sub).  Rendered as a
- * leading subscript so the user sees "₁₃i" / "₁₇IV" / etc.
+ * chord labels across JI prime-limit families in 41/53-EDO.
+ * Rendered as a leading subscript so the user sees "ⱼᵢi" /
+ * "₁₃IV" / etc.  5-limit gets the "JI" tag rather than a plain "5"
+ * — a digit alone reads as a chord-extension number (5-chord) and
+ * the 5-limit family is already conventionally referred to as
+ * "Just Intonation" / "JI" throughout the app's scale names
+ * (JI Ionian, JI Dorian, …).  Other limits stay as prime-number
+ * digits because numbers above 5 don't collide with chord-shape
+ * vocabulary.
  */
 const LIMIT_ABBREV: Record<JiLimit, string> = {
   3: "3",
-  5: "5",
+  5: "JI",
   7: "7",
   11: "11",
   13: "13",
