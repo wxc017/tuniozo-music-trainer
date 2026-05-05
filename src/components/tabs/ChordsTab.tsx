@@ -2273,28 +2273,6 @@ export default function ChordsTab({
                 releases instead of riding the rest of the page. */}
             <div ref={latticeEndSentinelRef} aria-hidden style={{ height: 1 }} />
 
-            {/* Floating lattice box — top-right of viewport, stacked
-                below the mini-visualizer.  Shows the JI lattice for
-                the active tonality (if it's a JI scale) so the user
-                can see the scale's lattice positions alongside the
-                chord-tone reveal. */}
-            {fhShowAnswer && fhAnswer?.scaleTonality && (() => {
-              const cents = getJiScaleCents(fhAnswer.scaleTonality);
-              const degs = getJiScaleDegrees(fhAnswer.scaleTonality);
-              if (!cents || !degs) return null;
-              const tones = degs.map((degree, i) => ({ degree, cents: cents[i] }));
-              return (
-                <FloatingPanel
-                  position="top-right"
-                  title={`SCALE LATTICE · ${fhAnswer.scaleTonality}`}
-                  accent="#c8a850"
-                  storageKey="lt_crd_answer_lattice_collapsed"
-                  topOffset={edo === 12 ? 220 : 80}
-                >
-                  <JiScaleLattice tones={tones} accent="#c8a850" compact />
-                </FloatingPanel>
-              );
-            })()}
           </div>
 
           {/* Extensions + Voicings (shared controls) */}
