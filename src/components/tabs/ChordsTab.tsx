@@ -1746,15 +1746,25 @@ export default function ChordsTab({
               )}
             </div>
 
+            {/* Sticky scope wrapper — bounds the play row's sticky
+                lifetime to the (button + answer reveal + harmonic
+                lattice) sub-region so the row stops sticking the
+                moment the lattice scrolls out of view, instead of
+                continuing to ride the viewport through the
+                ExtensionControls / VoicingPatternControls / LIL
+                preview / chord-selection grid that come after.
+                Position relative so this div is the offsetParent
+                that defines the sticky containing block. */}
+            <div className="relative">
+
             {/* Play / Stop / Replay / Show Answer — sticky so the
                 row appears in its natural place initially, pins to
                 the top of the ear-trainer tabs scroll container the
                 moment the user scrolls past it, and releases the
-                instant the surrounding Progressions card scrolls
-                out (which is exactly when the harmonic lattice at
-                the bottom of the card has scrolled past the top of
-                the viewport).  z-50 so the row paints above the
-                LatticeView 3D canvas's stacking context. */}
+                instant this scope's bottom edge passes — i.e. when
+                the harmonic lattice scrolls out.  z-50 so the row
+                paints above the LatticeView 3D canvas's stacking
+                context. */}
             <div className="flex gap-2 flex-wrap items-center sticky top-0 z-50 bg-[#0d0d0d] py-2 -mx-4 px-4 border-b border-[#1e1e1e] shadow-md shadow-black/40">
               <button onClick={startFunctionalLoop} disabled={isLooping || !canPlay}
                 title={disabledReason ?? undefined}
@@ -2116,6 +2126,7 @@ export default function ChordsTab({
                 </FloatingPanel>
               );
             })()}
+            </div>{/* end sticky scope wrapper */}
           </div>
 
           {/* Extensions + Voicings (shared controls) */}
