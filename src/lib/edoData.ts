@@ -1207,29 +1207,28 @@ const DEGREE_TO_LETTER: Record<string, string> = {
 /**
  * Replace double-sharps/double-flats with half-sharp (𝄲) / half-flat (𝄳) glyphs.
  *
- * In microtonal EDOs (31 / 41 / 53), "##" and "bb" in mode-name accidentals
- * actually denote half-accidentals — a single EDO step away from the natural,
- * not the diatonic double-sharp / double-flat.  The half-glyph is visually
- * cleaner.
- *
- * In diatonic EDOs (12 / 19), "##" / "bb" mean genuine double-sharp / double-
- * flat — half-accidentals don't exist there.  Pass `edo` and we'll either
- * leave the ASCII form alone or substitute the proper double-sharp /
- * double-flat glyphs (𝄪 / 𝄫) per direct user direction (2026-05-05).
+ * Per direct user direction (2026-05-05):
+ *   - 31-EDO uses half-glyphs.  "##" / "bb" land on a microtonal step
+ *     halfway between the diatonic # / b, so the half-sharp / half-flat
+ *     glyphs are the musically correct rendering.
+ *   - 12 / 19 / 41 / 53 use literal ASCII "#" / "b" (stackable as "##",
+ *     "bb", "###", "bbbb"…).  Half-accidentals don't exist in 12 / 19,
+ *     and 41 / 53's stacked-#/b notation IS the canonical convention
+ *     (each # / b = one EDO step, not half a step).
  */
 export function formatHalfAccidentals(s: string, edo?: number): string {
-  if (edo === 12 || edo === 19) {
-    // Diatonic — half-accidentals don't exist here.  Convert any pre-
-    // existing 𝄪 / 𝄫 glyphs back to ASCII "##" / "bb" for consistency,
-    // and leave any incoming "##" / "bb" literally alone.
-    return s.replace(/𝄪/g, "##").replace(/𝄫/g, "bb");
+  if (edo === 31) {
+    // Microtonal half-step accidentals — collapse to dedicated glyphs.
+    return s
+      .replace(/##/g, "𝄲")
+      .replace(/bb/g, "𝄳")
+      .replace(/𝄪/g, "𝄲")
+      .replace(/𝄫/g, "𝄳");
   }
-  // Microtonal default: collapse to half-accidentals.
-  return s
-    .replace(/##/g, "𝄲")
-    .replace(/bb/g, "𝄳")
-    .replace(/𝄪/g, "𝄲")
-    .replace(/𝄫/g, "𝄳");
+  // Diatonic / xen-with-stackable-#-b (12 / 19 / 41 / 53 / others).
+  // Convert any pre-existing 𝄪 / 𝄫 glyphs back to ASCII so a 12-EDO
+  // user pasting in a 31-EDO label sees plain "##" / "bb".
+  return s.replace(/𝄪/g, "##").replace(/𝄫/g, "bb");
 }
 
 const _pcNoteNamesCache: Record<number, string[]> = {};
