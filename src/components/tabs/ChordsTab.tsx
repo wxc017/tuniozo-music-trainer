@@ -1182,12 +1182,24 @@ export default function ChordsTab({
       // anchoring the chord roots at their frozen positions gives
       // perceptually pure-sounding chords without the cadence pumping
       // the tonic out of tune.
+      let shapeForRecord: number[] | null = result ? result.appliedShape : null;
       if (useLattice && driftsCents && chordAbs.length > 0) {
         const offsetSteps = driftCentsToSteps(driftsCents[i], edo);
-        if (offsetSteps !== 0) chordAbs = chordAbs.map(p => p - offsetSteps);
+        if (offsetSteps !== 0) {
+          chordAbs = chordAbs.map(p => p - offsetSteps);
+          // Apply the SAME compensation to the recorded chord shape so
+          // downstream consumers (Show Answer chord cards, lattice
+          // highlight, etc.) derive `chordRootPc` from the post-comp
+          // root — otherwise `notes` and `appliedShape[0]` disagree by
+          // exactly the comp-step count, and chord-relative interval
+          // labels read as nonsense ("Minor 7th" instead of "Perfect
+          // Unison" for the root, etc.).  This is the root-cause of
+          // the "Do version is buggy" report from 2026-05-04.
+          if (shapeForRecord) shapeForRecord = shapeForRecord.map(p => p - offsetSteps);
+        }
       }
       chords.push(chordAbs);
-      appliedShapes.push(result ? result.appliedShape : null);
+      appliedShapes.push(shapeForRecord);
       if (chordAbs.length > 0) prevVoicing = chordAbs;
     }
     // Derive octave indices from the absolute-pitch range — generateBassLine
