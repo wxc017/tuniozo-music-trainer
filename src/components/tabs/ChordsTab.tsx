@@ -425,6 +425,53 @@ export default function ChordsTab({
   // Re-render trigger so the drift indicator updates after each
   // buildLoopFrames call (refs alone don't trigger re-renders).
   const [latticeRevision, setLatticeRevision] = useState(0);
+
+  // Pin-on-scroll state for the Play / Replay / Got-it row.  CSS
+  // position:sticky was unreliable inside the chord tab's nested flex
+  // layout (the rule worked for some scroll positions but not others
+  // — likely a nested-flex-sticky interaction), so we drive pinning
+  // explicitly via two IntersectionObserver sentinels: one just above
+  // the button row that flips `pinPlayRow` true once it leaves the
+  // viewport upward, and one just below the harmonic lattice that
+  // flips it back false once that sentinel also leaves upward.  When
+  // pinned, the row renders as position:fixed at top:0 and a matching
+  // spacer keeps the surrounding layout from collapsing.
+  const [pinPlayRow, setPinPlayRow] = useState(false);
+  const playRowSentinelRef = useRef<HTMLDivElement | null>(null);
+  const latticeEndSentinelRef = useRef<HTMLDivElement | null>(null);
+  const playRowAboveRef = useRef(false);   // sentinel-before scrolled past
+  const latticeAboveRef = useRef(false);   // sentinel-after scrolled past
+
+  useEffect(() => {
+    const before = playRowSentinelRef.current;
+    const after = latticeEndSentinelRef.current;
+    if (!before || !after) return;
+    const recompute = () => {
+      // Pin only when we've scrolled past the natural button row
+      // position AND the harmonic lattice is still in flow above us.
+      setPinPlayRow(playRowAboveRef.current && !latticeAboveRef.current);
+    };
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          // boundingClientRect.top < 0 means the sentinel has scrolled
+          // up past the viewport top.  isIntersecting === false alone
+          // also fires when scrolled DOWN past the bottom, which
+          // we don't care about — distinguish via boundingClientRect.
+          const above = !e.isIntersecting && e.boundingClientRect.top < 0;
+          if (e.target === before) playRowAboveRef.current = above;
+          else if (e.target === after) latticeAboveRef.current = above;
+        }
+        recompute();
+      },
+      // rootMargin top:0 so the sentinel "leaves" precisely when its
+      // top edge crosses the viewport top.
+      { rootMargin: "0px 0px 0px 0px", threshold: [0, 1] },
+    );
+    obs.observe(before);
+    obs.observe(after);
+    return () => obs.disconnect();
+  }, []);
   const loopXenMapRef = useRef<Record<string, string[]> | null>(null);
   const loopScaleRootsRef = useRef<number[] | null>(null);
   // Recency tracking for tonality picking — bias toward tonalities the
@@ -1771,26 +1818,26 @@ export default function ChordsTab({
               )}
             </div>
 
-            {/* Sticky scope wrapper — bounds the play row's sticky
-                lifetime to the (button + answer reveal + harmonic
-                lattice) sub-region so the row stops sticking the
-                moment the lattice scrolls out of view, instead of
-                continuing to ride the viewport through the
-                ExtensionControls / VoicingPatternControls / LIL
-                preview / chord-selection grid that come after.
-                Position relative so this div is the offsetParent
-                that defines the sticky containing block. */}
-            <div className="relative">
+            {/* Sentinel: lives just above the play row.  The
+                IntersectionObserver above flips `pinPlayRow` true
+                once this sentinel scrolls up past the viewport top. */}
+            <div ref={playRowSentinelRef} aria-hidden style={{ height: 1 }} />
 
-            {/* Play / Stop / Replay / Show Answer — sticky so the
-                row appears in its natural place initially, pins to
-                the top of the ear-trainer tabs scroll container the
-                moment the user scrolls past it, and releases the
-                instant this scope's bottom edge passes — i.e. when
-                the harmonic lattice scrolls out.  z-50 so the row
-                paints above the LatticeView 3D canvas's stacking
-                context. */}
-            <div className="flex gap-2 flex-wrap items-center sticky top-0 z-50 bg-[#0d0d0d] py-2 -mx-4 px-4 border-b border-[#1e1e1e] shadow-md shadow-black/40">
+            {/* Play / Stop / Replay / Show Answer — pinned to the
+                viewport top via position:fixed when the user has
+                scrolled past the row's natural position AND the
+                harmonic lattice hasn't yet fully scrolled out.  CSS
+                position:sticky was unreliable inside the chord tab's
+                nested flex layout, so the IntersectionObserver
+                sentinels (just above this row + just after the
+                lattice) drive the pinning explicitly.  When pinned
+                we render a matching-height spacer below so the
+                following content doesn't collapse upward. */}
+            <div className={
+                pinPlayRow
+                  ? "flex gap-2 flex-wrap items-center fixed top-0 left-0 right-0 z-50 bg-[#0d0d0d] py-2 px-4 border-b border-[#1e1e1e] shadow-md shadow-black/40"
+                  : "flex gap-2 flex-wrap items-center bg-[#0d0d0d] py-2 -mx-4 px-4 border-b border-[#1e1e1e]"
+              }>
               <button onClick={startFunctionalLoop} disabled={isLooping || !canPlay}
                 title={disabledReason ?? undefined}
                 className="bg-[#e0a040] hover:bg-[#c89030] disabled:opacity-50 disabled:cursor-not-allowed text-black px-5 py-2 rounded text-sm font-bold transition-colors">
@@ -1819,6 +1866,10 @@ export default function ChordsTab({
               )}
               {answerButtons}
             </div>
+            {/* Layout spacer — only present while the row is pinned
+                (rendered as fixed and pulled out of the flow), so the
+                following content doesn't visually jump upward. */}
+            {pinPlayRow && <div aria-hidden style={{ height: 56 }} />}
 
             {/* Answer — only visible after clicking Show Answer.
                 Per-chord rows with clickable tone buttons; each tone
@@ -1878,14 +1929,12 @@ export default function ChordsTab({
                       </p>
                     )}
                   </div>
-                  {/* Two-column body — chord-tone reveal on the left
-                      (drift trace + per-chord rows), live visualizer
-                      mirror on the right.  At narrow widths the row
-                      stacks vertically (visualizer above answer) so
-                      tablets / portrait phones still get a usable
-                      layout. */}
-                  <div className="flex flex-col lg:flex-row gap-3">
-                  <div className="flex-1 space-y-3 min-w-0">
+                  {/* Single-column body — chord-tone reveal stretches
+                      full width.  The right-column live visualizer
+                      mirror was removed; the App-level main visualizer
+                      stays sticky at the top of the page so the user
+                      always has a keyboard view of the active chord. */}
+                  <div className="space-y-3">
                   {/* Live lattice trace — meaningful in Adaptive and
                       Pure 3/5-limit modes on 41/53-EDO.  Shows each
                       chord in the progression with its accumulated
@@ -2018,41 +2067,7 @@ export default function ChordsTab({
                     </div>
                     );
                   })}
-                  </div>{/* end LEFT chord-tone column */}
-
-                  {/* RIGHT column — live visualizer mirror.  The
-                      visualizer is wrapped in a sticky container so
-                      it stays visible as the user scrolls through
-                      the chord-tone reveal on the left, and the
-                      column itself stretches to match the left
-                      column's height so the empty space below the
-                      keyboard fills with a soft background instead
-                      of being blank. */}
-                  {/* Right column claims half the width on lg+ and
-                      stretches vertically so the visualizer can fill
-                      the empty space alongside the chord-tone tables
-                      on the left.  No self-start, no max-height — the
-                      sticky inner pins the keyboard at the column top
-                      while the column itself stretches to match the
-                      left side's chord-tone reveal height. */}
-                  <div className="lg:flex-1 lg:flex-shrink-0 flex flex-col gap-2 lg:min-w-[45%]">
-                    {highlightedPitches && (
-                      <div className="rounded border border-[#3a3a1a] overflow-hidden bg-[#0a0a0a] sticky top-2 w-full">
-                        {edo === 12 && vizType === "piano" ? (
-                          <PianoKeyboard highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
-                        ) : edo === 12 && vizType === "guitar" ? (
-                          <GuitarFretboard highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
-                        ) : edo === 12 && vizType === "bass" ? (
-                          <BassFretboard highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} />
-                        ) : layout ? (
-                          <LumatoneKeyboard layout={layout} highlightedPitches={highlightedPitches} onKeyClick={onKeyClick} maxHeight={null} />
-                        ) : (
-                          <div className="text-[10px] text-[#666] italic p-3">Loading keyboard…</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  </div>{/* end two-column flex row */}
+                  </div>{/* end chord-tone column */}
 
                   {/* Full-width Harmonic Lattice — re-uses the main
                       LatticeView (3D Tonnetz / Monzo viewer) and
@@ -2129,6 +2144,12 @@ export default function ChordsTab({
               );
             })()}
 
+            {/* Sentinel just after the harmonic lattice — when this
+                scrolls past the viewport top, the IntersectionObserver
+                flips `pinPlayRow` back to false so the play row
+                releases instead of riding the rest of the page. */}
+            <div ref={latticeEndSentinelRef} aria-hidden style={{ height: 1 }} />
+
             {/* Floating lattice box — top-right of viewport, stacked
                 below the mini-visualizer.  Shows the JI lattice for
                 the active tonality (if it's a JI scale) so the user
@@ -2151,7 +2172,6 @@ export default function ChordsTab({
                 </FloatingPanel>
               );
             })()}
-            </div>{/* end sticky scope wrapper */}
           </div>
 
           {/* Extensions + Voicings (shared controls) */}
