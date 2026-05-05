@@ -73,6 +73,12 @@ const FREESOUND_TANPURA_URL = "https://cdn.freesound.org/previews/416/416605_211
 const FREESOUND_SITAR_URL   = "https://cdn.freesound.org/previews/506/506312_408747-hq.mp3";
 const FREESOUND_BAGPIPE_URL = "https://cdn.freesound.org/previews/622/622929_931745-hq.mp3";
 const FREESOUND_CHOIR_URL   = "https://cdn.freesound.org/previews/763/763910_11744683-hq.mp3";
+// Real human female voice singing a sustained C# vowel (Freesound
+// 555984, owstu's "Female Voice Sing Impro" pack).  CC0, 11.4 s of
+// clean studio recording — replaces the MusyngKite synth voice that
+// the user correctly identified as "definitely not a voice just
+// sounds like a soundwave" (2026-05-05).
+const FREESOUND_VOICE_URL   = "https://cdn.freesound.org/previews/555/555984_1690102-hq.mp3";
 
 /** Curated drone instrument list — canonical drones from the world
  *  music traditions per direct user direction (2026-05-05): cello +
@@ -194,13 +200,10 @@ const INSTRUMENT_SOURCES: Record<DroneInstrument, SourceConfig> = {
     notes: ["F3"],
   },
   voice_oohs: {
-    // MusyngKite fallback — no usable CC0 sustained-vowel solo voice
-    // recording surfaced (every Freesound match was either too short,
-    // wrong vowel, or had melodic contour baked in).  The MusyngKite
-    // voice_oohs is the synth-y fallback until a real recording is
-    // sourced.
-    url: n => `${MUSYNGKITE_BASE}voice_oohs-mp3/${n}.mp3`,
-    notes: ["C2", "C4", "C5"],
+    // Freesound 555984, real female voice on a sustained C# at ~C#4
+    // (MIDI 61).  Owstu's improv pack, CC0, 11.4 s of steady tone.
+    url: () => FREESOUND_VOICE_URL,
+    notes: ["Cs4"],
   },
 };
 
@@ -572,18 +575,30 @@ export class AudioEngine {
   // detune to give the drone a living, slightly-vibrato feel rather
   // than a static organ-like sustain.  All vibrato LFOs are tracked
   // alongside the main oscillators so stopDrone() can shut them down.
-  startDrone(notes: number[], edo: number, gain = 0.08, perNoteGains?: number[]) {
+  /** Start the drone with one or more EDO-step pitches.  Async because
+   *  it awaits the active instrument's sample load promise — without
+   *  that wait, the drone falls back to a PeriodicWave synth on first
+   *  play (race: user clicks ON before the lazy fetch completes), and
+   *  every instrument sounds like a sine wave.  Per direct user
+   *  feedback (2026-05-05): the previous sync version was the root
+   *  cause of the cello/sitar/bagpipe/voice "soundwave" complaints. */
+  async startDrone(notes: number[], edo: number, gain = 0.4, perNoteGains?: number[]) {
     this.fadeDrone(150); // brief fade to avoid click
     const ctx = this.getCtx();
+
+    // Wait up to 5s for the active instrument's samples to be ready.
+    // If they don't arrive in time we fall through and use the synth
+    // fallback so the drone makes *some* sound rather than silence.
+    await this.waitForSamples(5000);
 
     this.droneGainNode = ctx.createGain();
     this.droneGainNode.gain.value = gain;
     this.droneGainNode.connect(this.masterGain ?? ctx.destination);
 
-    // Use the active instrument's samples when loaded; fall back to
-    // the PeriodicWave synth (CELLO_REAL) until then.
     const useSamples = this.hasLoadedSamples();
-    const wave = useSamples ? null : ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
+    // Always create the PeriodicWave so spawnDroneVoice has a fallback
+    // even if pickClosestSample returns null mid-flight.
+    const wave = ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
 
     for (let i = 0; i < notes.length; i++) {
       const noteGain = ctx.createGain();
@@ -594,6 +609,19 @@ export class AudioEngine {
       this.spawnDroneVoice(ctx, freq, noteGain, useSamples, wave);
       this.droneNoteGains.push(noteGain);
     }
+  }
+
+  /** Resolve when the current instrument's samples are loaded, or the
+   *  given timeout elapses (whichever is first).  Used by startDrone /
+   *  startRatioDrone so the first play doesn't race the lazy fetch. */
+  private async waitForSamples(timeoutMs: number): Promise<void> {
+    const promise = this.instrumentLoadPromises.get(this.currentInstrument);
+    if (!promise) return;
+    if (this.hasLoadedSamples()) return;
+    await Promise.race([
+      promise,
+      new Promise<void>(resolve => setTimeout(resolve, timeoutMs)),
+    ]);
   }
 
   /** Spawn one drone voice — either a crossfade-looped instrument
@@ -640,21 +668,52 @@ export class AudioEngine {
    *  alive; stopDrone() cancels these timers and disconnects all
    *  BufferSources. */
   private spawnSampleLoop(ctx: AudioContext, buffer: AudioBuffer, rate: number, noteGain: GainNode) {
-    const playedDur = buffer.duration / rate;
-    // Crossfade length = 30% of played duration, capped at 0.5 s and
-    // floored at 0.15 s so even short samples blend smoothly.
-    const xfade = Math.max(0.15, Math.min(0.5, playedDur * 0.3));
+    // Skip the attack transient at the start of each buffer and the
+    // release tail at the end, so the looper only crossfades through
+    // the steady sustain region.  Without this, every re-trigger of a
+    // cello / bagpipe / sitar sample re-articulates the bow / blow /
+    // pluck — exactly what the user heard as "doesn't sustain".
+    //
+    // For a buffer ≥ 1s we trim 20% off the front and 10% off the
+    // back; very short buffers (rare) trim less so we don't run out
+    // of usable material.
+    const bufDur = buffer.duration;
+    const trimAttack = bufDur >= 1.0 ? Math.min(0.5, bufDur * 0.2) : Math.min(0.1, bufDur * 0.1);
+    const trimRelease = bufDur >= 1.0 ? Math.min(0.5, bufDur * 0.1) : 0;
+    const usableBufDur = Math.max(0.5, bufDur - trimAttack - trimRelease);
+    const playedDur = usableBufDur / rate;
+    // Crossfade length = 40% of played duration, capped at 0.8 s and
+    // floored at 0.2 s.  Equal-power crossfade (set via setValueCurveAtTime)
+    // keeps the perceived loudness steady through the transition rather
+    // than dipping mid-fade, which is what the user heard as "cutting out".
+    const xfade = Math.max(0.2, Math.min(0.8, playedDur * 0.4));
     const interval = playedDur - xfade;
     if (interval <= 0.05) {
-      // Sample too short for crossfade — fall back to plain loop.
+      // Sample too short for crossfade — fall back to plain loop with
+      // loopStart skipping the attack.
       const src = ctx.createBufferSource();
       src.buffer = buffer;
       src.loop = true;
+      src.loopStart = trimAttack;
+      src.loopEnd = bufDur - trimRelease;
       src.playbackRate.value = rate;
       src.connect(noteGain);
-      src.start();
+      src.start(0, trimAttack);
       this.droneSamples.push(src);
       return;
+    }
+
+    // Equal-power fade curves — quarter-cosine in / quarter-cosine out.
+    // sum(fadeIn² + fadeOut²) = 1, so two staggered voices summed at the
+    // crossfade midpoint hold constant loudness instead of the linear
+    // crossfade's mid-fade dip that sounded like "cutting out".
+    const curveLen = 64;
+    const fadeIn = new Float32Array(curveLen);
+    const fadeOut = new Float32Array(curveLen);
+    for (let i = 0; i < curveLen; i++) {
+      const x = i / (curveLen - 1);
+      fadeIn[i] = Math.sin(x * Math.PI / 2);
+      fadeOut[i] = Math.cos(x * Math.PI / 2);
     }
 
     const fireVoice = (startTime: number) => {
@@ -664,12 +723,14 @@ export class AudioEngine {
       const g = ctx.createGain();
       src.connect(g).connect(noteGain);
 
+      // Equal-power fade-in over xfade, sustain at 1, equal-power fade-out.
       g.gain.setValueAtTime(0, startTime);
-      g.gain.linearRampToValueAtTime(1, startTime + xfade);
+      g.gain.setValueCurveAtTime(fadeIn, startTime, xfade);
       g.gain.setValueAtTime(1, startTime + playedDur - xfade);
-      g.gain.linearRampToValueAtTime(0, startTime + playedDur);
+      g.gain.setValueCurveAtTime(fadeOut, startTime + playedDur - xfade, xfade);
 
-      src.start(startTime);
+      // Play only the steady-state region of the buffer (skip attack).
+      src.start(startTime, trimAttack);
       src.stop(startTime + playedDur + 0.02);
       this.droneSamples.push(src);
     };
@@ -852,20 +913,23 @@ export class AudioEngine {
     }
   }
 
-  startRatioDrone(ratios: number[], gain = 0.08, baseFreq?: number, perNoteGains?: number[]) {
+  async startRatioDrone(ratios: number[], gain = 0.4, baseFreq?: number, perNoteGains?: number[]) {
     this.stopDrone();
     const ctx = this.getCtx();
+
+    // Same race-condition fix as startDrone — wait for samples to
+    // load before deciding on the synth fallback.
+    await this.waitForSamples(5000);
 
     this.droneGainNode = ctx.createGain();
     this.droneGainNode.gain.value = gain;
     this.droneGainNode.connect(this.masterGain ?? ctx.destination);
 
     const freq = baseFreq ?? C4_FREQ;
-    // Sampled instrument when buffers are loaded; PeriodicWave synth
-    // (with vibrato) as the fallback.  spawnDroneVoice handles the
-    // selection so the JI-ratio path and the EDO path stay in sync.
     const useSamples = this.hasLoadedSamples();
-    const wave = useSamples ? null : ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
+    // Always create the wave fallback so spawnDroneVoice can fall
+    // through if pickClosestSample races.
+    const wave = ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
 
     for (let i = 0; i < ratios.length; i++) {
       const noteGain = ctx.createGain();
