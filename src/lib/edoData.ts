@@ -195,49 +195,64 @@ const INTERVAL_NAMES_31 = [
   "Perfect Octave",
 ];
 
+// 41-EDO interval names: arrow / step accidentals + letter-prefix
+// quality codes per direct user direction (2026-05-05).  One step in
+// 41-EDO ≈ 29.27¢, so ↑ = +1 step, ↓ = −1 step (stackable).  Letter
+// prefixes encode the third / sixth / seventh quality varieties:
+//   s = subminor       (e.g. s3 = 7/6)
+//   m = minor          (Pythagorean, e.g. m3 = 32/27)
+//   Cm = classic minor (5-limit JI, e.g. Cm3 = 6/5)
+//   n = neutral        (11-limit, e.g. n3 = 11/9)
+//   C = classic major  (5-limit JI, e.g. C3 = 5/4)
+//   M = major          (Pythagorean, e.g. M3 = 81/64)
+//   S = supermajor     (e.g. S3 = 9/7)
+// 4ths / 5ths sit in a tritone region with fewer canonical names —
+// they use ↑ / ↓ alterations off P4 / P5, plus n4 / n5 for the
+// distinctly-tritonal-flavoured neutral-region steps and the
+// traditional A4 / d5 markers at their canonical 41-EDO steps.
 const INTERVAL_NAMES_41 = [
-  "Perfect Unison",                                          // 0
-  "Comma-Wide Unison",                                       // 1
-  "Subminor 2nd",                                            // 2
-  "Minor 2nd",                                               // 3
-  "Classic Minor 2nd",                                       // 4
-  "Neutral 2nd",                                             // 5
-  "Classic Major 2nd",                                       // 6
-  "Major 2nd",                                               // 7
-  "Supermajor 2nd",                                          // 8
-  "Subminor 3rd",                                            // 9
-  "Minor 3rd",                                               // 10
-  "Classic Minor 3rd",                                       // 11
-  "Neutral 3rd",                                             // 12
-  "Classic Major 3rd",                                       // 13
-  "Major 3rd",                                               // 14
-  "Supermajor 3rd",                                          // 15
-  "Sub 4th",                                                 // 16
-  "Perfect 4th",                                             // 17
-  "Comma-Wide 4th",                                          // 18
-  "Neutral 4th",                                             // 19
-  "Diminished 5th",                                          // 20
-  "Augmented 4th",                                           // 21
-  "Neutral 5th",                                             // 22
-  "Comma-Narrow 5th",                                        // 23
-  "Perfect 5th",                                             // 24
-  "Super 5th",                                               // 25
-  "Subminor 6th",                                            // 26
-  "Minor 6th",                                               // 27
-  "Classic Minor 6th",                                       // 28
-  "Neutral 6th",                                             // 29
-  "Classic Major 6th",                                       // 30
-  "Major 6th",                                               // 31
-  "Supermajor 6th",                                          // 32
-  "Subminor 7th",                                            // 33
-  "Minor 7th",                                               // 34
-  "Classic Minor 7th",                                       // 35
-  "Neutral 7th",                                             // 36
-  "Classic Major 7th",                                       // 37
-  "Major 7th",                                               // 38
-  "Supermajor 7th",                                          // 39
-  "Comma-Narrow 8ve",                                        // 40
-  "Perfect 8ve",                                             // 41
+  "P1",                                                      // 0
+  "P1↑",                                                     // 1
+  "s2",                                                      // 2
+  "m2",                                                      // 3
+  "Cm2",                                                     // 4
+  "n2",                                                      // 5
+  "C2",                                                      // 6
+  "M2",                                                      // 7
+  "S2",                                                      // 8
+  "s3",                                                      // 9
+  "m3",                                                      // 10
+  "Cm3",                                                     // 11
+  "n3",                                                      // 12
+  "C3",                                                      // 13
+  "M3",                                                      // 14
+  "S3",                                                      // 15
+  "P4↓",                                                     // 16
+  "P4",                                                      // 17
+  "P4↑",                                                     // 18
+  "n4",                                                      // 19
+  "d5",                                                      // 20
+  "A4",                                                      // 21
+  "n5",                                                      // 22
+  "P5↓",                                                     // 23
+  "P5",                                                      // 24
+  "P5↑",                                                     // 25
+  "s6",                                                      // 26
+  "m6",                                                      // 27
+  "Cm6",                                                     // 28
+  "n6",                                                      // 29
+  "C6",                                                      // 30
+  "M6",                                                      // 31
+  "S6",                                                      // 32
+  "s7",                                                      // 33
+  "m7",                                                      // 34
+  "Cm7",                                                     // 35
+  "n7",                                                      // 36
+  "C7",                                                      // 37
+  "M7",                                                      // 38
+  "S7",                                                      // 39
+  "P8↓",                                                     // 40
+  "P8",                                                      // 41
 ];
 
 // 53-EDO: name key JI approximations, fill rest with step labels
