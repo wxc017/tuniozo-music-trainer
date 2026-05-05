@@ -261,7 +261,7 @@ export default function App() {
     if (!AudioEngine.isValidInstrument(droneInstrument)) setDroneInstrument("tanpura");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [droneVol, setDroneVol] = useLS<number>("lt_app_droneVol", 0.08);
+  const [droneVol, setDroneVol] = useLS<number>("lt_app_droneVol", 0.5);
   const [droneIsOn, setDroneIsOn] = useState(false);
   const [section, setSection] = useLS<string>("lt_app_section", "ear-trainer");
   // When user enters Scalar Explorations from a non-Meantone EDO (41 / 53
@@ -279,8 +279,6 @@ export default function App() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section]);
-  const [dronePulse, setDronePulse] = useLS<boolean>("lt_app_dronePulse", false);
-  const [dronePulseDur, setDronePulseDur] = useLS<number>("lt_app_dronePulseDur", 4);
   const [playVol, setPlayVol] = useLS<number>("lt_app_playVol", 1.0);
   // Beta features are gated behind `import.meta.env.DEV` so they only
   // appear when running locally via `npm run dev` (or any vite dev
@@ -329,8 +327,6 @@ export default function App() {
   const academicAvailable = Boolean(academicComps.ReadingWorkflow || academicComps.NoteWriting || academicComps.SimpleDoc);
   // If academic mode was enabled but no components are present, flip it off
   useEffect(() => { if (academicMode && !academicAvailable) setAcademicMode(false); }, [academicMode, academicAvailable, setAcademicMode]);
-  const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pulsePhase = useRef<"on" | "off">("on");
 
   // ── Local folder sync ──────────────────────────────────────────────
   const [folderSyncState, setFolderSyncState] = useState<SyncState>("disconnected");
@@ -541,14 +537,12 @@ export default function App() {
   };
 
   const stopHeaderDrone = () => {
-    if (pulseTimer.current) { clearTimeout(pulseTimer.current); pulseTimer.current = null; }
     audioEngine.stopDrone();
     setDroneIsOn(false);
   };
 
   // ── Global stop: kill ALL audio (drone, scheduled notes, metronome) ──
   const stopAllAudio = useCallback(() => {
-    if (pulseTimer.current) { clearTimeout(pulseTimer.current); pulseTimer.current = null; }
     if (highlightTimer.current) { clearTimeout(highlightTimer.current); highlightTimer.current = null; }
     audioEngine.stopAll();
     metronome.stop();
@@ -557,31 +551,6 @@ export default function App() {
     setHighlighted(new Set());
     setStatusText("");
   }, [metronome]);
-
-  // ── Pulse timer effect ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!dronePulse || !droneIsOn) {
-      if (pulseTimer.current) { clearTimeout(pulseTimer.current); pulseTimer.current = null; }
-      return;
-    }
-    const scheduleNext = (phase: "on" | "off") => {
-      pulseTimer.current = setTimeout(() => {
-        if (phase === "on") {
-          audioEngine.stopDrone();
-          pulsePhase.current = "off";
-          scheduleNext("off");
-        } else {
-          const dn = buildDroneNotes(tonicPc);
-          audioEngine.startDrone(dn.notes, edo, droneVol, dn.gains);
-          pulsePhase.current = "on";
-          scheduleNext("on");
-        }
-      }, dronePulseDur * 1000);
-    };
-    pulsePhase.current = "on";
-    scheduleNext("on");
-    return () => { if (pulseTimer.current) { clearTimeout(pulseTimer.current); pulseTimer.current = null; } };
-  }, [dronePulse, droneIsOn, dronePulseDur, tonicPc, droneInstrument, droneVol, edo]);
 
   const handleDroneVolChange = (v: number) => {
     setDroneVol(v);
@@ -896,30 +865,11 @@ export default function App() {
               </div>
               <div className="flex items-center gap-1.5">
                 <label className="text-xs text-[#666]">Drone Vol</label>
-                <input type="range" min={0} max={0.3} step={0.005} value={droneVol}
+                <input type="range" min={0} max={1.0} step={0.01} value={droneVol}
                   onChange={e => handleDroneVolChange(Number(e.target.value))}
                   className="w-20 accent-[#7173e6]" />
-                <span className="text-xs text-[#555] w-7">{Math.round(droneVol * 100 / 0.3)}%</span>
+                <span className="text-xs text-[#555] w-7">{Math.round(droneVol * 100)}%</span>
               </div>
-              <div className="w-px h-4 bg-[#2a2a2a]" />
-              <button
-                onClick={() => setDronePulse(!dronePulse)}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${
-                  dronePulse
-                    ? "bg-[#7173e6] border-[#7173e6] text-white"
-                    : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"
-                }`}>
-                Pulse
-              </button>
-              {dronePulse && (
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number" min={1} max={60} value={dronePulseDur}
-                    onChange={e => setDronePulseDur(Math.max(1, Math.min(60, Number(e.target.value))))}
-                    className="w-12 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none text-center" />
-                  <span className="text-xs text-[#555]">sec</span>
-                </div>
-              )}
             </div>
           )}
 

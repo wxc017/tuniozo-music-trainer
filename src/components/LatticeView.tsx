@@ -4159,7 +4159,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
 
   // ── Persistent drone (sampled instrument tonic) ─────────────────────
   const [latticeDroneInstrument, setLatticeDroneInstrument] = useLS<DroneInstrument>("lt_lattice_droneInstrument", "tanpura");
-  const [latticeDroneVol, setLatticeDroneVol] = useLS<number>("lt_lattice_droneVol", 0.08);
+  const [latticeDroneVol, setLatticeDroneVol] = useLS<number>("lt_lattice_droneVol", 0.5);
   const [latticeDroneRoot, setLatticeDroneRoot] = useLS<number>("lt_lattice_droneRoot", 0); // 0-11 pitch class
   // Drone octave fixed at 3 per direct user direction (2026-05-05):
   // "they can stay in one octave as well as drones aren't all over
@@ -5776,10 +5776,10 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
           {/* Volume slider */}
           <label className="text-[10px] text-[#555] flex items-center gap-1">
             Vol
-            <input type="range" min={0} max={0.3} step={0.005} value={latticeDroneVol}
+            <input type="range" min={0} max={1.0} step={0.01} value={latticeDroneVol}
               onChange={e => setLatticeDroneVol(Number(e.target.value))}
               className="w-16 accent-[#7173e6]" />
-            <span className="text-[10px] text-[#444] w-6 text-right">{Math.round(latticeDroneVol * 100 / 0.3)}%</span>
+            <span className="text-[10px] text-[#444] w-6 text-right">{Math.round(latticeDroneVol * 100)}%</span>
           </label>
         </div>
 
