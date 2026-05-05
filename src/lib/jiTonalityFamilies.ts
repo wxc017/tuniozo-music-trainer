@@ -14,12 +14,15 @@
 export type JiLimit = 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 29 | 31;
 
 // Per-EDO limit availability.  41-EDO has decent approximations for every
-// prime up to 31; 53-EDO is excellent on 5 / 13 and decent on 7 / 19 but
+// prime up to 31; 53-EDO is excellent on 5 / 13 and decent on 19 but
 // poor on 11 / 17 / 23 / 29 / 31, so we restrict its picker to limits
-// where the rounded-to-EDO scales remain musically faithful.
+// where the rounded-to-EDO scales remain musically faithful.  7-LIMIT is
+// dropped from both: no 7-limit scale in the curated catalog carries
+// 7-prime at all of its 3rd / 6th / 7th, so under the 3-6-7 prime-
+// purity rule the 7-LIMIT family is currently empty.
 export const JI_LIMITS_PER_EDO: Record<number, JiLimit[]> = {
-  41: [3, 5, 7, 11, 13, 17, 19, 23, 29, 31],
-  53: [3, 5, 7, 11, 13, 19],
+  41: [3, 5, 11, 13, 17, 19, 23, 29, 31],
+  53: [3, 5, 11, 13, 19],
 };
 
 export interface JiFamily {
@@ -106,43 +109,17 @@ export const JI_LIMIT_GROUPS: JiLimitGroup[] = [
       },
     ],
   },
-  {
-    limit: 7,
-    label: "SEPTIMAL (7-LIMIT)",
-    color: "#7aaa6a",
-    blurb: "Adds 7:4, 7:6, 7:5 — bluesy minor-7s, subminor 3rds, septimal tritones.",
-    families: [
-      {
-        key: "septimal-mos",
-        label: "MOS",
-        tonalities: [
-          "Garibaldi",
-        ],
-      },
-      {
-        key: "septimal-tertian",
-        label: "TERTIAN",
-        tonalities: [
-          "Septimal Major",
-          "Septimal Minor",
-          "Septimal Diminished",
-        ],
-      },
-      {
-        key: "septimal-modal",
-        label: "MODAL",
-        tonalities: [
-          "Septimal Lydian",
-          "Septimal Phrygian",
-        ],
-      },
-    ],
-  },
+  // 7-LIMIT (Septimal) was pruned: under the 3-6-7 prime-purity rule
+  // (a higher-limit scale must carry its named prime at the 3rd, 6th,
+  // and 7th), no 7-limit scale in the previous catalog qualified —
+  // Garibaldi's 3-6-7 are Pythagorean, Septimal Major's 3rd and 6th
+  // are 5-limit (5/4 + 5/3), Septimal Minor's b6 is 5-limit (8/5).
+  // Slot reserved for a future curated 7-limit scale.
   {
     limit: 11,
-    label: "NEUTRAL / MAQAM (11-LIMIT)",
+    label: "NEUTRAL (11-LIMIT)",
     color: "#9a66c0",
-    blurb: "Adds 11:9 neutral third, 11:8 wide 4th — Mohajira and the Maqam palette.",
+    blurb: "Adds 11:9 neutral third, 11:8 wide 4th — Mohajira's neutral diatonic.",
     families: [
       {
         key: "neutral-diatonic",
@@ -151,20 +128,9 @@ export const JI_LIMIT_GROUPS: JiLimitGroup[] = [
           "Mohajira",
         ],
       },
-      {
-        key: "maqam",
-        label: "MAQAM",
-        tonalities: [
-          "Maqam Rast",
-          "Maqam Bayati",
-          "Maqam Hijaz",
-          "Maqam Saba",
-          "Maqam Huzam",
-          "Maqam Nahawand",
-          "Maqam Kurd",
-          "Maqam Nikriz",
-        ],
-      },
+      // Maqam family pruned: every Maqam variant in the previous
+      // catalog mixes 5-limit / 3-limit tones at one of the 3rd / 6th
+      // / 7th positions, so none survive the prime-purity rule.
     ],
   },
   {
@@ -177,25 +143,12 @@ export const JI_LIMIT_GROUPS: JiLimitGroup[] = [
         key: "tridecimal-tertian",
         label: "TERTIAN",
         tonalities: [
-          "Tridecimal Major",
-          "Tridecimal Minor",
+          "Tridecimal Diatonic Major",
+          "Tridecimal Diatonic Minor",
         ],
       },
-      {
-        key: "tridecimal-modal",
-        label: "MODAL",
-        tonalities: [
-          "Tridecimal Lydian",
-        ],
-      },
-      {
-        key: "tridecimal-maqam",
-        label: "MAQAM",
-        tonalities: [
-          "Maqam Sikah",
-          "Maqam Awj Iraq",
-        ],
-      },
+      // Modal / Maqam variants pruned (Tridecimal Lydian's 3 + 7 are
+      // 5-limit; Maqam Sikah / Awj Iraq's 7th is 11-limit).
     ],
   },
   {
@@ -208,17 +161,12 @@ export const JI_LIMIT_GROUPS: JiLimitGroup[] = [
         key: "heptadecimal-tertian",
         label: "TERTIAN",
         tonalities: [
-          "Heptadecimal Major",
+          "Heptadecimal Diatonic Major",
           "Heptadecimal Minor",
         ],
       },
-      {
-        key: "heptadecimal-other",
-        label: "MODAL",
-        tonalities: [
-          "Heptadecimal Hijaz",
-        ],
-      },
+      // Heptadecimal Hijaz pruned: its b7 is 16/9 (Pythagorean),
+      // not 17-prime.
     ],
   },
   {
@@ -231,8 +179,8 @@ export const JI_LIMIT_GROUPS: JiLimitGroup[] = [
         key: "nonadecimal-tertian",
         label: "TERTIAN",
         tonalities: [
-          "Nonadecimal Major",
-          "Nonadecimal Minor",
+          "Nonadecimal Diatonic Major",
+          "Nonadecimal Diatonic Minor",
         ],
       },
     ],
@@ -241,12 +189,12 @@ export const JI_LIMIT_GROUPS: JiLimitGroup[] = [
     limit: 23,
     label: "VICESIMOTERTIAL (23-LIMIT)",
     color: "#caac5a",
-    blurb: "Major 7 = 23/12 (~1126¢, extra-stretched leading-tone); Minor b3 = 23/19 supraminor — Major / Minor with one 23-prime colour-tone each.",
+    blurb: "Major 7 = 23/12 (~1126¢, extra-stretched leading-tone); Minor b3 = 23/19 supraminor — three 23-prime tones at 3 / 6 / 7.",
     families: [
       {
         key: "23-tertian",
         label: "TERTIAN",
-        tonalities: ["Vicesimotertial Major", "Vicesimotertial Minor"],
+        tonalities: ["Vicesimotertial Diatonic Major", "Vicesimotertial Diatonic Minor"],
       },
     ],
   },
@@ -259,7 +207,7 @@ export const JI_LIMIT_GROUPS: JiLimitGroup[] = [
       {
         key: "29-tertian",
         label: "TERTIAN",
-        tonalities: ["Vicenovenal Major", "Vicenovenal Minor"],
+        tonalities: ["Vicenovenal Diatonic Major", "Vicenovenal Diatonic Minor"],
       },
     ],
   },
@@ -272,7 +220,7 @@ export const JI_LIMIT_GROUPS: JiLimitGroup[] = [
       {
         key: "31-tertian",
         label: "TERTIAN",
-        tonalities: ["Trigesimoprimal Major", "Trigesimoprimal Minor"],
+        tonalities: ["Trigesimoprimal Diatonic Major", "Trigesimoprimal Diatonic Minor"],
       },
     ],
   },
