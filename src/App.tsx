@@ -725,7 +725,7 @@ export default function App() {
   const lastOptAcc = lastOpt && (lastOpt.c + lastOpt.w) ? `${Math.round(100 * lastOpt.c / (lastOpt.c + lastOpt.w))}%` : "";
 
   return (
-    <div className={`bg-[#0d0d0d] text-white flex flex-col ${(section === "reading-workflow" || section === "temperament-explorer" || section === "math-lab") ? "h-screen overflow-hidden" : "min-h-screen overflow-y-auto"}`}>
+    <div className={`bg-[#0d0d0d] text-white flex flex-col ${(section === "reading-workflow" || section === "temperament-explorer" || section === "math-lab") ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}>
       {/* ── Header ── */}
       <div className="border-b border-[#1e1e1e] px-4 pt-4 pb-3 flex-shrink-0">
         <div className="space-y-3">
