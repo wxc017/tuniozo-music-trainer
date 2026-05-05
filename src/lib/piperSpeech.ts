@@ -21,12 +21,18 @@
 
 import { speakSyllable as fallbackSpeak, ipaToEnglishOrtho } from "./solfegeSpeech";
 
-// HuggingFace base for the voice model + config.  en_US-amy-low is a
-// small (~30 MB) but pleasant en-US voice; bumping to "medium" doubles
-// the size for marginal quality on short syllables.
+// HuggingFace base for the voice model + config.  en_US-lessac-medium
+// has dramatically cleaner fricatives than amy-low (the previous
+// pick) — per direct user feedback (2026-05-05): "the solfege
+// speaking doesnt sound human, its sound like they have a lisp".
+// The lispy artifact came from amy-low's blurred /s/ /θ/ /f/
+// phonemes (the low-quality voice is too compressed to render
+// fricatives cleanly).  Lessac is widely regarded as the cleanest
+// medium-sized open-source en-US voice; the model is ~60 MB but
+// fetched once and cached, so the size hit is one-time.
 const PIPER_PUBLIC_BASE = "/piper";
-const VOICE_MODEL_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/low/en_US-amy-low.onnx";
-const VOICE_CONFIG_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/low/en_US-amy-low.onnx.json";
+const VOICE_MODEL_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx";
+const VOICE_CONFIG_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json";
 const ONNX_RUNTIME_URL = "https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.17.1/";
 
 // Cache: text-key → object URL of the generated WAV.  The user will
