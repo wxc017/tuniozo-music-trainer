@@ -1103,8 +1103,11 @@ export default function App() {
       )}
 
       {/* ── Scalar Exploration ── */}
+      {/* No inner overflow-y-auto — same reasoning as ear-trainer:
+          scrolling stays on the root so the sticky main visualizer
+          actually sticks. */}
       {section === "scalar-exploration" && (
-        <div className="px-4 pt-3 flex-1 flex flex-col min-h-0 overflow-y-auto">
+        <div className="px-4 pt-3 flex-1 flex flex-col">
           <div className="max-w-6xl mx-auto w-full">
             <ScalarTab tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch}
               edo={edo} onHighlight={handleHighlight}
@@ -1244,8 +1247,14 @@ export default function App() {
       )}
 
       {/* ── Ear Trainer Tabs ── */}
+      {/* No inner overflow-y-auto: scrolling lives on the root <div>
+          (line 728), so the sticky main visualizer (line 1070) anchors
+          to the same scroll context the user actually scrolls.  A
+          nested overflow container here would defeat the sticky — the
+          root would never scroll, the inner would, and `top-0` would
+          have nothing to anchor against. */}
       {section === "ear-trainer" && (
-      <div className="px-4 pt-3 flex-1 flex flex-col min-h-0 overflow-y-auto">
+      <div className="px-4 pt-3 flex-1 flex flex-col">
       <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
         {/* Temperament selector — splits Tonal Audiation into Meantone
             (12/31), Pythagorean (41), and Schismatic (53) families.  Each
