@@ -174,16 +174,17 @@ export const JI_LIMIT_GROUPS: JiLimitGroup[] = [
  *  (3 / 5 / 11 / 13-LIMIT) — the 41-EDO layout is a focused curated
  *  experience, not a general structural change. */
 const PARENT_COLORS: Record<string, string> = {
-  "Neutral Major Diatonic":              "#9a66c0",
-  "Major Diatonic":                      "#6a9aca",
-  "Supermajor Diatonic":                 "#cc6a8a",
-  "Subminor Diatonic":                   "#7aaa6a",
-  "Minor Diatonic":                      "#5b8ad0",
-  "Classic Minor Diatonic":              "#5acca0",
-  "Supraminor Diatonic":                 "#caac5a",
-  "Classic Harmonic Minor M7 Diatonic":  "#c09050",
-  "Subharmonic Minor M7 Diatonic":       "#4a9ac7",
-  "Supraharmonic Minor M7 Diatonic":     "#aa6a5a",
+  "Diatonic Major":                      "#6a9aca",
+  "Diatonic Classic Major":              "#9a66c0",
+  "Diatonic Supermajor":                 "#cc6a8a",
+  "Diatonic Subminor":                   "#7aaa6a",
+  "Diatonic Harmonic Minor":             "#c09050",
+  "Diatonic Classic Minor":              "#5acca0",
+  "Diatonic Supraminor":                 "#caac5a",
+  "Diatonic Classic Harmonic Minor M7":  "#c08070",
+  "Diatonic Subharmonic Minor M7":       "#4a9ac7",
+  "Diatonic Supraharmonic Minor M7":     "#aa6a5a",
+  "Diatonic Neutral Major":              "#5b8ad0",
 };
 
 function familiesAsLimitGroups(
