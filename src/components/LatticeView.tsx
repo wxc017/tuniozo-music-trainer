@@ -2059,6 +2059,9 @@ interface MonzoSceneProps {
    *  tonic anchored.  Arcs lift above the cylinder so they don't get
    *  visually confused with the in-plane P5 / M3 chains. */
   compensationArcs?: Array<{ fromClassId: number; toClassId: number; color: string; chordIdx: number }>;
+  /** When true, dim the structural P5 / M3 generator chains so
+   *  chord-movement / compensation edges read clearly. */
+  dimGeneratorEdges?: boolean;
   hoveredNode: string | null;
   onHover: (key: string | null) => void;
   onClickNode: (node: LatticeNode) => void;
@@ -2075,7 +2078,7 @@ interface MonzoSceneProps {
   clearPinnedKey?: number;
 }
 
-function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compensationArcs, hoveredNode, onHover, onClickNode, onFocusNode, focusKey, showTopoSurface, layers, pathMode, labelLOD, labelDist, rootPc, highlightedRatios, autoPathTargets, clearPinnedKey }: MonzoSceneProps) {
+function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compensationArcs, dimGeneratorEdges, hoveredNode, onHover, onClickNode, onFocusNode, focusKey, showTopoSurface, layers, pathMode, labelLOD, labelDist, rootPc, highlightedRatios, autoPathTargets, clearPinnedKey }: MonzoSceneProps) {
   const useTopoPositions = showTopoSurface && (topology.type === "torus" || topology.type === "cylinder");
   const topoPositions = useMemo(() => {
     if (!useTopoPositions) return null;
@@ -2429,6 +2432,13 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
             drawBucket(classId, p5Step, 0);
             drawBucket(classId, m3Step, 1);
           }
+          // When chord-related overlays are active (pinned chord
+          // overlays or compensation arcs), dim the structural P5 /
+          // M3 generator chains heavily so the chord-movement edges
+          // and red drifted nodes are easy to read.  Without the
+          // dim, all the chains blend together and the user can't
+          // pick out which lines correspond to chord motion.
+          const edgeOpacity = dimGeneratorEdges ? 0.18 : 0.85;
           return buckets.map(({ color, pts }, i) => pts.length === 0 ? null : (
             <lineSegments key={`ge-edo-${i}`} frustumCulled={false}>
               <bufferGeometry>
@@ -2437,7 +2447,7 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
                   args={[new Float32Array(pts.flat()), 3]}
                 />
               </bufferGeometry>
-              <lineBasicMaterial color={color} transparent opacity={0.85} linewidth={2} />
+              <lineBasicMaterial color={color} transparent opacity={edgeOpacity} linewidth={2} />
             </lineSegments>
           ));
         }
@@ -6780,6 +6790,10 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               droneNodes={droneNodes}
               nodeColorOverrides={monzoNodeColorOverrides}
               compensationArcs={compensationArcs}
+              dimGeneratorEdges={
+                (pinnedChordOverlays?.length ?? 0) > 0 ||
+                (compensationArcs?.length ?? 0) > 0
+              }
               hoveredNode={hoveredNode}
               onHover={setHoveredNode}
               onClickNode={handleMonzoNodeClick}
