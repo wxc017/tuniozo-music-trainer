@@ -162,10 +162,40 @@ export const JI_LIMIT_GROUPS: JiLimitGroup[] = [
   // See jiScaleData.ts for the full collision table.
 ];
 
-/** JI limit groups available for a given EDO.  41-EDO sees everything;
- *  53-EDO is filtered to limits where the EDO-rounded scale stays
- *  musically faithful (5-limit core + 7 / 11 / 13 / 19 it handles well). */
+/** JI limit groups available for a given EDO.
+ *
+ *  41-EDO uses a curated 7-tonality "DIATONIC" group per direct user
+ *  direction (2026-05-05): Supermajor / Subminor / Harmonic Minor /
+ *  Major / Subharmonic Minor M7 / Classic Major / Classic Minor — all
+ *  preserving the diatonic 2 / 4 / 5 (9/8, 4/3, 3/2) backbone, so
+ *  every name carries "Diatonic".  This replaces the previous
+ *  prime-limit-grouped list (3 / 5 / 11 / 13-LIMIT) entirely.
+ *
+ *  53-EDO continues to use the standard limit-based grouping
+ *  (3 / 5 / 11 / 13-LIMIT) — the 41-EDO override is a focused
+ *  curated experience, not a general structural change. */
 export function jiLimitGroupsForEdo(edo: number): JiLimitGroup[] {
+  if (edo === 41) {
+    return [{
+      limit: 5 as JiLimit,
+      label: "DIATONIC TONALITIES (41-EDO)",
+      color: "#7a9ad0",
+      blurb: "Curated 7-scale set — every tonality preserves the diatonic 2 / 4 / 5 (9/8, 4/3, 3/2) backbone; the named flavour (super / sub / classic / etc.) lives in the 3rd, 6th, and 7th.",
+      families: [{
+        key: "41-diatonic",
+        label: "DIATONIC",
+        tonalities: [
+          "Supermajor Diatonic",
+          "Subminor Diatonic",
+          "Harmonic Minor Diatonic",
+          "Major Diatonic",
+          "Subharmonic Minor M7 Diatonic",
+          "Classic Major Diatonic",
+          "Classic Minor Diatonic",
+        ],
+      }],
+    }];
+  }
   const allowed = JI_LIMITS_PER_EDO[edo];
   if (!allowed) return JI_LIMIT_GROUPS;
   const set = new Set(allowed);
