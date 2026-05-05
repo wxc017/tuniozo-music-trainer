@@ -714,6 +714,7 @@ export default function App() {
     vizType,
     layout,
     onKeyClick: (key: ComputedKey) => { void ensureAudio().then(() => handleKeyClick(key)); },
+    betaMode,
   };
 
   const tabs = (["intervals","chords","modeid","melody","jazz","patterns","drone"] as Tab[]);

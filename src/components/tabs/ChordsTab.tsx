@@ -108,6 +108,7 @@ interface Props extends SharedHighlightProps {
   layoutPitchRange?: { min: number; max: number };
   tabSettingsRef?: React.MutableRefObject<TabSettingsSnapshot | null>;
   answerButtons?: React.ReactNode;
+  betaMode?: boolean;
 }
 
 const REGISTER_MODES = ["Fixed Register","Random Bass Octave","Random Full Register"];
@@ -232,7 +233,7 @@ function tonalitySectionsForEdo(edo: number): TonalitySection[] {
 const STANDARD_THIRD_QUALITIES = new Set(["sus2", "min3", "maj3", "sus4"]);
 
 export default function ChordsTab({
-  tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.55, layoutPitchRange, tabSettingsRef, answerButtons, highlightedPitches, vizType, layout, onKeyClick,
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.55, layoutPitchRange, tabSettingsRef, answerButtons, highlightedPitches, vizType, layout, onKeyClick, betaMode = false,
 }: Props) {
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -2199,7 +2200,7 @@ export default function ChordsTab({
             checkedExts={checkedExts} setCheckedExts={setCheckedExts}
             checkedExtCounts={checkedExtCounts} setCheckedExtCounts={setCheckedExtCounts} toggleSet={toggleSet}
           />
-          <VoicingPatternControls checkedPatterns={checkedPatterns} setCheckedPatterns={setCheckedPatterns} toggleSet={toggleSet} />
+          <VoicingPatternControls checkedPatterns={checkedPatterns} setCheckedPatterns={setCheckedPatterns} toggleSet={toggleSet} betaMode={betaMode} />
 
           <LilPreviewPanel checkedChords={effectiveChecked} chordMap={chordMap} edo={edo} tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch} getCompatibleTypes={getCompatibleTypes} applyChordType={applyChordType} />
 
@@ -2347,9 +2348,10 @@ function ExtensionControls({ extTendency, setExtTendency, checkedExts, setChecke
   );
 }
 
-function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet }: {
+function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet, betaMode = false }: {
   checkedPatterns: Set<string>; setCheckedPatterns: (s: Set<string>) => void;
   toggleSet: <T>(s: Set<T>, v: T) => Set<T>;
+  betaMode?: boolean;
 }) {
   const selectGroup = (g: string) => {
     const ids = ALL_VOICING_PATTERNS.filter(p => p.group === g).map(p => p.id);
@@ -2362,9 +2364,15 @@ function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet
 
   const totalChecked = ALL_VOICING_PATTERNS.filter(p => checkedPatterns.has(p.id)).length;
   // Sus2 and Sus4 are merged into a single "Sus" section with sub-tabs;
-  // every other group still gets its own outer block.
+  // every other group still gets its own outer block.  Quartal /
+  // Quintal / Sus voicings are gated behind beta — they're advanced
+  // colour voicings most users won't reach for in everyday chord
+  // training, so the standard view stays focused on inversions.
   const SUS_GROUPS = ["Sus2", "Sus4"];
-  const nonSus = VOICING_PATTERN_GROUPS.filter(g => !SUS_GROUPS.includes(g));
+  const BETA_ONLY_GROUPS = new Set(["Quartal", "Quintal", "Sus2", "Sus4"]);
+  const nonSus = VOICING_PATTERN_GROUPS
+    .filter(g => !SUS_GROUPS.includes(g))
+    .filter(g => betaMode || !BETA_ONLY_GROUPS.has(g));
   const susAvailable = SUS_GROUPS.filter(g => ALL_VOICING_PATTERNS.some(p => p.group === g));
   const [susTab, setSusTab] = useState<string>(susAvailable[0] ?? "Sus2");
   const susTabPatterns = ALL_VOICING_PATTERNS.filter(p => p.group === susTab);
@@ -2422,7 +2430,7 @@ function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet
           }
           return node;
         })}
-        {susAvailable.length > 0 && (
+        {betaMode && susAvailable.length > 0 && (
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5 mb-1">
               <p className="text-[10px] text-[#888] font-medium uppercase tracking-wide">
