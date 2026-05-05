@@ -6792,7 +6792,8 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               compensationArcs={compensationArcs}
               dimGeneratorEdges={
                 (pinnedChordOverlays?.length ?? 0) > 0 ||
-                (compensationArcs?.length ?? 0) > 0
+                (compensationArcs?.length ?? 0) > 0 ||
+                (activeClassIds?.size ?? 0) > 0
               }
               hoveredNode={hoveredNode}
               onHover={setHoveredNode}
