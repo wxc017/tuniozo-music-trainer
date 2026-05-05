@@ -14,8 +14,8 @@ const SPLIT_RE = /([°ø+])/;
  * (e.g. "iii s3", "I s3 N7").  Anything after the first space is rendered
  * inside a single <sup> so the full suffix appears as superscript.
  */
-export function formatRomanNumeral(label: string): React.ReactNode {
-  label = formatHalfAccidentals(label);
+export function formatRomanNumeral(label: string, edo?: number): React.ReactNode {
+  label = formatHalfAccidentals(label, edo);
 
   const spaceIdx = label.indexOf(" ");
   let head = label;
@@ -59,8 +59,8 @@ export function formatRomanNumeral(label: string): React.ReactNode {
  * rather than as a chord-quality suffix that might be confused with
  * extension numbers (M7, 9, 13, etc.).
  */
-export function formatRomanNumeralWithFamily(label: string, familyPrefix: string | null): React.ReactNode {
-  const body = formatRomanNumeral(label);
+export function formatRomanNumeralWithFamily(label: string, familyPrefix: string | null, edo?: number): React.ReactNode {
+  const body = formatRomanNumeral(label, edo);
   if (!familyPrefix) return body;
   return (
     <>

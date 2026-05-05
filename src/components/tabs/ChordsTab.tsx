@@ -1818,7 +1818,7 @@ export default function ChordsTab({
                               on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
                             }`}
                             style={on ? { backgroundColor: section.color + "30", borderColor: section.color, color: section.color } : {}}>
-                            {formatHalfAccidentals(t)}
+                            {formatHalfAccidentals(t, edo)}
                           </button>
                           <button onClick={(e) => { e.stopPropagation(); previewTonalityScale(t); }}
                             disabled={playingTonality === t}
@@ -2944,7 +2944,7 @@ function ChordSelectionPanel({
   return (
     <div className="border rounded overflow-hidden" style={{ borderColor: accent + "40" }}>
       <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0a0a0a]">
-        <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent, textTransform: "none" }}>{formatHalfAccidentals(tonality)}</span>
+        <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent, textTransform: "none" }}>{formatHalfAccidentals(tonality, edo)}</span>
       </div>
       <div className="space-y-2 p-2">
         {visibleLevels.map(level => {
