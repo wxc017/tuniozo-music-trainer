@@ -261,30 +261,81 @@ const INTERVAL_NAMES_41 = [
   "8",                                                       // 41
 ];
 
-// 53-EDO: name key JI approximations, fill rest with step labels
-function build53Names(): string[] {
-  const keyNames: Record<number, string> = {
-    0:"Unison", 1:"1-comma", 2:"2-comma", 3:"Diesis", 4:"Small chroma",
-    5:"Minor 2nd (16/15)", 6:"Large min 2nd", 7:"Neutral 2nd-", 8:"Neutral 2nd",
-    9:"Major 2nd (9/8)", 10:"Large M2", 11:"Aug 2nd-", 12:"Aug 2nd",
-    13:"Submin 3rd", 14:"Minor 3rd (6/5)", 15:"Large min 3rd", 16:"Neutral 3rd",
-    17:"Major 3rd (5/4)", 18:"Large M3", 19:"Subperf 4th-", 20:"Subperf 4th",
-    21:"Narrow 4th", 22:"Perfect 4th (4/3)", 23:"Wide 4th", 24:"Aug 4th-",
-    25:"Aug 4th", 26:"Aug 4th+", 27:"dim 5th", 28:"Narrow 5th+",
-    29:"Narrow 5th", 30:"Narrow 5th-",
-    31:"Perfect 5th (3/2)", 32:"Wide 5th", 33:"Aug 5th-", 34:"Aug 5th",
-    35:"Aug 5th+", 36:"Minor 6th (8/5)", 37:"Large min 6th", 38:"Neutral 6th",
-    39:"Major 6th (5/3)", 40:"Large M6", 41:"Submin 7th-", 42:"Submin 7th",
-    43:"Submin 7th+", 44:"Minor 7th (9/5)", 45:"Large min 7th", 46:"Neutral 7th-",
-    47:"Neutral 7th", 48:"Major 7th (15/8)", 49:"Large M7",
-    50:"Sub-octave+", 51:"Sub-octave", 52:"Near-octave", 53:"Octave",
-  };
-  const out: string[] = [];
-  for (let i = 0; i <= 53; i++) out.push(keyNames[i] ?? `${i} steps`);
-  return out;
-}
-
-const INTERVAL_NAMES_53 = build53Names();
+// 53-EDO interval names: same letter-code + arrow / sharp-flat system
+// as 41-EDO (per direct user direction 2026-05-05), plus a NEW
+// "Sm" code for supraminor — 53-EDO resolves a distinct cell
+// between Cm (5-limit minor) and n (neutral) that 41-EDO collapses.
+//
+// Quality codes for 2 / 3 / 6 / 7:
+//   s  = subminor       (e.g. s3 = 7/6)
+//   m  = minor          (Pythagorean, e.g. m3 = 32/27)
+//   Cm = classic minor  (5-limit JI, e.g. Cm3 = 6/5)
+//   Sm = supraminor     (e.g. Sm3 ≈ 340¢ — 17/14 / 39/32 region; NEW in 53-EDO)
+//   n  = neutral        (11-limit, e.g. n3 = 11/9 / 16/13)
+//   C  = classic major  (5-limit JI, e.g. C3 = 5/4)
+//   M  = major          (Pythagorean, e.g. M3 = 81/64)
+//   S  = supermajor     (e.g. S3 = 9/7)
+//
+// 1 / 4 / 5 / 8 region uses bare degree numbers + # / b accidentals
+// (each = ±1 step ≈22.64¢; stackable: ##, ###, bb, bbb…).  Steps
+// inside the letter-prefix regions that don't sit on a canonical
+// JI ratio use ↑ / ↓ off the nearest named cell.
+const INTERVAL_NAMES_53 = [
+  "1",                                                       //  0
+  "#1",                                                      //  1
+  "##1",                                                     //  2
+  "s2",                                                      //  3 (~68¢, 28/27 / 25/24)
+  "m2",                                                      //  4 (~91¢, Pyth 256/243)
+  "Cm2",                                                     //  5 (~113¢, 5-limit 16/15)
+  "Sm2",                                                     //  6 (~136¢, 13/12)
+  "n2",                                                      //  7 (~158¢, 12/11 / 11/10)
+  "C2",                                                      //  8 (~181¢, 5-limit 10/9)
+  "M2",                                                      //  9 (~204¢, Pyth 9/8)
+  "S2",                                                      // 10 (~227¢, 8/7)
+  "S2↑",                                                     // 11 (~249¢, transitional)
+  "s3",                                                      // 12 (~272¢, 7/6)
+  "m3",                                                      // 13 (~294¢, Pyth 32/27)
+  "Cm3",                                                     // 14 (~317¢, 5-limit 6/5)
+  "Sm3",                                                     // 15 (~340¢, 17/14 / supraminor)
+  "n3",                                                      // 16 (~362¢, 11/9 / 16/13)
+  "C3",                                                      // 17 (~385¢, 5-limit 5/4)
+  "M3",                                                      // 18 (~408¢, Pyth 81/64)
+  "S3",                                                      // 19 (~430¢, 9/7)
+  "bb4",                                                     // 20 (~453¢, 2 below P4)
+  "b4",                                                      // 21 (~475¢, 1 below P4)
+  "4",                                                       // 22 (498¢, 4/3)
+  "#4",                                                      // 23 (~521¢, +1)
+  "##4",                                                     // 24 (~543¢, 11/8 area)
+  "###4",                                                    // 25 (~566¢)
+  "####4",                                                   // 26 (~589¢, 5-limit Lydian #4 = 45/32)
+  "bbbb5",                                                   // 27 (~611¢, near tritone)
+  "bbb5",                                                    // 28 (~634¢)
+  "bb5",                                                     // 29 (~657¢)
+  "b5",                                                      // 30 (~679¢)
+  "5",                                                       // 31 (702¢, 3/2)
+  "#5",                                                      // 32 (~725¢)
+  "##5",                                                     // 33 (~747¢)
+  "s6",                                                      // 34 (~770¢, 14/9)
+  "m6",                                                      // 35 (~792¢, Pyth 128/81)
+  "Cm6",                                                     // 36 (~815¢, 5-limit 8/5)
+  "Sm6",                                                     // 37 (~838¢, 13/8 / supraminor 6)
+  "n6",                                                      // 38 (~860¢, 18/11)
+  "C6",                                                      // 39 (~883¢, 5-limit 5/3)
+  "M6",                                                      // 40 (~906¢, Pyth 27/16)
+  "S6",                                                      // 41 (~928¢, 12/7)
+  "S6↑",                                                     // 42 (~951¢, transitional)
+  "s7",                                                      // 43 (~974¢, 7/4)
+  "m7",                                                      // 44 (~996¢, Pyth 16/9)
+  "Cm7",                                                     // 45 (~1019¢, 5-limit 9/5)
+  "Sm7",                                                     // 46 (~1042¢, supraminor 7)
+  "n7",                                                      // 47 (~1064¢, 11/6)
+  "C7",                                                      // 48 (~1087¢, 5-limit 15/8)
+  "M7",                                                      // 49 (~1109¢, Pyth 243/128)
+  "S7",                                                      // 50 (~1132¢, 27/14 / 49/27)
+  "bb8",                                                     // 51 (~1155¢)
+  "b8",                                                      // 52 (~1177¢)
+  "8",                                                       // 53 (1200¢)
+];
 
 export function getIntervalNames(edo: number): string[] {
   if (edo === 12) return INTERVAL_NAMES_12;
