@@ -75,7 +75,7 @@ export function bankToScaleFamMode(tonality: string): [string, string] {
   }
   // JI scales (41-EDO Pythagorean, 53-EDO Schismatic) live under a single
   // "JI Family" bucket — see jiScaleData.ts for the catalog.  Names like
-  // "Pythagorean Ionian" or "Maqam Rast" land here.
+  // "Pythagorean Ionian" or "Tridecimal Diatonic Major" land here.
   if (JI_SCALE_NAMES_SET.has(tonality)) return ["JI Family", tonality];
   return ["Major Family", "Ionian"];
 }
