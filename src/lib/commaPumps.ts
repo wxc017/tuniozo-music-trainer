@@ -1,17 +1,23 @@
-// ── Comma Pump Catalog ────────────────────────────────────────────────────
+// ── Progression Catalog ───────────────────────────────────────────────────
 //
-// Curated chord progressions whose JI realisation drifts by a comma
-// after a full cycle.  Each entry pairs a Roman-numeral progression
-// with the prime-limit comma it pumps and the cumulative cent drift
-// that accumulates over one pass.  The drift is computed live from
-// jiLattice's tracePathDrifts so adding a curated TRANSITION_MOTIONS
-// entry there automatically updates the displayed cents here.
+// Generates up to 5 "interesting" chord progressions per tonality per
+// EDO from a small library of degree-shape templates (1-5-1,
+// 1-4-5-1, 1-6-4-5-1, 1-6-2-5-1, 1-4-6-2-5-1).  Each template is
+// resolved against the tonality's actual chord-pool labels so the
+// same shape automatically picks up minor / xen / JI variants
+// (e.g. 1-5-1 in Subminor Diatonic resolves to "i s3 → V s3 → i s3").
 //
-// Surfaced in ScalarTab under the DIATONIC chord row for 41/53-EDO
-// only — these are the EDOs that actually preserve the syntonic /
-// septimal / etc. comma as an audible interval, so the pump is
-// hearable.  12-EDO obliterates every comma; 19-EDO, 31-EDO are
-// meantone (syntonic comma vanishes).
+// Drift in cents is computed live via jiLattice's tracePathDrifts;
+// progressions whose drift is non-zero in JI are the classic comma
+// pumps (typically 21.5¢ syntonic / 27¢ septimal in 41/53-EDO).  In
+// EDOs that temper out the underlying comma (12, 19, 31 = meantone)
+// the same progressions resolve back to the tonic — the drift label
+// just shows 0¢, so we surface them as ordinary cadential
+// progressions rather than pumps.
+//
+// Per direct user direction (2026-05-06): "the comma pumps are all
+// hardcoded I want you to calculate 5 different progressions for
+// each tonality for every edo" → "5 interesting progressions".
 
 import { tracePathDrifts } from "./jiLattice";
 
@@ -22,35 +28,101 @@ export interface CommaPump {
   label: string;
   /** Roman-numeral chord sequence to play */
   progression: string[];
-  /** Prime limit of the comma being pumped */
+  /** Prime limit of the comma being pumped (5 for syntonic etc.).  When
+   *  the progression doesn't pump (drift = 0) this is still informative
+   *  about which prime the cadence centres on. */
   primeLimit: 3 | 5 | 7 | 11 | 13;
   /** Short description for tooltip / muted secondary text */
   description: string;
 }
 
-const PUMPS: CommaPump[] = [
-  // 5-limit syntonic pump.  vi → ii is the pump motion (held A from
-  // vi into ii forces ii's D to 10/9 instead of 9/8 — see
-  // jiLattice TRANSITION_MOTIONS).  After one cycle the I has
-  // drifted by 81/80 (~21.5¢).  Most-cited example in any JI text.
+// Degree-shape templates.  Each entry uses arabic numerals 1..7 for
+// scale-degree position; the resolver below substitutes the actual
+// chord label at that degree from the tonality's chord pool.
+interface ProgressionTemplate {
+  key: string;
+  shape: number[];
+  primeLimit: 3 | 5 | 7 | 11 | 13;
+  description: string;
+}
+
+const TEMPLATES: ProgressionTemplate[] = [
   {
-    key: "syntonic-vi-ii",
-    label: "I → vi → ii → V → I",
-    progression: ["I", "vi", "ii", "V", "I"],
-    primeLimit: 5,
-    description: "Syntonic comma pump — vi→ii holds A, forcing ii's D to 10/9.",
+    key: "auth-1-5-1",
+    shape: [1, 5, 1],
+    primeLimit: 3,
+    description: "Authentic cadence — V → I.  3-limit (Pythagorean) cadential motion.",
   },
-  // Same pump, longer setup.  IV → ii doesn't pump on its own
-  // (that's the canonical fallback), but the vi → ii motion still
-  // does, so the cycle still drifts by one syntonic comma.
   {
-    key: "syntonic-vi-ii-long",
-    label: "I → IV → vi → ii → V → I",
-    progression: ["I", "IV", "vi", "ii", "V", "I"],
+    key: "plag-auth-1-4-5-1",
+    shape: [1, 4, 5, 1],
     primeLimit: 5,
-    description: "Syntonic pump with IV setup — same 81/80 drift via vi→ii.",
+    description: "Plagal + authentic — IV → V → I.  Anchors the tonic from both 4th and 5th.",
+  },
+  {
+    key: "fifties-1-6-4-5-1",
+    shape: [1, 6, 4, 5, 1],
+    primeLimit: 5,
+    description: "I → vi → IV → V → I.  Doo-wop / ′50s progression.",
+  },
+  {
+    key: "syntonic-1-6-2-5-1",
+    shape: [1, 6, 2, 5, 1],
+    primeLimit: 5,
+    description: "I → vi → ii → V → I.  Canonical 5-limit syntonic comma pump (21.5¢ in JI).",
+  },
+  {
+    key: "syntonic-1-4-6-2-5-1",
+    shape: [1, 4, 6, 2, 5, 1],
+    primeLimit: 5,
+    description: "I → IV → vi → ii → V → I.  Syntonic pump with extra IV setup.",
   },
 ];
+
+/** Strip leading scale-degree-alteration prefix (b / # / s / S / N
+ *  + half-accidental glyphs) and the trailing chord-quality suffix
+ *  (anything after a space, plus ° / ø / +) so we can extract the
+ *  bare Roman numeral.  Returns null if the label doesn't look like
+ *  a Roman-numeral chord (e.g. compound "V/vi" returns the leading
+ *  "V" so progressions can match it; wholly unparseable returns null). */
+const ROMAN_TO_DEG: Record<string, number> = {
+  I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7,
+};
+function labelDegree(label: string): number | null {
+  // Compound labels like "V/vi" → take only the head numeral.
+  const head = label.split("/")[0];
+  // Strip space-suffix and any trailing chord-type symbols.
+  const noSuffix = head.split(/\s+/)[0].replace(/[°ø+]+$/, "");
+  // Strip leading accidental prefix (root-altered position).
+  const stripped = noSuffix.replace(/^[bs#SN♭♯𝄲𝄳ₛˢ]+/, "");
+  const upper = stripped.toUpperCase();
+  return ROMAN_TO_DEG[upper] ?? null;
+}
+
+/** Build a degree → label index.  Each degree picks the FIRST label
+ *  matching it (so I beats out a hypothetical bI variant; ii beats
+ *  bII).  Compound chords with leading prefixes are kept as alternates
+ *  if no plain label exists. */
+function indexByDegree(labels: string[]): Map<number, string> {
+  const exact = new Map<number, string>();
+  const altered = new Map<number, string>();
+  for (const label of labels) {
+    const head = label.split("/")[0];
+    const noSuffix = head.split(/\s+/)[0].replace(/[°ø+]+$/, "");
+    const hasPrefix = /^[bs#SN♭♯𝄲𝄳ₛˢ]/.test(noSuffix);
+    const deg = labelDegree(label);
+    if (deg === null) continue;
+    if (hasPrefix) {
+      if (!altered.has(deg)) altered.set(deg, label);
+    } else {
+      if (!exact.has(deg)) exact.set(deg, label);
+    }
+  }
+  // Prefer exact (un-altered) over altered.
+  const out = new Map<number, string>(altered);
+  for (const [k, v] of exact) out.set(k, v);
+  return out;
+}
 
 /** Cumulative drift (cents) at the END of a pump's progression.
  *  Positive = chain drifted upward, negative = downward. */
@@ -66,17 +138,37 @@ export function pumpChordDrifts(pump: CommaPump): number[] {
   return tracePathDrifts(pump.progression);
 }
 
-/** Pumps available for a given tonality on a given EDO.  Filters
- *  to (a) 41/53-EDO only — other EDOs collapse the comma — and
- *  (b) pumps whose chord labels are all present in the tonality's
- *  chord pool, so I-vi-ii-V-I doesn't surface in a minor tonality
- *  whose pool uses i/iv/v lowercase. */
+/** Build up to 5 interesting progressions for the given tonality on
+ *  the given EDO.  Resolves each shape template against the
+ *  tonality's actual chord labels; templates that need a degree the
+ *  tonality lacks are skipped.  Returns at most 5 progressions
+ *  (typically 5 for full diatonic tonalities, fewer for tonalities
+ *  with restricted chord pools). */
 export function pumpsForTonality(
   edo: number,
   availableChordLabels: Set<string>,
 ): CommaPump[] {
-  if (edo !== 41 && edo !== 53) return [];
-  return PUMPS.filter(p =>
-    p.progression.every(label => availableChordLabels.has(label)),
-  );
+  const byDeg = indexByDegree(Array.from(availableChordLabels));
+  if (byDeg.size === 0) return [];
+  const out: CommaPump[] = [];
+  for (const t of TEMPLATES) {
+    const progression: string[] = [];
+    let ok = true;
+    for (const deg of t.shape) {
+      const lbl = byDeg.get(deg);
+      if (!lbl) { ok = false; break; }
+      progression.push(lbl);
+    }
+    if (!ok) continue;
+    const label = progression.join(" → ");
+    out.push({
+      key: `${t.key}-${edo}`,
+      label,
+      progression,
+      primeLimit: t.primeLimit,
+      description: t.description,
+    });
+    if (out.length === 5) break;
+  }
+  return out;
 }
