@@ -186,7 +186,7 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   const [localEdo, setLocalEdo] = useLS<number>("lt_dc_edo", globalEdo);
   const edo = localEdo;
   const [droneOn, setDroneOn] = useLS<boolean>("lt_dc_on", true);
-  const [gain, setGain] = useLS<number>("lt_dc_gain", 0.18);
+  const [gain, setGain] = useLS<number>("lt_dc_gain", 0.5);
   const [showEdoGrid, setShowEdoGrid] = useLS<boolean>("lt_dc_edoGrid", true);
   const [snapToEdo, setSnapToEdo] = useLS<boolean>("lt_dc_snap", false);
   const [showStepNames, setShowStepNames] = useLS<boolean>("lt_dc_stepNames", true);
@@ -705,7 +705,7 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
         <div className="flex items-center gap-2">
           <label className="text-xs text-[#888]">Gain</label>
           <input
-            type="range" min={0.02} max={0.5} step={0.01}
+            type="range" min={0.02} max={1.5} step={0.01}
             value={gain}
             onChange={e => setGain(parseFloat(e.target.value))}
             className="w-32 accent-[#55aa88]"
@@ -1414,6 +1414,36 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
       })()}
       </div>
 
+      {/* Spectrum + lattice toggles — placed ABOVE the lattice per
+          direct user direction so the controls remain visible
+          without scrolling past the lattice itself. */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <button
+          onClick={() => setShowSpectrum(!showSpectrum)}
+          className={`px-2 py-1 rounded text-[11px] border transition-colors ${
+            showSpectrum
+              ? "border-[#88ccaa] bg-[#88ccaa22] text-[#88ccaa]"
+              : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
+          }`}
+          title="Live spectrum: highlights where the playing drone's harmonics actually fall on the strip"
+        >
+          Spectrum
+        </button>
+        <button
+          onClick={() => setShowLattice(!showLattice)}
+          className={`px-2 py-1 rounded text-[11px] border transition-colors ${
+            showLattice
+              ? "border-[#7173e6] bg-[#7173e622] text-[#9999ee]"
+              : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
+          }`}
+          title={gridMode === "ji"
+            ? "Harmonic lattice — full JI rank"
+            : `Harmonic lattice — auto-tempered for ${edo}-EDO`}
+        >
+          Lattice
+        </button>
+      </div>
+
       {/* Lattice viewport — embeds the actual harmonic-lattice
           mode's 3D LatticeView (same component the Chords tab uses
           for its Show-Answer overlay).  EDO mode passes
@@ -1454,34 +1484,6 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
           </div>
         </div>
       )}
-
-      {/* Spectrum + lattice toggles pinned to the bottom of the view. */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <button
-          onClick={() => setShowSpectrum(!showSpectrum)}
-          className={`px-2 py-1 rounded text-[11px] border transition-colors ${
-            showSpectrum
-              ? "border-[#88ccaa] bg-[#88ccaa22] text-[#88ccaa]"
-              : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
-          }`}
-          title="Live spectrum: highlights where the playing drone's harmonics actually fall on the strip"
-        >
-          Spectrum
-        </button>
-        <button
-          onClick={() => setShowLattice(!showLattice)}
-          className={`px-2 py-1 rounded text-[11px] border transition-colors ${
-            showLattice
-              ? "border-[#7173e6] bg-[#7173e622] text-[#9999ee]"
-              : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
-          }`}
-          title={gridMode === "ji"
-            ? "Harmonic lattice — JI ratios on the 5-limit grid"
-            : `Harmonic lattice — ${edo}-EDO degrees on the 5-limit grid`}
-        >
-          Lattice
-        </button>
-      </div>
     </div>
   );
 }
