@@ -91,6 +91,48 @@ const makeId = () => `n${nextId++}`;
 
 const HARMONIC_PRESET_COUNTS = [4, 8, 12, 16, 24] as const;
 
+// Factorise n/d into prime exponents (a3, a5, a7, a11, a13).  Powers
+// of 2 are ignored — they're the octave axis, which the strip handles
+// itself.  Used by the harmonic-lattice mini-view to position each
+// JI ratio as a node by its prime factorisation.
+function factorise2(n: number, d: number): [number, number, number, number, number] {
+  const primes = [3, 5, 7, 11, 13] as const;
+  const r: number[] = [0, 0, 0, 0, 0];
+  for (let i = 0; i < 5; i++) {
+    const p = primes[i];
+    while (n % p === 0) { n /= p; r[i]++; }
+    while (d % p === 0) { d /= p; r[i]--; }
+  }
+  return r as [number, number, number, number, number];
+}
+
+// 2D lattice projection — drop the natural-3D Z-axis and squash 7 / 11
+// / 13 into in-plane offsets so all nodes stay readable on a single
+// SVG.  Tuned so 5-limit ratios (the dense centre) form a clean 2D
+// grid, with septimal / undecimal / tridecimal nodes fanning out.
+const LATTICE_PROJ_2D: Record<"a3" | "a5" | "a7" | "a11" | "a13", [number, number]> = {
+  a3:  [ 80,   0],
+  a5:  [  0, -65],
+  a7:  [ 50, -45],
+  a11: [-35, -55],
+  a13: [-60,  30],
+};
+const LATTICE_PRIME_COLORS: Record<number, string> = {
+  3: "#e87010", 5: "#22cc44", 7: "#5599ff", 11: "#ddbb00", 13: "#cc44cc",
+};
+
+function latticePos2D(n: number, d: number): [number, number] {
+  const [a3, a5, a7, a11, a13] = factorise2(n, d);
+  return [
+    a3 * LATTICE_PROJ_2D.a3[0] + a5 * LATTICE_PROJ_2D.a5[0]
+      + a7 * LATTICE_PROJ_2D.a7[0] + a11 * LATTICE_PROJ_2D.a11[0]
+      + a13 * LATTICE_PROJ_2D.a13[0],
+    a3 * LATTICE_PROJ_2D.a3[1] + a5 * LATTICE_PROJ_2D.a5[1]
+      + a7 * LATTICE_PROJ_2D.a7[1] + a11 * LATTICE_PROJ_2D.a11[1]
+      + a13 * LATTICE_PROJ_2D.a13[1],
+  ];
+}
+
 // Curated JI ratios within an octave — only the musically important
 // ones from the 3, 5, 7, 11, 13 prime limits.  Ordered by ratio so
 // they read low-to-high along the strip.  Each entry tags the ratio's
@@ -168,6 +210,11 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   const [ratioPresets, setRatioPresets] = useLS<Record<string, number[][]>>("lt_dc_ratioPresets", {});
   const [ratioInput, setRatioInput] = useState("");
   const [presetName, setPresetName] = useState("");
+  // JI lattice: when true, render ratios only (no note names — for
+  // theory work).  Currently the lattice already labels by ratio, so
+  // this toggle is reserved for a future 'show note names too' mode.
+  const [latticeRatiosOnly, setLatticeRatiosOnly] = useLS<boolean>("lt_dc_latticeRatiosOnly", true);
+  const [showLattice, setShowLattice] = useLS<boolean>("lt_dc_showLattice", true);
 
   const parseRatios = (text: string): number[][] => {
     return text
@@ -563,6 +610,89 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   }
   // Backwards-compat alias for the rest of the render path.
   const edoSteps = gridSteps;
+
+  // ── Lattice precomputation ────────────────────────────────────────
+  // JI mode: position each unique ratio in 2D by its prime monzo.
+  // EDO mode: arrange the EDO's pitch classes around a circle.
+  // Active set: which ratios / pitch classes light up because they
+  // match a placed continuum node.
+
+  type LatticeNode = { key: string; label: string; x: number; y: number; limit?: number };
+  const latticeNodes: LatticeNode[] = [];
+  if (gridMode === "ji") {
+    const seen = new Set<string>();
+    const all = [
+      ...JI_GRID_RATIOS,
+      ...customRatios.map(([num, den]) => ({
+        num, den,
+        limit: Math.max(maxPrimeOf(num), maxPrimeOf(den)),
+        isP5: num === 3 && den === 2,
+      })),
+    ];
+    for (const r of all) {
+      const key = `${r.num}/${r.den}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const [x, y] = latticePos2D(r.num, r.den);
+      latticeNodes.push({ key, label: key, x, y, limit: r.limit });
+    }
+  }
+
+  // Active lattice keys — which JI nodes light up because they match
+  // a placed continuum node within ±25 cents (octave-reduced).
+  const activeLatticeKeys = new Set<string>();
+  if (gridMode === "ji" && latticeNodes.length) {
+    const inRangeNodes = nodes.filter(n => !n.outOfRange);
+    const sorted = [...inRangeNodes].sort((a, b) => a.freq - b.freq);
+    const rootFreq = sorted[0]?.freq;
+    if (rootFreq) {
+      for (const dn of inRangeNodes) {
+        // Octave-reduce target ratio into [1, 2).
+        let t = dn.freq / rootFreq;
+        while (t >= 2) t /= 2;
+        while (t < 1) t *= 2;
+        let bestKey: string | null = null;
+        let bestCents = 25;  // tolerance
+        for (const ln of latticeNodes) {
+          const [num, den] = ln.label.split("/").map(Number);
+          let r = num / den;
+          while (r >= 2) r /= 2;
+          while (r < 1) r *= 2;
+          const cents = Math.abs(1200 * Math.log2(t / r));
+          if (cents < bestCents) { bestCents = cents; bestKey = ln.key; }
+        }
+        if (bestKey) activeLatticeKeys.add(bestKey);
+      }
+    }
+  }
+
+  // EDO-mode: pitch classes positioned on a circle of fifths (the
+  // 'spiral' the user wants from chord show-answer).  Walk the
+  // perfect-fifth generator to lay out 0, P5, 2*P5, ... mod edo.
+  const edoLatticeNodes: { pc: number; x: number; y: number; label: string }[] = [];
+  if (gridMode === "edo") {
+    const radius = 110;
+    const p5Step = Math.round(edo * Math.log2(3 / 2));
+    for (let i = 0; i < edo; i++) {
+      const pc = (i * p5Step) % edo;
+      const angle = (i / edo) * Math.PI * 2 - Math.PI / 2;
+      edoLatticeNodes.push({
+        pc,
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius,
+        label: pcToNoteName(pc, edo),
+      });
+    }
+  }
+  const activeEdoPcs = new Set<number>();
+  if (gridMode === "edo") {
+    for (const dn of nodes.filter(n => !n.outOfRange)) {
+      const exact = freqToAbsPc(dn.freq, edo);
+      const snapped = Math.round(exact);
+      const pc = ((snapped % edo) + edo) % edo;
+      activeEdoPcs.add(pc);
+    }
+  }
 
   // ── Render ────────────────────────────────────────────────────────
 
@@ -1296,8 +1426,7 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
       })()}
       </div>
 
-      {/* Spectrum toggle pinned to the bottom — sits below the strip
-          so it's near where the spectrum dots actually render. */}
+      {/* Spectrum + lattice toggles pinned below the strip. */}
       <div className="flex flex-wrap gap-2 items-center">
         <button
           onClick={() => setShowSpectrum(!showSpectrum)}
@@ -1310,7 +1439,162 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
         >
           Spectrum
         </button>
+        <button
+          onClick={() => setShowLattice(!showLattice)}
+          className={`px-2 py-1 rounded text-[11px] border transition-colors ${
+            showLattice
+              ? "border-[#7173e6] bg-[#7173e622] text-[#9999ee]"
+              : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
+          }`}
+          title={gridMode === "ji"
+            ? "Harmonic lattice: each JI ratio positioned by its prime monzo"
+            : "Spiral lattice: EDO pitch classes laid out on the circle of fifths"}
+        >
+          Lattice
+        </button>
+        {gridMode === "ji" && showLattice && (
+          <button
+            onClick={() => setLatticeRatiosOnly(!latticeRatiosOnly)}
+            className={`px-2 py-1 rounded text-[11px] border transition-colors ${
+              latticeRatiosOnly
+                ? "border-[#c8aa50] bg-[#c8aa5022] text-[#c8aa50]"
+                : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
+            }`}
+            title="JI lattice: ratios-only labels (off = also show monzo exponents)"
+          >
+            Ratios only
+          </button>
+        )}
       </div>
+
+      {/* Lattice viewport — JI mode shows the harmonic lattice of
+          the active ratio set; EDO mode shows the spiral of fifths.
+          Driven entirely by the strip state — no internal options.
+          Click on a strip tick → corresponding lattice node lights up.
+          Lattice nodes have no onClick: only the line drives audio. */}
+      {showLattice && gridMode === "ji" && latticeNodes.length > 0 && (() => {
+        const PAD = 30;
+        const minX = Math.min(...latticeNodes.map(n => n.x)) - PAD;
+        const maxX = Math.max(...latticeNodes.map(n => n.x)) + PAD;
+        const minY = Math.min(...latticeNodes.map(n => n.y)) - PAD;
+        const maxY = Math.max(...latticeNodes.map(n => n.y)) + PAD;
+        const w = maxX - minX;
+        const h = maxY - minY;
+        return (
+          <div className="bg-[#0c0c0c] border border-[#222] rounded p-3">
+            <div className="text-[10px] text-[#888] uppercase tracking-wider mb-2 flex items-center gap-2">
+              Harmonic lattice
+              <span className="text-[#555] normal-case tracking-normal">— each ratio positioned by its prime monzo (3 = orange axis, 5 = green axis, 7 / 11 / 13 = colour-tagged offsets)</span>
+            </div>
+            <svg
+              viewBox={`${minX} ${minY} ${w} ${h}`}
+              className="select-none"
+              style={{ width: "100%", maxHeight: 360 }}
+            >
+              {latticeNodes.map(n => {
+                const active = activeLatticeKeys.has(n.key);
+                const limitColor = LATTICE_PRIME_COLORS[n.limit ?? 1] ?? "#666";
+                return (
+                  <g key={n.key} style={{ pointerEvents: "none" }}>
+                    <circle
+                      cx={n.x} cy={n.y}
+                      r={active ? 18 : 14}
+                      fill={active ? limitColor : "#1a1a1a"}
+                      stroke={active ? "#fff" : limitColor}
+                      strokeWidth={active ? 2 : 1.2}
+                      opacity={active ? 1 : 0.6}
+                    />
+                    {(() => {
+                      const [num, den] = n.label.split("/");
+                      return (
+                        <g>
+                          <text
+                            x={n.x} y={n.y - 1}
+                            fill={active ? "#000" : "#ccc"}
+                            fontSize={10} fontFamily="monospace" fontWeight={active ? 700 : 500}
+                            textAnchor="middle"
+                          >
+                            {num}
+                          </text>
+                          <line
+                            x1={n.x - 7} x2={n.x + 7}
+                            y1={n.y + 1} y2={n.y + 1}
+                            stroke={active ? "#000" : "#ccc"} strokeWidth={0.8}
+                          />
+                          <text
+                            x={n.x} y={n.y + 11}
+                            fill={active ? "#000" : "#ccc"}
+                            fontSize={10} fontFamily="monospace" fontWeight={active ? 700 : 500}
+                            textAnchor="middle"
+                          >
+                            {den}
+                          </text>
+                          {!latticeRatiosOnly && (() => {
+                            const [a3, a5, a7, a11, a13] = factorise2(parseInt(num), parseInt(den));
+                            const monzo = [a3 && `3^${a3}`, a5 && `5^${a5}`, a7 && `7^${a7}`, a11 && `11^${a11}`, a13 && `13^${a13}`].filter(Boolean).join(" ");
+                            return (
+                              <text
+                                x={n.x} y={n.y + 28}
+                                fill="#666" fontSize={8} fontFamily="monospace"
+                                textAnchor="middle"
+                              >
+                                {monzo || "1"}
+                              </text>
+                            );
+                          })()}
+                        </g>
+                      );
+                    })()}
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        );
+      })()}
+
+      {showLattice && gridMode === "edo" && edoLatticeNodes.length > 0 && (() => {
+        const radius = 110;
+        const PAD = 36;
+        const w = (radius + PAD) * 2;
+        return (
+          <div className="bg-[#0c0c0c] border border-[#222] rounded p-3">
+            <div className="text-[10px] text-[#888] uppercase tracking-wider mb-2 flex items-center gap-2">
+              Spiral lattice
+              <span className="text-[#555] normal-case tracking-normal">— {edo}-EDO pitch classes around the circle of fifths</span>
+            </div>
+            <svg
+              viewBox={`-${radius + PAD} -${radius + PAD} ${w} ${w}`}
+              className="select-none mx-auto block"
+              style={{ width: w, maxWidth: "100%" }}
+            >
+              <circle cx={0} cy={0} r={radius} fill="none" stroke="#1e1e1e" strokeWidth={1} />
+              {edoLatticeNodes.map(n => {
+                const active = activeEdoPcs.has(n.pc);
+                return (
+                  <g key={n.pc} style={{ pointerEvents: "none" }}>
+                    <circle
+                      cx={n.x} cy={n.y}
+                      r={active ? 18 : 14}
+                      fill={active ? "#9999ee" : "#1a1a1a"}
+                      stroke={active ? "#fff" : "#3a3a4a"}
+                      strokeWidth={active ? 2 : 1}
+                    />
+                    <text
+                      x={n.x} y={n.y + 4}
+                      fill={active ? "#000" : "#aaa"}
+                      fontSize={11} fontFamily="monospace" fontWeight={active ? 700 : 500}
+                      textAnchor="middle"
+                    >
+                      {n.label}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        );
+      })()}
     </div>
   );
 }
