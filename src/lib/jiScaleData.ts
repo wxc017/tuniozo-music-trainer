@@ -101,6 +101,38 @@ const JI_SCALES: JiScaleSpec[] = [
   { name: "Mohajira",
     steps: [["1",0],["b2",150.6],["b3",347.4],["4",498.0],["5",702.0],["b6",852.6],["b7",1049.4]] },
 
+  // ── MAQAM (tetrachordal 11-limit) ───────────────────────────────────
+  // Per direct user direction (2026-05-05): added to give 11-limit
+  // intervals a home that doesn't fight Western 7-note diatonic.
+  // Each maqam = lower jins (4-note tetrachord) + upper jins, joined
+  // either by a 9/8 bridge tone or conjunctly.  Tetrachords are closed
+  // under their constituent ratios so they avoid the comma-stacking
+  // wolves that plague Diatonic Neutral.
+  //
+  // Rast jins: 1 - n2 (12/11, 151¢) - n3 (11/9, 347¢) - 4 (4/3, 498¢)
+  // Bayati jins: 1 - n2 - b3 (32/27, 294¢ Pyth m3) - 4
+  // Hijaz jins: 1 - b2 (~100¢) - 3 (5/4, 386¢) - 4 — flamenco aug-2nd
+  // Nahawand jins: 1 - 2 (9/8) - b3 (32/27) - 4 — Western minor tetra
+  { name: "Rast",
+    // Rast jins twice, bridged by 9/8 (the 4-5 step).  Major-leaning
+    // neutral diatonic; the canonical Arab maqam.
+    steps: [["1",0],["b2",150.6],["b3",347.4],["4",498.0],["5",702.0],["b6",852.6],["b7",1049.4]] },
+  { name: "Bayati",
+    // Bayati jins on 1, Nahawand jins on 5.  Minor-leaning with
+    // neutral 2nd — the most common Arabic / Egyptian maqam mode.
+    steps: [["1",0],["b2",150.6],["b3",294.1],["4",498.0],["5",702.0],["b6",813.7],["b7",1017.6]] },
+  { name: "Hijaz",
+    // Hijaz jins on 1, Rast jins on 5.  The "flamenco" / Phrygian-
+    // dominant flavour with the augmented 2nd between b2 and 3,
+    // plus neutral 6/7 in the upper tetrachord.
+    steps: [["1",0],["b2",111.7],["3",386.3],["4",498.0],["5",702.0],["b6",852.6],["b7",1049.4]] },
+  { name: "Saba",
+    // Saba jins (1 - n2 - b3 - b4) + Hijaz on b5.  Distinctive
+    // diminished-4th interval; deeply expressive Egyptian maqam.
+    // 7 notes: 1, n2, b3, b4, b5, n6, b7.  Tonic chord is unstable
+    // (no real P5) so adaptive mode would heavily drift this one.
+    steps: [["1",0],["b2",150.6],["b3",294.1],["b4",400.0],["b5",600.0],["b6",858.0],["b7",1000.0]] },
+
   // ── 13-LIMIT (Tridecimal) — removed ──────────────────────────────────
   // Diatonic Tridecimal Major / Minor were orphaned when the 41/53-EDO
   // pickers switched to curated parent + modes layouts (which don't
@@ -615,6 +647,16 @@ function expandFamily(spec: FortyOneEdoFamilySpec, intoOut: { parent: string; to
 for (const spec of FORTY_ONE_EDO_FAMILIES) expandFamily(spec, FORTY_ONE_EDO_TONALITY_FAMILIES);
 for (const spec of FIFTY_THREE_EDO_FAMILIES) expandFamily(spec, FIFTY_THREE_EDO_TONALITY_FAMILIES);
 
+// Maqam tonalities — added per direct user direction (2026-05-05).
+// Each maqam is a 7-note tetrachordal scale (lower jins + bridge tone +
+// upper jins).  Unlike the Diatonic-* families above, maqam scales are
+// NOT rotational — each is its own independent scale built from
+// specific 4-note ajnas, so we bypass expandFamily and push directly
+// to the public family list.
+const MAQAM_TONALITIES = ["Rast", "Bayati", "Hijaz", "Saba"];
+FORTY_ONE_EDO_TONALITY_FAMILIES.push({ parent: "Maqam", tonalities: MAQAM_TONALITIES });
+FIFTY_THREE_EDO_TONALITY_FAMILIES.push({ parent: "Maqam", tonalities: MAQAM_TONALITIES });
+
 // ── Build per-EDO ScaleFamilyMaps ────────────────────────────────────────
 //
 // edoData's getModeDegreeMap looks up scales as
@@ -648,6 +690,7 @@ function buildJiScalesForEdo(edo: number): ScaleFamilyMap {
 // degree map without any further wiring.  Mirrors the 31-EDO xen
 // registration in musicTheory.ts.
 
+registerXenPatternMaps(31, buildJiScalesForEdo(31));
 registerXenPatternMaps(41, buildJiScalesForEdo(41));
 registerXenPatternMaps(53, buildJiScalesForEdo(53));
 
