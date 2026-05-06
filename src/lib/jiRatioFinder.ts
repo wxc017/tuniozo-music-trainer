@@ -16,7 +16,7 @@ export interface JiRatioMatch {
 
 const PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31];
 
-function maxPrimeOf(n: number): number {
+export function maxPrimeOf(n: number): number {
   let m = 1;
   let x = n;
   for (const p of PRIMES) {

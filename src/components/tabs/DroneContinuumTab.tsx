@@ -8,7 +8,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import { useLS } from "@/lib/storage";
 import { pcToNoteName } from "@/lib/edoData";
-import { findJiRatio, formatJiRatio } from "@/lib/jiRatioFinder";
+import { findJiRatio, formatJiRatio, maxPrimeOf } from "@/lib/jiRatioFinder";
 
 interface Props {
   edo: number;
@@ -287,13 +287,17 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   }
 
   // JI harmonic ruler — partials of A1 from h2 up to whatever fits in
-  // A6 (h32 lands exactly on A6 since 32*55 = 1760).  Subset the dense
-  // upper region: above h16, label only h20/h24/h28/h32 to avoid clutter.
+  // A6 (h32 lands exactly on A6 since 32*55 = 1760).  Filtered by the
+  // active prime limit: e.g. at limit=5, h7/h11/h13/h14/h17... drop
+  // out so the ruler reflects what the user is actually willing to
+  // hear as 'in tune'.  Subsets the dense upper region: above h16,
+  // label only h20/h24/h28/h32.
   const jiTicks: { x: number; harmonic: number; labelled: boolean }[] = [];
   if (showJiRulers) {
     for (let h = 2; h <= 32; h++) {
       const f = A1_HZ * h;
       if (f > A6_HZ * 1.001) break;
+      if (maxPrimeOf(h) > primeLimit) continue;
       const labelled = h <= 16 || h % 4 === 0;
       jiTicks.push({ x: xFromFreq(f), harmonic: h, labelled });
     }
@@ -534,6 +538,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
               {Array.from({ length: 31 }, (_, i) => i + 2).map(h => {
                 const f = src.freq * h;
                 if (f < A1_HZ * 0.999 || f > A6_HZ * 1.001) return null;
+                if (maxPrimeOf(h) > primeLimit) return null;
                 const x = xFromFreq(f);
                 const labelled = h <= 16 || h % 4 === 0;
                 return (
@@ -621,7 +626,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
                 const edo_ = edoLabelFor(n.freq, edo);
                 const ji = (isRoot || rootFreq === undefined)
                   ? null
-                  : findJiRatio(n.freq / rootFreq, primeLimit);
+                  : findJiRatio(n.freq / rootFreq, primeLimit, Math.max(300, primeLimit * primeLimit * 3));
                 const ratioStr = isRoot
                   ? "1/1"
                   : (ji
