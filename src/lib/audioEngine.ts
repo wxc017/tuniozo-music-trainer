@@ -891,8 +891,42 @@ export class AudioEngine {
       // true — race condition during loading.  Fall through to synth.
     }
     if (wave) {
-      this.spawnAdditiveVoice(ctx, targetFreq, noteGain, wave, this.droneNodes);
+      // Only the dedicated additive-synth instrument uses the rich
+      // lead-style voice (single osc + filter LFO + delayed vibrato).
+      // Sample instruments that briefly fall through here (because
+      // their samples haven't finished loading) get a plain oscillator
+      // + vibrato — meant to be a transient placeholder until the
+      // samples arrive, not a full synth voice that would mis-
+      // represent the instrument's timbre.
+      if (this.currentInstrument === "additive") {
+        this.spawnAdditiveVoice(ctx, targetFreq, noteGain, wave, this.droneNodes);
+      } else {
+        this.spawnFallbackVoice(ctx, targetFreq, noteGain, wave, this.droneNodes);
+      }
     }
+  }
+
+  /** Plain oscillator + vibrato — temporary placeholder used by sample
+   *  instruments while their samples are still loading.  Doesn't try
+   *  to sound like a finished synth patch; just makes some pitched
+   *  sound so the user isn't left in silence during the fetch. */
+  private spawnFallbackVoice(ctx: AudioContext, targetFreq: number, noteGain: GainNode, wave: PeriodicWave, sink: AudioNode[]) {
+    const osc = ctx.createOscillator();
+    osc.setPeriodicWave(wave);
+    osc.frequency.value = targetFreq;
+    osc.connect(noteGain);
+    osc.start();
+    sink.push(osc);
+
+    const lfo = ctx.createOscillator();
+    lfo.type = "sine";
+    lfo.frequency.value = 4.4 + Math.random() * 0.4;
+    const depth = ctx.createGain();
+    depth.gain.value = 5;
+    lfo.connect(depth);
+    depth.connect(osc.detune);
+    lfo.start();
+    sink.push(lfo, depth);
   }
 
   /** Build an additive-synth voice from a PeriodicWave, voiced for
@@ -1302,7 +1336,11 @@ export class AudioEngine {
       }
     }
     if (wave) {
-      this.spawnAdditiveVoice(ctx, targetFreq, voice.noteGain, wave, voice.nodes);
+      if (this.currentInstrument === "additive") {
+        this.spawnAdditiveVoice(ctx, targetFreq, voice.noteGain, wave, voice.nodes);
+      } else {
+        this.spawnFallbackVoice(ctx, targetFreq, voice.noteGain, wave, voice.nodes);
+      }
     }
   }
 
