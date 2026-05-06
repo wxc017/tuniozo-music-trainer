@@ -859,16 +859,18 @@ export default function ScalarTab({
               </div>
             ))}
 
-          {/* ── Comma pumps — only surfaces in 41/53-EDO since the
-              underlying syntonic / septimal commas are tempered out
-              of every other EDO the app supports.  Each button plays
-              the progression with the pump's per-chord drift applied
-              so the audible comma walk is actually heard. */}
+          {/* ── Progressions — up to 5 interesting cadential
+              shapes (1-5-1, 1-4-5-1, 1-6-4-5-1, 1-6-2-5-1,
+              1-4-6-2-5-1) resolved against the tonality's actual
+              chord-pool labels.  In 41/53-EDO some of these realise
+              as comma pumps (drift label shows the cents); in
+              meantone EDOs they close back to the tonic and the
+              drift label reads 0¢. */}
           {availablePumps.length > 0 && (
             <div className="rounded p-2 border border-[#1a1a1a] bg-[#0a0a0a]">
               <p className="text-[10px] mb-1.5 font-semibold tracking-wider"
                  style={{ color: activeFamilyColor }}>
-                COMMA PUMPS
+                PROGRESSIONS
               </p>
               <div className="flex flex-wrap gap-2">
                 {availablePumps.map(pump => {
