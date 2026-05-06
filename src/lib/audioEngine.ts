@@ -69,14 +69,18 @@ const MUSYNGKITE_BASE   = "https://gleitz.github.io/midi-js-soundfonts/MusyngKit
 // shifts well — the user explicitly requested this trade-off
 // (2026-05-05): "they can stay in one octave as well as drones
 // aren't all over the place for octaves".
-// MieliTietty's "tanpura drone#3" (Freesound 619263) — 61 s of
-// sustained tanpura drone.  CC0.  Replaces both luckylittleraven
-// 416605 (had static) and Kaczinski 506312 (cycled Pa-Sa-Sa-Sa
-// arpeggios) per direct user feedback (2026-05-05): "tanpura is
-// still wrong its playing arpeggios" / "you brought back the wrong
-// tanpura its has static, you need to find another sample".
-// Single-tone soundscape, no arpeggios, no static.
-const FREESOUND_TANPURA_URL = "https://cdn.freesound.org/previews/619/619263_10486071-hq.mp3";
+// Sankalp's "Electronic Tanpura 15" (Freesound 155485) — 4 min 12 s
+// of a Raagini-brand electronic tanpura, pa-SA-SA-sa tuning with SA
+// at 164.8 Hz (E3).  CC-BY 4.0.  Replaces three earlier rejections
+// per direct user feedback:
+//   - luckylittleraven 416605 had static
+//   - Kaczinski 506312 cycled Pa-Sa-Sa-Sa arpeggios
+//   - MieliTietty 619263 "wasn't a tanpura" (synth pad, not the
+//     real Raagini reedy timbre)
+// This recording is described as "sustained, continuous drone — no
+// pitch cycling or individual notes; ideal for pitch-shifting", which
+// matches the engine's playbackRate-based per-note transposition.
+const FREESOUND_TANPURA_URL = "https://cdn.freesound.org/previews/155/155485_1859932-hq.mp3";
 const FREESOUND_BAGPIPE_URL = "https://cdn.freesound.org/previews/622/622929_931745-hq.mp3";
 const FREESOUND_CHOIR_URL   = "https://cdn.freesound.org/previews/763/763910_11744683-hq.mp3";
 // Real cello drone — Freesound 77764, xserra's `cello-G2-up-bow.wav`.
@@ -305,13 +309,13 @@ interface SourceConfig {
 }
 
 const INSTRUMENT_SOURCES: Record<DroneInstrument, SourceConfig> = {
-  // MieliTietty 619263 "tanpura drone#3" — 61 s sustained drone, CC0.
-  // Pitch unspecified by uploader; tagging C3 (MIDI 48) as a
-  // reasonable mid-tanpura default.  If it's actually higher/lower
-  // user pitches will be off-center — easy to retune later.
+  // Sankalp 155485 "Electronic Tanpura 15" — 4 min 12 s sustained
+  // Raagini drone, CC-BY 4.0.  SA tuned to E (164.8 Hz ≈ E3) per
+  // the uploader's notes; tagged accordingly so the closest-sample
+  // picker aligns playbackRate to the recorded fundamental.
   tanpura: {
     url: () => FREESOUND_TANPURA_URL,
-    notes: ["C3"],
+    notes: ["E3"],
   },
   // Philharmonia: pro-recorded chromatic cello.  `_15_` = 1.5-second
   // sustain (longer than the default 1s) — gives the crossfade looper
