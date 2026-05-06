@@ -69,7 +69,14 @@ const MUSYNGKITE_BASE   = "https://gleitz.github.io/midi-js-soundfonts/MusyngKit
 // shifts well — the user explicitly requested this trade-off
 // (2026-05-05): "they can stay in one octave as well as drones
 // aren't all over the place for octaves".
-const FREESOUND_TANPURA_URL = "https://cdn.freesound.org/previews/416/416605_2112203-hq.mp3";
+// sankalp's "Tanpura 10" — 132 s of real Hindustani classical tanpura
+// recorded at Tapan music center, jvari engaged.  CC0.  Replaces the
+// earlier 6.1 s luckylittleraven 416605 which the user reported as
+// too short and noisy ("the tanpura has static noise and it doesnt
+// sustain long enough you need to find another sample" 2026-05-05).
+// At >2 min, the loop wrap is rare enough to be effectively
+// imperceptible.  Sa ≈ C — tagged C3 (MIDI 48).
+const FREESOUND_TANPURA_URL = "https://cdn.freesound.org/previews/153/153262_1859932-hq.mp3";
 const FREESOUND_BAGPIPE_URL = "https://cdn.freesound.org/previews/622/622929_931745-hq.mp3";
 const FREESOUND_CHOIR_URL   = "https://cdn.freesound.org/previews/763/763910_11744683-hq.mp3";
 // Real cello drone — Freesound 77764, xserra's `cello-G2-up-bow.wav`.
@@ -292,17 +299,13 @@ interface SourceConfig {
 }
 
 const INSTRUMENT_SOURCES: Record<DroneInstrument, SourceConfig> = {
-  // Freesound CC0 tanpura — single C#3 sample, pitched at runtime.
-  // The url builder ignores the note arg (we always fetch the same
-  // file); the notes array carries one label so noteLabelToMidi tags
-  // the buffer at MIDI 49 (C#3) for the closest-sample picker.
+  // sankalp's "Tanpura 10" (Freesound 153262) — 132 s real acoustic
+  // Hindustani tanpura, CC0, jvari engaged.  Sa ≈ C, tagged C3
+  // (MIDI 48).  RMS-normalized at load like all the others, so no
+  // per-instrument trim needed.
   tanpura: {
     url: () => FREESOUND_TANPURA_URL,
-    notes: ["Cs3"],
-    // Freesound 416605 was recorded conservatively (peak ~0.25);
-    // boost ×4 to bring it up to roughly Philharmonia / tonejs
-    // levels.  Limiter on the play path will clip any over-the-top
-    // peaks gracefully.
+    notes: ["C3"],
   },
   // Philharmonia: pro-recorded chromatic cello.  `_15_` = 1.5-second
   // sustain (longer than the default 1s) — gives the crossfade looper
