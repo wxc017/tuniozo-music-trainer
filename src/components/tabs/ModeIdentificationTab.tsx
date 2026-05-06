@@ -953,7 +953,7 @@ export default function ModeIdentificationTab({
   const toggleMode = (name: string) => {
     setEnabledModes(prev => {
       const next = new Set(prev);
-      if (next.has(name)) { if (next.size > 1) next.delete(name); }
+      if (next.has(name)) next.delete(name);
       else next.add(name);
       return next;
     });
@@ -964,7 +964,13 @@ export default function ModeIdentificationTab({
   // (2026-05-05): "include tonalities from chords in mode id".
   // Sections whose tonalities have no matching ModeInfo (e.g. 12-EDO
   // SYMMETRICAL has Whole Tone / Diminished entries that aren't in
-  // ALL_MODES yet) are skipped so the picker stays usable.
+  // ALL_MODES yet) are skipped so the picker stays usable.  TONALITY
+  // catalog uses "Major" as the first tonality of the Major family
+  // (so it matches the chord-bank name); ALL_MODES uses "Ionian".
+  // The alias map bridges the two so Ionian shows up as the first
+  // mode under DIATONIC MAJOR per direct user direction (2026-05-06):
+  // "ionian is missing from diatonic major mode id".
+  const NAME_ALIASES: Record<string, string> = { Major: "Ionian" };
   const FAMILY_GROUPS: { key: string; label: string; color: string; modes: ModeInfo[] }[] =
     tonalitySectionsForEdo(edo)
       .map(sec => ({
@@ -973,7 +979,7 @@ export default function ModeIdentificationTab({
         color: sec.color,
         modes: sec.families
           .flatMap(f => f.tonalities)
-          .map(t => ALL_MODES.find(m => m.name === t))
+          .map(t => ALL_MODES.find(m => m.name === (NAME_ALIASES[t] ?? t)))
           .filter((m): m is ModeInfo => !!m),
       }))
       .filter(g => g.modes.length > 0);
@@ -1046,18 +1052,6 @@ export default function ModeIdentificationTab({
       <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2">
         <div className="flex items-center gap-2">
           <p className="text-xs text-[#888] font-medium">MODE POOL</p>
-          <button onClick={() => setEnabledModes(new Set(ALL_MODES.map(m => m.name)))}
-            className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">All</button>
-          {FAMILY_GROUPS.map(g => (
-            <button key={g.key} onClick={() => setEnabledModes(prev => {
-              const next = new Set(prev);
-              for (const m of g.modes) next.add(m.name);
-              return next;
-            })}
-              className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5">
-              +{g.label}
-            </button>
-          ))}
         </div>
         {FAMILY_GROUPS.map(group => (
           <div key={group.key}>

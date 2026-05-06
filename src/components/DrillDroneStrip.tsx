@@ -21,7 +21,7 @@ export default function DrillDroneStrip({ tonicPc, setTonicPc, edo, setEdo, lowe
   const [droneOn, setDroneOn] = useLS<boolean>("lt_drill_drone_on", false);
   const [droneMode, setDroneMode] = useLS<DroneMode>("lt_drill_drone_mode", "Single");
   const [droneGain, setDroneGain] = useLS<number>("lt_drill_drone_gain", 0.08);
-  const [droneOct, setDroneOct] = useLS<number>("lt_drill_drone_oct", 4);
+  const [droneOct, setDroneOct] = useLS<number>("lt_drill_drone_oct", 3);
   const wasOn = useRef(false);
 
   const buildNotes = useCallback((): number[] => {
