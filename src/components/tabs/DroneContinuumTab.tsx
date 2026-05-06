@@ -128,6 +128,11 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   // the strip in the node's own color, so users can see where each
   // node's partials fall against the EDO grid.
   const [nodeRulers, setNodeRulers] = useState<Set<string>>(new Set());
+  // Live spectrum analyser — feeds an FFT off the audio engine's master
+  // bus and projects detected peaks onto the strip so users can see
+  // which partials of the playing drone are actually sounding.
+  const [showSpectrum, setShowSpectrum] = useLS<boolean>("lt_dc_spectrum", true);
+  const [spectrumPeaks, setSpectrumPeaks] = useState<{ freq: number; mag: number }[]>([]);
   const stripRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const droneActiveRef = useRef(false);
@@ -189,6 +194,50 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
       }
     };
   }, []);
+
+  // Spectrum analyser loop — runs while drone is on AND spectrum
+  // visualisation is enabled.  Pulls Float dB data from the master-bus
+  // analyser, finds local maxima above a threshold, and stashes the
+  // top peaks (freq + dB magnitude) so the SVG render highlights them.
+  useEffect(() => {
+    if (!droneOn || !showSpectrum) {
+      setSpectrumPeaks([]);
+      return;
+    }
+    let raf = 0;
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      const a = audioEngine.getAnalyser();
+      const sr = audioEngine.getSampleRate();
+      if (!a || !sr) {
+        raf = requestAnimationFrame(run);
+        return;
+      }
+      const N = a.frequencyBinCount;
+      const buf = new Float32Array(N);
+      a.getFloatFrequencyData(buf);
+      const binHz = sr / 2 / N;
+      // Local-max peak picker, dB threshold relative to noise floor.
+      const PEAK_DB = -55;
+      const peaks: { freq: number; mag: number }[] = [];
+      for (let i = 2; i < N - 2; i++) {
+        const v = buf[i];
+        if (v < PEAK_DB) continue;
+        if (v <= buf[i - 1] || v <= buf[i + 1]) continue;
+        if (v <= buf[i - 2] || v <= buf[i + 2]) continue;
+        const f = i * binHz;
+        if (f < stripLowHz * 0.95 || f > stripHighHz * 1.05) continue;
+        peaks.push({ freq: f, mag: v });
+      }
+      // Keep the loudest 32 peaks to avoid drawing hundreds.
+      peaks.sort((p, q) => q.mag - p.mag);
+      setSpectrumPeaks(peaks.slice(0, 32));
+      raf = requestAnimationFrame(run);
+    };
+    raf = requestAnimationFrame(run);
+    return () => { cancelled = true; cancelAnimationFrame(raf); };
+  }, [droneOn, showSpectrum, stripLowHz, stripHighHz]);
 
   const onStripClick = useCallback((e: React.MouseEvent<SVGRectElement>) => {
     const svg = stripRef.current;
@@ -447,6 +496,17 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         >
           JI harmonics of A{lowOct}
         </button>
+        <button
+          onClick={() => setShowSpectrum(!showSpectrum)}
+          className={`px-2 py-1 rounded text-[11px] border transition-colors ${
+            showSpectrum
+              ? "border-[#88ccaa] bg-[#88ccaa22] text-[#88ccaa]"
+              : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
+          }`}
+          title="Live spectrum: highlights where the playing drone's harmonics actually fall on the strip"
+        >
+          Spectrum
+        </button>
 
         <div className="w-px h-4 bg-[#2a2a2a] mx-1" />
 
@@ -624,6 +684,31 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
                   </g>
                 );
               })}
+            </g>
+          );
+        })}
+
+        {/* Live spectrum peaks — small glowing dots above the strip
+            at each detected harmonic's x position.  Brightness scales
+            with peak magnitude so loud partials read brighter. */}
+        {showSpectrum && spectrumPeaks.map((p, i) => {
+          const x = xFromFreq(p.freq);
+          // Map dB mag from [-60..0] to opacity [0.3..1.0]
+          const op = Math.max(0.3, Math.min(1, (p.mag + 60) / 60));
+          return (
+            <g key={`peak${i}`}>
+              <circle
+                cx={x} cy={cy - OCTAVE_TICK_HALF - 12}
+                r={3.5}
+                fill="#88ffcc"
+                opacity={op}
+              />
+              <circle
+                cx={x} cy={cy - OCTAVE_TICK_HALF - 12}
+                r={6}
+                fill="#88ffcc"
+                opacity={op * 0.25}
+              />
             </g>
           );
         })}
