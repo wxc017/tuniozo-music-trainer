@@ -383,6 +383,10 @@ export class AudioEngine {
   private playGainNode: GainNode | null = null;
   private playLimiter: DynamicsCompressorNode | null = null;
   private masterGain: GainNode | null = null;
+  // Spectrum analyser tap on the master bus — used by the Drone
+  // Continuum mode to highlight harmonic peaks on its pitch strip.
+  // No effect on audio (AnalyserNode is a pass-through).
+  private analyser: AnalyserNode | null = null;
   // Reverb send (parallel wet path).  Dry signal flows playLimiter →
   // masterGain at unity; the wet copy goes through a ConvolverNode
   // with a synthesized hall IR, scaled by reverbWetGain.  Default
@@ -397,7 +401,11 @@ export class AudioEngine {
     this.ctx = new AudioContext();
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 0.85;
-    this.masterGain.connect(this.ctx.destination);
+    this.analyser = this.ctx.createAnalyser();
+    this.analyser.fftSize = 8192;
+    this.analyser.smoothingTimeConstant = 0.6;
+    this.masterGain.connect(this.analyser);
+    this.analyser.connect(this.ctx.destination);
 
     // Limiter on play path to prevent clipping from overlapping chords
     this.playLimiter = this.ctx.createDynamicsCompressor();
@@ -546,7 +554,11 @@ export class AudioEngine {
       this.ctx = new AudioContext();
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.value = 0.85;
-      this.masterGain.connect(this.ctx.destination);
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 8192;
+      this.analyser.smoothingTimeConstant = 0.6;
+      this.masterGain.connect(this.analyser);
+      this.analyser.connect(this.ctx.destination);
 
       this.playLimiter = this.ctx.createDynamicsCompressor();
       this.playLimiter.threshold.value = -3;
@@ -953,6 +965,7 @@ export class AudioEngine {
       try { this.ctx.close(); } catch {}
       this.ctx = null;
       this.masterGain = null;
+      this.analyser = null;
       this.playLimiter = null;
       this.playGainNode = null;
       this.sampleBuffer = null;
@@ -961,6 +974,8 @@ export class AudioEngine {
 
   isDroneActive() { return this.droneNodes.length > 0; }
   isReady() { return !!this.ctx; }
+  getAnalyser(): AnalyserNode | null { return this.analyser; }
+  getSampleRate(): number | null { return this.ctx?.sampleRate ?? null; }
 
   // ── Ratio-based API ─────────────────────────────────────────────────
   // All ratios are relative to C4 (1/1 = C4).
