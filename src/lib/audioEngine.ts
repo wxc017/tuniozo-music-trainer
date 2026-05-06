@@ -231,16 +231,31 @@ function preprocessDroneBuffer(_ctx: AudioContext, original: AudioBuffer): {
     normGain = DRONE_PEAK_CAP / peak;
   }
 
-  // Build a normalized copy.  The buffer is no longer modified at the
-  // loop seam — seamlessness is now handled at PLAYBACK time by the
-  // dual-voice scheduler in spawnSampleLoop (two overlapping voices
-  // with triangular gain envelopes).  preprocessDroneBuffer just
-  // does onset trim + RMS normalization + reports loopStart / loopEnd.
+  // Build a normalized copy with tiny in-buffer fades at the loop
+  // seam.  Reverted to this approach (per direct user feedback that
+  // the dual-voice scheduler made tanpura / voice samples sound
+  // 'terrible' / 'alien space shit').  The hardware-level src.loop
+  // wrap in spawnSampleLoop is sample-accurate; the only failure
+  // mode is a click when loopEnd's amplitude differs from loopStart's.
+  // A 25 ms fade-in at loopStart + 25 ms fade-out at loopEnd makes
+  // the seam silence→silence with no click and no perceptible duck
+  // (50 ms is shorter than human attention to amplitude variation
+  // on a sustained drone).
+  const seamFadeSec = 0.025;
+  const seamFadeSamp = Math.min(
+    Math.floor(seamFadeSec * sampleRate),
+    Math.floor((loopEndSamp - loopStartSamp) / 4),
+  );
   const out = new AudioBuffer({ length: totalSamples, numberOfChannels: channels, sampleRate });
   for (let ch = 0; ch < channels; ch++) {
     const inD = original.getChannelData(ch);
     const outD = out.getChannelData(ch);
     for (let i = 0; i < totalSamples; i++) outD[i] = inD[i] * normGain;
+    for (let i = 0; i < seamFadeSamp; i++) {
+      const t = i / seamFadeSamp;
+      outD[loopStartSamp + i] *= Math.sin(t * Math.PI / 2);
+      outD[loopEndSamp - seamFadeSamp + i] *= Math.cos(t * Math.PI / 2);
+    }
   }
 
   return {
@@ -880,67 +895,90 @@ export class AudioEngine {
     }
   }
 
-  /** Build an "additive synth" voice from a PeriodicWave: 3 oscillators
-   *  detuned ±5 cents (chorus thickening), each with its own vibrato
-   *  LFO and random phase, summed through a low-pass filter (tames the
-   *  brassy high-harmonic content of a static custom wave) and then
-   *  through a 250ms attack envelope (no abrupt onset).
+  /** Build an additive-synth voice from a PeriodicWave, voiced for
+   *  Pianoteq-style "Mk1 Lead 1" feel: clean single oscillator,
+   *  shortish attack, gentle filter movement, delayed vibrato, full
+   *  infinite sustain at peak gain.
    *
-   *  Per direct user feedback: 'the additive synth sounds like a fart
-   *  its doesnt have good synth settings for sustain'.  The earlier
-   *  single-oscillator path produced a static buzzy spectrum with no
-   *  attack and no width — basically the harmonic series stacked at
-   *  unity, which is the worst-case for "fart" perception.  Chorus
-   *  + filter + envelope brings it into pad territory. */
+   *  Per direct user feedback: 'synth sounds like a alien space shit
+   *  now, no infinite sustain — look at pianoteq Mk1 Lead 1 for
+   *  inspiration'.  The earlier 3-oscillator chorus + per-voice
+   *  vibrato created phasey beating that sounded "alien"; lead
+   *  patches use a single voice for clean steady tone.  Plus we now
+   *  add a slow LFO on the filter cutoff so the spectrum has gentle
+   *  motion (the Pianoteq lead's living quality) without amplitude
+   *  modulation muddying the sustain. */
   private spawnAdditiveVoice(ctx: AudioContext, targetFreq: number, noteGain: GainNode, wave: PeriodicWave, sink: AudioNode[]) {
     const t0 = ctx.currentTime;
-    const attackSec = 0.25;
-    const filterCutoff = Math.max(2500, targetFreq * 12);
+    const attackSec = 0.08;        // quick lead-attack, not pad-swell
+    const filterBaseHz = 5500;     // open enough to let the harmonics ring
+    const filterSweepHz = 800;     // ±800 Hz LFO sweep on cutoff
+    const vibratoDelaySec = 0.6;   // wait before vibrato kicks in (lead convention)
 
+    // Low-pass with subtle resonance.  A slow LFO sweeps the cutoff
+    // ±filterSweepHz so the timbre breathes — pads / leads feel
+    // "alive" with this kind of slow filter motion, "dead" without.
     const lpf = ctx.createBiquadFilter();
     lpf.type = "lowpass";
-    lpf.frequency.value = filterCutoff;
-    lpf.Q.value = 0.5;
+    lpf.frequency.value = filterBaseHz;
+    lpf.Q.value = 0.9;
 
+    const filterLfo = ctx.createOscillator();
+    filterLfo.type = "sine";
+    filterLfo.frequency.value = 0.18 + Math.random() * 0.06;  // 0.18–0.24 Hz
+    const filterDepth = ctx.createGain();
+    filterDepth.gain.value = filterSweepHz;
+    filterLfo.connect(filterDepth);
+    filterDepth.connect(lpf.frequency);
+    filterLfo.start();
+
+    // Linear attack to peak gain, then HOLD — infinite sustain.
     const env = ctx.createGain();
     env.gain.setValueAtTime(0, t0);
     env.gain.linearRampToValueAtTime(1, t0 + attackSec);
 
     lpf.connect(env);
     env.connect(noteGain);
-    sink.push(lpf, env);
+    sink.push(lpf, env, filterLfo, filterDepth);
 
-    const detunes = [0, +6, -6];
-    const perVoiceGain = 1 / detunes.length;
-    for (const detune of detunes) {
-      const osc = ctx.createOscillator();
-      osc.setPeriodicWave(wave);
-      osc.frequency.value = targetFreq;
-      osc.detune.value = detune;
+    // Single oscillator — no chorus detuning.  The clean fundamental
+    // is what makes a lead patch read as a lead instead of a pad.
+    const osc = ctx.createOscillator();
+    osc.setPeriodicWave(wave);
+    osc.frequency.value = targetFreq;
+    osc.connect(lpf);
+    osc.start();
 
-      const oscGain = ctx.createGain();
-      oscGain.gain.value = perVoiceGain;
+    // Delayed vibrato — silent for vibratoDelaySec, then ramps to
+    // ±3 cents at ~5 Hz.  Mirrors lead-synth convention where the
+    // initial note onset is dead steady and vibrato emerges as the
+    // note sustains.
+    const vibLfo = ctx.createOscillator();
+    vibLfo.type = "sine";
+    vibLfo.frequency.value = 5.0;
+    const vibDepth = ctx.createGain();
+    vibDepth.gain.setValueAtTime(0, t0);
+    vibDepth.gain.setValueAtTime(0, t0 + vibratoDelaySec);
+    vibDepth.gain.linearRampToValueAtTime(3, t0 + vibratoDelaySec + 0.4);
+    vibLfo.connect(vibDepth);
+    vibDepth.connect(osc.detune);
+    vibLfo.start();
 
-      // Per-voice vibrato — independent rate / phase so the three
-      // detuned voices don't pulsate in lockstep.
-      const lfo = ctx.createOscillator();
-      lfo.type = "sine";
-      lfo.frequency.value = 4.4 + Math.random() * 0.4;
-      const lfoDepth = ctx.createGain();
-      lfoDepth.gain.value = 5;
-      lfo.connect(lfoDepth);
-      lfoDepth.connect(osc.detune);
-      lfo.start();
-
-      osc.connect(oscGain);
-      oscGain.connect(lpf);
-      osc.start();
-      sink.push(osc, oscGain, lfo, lfoDepth);
-    }
+    sink.push(osc, vibLfo, vibDepth);
   }
 
-  /** Sample-based drone playback — dual-voice scheduler with
-   *  triangular gain envelopes for seamless looping.
+  /** Sample-based drone playback — single src.loop=true BufferSource.
+   *
+   *  Reverted from the dual-voice scheduler per direct user feedback
+   *  ('tampura is not a tampura its sound terrible' / 'why did you
+   *  change them to synth sounds, bring back the samples we use in
+   *  tonal audiation').  The dual-voice approach was overlapping two
+   *  voices on different parts of the recording with brief crossfades,
+   *  which produced phasey artifacts on tanpura/voice samples whose
+   *  natural micro-vibrato beat against itself.  Going back to the
+   *  simple single-voice loop gives the EXACT same playback Tonal
+   *  Audiation has always used; preprocessDroneBuffer's 25 ms in-
+   *  buffer seam fades make the wrap inaudible.
    *
    *  Each voice plays the loop region (loopStart..loopEnd) ONCE at
    *  the target playbackRate, with a fade-in at its start, a plateau
@@ -958,89 +996,19 @@ export class AudioEngine {
    *  every cycle on samples with rhythmic content (tanpura plucks,
    *  bagpipe drone beats, etc.).  This scheduler removes that. */
   private spawnSampleLoop(ctx: AudioContext, sample: InstrumentSample, rate: number, noteGain: GainNode) {
-    const loopDurOutSec = (sample.loopEnd - sample.loopStart) / rate;
-    if (!isFinite(loopDurOutSec) || loopDurOutSec <= 0.05) {
-      // Fall back to a non-overlapping single voice for very short
-      // loop regions.
-      const src = ctx.createBufferSource();
-      src.buffer = sample.buffer;
-      src.loop = true;
-      src.loopStart = sample.loopStart;
-      src.loopEnd = sample.loopEnd;
-      src.playbackRate.value = rate;
-      src.connect(noteGain);
-      src.start(0, sample.loopStart);
-      this.droneSamples.push(src);
-      return;
-    }
-
-    // Trapezoidal envelope: each voice ramps in over fadeSec, plays
-    // SOLO at peak gain for the bulk of the loop, ramps out over
-    // fadeSec.  Next voice fires fadeSec before the current ends so
-    // the crossfade happens only at the seam.  Per direct user
-    // feedback ("voice drone sound like a mountain going up and down
-    // its not seemless the fade is too strong"): the previous full-
-    // loop triangular envelope mixed timbre across the whole cycle
-    // and read as constant amplitude pumping; trapezoidal limits the
-    // mix to a small seam window.
-    // Very short crossfade — long enough to mask the wrap click, too
-    // short for the listener to perceive cross-timbre mixing between
-    // the outgoing and incoming voices (per direct user feedback:
-    // 'voice drone sound like a mountain going up and down ... I
-    // shouldnt be able to tell that its phasing in and our for
-    // different loops').  50 ms floor (always covers the click);
-    // 100 ms ceiling — at 5 % of loop or below for any loop length.
-    const fadeSec = Math.max(0.05, Math.min(0.1, loopDurOutSec * 0.05));
-    const myGen = this.droneGeneration;
-
-    const fireVoice = (startTime: number) => {
-      if (myGen !== this.droneGeneration) return;
-      const src = ctx.createBufferSource();
-      src.buffer = sample.buffer;
-      src.playbackRate.value = rate;
-
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0, startTime);
-      g.gain.linearRampToValueAtTime(1, startTime + fadeSec);
-      g.gain.setValueAtTime(1, startTime + loopDurOutSec - fadeSec);
-      g.gain.linearRampToValueAtTime(0, startTime + loopDurOutSec);
-
-      src.connect(g);
-      g.connect(noteGain);
-      const bufferDur = sample.loopEnd - sample.loopStart;
-      src.start(startTime, sample.loopStart, bufferDur);
-      this.droneSamples.push(src);
-
-      // Schedule next voice fadeSec before this one ends — they
-      // overlap exactly during the crossfade window.
-      const nextStart = startTime + loopDurOutSec - fadeSec;
-      const wakeAheadSec = 0.5;
-      const delayMs = Math.max(0, (nextStart - ctx.currentTime - wakeAheadSec) * 1000);
-      const t = setTimeout(() => fireVoice(nextStart), delayMs);
-      this.droneLoopTimers.push(t);
-    };
-
-    // Boot voice — at gain 1 fading to 0 over fadeSec, playing the
-    // SECOND half of the loop region.  Combined with fireVoice(t0)'s
-    // 0 → 1 ramp (also over fadeSec), total gain is constant 1.0
-    // from t=0+ — audio peak immediately, no slow ramp-in, spectrum
-    // analyser sees content right away.  After fadeSec the boot
-    // voice ends and voice 1 plays solo at peak gain until the next
-    // crossfade window.
-    const t0 = ctx.currentTime;
-    const halfBufferDur = (sample.loopEnd - sample.loopStart) / 2;
-    const bootSrc = ctx.createBufferSource();
-    bootSrc.buffer = sample.buffer;
-    bootSrc.playbackRate.value = rate;
-    const bootG = ctx.createGain();
-    bootG.gain.setValueAtTime(1, t0);
-    bootG.gain.linearRampToValueAtTime(0, t0 + fadeSec);
-    bootSrc.connect(bootG);
-    bootG.connect(noteGain);
-    bootSrc.start(t0, sample.loopStart + halfBufferDur, halfBufferDur);
-    this.droneSamples.push(bootSrc);
-
-    fireVoice(t0);
+    const src = ctx.createBufferSource();
+    src.buffer = sample.buffer;
+    src.loop = true;
+    src.loopStart = sample.loopStart;
+    src.loopEnd = sample.loopEnd;
+    src.playbackRate.value = rate;
+    src.connect(noteGain);
+    // Start playback inside the loop region so steady sustain is
+    // audible immediately.  The 25 ms in-buffer fade-in at
+    // loopStart (applied by preprocessDroneBuffer) is inaudible
+    // compared to a full attack.
+    src.start(0, sample.loopStart);
+    this.droneSamples.push(src);
   }
 
   /** Attach a slow ~4.5 Hz LFO to an oscillator's detune param so the
@@ -1379,80 +1347,24 @@ export class AudioEngine {
     return Array.from(this.droneVoices.keys());
   }
 
-  /** Voice-tracked clone of spawnSampleLoop's dual-voice scheduler.
-   *  Stores buffer sources in `voice.samples` and setTimeout handles
-   *  in `voice.timers` so stopRatioDroneVoice can cancel them per-key. */
+  /** Per-voice version of spawnSampleLoop — single src.loop=true
+   *  BufferSource, identical playback to the global drone path. */
   private spawnVoiceSampleLoop(
     ctx: AudioContext,
     sample: InstrumentSample,
     rate: number,
     voice: { noteGain: GainNode; samples: AudioBufferSourceNode[]; nodes: AudioNode[]; timers: ReturnType<typeof setTimeout>[]; generation: number },
-    voiceKey: string,
+    _voiceKey: string,
   ) {
-    const loopDurOutSec = (sample.loopEnd - sample.loopStart) / rate;
-    if (!isFinite(loopDurOutSec) || loopDurOutSec <= 0.05) {
-      const src = ctx.createBufferSource();
-      src.buffer = sample.buffer;
-      src.loop = true;
-      src.loopStart = sample.loopStart;
-      src.loopEnd = sample.loopEnd;
-      src.playbackRate.value = rate;
-      src.connect(voice.noteGain);
-      src.start(0, sample.loopStart);
-      voice.samples.push(src);
-      return;
-    }
-
-    // Trapezoidal envelope — see spawnSampleLoop for rationale.
-    // Very short crossfade — long enough to mask the wrap click, too
-    // short for the listener to perceive cross-timbre mixing between
-    // the outgoing and incoming voices (per direct user feedback:
-    // 'voice drone sound like a mountain going up and down ... I
-    // shouldnt be able to tell that its phasing in and our for
-    // different loops').  50 ms floor (always covers the click);
-    // 100 ms ceiling — at 5 % of loop or below for any loop length.
-    const fadeSec = Math.max(0.05, Math.min(0.1, loopDurOutSec * 0.05));
-    const halfBufferDur = (sample.loopEnd - sample.loopStart) / 2;
-    const myGen = voice.generation;
-
-    const fireVoice = (startTime: number) => {
-      const current = this.droneVoices.get(voiceKey);
-      if (!current || current.generation !== myGen) return;
-
-      const src = ctx.createBufferSource();
-      src.buffer = sample.buffer;
-      src.playbackRate.value = rate;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0, startTime);
-      g.gain.linearRampToValueAtTime(1, startTime + fadeSec);
-      g.gain.setValueAtTime(1, startTime + loopDurOutSec - fadeSec);
-      g.gain.linearRampToValueAtTime(0, startTime + loopDurOutSec);
-      src.connect(g);
-      g.connect(voice.noteGain);
-      const bufferDur = sample.loopEnd - sample.loopStart;
-      src.start(startTime, sample.loopStart, bufferDur);
-      voice.samples.push(src);
-
-      const nextStart = startTime + loopDurOutSec - fadeSec;
-      const wakeAheadSec = 0.5;
-      const delayMs = Math.max(0, (nextStart - ctx.currentTime - wakeAheadSec) * 1000);
-      const t = setTimeout(() => fireVoice(nextStart), delayMs);
-      voice.timers.push(t);
-    };
-
-    const t0 = ctx.currentTime;
-    const bootSrc = ctx.createBufferSource();
-    bootSrc.buffer = sample.buffer;
-    bootSrc.playbackRate.value = rate;
-    const bootG = ctx.createGain();
-    bootG.gain.setValueAtTime(1, t0);
-    bootG.gain.linearRampToValueAtTime(0, t0 + fadeSec);
-    bootSrc.connect(bootG);
-    bootG.connect(voice.noteGain);
-    bootSrc.start(t0, sample.loopStart + halfBufferDur, halfBufferDur);
-    voice.samples.push(bootSrc);
-
-    fireVoice(t0);
+    const src = ctx.createBufferSource();
+    src.buffer = sample.buffer;
+    src.loop = true;
+    src.loopStart = sample.loopStart;
+    src.loopEnd = sample.loopEnd;
+    src.playbackRate.value = rate;
+    src.connect(voice.noteGain);
+    src.start(0, sample.loopStart);
+    voice.samples.push(src);
   }
 
   // ── Separate interval drones (independent of main drone, multiple simultaneous) ──
