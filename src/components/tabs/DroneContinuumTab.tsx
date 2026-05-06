@@ -29,27 +29,26 @@ const freqToAbsPc = (f: number, edo: number) =>
 const absPcToFreq = (pc: number, edo: number) =>
   C4_HZ * Math.pow(2, (pc - 4 * edo) / edo);
 
-// Horizontal layout.
+// Horizontal layout.  STRIP_W is dynamic — measured from the container
+// at mount and on resize so the strip always fills the available width
+// without horizontal scrolling.  All other dimensions are fixed pixels.
 //   STRIP_X .. STRIP_X+STRIP_W   = clickable strip (log-frequency axis)
 //   y=0..STRIP_Y_TOP             = octave anchors + JI ruler header
 //   y=STRIP_Y_TOP..STRIP_Y_BOT   = strip body (gridlines, node circles)
 //   y=STRIP_Y_BOT..NODE_LABEL_Y  = per-EDO-step note labels (rotated -90)
 //   y=NODE_LABEL_Y..             = per-node label rows + leader lines
-const STRIP_X      = 60;
-const STRIP_W      = 1100;
-const STRIP_Y_TOP  = 60;
-const STRIP_H      = 80;
+const STRIP_X      = 70;
+const STRIP_RIGHT  = 70;
+const STRIP_Y_TOP  = 90;
+const STRIP_H      = 130;
 const STRIP_Y_BOT  = STRIP_Y_TOP + STRIP_H;
-const STEP_LABEL_H = 56;     // vertical room for rotated step labels
-const NODE_LABEL_Y = STRIP_Y_BOT + STEP_LABEL_H + 6;
-const NODE_LABEL_H = 60;
-const SVG_W = STRIP_X + STRIP_W + 60;
+const STEP_LABEL_H = 88;
+const NODE_LABEL_Y = STRIP_Y_BOT + STEP_LABEL_H + 8;
+const NODE_LABEL_H = 80;
 const SVG_H = NODE_LABEL_Y + NODE_LABEL_H;
 
-const xFromFreq = (f: number): number =>
-  STRIP_X + (Math.log2(f / A1_HZ) / STRIP_OCTAVES) * STRIP_W;
-const freqFromX = (x: number): number =>
-  A1_HZ * Math.pow(2, ((x - STRIP_X) / STRIP_W) * STRIP_OCTAVES);
+// xFromFreq / freqFromX are defined inside the component as closures
+// over the dynamic stripW measurement.
 
 const snapFreqToEdo = (f: number, edo: number): number =>
   absPcToFreq(Math.round(freqToAbsPc(f, edo)), edo);
@@ -110,7 +109,32 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
   const [chordTuning, setChordTuning] = useLS<"ji" | "edo">("lt_dc_chordTuning", "ji");
   const stripRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const droneActiveRef = useRef(false);
+
+  // Measured container width — drives the SVG width so the strip always
+  // fits the available space without horizontal scrolling.
+  const [containerWidth, setContainerWidth] = useState(1200);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setContainerWidth(Math.max(600, el.clientWidth));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const SVG_W   = containerWidth;
+  const STRIP_W = SVG_W - STRIP_X - STRIP_RIGHT;
+  const cy = STRIP_Y_TOP + STRIP_H / 2;
+  const TICK_HALF        = 9;   // half-height of an EDO step tick (snare-notation style)
+  const OCTAVE_TICK_HALF = 22;  // taller ticks for A1..A6 octave anchors
+
+  const xFromFreq = (f: number): number =>
+    STRIP_X + (Math.log2(f / A1_HZ) / STRIP_OCTAVES) * STRIP_W;
+  const freqFromX = (x: number): number =>
+    A1_HZ * Math.pow(2, ((x - STRIP_X) / STRIP_W) * STRIP_OCTAVES);
 
   // Restart the drone whenever the active node set, gain, or on/off changes.
   // startRatioDrone tears down the previous voices internally, so this is
@@ -388,7 +412,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         </div>
       </div>
 
-      <div className="relative" style={{ width: SVG_W, height: SVG_H }}>
+      <div ref={containerRef} className="relative" style={{ width: "100%", height: SVG_H }}>
       <svg
         ref={stripRef}
         width={SVG_W}
@@ -397,17 +421,37 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         style={{ display: "block" }}
         onClick={() => setMenuNodeId(null)}
       >
-        {/* Octave anchors — vertical lines at A1..A6, with text labels
-            above the strip.  Drawn first so EDO gridlines paint over. */}
+        {/* Centerline — single thin baseline through the strip. */}
+        <line
+          x1={STRIP_X} x2={STRIP_X + STRIP_W}
+          y1={cy} y2={cy}
+          stroke="#2a2a2a" strokeWidth={1}
+        />
+
+        {/* EDO step ticks — small discrete vertical lines centered on
+            the baseline (snare-notation style).  Octave anchors at
+            A1..A6 get longer ticks; P5 steps get a brighter color. */}
+        {showEdoGrid && edoSteps.map((s, i) => (
+          <line
+            key={`edo${i}`}
+            x1={s.x} x2={s.x}
+            y1={cy - TICK_HALF} y2={cy + TICK_HALF}
+            stroke={s.isP5 ? "#5a6e9a" : "#3a3a3a"}
+            strokeWidth={s.isP5 ? 1 : 0.7}
+          />
+        ))}
+
+        {/* Octave anchor ticks — taller than EDO step ticks; A1..A6
+            label sits above. */}
         {octaveTicks.map(t => (
           <g key={t.label}>
             <line
               x1={t.x} x2={t.x}
-              y1={STRIP_Y_TOP} y2={STRIP_Y_BOT}
-              stroke="#3a3a3a" strokeWidth={1}
+              y1={cy - OCTAVE_TICK_HALF} y2={cy + OCTAVE_TICK_HALF}
+              stroke="#888" strokeWidth={1.5}
             />
             <text
-              x={t.x} y={STRIP_Y_TOP - 8}
+              x={t.x} y={cy - OCTAVE_TICK_HALF - 6}
               fill="#aaa" fontSize={11} fontFamily="monospace"
               textAnchor="middle"
             >
@@ -416,31 +460,25 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
           </g>
         ))}
 
-        {/* EDO grid — vertical lines through the strip body. */}
-        {showEdoGrid && edoSteps.map((s, i) => (
-          <line
-            key={`edo${i}`}
-            x1={s.x} x2={s.x}
-            y1={STRIP_Y_TOP} y2={STRIP_Y_BOT}
-            stroke={s.isP5 ? "#33445e" : "#1d1f28"}
-            strokeWidth={s.isP5 ? 1 : 0.5}
-          />
-        ))}
-
-        {/* Per-EDO-step note labels — rotated -90° so they read upward
-            from below the strip; this keeps dense EDOs (41 / 53) legible. */}
-        {showStepNames && edoSteps.map((s, i) => (
-          <text
-            key={`name${i}`}
-            x={s.x} y={STRIP_Y_BOT + 6}
-            fill={s.isP5 ? "#9aa6cc" : "#666"}
-            fontSize={9} fontFamily="monospace"
-            textAnchor="end"
-            transform={`rotate(-90 ${s.x} ${STRIP_Y_BOT + 6})`}
-          >
-            {s.label}
-          </text>
-        ))}
+        {/* Per-EDO-step note labels — rotated -90° so they read
+            bottom-to-top alongside each gridline.  Anchor at the
+            bottom of the step-label zone (textAnchor=start) so longer
+            labels all align flush at the deep end. */}
+        {showStepNames && edoSteps.map((s, i) => {
+          const anchorY = STRIP_Y_BOT + STEP_LABEL_H - 4;
+          return (
+            <text
+              key={`name${i}`}
+              x={s.x} y={anchorY}
+              fill={s.isP5 ? "#9aa6cc" : "#888"}
+              fontSize={10} fontFamily="monospace"
+              textAnchor="start"
+              transform={`rotate(-90 ${s.x} ${anchorY})`}
+            >
+              {s.label}
+            </text>
+          );
+        })}
 
         {/* JI harmonic ruler — above the strip.  Tick + h-number for
             each in-range partial of A1. */}
@@ -463,22 +501,15 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
           </g>
         ))}
 
-        {/* Strip body — clickable rect. */}
+        {/* Invisible click-target rect spanning the strip's full
+            vertical band — generous click zone even though the visible
+            strip is just a thin row of ticks. */}
         <rect
           x={STRIP_X} y={STRIP_Y_TOP}
           width={STRIP_W} height={STRIP_H}
           fill="transparent"
-          stroke="#2a2a2a" strokeWidth={1}
           onClick={onStripClick}
           style={{ cursor: "crosshair" }}
-        />
-
-        {/* Strip horizontal centerline. */}
-        <line
-          x1={STRIP_X} x2={STRIP_X + STRIP_W}
-          y1={STRIP_Y_TOP + STRIP_H / 2}
-          y2={STRIP_Y_TOP + STRIP_H / 2}
-          stroke="#222" strokeWidth={1} strokeDasharray="3 5"
         />
 
         {/* Nodes + per-node labels + out-of-range dots. */}
@@ -488,7 +519,6 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
           const oor = nodes.filter(n => n.outOfRange);
           const sorted = [...inRange].sort((a, b) => a.freq - b.freq);
           const rootFreq = sorted[0]?.freq;
-          const cy = STRIP_Y_TOP + STRIP_H / 2;
 
           // Out-of-range dots — sub-harmonics on the left margin,
           // super-harmonics on the right margin.  Stacked vertically

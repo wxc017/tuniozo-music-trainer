@@ -1196,10 +1196,8 @@ export default function App() {
       {/* ── Drone Continuum ── */}
       {section === "drone-continuum" && (
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-sm font-semibold text-[#888] uppercase tracking-widest mb-4">Drone Continuum</h2>
-            <DroneContinuumTab edo={edo} ensureAudio={ensureAudio} />
-          </div>
+          <h2 className="text-sm font-semibold text-[#888] uppercase tracking-widest mb-4">Drone Continuum</h2>
+          <DroneContinuumTab edo={edo} ensureAudio={ensureAudio} />
         </div>
       )}
 
