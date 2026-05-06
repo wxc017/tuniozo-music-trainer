@@ -58,10 +58,16 @@ function edoLabelFor(freq: number, edo: number): { name: string; drift: number }
 interface DroneNode {
   id: string;
   freq: number;
+  harmonicOf?: string;   // parent node id, when spawned by a series preset
+  harmonicNum?: number;  // 2 = octave / 2nd partial, 3 = 3rd partial, ...
+  subharmonic?: boolean; // true for series-below spawns
+  outOfRange?: boolean;  // visible as grey dot, NOT droned
 }
 
 let nextId = 1;
 const makeId = () => `n${nextId++}`;
+
+const HARMONIC_PRESET_COUNTS = [4, 8, 12, 16, 24] as const;
 
 export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   const [nodes, setNodes] = useState<DroneNode[]>([]);
@@ -72,6 +78,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   const [showJiRulers, setShowJiRulers] = useLS<boolean>("lt_dc_jiRulers", false);
   const [labelMode, setLabelMode] = useLS<"both" | "edo" | "ji">("lt_dc_labelMode", "both");
   const [primeLimit, setPrimeLimit] = useLS<number>("lt_dc_primeLimit", 13);
+  const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
   const stripRef = useRef<SVGSVGElement>(null);
   const droneActiveRef = useRef(false);
 
@@ -79,7 +86,8 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   // startRatioDrone tears down the previous voices internally, so this is
   // a single atomic update — no need for incremental add/remove plumbing.
   useEffect(() => {
-    if (!droneOn || nodes.length === 0) {
+    const audible = nodes.filter(n => !n.outOfRange);
+    if (!droneOn || audible.length === 0) {
       if (droneActiveRef.current) {
         audioEngine.stopDrone();
         droneActiveRef.current = false;
@@ -90,7 +98,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     (async () => {
       await ensureAudio();
       if (cancelled) return;
-      const ratios = nodes.map(n => n.freq / A1_HZ);
+      const ratios = audible.map(n => n.freq / A1_HZ);
       audioEngine.startRatioDrone(ratios, gain, A1_HZ);
       droneActiveRef.current = true;
     })();
@@ -119,13 +127,40 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     if (!isFinite(freq) || freq < A1_HZ * 0.99 || freq > A6_HZ * 1.01) return;
     if (snapToEdo) freq = snapFreqToEdo(freq, edo);
     setNodes(prev => [...prev, { id: makeId(), freq }]);
+    setMenuNodeId(null);
   }, [snapToEdo, edo]);
 
   const removeNode = (id: string) => {
-    setNodes(prev => prev.filter(n => n.id !== id));
+    setNodes(prev => prev.filter(n => n.id !== id && n.harmonicOf !== id));
+    setMenuNodeId(null);
   };
 
-  const clearAll = () => setNodes([]);
+  const clearAll = () => { setNodes([]); setMenuNodeId(null); };
+
+  const addHarmonicSeries = (parentId: string, count: number, below: boolean) => {
+    setNodes(prev => {
+      const parent = prev.find(n => n.id === parentId);
+      if (!parent) return prev;
+      // Drop any existing harmonics of this parent — re-running the
+      // preset replaces, doesn't accumulate.
+      const filtered = prev.filter(n => n.harmonicOf !== parentId);
+      const additions: DroneNode[] = [];
+      for (let h = 2; h <= count; h++) {
+        const freq = below ? parent.freq / h : parent.freq * h;
+        const outOfRange = below
+          ? freq < A1_HZ * 0.999
+          : freq > A6_HZ * 1.001;
+        additions.push({
+          id: makeId(), freq,
+          harmonicOf: parentId, harmonicNum: h,
+          subharmonic: below,
+          outOfRange,
+        });
+      }
+      return [...filtered, ...additions];
+    });
+    setMenuNodeId(null);
+  };
 
   // Octave tick markers (A1, A2, ..., A6).
   const octaveTicks: { y: number; label: string }[] = [];
@@ -261,12 +296,14 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         </select>
       </div>
 
+      <div className="relative" style={{ width: SVG_W, height: STRIP_H }}>
       <svg
         ref={stripRef}
         width={SVG_W}
         height={STRIP_H}
         className="bg-[#0a0a0a] rounded border border-[#1a1a1a] select-none"
         style={{ display: "block" }}
+        onClick={() => setMenuNodeId(null)}
       >
         {/* Octave gridlines (drawn first so other layers sit on top) */}
         {octaveTicks.map(t => (
@@ -330,74 +367,196 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         />
 
         {/* Nodes — circle on the strip + multi-row label to the right.
-            JI ratios reference the lowest currently-placed node as 1/1
-            (a future "pin as 1/1" menu action will let users override). */}
+            JI ratios reference the lowest currently-placed in-range
+            node as 1/1.  Out-of-range nodes (harmonics past A6 or
+            sub-harmonics below A1) render as small grey dots on the
+            far edge — visible-but-silent so users can see partials
+            that exist beyond the strip. */}
         {(() => {
           if (!nodes.length) return null;
-          const sorted = [...nodes].sort((a, b) => a.freq - b.freq);
-          const rootFreq = sorted[0].freq;
+          const inRange = nodes.filter(n => !n.outOfRange);
+          const oor = nodes.filter(n => n.outOfRange);
+          const sorted = [...inRange].sort((a, b) => a.freq - b.freq);
+          const rootFreq = sorted[0]?.freq;
           const labelX = 50 + STRIP_W + 70;
-          return nodes.map(n => {
-            const y = yFromFreq(n.freq);
-            const cx = 50 + STRIP_W / 2;
-            const isRoot = n.id === sorted[0].id;
-            const edo_ = edoLabelFor(n.freq, edo);
-            const ji = isRoot ? null : findJiRatio(n.freq / rootFreq, primeLimit);
-            const ratioStr = isRoot
-              ? "1/1"
-              : (ji ? formatJiRatio(ji) : `+${(1200 * Math.log2(n.freq / rootFreq)).toFixed(1)}¢`);
-            const edoStr = `${edo_.name}${
-              Math.abs(edo_.drift) < 1
-                ? ""
-                : ` ${edo_.drift >= 0 ? "+" : "−"}${Math.abs(edo_.drift).toFixed(1)}¢`
-            }`;
-            // Three-row label.  Center the rows around the node y so the
-            // label visually anchors to the dot.
-            const rows: string[] = [];
-            rows.push(`${n.freq.toFixed(1)} Hz`);
-            if (labelMode !== "ji") rows.push(edoStr);
-            if (labelMode !== "edo") rows.push(ratioStr);
-            const rowH = 12;
-            const yOff = -((rows.length - 1) * rowH) / 2;
-            return (
-              <g key={n.id}>
-                <line
-                  x1={50} x2={50 + STRIP_W}
-                  y1={y} y2={y}
-                  stroke="#55aa88" strokeWidth={1.5}
-                />
-                <circle
-                  cx={cx} cy={y} r={6}
-                  fill={isRoot ? "#c8aa50" : "#55aa88"}
-                  stroke="#0a0a0a" strokeWidth={2}
-                  onClick={(e) => { e.stopPropagation(); removeNode(n.id); }}
-                  style={{ cursor: "pointer" }}
-                >
-                  <title>{isRoot ? "Lowest node — JI 1/1 reference. Click to remove." : "Click to remove."}</title>
-                </circle>
-                {rows.map((text, i) => (
-                  <text
-                    key={i}
-                    x={labelX}
-                    y={y + yOff + i * rowH + 4}
-                    fill={
-                      i === 0 ? "#aaa"
-                      : (rows[i] === ratioStr ? "#c8aa50" : "#9999ee")
-                    }
-                    fontSize={i === 0 ? 11 : 10}
-                    fontFamily="monospace"
-                  >
-                    {text}
-                  </text>
-                ))}
-              </g>
-            );
-          });
+          const cx = 50 + STRIP_W / 2;
+
+          // Out-of-range dots — draw them stacked at the strip's top or
+          // bottom edge so they stay anchored even though their real
+          // y is off-canvas.  Stagger horizontally so dots from a long
+          // harmonic series don't pile on a single pixel.
+          const oorAbove = oor.filter(n => !n.subharmonic);
+          const oorBelow = oor.filter(n =>  n.subharmonic);
+
+          return (
+            <>
+              {oorAbove.map((n, i) => {
+                const x = cx + (i - (oorAbove.length - 1) / 2) * 9;
+                return (
+                  <g key={n.id}>
+                    <circle
+                      cx={x} cy={STRIP_PAD_TOP - 6} r={2.5}
+                      fill="#444" stroke="#222" strokeWidth={0.5}
+                    >
+                      <title>h{n.harmonicNum} = {n.freq.toFixed(1)} Hz (above A6 — visible only)</title>
+                    </circle>
+                  </g>
+                );
+              })}
+              {oorBelow.map((n, i) => {
+                const x = cx + (i - (oorBelow.length - 1) / 2) * 9;
+                return (
+                  <g key={n.id}>
+                    <circle
+                      cx={x} cy={STRIP_H - STRIP_PAD_BOT + 6} r={2.5}
+                      fill="#444" stroke="#222" strokeWidth={0.5}
+                    >
+                      <title>1/{n.harmonicNum} = {n.freq.toFixed(1)} Hz (below A1 — visible only)</title>
+                    </circle>
+                  </g>
+                );
+              })}
+
+              {inRange.map(n => {
+                const y = yFromFreq(n.freq);
+                const isRoot = rootFreq !== undefined && n.id === sorted[0].id;
+                const isMenuOpen = menuNodeId === n.id;
+                const edo_ = edoLabelFor(n.freq, edo);
+                const ji = (isRoot || rootFreq === undefined)
+                  ? null
+                  : findJiRatio(n.freq / rootFreq, primeLimit);
+                const ratioStr = isRoot
+                  ? "1/1"
+                  : (ji
+                      ? formatJiRatio(ji)
+                      : (rootFreq !== undefined
+                          ? `+${(1200 * Math.log2(n.freq / rootFreq)).toFixed(1)}¢`
+                          : ""));
+                const edoStr = `${edo_.name}${
+                  Math.abs(edo_.drift) < 1
+                    ? ""
+                    : ` ${edo_.drift >= 0 ? "+" : "−"}${Math.abs(edo_.drift).toFixed(1)}¢`
+                }`;
+                const rows: string[] = [];
+                rows.push(`${n.freq.toFixed(1)} Hz`);
+                if (labelMode !== "ji") rows.push(edoStr);
+                if (labelMode !== "edo") rows.push(ratioStr);
+                const rowH = 12;
+                const yOff = -((rows.length - 1) * rowH) / 2;
+                return (
+                  <g key={n.id}>
+                    <line
+                      x1={50} x2={50 + STRIP_W}
+                      y1={y} y2={y}
+                      stroke={n.harmonicOf ? "#7173e6" : "#55aa88"}
+                      strokeWidth={1.5}
+                    />
+                    <circle
+                      cx={cx} cy={y}
+                      r={isMenuOpen ? 8 : 6}
+                      fill={isRoot ? "#c8aa50" : (n.harmonicOf ? "#7173e6" : "#55aa88")}
+                      stroke={isMenuOpen ? "#fff" : "#0a0a0a"}
+                      strokeWidth={2}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuNodeId(prev => prev === n.id ? null : n.id);
+                      }}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <title>Click for options.</title>
+                    </circle>
+                    {rows.map((text, i) => (
+                      <text
+                        key={i}
+                        x={labelX}
+                        y={y + yOff + i * rowH + 4}
+                        fill={
+                          i === 0 ? "#aaa"
+                          : (rows[i] === ratioStr ? "#c8aa50" : "#9999ee")
+                        }
+                        fontSize={i === 0 ? 11 : 10}
+                        fontFamily="monospace"
+                      >
+                        {text}
+                      </text>
+                    ))}
+                  </g>
+                );
+              })}
+            </>
+          );
         })()}
       </svg>
 
+      {(() => {
+        if (!menuNodeId) return null;
+        const node = nodes.find(n => n.id === menuNodeId);
+        if (!node || node.outOfRange) return null;
+        const y = yFromFreq(node.freq);
+        // Anchor the menu to the right of the strip + label area, then
+        // clamp vertically so it fits inside the strip's height even
+        // when the source node is near the top or bottom.
+        const MENU_W = 220;
+        const MENU_H_EST = 240;
+        const left = 50 + STRIP_W + 200;
+        let top = y - MENU_H_EST / 2;
+        if (top < 4) top = 4;
+        if (top + MENU_H_EST > STRIP_H - 4) top = STRIP_H - 4 - MENU_H_EST;
+        return (
+          <div
+            className="absolute bg-[#161616] border border-[#3a3a3a] rounded shadow-lg p-2 space-y-1 z-10"
+            style={{ left, top, width: MENU_W }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="text-[10px] text-[#777] px-1 pb-1 border-b border-[#2a2a2a]">
+              Node @ {node.freq.toFixed(1)} Hz
+            </div>
+
+            <div className="text-[9px] text-[#666] px-1 pt-1">Harmonic series above</div>
+            <div className="flex gap-1">
+              {HARMONIC_PRESET_COUNTS.map(c => (
+                <button key={c}
+                  onClick={() => addHarmonicSeries(node.id, c, false)}
+                  className="flex-1 px-1 py-1 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#7173e622] hover:border-[#7173e6] hover:text-[#9999ee]"
+                >
+                  h2-{c}
+                </button>
+              ))}
+            </div>
+
+            <div className="text-[9px] text-[#666] px-1 pt-1">Sub-harmonics below</div>
+            <div className="flex gap-1">
+              {HARMONIC_PRESET_COUNTS.map(c => (
+                <button key={c}
+                  onClick={() => addHarmonicSeries(node.id, c, true)}
+                  className="flex-1 px-1 py-1 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#7173e622] hover:border-[#7173e6] hover:text-[#9999ee]"
+                >
+                  1/2-{c}
+                </button>
+              ))}
+            </div>
+
+            <div className="pt-1 border-t border-[#2a2a2a] flex gap-1">
+              <button
+                onClick={() => removeNode(node.id)}
+                className="flex-1 px-2 py-1 text-[10px] rounded bg-[#2a1414] border border-[#552020] text-[#c08080] hover:bg-[#3a1818]"
+              >
+                Delete{nodes.some(n => n.harmonicOf === node.id) ? " (and its series)" : ""}
+              </button>
+              <button
+                onClick={() => setMenuNodeId(null)}
+                className="px-2 py-1 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#888]"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+      </div>
+
       <p className="text-[10px] text-[#444]">
-        Click strip = add node · Click node = remove
+        Click strip = add node · Click node = open menu (harmonic series, delete) · Out-of-range partials shown as small grey dots above/below the strip
       </p>
     </div>
   );
