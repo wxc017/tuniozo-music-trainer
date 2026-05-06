@@ -450,9 +450,13 @@ const HEATHWAITE_SOLFEGE_41 = [
  *  null for EDOs without a Heathwaite mapping (the caller should fall
  *  back to the standard solfege or skip the syllable label). */
 export function getHeathwaiteSolfege(edo: number): string[] | null {
+  // Heathwaite is exposed only for 12-EDO and 31-EDO per direct user
+  // direction (2026-05-05): "remove heathwaite solfege from anything
+  // besides 31 and 12".  The 41-EDO mapping stays compiled-in
+  // (HEATHWAITE_SOLFEGE_41 above) in case the policy changes back, but
+  // it's no longer reachable from the picker / TTS path.
   if (edo === 12) return HEATHWAITE_SOLFEGE_12;
   if (edo === 31) return HEATHWAITE_SOLFEGE_31;
-  if (edo === 41) return HEATHWAITE_SOLFEGE_41;
   return null;
 }
 
