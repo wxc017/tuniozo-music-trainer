@@ -161,6 +161,7 @@ interface SlotHistoryEntry {
  *  the lattice. */
 function ScalarExplorationLayout(props: {
   tonicPc: number;
+  setTonicPc: (pc: number) => void;
   lowestPitch: number;
   highestPitch: number;
   edo: number;
@@ -173,7 +174,7 @@ function ScalarExplorationLayout(props: {
   playVol: number;
 }) {
   const {
-    tonicPc, lowestPitch, highestPitch, edo, vizType, highlighted, layout,
+    tonicPc, setTonicPc, lowestPitch, highestPitch, edo, vizType, highlighted, layout,
     ensureAudio, handleKeyClick, handleHighlight, playVol,
   } = props;
   // Lattice portal target — stored as state (not ref) so that when
@@ -208,7 +209,7 @@ function ScalarExplorationLayout(props: {
         </div>
         <div className="px-4 pt-3">
           <div className="max-w-6xl mx-auto w-full">
-            <ScalarTab tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch}
+            <ScalarTab tonicPc={tonicPc} setTonicPc={setTonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch}
               edo={edo} onHighlight={handleHighlight}
               ensureAudio={ensureAudio} playVol={playVol}
               lowerSectionPortalTarget={latticeTarget} />
@@ -1175,6 +1176,7 @@ export default function App() {
       {section === "scalar-exploration" && (
         <ScalarExplorationLayout
           tonicPc={tonicPc}
+          setTonicPc={setTonicPc}
           lowestPitch={lowestPitch}
           highestPitch={highestPitch}
           edo={edo}

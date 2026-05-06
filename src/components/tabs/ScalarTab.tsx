@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { audioEngine } from "@/lib/audioEngine";
 import { useLS } from "@/lib/storage";
-import { formatHalfAccidentals, getModeDegreeMap, getSolfege, getHeathwaiteSolfege, getBaseChords, getChordShapes } from "@/lib/edoData";
+import { formatHalfAccidentals, getModeDegreeMap, getSolfege, getHeathwaiteSolfege, getBaseChords, getChordShapes, pcToNoteNameWithEnharmonic } from "@/lib/edoData";
 import { syllableForEdoStep } from "@/lib/microtonalSolfege";
 import { piperSpeak, piperPrewarm } from "@/lib/piperSpeech";
 import { heathwaiteIpa } from "@/lib/solfegeSpeech";
@@ -19,6 +19,7 @@ import ModeLattice3D from "../scalar/ModeLattice3D";
 
 interface Props {
   tonicPc: number;
+  setTonicPc: (pc: number) => void;
   lowestPitch: number;
   highestPitch: number;
   edo: number;
@@ -113,7 +114,7 @@ function tonalitySectionsForEdo(edo: number): TonalitySection[] {
 }
 
 export default function ScalarTab({
-  tonicPc, lowestPitch, highestPitch, edo, onHighlight, ensureAudio, playVol = 0.55,
+  tonicPc, setTonicPc, lowestPitch, highestPitch, edo, onHighlight, ensureAudio, playVol = 0.55,
   lowerSectionPortalTarget,
 }: Props) {
   const [selected, setSelected] = useLS<string>("lt_scalar_tonality", "Major");
@@ -400,6 +401,22 @@ export default function ScalarTab({
 
   return (
     <div className="space-y-4">
+      {/* ── Root note picker — every other section that uses tonicPc
+          either has its own (Tonal Audiation) or doesn't need a UI for
+          it.  Scalar Explorations needed one too per direct user
+          direction (2026-05-05): "to select a root note in scalar
+          explorations is missing, i dont see a way to select one". */}
+      <div className="bg-[#0e0e0e] border border-[#222] rounded px-3 py-2 flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] text-[#888] uppercase tracking-wider">Root</span>
+        <select value={tonicPc}
+          onChange={e => setTonicPc(Number(e.target.value))}
+          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
+          {Array.from({ length: edo }, (_, i) => (
+            <option key={i} value={i}>{formatHalfAccidentals(pcToNoteNameWithEnharmonic(i, edo) ?? "", edo)}</option>
+          ))}
+        </select>
+      </div>
+
       {/* ── Tuning-family EDO selector — Temperament-Explorer style.
           Three families now supported here, mirroring Tonal Audiation:
           Meantone (12 / 19 / 31), Pythagorean (41), Schismatic (53). ── */}

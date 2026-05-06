@@ -152,10 +152,31 @@ function preprocessDroneBuffer(_ctx: AudioContext, original: AudioBuffer): {
   const channels = original.numberOfChannels;
   const bufDur = original.duration;
 
-  // Trim attack + release: ≥1 s buffer trims 15% / 10%; very short
+  // Auto-detect leading silence — some recordings (e.g. the Freesound
+  // CC0 choir clip) start with a fraction of a second of room tone
+  // before the singing begins.  Without trimming this the dual-voice
+  // looper plays the silence at every voice re-trigger and the user
+  // hears repeated dropouts (per direct feedback 2026-05-05: "with
+  // choir there is a bit of silence in the beginning the should be
+  // cut off to make the looping sound smoother").  We scan from the
+  // start until amplitude crosses a 2% threshold, then apply the
+  // standard attack-trim heuristic on top of that detected onset.
+  let onsetSamp = 0;
+  const SILENCE_THRESHOLD = 0.02;
+  outer: for (let i = 0; i < totalSamples; i++) {
+    for (let ch = 0; ch < channels; ch++) {
+      if (Math.abs(original.getChannelData(ch)[i]) > SILENCE_THRESHOLD) {
+        onsetSamp = i;
+        break outer;
+      }
+    }
+  }
+  const onsetSec = onsetSamp / sampleRate;
+  const usableDur = Math.max(0, bufDur - onsetSec);
+  // Trim attack + release: ≥1 s usable trims 15% / 10%; very short
   // buffers trim less so we don't run out of usable material.
-  const trimAttackSec = bufDur >= 1.0 ? Math.min(0.4, bufDur * 0.15) : 0.05;
-  const trimReleaseSec = bufDur >= 1.0 ? Math.min(0.4, bufDur * 0.1) : 0;
+  const trimAttackSec = onsetSec + (usableDur >= 1.0 ? Math.min(0.4, usableDur * 0.15) : 0.05);
+  const trimReleaseSec = usableDur >= 1.0 ? Math.min(0.4, usableDur * 0.1) : 0;
   const loopStartSamp = Math.floor(trimAttackSec * sampleRate);
   const loopEndSamp = Math.floor((bufDur - trimReleaseSec) * sampleRate);
 
@@ -181,21 +202,37 @@ function preprocessDroneBuffer(_ctx: AudioContext, original: AudioBuffer): {
     normGain = DRONE_PEAK_CAP / peak;
   }
 
-  // Build a normalized copy.  We leave the seam region untouched —
-  // playback handles the loop transition via voice overlap, not via
-  // in-buffer crossfade.
-  const newBuffer = original.numberOfChannels === channels && normGain === 1.0
-    ? original
-    : (() => {
-        const buf = original; // need a fresh AudioBuffer to keep `original` clean
-        const out = new AudioBuffer({ length: totalSamples, numberOfChannels: channels, sampleRate });
-        for (let ch = 0; ch < channels; ch++) {
-          const inD = buf.getChannelData(ch);
-          const outD = out.getChannelData(ch);
-          for (let i = 0; i < totalSamples; i++) outD[i] = inD[i] * normGain;
-        }
-        return out;
-      })();
+  // Build a normalized copy AND apply tiny seam fades.  Voice + tanpura
+  // recordings have natural micro-vibrato that beat against themselves
+  // when overlapped (user reported "voice it doesnt sound seemless it
+  // just sounds like an up and down roller coaster" 2026-05-05), so we
+  // dropped the dual-voice overlap scheduler in favour of single-source
+  // src.loop=true.  To suppress the loop-wrap click without introducing
+  // beats, we fade in over the first ~25 ms of the loop region and
+  // fade out over the last ~25 ms.  At the seam: end fades to silence,
+  // wraps to silence, fades back up — no click, no rollercoaster.
+  const seamFadeSec = 0.025;
+  const seamFadeSamp = Math.min(
+    Math.floor(seamFadeSec * sampleRate),
+    Math.floor((loopEndSamp - loopStartSamp) / 4),  // never more than 25% of loop
+  );
+  const out = new AudioBuffer({ length: totalSamples, numberOfChannels: channels, sampleRate });
+  for (let ch = 0; ch < channels; ch++) {
+    const inD = original.getChannelData(ch);
+    const outD = out.getChannelData(ch);
+    for (let i = 0; i < totalSamples; i++) outD[i] = inD[i] * normGain;
+    // Fade in over the first seamFadeSamp samples of the loop region.
+    for (let i = 0; i < seamFadeSamp; i++) {
+      const t = i / seamFadeSamp;
+      outD[loopStartSamp + i] *= Math.sin(t * Math.PI / 2);
+    }
+    // Fade out over the last seamFadeSamp samples of the loop region.
+    for (let i = 0; i < seamFadeSamp; i++) {
+      const t = i / seamFadeSamp;
+      outD[loopEndSamp - seamFadeSamp + i] *= Math.cos(t * Math.PI / 2);
+    }
+  }
+  const newBuffer = out;
 
   return {
     buffer: newBuffer,
@@ -789,95 +826,31 @@ export class AudioEngine {
     }
   }
 
-  /** Sample-based drone playback via overlapping voices.
+  /** Sample-based drone playback — single looping BufferSource.
    *
-   *  Per direct user direction (2026-05-05): "what if you just play
-   *  the loop multiple times like overlapping like if the loop is 3
-   *  seconds you start another one at 1.5 seconds. this may be a
-   *  better option / but have it fade in for this sequence".
-   *
-   *  Each "voice" plays the buffer's loop region exactly ONCE with
-   *  an equal-power fade-in / fade-out envelope spanning the entire
-   *  voice duration (no flat sustain).  A new voice fires every
-   *  loopDur/2 seconds, so any moment has TWO voices summed: voice N
-   *  fading out as voice N+1 fades in, exactly mirrored.  Because
-   *  cos²(t·π/2) + sin²(t·π/2) = 1 for all t, the energy sum stays
-   *  constant — no audible "cutting in and out" at the transitions.
-   *
-   *  No internal loop seam exists: each voice is a fresh playback of
-   *  the same buffer, so we never re-articulate the loop wrap.  The
-   *  setTimeout chain re-fires voices forever; stopDrone() cancels
-   *  the timers via this.droneLoopTimers and disconnects all
-   *  BufferSources via this.droneSamples. */
+   *  Earlier dual-voice scheduler caused beating with vocal samples
+   *  (user reported "voice doesnt sound seemless it just sounds like
+   *  an up and down roller coaster" 2026-05-05): two voices playing
+   *  the same recording at different time offsets summed their natural
+   *  micro-vibrato into amplitude modulation.  Reverted to a single
+   *  src.loop=true BufferSource.  preprocessDroneBuffer applies tiny
+   *  in-buffer fades at the loop seam (~25 ms each side), so the wrap
+   *  goes silence → silence with no click — and there's no second
+   *  voice to beat against the first. */
   private spawnSampleLoop(ctx: AudioContext, sample: InstrumentSample, rate: number, noteGain: GainNode) {
-    const loopDurSrc = sample.loopEnd - sample.loopStart;             // seconds in source
-    const loopDur = loopDurSrc / rate;                                 // wall-clock seconds when pitched
-    if (loopDur < 0.4) {
-      // Too short for the dual-voice approach — fall back to plain
-      // src.loop=true (the seam click is the lesser evil here).
-      const src = ctx.createBufferSource();
-      src.buffer = sample.buffer;
-      src.loop = true;
-      src.loopStart = sample.loopStart;
-      src.loopEnd = sample.loopEnd;
-      src.playbackRate.value = rate;
-      src.connect(noteGain);
-      src.start(0, sample.loopStart);
-      this.droneSamples.push(src);
-      return;
-    }
-
-    const halfDur = loopDur / 2;
-    // Equal-power fade curves precomputed once — cos for fade-out,
-    // sin for fade-in.  64 points is plenty for a smooth curve.
-    const curveLen = 64;
-    const fadeIn = new Float32Array(curveLen);
-    const fadeOut = new Float32Array(curveLen);
-    for (let i = 0; i < curveLen; i++) {
-      const x = i / (curveLen - 1);
-      fadeIn[i] = Math.sin(x * Math.PI / 2);
-      fadeOut[i] = Math.cos(x * Math.PI / 2);
-    }
-
-    /** Spawn one voice with the standard fade-in / fade-out envelope. */
-    const fireVoice = (startTime: number) => {
-      const src = ctx.createBufferSource();
-      src.buffer = sample.buffer;
-      src.playbackRate.value = rate;
-      const g = ctx.createGain();
-      src.connect(g).connect(noteGain);
-
-      // Standard envelope: equal-power fade-in over the first halfDur,
-      // fade-out over the second halfDur.  No flat sustain — the next
-      // voice picks up via its own ramp shifted by halfDur.
-      g.gain.setValueAtTime(0, startTime);
-      g.gain.setValueCurveAtTime(fadeIn, startTime, halfDur);
-      g.gain.setValueCurveAtTime(fadeOut, startTime + halfDur, halfDur);
-
-      src.start(startTime, sample.loopStart, loopDurSrc);
-      src.stop(startTime + loopDur + 0.05);
-      this.droneSamples.push(src);
-    };
-
-    // Voice 1 starts immediately, Voice 2 at halfDur, voice 3 at
-    // 2*halfDur, ... — every voice fades in / fades out over its own
-    // halfDur halves; consecutive voices overlap by exactly halfDur,
-    // so the equal-power crossfade keeps the sum constant.
-    let nextStart = ctx.currentTime + 0.02;
-    fireVoice(nextStart);
-    nextStart += halfDur;
-    fireVoice(nextStart);
-
-    // Re-fire every halfDur seconds.  The setTimeout chain stays alive
-    // until stopDrone() cancels via droneLoopTimers.
-    const scheduleNext = () => {
-      nextStart += halfDur;
-      fireVoice(nextStart);
-      const t = setTimeout(scheduleNext, halfDur * 1000);
-      this.droneLoopTimers.push(t);
-    };
-    const t0 = setTimeout(scheduleNext, halfDur * 1000);
-    this.droneLoopTimers.push(t0);
+    const src = ctx.createBufferSource();
+    src.buffer = sample.buffer;
+    src.loop = true;
+    src.loopStart = sample.loopStart;
+    src.loopEnd = sample.loopEnd;
+    src.playbackRate.value = rate;
+    src.connect(noteGain);
+    // Start playback inside the loop region so the user hears steady
+    // sustain immediately — preprocess ensures the first ~25 ms of
+    // the loop region fade in from silence so this isn't an abrupt
+    // start, but that's ~ inaudible compared to a full attack.
+    src.start(0, sample.loopStart);
+    this.droneSamples.push(src);
   }
 
   /** Attach a slow ~4.5 Hz LFO to an oscillator's detune param so the
