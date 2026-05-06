@@ -378,7 +378,8 @@ const HARMONIC_MINOR_ROTATION_NAMES = [
 // "Locrian s2 s5 s6" / "Dorian s3 bb4 s7" / "Subharmonic Diatonic M7"
 // style.  Algorithm:
 //   1. Compute each scale-degree's letter code from its cents value
-//      (s / m / Cm / u / n / C / M / S for 2/3/6/7; #/b stacks for 4/5).
+//      (s / m / Clm / u / n / Cl / M / S for 2/3/6/7; #/b accidentals
+//      for 4/5, capped at bb / ##).
 //   2. Find the closest Greek mode (Ionian / Dorian / Phrygian / Lydian
 //      / Mixolydian / Aeolian / Locrian) by counting per-degree matches.
 //   3. List degrees that DIFFER from that Greek mode's reference codes
@@ -392,27 +393,28 @@ const HARMONIC_MINOR_ROTATION_NAMES = [
  *  between adjacent named cells), so the same function works for any
  *  EDO that resolves the named cells. */
 function letterCodeForDegree(cents: number, position: 2 | 3 | 4 | 5 | 6 | 7): string {
-  // 4 / 5 use bare-number + #/b accidentals (each # / b ≈ 24-29¢
-  // depending on EDO; we pick the band closest to canonical P4/P5).
+  // 4 / 5 use bare-number + #/b accidentals.  Bands centred on
+  // canonical JI interval values (not on a fixed 24¢ EDO grid) so
+  // music-theoretically meaningful intervals get sensible labels:
+  // Pyth dim-5 = 588¢ → "b5" (Locrian), Pyth #4 = 612¢ → "#4"
+  // (Lydian).  An out-of-position note from a rotation (e.g. a M3
+  // sitting in the 4-slot because the rotation has no real P4) is
+  // labelled "bb4", which the alteration suffix surfaces directly —
+  // far less ugly than the previous 24¢-wide bands that produced
+  // "bbbb5" / "####4" for the same conditions.
   if (position === 4) {
-    // Canonical P4 = 498¢.  Each band ≈ 24¢ wide (matches 53-EDO step).
-    if (cents < 462) return "bb4";
-    if (cents < 486) return "b4";
-    if (cents < 510) return "4";
-    if (cents < 534) return "#4";
-    if (cents < 558) return "##4";
-    if (cents < 582) return "###4";
-    return "####4";
+    if (cents < 450) return "bb4";   // catch-all for "way below P4" (M3 in 4-slot)
+    if (cents < 486) return "b4";    // 5-limit dim 4 / Pyth dim 4 area
+    if (cents < 525) return "4";     // P4 = 498 ± a comma
+    if (cents < 660) return "#4";    // tritone band: 11/8 (551), 7/5 (583), 45/32 (590), Pyth #4 (612)
+    return "##4";                     // very rare — close to P5
   }
   if (position === 5) {
-    // Canonical P5 = 702¢.
-    if (cents < 618) return "bbbb5";
-    if (cents < 642) return "bbb5";
-    if (cents < 666) return "bb5";
-    if (cents < 690) return "b5";
-    if (cents < 714) return "5";
-    if (cents < 738) return "#5";
-    return "##5";
+    if (cents < 555) return "bb5";   // doubly-diminished 5 / 4-in-5-slot territory
+    if (cents < 675) return "b5";    // Pyth dim 5 = 588 (Locrian); covers 41/53-EDO drift
+    if (cents < 735) return "5";     // P5 = 702 ± a comma
+    if (cents < 790) return "#5";    // 5-limit aug 5 = 773, sub-aug 765
+    return "##5";                     // Pyth aug 5 (816) and beyond
   }
   // 2 / 3 / 6 / 7: letter prefix.  Centre cents are the canonical JI
   // ratios for each variety; band edges are midpoints between them.
@@ -439,6 +441,9 @@ function letterCodeForDegree(cents: number, position: 2 | 3 | 4 | 5 | 6 | 7): st
       [462, "S3"],   // super: 9/7 = 435¢
     ],
     6: [
+      [755, "bb6"],   // out-of-range catch-all (e.g. a M3 / aug-4 sitting in the 6-slot
+                       // because the rotation has no proper sixth — labels it "bb6"
+                       // instead of mislabeling it as "s6")
       [779, "s6"],   // sub: 14/9 = 765¢
       [803, "m6"],   // Pyth: 128/81 = 792¢
       [827, "Clm6"],  // 5-limit: 8/5 = 814¢
@@ -449,6 +454,7 @@ function letterCodeForDegree(cents: number, position: 2 | 3 | 4 | 5 | 6 | 7): st
       [950, "S6"],   // super: 12/7 = 933¢
     ],
     7: [
+      [950,  "bb7"],   // out-of-range catch-all (a M6 in the 7-slot etc.)
       [982,  "s7"],   // sub: 7/4 = 969¢
       [1007, "m7"],   // Pyth: 16/9 = 996¢
       [1030, "Clm7"],  // 5-limit: 9/5 = 1018¢
