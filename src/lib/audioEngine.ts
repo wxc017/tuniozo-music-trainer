@@ -381,6 +381,19 @@ export class AudioEngine {
   private droneGeneration = 0;
   private droneNoteGains: GainNode[] = [];
   private droneGainNode: GainNode | null = null;
+  // Per-voice keyed drones — used by the Drone Continuum tab so that
+  // adding a new node doesn't restart every other voice.  Each voice
+  // tracks its own samples + timers + per-voice generation counter
+  // (so stopRatioDroneVoice cancels the dual-voice scheduler chain
+  // for that voice without affecting any other voice).
+  private droneVoices: Map<string, {
+    noteGain: GainNode;
+    samples: AudioBufferSourceNode[];
+    nodes: AudioNode[];        // oscillators / LFOs from the synth-fallback path
+    timers: ReturnType<typeof setTimeout>[];
+    generation: number;
+  }> = new Map();
+  private voiceGenerationCounter = 0;
   private intervalDrones: Map<string, { osc: OscillatorNode; gain: GainNode }> = new Map();
   private intervalDroneMaster: GainNode | null = null;
   private playGainNode: GainNode | null = null;
@@ -1052,6 +1065,7 @@ export class AudioEngine {
    *  The sample will be reloaded on next init(). */
   stopAll() {
     this.stopDrone();
+    this.stopAllRatioDroneVoices();
     for (const key of this.intervalDrones.keys()) this.stopIntervalDroneByKey(key);
     if (this.ctx) {
       try { this.ctx.close(); } catch {}
@@ -1204,6 +1218,200 @@ export class AudioEngine {
   }
 
   getDroneNoteCount() { return this.droneNoteGains.length; }
+
+  // ── Keyed per-voice drone API ─────────────────────────────────────
+  //
+  // Lets callers add / remove / re-gain a SINGLE drone voice without
+  // touching the others.  Drone Continuum uses this so that clicking
+  // a new node on the strip just spawns one extra voice rather than
+  // tearing down every voice and restarting them all from gain 0.
+  //
+  // Voices share the same droneGainNode → playLimiter → masterGain →
+  // analyser → destination chain as the monolithic startRatioDrone,
+  // so the master gain knob still works and the spectrum analyser
+  // sees them.  Each voice is tracked under a parent-supplied string
+  // key (e.g. the React node id) and carries its own generation
+  // counter so the dual-voice scheduler's setTimeout chain stops
+  // when stopRatioDroneVoice fires for that key.
+
+  /** Lazy-create the shared drone bus + analyser graph if it isn't
+   *  already up.  Called by the per-voice path so the first voice
+   *  doesn't need a prior startRatioDrone() to bootstrap the bus. */
+  private ensureDroneBus() {
+    if (this.droneGainNode) return;
+    const ctx = this.getCtx();
+    this.droneGainNode = ctx.createGain();
+    this.droneGainNode.gain.value = 1.0;
+    this.droneGainNode.connect(this.playLimiter ?? this.masterGain ?? ctx.destination);
+  }
+
+  /** Spawn one keyed drone voice at `baseFreq * ratio`, gain `gain`.
+   *  Replaces any existing voice at the same key (so re-calling with
+   *  a new ratio retunes that voice in place).  Awaits sample load
+   *  the same way startRatioDrone does so the first voice doesn't
+   *  race the lazy fetch. */
+  async startRatioDroneVoice(key: string, ratio: number, gain: number, baseFreq: number): Promise<void> {
+    this.stopRatioDroneVoice(key);
+    const ctx = this.getCtx();
+    await this.waitForSamples(5000);
+    this.ensureDroneBus();
+
+    const generation = ++this.voiceGenerationCounter;
+    const noteGain = ctx.createGain();
+    noteGain.gain.value = gain * DRONE_PATH_GAIN;
+    noteGain.connect(this.droneGainNode!);
+
+    const voice = { noteGain, samples: [] as AudioBufferSourceNode[], nodes: [] as AudioNode[], timers: [] as ReturnType<typeof setTimeout>[], generation };
+    this.droneVoices.set(key, voice);
+
+    const targetFreq = baseFreq * ratio;
+    const useSamples = this.hasLoadedSamples();
+    const wave = this.buildDroneWave(ctx);
+
+    if (useSamples) {
+      const pick = this.pickClosestSample(this.freqToMidi(targetFreq));
+      if (pick) {
+        this.spawnVoiceSampleLoop(ctx, pick.sample, pick.rate, voice, key);
+        return;
+      }
+    }
+    if (wave) {
+      const osc = ctx.createOscillator();
+      osc.setPeriodicWave(wave);
+      osc.frequency.value = targetFreq;
+      this.attachVibratoForVoice(osc, ctx, voice);
+      osc.connect(noteGain);
+      osc.start();
+      voice.nodes.push(osc);
+    }
+  }
+
+  /** Stop and tear down a single keyed voice. */
+  stopRatioDroneVoice(key: string) {
+    const v = this.droneVoices.get(key);
+    if (!v) return;
+    v.generation = -1;  // invalidate scheduler chain
+    for (const t of v.timers) clearTimeout(t);
+    v.timers = [];
+    for (const s of v.samples) {
+      try { s.stop(); } catch {}
+      try { s.disconnect(); } catch {}
+    }
+    v.samples = [];
+    for (const n of v.nodes) {
+      try { (n as OscillatorNode).stop?.(); } catch {}
+      try { n.disconnect(); } catch {}
+    }
+    v.nodes = [];
+    try { v.noteGain.disconnect(); } catch {}
+    this.droneVoices.delete(key);
+  }
+
+  /** Live-update a single voice's gain without restarting it. */
+  setRatioDroneVoiceGain(key: string, gain: number) {
+    const v = this.droneVoices.get(key);
+    if (!v) return;
+    v.noteGain.gain.setTargetAtTime(gain * DRONE_PATH_GAIN, this.getCtx().currentTime, 0.05);
+  }
+
+  /** Tear down ALL keyed voices.  Used when the parent wants to
+   *  switch instrument or strip-base-freq atomically (those are
+   *  global settings; switching them mid-flight requires every voice
+   *  to restart). */
+  stopAllRatioDroneVoices() {
+    for (const key of Array.from(this.droneVoices.keys())) this.stopRatioDroneVoice(key);
+  }
+
+  /** List of currently-active voice keys. */
+  getActiveDroneVoiceKeys(): string[] {
+    return Array.from(this.droneVoices.keys());
+  }
+
+  /** Voice-tracked clone of spawnSampleLoop's dual-voice scheduler.
+   *  Stores buffer sources in `voice.samples` and setTimeout handles
+   *  in `voice.timers` so stopRatioDroneVoice can cancel them per-key. */
+  private spawnVoiceSampleLoop(
+    ctx: AudioContext,
+    sample: InstrumentSample,
+    rate: number,
+    voice: { noteGain: GainNode; samples: AudioBufferSourceNode[]; nodes: AudioNode[]; timers: ReturnType<typeof setTimeout>[]; generation: number },
+    voiceKey: string,
+  ) {
+    const loopDurOutSec = (sample.loopEnd - sample.loopStart) / rate;
+    if (!isFinite(loopDurOutSec) || loopDurOutSec <= 0.05) {
+      const src = ctx.createBufferSource();
+      src.buffer = sample.buffer;
+      src.loop = true;
+      src.loopStart = sample.loopStart;
+      src.loopEnd = sample.loopEnd;
+      src.playbackRate.value = rate;
+      src.connect(voice.noteGain);
+      src.start(0, sample.loopStart);
+      voice.samples.push(src);
+      return;
+    }
+
+    const halfDurSec = loopDurOutSec / 2;
+    const halfBufferDur = (sample.loopEnd - sample.loopStart) / 2;
+    const myGen = voice.generation;
+
+    const fireVoice = (startTime: number) => {
+      // Cancellation: voice has been replaced or stopped
+      const current = this.droneVoices.get(voiceKey);
+      if (!current || current.generation !== myGen) return;
+
+      const src = ctx.createBufferSource();
+      src.buffer = sample.buffer;
+      src.playbackRate.value = rate;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, startTime);
+      g.gain.linearRampToValueAtTime(1, startTime + halfDurSec);
+      g.gain.linearRampToValueAtTime(0, startTime + loopDurOutSec);
+      src.connect(g);
+      g.connect(voice.noteGain);
+      const bufferDur = sample.loopEnd - sample.loopStart;
+      src.start(startTime, sample.loopStart, bufferDur);
+      voice.samples.push(src);
+
+      const nextStart = startTime + halfDurSec;
+      const wakeAheadSec = 0.5;
+      const delayMs = Math.max(0, (nextStart - ctx.currentTime - wakeAheadSec) * 1000);
+      const t = setTimeout(() => fireVoice(nextStart), delayMs);
+      voice.timers.push(t);
+    };
+
+    const t0 = ctx.currentTime;
+
+    // Boot voice — same trick as spawnSampleLoop's: an
+    // already-in-progress voice at gain 1 fading to 0 so total
+    // energy is at peak from t=0+.
+    const bootSrc = ctx.createBufferSource();
+    bootSrc.buffer = sample.buffer;
+    bootSrc.playbackRate.value = rate;
+    const bootG = ctx.createGain();
+    bootG.gain.setValueAtTime(1, t0);
+    bootG.gain.linearRampToValueAtTime(0, t0 + halfDurSec);
+    bootSrc.connect(bootG);
+    bootG.connect(voice.noteGain);
+    bootSrc.start(t0, sample.loopStart + halfBufferDur, halfBufferDur);
+    voice.samples.push(bootSrc);
+
+    fireVoice(t0);
+  }
+
+  /** Voice-tracked vibrato — same as attachVibrato but stores the LFO
+   *  in `voice.nodes` so it's cleaned up per-voice. */
+  private attachVibratoForVoice(target: OscillatorNode, ctx: AudioContext, voice: { nodes: AudioNode[] }) {
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 4.4 + Math.random() * 0.4;
+    const depth = ctx.createGain();
+    depth.gain.value = 5;
+    lfo.connect(depth);
+    depth.connect(target.detune);
+    lfo.start();
+    voice.nodes.push(lfo);
+  }
 
   // ── Separate interval drones (independent of main drone, multiple simultaneous) ──
   private ensureIntervalDroneMaster() {
