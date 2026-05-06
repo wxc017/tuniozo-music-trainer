@@ -35,16 +35,17 @@ const absPcToFreq = (pc: number, edo: number) =>
 // Horizontal layout.  STRIP_W is dynamic — measured from the container
 // at mount and on resize so the strip always fills the available width
 // without horizontal scrolling.  All other dimensions are fixed pixels.
-//   y=0..STRIP_Y_TOP             = vertical step-name labels reading
-//                                  upward, sitting on top of each
-//                                  gridline + JI ruler ticks
-//   y=STRIP_Y_TOP..STRIP_Y_BOT   = strip body (gridlines, node circles)
-//   y=STRIP_Y_BOT..NODE_LABEL_Y  = (small gap)
-//   y=NODE_LABEL_Y..             = per-node label rows + leader lines
+//   y=0..14            = A_n octave anchor labels (A1, A2, ...)
+//   y=18..36           = step-name labels — HORIZONTAL, no head-tilt,
+//                        each label sits directly on top of its
+//                        gridline (just above the strip body)
+//   y=STRIP_Y_TOP..STRIP_Y_BOT = strip body (gridlines, node circles)
+//   y=STRIP_Y_BOT..NODE_LABEL_Y = (small gap)
+//   y=NODE_LABEL_Y..   = per-node label rows + leader lines
 const STRIP_X       = 18;
 const STRIP_RIGHT   = 18;
-const STEP_LABEL_H  = 88;
-const STRIP_Y_TOP   = STEP_LABEL_H + 6;
+const STEP_LABEL_H  = 22;     // single row of horizontal text
+const STRIP_Y_TOP   = 18 + STEP_LABEL_H + 4;
 const STRIP_H       = 130;
 const STRIP_Y_BOT   = STRIP_Y_TOP + STRIP_H;
 const NODE_LABEL_Y  = STRIP_Y_BOT + 8;
@@ -85,6 +86,30 @@ const makeId = () => `n${nextId++}`;
 
 const HARMONIC_PRESET_COUNTS = [4, 8, 12, 16, 24] as const;
 
+// Curated 13-limit JI ratios within an octave — the "important" ones
+// for ear-training: every consonance up through tridecimal sevenths,
+// plus the standard 5-limit minor / major intervals.  Tenney height
+// stays moderate so each ratio is hearable as a coherent interval
+// rather than a tempered slip.
+const JI_GRID_RATIOS: { num: number; den: number; label: string; isP5?: boolean }[] = [
+  { num: 1,  den: 1,  label: "1/1" },
+  { num: 16, den: 15, label: "16/15" },
+  { num: 9,  den: 8,  label: "9/8" },
+  { num: 7,  den: 6,  label: "7/6" },
+  { num: 6,  den: 5,  label: "6/5" },
+  { num: 5,  den: 4,  label: "5/4" },
+  { num: 4,  den: 3,  label: "4/3" },
+  { num: 11, den: 8,  label: "11/8" },
+  { num: 7,  den: 5,  label: "7/5" },
+  { num: 3,  den: 2,  label: "3/2", isP5: true },
+  { num: 8,  den: 5,  label: "8/5" },
+  { num: 5,  den: 3,  label: "5/3" },
+  { num: 7,  den: 4,  label: "7/4" },
+  { num: 9,  den: 5,  label: "9/5" },
+  { num: 13, den: 8,  label: "13/8" },
+  { num: 15, den: 8,  label: "15/8" },
+];
+
 interface ChordPreset { id: string; label: string; ratios: number[] }
 const CHORD_LIBRARY: ChordPreset[] = [
   { id: "M",    label: "Maj 4:5:6",         ratios: [1, 5/4, 3/2] },
@@ -116,7 +141,12 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   const [labelMode, setLabelMode] = useLS<"both" | "edo" | "ji">("lt_dc_labelMode", "both");
   const [primeLimit, setPrimeLimit] = useLS<number>("lt_dc_primeLimit", 13);
   const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
-  const [chordTuning, setChordTuning] = useLS<"ji" | "edo">("lt_dc_chordTuning", "ji");
+  // Grid mode — switches the gridlines between equal-temperament steps
+  // (12/19/31/41/53/etc.) and just-intonation 13-limit ratios anchored
+  // to each A_n octave.  Per-node JI ratio analysis still runs the
+  // same way regardless (it answers "what JI ratio is closest to this
+  // freq from the current root?"), so this only affects the *grid*.
+  const [gridMode, setGridMode] = useLS<"edo" | "ji">("lt_dc_gridMode", "edo");
   // Strip range — user-pickable octave bounds (each anchored to A_n).
   // Default A1..A6 (55–1760 Hz, 5 octaves).
   const [lowOct, setLowOct] = useLS<number>("lt_dc_lowOct", 1);
@@ -291,7 +321,20 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
     const local = pt.matrixTransform(ctm.inverse());
     let freq = freqFromX(local.x);
     if (!isFinite(freq) || freq < stripLowHz * 0.99 || freq > stripHighHz * 1.01) return;
-    if (snapToEdo) freq = snapFreqToEdo(freq, edo);
+    if (snapToEdo) {
+      if (gridMode === "edo") {
+        freq = snapFreqToEdo(freq, edo);
+      } else {
+        // JI snap: pick the nearest gridline frequency.
+        let bestF = freq;
+        let bestD = Infinity;
+        for (const s of gridSteps) {
+          const d = Math.abs(Math.log2(freq / s.freq));
+          if (d < bestD) { bestD = d; bestF = s.freq; }
+        }
+        freq = bestF;
+      }
+    }
     setNodes(prev => [...prev, { id: makeId(), freq }]);
     setMenuNodeId(null);
   };
@@ -349,7 +392,7 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
       const filtered = prev.filter(n => !isChildOf(n, parentId));
       const additions: DroneNode[] = chord.ratios.slice(1).map((r, idx) => {
         const ideal = parent.freq * r;
-        const finalFreq = chordTuning === "edo" ? snapFreqToEdo(ideal, edo) : ideal;
+        const finalFreq = ideal;
         const outOfRange = finalFreq > stripHighHz * 1.001 || finalFreq < stripLowHz * 0.999;
         return {
           id: makeId(),
@@ -387,28 +430,52 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
     const sharpFlats = (label.match(/[♯♭]/g) ?? []).length;
     return sharpFlats <= 1;
   };
-  const edoSteps: { x: number; pc: number; isP5: boolean; label: string; labelVisible: boolean }[] = [];
+  // Active grid steps — either EDO steps (12/19/31/...) or 13-limit
+  // JI ratios per octave, depending on gridMode.  Rendering and click-
+  // snapping consume this unified list.
+  type GridStep = { x: number; isP5: boolean; label: string; labelVisible: boolean; freq: number };
+  const gridSteps: GridStep[] = [];
   if (showEdoGrid || showStepNames) {
-    const minPc = Math.ceil(freqToAbsPc(stripLowHz, edo));
-    const maxPc = Math.floor(freqToAbsPc(stripHighHz, edo));
-    const p5Step = Math.round(edo * Math.log2(3 / 2));
-    for (let pc = minPc; pc <= maxPc; pc++) {
-      const f = absPcToFreq(pc, edo);
-      const stepInOct = ((pc % edo) + edo) % edo;
-      const oct = Math.floor(pc / edo);
-      // Octave digit dropped — A_n octave anchors above the strip
-      // imply the range; step labels just need the letter + accidental.
-      const label = pcToNoteName(stepInOct, edo);
-      void oct;
-      edoSteps.push({
-        x: xFromFreq(f),
-        pc,
-        isP5: stepInOct === p5Step,
-        label,
-        labelVisible: isSimpleLabel(label),
-      });
+    if (gridMode === "edo") {
+      const minPc = Math.ceil(freqToAbsPc(stripLowHz, edo));
+      const maxPc = Math.floor(freqToAbsPc(stripHighHz, edo));
+      const p5Step = Math.round(edo * Math.log2(3 / 2));
+      for (let pc = minPc; pc <= maxPc; pc++) {
+        const f = absPcToFreq(pc, edo);
+        const stepInOct = ((pc % edo) + edo) % edo;
+        const label = pcToNoteName(stepInOct, edo);
+        gridSteps.push({
+          x: xFromFreq(f),
+          isP5: stepInOct === p5Step,
+          label,
+          labelVisible: isSimpleLabel(label),
+          freq: f,
+        });
+      }
+    } else {
+      // JI mode: place each curated 13-limit ratio at A_n × ratio for
+      // every octave anchor in the strip range.  Octave anchors get
+      // their A_n label; intermediate ratios get their fraction label.
+      for (let oct = lowOct; oct <= highOct; oct++) {
+        const baseFreq = aOctaveHz(oct);
+        for (const r of JI_GRID_RATIOS) {
+          const f = baseFreq * (r.num / r.den);
+          if (f < stripLowHz * 0.999 || f > stripHighHz * 1.001) continue;
+          const isOctaveAnchor = r.num === 1 && r.den === 1;
+          if (isOctaveAnchor) continue;  // anchors drawn separately by octaveTicks
+          gridSteps.push({
+            x: xFromFreq(f),
+            isP5: r.isP5 ?? false,
+            label: r.label,
+            labelVisible: true,
+            freq: f,
+          });
+        }
+      }
     }
   }
+  // Backwards-compat alias for the rest of the render path.
+  const edoSteps = gridSteps;
 
   // JI harmonic ruler — partials of A1 from h2 up to whatever fits in
   // A6 (h32 lands exactly on A6 since 32*55 = 1760).  Filtered by the
@@ -522,18 +589,35 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
               : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
           }`}
         >
-          EDO grid
+          Grid
         </button>
-        <select
-          value={localEdo}
-          onChange={e => setLocalEdo(parseInt(e.target.value))}
-          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none"
-          title="EDO grid for this view (independent of the global EDO setting)"
-        >
-          {SUPPORTED_EDO_OPTIONS.map(n => (
-            <option key={n} value={n}>{n}-EDO</option>
+        <div className="flex rounded overflow-hidden border border-[#333]">
+          {(["edo", "ji"] as const).map(m => (
+            <button key={m}
+              onClick={() => setGridMode(m)}
+              className={`px-2 py-1 text-[10px] transition-colors ${
+                gridMode === m ? "bg-[#7173e6] text-white" : "bg-[#1e1e1e] text-[#888] hover:text-[#ccc]"
+              }`}
+              title={m === "edo"
+                ? "Equal-temperament gridlines (12 / 19 / 31 / 41 / 53)"
+                : "Just-intonation 13-limit ratio gridlines (1/1, 9/8, 5/4, 3/2, 7/4, …)"}
+            >
+              {m === "edo" ? "EDO" : "JI"}
+            </button>
           ))}
-        </select>
+        </div>
+        {gridMode === "edo" && (
+          <select
+            value={localEdo}
+            onChange={e => setLocalEdo(parseInt(e.target.value))}
+            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none"
+            title="EDO grid for this view (independent of the global EDO setting)"
+          >
+            {SUPPORTED_EDO_OPTIONS.map(n => (
+              <option key={n} value={n}>{n}-EDO</option>
+            ))}
+          </select>
+        )}
         <button
           onClick={() => setShowStepNames(!showStepNames)}
           className={`px-2 py-1 rounded text-[11px] border transition-colors ${
@@ -603,24 +687,6 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
           ))}
         </select>
 
-        <div className="w-px h-4 bg-[#2a2a2a] mx-1" />
-
-        <span className="text-[10px] text-[#555]">Chord tuning</span>
-        <div className="flex rounded overflow-hidden border border-[#333]">
-          {(["ji", "edo"] as const).map(t => (
-            <button key={t}
-              onClick={() => setChordTuning(t)}
-              className={`px-2 py-1 text-[10px] transition-colors ${
-                chordTuning === t ? "bg-[#cc7755] text-white" : "bg-[#1e1e1e] text-[#888] hover:text-[#ccc]"
-              }`}
-              title={t === "ji"
-                ? "Spawned chords play exact JI ratios"
-                : `Spawned chords snap each tone to the nearest ${edo}-EDO step`}
-            >
-              {t === "ji" ? "JI" : `${edo}-EDO`}
-            </button>
-          ))}
-        </div>
       </div>
 
       {instrument === "additive" && (
@@ -727,29 +793,24 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
           </g>
         ))}
 
-        {/* Per-EDO-step note labels — rotated -90° so they read
-            bottom-to-top, each label sitting on top of its gridline
-            with the bottom of the label flush against the strip's
-            top edge.  Double accidentals and comma-arrow notations
-            (𝄪 / 𝄫 / ↑ / ↓) are hidden so dense EDOs (31 / 41 / 53)
-            stay readable; the gridlines themselves still draw at
-            every step.  Octave digit dropped — A_n anchor labels at
-            the very top imply the octave context. */}
-        {showStepNames && edoSteps.filter(s => s.labelVisible).map((s, i) => {
-          const anchorY = STRIP_Y_TOP - 4;
-          return (
-            <text
-              key={`name${i}`}
-              x={s.x} y={anchorY}
-              fill={s.isP5 ? "#9aa6cc" : "#aaa"}
-              fontSize={11} fontFamily="monospace"
-              textAnchor="start"
-              transform={`rotate(-90 ${s.x} ${anchorY})`}
-            >
-              {s.label}
-            </text>
-          );
-        })}
+        {/* Per-EDO-step note labels — HORIZONTAL, sitting directly
+            on top of each gridline just above the strip body.  No
+            rotation: the user reads them straight without tilting.
+            Double accidentals and comma-arrow notations (𝄪 / 𝄫 / ↑ /
+            ↓) are hidden so dense EDOs stay readable; the gridlines
+            themselves still draw at every step.  Octave digit
+            dropped — A_n anchor labels at the very top imply octave. */}
+        {showStepNames && edoSteps.filter(s => s.labelVisible).map((s, i) => (
+          <text
+            key={`name${i}`}
+            x={s.x} y={STRIP_Y_TOP - 4}
+            fill={s.isP5 ? "#9aa6cc" : "#aaa"}
+            fontSize={11} fontFamily="monospace"
+            textAnchor="middle"
+          >
+            {s.label}
+          </text>
+        ))}
 
         {/* JI harmonic ruler — above the strip.  Tick + h-number for
             each in-range partial of A1. */}
@@ -1034,7 +1095,7 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
             </button>
 
             <div className="text-[9px] text-[#666] px-1 pt-1">
-              Chord (root = this node, {chordTuning === "ji" ? "exact JI" : `${edo}-EDO snap`})
+              Chord (root = this node, exact JI)
             </div>
             <div className="grid grid-cols-2 gap-1">
               {CHORD_LIBRARY.map(c => (
