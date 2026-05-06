@@ -727,6 +727,13 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
         style={{ display: "block" }}
         onClick={() => setMenuNodeId(null)}
       >
+        {/* Decorative layer — pointer-events:none so clicks on a
+            gridline / tick / label fall through to the click-target
+            rect rather than getting absorbed by the line stroke and
+            bubbling up to the SVG (where they'd close the menu but
+            never add a node). */}
+        <g style={{ pointerEvents: "none" }}>
+
         {/* Centerline — single thin baseline through the strip. */}
         <line
           x1={STRIP_X} x2={STRIP_X + STRIP_W}
@@ -747,9 +754,7 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
           />
         ))}
 
-        {/* Octave anchor ticks — taller than EDO step ticks; A1..A6
-            label sits at the very top of the SVG so it doesn't fight
-            the rotated step labels for vertical space. */}
+        {/* Octave anchor ticks — taller than EDO step ticks. */}
         {octaveTicks.map(t => (
           <g key={t.label}>
             <line
@@ -888,6 +893,8 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
             </g>
           );
         })}
+
+        </g>{/* end decorative pointer-events:none group */}
 
         {/* Invisible click-target rect spanning the strip's full
             vertical band — generous click zone even though the visible
