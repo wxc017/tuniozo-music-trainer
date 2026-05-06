@@ -6,6 +6,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import { useLS } from "@/lib/storage";
+import { pcToNoteName } from "@/lib/edoData";
+import { findJiRatio, formatJiRatio } from "@/lib/jiRatioFinder";
 
 interface Props {
   edo: number;
@@ -15,6 +17,16 @@ interface Props {
 const A1_HZ = 55;
 const A6_HZ = 1760;
 const STRIP_OCTAVES = Math.log2(A6_HZ / A1_HZ); // 5
+
+// Match the audio engine's C4 reference so EDO labels align with the
+// app's tonal-system note names (the EDO grid is C-anchored, not
+// A-anchored, even though the strip's bottom and top happen to be A1
+// and A6 — that's just where users mentally place the range).
+const C4_HZ = 261.63;
+const freqToAbsPc = (f: number, edo: number) =>
+  4 * edo + edo * Math.log2(f / C4_HZ);
+const absPcToFreq = (pc: number, edo: number) =>
+  C4_HZ * Math.pow(2, (pc - 4 * edo) / edo);
 
 const STRIP_W = 80;
 const STRIP_H = 720;
@@ -28,15 +40,20 @@ const yFromFreq = (f: number): number =>
 const freqFromY = (y: number): number =>
   A1_HZ * Math.pow(2, (1 - (y - STRIP_PAD_TOP) / STRIP_INNER_H) * STRIP_OCTAVES);
 
-// Snap a frequency to the nearest EDO step on the A1-anchored grid.
-// (We use A1 = 55 Hz as the strip's reference, so the grid is independent
-// of the app's tonic.  This is "raw cents" tuning, not a key.)
-const snapFreqToEdo = (f: number, edo: number): number => {
-  const cents = 1200 * Math.log2(f / A1_HZ);
-  const stepCents = 1200 / edo;
-  const snapped = Math.round(cents / stepCents) * stepCents;
-  return A1_HZ * Math.pow(2, snapped / 1200);
-};
+const snapFreqToEdo = (f: number, edo: number): number =>
+  absPcToFreq(Math.round(freqToAbsPc(f, edo)), edo);
+
+// Compute the EDO note name + signed cents drift between `freq` and the
+// nearest C-anchored EDO step.  Octave numbers count from C0 (= 16.35 Hz)
+// to match the app's standard absolute-pitch convention.
+function edoLabelFor(freq: number, edo: number): { name: string; drift: number } {
+  const exactPc = freqToAbsPc(freq, edo);
+  const snappedPc = Math.round(exactPc);
+  const drift = (exactPc - snappedPc) * (1200 / edo);
+  const pc = ((snappedPc % edo) + edo) % edo;
+  const oct = Math.floor(snappedPc / edo);
+  return { name: `${pcToNoteName(pc, edo)}${oct}`, drift };
+}
 
 interface DroneNode {
   id: string;
@@ -53,6 +70,8 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   const [showEdoGrid, setShowEdoGrid] = useLS<boolean>("lt_dc_edoGrid", true);
   const [snapToEdo, setSnapToEdo] = useLS<boolean>("lt_dc_snap", false);
   const [showJiRulers, setShowJiRulers] = useLS<boolean>("lt_dc_jiRulers", false);
+  const [labelMode, setLabelMode] = useLS<"both" | "edo" | "ji">("lt_dc_labelMode", "both");
+  const [primeLimit, setPrimeLimit] = useLS<number>("lt_dc_primeLimit", 13);
   const stripRef = useRef<SVGSVGElement>(null);
   const droneActiveRef = useRef(false);
 
@@ -115,18 +134,18 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     octaveTicks.push({ y: yFromFreq(f), label: `A${i + 1}` });
   }
 
-  // EDO grid lines spanning A1-A6.  Skip step 0 of each octave (those
-  // coincide with octave gridlines and would double-draw).  Lines that
-  // are perfect-fifth steps get a slightly brighter color so the user
-  // can find P5 quickly when reading the grid.
+  // EDO grid spanning the visible range, C-anchored so each gridline
+  // sits on an actual EDO degree of the app's tonal system.  P5 steps
+  // (i.e. the "G" of every octave) get a brighter stroke for orientation.
   const edoLines: { y: number; isP5: boolean }[] = [];
   if (showEdoGrid) {
-    const totalSteps = edo * 5;             // 5 octaves
+    const minPc = Math.ceil(freqToAbsPc(A1_HZ, edo));
+    const maxPc = Math.floor(freqToAbsPc(A6_HZ, edo));
     const p5Step = Math.round(edo * Math.log2(3 / 2));
-    for (let s = 1; s < totalSteps; s++) {  // skip 0 (= A1) and totalSteps (= A6)
-      if (s % edo === 0) continue;          // already drawn as octave line
-      const f = A1_HZ * Math.pow(2, s / edo);
-      edoLines.push({ y: yFromFreq(f), isP5: (s % edo) === p5Step });
+    for (let pc = minPc; pc <= maxPc; pc++) {
+      const f = absPcToFreq(pc, edo);
+      const stepInOct = ((pc % edo) + edo) % edo;
+      edoLines.push({ y: yFromFreq(f), isP5: stepInOct === p5Step });
     }
   }
 
@@ -213,6 +232,33 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         >
           JI harmonics of A1
         </button>
+
+        <div className="w-px h-4 bg-[#2a2a2a] mx-1" />
+
+        <span className="text-[10px] text-[#555]">Labels</span>
+        <div className="flex rounded overflow-hidden border border-[#333]">
+          {(["both", "edo", "ji"] as const).map(m => (
+            <button key={m}
+              onClick={() => setLabelMode(m)}
+              className={`px-2 py-1 text-[10px] transition-colors ${
+                labelMode === m ? "bg-[#7173e6] text-white" : "bg-[#1e1e1e] text-[#888] hover:text-[#ccc]"
+              }`}
+            >
+              {m === "both" ? "Both" : m === "edo" ? "EDO" : "JI"}
+            </button>
+          ))}
+        </div>
+
+        <span className="text-[10px] text-[#555]">Prime limit</span>
+        <select
+          value={primeLimit}
+          onChange={e => setPrimeLimit(parseInt(e.target.value))}
+          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-0.5 text-[10px] text-white focus:outline-none"
+        >
+          {[5, 7, 11, 13, 17, 19, 23, 31].map(p => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
       </div>
 
       <svg
@@ -283,34 +329,71 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
           stroke="#222" strokeWidth={1} strokeDasharray="2 4"
         />
 
-        {/* Nodes */}
-        {nodes.map(n => {
-          const y = yFromFreq(n.freq);
-          const cx = 50 + STRIP_W / 2;
-          return (
-            <g key={n.id}>
-              <line
-                x1={50} x2={50 + STRIP_W}
-                y1={y} y2={y}
-                stroke="#55aa88" strokeWidth={1.5}
-              />
-              <circle
-                cx={cx} cy={y} r={6}
-                fill="#55aa88"
-                stroke="#0a0a0a" strokeWidth={2}
-                onClick={(e) => { e.stopPropagation(); removeNode(n.id); }}
-                style={{ cursor: "pointer" }}
-              />
-              <text
-                x={50 + STRIP_W + 70}
-                y={y + 4}
-                fill="#aaa" fontSize={11} fontFamily="monospace"
-              >
-                {n.freq.toFixed(1)} Hz
-              </text>
-            </g>
-          );
-        })}
+        {/* Nodes — circle on the strip + multi-row label to the right.
+            JI ratios reference the lowest currently-placed node as 1/1
+            (a future "pin as 1/1" menu action will let users override). */}
+        {(() => {
+          if (!nodes.length) return null;
+          const sorted = [...nodes].sort((a, b) => a.freq - b.freq);
+          const rootFreq = sorted[0].freq;
+          const labelX = 50 + STRIP_W + 70;
+          return nodes.map(n => {
+            const y = yFromFreq(n.freq);
+            const cx = 50 + STRIP_W / 2;
+            const isRoot = n.id === sorted[0].id;
+            const edo_ = edoLabelFor(n.freq, edo);
+            const ji = isRoot ? null : findJiRatio(n.freq / rootFreq, primeLimit);
+            const ratioStr = isRoot
+              ? "1/1"
+              : (ji ? formatJiRatio(ji) : `+${(1200 * Math.log2(n.freq / rootFreq)).toFixed(1)}¢`);
+            const edoStr = `${edo_.name}${
+              Math.abs(edo_.drift) < 1
+                ? ""
+                : ` ${edo_.drift >= 0 ? "+" : "−"}${Math.abs(edo_.drift).toFixed(1)}¢`
+            }`;
+            // Three-row label.  Center the rows around the node y so the
+            // label visually anchors to the dot.
+            const rows: string[] = [];
+            rows.push(`${n.freq.toFixed(1)} Hz`);
+            if (labelMode !== "ji") rows.push(edoStr);
+            if (labelMode !== "edo") rows.push(ratioStr);
+            const rowH = 12;
+            const yOff = -((rows.length - 1) * rowH) / 2;
+            return (
+              <g key={n.id}>
+                <line
+                  x1={50} x2={50 + STRIP_W}
+                  y1={y} y2={y}
+                  stroke="#55aa88" strokeWidth={1.5}
+                />
+                <circle
+                  cx={cx} cy={y} r={6}
+                  fill={isRoot ? "#c8aa50" : "#55aa88"}
+                  stroke="#0a0a0a" strokeWidth={2}
+                  onClick={(e) => { e.stopPropagation(); removeNode(n.id); }}
+                  style={{ cursor: "pointer" }}
+                >
+                  <title>{isRoot ? "Lowest node — JI 1/1 reference. Click to remove." : "Click to remove."}</title>
+                </circle>
+                {rows.map((text, i) => (
+                  <text
+                    key={i}
+                    x={labelX}
+                    y={y + yOff + i * rowH + 4}
+                    fill={
+                      i === 0 ? "#aaa"
+                      : (rows[i] === ratioStr ? "#c8aa50" : "#9999ee")
+                    }
+                    fontSize={i === 0 ? 11 : 10}
+                    fontFamily="monospace"
+                  >
+                    {text}
+                  </text>
+                ))}
+              </g>
+            );
+          });
+        })()}
       </svg>
 
       <p className="text-[10px] text-[#444]">
