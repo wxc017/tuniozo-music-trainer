@@ -108,6 +108,11 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   const [primeLimit, setPrimeLimit] = useLS<number>("lt_dc_primeLimit", 13);
   const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
   const [chordTuning, setChordTuning] = useLS<"ji" | "edo">("lt_dc_chordTuning", "ji");
+  // Per-node JI-harmonic-ruler visibility — toggled via the node menu.
+  // Each entry overlays the harmonic series of that node (2..32) on
+  // the strip in the node's own color, so users can see where each
+  // node's partials fall against the EDO grid.
+  const [nodeRulers, setNodeRulers] = useState<Set<string>>(new Set());
   const stripRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const droneActiveRef = useRef(false);
@@ -189,10 +194,23 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
 
   const removeNode = (id: string) => {
     setNodes(prev => prev.filter(n => n.id !== id && !isChildOf(n, id)));
+    setNodeRulers(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     setMenuNodeId(null);
   };
 
-  const clearAll = () => { setNodes([]); setMenuNodeId(null); };
+  const clearAll = () => { setNodes([]); setNodeRulers(new Set()); setMenuNodeId(null); };
+
+  const toggleNodeRuler = (id: string) => {
+    setNodeRulers(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const addHarmonicSeries = (parentId: string, count: number, below: boolean) => {
     setNodes(prev => {
@@ -501,6 +519,49 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
           </g>
         ))}
 
+        {/* Per-node JI harmonic rulers — drawn through the strip body
+            (vertical dotted lines at h2..h32 of each node whose ruler
+            is toggled on).  Color-matched to the node so multiple
+            simultaneous rulers stay distinguishable. */}
+        {Array.from(nodeRulers).map(rulerId => {
+          const src = nodes.find(n => n.id === rulerId);
+          if (!src || src.outOfRange) return null;
+          const color = src.chordOf
+            ? "#cc7755"
+            : src.harmonicOf ? "#7173e6" : "#55aa88";
+          return (
+            <g key={`ruler-${rulerId}`}>
+              {Array.from({ length: 31 }, (_, i) => i + 2).map(h => {
+                const f = src.freq * h;
+                if (f < A1_HZ * 0.999 || f > A6_HZ * 1.001) return null;
+                const x = xFromFreq(f);
+                const labelled = h <= 16 || h % 4 === 0;
+                return (
+                  <g key={`ruler-${rulerId}-${h}`}>
+                    <line
+                      x1={x} x2={x}
+                      y1={STRIP_Y_TOP} y2={STRIP_Y_BOT}
+                      stroke={color} strokeOpacity={0.55}
+                      strokeWidth={0.8}
+                      strokeDasharray="2 3"
+                    />
+                    {labelled && (
+                      <text
+                        x={x} y={STRIP_Y_TOP - 4}
+                        fill={color} fontSize={8.5} fontFamily="monospace"
+                        textAnchor="middle"
+                        opacity={0.85}
+                      >
+                        h{h}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
+            </g>
+          );
+        })}
+
         {/* Invisible click-target rect spanning the strip's full
             vertical band — generous click zone even though the visible
             strip is just a thin row of ticks. */}
@@ -681,6 +742,17 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
                 </button>
               ))}
             </div>
+
+            <button
+              onClick={() => toggleNodeRuler(node.id)}
+              className={`w-full px-2 py-1 text-[10px] rounded border transition-colors ${
+                nodeRulers.has(node.id)
+                  ? "bg-[#c8aa5022] border-[#c8aa50] text-[#c8aa50]"
+                  : "bg-[#1e1e1e] border-[#333] text-[#aaa] hover:bg-[#c8aa5022] hover:border-[#c8aa50] hover:text-[#c8aa50]"
+              }`}
+            >
+              {nodeRulers.has(node.id) ? "Hide" : "Show"} JI harmonics of this note
+            </button>
 
             <div className="text-[9px] text-[#666] px-1 pt-1">
               Chord (root = this node, {chordTuning === "ji" ? "exact JI" : `${edo}-EDO snap`})
