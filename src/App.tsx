@@ -12,6 +12,7 @@ import MelodyTab from "@/components/tabs/MelodyTab";
 import JazzTab from "@/components/tabs/JazzTab";
 import PatternsTab from "@/components/tabs/PatternsTab";
 import DroneTab from "@/components/tabs/DroneTab";
+import DroneContinuumTab from "@/components/tabs/DroneContinuumTab";
 import ModeIdentificationTab from "@/components/tabs/ModeIdentificationTab";
 import ScalarTab from "@/components/tabs/ScalarTab";
 
@@ -79,16 +80,16 @@ const VIZ_LABELS: Record<VisualizerType, string> = {
   bass: "Bass",
 };
 
-type Tab = "intervals"|"chords"|"melody"|"jazz"|"patterns"|"drone"|"modeid";
+type Tab = "intervals"|"chords"|"melody"|"jazz"|"patterns"|"drone"|"continuum"|"modeid";
 type ResponseMode = "Play Audio"|"Show Target (Sing It)";
 
 const TAB_LABELS: Record<Tab, string> = {
   intervals: "Intervals", chords: "Chords",
   melody: "Melody", jazz: "Jazz Cells", patterns: "Patterns",
-  drone: "Chord Drone", modeid: "Mode ID",
+  drone: "Chord Drone", continuum: "Drone Continuum", modeid: "Mode ID",
 };
 
-const VALID_TABS: Tab[] = ["intervals","chords","modeid","melody","jazz","patterns","drone"];
+const VALID_TABS: Tab[] = ["intervals","chords","modeid","melody","jazz","patterns","drone","continuum"];
 
 // ── Temperament classification ──────────────────────────────────────────
 // Tonal Audiation groups the available EDOs by their underlying tuning
@@ -120,9 +121,9 @@ const TEMPERAMENT_EDOS: Record<Temperament, number[]> = {
 // hidden in those temperaments until the chord-progression infrastructure
 // is rebuilt around tuning lineages.
 const TEMPERAMENT_TABS: Record<Temperament, Tab[]> = {
-  meantone:    ["intervals", "chords", "modeid", "melody", "jazz", "patterns", "drone"],
-  pythagorean: ["intervals", "modeid", "chords"],
-  schismatic:  ["intervals", "modeid", "chords"],
+  meantone:    ["intervals", "chords", "modeid", "melody", "jazz", "patterns", "drone", "continuum"],
+  pythagorean: ["intervals", "modeid", "chords", "continuum"],
+  schismatic:  ["intervals", "modeid", "chords", "continuum"],
 };
 function temperamentForEdo(edo: number): Temperament {
   if (TEMPERAMENT_EDOS.pythagorean.includes(edo)) return "pythagorean";
@@ -1782,6 +1783,13 @@ export default function App() {
                 edo={edo} onHighlight={handleHighlight} onResult={handleResult}
                 onPlay={handlePlay} onAnswer={trackAnswer} lastPlayed={lastPlayed} ensureAudio={ensureAudio}
                 onDroneStateChange={(active) => { if (!active) setDroneIsOn(false); }} />
+            </div>
+          )}
+
+          {activeTab === "continuum" && (
+            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+              <h2 className="font-semibold mb-4">Drone Continuum</h2>
+              <DroneContinuumTab key={tabKey} edo={edo} ensureAudio={ensureAudio} />
             </div>
           )}
 
