@@ -108,6 +108,12 @@ export const DRONE_INSTRUMENTS = [
   { id: "voice_oohs",         label: "Voice" },
   { id: "choir_aahs",         label: "Choir" },
   { id: "church_organ",       label: "Church Organ" },
+  // Additive synth — purely synthesised, infinite sustain, per-harmonic
+  // amplitude control via setAdditivePartials().  No samples / no
+  // pitch-shift artifacts; ideal for hearing partials cleanly across
+  // the full strip range.  Equivalent to Tone.js's OmniOscillator
+  // 'partials' API but built on the Web Audio API natively.
+  { id: "additive",           label: "Additive Synth" },
 ] as const;
 
 export type DroneInstrument = typeof DRONE_INSTRUMENTS[number]["id"];
@@ -356,6 +362,12 @@ const INSTRUMENT_SOURCES: Record<DroneInstrument, SourceConfig> = {
     url: () => FREESOUND_VOICE_URL,
     notes: ["E4"],
   },
+  // Additive synth has no samples — empty notes → loader is a no-op,
+  // hasLoadedSamples stays false, synth (PeriodicWave) path takes over.
+  additive: {
+    url: () => "",
+    notes: [],
+  },
 };
 
 export class AudioEngine {
@@ -387,6 +399,15 @@ export class AudioEngine {
   // Continuum mode to highlight harmonic peaks on its pitch strip.
   // No effect on audio (AnalyserNode is a pass-through).
   private analyser: AnalyserNode | null = null;
+  // Additive-synth partial amplitudes (h1..hN).  Index 0 unused (DC),
+  // index k holds the amplitude of the k-th harmonic.  Default: 1/n
+  // sawtooth-like falloff truncated at h16 — pleasing drone-y sound.
+  private additivePartials: Float32Array = (() => {
+    const N = 33;
+    const a = new Float32Array(N);
+    for (let k = 1; k <= 16; k++) a[k] = 1 / k;
+    return a;
+  })();
   // Reverb send (parallel wet path).  Dry signal flows playLimiter →
   // masterGain at unity; the wet copy goes through a ConvolverNode
   // with a synthesized hall IR, scaled by reverbWetGain.  Default
@@ -801,7 +822,7 @@ export class AudioEngine {
     const useSamples = this.hasLoadedSamples();
     // Always create the PeriodicWave so spawnDroneVoice has a fallback
     // even if pickClosestSample returns null mid-flight.
-    const wave = ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
+    const wave = this.buildDroneWave(ctx);
 
     for (let i = 0; i < notes.length; i++) {
       const noteGain = ctx.createGain();
@@ -977,6 +998,31 @@ export class AudioEngine {
   getAnalyser(): AnalyserNode | null { return this.analyser; }
   getSampleRate(): number | null { return this.ctx?.sampleRate ?? null; }
 
+  /** Read / write the additive synth's per-harmonic amplitudes.
+   *  Indices 1..N hold h1..hN amplitudes; index 0 is unused (DC). */
+  getAdditivePartials(): Float32Array {
+    return new Float32Array(this.additivePartials);
+  }
+  setAdditivePartials(partials: Float32Array | number[]): void {
+    const N = this.additivePartials.length;
+    const next = new Float32Array(N);
+    for (let i = 0; i < Math.min(N, partials.length); i++) next[i] = partials[i] ?? 0;
+    this.additivePartials = next;
+  }
+
+  /** Build a PeriodicWave from the active instrument's spectrum.
+   *  For "additive" the wave uses the user-controlled partials; for
+   *  every other instrument it falls back to the cello spectrum (which
+   *  only matters when samples haven't loaded — see startDrone). */
+  private buildDroneWave(ctx: AudioContext): PeriodicWave {
+    if (this.currentInstrument === "additive") {
+      const real = new Float32Array(this.additivePartials);
+      const imag = new Float32Array(real.length);
+      return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+    }
+    return ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
+  }
+
   // ── Ratio-based API ─────────────────────────────────────────────────
   // All ratios are relative to C4 (1/1 = C4).
   // A ratio of 3/2 plays a just perfect fifth above C4, etc.
@@ -1068,7 +1114,7 @@ export class AudioEngine {
     const useSamples = this.hasLoadedSamples();
     // Always create the wave fallback so spawnDroneVoice can fall
     // through if pickClosestSample races.
-    const wave = ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
+    const wave = this.buildDroneWave(ctx);
 
     for (let i = 0; i < ratios.length; i++) {
       const noteGain = ctx.createGain();
@@ -1116,7 +1162,7 @@ export class AudioEngine {
     noteGain.connect(master);
 
     // Cello spectrum + vibrato (matches startDrone / startRatioDrone).
-    const wave = ctx.createPeriodicWave(CELLO_REAL, CELLO_IMAG, { disableNormalization: false });
+    const wave = this.buildDroneWave(ctx);
     const osc = ctx.createOscillator();
     osc.setPeriodicWave(wave);
     osc.frequency.value = freq;

@@ -133,6 +133,21 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   // which partials of the playing drone are actually sounding.
   const [showSpectrum, setShowSpectrum] = useLS<boolean>("lt_dc_spectrum", true);
   const [spectrumPeaks, setSpectrumPeaks] = useState<{ freq: number; mag: number }[]>([]);
+  // Additive-synth per-harmonic amplitudes (h1..h16).  Default 1/n
+  // sawtooth-like falloff — natural-sounding drone-y spectrum out of
+  // the box; user adjusts each slider to taste.
+  const [additivePartials, setAdditivePartials] = useLS<number[]>(
+    "lt_dc_additivePartials",
+    Array.from({ length: 16 }, (_, i) => 1 / (i + 1)),
+  );
+  // Push partials to the audio engine whenever they change.
+  useEffect(() => {
+    const arr = new Float32Array(33);
+    for (let i = 0; i < Math.min(32, additivePartials.length); i++) {
+      arr[i + 1] = additivePartials[i];
+    }
+    audioEngine.setAdditivePartials(arr);
+  }, [additivePartials]);
   const stripRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const droneActiveRef = useRef(false);
@@ -184,7 +199,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes, droneOn, gain, instrument, stripLowHz, ensureAudio]);
+  }, [nodes, droneOn, gain, instrument, stripLowHz, ensureAudio, additivePartials]);
 
   useEffect(() => {
     return () => {
@@ -554,6 +569,73 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
           ))}
         </div>
       </div>
+
+      {instrument === "additive" && (
+        <div className="bg-[#0c0c0c] border border-[#222] rounded px-3 py-2">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] text-[#888] tracking-wider uppercase">Harmonic levels (h1–h16)</span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setAdditivePartials(Array.from({ length: 16 }, (_, i) => 1 / (i + 1)))}
+                className="px-2 py-0.5 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#2a2a2a]"
+                title="Sawtooth-like 1/n falloff"
+              >
+                1/n
+              </button>
+              <button
+                onClick={() => {
+                  const a = Array.from({ length: 16 }, (_, i) => (i % 2 === 0 ? 1 / (i + 1) : 0));
+                  setAdditivePartials(a);
+                }}
+                className="px-2 py-0.5 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#2a2a2a]"
+                title="Square-wave: only odd harmonics"
+              >
+                Square
+              </button>
+              <button
+                onClick={() => setAdditivePartials([1, ...Array(15).fill(0)])}
+                className="px-2 py-0.5 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#2a2a2a]"
+                title="Pure sine — fundamental only"
+              >
+                Sine
+              </button>
+              <button
+                onClick={() => setAdditivePartials(Array(16).fill(0).map(() => 1))}
+                className="px-2 py-0.5 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#2a2a2a]"
+                title="All harmonics at full amplitude (raw harmonic series)"
+              >
+                Flat
+              </button>
+            </div>
+          </div>
+          <div className="flex gap-1 items-end">
+            {additivePartials.map((v, i) => (
+              <div key={i} className="flex flex-col items-center" style={{ width: 24 }}>
+                <input
+                  type="range"
+                  min={0} max={1} step={0.01}
+                  value={v}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value);
+                    setAdditivePartials(prev => {
+                      const next = [...prev];
+                      next[i] = val;
+                      return next;
+                    });
+                  }}
+                  className="accent-[#88ccaa]"
+                  style={{
+                    writingMode: "vertical-lr" as React.CSSProperties["writingMode"],
+                    transform: "rotate(180deg)",
+                    width: 18, height: 80, padding: 0,
+                  }}
+                />
+                <span className="text-[9px] text-[#555] mt-1 font-mono">h{i + 1}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div ref={containerRef} className="relative" style={{ width: "100%", height: SVG_H }}>
       <svg
