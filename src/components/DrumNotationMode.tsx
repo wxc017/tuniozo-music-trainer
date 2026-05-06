@@ -251,15 +251,7 @@ function buildVFNotes(
   const slotMap: number[] = [];
   const vfClef = (clef === "bass" ? "bass" : "treble") as "treble" | "bass";
 
-  // Group consecutive non-rest notes at the same startSlot into chords.
-  // Only group notes that share the SAME duration + dotted state — per
-  // direct user feedback ('i have eighth notes but its showing as
-  // quarter in the main preview'): when a hi-hat eighth and a kick
-  // quarter sat on the same slot, the previous unconditional grouping
-  // produced a single chord StaveNote with the first note's duration,
-  // so the eighth lost its beam and rendered as a quarter.  Splitting
-  // by duration keeps each note at its actual rhythmic value (the two
-  // notes still stack at the same x because they share startSlot).
+  // Group consecutive non-rest notes at the same startSlot into chords
   const groups: NoteData[][] = [];
   for (const note of mNotes) {
     const last = groups[groups.length - 1];
@@ -267,9 +259,7 @@ function buildVFNotes(
       last &&
       !note.isRest &&
       !last[0].isRest &&
-      last[0].startSlot === note.startSlot &&
-      last[0].duration === note.duration &&
-      !!last[0].dotted === !!note.dotted
+      last[0].startSlot === note.startSlot
     ) {
       last.push(note);
     } else {
