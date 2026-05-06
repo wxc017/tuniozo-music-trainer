@@ -528,7 +528,8 @@ function inferFlavorLetter(degreeCodes: string[]): string | null {
   const letters = [degreeCodes[1], degreeCodes[4], degreeCodes[5]].map(letterPrefix);
   const counts: Record<string, number> = {};
   for (const l of letters) counts[l] = (counts[l] ?? 0) + 1;
-  const SPECIAL = new Set(["s", "Cm", "u", "n", "C", "S"]);
+  // Renamed letters per N→n / C→Cl bulk rename: "Cm"→"Clm", "C"→"Cl".
+  const SPECIAL = new Set(["s", "Clm", "u", "n", "Cl", "S"]);
   let best: string | null = null;
   let bestCount = 1;  // need at least 2 to count as majority
   for (const [letter, count] of Object.entries(counts)) {
@@ -547,12 +548,12 @@ function inferFlavorLetter(degreeCodes: string[]): string | null {
  *  "Superlydian" convention.  Otherwise the prefix sits as a separate
  *  word ("Classic Major Lydian"). */
 const FLAVOR_INFO: Record<string, { compoundPrefix: string | null; longName: string; sideMatchesMode: (mode: string) => boolean }> = {
-  s:  { compoundPrefix: "Sub",   longName: "Subminor",       sideMatchesMode: m => m === "Phrygian" || m === "Locrian" || m === "Aeolian" || m === "Dorian" },
-  Cm: { compoundPrefix: null,    longName: "Classic Minor",  sideMatchesMode: () => false },
-  u:  { compoundPrefix: null,    longName: "Supraminor",     sideMatchesMode: () => false },
-  n:  { compoundPrefix: null,    longName: "Neutral",        sideMatchesMode: () => false },
-  C:  { compoundPrefix: null,    longName: "Classic Major",  sideMatchesMode: () => false },
-  S:  { compoundPrefix: "Super", longName: "Supermajor",     sideMatchesMode: m => m === "Ionian" || m === "Lydian" || m === "Mixolydian" },
+  s:   { compoundPrefix: "Sub",   longName: "Subminor",       sideMatchesMode: m => m === "Phrygian" || m === "Locrian" || m === "Aeolian" || m === "Dorian" },
+  Clm: { compoundPrefix: null,    longName: "Classic Minor",  sideMatchesMode: () => false },
+  u:   { compoundPrefix: null,    longName: "Supraminor",     sideMatchesMode: () => false },
+  n:   { compoundPrefix: null,    longName: "Neutral",        sideMatchesMode: () => false },
+  Cl:  { compoundPrefix: null,    longName: "Classic Major",  sideMatchesMode: () => false },
+  S:   { compoundPrefix: "Super", longName: "Supermajor",     sideMatchesMode: m => m === "Ionian" || m === "Lydian" || m === "Mixolydian" },
 };
 
 function formatFlavoredName(flavorLetter: string | null, greekMode: string): string {
