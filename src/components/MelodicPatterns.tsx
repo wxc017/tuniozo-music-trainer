@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLS } from "@/lib/storage";
 import { addPracticeEntry, readPendingRestore, type PracticeRating } from "@/lib/practiceLog";
 import { audioEngine } from "@/lib/audioEngine";
+import NotationLegend from "@/components/NotationLegend";
 import { getEdoChordTypes, getLayoutFile, getFullDegreeNames, pcToNoteName, pcToNoteNameWithEnharmonic, getDegreeMap, formatHalfAccidentals, getBaseChords, getChordShapes } from "@/lib/edoData";
 import { renderAccidentals } from "@/lib/accidentalDisplay";
 import { formatRomanNumeral } from "@/lib/formatRoman";
@@ -2010,11 +2011,14 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
     <div className="max-w-[1400px] mx-auto py-4" style={{ paddingRight: 260 }}>
       {/* Main content */}
       <div className="space-y-5">
-      <div>
-        <h2 className="text-sm font-semibold text-[#888] uppercase tracking-widest mb-1">Melodic Patterns</h2>
-        <p className="text-[11px] text-[#555]">
-          Fix one side, permute the other — internalize how melodies sound over chords
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-[#888] uppercase tracking-widest mb-1">Melodic Patterns</h2>
+          <p className="text-[11px] text-[#555]">
+            Fix one side, permute the other — internalize how melodies sound over chords
+          </p>
+        </div>
+        <NotationLegend />
       </div>
 
       {/* Pipeline tabs */}
