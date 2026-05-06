@@ -80,16 +80,16 @@ const VIZ_LABELS: Record<VisualizerType, string> = {
   bass: "Bass",
 };
 
-type Tab = "intervals"|"chords"|"melody"|"jazz"|"patterns"|"drone"|"continuum"|"modeid";
+type Tab = "intervals"|"chords"|"melody"|"jazz"|"patterns"|"drone"|"modeid";
 type ResponseMode = "Play Audio"|"Show Target (Sing It)";
 
 const TAB_LABELS: Record<Tab, string> = {
   intervals: "Intervals", chords: "Chords",
   melody: "Melody", jazz: "Jazz Cells", patterns: "Patterns",
-  drone: "Chord Drone", continuum: "Drone Continuum", modeid: "Mode ID",
+  drone: "Chord Drone", modeid: "Mode ID",
 };
 
-const VALID_TABS: Tab[] = ["intervals","chords","modeid","melody","jazz","patterns","drone","continuum"];
+const VALID_TABS: Tab[] = ["intervals","chords","modeid","melody","jazz","patterns","drone"];
 
 // ── Temperament classification ──────────────────────────────────────────
 // Tonal Audiation groups the available EDOs by their underlying tuning
@@ -121,9 +121,9 @@ const TEMPERAMENT_EDOS: Record<Temperament, number[]> = {
 // hidden in those temperaments until the chord-progression infrastructure
 // is rebuilt around tuning lineages.
 const TEMPERAMENT_TABS: Record<Temperament, Tab[]> = {
-  meantone:    ["intervals", "chords", "modeid", "melody", "jazz", "patterns", "drone", "continuum"],
-  pythagorean: ["intervals", "modeid", "chords", "continuum"],
-  schismatic:  ["intervals", "modeid", "chords", "continuum"],
+  meantone:    ["intervals", "chords", "modeid", "melody", "jazz", "patterns", "drone"],
+  pythagorean: ["intervals", "modeid", "chords"],
+  schismatic:  ["intervals", "modeid", "chords"],
 };
 function temperamentForEdo(edo: number): Temperament {
   if (TEMPERAMENT_EDOS.pythagorean.includes(edo)) return "pythagorean";
@@ -808,6 +808,7 @@ export default function App() {
                 const SECTION_BUTTONS: { id: string; label: string; beta?: boolean }[] = [
                   // Always-visible
                   { id: "ear-trainer",          label: "Tonal Audiation" },
+                  { id: "drone-continuum",      label: "Drone Continuum" },
                   { id: "scalar-exploration",   label: "Scalar Explorations" },
                   { id: "lattice",              label: "Harmonic Lattice" },
                   { id: "drum-patterns",        label: "Drum Patterns" },
@@ -1190,6 +1191,16 @@ export default function App() {
           handleHighlight={handleHighlight}
           playVol={playVol}
         />
+      )}
+
+      {/* ── Drone Continuum ── */}
+      {section === "drone-continuum" && (
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-sm font-semibold text-[#888] uppercase tracking-widest mb-4">Drone Continuum</h2>
+            <DroneContinuumTab edo={edo} ensureAudio={ensureAudio} />
+          </div>
+        </div>
       )}
 
       {/* ── Drum Patterns ── */}
@@ -1783,13 +1794,6 @@ export default function App() {
                 edo={edo} onHighlight={handleHighlight} onResult={handleResult}
                 onPlay={handlePlay} onAnswer={trackAnswer} lastPlayed={lastPlayed} ensureAudio={ensureAudio}
                 onDroneStateChange={(active) => { if (!active) setDroneIsOn(false); }} />
-            </div>
-          )}
-
-          {activeTab === "continuum" && (
-            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Drone Continuum</h2>
-              <DroneContinuumTab key={tabKey} edo={edo} ensureAudio={ensureAudio} />
             </div>
           )}
 
