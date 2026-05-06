@@ -15,6 +15,8 @@ interface Props {
   ensureAudio: () => Promise<void>;
 }
 
+const SUPPORTED_EDO_OPTIONS = [12, 17, 19, 22, 24, 31, 41, 53] as const;
+
 // Strip bounds default to A1 (55 Hz) – A6 (1760 Hz) but the user can
 // pick any octave anchors via the controls.  freq(A_n) = 27.5 × 2ⁿ.
 const A_BASE_HZ = 27.5; // = freq(A0)
@@ -33,19 +35,20 @@ const absPcToFreq = (pc: number, edo: number) =>
 // Horizontal layout.  STRIP_W is dynamic — measured from the container
 // at mount and on resize so the strip always fills the available width
 // without horizontal scrolling.  All other dimensions are fixed pixels.
-//   STRIP_X .. STRIP_X+STRIP_W   = clickable strip (log-frequency axis)
-//   y=0..STRIP_Y_TOP             = octave anchors + JI ruler header
+//   y=0..STRIP_Y_TOP             = vertical step-name labels reading
+//                                  upward, sitting on top of each
+//                                  gridline + JI ruler ticks
 //   y=STRIP_Y_TOP..STRIP_Y_BOT   = strip body (gridlines, node circles)
-//   y=STRIP_Y_BOT..NODE_LABEL_Y  = per-EDO-step note labels (rotated -90)
+//   y=STRIP_Y_BOT..NODE_LABEL_Y  = (small gap)
 //   y=NODE_LABEL_Y..             = per-node label rows + leader lines
-const STRIP_X      = 70;
-const STRIP_RIGHT  = 70;
-const STRIP_Y_TOP  = 90;
-const STRIP_H      = 130;
-const STRIP_Y_BOT  = STRIP_Y_TOP + STRIP_H;
-const STEP_LABEL_H = 88;
-const NODE_LABEL_Y = STRIP_Y_BOT + STEP_LABEL_H + 8;
-const NODE_LABEL_H = 80;
+const STRIP_X       = 18;
+const STRIP_RIGHT   = 18;
+const STEP_LABEL_H  = 88;
+const STRIP_Y_TOP   = STEP_LABEL_H + 6;
+const STRIP_H       = 130;
+const STRIP_Y_BOT   = STRIP_Y_TOP + STRIP_H;
+const NODE_LABEL_Y  = STRIP_Y_BOT + 8;
+const NODE_LABEL_H  = 80;
 const SVG_H = NODE_LABEL_Y + NODE_LABEL_H;
 
 // xFromFreq / freqFromX are defined inside the component as closures
@@ -97,8 +100,13 @@ const CHORD_LIBRARY: ChordPreset[] = [
   { id: "Ut",   label: "Utonal 7:6:5:4",    ratios: [1, 7/6, 7/5, 7/4] },
 ];
 
-export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
+export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props) {
   const [nodes, setNodes] = useState<DroneNode[]>([]);
+  // Local EDO override — lets users compare different EDO grids in
+  // this mode without having to leave the section to switch the global
+  // EDO.  Initialised to whatever the rest of the app has set.
+  const [localEdo, setLocalEdo] = useLS<number>("lt_dc_edo", globalEdo);
+  const edo = localEdo;
   const [droneOn, setDroneOn] = useLS<boolean>("lt_dc_on", true);
   const [gain, setGain] = useLS<number>("lt_dc_gain", 0.18);
   const [showEdoGrid, setShowEdoGrid] = useLS<boolean>("lt_dc_edoGrid", true);
@@ -133,12 +141,30 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   // which partials of the playing drone are actually sounding.
   const [showSpectrum, setShowSpectrum] = useLS<boolean>("lt_dc_spectrum", true);
   const [spectrumPeaks, setSpectrumPeaks] = useState<{ freq: number; mag: number }[]>([]);
-  // Additive-synth per-harmonic amplitudes (h1..h16).  Default 1/n
-  // sawtooth-like falloff — natural-sounding drone-y spectrum out of
-  // the box; user adjusts each slider to taste.
+  // Additive-synth per-harmonic amplitudes (h1..h16).  Default uses a
+  // cello-like spectrum — sounds warm and pad-y as a drone, unlike
+  // raw 1/n sawtooth which is buzzy and harsh sustained.  Presets
+  // below mirror well-known synth voicings (Hammond drawbars, cello,
+  // mellow pad, etc.) for users to start from.
+  const ADDITIVE_PRESETS: Record<string, number[]> = {
+    Cello:    [1.00, 0.85, 0.70, 0.62, 0.50, 0.40, 0.30, 0.22, 0.18, 0.14, 0.10, 0.07, 0.05, 0.035, 0.025, 0.018],
+    Pad:      [1.00, 0.60, 0.40, 0.30, 0.22, 0.16, 0.12, 0.09, 0.07, 0.05, 0.04, 0.03, 0.025, 0.02, 0.015, 0.012],
+    // Hammond B3 "full drawbars 888 888 888" — h1+h2+h3+h4+h5+h6+h8,
+    // skipping h7 (no drawbar maps to it).  Classic full-organ sound.
+    Hammond:  [1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 0.00, 1.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+    // Mellow 1/n² rolloff — closer to a soft pad / sine-rich tone.
+    Mellow:   Array.from({ length: 16 }, (_, i) => 1 / Math.pow(i + 1, 2)),
+    // Square wave: only odd harmonics.
+    Square:   Array.from({ length: 16 }, (_, i) => (i % 2 === 0 ? 1 / (i + 1) : 0)),
+    // Sawtooth: classic 1/n (kept as a preset for completeness, even
+    // though it's harsh as a sustain).
+    Sawtooth: Array.from({ length: 16 }, (_, i) => 1 / (i + 1)),
+    Sine:     [1, ...Array(15).fill(0)],
+    Flat:     Array(16).fill(1),
+  };
   const [additivePartials, setAdditivePartials] = useLS<number[]>(
     "lt_dc_additivePartials",
-    Array.from({ length: 16 }, (_, i) => 1 / (i + 1)),
+    ADDITIVE_PRESETS.Cello,
   );
   // Push partials to the audio engine whenever they change.
   useEffect(() => {
@@ -254,7 +280,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     return () => { cancelled = true; cancelAnimationFrame(raf); };
   }, [droneOn, showSpectrum, stripLowHz, stripHighHz]);
 
-  const onStripClick = useCallback((e: React.MouseEvent<SVGRectElement>) => {
+  const onStripClick = (e: React.MouseEvent<SVGRectElement>) => {
     const svg = stripRef.current;
     if (!svg) return;
     const pt = svg.createSVGPoint();
@@ -268,7 +294,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     if (snapToEdo) freq = snapFreqToEdo(freq, edo);
     setNodes(prev => [...prev, { id: makeId(), freq }]);
     setMenuNodeId(null);
-  }, [snapToEdo, edo]);
+  };
 
   const isChildOf = (n: DroneNode, parentId: string) =>
     n.harmonicOf === parentId || n.chordOf === parentId;
@@ -347,13 +373,21 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   });
 
   // EDO grid + per-step note labels.  Iterate C-anchored EDO steps that
-  // fall inside [A1, A6].  Each step gets:
+  // fall inside the active range.  Each step gets:
   //   - a vertical gridline through the strip body
   //   - a small note-name label below the strip (rotated -90 so dense
   //     EDOs like 41 / 53 don't collide horizontally)
   // P5 steps within each octave (the "G" of every octave) get a
   // brighter stroke so the user has a sub-octave reference.
-  const edoSteps: { x: number; pc: number; isP5: boolean; label: string }[] = [];
+  // Labels with double-accidentals or comma-arrows are filtered out
+  // (`labelVisible = false`); the gridline still draws, only the text
+  // is suppressed — keeps dense EDOs readable.
+  const isSimpleLabel = (label: string): boolean => {
+    if (/[𝄪𝄫↑↓]/.test(label)) return false;
+    const sharpFlats = (label.match(/[♯♭]/g) ?? []).length;
+    return sharpFlats <= 1;
+  };
+  const edoSteps: { x: number; pc: number; isP5: boolean; label: string; labelVisible: boolean }[] = [];
   if (showEdoGrid || showStepNames) {
     const minPc = Math.ceil(freqToAbsPc(stripLowHz, edo));
     const maxPc = Math.floor(freqToAbsPc(stripHighHz, edo));
@@ -362,8 +396,17 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
       const f = absPcToFreq(pc, edo);
       const stepInOct = ((pc % edo) + edo) % edo;
       const oct = Math.floor(pc / edo);
-      const label = `${pcToNoteName(stepInOct, edo)}${oct}`;
-      edoSteps.push({ x: xFromFreq(f), pc, isP5: stepInOct === p5Step, label });
+      // Octave digit dropped — A_n octave anchors above the strip
+      // imply the range; step labels just need the letter + accidental.
+      const label = pcToNoteName(stepInOct, edo);
+      void oct;
+      edoSteps.push({
+        x: xFromFreq(f),
+        pc,
+        isP5: stepInOct === p5Step,
+        label,
+        labelVisible: isSimpleLabel(label),
+      });
     }
   }
 
@@ -479,8 +522,18 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
               : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
           }`}
         >
-          {edo}-EDO grid
+          EDO grid
         </button>
+        <select
+          value={localEdo}
+          onChange={e => setLocalEdo(parseInt(e.target.value))}
+          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none"
+          title="EDO grid for this view (independent of the global EDO setting)"
+        >
+          {SUPPORTED_EDO_OPTIONS.map(n => (
+            <option key={n} value={n}>{n}-EDO</option>
+          ))}
+        </select>
         <button
           onClick={() => setShowStepNames(!showStepNames)}
           className={`px-2 py-1 rounded text-[11px] border transition-colors ${
@@ -574,38 +627,26 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         <div className="bg-[#0c0c0c] border border-[#222] rounded px-3 py-2">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] text-[#888] tracking-wider uppercase">Harmonic levels (h1–h16)</span>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setAdditivePartials(Array.from({ length: 16 }, (_, i) => 1 / (i + 1)))}
-                className="px-2 py-0.5 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#2a2a2a]"
-                title="Sawtooth-like 1/n falloff"
-              >
-                1/n
-              </button>
-              <button
-                onClick={() => {
-                  const a = Array.from({ length: 16 }, (_, i) => (i % 2 === 0 ? 1 / (i + 1) : 0));
-                  setAdditivePartials(a);
-                }}
-                className="px-2 py-0.5 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#2a2a2a]"
-                title="Square-wave: only odd harmonics"
-              >
-                Square
-              </button>
-              <button
-                onClick={() => setAdditivePartials([1, ...Array(15).fill(0)])}
-                className="px-2 py-0.5 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#2a2a2a]"
-                title="Pure sine — fundamental only"
-              >
-                Sine
-              </button>
-              <button
-                onClick={() => setAdditivePartials(Array(16).fill(0).map(() => 1))}
-                className="px-2 py-0.5 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#2a2a2a]"
-                title="All harmonics at full amplitude (raw harmonic series)"
-              >
-                Flat
-              </button>
+            <div className="flex gap-1 flex-wrap">
+              {Object.entries(ADDITIVE_PRESETS).map(([name, partials]) => (
+                <button
+                  key={name}
+                  onClick={() => setAdditivePartials(partials)}
+                  className="px-2 py-0.5 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#88ccaa22] hover:border-[#88ccaa] hover:text-[#88ccaa]"
+                  title={
+                    name === "Cello" ? "Bowed-string spectrum (warm, drone-y) — default"
+                    : name === "Pad" ? "Smooth synth pad — gentle harmonic rolloff"
+                    : name === "Hammond" ? "Hammond B3 full drawbars 888 888 888 — classic organ"
+                    : name === "Mellow" ? "1/n² rolloff — soft sine-rich tone"
+                    : name === "Square" ? "Only odd harmonics — hollow / clarinet-like"
+                    : name === "Sawtooth" ? "1/n falloff — buzzy / brassy"
+                    : name === "Sine" ? "Pure fundamental, no overtones"
+                    : "All harmonics at unity amplitude (raw harmonic series)"
+                  }
+                >
+                  {name}
+                </button>
+              ))}
             </div>
           </div>
           <div className="flex gap-1 items-end">
@@ -667,7 +708,8 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         ))}
 
         {/* Octave anchor ticks — taller than EDO step ticks; A1..A6
-            label sits above. */}
+            label sits at the very top of the SVG so it doesn't fight
+            the rotated step labels for vertical space. */}
         {octaveTicks.map(t => (
           <g key={t.label}>
             <line
@@ -676,8 +718,8 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
               stroke="#888" strokeWidth={1.5}
             />
             <text
-              x={t.x} y={cy - OCTAVE_TICK_HALF - 6}
-              fill="#aaa" fontSize={11} fontFamily="monospace"
+              x={t.x} y={14}
+              fill="#aaa" fontSize={12} fontFamily="monospace" fontWeight={600}
               textAnchor="middle"
             >
               {t.label}
@@ -686,17 +728,21 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         ))}
 
         {/* Per-EDO-step note labels — rotated -90° so they read
-            bottom-to-top alongside each gridline.  Anchor at the
-            bottom of the step-label zone (textAnchor=start) so longer
-            labels all align flush at the deep end. */}
-        {showStepNames && edoSteps.map((s, i) => {
-          const anchorY = STRIP_Y_BOT + STEP_LABEL_H - 4;
+            bottom-to-top, each label sitting on top of its gridline
+            with the bottom of the label flush against the strip's
+            top edge.  Double accidentals and comma-arrow notations
+            (𝄪 / 𝄫 / ↑ / ↓) are hidden so dense EDOs (31 / 41 / 53)
+            stay readable; the gridlines themselves still draw at
+            every step.  Octave digit dropped — A_n anchor labels at
+            the very top imply the octave context. */}
+        {showStepNames && edoSteps.filter(s => s.labelVisible).map((s, i) => {
+          const anchorY = STRIP_Y_TOP - 4;
           return (
             <text
               key={`name${i}`}
               x={s.x} y={anchorY}
-              fill={s.isP5 ? "#9aa6cc" : "#888"}
-              fontSize={10} fontFamily="monospace"
+              fill={s.isP5 ? "#9aa6cc" : "#aaa"}
+              fontSize={11} fontFamily="monospace"
               textAnchor="start"
               transform={`rotate(-90 ${s.x} ${anchorY})`}
             >

@@ -219,16 +219,20 @@ function preprocessDroneBuffer(_ctx: AudioContext, original: AudioBuffer): {
     normGain = DRONE_PEAK_CAP / peak;
   }
 
-  // Build a normalized copy AND apply tiny seam fades.  Voice + tanpura
-  // recordings have natural micro-vibrato that beat against themselves
-  // when overlapped (user reported "voice it doesnt sound seemless it
-  // just sounds like an up and down roller coaster" 2026-05-05), so we
-  // dropped the dual-voice overlap scheduler in favour of single-source
-  // src.loop=true.  To suppress the loop-wrap click without introducing
-  // beats, we fade in over the first ~25 ms of the loop region and
-  // fade out over the last ~25 ms.  At the seam: end fades to silence,
-  // wraps to silence, fades back up — no click, no rollercoaster.
-  const seamFadeSec = 0.025;
+  // Build a normalized copy with a proper loop-seam CROSSFADE.  The
+  // earlier approach faded both edges to silence so the wrap went
+  // silence→silence — no click, but the ~50 ms hole was audible as a
+  // recurring "duck" on long sustained drones (per direct user
+  // feedback 2026-05-05: "the looping in the drone is not seemless").
+  //
+  // Proper sampler-style crossfade: the LAST `seamFadeSamp` samples of
+  // the loop region are mixed against the FIRST `seamFadeSamp` samples,
+  // so by the time the buffer reaches loopEnd the audio has smoothly
+  // morphed into the start-of-loop content.  loopStart is then shifted
+  // forward by seamFadeSamp so the wrap continues seamlessly from the
+  // sample-after-the-crossfade — the listener hears one continuous
+  // signal across the seam, no silence, no click.
+  const seamFadeSec = 0.25;
   const seamFadeSamp = Math.min(
     Math.floor(seamFadeSec * sampleRate),
     Math.floor((loopEndSamp - loopStartSamp) / 4),  // never more than 25% of loop
@@ -238,22 +242,26 @@ function preprocessDroneBuffer(_ctx: AudioContext, original: AudioBuffer): {
     const inD = original.getChannelData(ch);
     const outD = out.getChannelData(ch);
     for (let i = 0; i < totalSamples; i++) outD[i] = inD[i] * normGain;
-    // Fade in over the first seamFadeSamp samples of the loop region.
+    // Crossfade: end-of-loop morphs into start-of-loop content.
     for (let i = 0; i < seamFadeSamp; i++) {
       const t = i / seamFadeSamp;
-      outD[loopStartSamp + i] *= Math.sin(t * Math.PI / 2);
-    }
-    // Fade out over the last seamFadeSamp samples of the loop region.
-    for (let i = 0; i < seamFadeSamp; i++) {
-      const t = i / seamFadeSamp;
-      outD[loopEndSamp - seamFadeSamp + i] *= Math.cos(t * Math.PI / 2);
+      const endIdx   = loopEndSamp - seamFadeSamp + i;
+      const startIdx = loopStartSamp + i;
+      const endSamp   = inD[endIdx]   * normGain;
+      const startSamp = inD[startIdx] * normGain;
+      // Equal-power crossfade (cos/sin).
+      outD[endIdx] = endSamp * Math.cos(t * Math.PI / 2)
+                   + startSamp * Math.sin(t * Math.PI / 2);
     }
   }
-  const newBuffer = out;
+  // loopStart shifts past the region whose content is now baked into
+  // the end-of-loop crossfade, so when the buffer wraps it picks up
+  // continuously rather than replaying the start content.
+  const newLoopStartSamp = loopStartSamp + seamFadeSamp;
 
   return {
-    buffer: newBuffer,
-    loopStart: loopStartSamp / sampleRate,
+    buffer: out,
+    loopStart: newLoopStartSamp / sampleRate,
     loopEnd: loopEndSamp / sampleRate,
   };
 }
