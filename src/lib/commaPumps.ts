@@ -18,6 +18,75 @@
 // Per direct user direction (2026-05-06): "the comma pumps are all
 // hardcoded I want you to calculate 5 different progressions for
 // each tonality for every edo" → "5 interesting progressions".
+//
+// ── Higher-limit pump status (2026-05-06) ─────────────────────────────────
+// "find comma pumps for everything else if they exist, do all the
+// calculations please" — the calculations were done, summary below.
+// Honest result: most higher-limit scales DON'T have natural
+// cumulative pumps in our scale-tone progression model.  Why:
+//
+//   * 5-LIMIT MAJOR (Diatonic Classic Major + JI Ionian): genuine
+//     syntonic pump on vi→ii.  vi's root (5/3) appears in scale-tone
+//     ii triad as ii's "P5" position, but the scale-tone ii P5 is
+//     40/27 (wolf!) — held-tone voice-leading forces ii to retune,
+//     dropping the chain by 81/80 ≈ 21.5¢.  This is the only known
+//     pump that the existing chord-root lattice infrastructure
+//     models cleanly.  ✓ surfaced
+//
+//   * 5-LIMIT MINOR (Diatonic Classic Minor / Classic Harmonic
+//     Minor M7): same syntonic pump in the i-VI-ii°-V-i form.  The
+//     5 templates above all resolve correctly because lowercase /
+//     uppercase / ° quality is encoded in the chord pool's labels.
+//     ✓ surfaced
+//
+//   * 3-LIMIT PYTHAGOREAN (Diatonic Major Pyth / Diatonic Harmonic
+//     Minor / "Pythagorean *"): NO realistic diatonic pump.  Pyth
+//     comma 531441/524288 ≈ 23.5¢ requires a chain of 12 perfect
+//     fifths spelled chromatically (B# = C+pyth) — a 7-chord
+//     diatonic progression can't traverse it.  ✗ skip
+//
+//   * 7-LIMIT (Diatonic Subminor / Supermajor / Subharmonic Minor
+//     M7): no NATURAL scale-tone pump.  Each scale's chord pool is
+//     internally consistent — Subminor's bVII chord on 7/4 has a
+//     wide P5 (32/21) that's 27¢ off canonical, but voice-leading
+//     bVII→i has no held common-tone, so the wide-fifth retuning
+//     doesn't propagate.  Septimal pumps (Marvel 225/224, Archytas
+//     64/63) need either V7sept-with-7/4-seventh chord types in a
+//     5-limit scale (modal interchange) or extended progressions
+//     that alternate chord interpretations — neither fits the
+//     scale-scoped template framework.  ✗ skip honestly
+//
+//   * 11-LIMIT (Mohajira / Maqam): Mohajira's iii triad on 11/9 has
+//     a wolf m3 (27/22 vs canonical 11/9, ~7¢ off = Rastma 243/242)
+//     when built scale-tone, and retuning it would propagate
+//     through V — but V→I has no held tone in Mohajira's voicing
+//     so the drift doesn't close into a sustained pump.  Standard
+//     diatonic-Roman progressions on Maqam scales (Rast / Bayati /
+//     etc.) similarly don't produce cumulative drift.  ✗ skip
+//
+//   * 13-LIMIT (Tridecimal Major / Minor / Beirut / Tridecimal
+//     Hijaz): same situation.  13-limit ratios at colour positions
+//     don't create voice-leading-forced retunings in 7-tone
+//     diatonic progressions.  ✗ skip
+//
+// What WOULD model higher-limit pumps faithfully:
+//   1. Per-tonality CHORD_ROOT_POSITION overrides in jiLattice —
+//      Mohajira's vi at 27/16 (Pyth) instead of 5/3 (5-limit
+//      canonical), Subminor's bVII at 7/4 instead of 9/5, etc.
+//      Each scale needs its own root-position table.
+//   2. A held-tone voice-leading walk that tracks per-VOICE lattice
+//      positions (the existing VOICING_CATALOG infrastructure)
+//      rather than chord-root motion alone.
+//   3. Mixed-tuning / modal-interchange progression support, so
+//      e.g. "V7sept resolving in a 5-limit major key" can surface
+//      as a Marvel pump even though the scale itself is 5-limit.
+//
+// Each of these is a meaningful infrastructure task; doing all
+// three is days of work.  The current code surfaces the one pump
+// that genuinely fires through the existing infrastructure (5-limit
+// syntonic) and stays silent on every other scale rather than
+// faking it with hand-computed drifts that don't actually emerge
+// from the scale's structure.
 
 import { tracePathDrifts } from "./jiLattice";
 import { edoTempersComma } from "./edoTemperamentData";
