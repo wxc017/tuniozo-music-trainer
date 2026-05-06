@@ -4127,9 +4127,18 @@ interface LatticeViewProps {
    *  is about to happen.  See MonzoSceneProps.voiceLeadingArrows for
    *  the per-arrow shape. */
   voiceLeadingArrows?: Array<{ fromClassId: number; toClassId: number; index: number; color: string }>;
+  /** External override for the Custom-Ratios filter input.  When
+   *  supplied, the parent dictates which ratios appear in the
+   *  custom-ratios mode (LatticeView's internal text-input is
+   *  bypassed).  Used by Drone Continuum so the lattice's custom-
+   *  ratio mode shows exactly the ratios the strip is using —
+   *  curated 13-limit + user customs — rather than whatever the
+   *  user last typed inside the lattice gamemode.  Pass undefined
+   *  to fall back to the internal input. */
+  externalCustomRatios?: string;
 }
 
-export default function LatticeView({ externalHighlights, activeNodeKey, activeNodeKeys, activeClassIds, temperingForEdo, chromeless = false, pinnedChordOverlays, compensationArcs, voiceLeadingArrows }: LatticeViewProps = {}) {
+export default function LatticeView({ externalHighlights, activeNodeKey, activeNodeKeys, activeClassIds, temperingForEdo, chromeless = false, pinnedChordOverlays, compensationArcs, voiceLeadingArrows, externalCustomRatios }: LatticeViewProps = {}) {
   const [droneNodes, setDroneNodes] = useState<Set<string>>(new Set());
   // When the parent supplies `activeNodeKeys` (plural) or
   // `activeNodeKey` (singular), surface them through the standard
@@ -4369,11 +4378,17 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   const [customRatiosInput, setCustomRatiosInput] = useState("");
   const [customRatioPresets, setCustomRatioPresets] = useLS<Record<string, string>>("lt_monzo_ratioPresets", {});
   const [ratioPresetName, setRatioPresetName] = useState("");
+  // When the parent supplies externalCustomRatios, prefer it over the
+  // internal text input so embedded contexts (Drone Continuum) can
+  // dictate the ratio set without forcing the user to retype it.
+  const effectiveCustomRatiosInput = externalCustomRatios !== undefined
+    ? externalCustomRatios
+    : customRatiosInput;
 
   const parsedCustomRatios = useMemo((): Set<string> => {
-    if (!customRatiosInput.trim()) return new Set();
+    if (!effectiveCustomRatiosInput.trim()) return new Set();
     const keys = new Set<string>();
-    const parts = customRatiosInput.split(/[,;\n\s]+/).filter(Boolean);
+    const parts = effectiveCustomRatiosInput.split(/[,;\n\s]+/).filter(Boolean);
     for (const part of parts) {
       const match = part.trim().match(/^(\d+)\s*[/:]\s*(\d+)$/);
       if (match) {
@@ -4387,7 +4402,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       }
     }
     return keys;
-  }, [customRatiosInput]);
+  }, [effectiveCustomRatiosInput]);
 
   const customRatiosActive = parsedCustomRatios.size > 0;
   const [customRatioNeighbors, setCustomRatioNeighbors] = useState(false);
