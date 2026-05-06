@@ -159,6 +159,67 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   // same way regardless (it answers "what JI ratio is closest to this
   // freq from the current root?"), so this only affects the *grid*.
   const [gridMode, setGridMode] = useLS<"edo" | "ji">("lt_dc_gridMode", "edo");
+  // Custom JI ratios — user-added beyond the curated 13-limit set.
+  // Stored as [numerator, denominator] pairs.
+  const [customRatios, setCustomRatios] = useLS<number[][]>("lt_dc_customRatios", []);
+  // Named presets of custom-ratio sets so users can switch between
+  // their own curated families (e.g. "septimal-only", "5-limit JI",
+  // "maqam-rast-tetrachord").
+  const [ratioPresets, setRatioPresets] = useLS<Record<string, number[][]>>("lt_dc_ratioPresets", {});
+  const [ratioInput, setRatioInput] = useState("");
+  const [presetName, setPresetName] = useState("");
+
+  const parseRatios = (text: string): number[][] => {
+    return text
+      .split(/[,\s]+/)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(s => {
+        const m = s.match(/^(\d+)\s*\/\s*(\d+)$/);
+        if (!m) return null;
+        const n = parseInt(m[1]);
+        const d = parseInt(m[2]);
+        if (n <= 0 || d <= 0) return null;
+        return [n, d];
+      })
+      .filter((x): x is number[] => x !== null);
+  };
+
+  const addCustomRatios = () => {
+    const parsed = parseRatios(ratioInput);
+    if (!parsed.length) return;
+    setCustomRatios(prev => {
+      const seen = new Set(prev.map(([n, d]) => `${n}/${d}`));
+      const adds = parsed.filter(([n, d]) => !seen.has(`${n}/${d}`));
+      return [...prev, ...adds];
+    });
+    setRatioInput("");
+  };
+
+  const removeCustomRatio = (i: number) => {
+    setCustomRatios(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const clearCustomRatios = () => setCustomRatios([]);
+
+  const saveRatioPreset = () => {
+    const name = presetName.trim();
+    if (!name) return;
+    setRatioPresets(prev => ({ ...prev, [name]: customRatios }));
+    setPresetName("");
+  };
+
+  const loadRatioPreset = (name: string) => {
+    if (name && ratioPresets[name]) setCustomRatios(ratioPresets[name]);
+  };
+
+  const deleteRatioPreset = (name: string) => {
+    setRatioPresets(prev => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  };
   // Strip range — user-pickable octave bounds (each anchored to A_n).
   // Default A1..A6 (55–1760 Hz, 5 octaves).
   const [lowOct, setLowOct] = useLS<number>("lt_dc_lowOct", 1);
@@ -465,12 +526,26 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
         });
       }
     } else {
-      // JI mode: place each curated 13-limit ratio at A_n × ratio for
-      // every octave anchor in the strip range.  Octave anchors get
-      // their A_n label; intermediate ratios get their fraction label.
+      // JI mode: combine the curated 13-limit ratios with the user's
+      // custom ratios.  De-dupe by string key so adding "5/4" doesn't
+      // double-draw against the curated 5/4.
+      const seen = new Set<string>();
+      const allRatios = [
+        ...JI_GRID_RATIOS,
+        ...customRatios.map(([num, den]) => ({
+          num, den,
+          limit: Math.max(maxPrimeOf(num), maxPrimeOf(den)),
+          isP5: num === 3 && den === 2,
+        })),
+      ].filter(r => {
+        const key = `${r.num}/${r.den}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       for (let oct = lowOct; oct <= highOct; oct++) {
         const baseFreq = aOctaveHz(oct);
-        for (const r of JI_GRID_RATIOS) {
+        for (const r of allRatios) {
           const f = baseFreq * (r.num / r.den);
           if (f < stripLowHz * 0.999 || f > stripHighHz * 1.001) continue;
           const isOctaveAnchor = r.num === 1 && r.den === 1;
@@ -651,6 +726,96 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
         </div>
 
       </div>
+
+      {gridMode === "ji" && (
+        <div className="bg-[#0c0c0c] border border-[#222] rounded px-3 py-2 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] text-[#888] uppercase tracking-wider">Custom JI ratios</span>
+            <input
+              type="text"
+              placeholder="5/4, 11/8, 7/4 …"
+              value={ratioInput}
+              onChange={e => setRatioInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomRatios(); } }}
+              className="flex-1 min-w-[200px] bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#7173e6]"
+            />
+            <button
+              onClick={addCustomRatios}
+              className="px-2 py-1 text-[10px] rounded bg-[#1e1e1e] border border-[#7173e6] text-[#9999ee] hover:bg-[#7173e622]"
+            >
+              Add
+            </button>
+            {customRatios.length > 0 && (
+              <button
+                onClick={clearCustomRatios}
+                className="px-2 py-1 text-[10px] rounded bg-[#2a1414] border border-[#552020] text-[#c08080] hover:bg-[#3a1818]"
+              >
+                Clear ({customRatios.length})
+              </button>
+            )}
+          </div>
+          {customRatios.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {customRatios.map(([n, d], i) => (
+                <span
+                  key={`${n}/${d}/${i}`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] rounded bg-[#1a1a1a] border border-[#3a3a3a] text-[#c8aa50] font-mono"
+                >
+                  {n}/{d}
+                  <button
+                    onClick={() => removeCustomRatio(i)}
+                    className="text-[#666] hover:text-[#c08080]"
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-[#1e1e1e]">
+            <span className="text-[10px] text-[#666]">Presets</span>
+            <input
+              type="text"
+              placeholder="Preset name"
+              value={presetName}
+              onChange={e => setPresetName(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); saveRatioPreset(); } }}
+              className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-0.5 text-[10px] text-white focus:outline-none focus:border-[#7173e6] w-32"
+            />
+            <button
+              onClick={saveRatioPreset}
+              disabled={!presetName.trim() || customRatios.length === 0}
+              className="px-2 py-0.5 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#2a2a2a] disabled:text-[#444] disabled:cursor-not-allowed"
+              title="Save current custom ratio set under the chosen name"
+            >
+              Save
+            </button>
+            {Object.keys(ratioPresets).length > 0 && (
+              <>
+                <span className="text-[10px] text-[#555]">·</span>
+                {Object.keys(ratioPresets).map(name => (
+                  <span key={name} className="inline-flex items-center gap-1">
+                    <button
+                      onClick={() => loadRatioPreset(name)}
+                      className="px-2 py-0.5 text-[10px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#7173e622] hover:border-[#7173e6] hover:text-[#9999ee] font-mono"
+                    >
+                      {name}
+                    </button>
+                    <button
+                      onClick={() => deleteRatioPreset(name)}
+                      className="text-[#555] hover:text-[#c08080] text-[10px]"
+                      title="Delete preset"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {instrument === "additive" && (
         <div className="bg-[#0c0c0c] border border-[#222] rounded px-3 py-2">
