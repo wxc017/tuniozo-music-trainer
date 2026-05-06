@@ -585,9 +585,13 @@ export default function App() {
       await audioEngine.init(edo);
       audioEngine.setPlayGain(playVol);
       setAudioReady(true);
-    } else {
-      audioEngine.resume();
     }
+    // ALWAYS resume — modern browsers create AudioContexts in
+    // suspended state and only the user gesture that triggered this
+    // call can resume them.  Previously the resume() was in the else
+    // branch only, so the very first ensureAudio() call returned with
+    // a suspended ctx and nothing played until a second click.
+    audioEngine.resume();
   }, [audioReady, playVol, edo]);
 
   useEffect(() => {
