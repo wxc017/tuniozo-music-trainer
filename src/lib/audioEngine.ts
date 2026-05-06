@@ -900,9 +900,15 @@ export class AudioEngine {
       return;
     }
 
-    // Crossfade duration: 25% of loop, capped at 1.5s for very long
-    // samples and floored at 50ms for very short ones.
-    const fadeSec = Math.max(0.05, Math.min(1.5, loopDurOutSec * 0.25));
+    // Per direct user direction: "start another sample halfway so it
+    // goes in infinite stacks overlapping each other".  Each voice
+    // gets a triangular gain envelope spanning the FULL loop (ramp
+    // up over loopDur/2, peak at midpoint, ramp down over loopDur/2)
+    // and the next voice fires exactly halfway through.  Two voices
+    // are always playing — when one peaks the other is silent and
+    // vice versa, with mirror-image ramps that sum to constant gain
+    // at every instant.
+    const halfDurSec = loopDurOutSec / 2;
     const myGen = this.droneGeneration;
 
     const fireVoice = (startTime: number) => {
@@ -911,14 +917,10 @@ export class AudioEngine {
       src.buffer = sample.buffer;
       src.playbackRate.value = rate;
 
-      // Triangular-ish gain envelope: 0 → 1 over fadeSec, plateau,
-      // 1 → 0 over the last fadeSec.  Equal-power (linear) ramps
-      // chosen because the next voice's mirror ramp sums to ~constant
-      // RMS for steady drone content.
+      // Pure triangular envelope: 0 at start, 1 at midpoint, 0 at end.
       const g = ctx.createGain();
       g.gain.setValueAtTime(0, startTime);
-      g.gain.linearRampToValueAtTime(1, startTime + fadeSec);
-      g.gain.setValueAtTime(1, startTime + loopDurOutSec - fadeSec);
+      g.gain.linearRampToValueAtTime(1, startTime + halfDurSec);
       g.gain.linearRampToValueAtTime(0, startTime + loopDurOutSec);
 
       src.connect(g);
@@ -929,17 +931,23 @@ export class AudioEngine {
       src.start(startTime, sample.loopStart, loopDurOutSec);
       this.droneSamples.push(src);
 
-      // Schedule the NEXT voice to start `fadeSec` before this one
-      // ends — that's the overlap region where this voice fades out
-      // and the next voice fades in simultaneously.
-      const nextStart = startTime + loopDurOutSec - fadeSec;
+      // Schedule the NEXT voice halfway through — when this voice
+      // peaks, the next voice starts ramping up.  Constant total
+      // energy throughout.
+      const nextStart = startTime + halfDurSec;
       const wakeAheadSec = 0.5;
       const delayMs = Math.max(0, (nextStart - ctx.currentTime - wakeAheadSec) * 1000);
       const t = setTimeout(() => fireVoice(nextStart), delayMs);
       this.droneLoopTimers.push(t);
     };
 
-    fireVoice(ctx.currentTime);
+    // Fire the first voice immediately AND a second one starting at
+    // half-loop so the listener doesn't hear a slow ramp-in at the
+    // very beginning — the second voice's initial ramp combines with
+    // the first voice's plateau to give full energy from t=0+.
+    const t0 = ctx.currentTime;
+    fireVoice(t0);
+    fireVoice(t0 + halfDurSec);
   }
 
   /** Attach a slow ~4.5 Hz LFO to an oscillator's detune param so the
