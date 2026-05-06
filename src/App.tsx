@@ -176,10 +176,14 @@ function ScalarExplorationLayout(props: {
     tonicPc, lowestPitch, highestPitch, edo, vizType, highlighted, layout,
     ensureAudio, handleKeyClick, handleHighlight, playVol,
   } = props;
-  const latticeTargetRef = useRef<HTMLDivElement | null>(null);
-  // Force a re-render after the ref attaches so ScalarTab's portal
-  // call sees a non-null target on the first paint.
-  const [, setTargetReady] = useState(0);
+  // Lattice portal target — stored as state (not ref) so that when
+  // the target div mounts, ScalarTab re-renders with a non-null
+  // latticePortalTarget and the lattice portal attaches.
+  // useState's setter is reference-stable, so passing it as a `ref`
+  // callback won't loop.  Earlier this was an inline ref callback
+  // that called setState every render, causing "Maximum update depth
+  // exceeded" (App.tsx:220:60 in user's stack).
+  const [latticeTarget, setLatticeTarget] = useState<HTMLDivElement | null>(null);
   return (
     <>
       <div className="flex flex-col">
@@ -207,7 +211,7 @@ function ScalarExplorationLayout(props: {
             <ScalarTab tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch}
               edo={edo} onHighlight={handleHighlight}
               ensureAudio={ensureAudio} playVol={playVol}
-              latticePortalTarget={latticeTargetRef.current} />
+              latticePortalTarget={latticeTarget} />
           </div>
         </div>
       </div>
@@ -217,7 +221,7 @@ function ScalarExplorationLayout(props: {
           user scrolls into here the visualizer scrolls away. */}
       <div className="px-4 pt-3 pb-8">
         <div className="max-w-6xl mx-auto w-full">
-          <div ref={el => { latticeTargetRef.current = el; setTargetReady(n => n + 1); }} />
+          <div ref={setLatticeTarget} />
         </div>
       </div>
     </>
