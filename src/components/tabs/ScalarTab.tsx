@@ -244,8 +244,11 @@ export default function ScalarTab({
     if (!view) return [];
     const labels = new Set<string>();
     view.bank.levels.forEach(l => l.chords.forEach(c => labels.add(c.label)));
-    return pumpsForTonality(edo, labels);
-  }, [view, edo]);
+    // Pass `selected` through so commaPumps can gate templates by the
+    // tonality's primary colour prime — a 5-limit syntonic pump must
+    // not surface on Diatonic Supermajor / Subminor (7-limit) etc.
+    return pumpsForTonality(edo, selected, labels);
+  }, [view, edo, selected]);
 
   const baseTonic = lowestPitch + (((tonicPc - lowestPitch) % edo) + edo) % edo;
 
