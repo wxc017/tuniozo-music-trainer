@@ -202,11 +202,15 @@ const JI_SCALES: JiScaleSpec[] = [
   // Minor / Classic Harmonic Minor M7 / Subharmonic Minor M7).
   // All preserve canonical 1 / 4 / 5 (4/3, 3/2) — hence "Diatonic"
   // in every name.
-  { name: "Diatonic Neutral",
-    // Major-flavoured Mohajira-cousin: M2 instead of b2, n3 at the
-    // 3rd (11/9), Cl6 / Cl7 at 6 / 7 (5-limit).  Tonic chord 1-n3-5
-    // is a NEUTRAL triad.
-    steps: [["1",0],["2",203.9],["b3",347.4],["4",498.0],["5",702.0],["6",884.4],["7",1088.3]] },
+  // "Diatonic Neutral" was removed per direct user direction
+  // (2026-05-05): grafting an 11/9 neutral 3rd onto a 3-limit
+  // (Pyth M2 / P4 / P5) backbone forces the chord stacks to use
+  // high-prime "leftover" intervals like 27/22 instead of pure
+  // 11-limit ratios.  The result doesn't actually sound 11-limit
+  // — the maqam scales (Rast / Bayati / Hijaz / Saba) added in the
+  // same revision are the proper home for 11-limit tetrachordal
+  // intervals, and Mohajira covers the consistent-11-limit
+  // diatonic case (LsLsLsL with neutral 2nds throughout).
   { name: "Diatonic Harmonic Minor",
     // Pythagorean-flavoured harmonic minor (3-limit core + raised
     // M7).  m3 = 32/27 (294¢), m6 = 128/81 (792¢), 7 = 243/128
@@ -601,7 +605,6 @@ const FIFTY_THREE_EDO_FAMILIES: FortyOneEdoFamilySpec[] = [
   { parent: "Diatonic Classic Harmonic Minor M7",  modeNames: HARMONIC_MINOR_ROTATION_NAMES },
   { parent: "Diatonic Subharmonic Minor M7",       modeNames: HARMONIC_MINOR_ROTATION_NAMES },
   { parent: "Diatonic Supraharmonic Minor M7",     modeNames: HARMONIC_MINOR_ROTATION_NAMES },
-  { parent: "Diatonic Neutral",              modeNames: IONIAN_ROTATION_NAMES },
 ];
 
 /** Public list of (family-label → ordered mode tonalities) used by the
