@@ -45,6 +45,7 @@ import CountdownTimer from "@/components/CountdownTimer";
 import PracticeLogModal from "@/components/PracticeLogModal";
 import type { AccentImportMode } from "@/components/PracticeLogModal";
 import SettingsModal from "@/components/SettingsModal";
+import NotationLegend from "@/components/NotationLegend";
 import { useMetronome } from "@/hooks/useMetronome";
 import { useLS, lsSet, getKnownOptions, localToday } from "@/lib/storage";
 import { initFolderSync, getStatus as getFolderSyncStatus, reconnectFolder, type SyncState } from "@/lib/folderSync";
@@ -1354,6 +1355,7 @@ export default function App() {
               {TEMPERAMENT_LABELS[t]}
             </button>
           ))}
+          <div className="ml-auto"><NotationLegend /></div>
         </div>
         {/* EDO + Visualizer row — moved out of the global header into
             the Tonal Audiation body so it sits next to the

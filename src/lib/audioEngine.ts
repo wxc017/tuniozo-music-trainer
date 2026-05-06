@@ -125,12 +125,18 @@ const DRONE_PEAK_CAP   = 0.95;
 
 /** Perceptual-parity calibration between the drone path and the play
  *  path.  Play notes go through scheduleNote with a 0.7-0.8 gain factor
- *  before reaching the volume slider; drone voices have noteGain=1.0.
- *  Without this multiplier drones come out ~40% louder than play at
- *  the same slider %.  Tuned to address "Drone volume and Play volume
- *  should be 1 to 1 synced" (2026-05-05); applied at noteGain so it
- *  affects drone output uniformly across instruments. */
-const DRONE_PATH_GAIN = 0.7;
+ *  AND through a dynamics compressor (-3dB threshold, 4:1 ratio); drone
+ *  voices have noteGain=1.0 and bypass the compressor.  Drones are
+ *  also sustained tones (high RMS-to-peak), play notes are transients
+ *  (low RMS-to-peak), so equal peaks don't mean equal perceived
+ *  loudness — sustained tones sound much louder.
+ *
+ *  User reports they have to set Play at ~150% to match Drone at
+ *  ~100%, so drone is perceptually about 1.5× louder at equal sliders.
+ *  DRONE_PATH_GAIN = 0.5 brings drone down to roughly half its raw
+ *  level so the slider percentages now line up.  Tuned for "Drone
+ *  volume and Play volume should be 1 to 1 synced" (2026-05-05). */
+const DRONE_PATH_GAIN = 0.5;
 
 /** Pre-process a freshly-decoded sample buffer for drone use:
  *  peak-normalize the loop region and report loopStart / loopEnd so

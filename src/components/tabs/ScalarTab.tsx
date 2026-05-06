@@ -12,6 +12,7 @@ import { jiLimitGroupsForEdo } from "@/lib/jiTonalityFamilies";
 import { KNOWN_INTERVALS } from "@/lib/jiChordAnalysis";
 import { JI_SCALE_NAMES } from "@/lib/jiScaleData";
 import FloatingPanel from "@/components/FloatingPanel";
+import NotationLegend from "@/components/NotationLegend";
 
 const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
 import { formatRomanNumeral } from "@/lib/formatRoman";
@@ -415,6 +416,7 @@ export default function ScalarTab({
             <option key={i} value={i}>{formatHalfAccidentals(pcToNoteNameWithEnharmonic(i, edo) ?? "", edo)}</option>
           ))}
         </select>
+        <div className="ml-auto"><NotationLegend /></div>
       </div>
 
       {/* ── Tuning-family EDO selector — Temperament-Explorer style.
