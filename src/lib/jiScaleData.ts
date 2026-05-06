@@ -202,13 +202,15 @@ const JI_SCALES: JiScaleSpec[] = [
     // 7/4 (969¢ harmonic 7).  Bluesy sub-minor flavour.
     steps: [["1",0],["2",203.9],["b3",266.9],["4",498.0],["5",702.0],["b6",764.9],["b7",968.8]] },
   { name: "Diatonic Classic Harmonic Minor M7",
-    // 5-limit harmonic minor: Clm3 → 6/5, Clm6 → 8/5, 7 → 15/8
-    // (raised M7 leading-tone over the natural-minor lower
-    // tetrachord).  Renamed from "Harmonic Minor Diatonic" per
-    // user direction (2026-05-05) so the M7 class is explicit and
-    // the "Classic" prefix flags the 5-limit lower-tetrachord
-    // tuning.
-    steps: [["1",0],["2",203.9],["b3",315.6],["4",498.0],["5",702.0],["b6",813.7],["7",1088.3]] },
+    // 5-limit lower tetrachord (Clm3 → 6/5, Clm6 → 8/5) with a
+    // PYTH M7 (243/128 = 1109.8¢) as the leading-tone — per direct
+    // user direction (2026-05-06): "the seventh interval for this
+    // scale is classic major 7 its supposed to be major 7".  The
+    // "M7" in the scale name flags that the leading tone is the
+    // Pythagorean (3-limit) M7, not the 5-limit Cl7 — that's the
+    // distinguishing feature of the Classic Harmonic Minor M7
+    // variant compared to the plain "Diatonic Classic Minor".
+    steps: [["1",0],["2",203.9],["b3",315.6],["4",498.0],["5",702.0],["b6",813.7],["7",1109.8]] },
   { name: "Diatonic Major",
     // Pythagorean major (3-limit): 81/64 (408¢), 27/16 (906¢),
     // 243/128 (1110¢).  Bright chain-of-fifths colour, contrasted
@@ -475,10 +477,16 @@ const GREEK_MODE_REFS: Array<{ name: string; cents: number[] }> = [
 ];
 
 /** Extract the letter prefix from a degree code.  "M3" → "M", "Clm6" →
- *  "Cm", "s7" → "s", "##4" → "" (no letter; perfect-position with
- *  accidentals).  Used for flavor inference and template matching. */
+ *  "Clm", "Cl3" → "Cl", "s7" → "s", "##4" → "" (no letter;
+ *  perfect-position with accidentals).  Used for flavor inference
+ *  and template matching.
+ *
+ *  The regex includes `l` so the renamed "Cl" (classic major) and
+ *  "Clm" (classic minor) prefixes match correctly — earlier they
+ *  were "C" / "Cm" but the bulk N→n / C→Cl rename adds "l" between
+ *  C and the optional minor `m`. */
 function letterPrefix(code: string): string {
-  const match = code.match(/^([sSmMnCu]+)/);
+  const match = code.match(/^([sSmMnCul]+)/);
   if (!match) return "";
   return match[1];
 }
@@ -493,8 +501,11 @@ function letterPrefix(code: string): string {
  *  uniformly, matching the user's "1 s2 s3 4 5 s6 s7 = Subphrygian"
  *  reading. */
 function applyFlavorToTemplate(refCodes: string[], flavorLetter: string): string[] {
-  const isMinorSide = flavorLetter === "s" || flavorLetter === "Cm" || flavorLetter === "u";
-  const isMajorSide = flavorLetter === "C" || flavorLetter === "S";
+  // Flavor letters use the renamed codes: "Clm" (classic minor) and
+  // "Cl" (classic major) replace the older "Cm" / "C" after the
+  // bulk N→n / C→Cl rename.
+  const isMinorSide = flavorLetter === "s" || flavorLetter === "Clm" || flavorLetter === "u";
+  const isMajorSide = flavorLetter === "Cl" || flavorLetter === "S";
   const isNeutral = flavorLetter === "n";
   return refCodes.map(code => {
     const prefix = letterPrefix(code);
