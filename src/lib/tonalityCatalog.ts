@@ -60,6 +60,16 @@ export const TONALITY_FAMILIES: TonalityFamilyGroup[] = [
       "Half-Whole Diminished (Half-Sharp)",
       "Whole-Half Diminished (Half-Flat)",
     ] },
+  // Maqam family — added per direct user direction (2026-05-05) for
+  // 11-limit tetrachordal scales.  Each maqam = lower jins (tetrachord)
+  // + upper jins; tetrachords are closed under their constituent
+  // ratios so the scale avoids the chord-comma wolves that plague
+  // Diatonic-style 11-limit (see Mohajira / Diatonic Neutral).  Used
+  // for 31-EDO (curated-section catalog) and 41 / 53-EDO (where the
+  // jiTonalityFamilies override pulls the maqam scales out of
+  // FORTY_ONE/FIFTY_THREE_EDO_TONALITY_FAMILIES directly).
+  { key: "maqam", label: "MAQAM", color: "#d08a5a",
+    tonalities: ["Rast", "Bayati", "Hijaz", "Saba"] },
 ];
 
 const MEANTONE_LIMIT_SECTIONS: { key: string; label: string; color: string; familyKeys: string[] }[] = [
@@ -92,6 +102,7 @@ const THIRTY_ONE_EDO_SECTIONS: CuratedSection[] = [
   { key: "31-supermajor", label: "DIATONIC SUPERMAJOR",           color: "#cc6a8a", familyKey: "supermajor" },
   { key: "31-subharm",    label: "DIATONIC SUBHARMONIC MINOR M7", color: "#4a9ac7", familyKey: "subharmonic" },
   { key: "31-neutral",    label: "DIATONIC NEUTRAL",              color: "#9a66c0", familyKey: "neutral" },
+  { key: "31-maqam",      label: "MAQAM",                          color: "#d08a5a", familyKey: "maqam" },
   { key: "31-sym",        label: "SYMMETRICAL",                   color: "#5ab9b0", familyKey: "symmetric" },
 ];
 

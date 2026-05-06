@@ -524,6 +524,15 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
     ...(edo === 41 || edo === 53 ? JI_SCALE_NAMES.map(modeName => buildBankFromRegisteredFamily(
       JI_FAMILY, modeName, edo, [0], buildModeFromScale,
     )) : []),
+    // ── Maqam scales (31-EDO) ──────────────────────────────────────────
+    // 31-EDO doesn't get the full JI catalog but DOES get the 4 maqam
+    // tonalities (Rast / Bayati / Hijaz / Saba) per direct user
+    // direction (2026-05-05).  Built from the JI-Family map registered
+    // for 31 in jiScaleData.ts.  Tonic-only primary tier since I/iv/V
+    // semantics depend on each maqam's specific tetrachordal structure.
+    ...(edo === 31 ? ["Rast", "Bayati", "Hijaz", "Saba"].map(modeName => buildBankFromRegisteredFamily(
+      JI_FAMILY, modeName, edo, [0], buildModeFromScale,
+    )) : []),
   ];
 }
 
