@@ -1436,6 +1436,12 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
               temperingForEdo={gridMode === "edo" ? edo : undefined}
               activeClassIds={gridMode === "edo" ? activeEdoClassIds : undefined}
               externalHighlights={gridMode === "ji" ? jiHighlightKeys : undefined}
+              externalCustomRatios={gridMode === "ji"
+                ? [
+                    ...JI_GRID_RATIOS.map(r => `${r.num}/${r.den}`),
+                    ...customRatios.map(([n, d]) => `${n}/${d}`),
+                  ].join(", ")
+                : undefined}
             />
           </div>
         </div>
