@@ -754,18 +754,15 @@ function buildOneXenMode(parent: number[], rotIdx: number, modeName: string, edo
     // chord quality in xenharmonic practice.
     const upper = q3 === "M" || q3 === "sup" || q3 === "neu";
     let roman = upper ? XEN_ROMAN[i] : XEN_ROMAN[i].toLowerCase();
-    // Subminor 3rds get a regular-letter "s" prefix inline with the
-    // roman numeral (e.g. "siv") so the chord reads visibly as
-    // subminor rather than plain minor.  The redundant "s3" suffix
-    // is then dropped (see below).  Earlier this used the Unicode
-    // subscript "ₛ" but the user reported it rendered too small to
-    // read at chord-button sizes — kept as a regular character so
-    // it sits next to the numeral at full text size.
-    if (q3 === "sub") roman = "s" + roman;
-    // Scale-degree alteration: prepend ♭/♯/ₛ/ˢ etc. to the roman
-    // numeral when the chord's root doesn't sit on the major-scale
-    // expected position for that degree.  Mirrors Western theory's
-    // bIII / #IV / etc. convention.
+    // Subminor 3rds are now marked as a SUPERSCRIPT SUFFIX ("s3") on
+    // the numeral, joining the existing n3 / S3 / etc. quality
+    // markers — see further down where supParts gets pushed.  Per
+    // direct user direction (2026-05-06): "s being in front implies
+    // the root lives on the sub of the I 4 and 5 ... these should
+    // just be i superscript s iv superscript s ... having it in the
+    // front just implies it lives somewhere else".  Front-prefix is
+    // reserved for scale-degree alteration (handled below by
+    // rootDegreePrefix — e.g. sIII = root on subminor 3rd of major).
     const degPrefix = rootDegreePrefix(r, i, edo);
     if (degPrefix) roman = degPrefix + roman;
     // 5th-quality marker.  ° / + remain reserved for the chromatic
@@ -790,8 +787,11 @@ function buildOneXenMode(parent: number[], rotIdx: number, modeName: string, edo
     if (q5 === "hd") supParts.push("bb5");      // half-flat 5
     else if (q5 === "hA") supParts.push("##5"); // half-sharp 5
     else if (q5 === "subP") { supParts.push("no5"); supParts.push("#4"); }
-    // (q3 === "sub" handled by the ₛ-prefix above; no s3 suffix.)
-    if (q3 === "neu") supParts.push("n3");
+    // 3rd-quality marker as SUPERSCRIPT SUFFIX — front prefixes are
+    // reserved for scale-degree alteration only (sIII = root altered;
+    // iˢ³ = root on degree 1 with subminor-3rd quality).
+    if (q3 === "sub") supParts.push("s3");
+    else if (q3 === "neu") supParts.push("n3");
     else if (q3 === "sup") supParts.push("S3");
     if (showSevenths) {
       if (q7 === "sub") supParts.push("s7");

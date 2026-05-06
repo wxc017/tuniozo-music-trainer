@@ -67,30 +67,35 @@ export function formatRomanNumeralWithFamily(label: string, familyPrefix: string
   );
 }
 
-// Per direct user direction: a leading "s" before a Roman numeral
-// indicates the chord root sits on the SUB-MINOR of that degree —
-// analogous to "b" for minor.  Render the "s" as a superscript so it
-// reads as an alteration marker (like ° / ø / + later in the label)
-// rather than as a regular letter inline with the numeral.
-const LEADING_S_RE = /^(s+)([IiVvXx#♯♭b].*)$/;
+// Per direct user direction: a leading prefix on a Roman numeral
+// indicates the chord root sits on a non-major scale-degree position
+// (e.g. sIII = root on subminor 3rd, bIII = root on minor 3rd, #IV =
+// root on aug 4th).  All such front prefixes render as SUBSCRIPT so
+// they read as a position-marker tag attached to the numeral —
+// distinct from the chord-quality SUPERSCRIPT suffix that follows
+// the numeral (s3 / n3 / S3 / M7 / etc.).
+//
+// Match: any run of accidental characters (b / # / s / S / N / ♭ / ♯
+// / 𝄲 half-sharp / 𝄳 half-flat / ₛ / ˢ) before a Roman-numeral letter.
+const LEADING_PREFIX_RE = /^([bs#SN♭♯𝄲𝄳ₛˢ]+)([IiVvXx].*)$/;
 
 function formatSingleRoman(part: string, key: number): React.ReactNode {
-  let prefixSup: React.ReactNode = null;
-  const sMatch = part.match(LEADING_S_RE);
-  if (sMatch) {
-    prefixSup = (
-      <sup style={{ fontSize: "0.7em", verticalAlign: "super", lineHeight: 0 }}>{sMatch[1]}</sup>
+  let prefixSub: React.ReactNode = null;
+  const pMatch = part.match(LEADING_PREFIX_RE);
+  if (pMatch) {
+    prefixSub = (
+      <sub style={{ fontSize: "0.7em", verticalAlign: "sub", lineHeight: 0 }}>{pMatch[1]}</sub>
     );
-    part = sMatch[2];
+    part = pMatch[2];
   }
 
   const segments = part.split(SPLIT_RE);
   if (segments.length === 1) {
-    return prefixSup ? <span key={key}>{prefixSup}{part}</span> : part;
+    return prefixSub ? <span key={key}>{prefixSub}{part}</span> : part;
   }
   return (
     <span key={key}>
-      {prefixSup}
+      {prefixSub}
       {segments.map((seg, i) =>
         SUPER_CHARS.has(seg)
           ? <sup key={i} style={{ fontSize: "0.7em", verticalAlign: "super", lineHeight: 0 }}>{seg}</sup>
