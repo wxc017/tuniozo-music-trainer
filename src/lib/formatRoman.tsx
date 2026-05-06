@@ -28,18 +28,15 @@ export function formatRomanNumeral(label: string, edo?: number): React.ReactNode
     );
   }
 
-  let body: React.ReactNode;
-  if (!SPLIT_RE.test(head)) {
-    body = head;
-  } else {
-    const parts = head.split("/");
-    const result: React.ReactNode[] = [];
-    for (let i = 0; i < parts.length; i++) {
-      if (i > 0) result.push("/");
-      result.push(formatSingleRoman(parts[i], i));
-    }
-    body = <>{result}</>;
+  // Always go through formatSingleRoman so the leading-"s" superscript
+  // path handles labels without °/ø/+ symbols (e.g. "siv", "sV") too.
+  const parts = head.split("/");
+  const result: React.ReactNode[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    if (i > 0) result.push("/");
+    result.push(formatSingleRoman(parts[i], i));
   }
+  const body: React.ReactNode = <>{result}</>;
 
   if (suffixSup === null) return body;
   return <>{body}{suffixSup}</>;
@@ -70,12 +67,30 @@ export function formatRomanNumeralWithFamily(label: string, familyPrefix: string
   );
 }
 
-function formatSingleRoman(part: string, key: number): React.ReactNode {
-  const segments = part.split(SPLIT_RE);
-  if (segments.length === 1) return part;
+// Per direct user direction: a leading "s" before a Roman numeral
+// indicates the chord root sits on the SUB-MINOR of that degree —
+// analogous to "b" for minor.  Render the "s" as a superscript so it
+// reads as an alteration marker (like ° / ø / + later in the label)
+// rather than as a regular letter inline with the numeral.
+const LEADING_S_RE = /^(s+)([IiVvXx#♯♭b].*)$/;
 
+function formatSingleRoman(part: string, key: number): React.ReactNode {
+  let prefixSup: React.ReactNode = null;
+  const sMatch = part.match(LEADING_S_RE);
+  if (sMatch) {
+    prefixSup = (
+      <sup style={{ fontSize: "0.7em", verticalAlign: "super", lineHeight: 0 }}>{sMatch[1]}</sup>
+    );
+    part = sMatch[2];
+  }
+
+  const segments = part.split(SPLIT_RE);
+  if (segments.length === 1) {
+    return prefixSup ? <span key={key}>{prefixSup}{part}</span> : part;
+  }
   return (
     <span key={key}>
+      {prefixSup}
       {segments.map((seg, i) =>
         SUPER_CHARS.has(seg)
           ? <sup key={i} style={{ fontSize: "0.7em", verticalAlign: "super", lineHeight: 0 }}>{seg}</sup>
