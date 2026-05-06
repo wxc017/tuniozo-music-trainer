@@ -335,16 +335,21 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
     })(),
 
     // ── DORIAN ──────────────────────────────────────────────────────
+    // Primary tier is just the tonic per direct user direction
+    // (2026-05-06): only basic Major / Aeolian / Harmonic Minor get
+    // a 3-chord I/IV/V-style primary; every other mode reduces to
+    // tonic-only so the primary tier has a consistent meaning across
+    // tonalities.  IV / bVII move to the Diatonic tier.
     (() => {
-      const pr = [chord("i", min(0)), chord("IV", maj(P4)), chord("bVII", maj(m7))];
-      const di = [chord("ii", min(M2)), chord("bIII", maj(m3)), chord("v", min(P5)), chord("vi°", dim(M6))];
+      const pr = [chord("i", min(0))];
+      const di = [chord("ii", min(M2)), chord("bIII", maj(m3)), chord("IV", maj(P4)), chord("v", min(P5)), chord("vi°", dim(M6)), chord("bVII", maj(m7))];
       return { name: "Dorian", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
     // ── MIXOLYDIAN ──────────────────────────────────────────────────
     (() => {
-      const pr = [chord("I", maj(0)), chord("IV", maj(P4)), chord("bVII", maj(m7))];
-      const di = [chord("ii", min(M2)), chord("iii°", dim(M3)), chord("v", min(P5)), chord("vi", min(M6))];
+      const pr = [chord("I", maj(0))];
+      const di = [chord("ii", min(M2)), chord("iii°", dim(M3)), chord("IV", maj(P4)), chord("v", min(P5)), chord("vi", min(M6)), chord("bVII", maj(m7))];
       return { name: "Mixolydian", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
@@ -380,111 +385,103 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
     })(),
 
     // ── PHRYGIAN ────────────────────────────────────────────────────
-    // i / bII / iv per modal-harmony research (2026-05-05) — bII is
-    // the diagnostic Phrygian chord (i–bII–i is the canonical modal
-    // cadence) and iv reinforces the minor-i identity better than
-    // bvii does.
     (() => {
-      const pr = [chord("i", min(0)), chord("bII", maj(m3 - M2)), chord("iv", min(P4))];
-      const di = [chord("bIII", maj(m3)), chord("v°", dim(P5)), chord("bVI", maj(m6)), chord("bvii", min(m7))];
+      const pr = [chord("i", min(0))];
+      const di = [chord("bII", maj(m3 - M2)), chord("bIII", maj(m3)), chord("iv", min(P4)), chord("v°", dim(P5)), chord("bVI", maj(m6)), chord("bvii", min(m7))];
       return { name: "Phrygian", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
     // ── LYDIAN ──────────────────────────────────────────────────────
     (() => {
-      const pr = [chord("I", maj(0)), chord("II", maj(M2)), chord("vii", min(M7))];
-      const di = [chord("iii", min(M3)), chord("#iv°", dim(P4 + A1)), chord("V", maj(P5)), chord("vi", min(M6))];
+      const pr = [chord("I", maj(0))];
+      const di = [chord("II", maj(M2)), chord("iii", min(M3)), chord("#iv°", dim(P4 + A1)), chord("V", maj(P5)), chord("vi", min(M6)), chord("vii", min(M7))];
       return { name: "Lydian", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
     // ── LOCRIAN ─────────────────────────────────────────────────────
     (() => {
-      const pr = [chord("i°", dim(0)), chord("bV", maj(d5)), chord("bvii", min(m7))];
-      const di = [chord("bII", maj(m3 - M2)), chord("biii", min(m3)), chord("iv", min(P4)), chord("bVI", maj(m6))];
+      const pr = [chord("i°", dim(0))];
+      const di = [chord("bII", maj(m3 - M2)), chord("biii", min(m3)), chord("iv", min(P4)), chord("bV", maj(d5)), chord("bVI", maj(m6)), chord("bvii", min(m7))];
       return { name: "Locrian", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
     // ── MELODIC MINOR ───────────────────────────────────────────────
     (() => {
-      const pr = [chord("i", min(0)), chord("IV", maj(P4)), chord("V", maj(P5))];
-      const di = [chord("ii", min(M2)), chord("bIII+", aug(m3)), chord("vi°", dim(M6)), chord("vii°", dim(M7))];
+      const pr = [chord("i", min(0))];
+      const di = [chord("ii", min(M2)), chord("bIII+", aug(m3)), chord("IV", maj(P4)), chord("V", maj(P5)), chord("vi°", dim(M6)), chord("vii°", dim(M7))];
       return { name: "Melodic Minor", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
     // ── MIXOLYDIAN b6 ───────────────────────────────────────────────
     (() => {
-      const pr = [chord("I", maj(0)), chord("iv", min(P4)), chord("bVII", maj(m7))];
-      const di = [chord("ii°", dim(M2)), chord("iii°", dim(M3)), chord("v", min(P5)), chord("bVI+", aug(m6))];
+      const pr = [chord("I", maj(0))];
+      const di = [chord("ii°", dim(M2)), chord("iii°", dim(M3)), chord("iv", min(P4)), chord("v", min(P5)), chord("bVI+", aug(m6)), chord("bVII", maj(m7))];
       return { name: "Mixolydian b6", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
     // ── LYDIAN DOMINANT ─────────────────────────────────────────────
-    // I / II / bVII+ per modal-harmony research (2026-05-05) — bVII
-    // is the diagnostic mixolydian flavour; II major is the lydian
-    // raised-4 marker.  Together with I they capture the "acoustic
-    // scale" sound; v moves to Diatonic.
     (() => {
-      const pr = [chord("I", maj(0)), chord("II", maj(M2)), chord("bVII+", aug(m7))];
-      const di = [chord("iii°", dim(M3)), chord("#iv°", dim(P4 + A1)), chord("v", min(P5)), chord("vi", min(M6))];
+      const pr = [chord("I", maj(0))];
+      const di = [chord("II", maj(M2)), chord("iii°", dim(M3)), chord("#iv°", dim(P4 + A1)), chord("v", min(P5)), chord("vi", min(M6)), chord("bVII+", aug(m7))];
       return { name: "Lydian Dominant", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
     // ── PHRYGIAN DOMINANT (Hijaz) ───────────────────────────────────
     (() => {
-      const pr = [chord("I", maj(0)), chord("bII", maj(m3 - M2)), chord("iv", min(P4))];
-      const di = [chord("iii°", dim(M3)), chord("v°", dim(P5)), chord("bVI+", aug(m6)), chord("bvii", min(m7))];
+      const pr = [chord("I", maj(0))];
+      const di = [chord("bII", maj(m3 - M2)), chord("iii°", dim(M3)), chord("iv", min(P4)), chord("v°", dim(P5)), chord("bVI+", aug(m6)), chord("bvii", min(m7))];
       return { name: "Phrygian Dominant", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
     // ── DORIAN #4 ───────────────────────────────────────────────────
     (() => {
-      const pr = [chord("i", min(0)), chord("II", maj(M2)), chord("v", min(P5))];
-      const di = [chord("bIII", maj(m3)), chord("#iv°", dim(P4 + A1)), chord("vi°", dim(M6)), chord("bVII+", aug(m7))];
+      const pr = [chord("i", min(0))];
+      const di = [chord("II", maj(M2)), chord("bIII", maj(m3)), chord("#iv°", dim(P4 + A1)), chord("v", min(P5)), chord("vi°", dim(M6)), chord("bVII+", aug(m7))];
       return { name: "Dorian #4", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
     // ── LYDIAN #2 ───────────────────────────────────────────────────
-    // I / V+ / vi per modal-harmony research (2026-05-05) — Lydian #2
-    // is mode 6 of harmonic minor; the augmented V+ chord carries the
-    // #2 character (the #2 is the major-3rd of V+), and vi is the
-    // relative-major substitute.  VII moves to Diatonic.
     (() => {
-      const pr = [chord("I", maj(0)), chord("V+", aug(P5)), chord("vi", min(M6))];
-      const di = [chord("#ii°", dim(M2 + A1)), chord("iii", min(M3)), chord("#iv°", dim(P4 + A1)), chord("VII", maj(M7))];
+      const pr = [chord("I", maj(0))];
+      const di = [chord("#ii°", dim(M2 + A1)), chord("iii", min(M3)), chord("#iv°", dim(P4 + A1)), chord("V+", aug(P5)), chord("vi", min(M6)), chord("VII", maj(M7))];
       return { name: "Lydian #2", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
     // ── Harmonic-minor family (auto-built from scale) ───────────────
+    // Tonic-only primary per direct user direction (2026-05-06):
+    // basic Major / Aeolian / Harmonic Minor keep their curated I-IV-V
+    // primaries; every other heptatonic mode reduces to the tonic
+    // alone so the primary tier reads consistently across tonalities.
     buildModeFromScale("Locrian #6",
       ["1","b2","b3","4","b5","6","b7"],
       [0, m3 - M2, m3, P4, d5, M6, m7],
-      [0, 3, 6]),
+      [0]),
     buildModeFromScale("Ionian #5",
       ["1","2","3","4","#5","6","7"],
       [0, M2, M3, P4, P5 + A1, M6, M7],
-      [0, 3, 5]),
+      [0]),
     buildModeFromScale("Ultralocrian",
       ["1","b2","b3","3","b5","b6","6"],
       [0, m3 - M2, m3, M3, d5, m6, M6],
-      [0, 5, 6]),
+      [0]),
 
     // ── Melodic-minor family (auto-built from scale) ────────────────
     buildModeFromScale("Dorian b2",
       ["1","b2","b3","4","5","6","b7"],
       [0, m3 - M2, m3, P4, P5, M6, m7],
-      [0, 3, 6]),
+      [0]),
     buildModeFromScale("Lydian Augmented",
       ["1","2","3","#4","#5","6","7"],
       [0, M2, M3, P4 + A1, P5 + A1, M6, M7],
-      [0, 1, 5]),
+      [0]),
     buildModeFromScale("Locrian #2",
       ["1","2","b3","4","b5","b6","b7"],
       [0, M2, m3, P4, d5, m6, m7],
-      [0, 4, 6]),
+      [0]),
     buildModeFromScale("Altered",
       ["1","b2","#2","3","b5","#5","b7"],
       [0, m3 - M2, m3, M3, d5, P5 + A1, m7],
-      [0, 4, 6]),
+      [0]),
 
     // ── Septimal / Neutral diatonic families (31-EDO only) ─────────────
     // Each family's 7 modes are programmatically generated by rotating
@@ -497,10 +494,13 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
     // Heptatonic scale with two augmented seconds.  Modes generated from
     // the degree map registered in edoData.ts, then run through the
     // EDO-agnostic `buildModeFromScale` which auto-labels triads by their
-    // actual third + fifth qualities.  Mark I/IV/V as primary like the
-    // other heptatonic families.
+    // actual third + fifth qualities.  Tonic-only primary per direct
+    // user direction (2026-05-06) — the Double Harmonic family doesn't
+    // belong to "basic major / minor / harmonic minor" and gets the
+    // tonic-only primary treatment along with every other non-basic
+    // heptatonic family.
     ...DBLH_MODES.map(modeName => buildBankFromRegisteredFamily(
-      "Double Harmonic Family", modeName, edo, [0, 3, 4], buildModeFromScale,
+      "Double Harmonic Family", modeName, edo, [0], buildModeFromScale,
     )),
 
     // ── Symmetric family (all EDOs) ────────────────────────────────────
@@ -822,7 +822,12 @@ function buildOneXenMode(parent: number[], rotIdx: number, modeName: string, edo
     const suffix = supParts.length === 0 ? "" : ` ${supParts.join(" ")}`;
     const label = roman + suffix;
     const isMajor3 = upper;
-    const isPrimary = (i === 0) || (i === 3) || (i === 4); // I / IV / V analogues
+    // Tonic-only primary per direct user direction (2026-05-06): only
+    // basic Major / Aeolian / Harmonic Minor get a 3-chord I/IV/V-style
+    // primary; xen tonalities (Subminor / Neutral / Supermajor /
+    // Subharmonic diatonic families and their modes) reduce to tonic
+    // alone.  IV / V analogues move to the Diatonic tier with the rest.
+    const isPrimary = i === 0;
     rows.push({ label, steps: [r, third, fifth, seventh], isMajor3, isPrimary });
   }
 
