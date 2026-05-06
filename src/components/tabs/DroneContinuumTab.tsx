@@ -15,9 +15,10 @@ interface Props {
   ensureAudio: () => Promise<void>;
 }
 
-const A1_HZ = 55;
-const A6_HZ = 1760;
-const STRIP_OCTAVES = Math.log2(A6_HZ / A1_HZ); // 5
+// Strip bounds default to A1 (55 Hz) – A6 (1760 Hz) but the user can
+// pick any octave anchors via the controls.  freq(A_n) = 27.5 × 2ⁿ.
+const A_BASE_HZ = 27.5; // = freq(A0)
+const aOctaveHz = (oct: number) => A_BASE_HZ * Math.pow(2, oct);
 
 // Match the audio engine's C4 reference so EDO labels align with the
 // app's tonal-system note names (the EDO grid is C-anchored even though
@@ -108,6 +109,13 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   const [primeLimit, setPrimeLimit] = useLS<number>("lt_dc_primeLimit", 13);
   const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
   const [chordTuning, setChordTuning] = useLS<"ji" | "edo">("lt_dc_chordTuning", "ji");
+  // Strip range — user-pickable octave bounds (each anchored to A_n).
+  // Default A1..A6 (55–1760 Hz, 5 octaves).
+  const [lowOct, setLowOct] = useLS<number>("lt_dc_lowOct", 1);
+  const [highOct, setHighOct] = useLS<number>("lt_dc_highOct", 6);
+  const stripLowHz   = aOctaveHz(lowOct);
+  const stripHighHz  = aOctaveHz(highOct);
+  const stripOctaves = Math.max(0.5, highOct - lowOct);
   // Per-node JI-harmonic-ruler visibility — toggled via the node menu.
   // Each entry overlays the harmonic series of that node (2..32) on
   // the strip in the node's own color, so users can see where each
@@ -137,9 +145,9 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   const OCTAVE_TICK_HALF = 22;  // taller ticks for A1..A6 octave anchors
 
   const xFromFreq = (f: number): number =>
-    STRIP_X + (Math.log2(f / A1_HZ) / STRIP_OCTAVES) * STRIP_W;
+    STRIP_X + (Math.log2(f / stripLowHz) / stripOctaves) * STRIP_W;
   const freqFromX = (x: number): number =>
-    A1_HZ * Math.pow(2, ((x - STRIP_X) / STRIP_W) * STRIP_OCTAVES);
+    stripLowHz * Math.pow(2, ((x - STRIP_X) / STRIP_W) * stripOctaves);
 
   // Restart the drone whenever the active node set, gain, or on/off changes.
   // startRatioDrone tears down the previous voices internally, so this is
@@ -157,8 +165,8 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     (async () => {
       await ensureAudio();
       if (cancelled) return;
-      const ratios = audible.map(n => n.freq / A1_HZ);
-      audioEngine.startRatioDrone(ratios, gain, A1_HZ);
+      const ratios = audible.map(n => n.freq / stripLowHz);
+      audioEngine.startRatioDrone(ratios, gain, stripLowHz);
       droneActiveRef.current = true;
     })();
     return () => { cancelled = true; };
@@ -183,7 +191,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     if (!ctm) return;
     const local = pt.matrixTransform(ctm.inverse());
     let freq = freqFromX(local.x);
-    if (!isFinite(freq) || freq < A1_HZ * 0.99 || freq > A6_HZ * 1.01) return;
+    if (!isFinite(freq) || freq < stripLowHz * 0.99 || freq > stripHighHz * 1.01) return;
     if (snapToEdo) freq = snapFreqToEdo(freq, edo);
     setNodes(prev => [...prev, { id: makeId(), freq }]);
     setMenuNodeId(null);
@@ -221,8 +229,8 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
       for (let h = 2; h <= count; h++) {
         const freq = below ? parent.freq / h : parent.freq * h;
         const outOfRange = below
-          ? freq < A1_HZ * 0.999
-          : freq > A6_HZ * 1.001;
+          ? freq < stripLowHz * 0.999
+          : freq > stripHighHz * 1.001;
         additions.push({
           id: makeId(), freq,
           harmonicOf: parentId, harmonicNum: h,
@@ -243,7 +251,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
       const additions: DroneNode[] = chord.ratios.slice(1).map((r, idx) => {
         const ideal = parent.freq * r;
         const finalFreq = chordTuning === "edo" ? snapFreqToEdo(ideal, edo) : ideal;
-        const outOfRange = finalFreq > A6_HZ * 1.001 || finalFreq < A1_HZ * 0.999;
+        const outOfRange = finalFreq > stripHighHz * 1.001 || finalFreq < stripLowHz * 0.999;
         return {
           id: makeId(),
           freq: finalFreq,
@@ -259,10 +267,10 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
 
   // ── Visual layout precomputation ──────────────────────────────────
 
-  // Octave anchor labels (A1, A2, ..., A6) at exact A frequencies.
-  const octaveTicks = Array.from({ length: 6 }, (_, i) => {
-    const f = A1_HZ * Math.pow(2, i);
-    return { x: xFromFreq(f), label: `A${i + 1}` };
+  // Octave anchor labels (A_lowOct .. A_highOct) at exact A frequencies.
+  const octaveTicks = Array.from({ length: highOct - lowOct + 1 }, (_, i) => {
+    const oct = lowOct + i;
+    return { x: xFromFreq(aOctaveHz(oct)), label: `A${oct}` };
   });
 
   // EDO grid + per-step note labels.  Iterate C-anchored EDO steps that
@@ -274,8 +282,8 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   // brighter stroke so the user has a sub-octave reference.
   const edoSteps: { x: number; pc: number; isP5: boolean; label: string }[] = [];
   if (showEdoGrid || showStepNames) {
-    const minPc = Math.ceil(freqToAbsPc(A1_HZ, edo));
-    const maxPc = Math.floor(freqToAbsPc(A6_HZ, edo));
+    const minPc = Math.ceil(freqToAbsPc(stripLowHz, edo));
+    const maxPc = Math.floor(freqToAbsPc(stripHighHz, edo));
     const p5Step = Math.round(edo * Math.log2(3 / 2));
     for (let pc = minPc; pc <= maxPc; pc++) {
       const f = absPcToFreq(pc, edo);
@@ -295,8 +303,8 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   const jiTicks: { x: number; harmonic: number; labelled: boolean }[] = [];
   if (showJiRulers) {
     for (let h = 2; h <= 32; h++) {
-      const f = A1_HZ * h;
-      if (f > A6_HZ * 1.001) break;
+      const f = stripLowHz * h;
+      if (f > stripHighHz * 1.001) break;
       if (maxPrimeOf(h) > primeLimit) continue;
       const labelled = h <= 16 || h % 4 === 0;
       jiTicks.push({ x: xFromFreq(f), harmonic: h, labelled });
@@ -343,6 +351,37 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         >
           Clear ({nodes.length})
         </button>
+
+        <div className="w-px h-4 bg-[#2a2a2a]" />
+
+        <span className="text-[10px] text-[#555]">Range</span>
+        <select
+          value={lowOct}
+          onChange={e => {
+            const v = parseInt(e.target.value);
+            setLowOct(v);
+            if (v >= highOct) setHighOct(v + 1);
+          }}
+          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-0.5 text-[10px] text-white focus:outline-none"
+        >
+          {[0, 1, 2, 3, 4, 5, 6, 7].map(o => (
+            <option key={o} value={o}>A{o}</option>
+          ))}
+        </select>
+        <span className="text-[10px] text-[#555]">to</span>
+        <select
+          value={highOct}
+          onChange={e => {
+            const v = parseInt(e.target.value);
+            setHighOct(v);
+            if (v <= lowOct) setLowOct(v - 1);
+          }}
+          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-0.5 text-[10px] text-white focus:outline-none"
+        >
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(o => (
+            <option key={o} value={o}>A{o}</option>
+          ))}
+        </select>
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
@@ -384,7 +423,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
               : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
           }`}
         >
-          JI harmonics of A1
+          JI harmonics of A{lowOct}
         </button>
 
         <div className="w-px h-4 bg-[#2a2a2a] mx-1" />
@@ -537,7 +576,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
             <g key={`ruler-${rulerId}`}>
               {Array.from({ length: 31 }, (_, i) => i + 2).map(h => {
                 const f = src.freq * h;
-                if (f < A1_HZ * 0.999 || f > A6_HZ * 1.001) return null;
+                if (f < stripLowHz * 0.999 || f > stripHighHz * 1.001) return null;
                 if (maxPrimeOf(h) > primeLimit) return null;
                 const x = xFromFreq(f);
                 const labelled = h <= 16 || h % 4 === 0;
