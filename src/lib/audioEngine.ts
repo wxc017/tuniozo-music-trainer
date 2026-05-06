@@ -151,10 +151,15 @@ const DRONE_PEAK_CAP   = 0.95;
  *  matches the play path's pre-limiter level (play applies a 0.7-0.8
  *  gain inside scheduleNote before the volume slider).  With the
  *  drone now routed through the same playLimiter as play, equal
- *  slider % produces equal output level — this constant just keeps
- *  the two pre-limiter inputs in the same range so the limiter
- *  compresses both paths identically. */
-const DRONE_PATH_GAIN = 0.8;
+ *  slider % produces equal output level — this constant calibrates
+ *  the drone path against the play path so they're 1:1 at matching
+ *  slider positions.  Per direct user feedback (2026-05-06): equal
+ *  perceived loudness was hit at drone=14% / play=150% with
+ *  DRONE_PATH_GAIN=0.8 — meaning drone produced ~13× the perceived
+ *  loudness per unit path gain (sustained drone integrates much
+ *  louder than transient play notes).  Lowering to 0.075 puts equal
+ *  sliders at equal loudness. */
+const DRONE_PATH_GAIN = 0.075;
 
 /** Pre-process a freshly-decoded sample buffer for drone use:
  *  peak-normalize the loop region and report loopStart / loopEnd so
@@ -922,7 +927,14 @@ export class AudioEngine {
     // loop triangular envelope mixed timbre across the whole cycle
     // and read as constant amplitude pumping; trapezoidal limits the
     // mix to a small seam window.
-    const fadeSec = Math.max(0.05, Math.min(1.5, loopDurOutSec * 0.15));
+    // Very short crossfade — long enough to mask the wrap click, too
+    // short for the listener to perceive cross-timbre mixing between
+    // the outgoing and incoming voices (per direct user feedback:
+    // 'voice drone sound like a mountain going up and down ... I
+    // shouldnt be able to tell that its phasing in and our for
+    // different loops').  50 ms floor (always covers the click);
+    // 100 ms ceiling — at 5 % of loop or below for any loop length.
+    const fadeSec = Math.max(0.05, Math.min(0.1, loopDurOutSec * 0.05));
     const myGen = this.droneGeneration;
 
     const fireVoice = (startTime: number) => {
@@ -1342,7 +1354,14 @@ export class AudioEngine {
     }
 
     // Trapezoidal envelope — see spawnSampleLoop for rationale.
-    const fadeSec = Math.max(0.05, Math.min(1.5, loopDurOutSec * 0.15));
+    // Very short crossfade — long enough to mask the wrap click, too
+    // short for the listener to perceive cross-timbre mixing between
+    // the outgoing and incoming voices (per direct user feedback:
+    // 'voice drone sound like a mountain going up and down ... I
+    // shouldnt be able to tell that its phasing in and our for
+    // different loops').  50 ms floor (always covers the click);
+    // 100 ms ceiling — at 5 % of loop or below for any loop length.
+    const fadeSec = Math.max(0.05, Math.min(0.1, loopDurOutSec * 0.05));
     const halfBufferDur = (sample.loopEnd - sample.loopStart) / 2;
     const myGen = voice.generation;
 
