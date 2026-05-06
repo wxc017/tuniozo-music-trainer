@@ -186,7 +186,13 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   const [localEdo, setLocalEdo] = useLS<number>("lt_dc_edo", globalEdo);
   const edo = localEdo;
   const [droneOn, setDroneOn] = useLS<boolean>("lt_dc_on", true);
-  const [gain, setGain] = useLS<number>("lt_dc_gain", 0.5);
+  // Drone Continuum's volume slider piggybacks on the Tonal Audiation
+  // drone strip's lt_app_droneVol LS key per direct user direction
+  // ("continuum volume is way too low now, it needs to be synced to
+  // tonal audiation").  Same key → adjusting continuum's slider
+  // moves the global drone slider too and vice versa, so equal slider
+  // positions across sections produce equal loudness.
+  const [gain, setGain] = useLS<number>("lt_app_droneVol", 0.5);
   const [showEdoGrid, setShowEdoGrid] = useLS<boolean>("lt_dc_edoGrid", true);
   const [snapToEdo, setSnapToEdo] = useLS<boolean>("lt_dc_snap", false);
   const [showStepNames, setShowStepNames] = useLS<boolean>("lt_dc_stepNames", true);
