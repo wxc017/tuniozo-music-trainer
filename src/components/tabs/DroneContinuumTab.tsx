@@ -1442,6 +1442,8 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
                     ...customRatios.map(([n, d]) => `${n}/${d}`),
                   ].join(", ")
                 : undefined}
+              forcedRootPc={9}    /* A — strip is anchored A_low to A_high */
+              hideNoteNames
             />
           </div>
         </div>

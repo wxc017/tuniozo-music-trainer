@@ -4136,9 +4136,18 @@ interface LatticeViewProps {
    *  user last typed inside the lattice gamemode.  Pass undefined
    *  to fall back to the internal input. */
   externalCustomRatios?: string;
+  /** Force the 1/1 anchor pitch class (0=C, 9=A, etc.).  When
+   *  supplied, overrides the user's persisted droneRoot — used by
+   *  Drone Continuum which is anchored A → A by definition (the
+   *  strip is octaves of A) so 1/1 must read as A. */
+  forcedRootPc?: number;
+  /** Hide all note-name labels in the embedded lattice — only
+   *  ratios remain.  Used by Drone Continuum where the strip is
+   *  intentionally letter-free; the lattice should match. */
+  hideNoteNames?: boolean;
 }
 
-export default function LatticeView({ externalHighlights, activeNodeKey, activeNodeKeys, activeClassIds, temperingForEdo, chromeless = false, pinnedChordOverlays, compensationArcs, voiceLeadingArrows, externalCustomRatios }: LatticeViewProps = {}) {
+export default function LatticeView({ externalHighlights, activeNodeKey, activeNodeKeys, activeClassIds, temperingForEdo, chromeless = false, pinnedChordOverlays, compensationArcs, voiceLeadingArrows, externalCustomRatios, forcedRootPc, hideNoteNames }: LatticeViewProps = {}) {
   const [droneNodes, setDroneNodes] = useState<Set<string>>(new Set());
   // When the parent supplies `activeNodeKeys` (plural) or
   // `activeNodeKey` (singular), surface them through the standard
@@ -4169,7 +4178,13 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   // ── Persistent drone (sampled instrument tonic) ─────────────────────
   const [latticeDroneInstrument, setLatticeDroneInstrument] = useLS<DroneInstrument>("lt_lattice_droneInstrument", "tanpura");
   const [latticeDroneVol, setLatticeDroneVol] = useLS<number>("lt_lattice_droneVol", 0.5);
-  const [latticeDroneRoot, setLatticeDroneRoot] = useLS<number>("lt_lattice_droneRoot", 0); // 0-11 pitch class
+  const [internalDroneRoot, setLatticeDroneRoot] = useLS<number>("lt_lattice_droneRoot", 0); // 0-11 pitch class
+  // Effective root used for note-name / HEJI / drone-freq computations.
+  // Falls through to the persisted droneRoot unless the parent forces
+  // a specific pitch class — Drone Continuum forces A (=9) since its
+  // strip is anchored A → A.  All existing reads use this name so the
+  // override propagates without per-call-site edits.
+  const latticeDroneRoot = forcedRootPc !== undefined ? forcedRootPc : internalDroneRoot;
   // Drone octave fixed at 3 per direct user direction (2026-05-05):
   // "they can stay in one octave as well as drones aren't all over
   // the place for octaves" / "remove the octave settings".  Multiplier
@@ -7016,7 +7031,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               onFocusNode={setMonzoFocusKey}
               focusKey={monzoFocusKey}
               showTopoSurface={monzoShowTopo}
-              layers={monzoLayers}
+              layers={hideNoteNames ? { ...monzoLayers, noteNames: false } : monzoLayers}
               pathMode={monzoPathMode}
               labelLOD={monzoLabelLOD}
               labelDist={monzoLabelDist}
