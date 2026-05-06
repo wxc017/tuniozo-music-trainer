@@ -92,23 +92,88 @@ export function getFullDegreeNames(edo: number): string[] {
     ["6", 4 * T + s], ["7", 5 * T + s],
   ];
 
+  // 41 / 53-EDO have A1 = 4 EDO steps, which means values 1, 2, 3
+  // off a natural don't correspond to any Western sharp/flat.  The
+  // old algorithm forced everything onto multi-sharp/flat spellings,
+  // producing nonsense like step 1 = "B#" (= leading-tone-7-sharped)
+  // when the natural reading is just "tonic raised by one comma".
+  // Per direct user feedback (2026-05-05): "the tonic names just dont
+  // make sense it says C then B# for step 1 this is nonsense".
+  //
+  // For these EDOs, use comma arrows (↑ = +1 step, ↓ = −1 step)
+  // alongside the standard sharp/flat (= A1 = 4 commata).  Other
+  // EDOs keep the original sharp/flat-only logic so 12 / 19 / 31
+  // (which have small A1 = 1 or 2) read normally.
+  const useCommaArrows = (edo === 41 || edo === 53);
+
+  /** Decompose an absolute pitch offset (number of EDO steps from a
+   *  natural) into (sharpsOrFlats, commas) so the sum of those two
+   *  accidental counts is minimal.  Used only when useCommaArrows. */
+  const decompose = (off: number): { acc: number; commas: number; flatten: boolean } => {
+    // Express off = q*A1 + r (r in [0..A1-1]).  Two candidates:
+    //   A: q sharps + r up-commas
+    //   B: (q+1) sharps + (A1 − r) down-commas (the "flatten" form)
+    // Pick whichever has fewer total accidentals.
+    const q = Math.floor(off / A1);
+    const r = off % A1;
+    if (r === 0) return { acc: q, commas: 0, flatten: false };
+    return (q + r) <= (q + 1 + A1 - r)
+      ? { acc: q, commas: r, flatten: false }
+      : { acc: q + 1, commas: A1 - r, flatten: true };
+  };
+
   const names: string[] = new Array(edo);
   for (let step = 0; step < edo; step++) {
     let bestName = `${step}`;
-    let bestAcc = Infinity;
+    let bestPenalty = Infinity;
+    let bestDist = Infinity;
 
     for (const [deg, pos] of naturals) {
       const up   = ((step - pos) % edo + edo) % edo;
       const down = ((pos - step) % edo + edo) % edo;
+      const dist = Math.min(up, down);
 
-      if (up % A1 === 0) {
-        const n = up / A1;
-        if (n < bestAcc) { bestAcc = n; bestName = n === 0 ? deg : "#".repeat(n) + deg; }
-      }
-      if (down % A1 === 0) {
-        const n = down / A1;
-        // prefer flats on tie (<=)
-        if (n > 0 && n <= bestAcc) { bestAcc = n; bestName = "b".repeat(n) + deg; }
+      if (useCommaArrows) {
+        // Try both directions; keep the one with the smallest total
+        // accidental count, breaking ties by raw EDO-step distance.
+        const candidates: { name: string; penalty: number }[] = [];
+        if (up > 0) {
+          const { acc, commas, flatten } = decompose(up);
+          // up direction: acc → "#", commas → "↑" (unless flatten,
+          // in which case acc is still "#" but commas back down "↓")
+          const sym = "#".repeat(acc) + (flatten ? "↓" : "↑").repeat(commas);
+          candidates.push({ name: sym + deg, penalty: acc + commas });
+        }
+        if (down > 0) {
+          const { acc, commas, flatten } = decompose(down);
+          // down direction: acc → "b", commas → "↓" (unless flatten,
+          // in which case commas back up "↑")
+          const sym = "b".repeat(acc) + (flatten ? "↑" : "↓").repeat(commas);
+          candidates.push({ name: sym + deg, penalty: acc + commas });
+        }
+        if (up === 0) {
+          candidates.push({ name: deg, penalty: 0 });
+        }
+        for (const c of candidates) {
+          // Tie-break: minimum total accidentals first; then closest
+          // natural (smaller raw step distance).
+          if (c.penalty < bestPenalty
+            || (c.penalty === bestPenalty && dist < bestDist)) {
+            bestPenalty = c.penalty;
+            bestDist = dist;
+            bestName = c.name;
+          }
+        }
+      } else {
+        // Original sharp/flat-only logic for EDOs whose A1 = 1 or 2.
+        if (up % A1 === 0) {
+          const n = up / A1;
+          if (n < bestPenalty) { bestPenalty = n; bestName = n === 0 ? deg : "#".repeat(n) + deg; }
+        }
+        if (down % A1 === 0) {
+          const n = down / A1;
+          if (n > 0 && n <= bestPenalty) { bestPenalty = n; bestName = "b".repeat(n) + deg; }
+        }
       }
     }
     names[step] = bestName;
@@ -1246,14 +1311,15 @@ export function pcToNoteName(pc: number, edo: number): string {
   if (!_pcNoteNamesCache[edo]) {
     const degNames = getFullDegreeNames(edo);
     _pcNoteNamesCache[edo] = degNames.map(dn => {
-      // Extract accidentals and degree number
-      const match = dn.match(/^([#b]*)(\d+)$/);
+      // Accidentals = any combination of # / b / ↑ / ↓ (the arrows
+      // are 41 / 53-EDO comma offsets, see getFullDegreeNames).
+      const match = dn.match(/^([#b↑↓]*)(\d+)$/);
       if (!match) return dn; // fallback for unparseable
       const [, acc, degNum] = match;
       const letter = DEGREE_TO_LETTER[degNum];
       if (!letter) return dn;
 
-      // Convert accidentals to Unicode symbols
+      // Convert accidentals to Unicode symbols.
       let sym = "";
       let i = 0;
       while (i < acc.length) {
@@ -1261,7 +1327,7 @@ export function pcToNoteName(pc: number, edo: number): string {
         else if (acc[i] === "b" && acc[i + 1] === "b") { sym += "𝄫"; i += 2; }
         else if (acc[i] === "#") { sym += "♯"; i++; }
         else if (acc[i] === "b") { sym += "♭"; i++; }
-        else { sym += acc[i]; i++; }
+        else { sym += acc[i]; i++; }   // ↑ / ↓ pass through unchanged
       }
       return letter + sym;
     });
