@@ -633,17 +633,6 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
         >
           Snap to grid
         </button>
-        <button
-          onClick={() => setShowSpectrum(!showSpectrum)}
-          className={`px-2 py-1 rounded text-[11px] border transition-colors ${
-            showSpectrum
-              ? "border-[#88ccaa] bg-[#88ccaa22] text-[#88ccaa]"
-              : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
-          }`}
-          title="Live spectrum: highlights where the playing drone's harmonics actually fall on the strip"
-        >
-          Spectrum
-        </button>
 
         <div className="w-px h-4 bg-[#2a2a2a] mx-1" />
 
@@ -896,12 +885,13 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
 
         </g>{/* end decorative pointer-events:none group */}
 
-        {/* Invisible click-target rect spanning the strip's full
-            vertical band — generous click zone even though the visible
-            strip is just a thin row of ticks. */}
+        {/* Invisible click-target rect.  Spans the full SVG width so
+            the leftmost (A_low) and rightmost (A_high) ticks are
+            actually reachable — clicks just past the edge bound to
+            the nearest in-range frequency by the click handler. */}
         <rect
-          x={STRIP_X} y={STRIP_Y_TOP}
-          width={STRIP_W} height={STRIP_H}
+          x={0} y={STRIP_Y_TOP}
+          width={SVG_W} height={STRIP_H}
           fill="transparent"
           onClick={onStripClick}
           style={{ cursor: "crosshair" }}
@@ -1139,6 +1129,22 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
           </div>
         );
       })()}
+      </div>
+
+      {/* Spectrum toggle pinned to the bottom — sits below the strip
+          so it's near where the spectrum dots actually render. */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <button
+          onClick={() => setShowSpectrum(!showSpectrum)}
+          className={`px-2 py-1 rounded text-[11px] border transition-colors ${
+            showSpectrum
+              ? "border-[#88ccaa] bg-[#88ccaa22] text-[#88ccaa]"
+              : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
+          }`}
+          title="Live spectrum: highlights where the playing drone's harmonics actually fall on the strip"
+        >
+          Spectrum
+        </button>
       </div>
     </div>
   );
