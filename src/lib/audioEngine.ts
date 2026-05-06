@@ -909,6 +909,7 @@ export class AudioEngine {
     // vice versa, with mirror-image ramps that sum to constant gain
     // at every instant.
     const halfDurSec = loopDurOutSec / 2;
+    const halfBufferDur = (sample.loopEnd - sample.loopStart) / 2;
     const myGen = this.droneGeneration;
 
     const fireVoice = (startTime: number) => {
@@ -925,10 +926,13 @@ export class AudioEngine {
 
       src.connect(g);
       g.connect(noteGain);
-      // Play loopStart..loopEnd once.  duration is in OUTPUT time so
-      // we pass loopDurOutSec directly (offset is in BUFFER time, in
-      // seconds, before playbackRate scaling).
-      src.start(startTime, sample.loopStart, loopDurOutSec);
+      // Play loopStart..loopEnd once.  Both offset and duration are
+      // expressed in buffer-time (seconds in the source buffer's own
+      // coordinates), NOT output-time — Web Audio measures the
+      // playback position in the buffer's frame and stops when it
+      // reaches `offset + duration` regardless of playbackRate.
+      const bufferDur = sample.loopEnd - sample.loopStart;
+      src.start(startTime, sample.loopStart, bufferDur);
       this.droneSamples.push(src);
 
       // Schedule the NEXT voice halfway through — when this voice
@@ -941,13 +945,31 @@ export class AudioEngine {
       this.droneLoopTimers.push(t);
     };
 
-    // Fire the first voice immediately AND a second one starting at
-    // half-loop so the listener doesn't hear a slow ramp-in at the
-    // very beginning — the second voice's initial ramp combines with
-    // the first voice's plateau to give full energy from t=0+.
+    // Bootstrap: spawn an "already-in-progress" voice at t0 with
+    // gain 1 fading to 0 over halfDurSec, playing the SECOND half of
+    // the loop region.  Combined with fireVoice(t0) (which starts at
+    // gain 0 fading to 1) the total gain is constant 1.0 from t=0+
+    // — no slow ramp-in even on long-loop samples (e.g. the 240 s
+    // tanpura, which previously took ~120 s before audible peak).
+    // This also restores immediate spectrum visibility since the
+    // analyser sees full-amplitude content right away.
     const t0 = ctx.currentTime;
+
+    const bootSrc = ctx.createBufferSource();
+    bootSrc.buffer = sample.buffer;
+    bootSrc.playbackRate.value = rate;
+    const bootG = ctx.createGain();
+    bootG.gain.setValueAtTime(1, t0);
+    bootG.gain.linearRampToValueAtTime(0, t0 + halfDurSec);
+    bootSrc.connect(bootG);
+    bootG.connect(noteGain);
+    // Play the buffer's mid-loop region for halfBufferDur seconds
+    // (= halfDurSec output seconds at the active playbackRate).
+    bootSrc.start(t0, sample.loopStart + halfBufferDur, halfBufferDur);
+    this.droneSamples.push(bootSrc);
+
+    // Then start the normal alternating-voice cycle at t0.
     fireVoice(t0);
-    fireVoice(t0 + halfDurSec);
   }
 
   /** Attach a slow ~4.5 Hz LFO to an oscillator's detune param so the
