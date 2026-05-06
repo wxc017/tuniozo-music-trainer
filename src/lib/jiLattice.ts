@@ -148,16 +148,31 @@ const TRANSITION_MOTIONS: Record<string, Record<string, LatticePos>> = {
 // MERGED_TRANSITIONS is now just TRANSITION_MOTIONS.
 const MERGED_TRANSITIONS: Record<string, Record<string, LatticePos>> = TRANSITION_MOTIONS;
 
-/** Strip xen suffixes / applied-chord prefixes from a chord label so the
- *  lattice lookup hits the underlying Roman numeral.  E.g. "I~neu" → "I",
- *  "V/IV" → "V" (we treat applied dominants as their own degree for lattice
- *  purposes; finer-grained applied-chord modelling is a follow-up). */
+/** Strip xen suffixes / applied-chord prefixes / space-separated chord-
+ *  quality suffix / leading scale-degree-alteration prefix from a chord
+ *  label so the lattice lookup hits the underlying Roman numeral.
+ *    "I~neu"          → "I"
+ *    "V/IV"           → "V"  (applied dominants treated as their own degree)
+ *    "iv s3 s7"       → "iv" (space-suffix is chord-quality markers)
+ *    "sVI S3 S7"      → "VI" (leading 's' = root-altered position;
+ *                              the lattice lookup uses the bare numeral
+ *                              and the pump-motion table rides on it)
+ *    "ii no5 #4 m7"   → "ii"
+ *  Note: the leading-prefix strip uses the same character class as
+ *  formatRoman.tsx's LEADING_PREFIX_RE so the two stay in sync. */
 export function stripChordLabel(label: string): string {
   let s = label;
   const xenIdx = s.indexOf("~");
   if (xenIdx > 0) s = s.slice(0, xenIdx);
   const slashIdx = s.indexOf("/");
   if (slashIdx > 0) s = s.slice(0, slashIdx);
+  const spaceIdx = s.indexOf(" ");
+  if (spaceIdx > 0) s = s.slice(0, spaceIdx);
+  // Strip leading scale-degree-alteration prefix (b / # / s / S / N
+  // / half-accidentals / ₛ / ˢ / ♭ / ♯).  Without this, "sVI" never
+  // matches the pump-motion table's "VI" entry and a syntonic-pump
+  // chain incorrectly reports zero drift.
+  s = s.replace(/^[bs#SN♭♯𝄲𝄳ₛˢ]+/, "");
   return s;
 }
 
