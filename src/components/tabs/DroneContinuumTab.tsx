@@ -9,6 +9,7 @@ import { audioEngine, AudioEngine, DRONE_INSTRUMENTS, type DroneInstrument } fro
 import { useLS } from "@/lib/storage";
 import { pcToNoteName } from "@/lib/edoData";
 import { findJiRatio, formatJiRatio, maxPrimeOf } from "@/lib/jiRatioFinder";
+import JiScaleLattice from "@/components/JiScaleLattice";
 
 interface Props {
   edo: number;
@@ -611,14 +612,21 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   // Backwards-compat alias for the rest of the render path.
   const edoSteps = gridSteps;
 
-  // ── Lattice precomputation ────────────────────────────────────────
-  // JI mode: position each unique ratio in 2D by its prime monzo.
-  // EDO mode: arrange the EDO's pitch classes around a circle.
-  // Active set: which ratios / pitch classes light up because they
-  // match a placed continuum node.
-
-  type LatticeNode = { key: string; label: string; x: number; y: number; limit?: number };
-  const latticeNodes: LatticeNode[] = [];
+  // ── Lattice tone derivation ───────────────────────────────────────
+  // Reuses the existing JiScaleLattice component (the one used by
+  // the Chords tab's Show Answer reveal).  We feed it whichever set
+  // of tones is currently meaningful for the strip:
+  //
+  //   JI mode: every ratio in the active grid (curated 13-limit +
+  //            user-added customs) plotted on the 5-limit lattice;
+  //            non-5-limit ratios get projected onto the nearest
+  //            cell (with a coloured marker), exactly the way the
+  //            chord lattice handles septimal / undecimal scales.
+  //   EDO mode: every active EDO step that the user has actually
+  //            placed a node on, plotted on the same 5-limit grid
+  //            via its cents value (so the lattice shows where the
+  //            played notes fall against pure JI).
+  const latticeTones: { degree: string; cents: number }[] = [];
   if (gridMode === "ji") {
     const seen = new Set<string>();
     const all = [
@@ -633,64 +641,21 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
       const key = `${r.num}/${r.den}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      const [x, y] = latticePos2D(r.num, r.den);
-      latticeNodes.push({ key, label: key, x, y, limit: r.limit });
-    }
-  }
-
-  // Active lattice keys — which JI nodes light up because they match
-  // a placed continuum node within ±25 cents (octave-reduced).
-  const activeLatticeKeys = new Set<string>();
-  if (gridMode === "ji" && latticeNodes.length) {
-    const inRangeNodes = nodes.filter(n => !n.outOfRange);
-    const sorted = [...inRangeNodes].sort((a, b) => a.freq - b.freq);
-    const rootFreq = sorted[0]?.freq;
-    if (rootFreq) {
-      for (const dn of inRangeNodes) {
-        // Octave-reduce target ratio into [1, 2).
-        let t = dn.freq / rootFreq;
-        while (t >= 2) t /= 2;
-        while (t < 1) t *= 2;
-        let bestKey: string | null = null;
-        let bestCents = 25;  // tolerance
-        for (const ln of latticeNodes) {
-          const [num, den] = ln.label.split("/").map(Number);
-          let r = num / den;
-          while (r >= 2) r /= 2;
-          while (r < 1) r *= 2;
-          const cents = Math.abs(1200 * Math.log2(t / r));
-          if (cents < bestCents) { bestCents = cents; bestKey = ln.key; }
-        }
-        if (bestKey) activeLatticeKeys.add(bestKey);
-      }
-    }
-  }
-
-  // EDO-mode: pitch classes positioned on a circle of fifths (the
-  // 'spiral' the user wants from chord show-answer).  Walk the
-  // perfect-fifth generator to lay out 0, P5, 2*P5, ... mod edo.
-  const edoLatticeNodes: { pc: number; x: number; y: number; label: string }[] = [];
-  if (gridMode === "edo") {
-    const radius = 110;
-    const p5Step = Math.round(edo * Math.log2(3 / 2));
-    for (let i = 0; i < edo; i++) {
-      const pc = (i * p5Step) % edo;
-      const angle = (i / edo) * Math.PI * 2 - Math.PI / 2;
-      edoLatticeNodes.push({
-        pc,
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius,
-        label: pcToNoteName(pc, edo),
+      latticeTones.push({
+        degree: `${r.num}/${r.den}`,
+        cents: 1200 * Math.log2(r.num / r.den),
       });
     }
-  }
-  const activeEdoPcs = new Set<number>();
-  if (gridMode === "edo") {
+  } else {
+    // EDO: plot the user's placed notes' EDO degrees.
+    const seen = new Set<string>();
     for (const dn of nodes.filter(n => !n.outOfRange)) {
-      const exact = freqToAbsPc(dn.freq, edo);
-      const snapped = Math.round(exact);
+      const snapped = Math.round(freqToAbsPc(dn.freq, edo));
       const pc = ((snapped % edo) + edo) % edo;
-      activeEdoPcs.add(pc);
+      const label = pcToNoteName(pc, edo);
+      if (seen.has(label)) continue;
+      seen.add(label);
+      latticeTones.push({ degree: label, cents: pc * (1200 / edo) });
     }
   }
 
@@ -1426,7 +1391,25 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
       })()}
       </div>
 
-      {/* Spectrum + lattice toggles pinned below the strip. */}
+      {/* Lattice viewport — reuses the same JiScaleLattice component
+          the Chords tab uses for its Show Answer reveal, fed with
+          tones derived from the strip state.  Pointer-events:none
+          on the lattice container — the line is the only audio
+          source; clicking the lattice never plays a note. */}
+      {showLattice && latticeTones.length > 0 && (
+        <div className="bg-[#0c0c0c] border border-[#222] rounded p-3" style={{ pointerEvents: "none" }}>
+          <JiScaleLattice
+            tones={latticeTones}
+            title={gridMode === "ji"
+              ? "Harmonic lattice — JI ratios on the 5-limit grid"
+              : `Harmonic lattice — ${edo}-EDO degrees on the 5-limit grid`}
+            accent="#7173e6"
+            compact={false}
+          />
+        </div>
+      )}
+
+      {/* Spectrum + lattice toggles pinned to the bottom of the view. */}
       <div className="flex flex-wrap gap-2 items-center">
         <button
           onClick={() => setShowSpectrum(!showSpectrum)}
@@ -1447,154 +1430,12 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
               : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
           }`}
           title={gridMode === "ji"
-            ? "Harmonic lattice: each JI ratio positioned by its prime monzo"
-            : "Spiral lattice: EDO pitch classes laid out on the circle of fifths"}
+            ? "Harmonic lattice — JI ratios on the 5-limit grid"
+            : `Harmonic lattice — ${edo}-EDO degrees on the 5-limit grid`}
         >
           Lattice
         </button>
-        {gridMode === "ji" && showLattice && (
-          <button
-            onClick={() => setLatticeRatiosOnly(!latticeRatiosOnly)}
-            className={`px-2 py-1 rounded text-[11px] border transition-colors ${
-              latticeRatiosOnly
-                ? "border-[#c8aa50] bg-[#c8aa5022] text-[#c8aa50]"
-                : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
-            }`}
-            title="JI lattice: ratios-only labels (off = also show monzo exponents)"
-          >
-            Ratios only
-          </button>
-        )}
       </div>
-
-      {/* Lattice viewport — JI mode shows the harmonic lattice of
-          the active ratio set; EDO mode shows the spiral of fifths.
-          Driven entirely by the strip state — no internal options.
-          Click on a strip tick → corresponding lattice node lights up.
-          Lattice nodes have no onClick: only the line drives audio. */}
-      {showLattice && gridMode === "ji" && latticeNodes.length > 0 && (() => {
-        const PAD = 30;
-        const minX = Math.min(...latticeNodes.map(n => n.x)) - PAD;
-        const maxX = Math.max(...latticeNodes.map(n => n.x)) + PAD;
-        const minY = Math.min(...latticeNodes.map(n => n.y)) - PAD;
-        const maxY = Math.max(...latticeNodes.map(n => n.y)) + PAD;
-        const w = maxX - minX;
-        const h = maxY - minY;
-        return (
-          <div className="bg-[#0c0c0c] border border-[#222] rounded p-3">
-            <div className="text-[10px] text-[#888] uppercase tracking-wider mb-2 flex items-center gap-2">
-              Harmonic lattice
-              <span className="text-[#555] normal-case tracking-normal">— each ratio positioned by its prime monzo (3 = orange axis, 5 = green axis, 7 / 11 / 13 = colour-tagged offsets)</span>
-            </div>
-            <svg
-              viewBox={`${minX} ${minY} ${w} ${h}`}
-              className="select-none"
-              style={{ width: "100%", maxHeight: 360 }}
-            >
-              {latticeNodes.map(n => {
-                const active = activeLatticeKeys.has(n.key);
-                const limitColor = LATTICE_PRIME_COLORS[n.limit ?? 1] ?? "#666";
-                return (
-                  <g key={n.key} style={{ pointerEvents: "none" }}>
-                    <circle
-                      cx={n.x} cy={n.y}
-                      r={active ? 18 : 14}
-                      fill={active ? limitColor : "#1a1a1a"}
-                      stroke={active ? "#fff" : limitColor}
-                      strokeWidth={active ? 2 : 1.2}
-                      opacity={active ? 1 : 0.6}
-                    />
-                    {(() => {
-                      const [num, den] = n.label.split("/");
-                      return (
-                        <g>
-                          <text
-                            x={n.x} y={n.y - 1}
-                            fill={active ? "#000" : "#ccc"}
-                            fontSize={10} fontFamily="monospace" fontWeight={active ? 700 : 500}
-                            textAnchor="middle"
-                          >
-                            {num}
-                          </text>
-                          <line
-                            x1={n.x - 7} x2={n.x + 7}
-                            y1={n.y + 1} y2={n.y + 1}
-                            stroke={active ? "#000" : "#ccc"} strokeWidth={0.8}
-                          />
-                          <text
-                            x={n.x} y={n.y + 11}
-                            fill={active ? "#000" : "#ccc"}
-                            fontSize={10} fontFamily="monospace" fontWeight={active ? 700 : 500}
-                            textAnchor="middle"
-                          >
-                            {den}
-                          </text>
-                          {!latticeRatiosOnly && (() => {
-                            const [a3, a5, a7, a11, a13] = factorise2(parseInt(num), parseInt(den));
-                            const monzo = [a3 && `3^${a3}`, a5 && `5^${a5}`, a7 && `7^${a7}`, a11 && `11^${a11}`, a13 && `13^${a13}`].filter(Boolean).join(" ");
-                            return (
-                              <text
-                                x={n.x} y={n.y + 28}
-                                fill="#666" fontSize={8} fontFamily="monospace"
-                                textAnchor="middle"
-                              >
-                                {monzo || "1"}
-                              </text>
-                            );
-                          })()}
-                        </g>
-                      );
-                    })()}
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        );
-      })()}
-
-      {showLattice && gridMode === "edo" && edoLatticeNodes.length > 0 && (() => {
-        const radius = 110;
-        const PAD = 36;
-        const w = (radius + PAD) * 2;
-        return (
-          <div className="bg-[#0c0c0c] border border-[#222] rounded p-3">
-            <div className="text-[10px] text-[#888] uppercase tracking-wider mb-2 flex items-center gap-2">
-              Spiral lattice
-              <span className="text-[#555] normal-case tracking-normal">— {edo}-EDO pitch classes around the circle of fifths</span>
-            </div>
-            <svg
-              viewBox={`-${radius + PAD} -${radius + PAD} ${w} ${w}`}
-              className="select-none mx-auto block"
-              style={{ width: w, maxWidth: "100%" }}
-            >
-              <circle cx={0} cy={0} r={radius} fill="none" stroke="#1e1e1e" strokeWidth={1} />
-              {edoLatticeNodes.map(n => {
-                const active = activeEdoPcs.has(n.pc);
-                return (
-                  <g key={n.pc} style={{ pointerEvents: "none" }}>
-                    <circle
-                      cx={n.x} cy={n.y}
-                      r={active ? 18 : 14}
-                      fill={active ? "#9999ee" : "#1a1a1a"}
-                      stroke={active ? "#fff" : "#3a3a4a"}
-                      strokeWidth={active ? 2 : 1}
-                    />
-                    <text
-                      x={n.x} y={n.y + 4}
-                      fill={active ? "#000" : "#aaa"}
-                      fontSize={11} fontFamily="monospace" fontWeight={active ? 700 : 500}
-                      textAnchor="middle"
-                    >
-                      {n.label}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        );
-      })()}
     </div>
   );
 }
