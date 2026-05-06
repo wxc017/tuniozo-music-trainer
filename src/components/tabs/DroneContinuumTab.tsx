@@ -5,7 +5,7 @@
 // EDO assumption in the audio path: every node is its own continuous
 // frequency.
 import { useState, useEffect, useRef, useCallback } from "react";
-import { audioEngine } from "@/lib/audioEngine";
+import { audioEngine, AudioEngine, DRONE_INSTRUMENTS, type DroneInstrument } from "@/lib/audioEngine";
 import { useLS } from "@/lib/storage";
 import { pcToNoteName } from "@/lib/edoData";
 import { findJiRatio, formatJiRatio, maxPrimeOf } from "@/lib/jiRatioFinder";
@@ -113,6 +113,13 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   // Default A1..A6 (55–1760 Hz, 5 octaves).
   const [lowOct, setLowOct] = useLS<number>("lt_dc_lowOct", 1);
   const [highOct, setHighOct] = useLS<number>("lt_dc_highOct", 6);
+  // Drone instrument — shares the same LS key as the global drone strip
+  // so picking here also persists to the rest of the app (and vice versa).
+  const [instrument, setInstrumentState] = useLS<DroneInstrument>("lt_app_droneInstrument", "tanpura");
+  useEffect(() => {
+    if (!AudioEngine.isValidInstrument(instrument)) setInstrumentState("tanpura");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const stripLowHz   = aOctaveHz(lowOct);
   const stripHighHz  = aOctaveHz(highOct);
   const stripOctaves = Math.max(0.5, highOct - lowOct);
@@ -165,12 +172,14 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     (async () => {
       await ensureAudio();
       if (cancelled) return;
+      audioEngine.setInstrument(instrument);
       const ratios = audible.map(n => n.freq / stripLowHz);
       audioEngine.startRatioDrone(ratios, gain, stripLowHz);
       droneActiveRef.current = true;
     })();
     return () => { cancelled = true; };
-  }, [nodes, droneOn, gain, ensureAudio]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes, droneOn, gain, instrument, stripLowHz, ensureAudio]);
 
   useEffect(() => {
     return () => {
@@ -342,6 +351,19 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
             className="w-32 accent-[#55aa88]"
           />
           <span className="text-[10px] text-[#666] tabular-nums w-8">{Math.round(gain * 100)}%</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-[#888]">Instrument</label>
+          <select
+            value={instrument}
+            onChange={e => setInstrumentState(e.target.value as DroneInstrument)}
+            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none"
+          >
+            {DRONE_INSTRUMENTS.map(d => (
+              <option key={d.id} value={d.id}>{d.label}</option>
+            ))}
+          </select>
         </div>
 
         <button

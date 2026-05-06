@@ -910,8 +910,10 @@ export default function App() {
               direct user direction (2026-05-05): "the drone should be
               for all modes".  Always sounds a single tonic through the
               chosen sampled instrument; tonic comes from the global
-              tonicPc state which persists across sections. */}
-          {!academicMode && (
+              tonicPc state which persists across sections.  Hidden in
+              the Drone Continuum section (it has its own multi-node
+              drone control + instrument picker). */}
+          {!academicMode && section !== "drone-continuum" && (
             <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-[#888] tracking-widest uppercase">Drone</span>
