@@ -163,11 +163,14 @@ export default function ScalarTab({
   const [solfegeKind, setSolfegeKind] = useLS<"heathwaite" | "microtonal">(
     "lt_scalar_solfege_kind", "heathwaite"
   );
-  // 19-EDO has no Heathwaite table; coerce the kind so the syllables
-  // shown match what's actually defined.
+  // Heathwaite is only defined for 12-EDO and 31-EDO (per direct user
+  // direction 2026-05-05: "remove heathwaite solfege from anything
+  // besides 31 and 12").  Force microtonal in any other EDO so the
+  // syllables match what's actually exposed.
+  const heathwaiteAvailable = edo === 12 || edo === 31;
   useEffect(() => {
-    if (edo === 19 && solfegeKind === "heathwaite") setSolfegeKind("microtonal");
-  }, [edo, solfegeKind, setSolfegeKind]);
+    if (!heathwaiteAvailable && solfegeKind === "heathwaite") setSolfegeKind("microtonal");
+  }, [heathwaiteAvailable, solfegeKind, setSolfegeKind]);
   // Pre-warm piper TTS on mount so the first syllable click doesn't
   // pay the worker-cold-start latency.  Fire-and-forget.
   useEffect(() => {
@@ -632,13 +635,13 @@ export default function ScalarTab({
 
           {/* Solfege system toggle — Heathwaite (default Do-Re-Mi-style)
               or Microtonal (IPA interval-name system from cents).
-              Heathwaite has no published syllable table for 19-EDO, so
-              the option is hidden there and the kind is forced to
-              microtonal. */}
+              Heathwaite is only defined for 12-EDO and 31-EDO; the
+              option is hidden in any other EDO and the kind is forced
+              to microtonal there. */}
           <div className="flex items-center gap-1 mb-1 flex-wrap">
             <span className="text-[10px] text-[#666] mr-1">SOLFEGE</span>
             {(["heathwaite", "microtonal"] as const)
-              .filter(k => !(k === "heathwaite" && edo === 19))
+              .filter(k => !(k === "heathwaite" && !heathwaiteAvailable))
               .map(k => {
               const active = solfegeKind === k;
               const label = k === "heathwaite" ? "Heathwaite" : "Microtonal";
