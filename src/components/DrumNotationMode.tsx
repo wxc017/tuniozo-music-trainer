@@ -335,9 +335,26 @@ function buildVFNotes(
       const allDotted = sorted.every(n => n.dotted);
       const anyDotted = sorted.some(n => n.dotted);
       const keys = sorted.map(n => pitchWithHead(n.pitch, n.notehead));
+      // Use the SHORTEST duration in the group as the chord's duration.
+      // The drum staff is a single VexFlow voice, so all chord members
+      // must share one duration; preferring the shortest preserves
+      // beams for fast subdivisions.  Per direct user feedback ('i
+      // have eighth notes but its showing as quarter in the main
+      // preview'): when a quarter hi-hat sat above an eighth kick at
+      // the same slot, the previous code picked the highest-pitched
+      // note's duration (= the hi-hat = quarter), so the eighth lost
+      // its beam.  Shortest-wins keeps the beam visible — the
+      // hi-hat will visually be drawn at the eighth-note position
+      // but that's the closest single-voice approximation we can
+      // make without a real two-voice score.
+      const shortestNote = sorted.reduce(
+        (acc, n) => noteSlots(n) < noteSlots(acc) ? n : acc,
+        sorted[0],
+      );
+      const chordDuration = shortestNote.duration;
       const vfn = new StaveNote({
         keys,
-        duration: VF_DURATION_MAP[sorted[0].duration],
+        duration: VF_DURATION_MAP[chordDuration],
         // Only treat the chord as fully dotted when every member is dotted —
         // a partial chord-dot would force a uniform dotted duration on
         // notes the user didn't dot.
