@@ -104,13 +104,20 @@ const FREESOUND_VOICE_URL   = "https://cdn.freesound.org/previews/110/110423_147
  *  Skipped violin / pad / strings ensemble — those aren't drone
  *  instruments in the traditional sense.  Source dispatch
  *  (Philharmonia / tonejs / MusyngKite) lives in INSTRUMENT_SOURCES. */
+// Labels suffixed with "(multi-pitch)" for samples that are inherently
+// recorded with multiple simultaneous fundamentals — Tanpura ("pa SA
+// SA sa" = 3 distinct pitches across 4 strings), Bagpipe (1 bass + 2
+// tenor drones), Choir (many voices).  Spectrum analysis on these
+// shows multiple overlapping harmonic stacks, not a clean 1:2:3:…
+// series.  For single-fundamental visualisation pick Cello, Voice,
+// Harmonium, Church Organ, or Additive Synth.
 export const DRONE_INSTRUMENTS = [
-  { id: "tanpura",            label: "Tanpura" },
+  { id: "tanpura",            label: "Tanpura (multi-string)" },
   { id: "harmonium",          label: "Harmonium" },
   { id: "cello",              label: "Cello" },
-  { id: "bagpipe",            label: "Bagpipe" },
+  { id: "bagpipe",            label: "Bagpipe (multi-drone)" },
   { id: "voice_oohs",         label: "Voice" },
-  { id: "choir_aahs",         label: "Choir" },
+  { id: "choir_aahs",         label: "Choir (multi-voice)" },
   { id: "church_organ",       label: "Church Organ" },
   // Additive synth — purely synthesised, infinite sustain, per-harmonic
   // amplitude control via setAdditivePartials().  No samples / no
