@@ -20,6 +20,7 @@
 // each tonality for every edo" → "5 interesting progressions".
 
 import { tracePathDrifts } from "./jiLattice";
+import { edoTempersComma } from "./edoTemperamentData";
 
 export interface CommaPump {
   /** Stable id for React keys + state */
@@ -28,9 +29,7 @@ export interface CommaPump {
   label: string;
   /** Roman-numeral chord sequence to play */
   progression: string[];
-  /** Prime limit of the comma being pumped (5 for syntonic etc.).  When
-   *  the progression doesn't pump (drift = 0) this is still informative
-   *  about which prime the cadence centres on. */
+  /** Prime limit of the comma being pumped (5 for syntonic etc.) */
   primeLimit: 3 | 5 | 7 | 11 | 13;
   /** Short description for tooltip / muted secondary text */
   description: string;
@@ -39,43 +38,53 @@ export interface CommaPump {
 // Degree-shape templates.  Each entry uses arabic numerals 1..7 for
 // scale-degree position; the resolver below substitutes the actual
 // chord label at that degree from the tonality's chord pool.
+//
+// `commaN/D` is the comma the progression pumps in JI; it gates the
+// template against the target EDO via edoTempersComma — meantone
+// EDOs (12/19/31) temper out 81/80 so syntonic-pump templates drop
+// out automatically there.  All current entries are syntonic pumps
+// (vi → ii direct motion fires the curated 81/80 lattice offset);
+// expanding to septimal / undecimal / tridecimal pumps requires
+// adding entries to TRANSITION_MOTIONS in jiLattice.ts.
 interface ProgressionTemplate {
   key: string;
   shape: number[];
+  commaN: number;
+  commaD: number;
   primeLimit: 3 | 5 | 7 | 11 | 13;
   description: string;
 }
 
 const TEMPLATES: ProgressionTemplate[] = [
   {
-    key: "auth-1-5-1",
-    shape: [1, 5, 1],
-    primeLimit: 3,
-    description: "Authentic cadence — V → I.  3-limit (Pythagorean) cadential motion.",
-  },
-  {
-    key: "plag-auth-1-4-5-1",
-    shape: [1, 4, 5, 1],
-    primeLimit: 5,
-    description: "Plagal + authentic — IV → V → I.  Anchors the tonic from both 4th and 5th.",
-  },
-  {
-    key: "fifties-1-6-4-5-1",
-    shape: [1, 6, 4, 5, 1],
-    primeLimit: 5,
-    description: "I → vi → IV → V → I.  Doo-wop / ′50s progression.",
-  },
-  {
     key: "syntonic-1-6-2-5-1",
     shape: [1, 6, 2, 5, 1],
-    primeLimit: 5,
-    description: "I → vi → ii → V → I.  Canonical 5-limit syntonic comma pump (21.5¢ in JI).",
+    commaN: 81, commaD: 80, primeLimit: 5,
+    description: "I → vi → ii → V → I.  Canonical 5-limit syntonic comma pump.",
   },
   {
     key: "syntonic-1-4-6-2-5-1",
     shape: [1, 4, 6, 2, 5, 1],
-    primeLimit: 5,
+    commaN: 81, commaD: 80, primeLimit: 5,
     description: "I → IV → vi → ii → V → I.  Syntonic pump with extra IV setup.",
+  },
+  {
+    key: "syntonic-1-3-6-2-5-1",
+    shape: [1, 3, 6, 2, 5, 1],
+    commaN: 81, commaD: 80, primeLimit: 5,
+    description: "I → iii → vi → ii → V → I.  Syntonic pump with iii passing chord.",
+  },
+  {
+    key: "syntonic-1-5-6-2-5-1",
+    shape: [1, 5, 6, 2, 5, 1],
+    commaN: 81, commaD: 80, primeLimit: 5,
+    description: "I → V → vi → ii → V → I.  Deceptive cadence into a syntonic pump.",
+  },
+  {
+    key: "syntonic-1-6-2-4-5-1",
+    shape: [1, 6, 2, 4, 5, 1],
+    commaN: 81, commaD: 80, primeLimit: 5,
+    description: "I → vi → ii → IV → V → I.  Syntonic pump with IV before V.",
   },
 ];
 
@@ -138,12 +147,19 @@ export function pumpChordDrifts(pump: CommaPump): number[] {
   return tracePathDrifts(pump.progression);
 }
 
-/** Build up to 5 interesting progressions for the given tonality on
- *  the given EDO.  Resolves each shape template against the
- *  tonality's actual chord labels; templates that need a degree the
- *  tonality lacks are skipped.  Returns at most 5 progressions
- *  (typically 5 for full diatonic tonalities, fewer for tonalities
- *  with restricted chord pools). */
+/** Build up to 5 ACTUAL comma pumps for the given tonality on the
+ *  given EDO.  Resolves each shape template, drops it if:
+ *    - the tonality is missing a needed scale degree, OR
+ *    - the EDO tempers out the template's comma (so the pump would
+ *      collapse audibly), OR
+ *    - the JI drift comes back ~0 (the curated pump motion didn't
+ *      actually fire on this resolution — usually because the
+ *      tonality's chord at the pump-relevant degree is itself an
+ *      altered-position chord that strips back to a different
+ *      numeral than the template expected).
+ *  Returns only progressions that genuinely pump in this EDO. */
+const DRIFT_THRESHOLD_CENTS = 0.5;
+
 export function pumpsForTonality(
   edo: number,
   availableChordLabels: Set<string>,
@@ -152,6 +168,10 @@ export function pumpsForTonality(
   if (byDeg.size === 0) return [];
   const out: CommaPump[] = [];
   for (const t of TEMPLATES) {
+    // Skip templates whose comma vanishes in this EDO — the user
+    // wouldn't audibly hear a drift even if the JI lattice walks one.
+    if (edoTempersComma(edo, t.commaN, t.commaD)) continue;
+
     const progression: string[] = [];
     let ok = true;
     for (const deg of t.shape) {
@@ -160,6 +180,14 @@ export function pumpsForTonality(
       progression.push(lbl);
     }
     if (!ok) continue;
+
+    // Verify the resolved progression actually pumps in JI — the
+    // curated pump motion (vi → ii) only fires when both labels
+    // strip back to those exact numerals.
+    const drifts = tracePathDrifts(progression);
+    const finalDrift = drifts[drifts.length - 1] ?? 0;
+    if (Math.abs(finalDrift) < DRIFT_THRESHOLD_CENTS) continue;
+
     const label = progression.join(" → ");
     out.push({
       key: `${t.key}-${edo}`,
