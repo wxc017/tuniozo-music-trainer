@@ -434,11 +434,17 @@ export class AudioEngine {
       console.warn("C4.wav not loaded, using synth fallback", e);
     }
 
-    // Kick off default-instrument sample loading in the background.  We
-    // don't await it here so init() returns promptly; the drone synth
-    // will fall back to the PeriodicWave path if a drone fires before
-    // the samples finish loading.
-    this.loadInstrumentSamples(this.currentInstrument);
+    // Pre-load EVERY drone instrument's samples at init — the user
+    // reported "for all the instruments its takes too long for it to
+    // start playing" (2026-05-05).  Loading lazily on first selection
+    // forced the user to wait for fetch+decode every time they tried a
+    // new instrument; pre-loading all of them in parallel means the
+    // first sample of any drone is ready by the time the user clicks.
+    // Loads run in parallel, fire-and-forget; failures fall back to the
+    // PeriodicWave synth as before.
+    for (const inst of DRONE_INSTRUMENTS) {
+      this.loadInstrumentSamples(inst.id);
+    }
   }
 
   /** Switch the active drone instrument.  Triggers lazy sample loading
