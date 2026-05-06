@@ -1,8 +1,9 @@
-// Drone Continuum — vertical pitch strip from A1 (55 Hz) to A6 (1760 Hz).
-// Click anywhere on the strip to place a node; nodes drone simultaneously
-// via the existing sample-based audio engine, which pitch-shifts each
-// sample to the exact target frequency.  No 12-TET / EDO assumption in
-// the audio path: every node is its own continuous frequency.
+// Drone Continuum — horizontal pitch strip from A1 (55 Hz, left) to A6
+// (1760 Hz, right).  Click anywhere on the strip to place a node; nodes
+// drone simultaneously via the existing sample-based audio engine, which
+// pitch-shifts each sample to the exact target frequency.  No 12-TET /
+// EDO assumption in the audio path: every node is its own continuous
+// frequency.
 import { useState, useEffect, useRef, useCallback } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import { useLS } from "@/lib/storage";
@@ -19,33 +20,43 @@ const A6_HZ = 1760;
 const STRIP_OCTAVES = Math.log2(A6_HZ / A1_HZ); // 5
 
 // Match the audio engine's C4 reference so EDO labels align with the
-// app's tonal-system note names (the EDO grid is C-anchored, not
-// A-anchored, even though the strip's bottom and top happen to be A1
-// and A6 — that's just where users mentally place the range).
+// app's tonal-system note names (the EDO grid is C-anchored even though
+// the strip's left and right ends happen to be A1 and A6 — that's just
+// where the user mentally places the range).
 const C4_HZ = 261.63;
 const freqToAbsPc = (f: number, edo: number) =>
   4 * edo + edo * Math.log2(f / C4_HZ);
 const absPcToFreq = (pc: number, edo: number) =>
   C4_HZ * Math.pow(2, (pc - 4 * edo) / edo);
 
-const STRIP_W = 80;
-const STRIP_H = 720;
-const STRIP_PAD_TOP = 12;
-const STRIP_PAD_BOT = 12;
-const STRIP_INNER_H = STRIP_H - STRIP_PAD_TOP - STRIP_PAD_BOT;
-const SVG_W = 560;
+// Horizontal layout.
+//   STRIP_X .. STRIP_X+STRIP_W   = clickable strip (log-frequency axis)
+//   y=0..STRIP_Y_TOP             = octave anchors + JI ruler header
+//   y=STRIP_Y_TOP..STRIP_Y_BOT   = strip body (gridlines, node circles)
+//   y=STRIP_Y_BOT..NODE_LABEL_Y  = per-EDO-step note labels (rotated -90)
+//   y=NODE_LABEL_Y..             = per-node label rows + leader lines
+const STRIP_X      = 60;
+const STRIP_W      = 1100;
+const STRIP_Y_TOP  = 60;
+const STRIP_H      = 80;
+const STRIP_Y_BOT  = STRIP_Y_TOP + STRIP_H;
+const STEP_LABEL_H = 56;     // vertical room for rotated step labels
+const NODE_LABEL_Y = STRIP_Y_BOT + STEP_LABEL_H + 6;
+const NODE_LABEL_H = 60;
+const SVG_W = STRIP_X + STRIP_W + 60;
+const SVG_H = NODE_LABEL_Y + NODE_LABEL_H;
 
-const yFromFreq = (f: number): number =>
-  STRIP_PAD_TOP + (1 - Math.log2(f / A1_HZ) / STRIP_OCTAVES) * STRIP_INNER_H;
-const freqFromY = (y: number): number =>
-  A1_HZ * Math.pow(2, (1 - (y - STRIP_PAD_TOP) / STRIP_INNER_H) * STRIP_OCTAVES);
+const xFromFreq = (f: number): number =>
+  STRIP_X + (Math.log2(f / A1_HZ) / STRIP_OCTAVES) * STRIP_W;
+const freqFromX = (x: number): number =>
+  A1_HZ * Math.pow(2, ((x - STRIP_X) / STRIP_W) * STRIP_OCTAVES);
 
 const snapFreqToEdo = (f: number, edo: number): number =>
   absPcToFreq(Math.round(freqToAbsPc(f, edo)), edo);
 
-// Compute the EDO note name + signed cents drift between `freq` and the
-// nearest C-anchored EDO step.  Octave numbers count from C0 (= 16.35 Hz)
-// to match the app's standard absolute-pitch convention.
+// EDO note name + signed cents drift between `freq` and the nearest
+// C-anchored EDO step.  Octave numbers count from C0 to match the
+// app's standard absolute-pitch convention.
 function edoLabelFor(freq: number, edo: number): { name: string; drift: number } {
   const exactPc = freqToAbsPc(freq, edo);
   const snappedPc = Math.round(exactPc);
@@ -58,12 +69,12 @@ function edoLabelFor(freq: number, edo: number): { name: string; drift: number }
 interface DroneNode {
   id: string;
   freq: number;
-  harmonicOf?: string;   // parent node id, when spawned by a series preset
-  harmonicNum?: number;  // 2 = octave / 2nd partial, 3 = 3rd partial, ...
-  subharmonic?: boolean; // true for series-below spawns
-  chordOf?: string;      // parent node id, when spawned by a chord preset
-  chordIndex?: number;   // 1-based position in the chord's ratio list
-  outOfRange?: boolean;  // visible as grey dot, NOT droned
+  harmonicOf?: string;
+  harmonicNum?: number;
+  subharmonic?: boolean;
+  chordOf?: string;
+  chordIndex?: number;
+  outOfRange?: boolean;
 }
 
 let nextId = 1;
@@ -71,10 +82,6 @@ const makeId = () => `n${nextId++}`;
 
 const HARMONIC_PRESET_COUNTS = [4, 8, 12, 16, 24] as const;
 
-// Curated JI chord library.  Septimal + tridecimal options included
-// because the rest of the app already commits to those prime limits
-// in the maqam / tetrachord catalogs (recent commit: "53-EDO drop
-// 13/17-limit Diatonic; add tridecimal-tetrachord 13-limit scales").
 interface ChordPreset { id: string; label: string; ratios: number[] }
 const CHORD_LIBRARY: ChordPreset[] = [
   { id: "M",    label: "Maj 4:5:6",         ratios: [1, 5/4, 3/2] },
@@ -97,19 +104,17 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   const [showEdoGrid, setShowEdoGrid] = useLS<boolean>("lt_dc_edoGrid", true);
   const [snapToEdo, setSnapToEdo] = useLS<boolean>("lt_dc_snap", false);
   const [showJiRulers, setShowJiRulers] = useLS<boolean>("lt_dc_jiRulers", false);
+  const [showStepNames, setShowStepNames] = useLS<boolean>("lt_dc_stepNames", true);
   const [labelMode, setLabelMode] = useLS<"both" | "edo" | "ji">("lt_dc_labelMode", "both");
   const [primeLimit, setPrimeLimit] = useLS<number>("lt_dc_primeLimit", 13);
   const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
-  // Tuning of spawned chords: "ji" plays exact ratios, "edo" snaps each
-  // chord tone to the nearest active-EDO step (so the user hears the
-  // tempered version of the same chord shape — direct A/B with the JI).
   const [chordTuning, setChordTuning] = useLS<"ji" | "edo">("lt_dc_chordTuning", "ji");
   const stripRef = useRef<SVGSVGElement>(null);
   const droneActiveRef = useRef(false);
 
-  // Restart the drone whenever the active node set, gain, or on/off toggles.
+  // Restart the drone whenever the active node set, gain, or on/off changes.
   // startRatioDrone tears down the previous voices internally, so this is
-  // a single atomic update — no need for incremental add/remove plumbing.
+  // a single atomic update — no incremental add/remove plumbing needed.
   useEffect(() => {
     const audible = nodes.filter(n => !n.outOfRange);
     if (!droneOn || audible.length === 0) {
@@ -148,7 +153,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     const ctm = svg.getScreenCTM();
     if (!ctm) return;
     const local = pt.matrixTransform(ctm.inverse());
-    let freq = freqFromY(local.y);
+    let freq = freqFromX(local.x);
     if (!isFinite(freq) || freq < A1_HZ * 0.99 || freq > A6_HZ * 1.01) return;
     if (snapToEdo) freq = snapFreqToEdo(freq, edo);
     setNodes(prev => [...prev, { id: makeId(), freq }]);
@@ -169,9 +174,6 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     setNodes(prev => {
       const parent = prev.find(n => n.id === parentId);
       if (!parent) return prev;
-      // Re-running ANY preset on a node clears all its existing
-      // children — keeps the visual model simple (one preset overlay
-      // per parent at a time).
       const filtered = prev.filter(n => !isChildOf(n, parentId));
       const additions: DroneNode[] = [];
       for (let h = 2; h <= count; h++) {
@@ -213,46 +215,56 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     setMenuNodeId(null);
   };
 
-  // Octave tick markers (A1, A2, ..., A6).
-  const octaveTicks: { y: number; label: string }[] = [];
-  for (let i = 0; i <= 5; i++) {
-    const f = A1_HZ * Math.pow(2, i);
-    octaveTicks.push({ y: yFromFreq(f), label: `A${i + 1}` });
-  }
+  // ── Visual layout precomputation ──────────────────────────────────
 
-  // EDO grid spanning the visible range, C-anchored so each gridline
-  // sits on an actual EDO degree of the app's tonal system.  P5 steps
-  // (i.e. the "G" of every octave) get a brighter stroke for orientation.
-  const edoLines: { y: number; isP5: boolean }[] = [];
-  if (showEdoGrid) {
+  // Octave anchor labels (A1, A2, ..., A6) at exact A frequencies.
+  const octaveTicks = Array.from({ length: 6 }, (_, i) => {
+    const f = A1_HZ * Math.pow(2, i);
+    return { x: xFromFreq(f), label: `A${i + 1}` };
+  });
+
+  // EDO grid + per-step note labels.  Iterate C-anchored EDO steps that
+  // fall inside [A1, A6].  Each step gets:
+  //   - a vertical gridline through the strip body
+  //   - a small note-name label below the strip (rotated -90 so dense
+  //     EDOs like 41 / 53 don't collide horizontally)
+  // P5 steps within each octave (the "G" of every octave) get a
+  // brighter stroke so the user has a sub-octave reference.
+  const edoSteps: { x: number; pc: number; isP5: boolean; label: string }[] = [];
+  if (showEdoGrid || showStepNames) {
     const minPc = Math.ceil(freqToAbsPc(A1_HZ, edo));
     const maxPc = Math.floor(freqToAbsPc(A6_HZ, edo));
     const p5Step = Math.round(edo * Math.log2(3 / 2));
     for (let pc = minPc; pc <= maxPc; pc++) {
       const f = absPcToFreq(pc, edo);
       const stepInOct = ((pc % edo) + edo) % edo;
-      edoLines.push({ y: yFromFreq(f), isP5: stepInOct === p5Step });
+      const oct = Math.floor(pc / edo);
+      const label = `${pcToNoteName(stepInOct, edo)}${oct}`;
+      edoSteps.push({ x: xFromFreq(f), pc, isP5: stepInOct === p5Step, label });
     }
   }
 
-  // JI harmonic ruler — partials of A1 from h2 to whatever fits in A6.
-  // 32 * 55 = 1760 = A6 exactly, so harmonics 2..32 of A1 all sit on or
-  // below A6.  Highlights the simplest partials with brighter strokes
-  // so 2nd / 3rd / 5th / 7th stand out from the dense upper region.
-  const jiLines: { y: number; harmonic: number }[] = [];
+  // JI harmonic ruler — partials of A1 from h2 up to whatever fits in
+  // A6 (h32 lands exactly on A6 since 32*55 = 1760).  Subset the dense
+  // upper region: above h16, label only h20/h24/h28/h32 to avoid clutter.
+  const jiTicks: { x: number; harmonic: number; labelled: boolean }[] = [];
   if (showJiRulers) {
     for (let h = 2; h <= 32; h++) {
       const f = A1_HZ * h;
       if (f > A6_HZ * 1.001) break;
-      jiLines.push({ y: yFromFreq(f), harmonic: h });
+      const labelled = h <= 16 || h % 4 === 0;
+      jiTicks.push({ x: xFromFreq(f), harmonic: h, labelled });
     }
   }
+
+  // ── Render ────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4">
       <p className="text-xs text-[#666]">
-        Click the strip to place a sustained drone at any pitch from A1 (55 Hz) to A6 (1760 Hz).
-        Multiple nodes drone simultaneously — train ordering low/high, hear real harmonic stacks.
+        Click anywhere on the strip to place a sustained drone between A1 (55 Hz) and A6 (1760 Hz).
+        Multiple nodes drone simultaneously — train ordering low/high, hear real harmonic stacks, and
+        compare JI ratios against the {edo}-EDO grid.
       </p>
 
       <div className="flex flex-wrap gap-3 items-center">
@@ -297,6 +309,16 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
           }`}
         >
           {edo}-EDO grid
+        </button>
+        <button
+          onClick={() => setShowStepNames(!showStepNames)}
+          className={`px-2 py-1 rounded text-[11px] border transition-colors ${
+            showStepNames
+              ? "border-[#7173e6] bg-[#7173e622] text-[#9999ee]"
+              : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
+          }`}
+        >
+          Step names
         </button>
         <button
           onClick={() => setSnapToEdo(!snapToEdo)}
@@ -366,129 +388,143 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         </div>
       </div>
 
-      <div className="relative" style={{ width: SVG_W, height: STRIP_H }}>
+      <div className="relative" style={{ width: SVG_W, height: SVG_H }}>
       <svg
         ref={stripRef}
         width={SVG_W}
-        height={STRIP_H}
+        height={SVG_H}
         className="bg-[#0a0a0a] rounded border border-[#1a1a1a] select-none"
         style={{ display: "block" }}
         onClick={() => setMenuNodeId(null)}
       >
-        {/* Octave gridlines (drawn first so other layers sit on top) */}
+        {/* Octave anchors — vertical lines at A1..A6, with text labels
+            above the strip.  Drawn first so EDO gridlines paint over. */}
         {octaveTicks.map(t => (
           <g key={t.label}>
             <line
-              x1={0} x2={SVG_W} y1={t.y} y2={t.y}
-              stroke="#262626" strokeWidth={1}
+              x1={t.x} x2={t.x}
+              y1={STRIP_Y_TOP} y2={STRIP_Y_BOT}
+              stroke="#3a3a3a" strokeWidth={1}
             />
             <text
-              x={6} y={t.y - 4}
-              fill="#777" fontSize={10} fontFamily="monospace"
+              x={t.x} y={STRIP_Y_TOP - 8}
+              fill="#aaa" fontSize={11} fontFamily="monospace"
+              textAnchor="middle"
             >
               {t.label}
             </text>
           </g>
         ))}
 
-        {/* EDO grid (within strip rect only) */}
-        {edoLines.map((g, i) => (
+        {/* EDO grid — vertical lines through the strip body. */}
+        {showEdoGrid && edoSteps.map((s, i) => (
           <line
             key={`edo${i}`}
-            x1={50} x2={50 + STRIP_W} y1={g.y} y2={g.y}
-            stroke={g.isP5 ? "#33445e" : "#1d1f28"}
-            strokeWidth={g.isP5 ? 1 : 0.5}
+            x1={s.x} x2={s.x}
+            y1={STRIP_Y_TOP} y2={STRIP_Y_BOT}
+            stroke={s.isP5 ? "#33445e" : "#1d1f28"}
+            strokeWidth={s.isP5 ? 1 : 0.5}
           />
         ))}
 
-        {/* JI harmonic ruler (right of the strip) */}
-        {jiLines.map(jl => (
-          <g key={`ji${jl.harmonic}`}>
+        {/* Per-EDO-step note labels — rotated -90° so they read upward
+            from below the strip; this keeps dense EDOs (41 / 53) legible. */}
+        {showStepNames && edoSteps.map((s, i) => (
+          <text
+            key={`name${i}`}
+            x={s.x} y={STRIP_Y_BOT + 6}
+            fill={s.isP5 ? "#9aa6cc" : "#666"}
+            fontSize={9} fontFamily="monospace"
+            textAnchor="end"
+            transform={`rotate(-90 ${s.x} ${STRIP_Y_BOT + 6})`}
+          >
+            {s.label}
+          </text>
+        ))}
+
+        {/* JI harmonic ruler — above the strip.  Tick + h-number for
+            each in-range partial of A1. */}
+        {jiTicks.map(jt => (
+          <g key={`ji${jt.harmonic}`}>
             <line
-              x1={50 + STRIP_W} x2={50 + STRIP_W + 18}
-              y1={jl.y} y2={jl.y}
+              x1={jt.x} x2={jt.x}
+              y1={STRIP_Y_TOP - 22} y2={STRIP_Y_TOP - 4}
               stroke="#c8aa5066" strokeWidth={1}
             />
-            <text
-              x={50 + STRIP_W + 22}
-              y={jl.y + 3}
-              fill="#c8aa5099" fontSize={9} fontFamily="monospace"
-            >
-              h{jl.harmonic}
-            </text>
+            {jt.labelled && (
+              <text
+                x={jt.x} y={STRIP_Y_TOP - 26}
+                fill="#c8aa5099" fontSize={9} fontFamily="monospace"
+                textAnchor="middle"
+              >
+                h{jt.harmonic}
+              </text>
+            )}
           </g>
         ))}
 
-        {/* The strip itself — clickable rect */}
+        {/* Strip body — clickable rect. */}
         <rect
-          x={50} y={STRIP_PAD_TOP}
-          width={STRIP_W} height={STRIP_INNER_H}
+          x={STRIP_X} y={STRIP_Y_TOP}
+          width={STRIP_W} height={STRIP_H}
           fill="transparent"
           stroke="#2a2a2a" strokeWidth={1}
           onClick={onStripClick}
           style={{ cursor: "crosshair" }}
         />
 
-        {/* Centerline of strip */}
+        {/* Strip horizontal centerline. */}
         <line
-          x1={50 + STRIP_W / 2} x2={50 + STRIP_W / 2}
-          y1={STRIP_PAD_TOP} y2={STRIP_H - STRIP_PAD_BOT}
-          stroke="#222" strokeWidth={1} strokeDasharray="2 4"
+          x1={STRIP_X} x2={STRIP_X + STRIP_W}
+          y1={STRIP_Y_TOP + STRIP_H / 2}
+          y2={STRIP_Y_TOP + STRIP_H / 2}
+          stroke="#222" strokeWidth={1} strokeDasharray="3 5"
         />
 
-        {/* Nodes — circle on the strip + multi-row label to the right.
-            JI ratios reference the lowest currently-placed in-range
-            node as 1/1.  Out-of-range nodes (harmonics past A6 or
-            sub-harmonics below A1) render as small grey dots on the
-            far edge — visible-but-silent so users can see partials
-            that exist beyond the strip. */}
+        {/* Nodes + per-node labels + out-of-range dots. */}
         {(() => {
           if (!nodes.length) return null;
           const inRange = nodes.filter(n => !n.outOfRange);
           const oor = nodes.filter(n => n.outOfRange);
           const sorted = [...inRange].sort((a, b) => a.freq - b.freq);
           const rootFreq = sorted[0]?.freq;
-          const labelX = 50 + STRIP_W + 70;
-          const cx = 50 + STRIP_W / 2;
+          const cy = STRIP_Y_TOP + STRIP_H / 2;
 
-          // Out-of-range dots — draw them stacked at the strip's top or
-          // bottom edge so they stay anchored even though their real
-          // y is off-canvas.  Stagger horizontally so dots from a long
-          // harmonic series don't pile on a single pixel.
-          const oorAbove = oor.filter(n => !n.subharmonic);
+          // Out-of-range dots — sub-harmonics on the left margin,
+          // super-harmonics on the right margin.  Stacked vertically
+          // so series of multiple OOR partials don't overlap.
           const oorBelow = oor.filter(n =>  n.subharmonic);
+          const oorAbove = oor.filter(n => !n.subharmonic);
 
           return (
             <>
-              {oorAbove.map((n, i) => {
-                const x = cx + (i - (oorAbove.length - 1) / 2) * 9;
+              {oorBelow.map((n, i) => {
+                const y = cy + (i - (oorBelow.length - 1) / 2) * 9;
                 return (
-                  <g key={n.id}>
-                    <circle
-                      cx={x} cy={STRIP_PAD_TOP - 6} r={2.5}
-                      fill="#444" stroke="#222" strokeWidth={0.5}
-                    >
-                      <title>h{n.harmonicNum} = {n.freq.toFixed(1)} Hz (above A6 — visible only)</title>
-                    </circle>
-                  </g>
+                  <circle
+                    key={n.id}
+                    cx={STRIP_X - 14} cy={y} r={2.5}
+                    fill="#444" stroke="#222" strokeWidth={0.5}
+                  >
+                    <title>1/{n.harmonicNum} = {n.freq.toFixed(1)} Hz (below A1 — visible only)</title>
+                  </circle>
                 );
               })}
-              {oorBelow.map((n, i) => {
-                const x = cx + (i - (oorBelow.length - 1) / 2) * 9;
+              {oorAbove.map((n, i) => {
+                const y = cy + (i - (oorAbove.length - 1) / 2) * 9;
                 return (
-                  <g key={n.id}>
-                    <circle
-                      cx={x} cy={STRIP_H - STRIP_PAD_BOT + 6} r={2.5}
-                      fill="#444" stroke="#222" strokeWidth={0.5}
-                    >
-                      <title>1/{n.harmonicNum} = {n.freq.toFixed(1)} Hz (below A1 — visible only)</title>
-                    </circle>
-                  </g>
+                  <circle
+                    key={n.id}
+                    cx={STRIP_X + STRIP_W + 14} cy={y} r={2.5}
+                    fill="#444" stroke="#222" strokeWidth={0.5}
+                  >
+                    <title>h{n.harmonicNum} = {n.freq.toFixed(1)} Hz (above A6 — visible only)</title>
+                  </circle>
                 );
               })}
 
               {inRange.map(n => {
-                const y = yFromFreq(n.freq);
+                const x = xFromFreq(n.freq);
                 const isRoot = rootFreq !== undefined && n.id === sorted[0].id;
                 const isMenuOpen = menuNodeId === n.id;
                 const edo_ = edoLabelFor(n.freq, edo);
@@ -507,26 +543,31 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
                     ? ""
                     : ` ${edo_.drift >= 0 ? "+" : "−"}${Math.abs(edo_.drift).toFixed(1)}¢`
                 }`;
-                const rows: string[] = [];
-                rows.push(`${n.freq.toFixed(1)} Hz`);
+                const rows: string[] = [`${n.freq.toFixed(1)} Hz`];
                 if (labelMode !== "ji") rows.push(edoStr);
                 if (labelMode !== "edo") rows.push(ratioStr);
-                const rowH = 12;
-                const yOff = -((rows.length - 1) * rowH) / 2;
+                const fillColor = isRoot
+                  ? "#c8aa50"
+                  : (n.chordOf ? "#cc7755" : (n.harmonicOf ? "#7173e6" : "#55aa88"));
                 return (
                   <g key={n.id}>
+                    {/* Vertical highlight stripe through the strip body. */}
                     <line
-                      x1={50} x2={50 + STRIP_W}
-                      y1={y} y2={y}
-                      stroke={n.chordOf ? "#cc7755" : (n.harmonicOf ? "#7173e6" : "#55aa88")}
-                      strokeWidth={1.5}
+                      x1={x} x2={x}
+                      y1={STRIP_Y_TOP} y2={STRIP_Y_BOT}
+                      stroke={fillColor} strokeWidth={1.5} opacity={0.55}
+                    />
+                    {/* Leader line from node down to its label group. */}
+                    <line
+                      x1={x} x2={x}
+                      y1={STRIP_Y_BOT}
+                      y2={NODE_LABEL_Y - 2}
+                      stroke={fillColor} strokeWidth={0.5} opacity={0.4}
                     />
                     <circle
-                      cx={cx} cy={y}
+                      cx={x} cy={cy}
                       r={isMenuOpen ? 8 : 6}
-                      fill={isRoot
-                        ? "#c8aa50"
-                        : (n.chordOf ? "#cc7755" : (n.harmonicOf ? "#7173e6" : "#55aa88"))}
+                      fill={fillColor}
                       stroke={isMenuOpen ? "#fff" : "#0a0a0a"}
                       strokeWidth={2}
                       onClick={(e) => {
@@ -540,14 +581,15 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
                     {rows.map((text, i) => (
                       <text
                         key={i}
-                        x={labelX}
-                        y={y + yOff + i * rowH + 4}
+                        x={x}
+                        y={NODE_LABEL_Y + i * 13 + 4}
                         fill={
                           i === 0 ? "#aaa"
                           : (rows[i] === ratioStr ? "#c8aa50" : "#9999ee")
                         }
                         fontSize={i === 0 ? 11 : 10}
                         fontFamily="monospace"
+                        textAnchor="middle"
                       >
                         {text}
                       </text>
@@ -564,16 +606,18 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         if (!menuNodeId) return null;
         const node = nodes.find(n => n.id === menuNodeId);
         if (!node || node.outOfRange) return null;
-        const y = yFromFreq(node.freq);
-        // Anchor the menu to the right of the strip + label area, then
-        // clamp vertically so it fits inside the strip's height even
-        // when the source node is near the top or bottom.
-        const MENU_W = 220;
-        const MENU_H_EST = 360;
-        const left = 50 + STRIP_W + 200;
-        let top = y - MENU_H_EST / 2;
-        if (top < 4) top = 4;
-        if (top + MENU_H_EST > STRIP_H - 4) top = STRIP_H - 4 - MENU_H_EST;
+        // Anchor the menu below the node, clamped horizontally so it
+        // doesn't fall off either edge of the SVG.
+        const x = xFromFreq(node.freq);
+        const MENU_W = 240;
+        const MENU_H_EST = 320;
+        let left = x - MENU_W / 2;
+        if (left < 4) left = 4;
+        if (left + MENU_W > SVG_W - 4) left = SVG_W - 4 - MENU_W;
+        // Prefer below the strip.  If that overflows, place above.
+        const belowTop = NODE_LABEL_Y + NODE_LABEL_H + 4;
+        const fitsBelow = belowTop + MENU_H_EST <= SVG_H + 200;  // allow brief overflow
+        const top = fitsBelow ? belowTop : Math.max(4, STRIP_Y_TOP - MENU_H_EST - 4);
         return (
           <div
             className="absolute bg-[#161616] border border-[#3a3a3a] rounded shadow-lg p-2 space-y-1 z-10"
@@ -608,8 +652,8 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
               ))}
             </div>
 
-            <div className="text-[9px] text-[#666] px-1 pt-1 flex items-center justify-between">
-              <span>Chord (root = this node, {chordTuning === "ji" ? "exact JI" : `${edo}-EDO snap`})</span>
+            <div className="text-[9px] text-[#666] px-1 pt-1">
+              Chord (root = this node, {chordTuning === "ji" ? "exact JI" : `${edo}-EDO snap`})
             </div>
             <div className="grid grid-cols-2 gap-1">
               {CHORD_LIBRARY.map(c => (
@@ -643,7 +687,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
       </div>
 
       <p className="text-[10px] text-[#444]">
-        Click strip = add node · Click node = open menu (harmonic series, chord, delete) · Out-of-range partials shown as small grey dots above/below the strip ·
+        Click strip = add node · Click node = open menu (harmonic series, chord, delete) · Out-of-range partials shown as small grey dots at the strip edges ·
         <span className="text-[#c8aa50]"> Gold</span> = JI 1/1 ·
         <span className="text-[#7173e6]"> Indigo</span> = harmonic-series spawn ·
         <span className="text-[#cc7755]"> Copper</span> = chord spawn
