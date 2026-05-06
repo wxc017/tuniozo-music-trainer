@@ -913,16 +913,16 @@ export class AudioEngine {
       return;
     }
 
-    // Per direct user direction: "start another sample halfway so it
-    // goes in infinite stacks overlapping each other".  Each voice
-    // gets a triangular gain envelope spanning the FULL loop (ramp
-    // up over loopDur/2, peak at midpoint, ramp down over loopDur/2)
-    // and the next voice fires exactly halfway through.  Two voices
-    // are always playing — when one peaks the other is silent and
-    // vice versa, with mirror-image ramps that sum to constant gain
-    // at every instant.
-    const halfDurSec = loopDurOutSec / 2;
-    const halfBufferDur = (sample.loopEnd - sample.loopStart) / 2;
+    // Trapezoidal envelope: each voice ramps in over fadeSec, plays
+    // SOLO at peak gain for the bulk of the loop, ramps out over
+    // fadeSec.  Next voice fires fadeSec before the current ends so
+    // the crossfade happens only at the seam.  Per direct user
+    // feedback ("voice drone sound like a mountain going up and down
+    // its not seemless the fade is too strong"): the previous full-
+    // loop triangular envelope mixed timbre across the whole cycle
+    // and read as constant amplitude pumping; trapezoidal limits the
+    // mix to a small seam window.
+    const fadeSec = Math.max(0.05, Math.min(1.5, loopDurOutSec * 0.15));
     const myGen = this.droneGeneration;
 
     const fireVoice = (startTime: number) => {
@@ -931,57 +931,47 @@ export class AudioEngine {
       src.buffer = sample.buffer;
       src.playbackRate.value = rate;
 
-      // Pure triangular envelope: 0 at start, 1 at midpoint, 0 at end.
       const g = ctx.createGain();
       g.gain.setValueAtTime(0, startTime);
-      g.gain.linearRampToValueAtTime(1, startTime + halfDurSec);
+      g.gain.linearRampToValueAtTime(1, startTime + fadeSec);
+      g.gain.setValueAtTime(1, startTime + loopDurOutSec - fadeSec);
       g.gain.linearRampToValueAtTime(0, startTime + loopDurOutSec);
 
       src.connect(g);
       g.connect(noteGain);
-      // Play loopStart..loopEnd once.  Both offset and duration are
-      // expressed in buffer-time (seconds in the source buffer's own
-      // coordinates), NOT output-time — Web Audio measures the
-      // playback position in the buffer's frame and stops when it
-      // reaches `offset + duration` regardless of playbackRate.
       const bufferDur = sample.loopEnd - sample.loopStart;
       src.start(startTime, sample.loopStart, bufferDur);
       this.droneSamples.push(src);
 
-      // Schedule the NEXT voice halfway through — when this voice
-      // peaks, the next voice starts ramping up.  Constant total
-      // energy throughout.
-      const nextStart = startTime + halfDurSec;
+      // Schedule next voice fadeSec before this one ends — they
+      // overlap exactly during the crossfade window.
+      const nextStart = startTime + loopDurOutSec - fadeSec;
       const wakeAheadSec = 0.5;
       const delayMs = Math.max(0, (nextStart - ctx.currentTime - wakeAheadSec) * 1000);
       const t = setTimeout(() => fireVoice(nextStart), delayMs);
       this.droneLoopTimers.push(t);
     };
 
-    // Bootstrap: spawn an "already-in-progress" voice at t0 with
-    // gain 1 fading to 0 over halfDurSec, playing the SECOND half of
-    // the loop region.  Combined with fireVoice(t0) (which starts at
-    // gain 0 fading to 1) the total gain is constant 1.0 from t=0+
-    // — no slow ramp-in even on long-loop samples (e.g. the 240 s
-    // tanpura, which previously took ~120 s before audible peak).
-    // This also restores immediate spectrum visibility since the
-    // analyser sees full-amplitude content right away.
+    // Boot voice — at gain 1 fading to 0 over fadeSec, playing the
+    // SECOND half of the loop region.  Combined with fireVoice(t0)'s
+    // 0 → 1 ramp (also over fadeSec), total gain is constant 1.0
+    // from t=0+ — audio peak immediately, no slow ramp-in, spectrum
+    // analyser sees content right away.  After fadeSec the boot
+    // voice ends and voice 1 plays solo at peak gain until the next
+    // crossfade window.
     const t0 = ctx.currentTime;
-
+    const halfBufferDur = (sample.loopEnd - sample.loopStart) / 2;
     const bootSrc = ctx.createBufferSource();
     bootSrc.buffer = sample.buffer;
     bootSrc.playbackRate.value = rate;
     const bootG = ctx.createGain();
     bootG.gain.setValueAtTime(1, t0);
-    bootG.gain.linearRampToValueAtTime(0, t0 + halfDurSec);
+    bootG.gain.linearRampToValueAtTime(0, t0 + fadeSec);
     bootSrc.connect(bootG);
     bootG.connect(noteGain);
-    // Play the buffer's mid-loop region for halfBufferDur seconds
-    // (= halfDurSec output seconds at the active playbackRate).
     bootSrc.start(t0, sample.loopStart + halfBufferDur, halfBufferDur);
     this.droneSamples.push(bootSrc);
 
-    // Then start the normal alternating-voice cycle at t0.
     fireVoice(t0);
   }
 
@@ -1351,12 +1341,12 @@ export class AudioEngine {
       return;
     }
 
-    const halfDurSec = loopDurOutSec / 2;
+    // Trapezoidal envelope — see spawnSampleLoop for rationale.
+    const fadeSec = Math.max(0.05, Math.min(1.5, loopDurOutSec * 0.15));
     const halfBufferDur = (sample.loopEnd - sample.loopStart) / 2;
     const myGen = voice.generation;
 
     const fireVoice = (startTime: number) => {
-      // Cancellation: voice has been replaced or stopped
       const current = this.droneVoices.get(voiceKey);
       if (!current || current.generation !== myGen) return;
 
@@ -1365,7 +1355,8 @@ export class AudioEngine {
       src.playbackRate.value = rate;
       const g = ctx.createGain();
       g.gain.setValueAtTime(0, startTime);
-      g.gain.linearRampToValueAtTime(1, startTime + halfDurSec);
+      g.gain.linearRampToValueAtTime(1, startTime + fadeSec);
+      g.gain.setValueAtTime(1, startTime + loopDurOutSec - fadeSec);
       g.gain.linearRampToValueAtTime(0, startTime + loopDurOutSec);
       src.connect(g);
       g.connect(voice.noteGain);
@@ -1373,7 +1364,7 @@ export class AudioEngine {
       src.start(startTime, sample.loopStart, bufferDur);
       voice.samples.push(src);
 
-      const nextStart = startTime + halfDurSec;
+      const nextStart = startTime + loopDurOutSec - fadeSec;
       const wakeAheadSec = 0.5;
       const delayMs = Math.max(0, (nextStart - ctx.currentTime - wakeAheadSec) * 1000);
       const t = setTimeout(() => fireVoice(nextStart), delayMs);
@@ -1381,16 +1372,12 @@ export class AudioEngine {
     };
 
     const t0 = ctx.currentTime;
-
-    // Boot voice — same trick as spawnSampleLoop's: an
-    // already-in-progress voice at gain 1 fading to 0 so total
-    // energy is at peak from t=0+.
     const bootSrc = ctx.createBufferSource();
     bootSrc.buffer = sample.buffer;
     bootSrc.playbackRate.value = rate;
     const bootG = ctx.createGain();
     bootG.gain.setValueAtTime(1, t0);
-    bootG.gain.linearRampToValueAtTime(0, t0 + halfDurSec);
+    bootG.gain.linearRampToValueAtTime(0, t0 + fadeSec);
     bootSrc.connect(bootG);
     bootG.connect(voice.noteGain);
     bootSrc.start(t0, sample.loopStart + halfBufferDur, halfBufferDur);
