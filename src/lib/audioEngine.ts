@@ -372,7 +372,10 @@ export class AudioEngine {
   private instrumentSamples: Map<string, InstrumentSample[]> = new Map();
   private instrumentLoadPromises: Map<string, Promise<void>> = new Map();
   private currentInstrument: DroneInstrument = "tanpura";
-  private droneNodes: OscillatorNode[] = [];
+  // Mixed osc + gain + filter nodes spawned by the synth-fallback /
+  // additive paths.  stopDrone calls .stop?.() (noop for non-source
+  // nodes) then .disconnect() on each.
+  private droneNodes: AudioNode[] = [];
   private droneSamples: AudioBufferSourceNode[] = [];
   // Crossfade looper timers — see spawnSampleLoop().  Tracked here so
   // stopDrone can cancel pending re-fires before they spawn unnecessary
@@ -873,13 +876,66 @@ export class AudioEngine {
       // true — race condition during loading.  Fall through to synth.
     }
     if (wave) {
+      this.spawnAdditiveVoice(ctx, targetFreq, noteGain, wave, this.droneNodes);
+    }
+  }
+
+  /** Build an "additive synth" voice from a PeriodicWave: 3 oscillators
+   *  detuned ±5 cents (chorus thickening), each with its own vibrato
+   *  LFO and random phase, summed through a low-pass filter (tames the
+   *  brassy high-harmonic content of a static custom wave) and then
+   *  through a 250ms attack envelope (no abrupt onset).
+   *
+   *  Per direct user feedback: 'the additive synth sounds like a fart
+   *  its doesnt have good synth settings for sustain'.  The earlier
+   *  single-oscillator path produced a static buzzy spectrum with no
+   *  attack and no width — basically the harmonic series stacked at
+   *  unity, which is the worst-case for "fart" perception.  Chorus
+   *  + filter + envelope brings it into pad territory. */
+  private spawnAdditiveVoice(ctx: AudioContext, targetFreq: number, noteGain: GainNode, wave: PeriodicWave, sink: AudioNode[]) {
+    const t0 = ctx.currentTime;
+    const attackSec = 0.25;
+    const filterCutoff = Math.max(2500, targetFreq * 12);
+
+    const lpf = ctx.createBiquadFilter();
+    lpf.type = "lowpass";
+    lpf.frequency.value = filterCutoff;
+    lpf.Q.value = 0.5;
+
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0, t0);
+    env.gain.linearRampToValueAtTime(1, t0 + attackSec);
+
+    lpf.connect(env);
+    env.connect(noteGain);
+    sink.push(lpf, env);
+
+    const detunes = [0, +6, -6];
+    const perVoiceGain = 1 / detunes.length;
+    for (const detune of detunes) {
       const osc = ctx.createOscillator();
       osc.setPeriodicWave(wave);
       osc.frequency.value = targetFreq;
-      this.attachVibrato(osc, ctx);
-      osc.connect(noteGain);
+      osc.detune.value = detune;
+
+      const oscGain = ctx.createGain();
+      oscGain.gain.value = perVoiceGain;
+
+      // Per-voice vibrato — independent rate / phase so the three
+      // detuned voices don't pulsate in lockstep.
+      const lfo = ctx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.value = 4.4 + Math.random() * 0.4;
+      const lfoDepth = ctx.createGain();
+      lfoDepth.gain.value = 5;
+      lfo.connect(lfoDepth);
+      lfoDepth.connect(osc.detune);
+      lfo.start();
+
+      osc.connect(oscGain);
+      oscGain.connect(lpf);
       osc.start();
-      this.droneNodes.push(osc);
+      sink.push(osc, oscGain, lfo, lfoDepth);
     }
   }
 
@@ -1010,9 +1066,9 @@ export class AudioEngine {
     this.droneGeneration++;
     for (const t of this.droneLoopTimers) clearTimeout(t);
     this.droneLoopTimers = [];
-    for (const osc of this.droneNodes) {
-      try { osc.stop(); } catch {}
-      try { osc.disconnect(); } catch {}
+    for (const n of this.droneNodes) {
+      try { (n as OscillatorNode).stop?.(); } catch {}
+      try { n.disconnect(); } catch {}
     }
     this.droneNodes = [];
     for (const src of this.droneSamples) {
@@ -1278,13 +1334,7 @@ export class AudioEngine {
       }
     }
     if (wave) {
-      const osc = ctx.createOscillator();
-      osc.setPeriodicWave(wave);
-      osc.frequency.value = targetFreq;
-      this.attachVibratoForVoice(osc, ctx, voice);
-      osc.connect(noteGain);
-      osc.start();
-      voice.nodes.push(osc);
+      this.spawnAdditiveVoice(ctx, targetFreq, voice.noteGain, wave, voice.nodes);
     }
   }
 
@@ -1403,20 +1453,6 @@ export class AudioEngine {
     voice.samples.push(bootSrc);
 
     fireVoice(t0);
-  }
-
-  /** Voice-tracked vibrato — same as attachVibrato but stores the LFO
-   *  in `voice.nodes` so it's cleaned up per-voice. */
-  private attachVibratoForVoice(target: OscillatorNode, ctx: AudioContext, voice: { nodes: AudioNode[] }) {
-    const lfo = ctx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.value = 4.4 + Math.random() * 0.4;
-    const depth = ctx.createGain();
-    depth.gain.value = 5;
-    lfo.connect(depth);
-    depth.connect(target.detune);
-    lfo.start();
-    voice.nodes.push(lfo);
   }
 
   // ── Separate interval drones (independent of main drone, multiple simultaneous) ──
