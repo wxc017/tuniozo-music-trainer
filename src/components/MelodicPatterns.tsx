@@ -3611,24 +3611,12 @@ function TonalityChordPicker({
 
   return (
     <div className="space-y-3">
-      {/* Family-grouped tonality multi-select */}
+      {/* Family-grouped tonality multi-select.  The All / +FAMILY /
+          Clear quick-fill buttons were removed per direct user
+          direction (2026-05-05) — clutter without enough payoff. */}
       <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2">
         <div className="flex items-center gap-2">
           <p className="text-xs text-[#888] font-medium">TONALITIES</p>
-          <button onClick={() => setTonalitySet(new Set(tonalityBanks.map(b => b.name)))}
-            className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">All</button>
-          {TONALITY_FAMILIES.map(g => (
-            <button key={g.key} onClick={() => {
-              const next = new Set(tonalitySet);
-              for (const t of g.tonalities) if (banksByName[t]) next.add(t);
-              setTonalitySet(next);
-            }}
-              className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5">
-              +{g.label}
-            </button>
-          ))}
-          <button onClick={() => setTonalitySet(new Set())}
-            className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5 ml-auto">Clear</button>
         </div>
         {TONALITY_FAMILIES.map(group => {
           const available = group.tonalities.filter(t => banksByName[t]);
