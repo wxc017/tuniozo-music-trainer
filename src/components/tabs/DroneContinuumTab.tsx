@@ -61,6 +61,8 @@ interface DroneNode {
   harmonicOf?: string;   // parent node id, when spawned by a series preset
   harmonicNum?: number;  // 2 = octave / 2nd partial, 3 = 3rd partial, ...
   subharmonic?: boolean; // true for series-below spawns
+  chordOf?: string;      // parent node id, when spawned by a chord preset
+  chordIndex?: number;   // 1-based position in the chord's ratio list
   outOfRange?: boolean;  // visible as grey dot, NOT droned
 }
 
@@ -68,6 +70,25 @@ let nextId = 1;
 const makeId = () => `n${nextId++}`;
 
 const HARMONIC_PRESET_COUNTS = [4, 8, 12, 16, 24] as const;
+
+// Curated JI chord library.  Septimal + tridecimal options included
+// because the rest of the app already commits to those prime limits
+// in the maqam / tetrachord catalogs (recent commit: "53-EDO drop
+// 13/17-limit Diatonic; add tridecimal-tetrachord 13-limit scales").
+interface ChordPreset { id: string; label: string; ratios: number[] }
+const CHORD_LIBRARY: ChordPreset[] = [
+  { id: "M",    label: "Maj 4:5:6",         ratios: [1, 5/4, 3/2] },
+  { id: "m",    label: "Min 10:12:15",      ratios: [1, 6/5, 3/2] },
+  { id: "ms",   label: "Sept-min 6:7:9",    ratios: [1, 7/6, 3/2] },
+  { id: "sus",  label: "Sus 6:8:9",         ratios: [1, 4/3, 3/2] },
+  { id: "Maj7", label: "Maj7 8:10:12:15",   ratios: [1, 5/4, 3/2, 15/8] },
+  { id: "Min7", label: "Min7 10:12:15:18",  ratios: [1, 6/5, 3/2, 9/5] },
+  { id: "Dom7", label: "Sept-7 4:5:6:7",    ratios: [1, 5/4, 3/2, 7/4] },
+  { id: "h7",   label: "Half-dim 5:6:7:9",  ratios: [1, 6/5, 7/5, 9/5] },
+  { id: "d7",   label: "Trideci 7:9:11:13", ratios: [1, 9/7, 11/7, 13/7] },
+  { id: "Ot",   label: "Otonal 4:5:6:7:9",  ratios: [1, 5/4, 3/2, 7/4, 9/4] },
+  { id: "Ut",   label: "Utonal 7:6:5:4",    ratios: [1, 7/6, 7/5, 7/4] },
+];
 
 export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   const [nodes, setNodes] = useState<DroneNode[]>([]);
@@ -79,6 +100,10 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
   const [labelMode, setLabelMode] = useLS<"both" | "edo" | "ji">("lt_dc_labelMode", "both");
   const [primeLimit, setPrimeLimit] = useLS<number>("lt_dc_primeLimit", 13);
   const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
+  // Tuning of spawned chords: "ji" plays exact ratios, "edo" snaps each
+  // chord tone to the nearest active-EDO step (so the user hears the
+  // tempered version of the same chord shape — direct A/B with the JI).
+  const [chordTuning, setChordTuning] = useLS<"ji" | "edo">("lt_dc_chordTuning", "ji");
   const stripRef = useRef<SVGSVGElement>(null);
   const droneActiveRef = useRef(false);
 
@@ -130,8 +155,11 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     setMenuNodeId(null);
   }, [snapToEdo, edo]);
 
+  const isChildOf = (n: DroneNode, parentId: string) =>
+    n.harmonicOf === parentId || n.chordOf === parentId;
+
   const removeNode = (id: string) => {
-    setNodes(prev => prev.filter(n => n.id !== id && n.harmonicOf !== id));
+    setNodes(prev => prev.filter(n => n.id !== id && !isChildOf(n, id)));
     setMenuNodeId(null);
   };
 
@@ -141,9 +169,10 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
     setNodes(prev => {
       const parent = prev.find(n => n.id === parentId);
       if (!parent) return prev;
-      // Drop any existing harmonics of this parent — re-running the
-      // preset replaces, doesn't accumulate.
-      const filtered = prev.filter(n => n.harmonicOf !== parentId);
+      // Re-running ANY preset on a node clears all its existing
+      // children — keeps the visual model simple (one preset overlay
+      // per parent at a time).
+      const filtered = prev.filter(n => !isChildOf(n, parentId));
       const additions: DroneNode[] = [];
       for (let h = 2; h <= count; h++) {
         const freq = below ? parent.freq / h : parent.freq * h;
@@ -157,6 +186,28 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
           outOfRange,
         });
       }
+      return [...filtered, ...additions];
+    });
+    setMenuNodeId(null);
+  };
+
+  const spawnChord = (parentId: string, chord: ChordPreset) => {
+    setNodes(prev => {
+      const parent = prev.find(n => n.id === parentId);
+      if (!parent) return prev;
+      const filtered = prev.filter(n => !isChildOf(n, parentId));
+      const additions: DroneNode[] = chord.ratios.slice(1).map((r, idx) => {
+        const ideal = parent.freq * r;
+        const finalFreq = chordTuning === "edo" ? snapFreqToEdo(ideal, edo) : ideal;
+        const outOfRange = finalFreq > A6_HZ * 1.001 || finalFreq < A1_HZ * 0.999;
+        return {
+          id: makeId(),
+          freq: finalFreq,
+          chordOf: parentId,
+          chordIndex: idx + 1,
+          outOfRange,
+        };
+      });
       return [...filtered, ...additions];
     });
     setMenuNodeId(null);
@@ -294,6 +345,25 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
+
+        <div className="w-px h-4 bg-[#2a2a2a] mx-1" />
+
+        <span className="text-[10px] text-[#555]">Chord tuning</span>
+        <div className="flex rounded overflow-hidden border border-[#333]">
+          {(["ji", "edo"] as const).map(t => (
+            <button key={t}
+              onClick={() => setChordTuning(t)}
+              className={`px-2 py-1 text-[10px] transition-colors ${
+                chordTuning === t ? "bg-[#cc7755] text-white" : "bg-[#1e1e1e] text-[#888] hover:text-[#ccc]"
+              }`}
+              title={t === "ji"
+                ? "Spawned chords play exact JI ratios"
+                : `Spawned chords snap each tone to the nearest ${edo}-EDO step`}
+            >
+              {t === "ji" ? "JI" : `${edo}-EDO`}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="relative" style={{ width: SVG_W, height: STRIP_H }}>
@@ -448,13 +518,15 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
                     <line
                       x1={50} x2={50 + STRIP_W}
                       y1={y} y2={y}
-                      stroke={n.harmonicOf ? "#7173e6" : "#55aa88"}
+                      stroke={n.chordOf ? "#cc7755" : (n.harmonicOf ? "#7173e6" : "#55aa88")}
                       strokeWidth={1.5}
                     />
                     <circle
                       cx={cx} cy={y}
                       r={isMenuOpen ? 8 : 6}
-                      fill={isRoot ? "#c8aa50" : (n.harmonicOf ? "#7173e6" : "#55aa88")}
+                      fill={isRoot
+                        ? "#c8aa50"
+                        : (n.chordOf ? "#cc7755" : (n.harmonicOf ? "#7173e6" : "#55aa88"))}
                       stroke={isMenuOpen ? "#fff" : "#0a0a0a"}
                       strokeWidth={2}
                       onClick={(e) => {
@@ -497,7 +569,7 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         // clamp vertically so it fits inside the strip's height even
         // when the source node is near the top or bottom.
         const MENU_W = 220;
-        const MENU_H_EST = 240;
+        const MENU_H_EST = 360;
         const left = 50 + STRIP_W + 200;
         let top = y - MENU_H_EST / 2;
         if (top < 4) top = 4;
@@ -536,12 +608,27 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
               ))}
             </div>
 
+            <div className="text-[9px] text-[#666] px-1 pt-1 flex items-center justify-between">
+              <span>Chord (root = this node, {chordTuning === "ji" ? "exact JI" : `${edo}-EDO snap`})</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              {CHORD_LIBRARY.map(c => (
+                <button key={c.id}
+                  onClick={() => spawnChord(node.id, c)}
+                  className="px-1 py-1 text-[9px] rounded bg-[#1e1e1e] border border-[#333] text-[#aaa] hover:bg-[#cc775522] hover:border-[#cc7755] hover:text-[#cc9966] text-left font-mono"
+                  title={c.label}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+
             <div className="pt-1 border-t border-[#2a2a2a] flex gap-1">
               <button
                 onClick={() => removeNode(node.id)}
                 className="flex-1 px-2 py-1 text-[10px] rounded bg-[#2a1414] border border-[#552020] text-[#c08080] hover:bg-[#3a1818]"
               >
-                Delete{nodes.some(n => n.harmonicOf === node.id) ? " (and its series)" : ""}
+                Delete{nodes.some(n => isChildOf(n, node.id)) ? " (and its overlay)" : ""}
               </button>
               <button
                 onClick={() => setMenuNodeId(null)}
@@ -556,7 +643,10 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
       </div>
 
       <p className="text-[10px] text-[#444]">
-        Click strip = add node · Click node = open menu (harmonic series, delete) · Out-of-range partials shown as small grey dots above/below the strip
+        Click strip = add node · Click node = open menu (harmonic series, chord, delete) · Out-of-range partials shown as small grey dots above/below the strip ·
+        <span className="text-[#c8aa50]"> Gold</span> = JI 1/1 ·
+        <span className="text-[#7173e6]"> Indigo</span> = harmonic-series spawn ·
+        <span className="text-[#cc7755]"> Copper</span> = chord spawn
       </p>
     </div>
   );
