@@ -1865,7 +1865,7 @@ export default function ChordsTab({
             {/* Answer — only visible after clicking Show Answer.
                 Per-chord rows with clickable tone buttons; each tone
                 shows its interval-from-tonic name plus both solfege
-                systems (Heathwaite + Microtonal IPA) so the user can
+                systems (Heathwaite + Universal IPA) so the user can
                 see the same note labelled three ways at once.  Click
                 the tone to hear it through the audio engine. */}
             {fhShowAnswer && fhAnswer && (() => {
@@ -2050,7 +2050,7 @@ export default function ChordsTab({
                           // Two reference frames per tone:
                           //   "scale" — pitch class relative to tonic (Do = 1)
                           //   "chord" — pitch class relative to chord root
-                          // Solfege labels (Heathwaite + Microtonal IPA) computed
+                          // Solfege labels (Heathwaite + Universal IPA) computed
                           // for each frame so the user sees the same note named
                           // four ways: chord 3rd vs scale 5th, etc.
                           const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;

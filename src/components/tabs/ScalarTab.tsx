@@ -644,7 +644,7 @@ export default function ScalarTab({
               .filter(k => !(k === "heathwaite" && !heathwaiteAvailable))
               .map(k => {
               const active = solfegeKind === k;
-              const label = k === "heathwaite" ? "Heathwaite" : "Microtonal";
+              const label = k === "heathwaite" ? "Heathwaite" : "Universal";
               return (
                 <button key={k}
                   onClick={() => setSolfegeKind(k)}
