@@ -64,12 +64,12 @@ export async function exportToPdf(
   // Collect the score SVG from each section.  Sibling overlays
   // (X-ray grid, drag-rect, hover dot) live OUTSIDE scoreRef so
   // querying scoreRef directly returns just the VexFlow render.
-  const items = sections
+  const items: { title: string | undefined; svg: SVGSVGElement }[] = sections
     .map(s => {
       const svg = s.element.querySelector("svg") as SVGSVGElement | null;
       return svg ? { title: s.title, svg } : null;
     })
-    .filter((x): x is { title?: string; svg: SVGSVGElement } => x !== null);
+    .filter((x): x is { title: string | undefined; svg: SVGSVGElement } => x !== null);
 
   if (items.length === 0) return;
 
@@ -79,48 +79,81 @@ export async function exportToPdf(
   const MARGIN = 36;
 
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  let firstPage = true;
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    if (i > 0) doc.addPage();
-
-    let yCursor = MARGIN;
-    if (options.showTitles && item.title) {
-      doc.setFont("Helvetica", "bold");
-      doc.setFontSize(20);
-      doc.text(item.title, PAGE_W / 2, yCursor + 16, { align: "center" });
-      yCursor += 36;
-    }
-
     const orig = item.svg;
     const naturalW = parseFloat(orig.getAttribute("width") ?? "0") || orig.clientWidth || 800;
     const naturalH = parseFloat(orig.getAttribute("height") ?? "0") || orig.clientHeight || 200;
-    const usableW = PAGE_W - 2 * MARGIN;
-    const usableH = PAGE_H - yCursor - MARGIN;
-    const scale = Math.min(usableW / naturalW, usableH / naturalH, 1);
-    const fitW = naturalW * scale;
-    const fitH = naturalH * scale;
-    const xCenter = (PAGE_W - fitW) / 2;
 
-    const clone = clonePrintableSvg(orig);
-    // svg2pdf walks a real (in-document) SVG element.  Attach the
-    // clone to a hidden container so any layout / measurement queries
-    // resolve correctly during conversion.
-    const stage = document.createElement("div");
-    stage.style.position = "absolute";
-    stage.style.left = "-99999px";
-    stage.style.top = "0";
-    stage.appendChild(clone);
-    document.body.appendChild(stage);
-    try {
-      await svg2pdf(clone, doc, {
-        x: xCenter,
-        y: yCursor,
-        width: fitW,
-        height: fitH,
-      });
-    } finally {
-      stage.remove();
+    // Width-fit scale.  Per direct user feedback ('export pdf for
+    // scores in drum look terrible i cant decipher it'): the previous
+    // `Math.min(..., 1)` cap prevented UPSCALING, so scores rendered
+    // at their natural editor pixel size which sits well below the
+    // page width on A4 landscape — notes ended up at ~50–65% of
+    // readable size.  Now we scale to fill the page width even if
+    // that means going above 1×, and split into multiple pages
+    // vertically when the resulting height exceeds one page.
+    const usableW = PAGE_W - 2 * MARGIN;
+    const titleH = options.showTitles && item.title ? 36 : 0;
+    const usableHFirst  = PAGE_H - MARGIN - titleH - MARGIN;
+    const usableHFollow = PAGE_H - 2 * MARGIN;
+
+    const widthScale = usableW / naturalW;
+    const scaledH = naturalH * widthScale;
+
+    // Convert scaled-page heights back to natural-SVG y coordinates
+    // — that's what we'll slice on between pages.
+    const pageBudgetFirst  = usableHFirst  / widthScale;
+    const pageBudgetFollow = usableHFollow / widthScale;
+
+    let svgYCursor = 0;          // top of remaining SVG content (natural coords)
+    let pageNumWithinSection = 0;
+
+    while (svgYCursor < naturalH - 0.5) {
+      if (!firstPage) doc.addPage();
+      firstPage = false;
+
+      let yCursor = MARGIN;
+      if (pageNumWithinSection === 0 && options.showTitles && item.title) {
+        doc.setFont("Helvetica", "bold");
+        doc.setFontSize(20);
+        doc.text(item.title, PAGE_W / 2, yCursor + 16, { align: "center" });
+        yCursor += 36;
+      }
+
+      const budget = pageNumWithinSection === 0 ? pageBudgetFirst : pageBudgetFollow;
+      const sliceH = Math.min(budget, naturalH - svgYCursor);
+      const renderH = sliceH * widthScale;
+
+      // Clone + viewBox the clone to the current slice so svg2pdf
+      // only paints that vertical band of the score.
+      const clone = clonePrintableSvg(orig);
+      clone.setAttribute("viewBox", `0 ${svgYCursor} ${naturalW} ${sliceH}`);
+      clone.setAttribute("preserveAspectRatio", "xMidYMin meet");
+      clone.setAttribute("width", String(naturalW));
+      clone.setAttribute("height", String(sliceH));
+
+      const stage = document.createElement("div");
+      stage.style.position = "absolute";
+      stage.style.left = "-99999px";
+      stage.style.top = "0";
+      stage.appendChild(clone);
+      document.body.appendChild(stage);
+      try {
+        await svg2pdf(clone, doc, {
+          x: MARGIN,
+          y: yCursor,
+          width: usableW,
+          height: renderH,
+        });
+      } finally {
+        stage.remove();
+      }
+
+      svgYCursor += sliceH;
+      pageNumWithinSection += 1;
     }
   }
 
