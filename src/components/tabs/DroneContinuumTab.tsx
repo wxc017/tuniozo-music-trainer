@@ -9,7 +9,7 @@ import { audioEngine, AudioEngine, DRONE_INSTRUMENTS, type DroneInstrument } fro
 import { useLS } from "@/lib/storage";
 import { pcToNoteName } from "@/lib/edoData";
 import { findJiRatio, formatJiRatio, maxPrimeOf } from "@/lib/jiRatioFinder";
-import JiScaleLattice from "@/components/JiScaleLattice";
+import LatticeView from "@/components/LatticeView";
 
 interface Props {
   edo: number;
@@ -636,50 +636,41 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   // Backwards-compat alias for the rest of the render path.
   const edoSteps = gridSteps;
 
-  // ── Lattice tone derivation ───────────────────────────────────────
-  // Reuses the existing JiScaleLattice component (the one used by
-  // the Chords tab's Show Answer reveal).  We feed it whichever set
-  // of tones is currently meaningful for the strip:
+  // ── Lattice highlighting ──────────────────────────────────────────
+  // Reuses the LatticeView component from the harmonic-lattice mode
+  // (same component the Chords tab embeds for its Show-Answer
+  // overlay).  Two paths:
   //
-  //   JI mode: every ratio in the active grid (curated 13-limit +
-  //            user-added customs) plotted on the 5-limit lattice;
-  //            non-5-limit ratios get projected onto the nearest
-  //            cell (with a coloured marker), exactly the way the
-  //            chord lattice handles septimal / undecimal scales.
-  //   EDO mode: every active EDO step that the user has actually
-  //            placed a node on, plotted on the same 5-limit grid
-  //            via its cents value (so the lattice shows where the
-  //            played notes fall against pure JI).
-  const latticeTones: { degree: string; cents: number }[] = [];
+  //   EDO mode: temperingForEdo={edo} so the 3D lattice auto-tempers
+  //             to the active EDO (Tonescape-style helix in 12-EDO,
+  //             toroidal in 19/31-EDO meantone, full-rank in 41/53).
+  //             activeClassIds passes the EDO pitch classes the user
+  //             has placed nodes on — those rep cells light up.
+  //   JI mode:  no temperingForEdo (full JI lattice).  externalHighlights
+  //             passes "n/d" ratio keys for placed nodes octave-reduced
+  //             onto the lattice's curated cells.
+  const activeEdoClassIds = new Set<number>();
+  const jiHighlightKeys = new Set<string>();
+  for (const dn of nodes.filter(n => !n.outOfRange)) {
+    const snappedPc = ((Math.round(freqToAbsPc(dn.freq, edo)) % edo) + edo) % edo;
+    activeEdoClassIds.add(snappedPc);
+  }
   if (gridMode === "ji") {
-    const seen = new Set<string>();
-    const all = [
-      ...JI_GRID_RATIOS,
-      ...customRatios.map(([num, den]) => ({
-        num, den,
-        limit: Math.max(maxPrimeOf(num), maxPrimeOf(den)),
-        isP5: num === 3 && den === 2,
-      })),
-    ];
-    for (const r of all) {
-      const key = `${r.num}/${r.den}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      latticeTones.push({
-        degree: `${r.num}/${r.den}`,
-        cents: 1200 * Math.log2(r.num / r.den),
-      });
-    }
-  } else {
-    // EDO: plot the user's placed notes' EDO degrees.
-    const seen = new Set<string>();
-    for (const dn of nodes.filter(n => !n.outOfRange)) {
-      const snapped = Math.round(freqToAbsPc(dn.freq, edo));
-      const pc = ((snapped % edo) + edo) % edo;
-      const label = pcToNoteName(pc, edo);
-      if (seen.has(label)) continue;
-      seen.add(label);
-      latticeTones.push({ degree: label, cents: pc * (1200 / edo) });
+    const inRangeNodes = nodes.filter(n => !n.outOfRange);
+    const sorted = [...inRangeNodes].sort((a, b) => a.freq - b.freq);
+    const rootFreq = sorted[0]?.freq;
+    if (rootFreq) {
+      // Use the same JI ratio finder that drives the per-node labels.
+      // Octave-reduce target into [1, 2) before searching so '5/4'
+      // matches whether the user placed it at the unison octave or
+      // up high; the lattice is octave-equivalent.
+      for (const dn of inRangeNodes) {
+        let t = dn.freq / rootFreq;
+        while (t >= 2) t /= 2;
+        while (t < 1) t *= 2;
+        const ji = findJiRatio(t, 13, 600, 5);
+        if (ji) jiHighlightKeys.add(`${ji.num}/${ji.den}`);
+      }
     }
   }
 
@@ -1417,21 +1408,36 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
       })()}
       </div>
 
-      {/* Lattice viewport — reuses the same JiScaleLattice component
-          the Chords tab uses for its Show Answer reveal, fed with
-          tones derived from the strip state.  Pointer-events:none
-          on the lattice container — the line is the only audio
-          source; clicking the lattice never plays a note. */}
-      {showLattice && latticeTones.length > 0 && (
-        <div className="bg-[#0c0c0c] border border-[#222] rounded p-3" style={{ pointerEvents: "none" }}>
-          <JiScaleLattice
-            tones={latticeTones}
-            title={gridMode === "ji"
-              ? "Harmonic lattice — JI ratios on the 5-limit grid"
-              : `Harmonic lattice — ${edo}-EDO degrees on the 5-limit grid`}
-            accent="#7173e6"
-            compact={false}
-          />
+      {/* Lattice viewport — embeds the actual harmonic-lattice
+          mode's 3D LatticeView (same component the Chords tab uses
+          for its Show-Answer overlay).  EDO mode passes
+          temperingForEdo so the lattice auto-collapses by EDO
+          pitch class (the Tonescape spiral / torus / full-rank
+          progression depending on temperament); JI mode renders
+          the full lattice.  Both light up the cells matching the
+          placed continuum nodes via activeClassIds /
+          externalHighlights.  chromeless=true hides LatticeView's
+          own option panel — line state drives every parameter. */}
+      {showLattice && (
+        <div
+          className="bg-[#0c0c0c] border border-[#222] rounded overflow-hidden"
+          style={{ pointerEvents: "none", height: 480, position: "relative" }}
+        >
+          <div className="px-3 py-2 border-b border-[#1e1e1e]">
+            <p className="text-[10px] text-[#888] uppercase tracking-wider">
+              {gridMode === "ji"
+                ? "Harmonic lattice — full JI rank"
+                : `Harmonic lattice — auto-tempered for ${edo}-EDO`}
+            </p>
+          </div>
+          <div style={{ height: "calc(100% - 32px)", position: "relative" }}>
+            <LatticeView
+              chromeless
+              temperingForEdo={gridMode === "edo" ? edo : undefined}
+              activeClassIds={gridMode === "edo" ? activeEdoClassIds : undefined}
+              externalHighlights={gridMode === "ji" ? jiHighlightKeys : undefined}
+            />
+          </div>
         </div>
       )}
 
