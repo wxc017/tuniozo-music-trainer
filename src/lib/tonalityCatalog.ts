@@ -69,7 +69,7 @@ export const TONALITY_FAMILIES: TonalityFamilyGroup[] = [
   // jiTonalityFamilies override pulls the maqam scales out of
   // FORTY_ONE/FIFTY_THREE_EDO_TONALITY_FAMILIES directly).
   { key: "maqam", label: "MAQAM", color: "#d08a5a",
-    tonalities: ["Rast", "Bayati", "Hijaz", "Saba"] },
+    tonalities: ["Rast", "Bayati", "Hijaz", "Saba", "Sikah", "Huzam", "Nikriz", "Hijazkar"] },
 ];
 
 const MEANTONE_LIMIT_SECTIONS: { key: string; label: string; color: string; familyKeys: string[] }[] = [

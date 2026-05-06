@@ -138,6 +138,32 @@ const JI_SCALES: JiScaleSpec[] = [
     // 7 notes: 1, n2, b3, b4, b5, n6, b7.  Tonic chord is unstable
     // (no real P5) so adaptive mode would heavily drift this one.
     steps: [["1",0],["b2",150.6],["b3",294.1],["b4",400.0],["b5",600.0],["b6",858.0],["b7",1000.0]] },
+  { name: "Sikah",
+    // Sikah trichord (1 - 9/8 - 11/9 spanning a neutral 3rd) + Rast
+    // jins on 5.  Tonic IS the neutral 3rd of an implied parent —
+    // distinct from Rast in that pos 2 is a Pyth M2 (9/8) instead of
+    // Rast's neutral 2nd (12/11).  Fully 11-limit at the colour
+    // positions: n3 (11/9), n6 (18/11), n7 (11/6).
+    steps: [["1",0],["2",203.9],["b3",347.4],["4",498.0],["5",702.0],["b6",852.6],["b7",1049.4]] },
+  { name: "Huzam",
+    // Sikah-family scale with Hijaz upper jins instead of Rast.
+    // 1 - 9/8 - 11/9 - 4/3 - 3/2 - 8/5 - 15/8.  Mixes 11-limit n3 with
+    // 5-limit b6 + Cl7 — characteristically tense (n3 + leading-tone
+    // M7 against neutral 3rd colour).
+    steps: [["1",0],["2",203.9],["b3",347.4],["4",498.0],["5",702.0],["b6",813.7],["7",1088.3]] },
+  { name: "Nikriz",
+    // Lydian-flat-3 family: 1 - 9/8 - 6/5 - 11/8 - 3/2 - 5/3 - 9/5.
+    // 11-limit specifically at the augmented 4th (11/8 = 551¢) — a
+    // sub-Pyth-tritone — paired with a 5-limit minor lower tetrachord
+    // and Aeolian-style upper.  Common in Turkish makam practice.
+    steps: [["1",0],["2",203.9],["b3",315.6],["#4",551.3],["5",702.0],["6",884.4],["b7",1017.6]] },
+  { name: "Hijazkar",
+    // Double-harmonic-major family: 1 - 12/11 - 5/4 - 4/3 - 3/2 - 8/5
+    // - 243/128.  Uses the neutral b2 (12/11 = 151¢) instead of Hijaz's
+    // 16/15 b2, giving it 11-limit colour at b2 alongside 5-limit
+    // M3 + b6 and a Pyth leading-tone M7.  Distinguished from Hijaz
+    // by the raised 7th.
+    steps: [["1",0],["b2",150.6],["3",386.3],["4",498.0],["5",702.0],["b6",813.7],["7",1109.8]] },
 
   // ── 13-LIMIT TETRACHORDAL (Tridecimal) ──────────────────────────────
   // Per direct user direction (2026-05-06): "for 53 edo add tonalities
@@ -714,7 +740,7 @@ for (const spec of FIFTY_THREE_EDO_FAMILIES) expandFamily(spec, FIFTY_THREE_EDO_
 // NOT rotational — each is its own independent scale built from
 // specific 4-note ajnas, so we bypass expandFamily and push directly
 // to the public family list.
-const MAQAM_TONALITIES = ["Rast", "Bayati", "Hijaz", "Saba"];
+const MAQAM_TONALITIES = ["Rast", "Bayati", "Hijaz", "Saba", "Sikah", "Huzam", "Nikriz", "Hijazkar"];
 FORTY_ONE_EDO_TONALITY_FAMILIES.push({ parent: "Maqam", tonalities: MAQAM_TONALITIES });
 FIFTY_THREE_EDO_TONALITY_FAMILIES.push({ parent: "Maqam", tonalities: MAQAM_TONALITIES });
 
