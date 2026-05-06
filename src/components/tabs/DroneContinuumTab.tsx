@@ -44,13 +44,18 @@ const absPcToFreq = (pc: number, edo: number) =>
 //   y=NODE_LABEL_Y..   = per-node label rows + leader lines
 const STRIP_X       = 18;
 const STRIP_RIGHT   = 18;
-const STEP_LABEL_H  = 22;     // single row of horizontal text
-const STRIP_Y_TOP   = 18 + STEP_LABEL_H + 4;
-const STRIP_H       = 130;
+// Equal padding above and below the strip's clickable band so the
+// centerline sits exactly mid-SVG.  Top padding hosts the A_n octave
+// anchor labels + the per-EDO-step / JI-ratio labels just above each
+// gridline; bottom padding hosts the per-node label rows.
+const STRIP_PAD_TOP = 88;
+const STRIP_PAD_BOT = 88;
+const STRIP_Y_TOP   = STRIP_PAD_TOP;
+const STRIP_H       = 100;
 const STRIP_Y_BOT   = STRIP_Y_TOP + STRIP_H;
 const NODE_LABEL_Y  = STRIP_Y_BOT + 8;
-const NODE_LABEL_H  = 80;
-const SVG_H = NODE_LABEL_Y + NODE_LABEL_H;
+const NODE_LABEL_H  = STRIP_PAD_BOT - 8;
+const SVG_H = STRIP_PAD_TOP + STRIP_H + STRIP_PAD_BOT;
 
 // xFromFreq / freqFromX are defined inside the component as closures
 // over the dynamic stripW measurement.
@@ -86,28 +91,33 @@ const makeId = () => `n${nextId++}`;
 
 const HARMONIC_PRESET_COUNTS = [4, 8, 12, 16, 24] as const;
 
-// Curated 13-limit JI ratios within an octave — the "important" ones
-// for ear-training: every consonance up through tridecimal sevenths,
-// plus the standard 5-limit minor / major intervals.  Tenney height
-// stays moderate so each ratio is hearable as a coherent interval
-// rather than a tempered slip.
-const JI_GRID_RATIOS: { num: number; den: number; label: string; isP5?: boolean }[] = [
-  { num: 1,  den: 1,  label: "1/1" },
-  { num: 16, den: 15, label: "16/15" },
-  { num: 9,  den: 8,  label: "9/8" },
-  { num: 7,  den: 6,  label: "7/6" },
-  { num: 6,  den: 5,  label: "6/5" },
-  { num: 5,  den: 4,  label: "5/4" },
-  { num: 4,  den: 3,  label: "4/3" },
-  { num: 11, den: 8,  label: "11/8" },
-  { num: 7,  den: 5,  label: "7/5" },
-  { num: 3,  den: 2,  label: "3/2", isP5: true },
-  { num: 8,  den: 5,  label: "8/5" },
-  { num: 5,  den: 3,  label: "5/3" },
-  { num: 7,  den: 4,  label: "7/4" },
-  { num: 9,  den: 5,  label: "9/5" },
-  { num: 13, den: 8,  label: "13/8" },
-  { num: 15, den: 8,  label: "15/8" },
+// Curated JI ratios within an octave — only the musically important
+// ones from the 3, 5, 7, 11, 13 prime limits.  Ordered by ratio so
+// they read low-to-high along the strip.  Each entry tags the ratio's
+// prime limit so the per-node limit info can read it directly.
+const JI_GRID_RATIOS: { num: number; den: number; limit: number; isP5?: boolean }[] = [
+  { num: 1,  den: 1,  limit: 1 },                 // unison
+  { num: 16, den: 15, limit: 5 },                 // just diatonic semitone
+  { num: 9,  den: 8,  limit: 3 },                 // Pyth whole tone
+  { num: 8,  den: 7,  limit: 7 },                 // septimal whole tone
+  { num: 7,  den: 6,  limit: 7 },                 // septimal minor 3rd
+  { num: 6,  den: 5,  limit: 5 },                 // just minor 3rd
+  { num: 11, den: 9,  limit: 11 },                // undecimal neutral 3rd
+  { num: 5,  den: 4,  limit: 5 },                 // just major 3rd
+  { num: 9,  den: 7,  limit: 7 },                 // septimal major 3rd
+  { num: 4,  den: 3,  limit: 3 },                 // perfect 4th
+  { num: 11, den: 8,  limit: 11 },                // undecimal tritone
+  { num: 7,  den: 5,  limit: 7 },                 // lesser septimal tritone
+  { num: 10, den: 7,  limit: 7 },                 // greater septimal tritone
+  { num: 3,  den: 2,  limit: 3, isP5: true },     // perfect 5th
+  { num: 8,  den: 5,  limit: 5 },                 // just minor 6th
+  { num: 13, den: 8,  limit: 13 },                // tridecimal neutral 6th
+  { num: 5,  den: 3,  limit: 5 },                 // just major 6th
+  { num: 7,  den: 4,  limit: 7 },                 // harmonic 7th (septimal)
+  { num: 16, den: 9,  limit: 3 },                 // Pyth minor 7th
+  { num: 9,  den: 5,  limit: 5 },                 // just minor 7th
+  { num: 11, den: 6,  limit: 11 },                // undecimal neutral 7th
+  { num: 15, den: 8,  limit: 5 },                 // just major 7th
 ];
 
 interface ChordPreset { id: string; label: string; ratios: number[] }
@@ -136,10 +146,12 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   const [gain, setGain] = useLS<number>("lt_dc_gain", 0.18);
   const [showEdoGrid, setShowEdoGrid] = useLS<boolean>("lt_dc_edoGrid", true);
   const [snapToEdo, setSnapToEdo] = useLS<boolean>("lt_dc_snap", false);
-  const [showJiRulers, setShowJiRulers] = useLS<boolean>("lt_dc_jiRulers", false);
   const [showStepNames, setShowStepNames] = useLS<boolean>("lt_dc_stepNames", true);
   const [labelMode, setLabelMode] = useLS<"both" | "edo" | "ji">("lt_dc_labelMode", "both");
-  const [primeLimit, setPrimeLimit] = useLS<number>("lt_dc_primeLimit", 13);
+  // Prime-limit feature removed per direct user direction; the JI
+  // ratio finder always considers up to 13-limit now (which matches
+  // the curated grid).
+  const PRIME_LIMIT_DEFAULT = 13;
   const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
   // Grid mode — switches the gridlines between equal-temperament steps
   // (12/19/31/41/53/etc.) and just-intonation 13-limit ratios anchored
@@ -466,7 +478,7 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
           gridSteps.push({
             x: xFromFreq(f),
             isP5: r.isP5 ?? false,
-            label: r.label,
+            label: `${r.num}/${r.den}`,
             labelVisible: true,
             freq: f,
           });
@@ -476,23 +488,6 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   }
   // Backwards-compat alias for the rest of the render path.
   const edoSteps = gridSteps;
-
-  // JI harmonic ruler — partials of A1 from h2 up to whatever fits in
-  // A6 (h32 lands exactly on A6 since 32*55 = 1760).  Filtered by the
-  // active prime limit: e.g. at limit=5, h7/h11/h13/h14/h17... drop
-  // out so the ruler reflects what the user is actually willing to
-  // hear as 'in tune'.  Subsets the dense upper region: above h16,
-  // label only h20/h24/h28/h32.
-  const jiTicks: { x: number; harmonic: number; labelled: boolean }[] = [];
-  if (showJiRulers) {
-    for (let h = 2; h <= 32; h++) {
-      const f = stripLowHz * h;
-      if (f > stripHighHz * 1.001) break;
-      if (maxPrimeOf(h) > primeLimit) continue;
-      const labelled = h <= 16 || h % 4 === 0;
-      jiTicks.push({ x: xFromFreq(f), harmonic: h, labelled });
-    }
-  }
 
   // ── Render ────────────────────────────────────────────────────────
 
@@ -639,16 +634,6 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
           Snap to grid
         </button>
         <button
-          onClick={() => setShowJiRulers(!showJiRulers)}
-          className={`px-2 py-1 rounded text-[11px] border transition-colors ${
-            showJiRulers
-              ? "border-[#c8aa50] bg-[#c8aa5022] text-[#c8aa50]"
-              : "border-[#2a2a2a] bg-[#111] text-[#666] hover:text-[#aaa]"
-          }`}
-        >
-          JI harmonics of A{lowOct}
-        </button>
-        <button
           onClick={() => setShowSpectrum(!showSpectrum)}
           className={`px-2 py-1 rounded text-[11px] border transition-colors ${
             showSpectrum
@@ -675,17 +660,6 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
             </button>
           ))}
         </div>
-
-        <span className="text-[10px] text-[#555]">Prime limit</span>
-        <select
-          value={primeLimit}
-          onChange={e => setPrimeLimit(parseInt(e.target.value))}
-          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-0.5 text-[10px] text-white focus:outline-none"
-        >
-          {[5, 7, 11, 13, 17, 19, 23, 31].map(p => (
-            <option key={p} value={p}>{p}</option>
-          ))}
-        </select>
 
       </div>
 
@@ -784,7 +758,7 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
               stroke="#888" strokeWidth={1.5}
             />
             <text
-              x={t.x} y={14}
+              x={t.x} y={cy - OCTAVE_TICK_HALF - 22}
               fill="#aaa" fontSize={12} fontFamily="monospace" fontWeight={600}
               textAnchor="middle"
             >
@@ -800,38 +774,51 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
             ↓) are hidden so dense EDOs stay readable; the gridlines
             themselves still draw at every step.  Octave digit
             dropped — A_n anchor labels at the very top imply octave. */}
-        {showStepNames && edoSteps.filter(s => s.labelVisible).map((s, i) => (
-          <text
-            key={`name${i}`}
-            x={s.x} y={STRIP_Y_TOP - 4}
-            fill={s.isP5 ? "#9aa6cc" : "#aaa"}
-            fontSize={11} fontFamily="monospace"
-            textAnchor="middle"
-          >
-            {s.label}
-          </text>
-        ))}
-
-        {/* JI harmonic ruler — above the strip.  Tick + h-number for
-            each in-range partial of A1. */}
-        {jiTicks.map(jt => (
-          <g key={`ji${jt.harmonic}`}>
-            <line
-              x1={jt.x} x2={jt.x}
-              y1={STRIP_Y_TOP - 22} y2={STRIP_Y_TOP - 4}
-              stroke="#c8aa5066" strokeWidth={1}
-            />
-            {jt.labelled && (
+        {showStepNames && edoSteps.filter(s => s.labelVisible).map((s, i) => {
+          // JI mode: render fractions stacked (numerator above a divider
+          // line above denominator).  EDO / letter-name mode: render
+          // straight horizontal text.
+          const isFraction = /^\d+\/\d+$/.test(s.label);
+          if (!isFraction) {
+            return (
               <text
-                x={jt.x} y={STRIP_Y_TOP - 26}
-                fill="#c8aa5099" fontSize={9} fontFamily="monospace"
+                key={`name${i}`}
+                x={s.x} y={cy - OCTAVE_TICK_HALF - 6}
+                fill={s.isP5 ? "#9aa6cc" : "#aaa"}
+                fontSize={11} fontFamily="monospace"
                 textAnchor="middle"
               >
-                h{jt.harmonic}
+                {s.label}
               </text>
-            )}
-          </g>
-        ))}
+            );
+          }
+          const [num, den] = s.label.split("/");
+          const color = s.isP5 ? "#9aa6cc" : "#aaa";
+          const baseY = cy - OCTAVE_TICK_HALF - 6;
+          return (
+            <g key={`name${i}`}>
+              <text
+                x={s.x} y={baseY - 11}
+                fill={color} fontSize={10} fontFamily="monospace"
+                textAnchor="middle"
+              >
+                {num}
+              </text>
+              <line
+                x1={s.x - 7} x2={s.x + 7}
+                y1={baseY - 8} y2={baseY - 8}
+                stroke={color} strokeWidth={0.7}
+              />
+              <text
+                x={s.x} y={baseY}
+                fill={color} fontSize={10} fontFamily="monospace"
+                textAnchor="middle"
+              >
+                {den}
+              </text>
+            </g>
+          );
+        })}
 
         {/* Per-node JI harmonic rulers — drawn through the strip body
             (vertical dotted lines at h2..h32 of each node whose ruler
@@ -848,7 +835,7 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
               {Array.from({ length: 31 }, (_, i) => i + 2).map(h => {
                 const f = src.freq * h;
                 if (f < stripLowHz * 0.999 || f > stripHighHz * 1.001) return null;
-                if (maxPrimeOf(h) > primeLimit) return null;
+                if (maxPrimeOf(h) > PRIME_LIMIT_DEFAULT) return null;
                 const x = xFromFreq(f);
                 const labelled = h <= 16 || h % 4 === 0;
                 return (
@@ -961,7 +948,7 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
                 const edo_ = edoLabelFor(n.freq, edo);
                 const ji = (isRoot || rootFreq === undefined)
                   ? null
-                  : findJiRatio(n.freq / rootFreq, primeLimit, Math.max(300, primeLimit * primeLimit * 3));
+                  : findJiRatio(n.freq / rootFreq, PRIME_LIMIT_DEFAULT, Math.max(300, PRIME_LIMIT_DEFAULT * PRIME_LIMIT_DEFAULT * 3));
                 const ratioStr = isRoot
                   ? "1/1"
                   : (ji
@@ -1055,8 +1042,27 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
             style={{ left, top, width: MENU_W }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="text-[10px] text-[#777] px-1 pb-1 border-b border-[#2a2a2a]">
-              Node @ {node.freq.toFixed(1)} Hz
+            <div className="text-[10px] text-[#777] px-1 pb-1 border-b border-[#2a2a2a] space-y-0.5">
+              <div>Node @ {node.freq.toFixed(1)} Hz</div>
+              {(() => {
+                const inRange = nodes.filter(n => !n.outOfRange);
+                const sortedAll = [...inRange].sort((a, b) => a.freq - b.freq);
+                const rootFreq = sortedAll[0]?.freq;
+                if (!rootFreq || node.id === sortedAll[0].id) return null;
+                const ji = findJiRatio(node.freq / rootFreq, PRIME_LIMIT_DEFAULT,
+                  Math.max(300, PRIME_LIMIT_DEFAULT * PRIME_LIMIT_DEFAULT * 3));
+                if (!ji) {
+                  const c = 1200 * Math.log2(node.freq / rootFreq);
+                  return <div className="text-[#888]">{c >= 0 ? "+" : ""}{c.toFixed(1)}¢ from root</div>;
+                }
+                const limit = Math.max(maxPrimeOf(ji.num), maxPrimeOf(ji.den));
+                return (
+                  <>
+                    <div className="text-[#c8aa50] font-mono">{ji.num}/{ji.den} {ji.driftCents >= 0 ? "+" : "−"}{Math.abs(ji.driftCents).toFixed(1)}¢</div>
+                    <div className="text-[#888]">{limit === 1 ? "1-limit (unison)" : `${limit}-limit`}</div>
+                  </>
+                );
+              })()}
             </div>
 
             <div className="text-[9px] text-[#666] px-1 pt-1">Harmonic series above</div>
