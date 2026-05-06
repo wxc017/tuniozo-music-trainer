@@ -216,6 +216,9 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   // this toggle is reserved for a future 'show note names too' mode.
   const [latticeRatiosOnly, setLatticeRatiosOnly] = useLS<boolean>("lt_dc_latticeRatiosOnly", true);
   const [showLattice, setShowLattice] = useLS<boolean>("lt_dc_showLattice", true);
+  // Hovered-node id for keyboard shortcut: hover over a node and
+  // press Space to delete it.  Mouse-only (clears on leave).
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   const parseRatios = (text: string): number[][] => {
     return text
@@ -386,6 +389,27 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
       }
     };
   }, []);
+
+  // Keyboard delete: hover a node + press Space → remove it.  Bound
+  // to document because the user might be hovering the node circle
+  // (an SVG element that doesn't take focus on its own).  Ignored when
+  // the user is typing in an input / textarea so the custom-ratio /
+  // preset-name boxes stay typable.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== " " && e.key !== "Spacebar") return;
+      const tgt = e.target as HTMLElement | null;
+      const tag = tgt?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (!hoveredNodeId) return;
+      e.preventDefault();
+      removeNode(hoveredNodeId);
+      setHoveredNodeId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hoveredNodeId]);
 
   // Spectrum analyser loop — runs while drone is on AND spectrum
   // visualisation is enabled.  Pulls Float dB data from the master-bus
@@ -1243,15 +1267,17 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
                       cx={x} cy={cy}
                       r={isMenuOpen ? 8 : 6}
                       fill={fillColor}
-                      stroke={isMenuOpen ? "#fff" : "#0a0a0a"}
+                      stroke={isMenuOpen || hoveredNodeId === n.id ? "#fff" : "#0a0a0a"}
                       strokeWidth={2}
                       onClick={(e) => {
                         e.stopPropagation();
                         setMenuNodeId(prev => prev === n.id ? null : n.id);
                       }}
+                      onMouseEnter={() => setHoveredNodeId(n.id)}
+                      onMouseLeave={() => setHoveredNodeId(prev => prev === n.id ? null : prev)}
                       style={{ cursor: "pointer" }}
                     >
-                      <title>Click for options.</title>
+                      <title>Click for options · hover + Space to delete</title>
                     </circle>
                     {rows.map((text, i) => (
                       <text
