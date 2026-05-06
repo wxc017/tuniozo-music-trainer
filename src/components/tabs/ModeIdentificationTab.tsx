@@ -863,15 +863,20 @@ export default function ModeIdentificationTab({
     let chordInfo: { name: string; degrees: string[] } | null = null;
     let pattern: ScalePattern | null = null;
 
-    // Strict window for any horizontal phrase (Color Set + Scale): the
-    // phrase is bounded by tonic-aligned pitches inside the user's range.
-    // Characteristic Chord uses the wider raw bounds since it's a vertical
-    // sonority.
+    // Window for horizontal phrases (Color Set + Scale).  Per direct
+    // user direction (2026-05-06): "mode id is not using the full
+    // range".  Previously this used tonic-aligned bounds via
+    //   tightHigh = firstTonic + edo * floor((highestPitch - firstTonic) / edo)
+    // which truncated to whole octave multiples — on a 2.5-octave
+    // range like C♯2–F♯4 the upper bound collapsed from F♯4 to C4
+    // (one octave below) because (54−36)/12 = 1.5 → floor = 1.
+    // Now: anchor low at the first tonic, but let high extend to the
+    // user's actual highestPitch.  Phrase generators don't strictly
+    // require tonic alignment on both ends; ceasing to enforce it
+    // gives them the full register the user asked for.
     const firstTonic = lowestPitch + (((tonicPc - lowestPitch) % edo) + edo) % edo;
     const tightLow = firstTonic <= highestPitch ? firstTonic : lowestPitch;
-    const tightHigh = firstTonic <= highestPitch
-      ? firstTonic + edo * Math.floor((highestPitch - firstTonic) / edo)
-      : highestPitch;
+    const tightHigh = highestPitch;
 
     if (picked === "color-set") {
       const shuffled = [...ARCHETYPES].sort(() => Math.random() - 0.5);
