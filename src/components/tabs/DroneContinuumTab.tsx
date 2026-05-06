@@ -465,7 +465,13 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
     if (!ctm) return;
     const local = pt.matrixTransform(ctm.inverse());
     let freq = freqFromX(local.x);
-    if (!isFinite(freq) || freq < stripLowHz * 0.99 || freq > stripHighHz * 1.01) return;
+    if (!isFinite(freq)) return;
+    // Clamp to range instead of rejecting — clicks anywhere in the
+    // outer SVG margin (left of A_low or right of A_high) bind to
+    // the nearest in-range frequency, so the leftmost / rightmost
+    // ticks are reachable from any pixel in their gutter.
+    if (freq < stripLowHz) freq = stripLowHz;
+    if (freq > stripHighHz) freq = stripHighHz;
     if (snapToEdo) {
       if (gridMode === "edo") {
         freq = snapFreqToEdo(freq, edo);
