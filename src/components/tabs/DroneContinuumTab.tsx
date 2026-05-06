@@ -685,13 +685,6 @@ export default function DroneContinuumTab({ edo, ensureAudio }: Props) {
         );
       })()}
       </div>
-
-      <p className="text-[10px] text-[#444]">
-        Click strip = add node · Click node = open menu (harmonic series, chord, delete) · Out-of-range partials shown as small grey dots at the strip edges ·
-        <span className="text-[#c8aa50]"> Gold</span> = JI 1/1 ·
-        <span className="text-[#7173e6]"> Indigo</span> = harmonic-series spawn ·
-        <span className="text-[#cc7755]"> Copper</span> = chord spawn
-      </p>
     </div>
   );
 }
