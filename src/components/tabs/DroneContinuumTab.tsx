@@ -356,25 +356,59 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   const freqFromX = (x: number): number =>
     stripLowHz * Math.pow(2, ((x - STRIP_X) / STRIP_W) * stripOctaves);
 
-  // Restart the drone whenever the active node set, gain, or on/off changes.
-  // startRatioDrone tears down the previous voices internally, so this is
-  // a single atomic update — no incremental add/remove plumbing needed.
+  // Per-voice drone management — each placed node owns one keyed
+  // voice in the audio engine.  Adding a new node spawns just that
+  // voice (existing voices keep their phase + loop position); removing
+  // a node tears down only its voice.  Globals (instrument, base
+  // freq, additive partials) DO require restarting every voice so a
+  // full restart is gated by those refs vs the current values.
+  const lastInstrument = useRef(instrument);
+  const lastStripLowHz = useRef(stripLowHz);
+  const lastAdditivePartials = useRef(additivePartials);
+
   useEffect(() => {
     const audible = nodes.filter(n => !n.outOfRange);
+    const desiredKeys = new Set(audible.map(n => n.id));
+
     if (!droneOn || audible.length === 0) {
-      if (droneActiveRef.current) {
-        audioEngine.stopDrone();
-        droneActiveRef.current = false;
-      }
+      audioEngine.stopAllRatioDroneVoices();
+      droneActiveRef.current = false;
       return;
     }
+
     let cancelled = false;
     (async () => {
       await ensureAudio();
       if (cancelled) return;
       audioEngine.setInstrument(instrument);
-      const ratios = audible.map(n => n.freq / stripLowHz);
-      audioEngine.startRatioDrone(ratios, gain, stripLowHz);
+
+      // Detect global-setting changes that require a full restart.
+      const instrumentChanged = lastInstrument.current !== instrument;
+      const stripLowChanged   = lastStripLowHz.current !== stripLowHz;
+      const partialsChanged   = lastAdditivePartials.current !== additivePartials;
+      const globalChanged     = instrumentChanged || stripLowChanged || partialsChanged;
+      if (globalChanged) {
+        audioEngine.stopAllRatioDroneVoices();
+        lastInstrument.current = instrument;
+        lastStripLowHz.current = stripLowHz;
+        lastAdditivePartials.current = additivePartials;
+      }
+
+      // Diff against currently-active voices.  Stop voices whose
+      // node has been removed; spawn voices for new nodes; leave the
+      // rest alone so their loop position carries through unchanged.
+      const liveKeys = new Set(audioEngine.getActiveDroneVoiceKeys());
+      for (const k of liveKeys) {
+        if (!desiredKeys.has(k)) audioEngine.stopRatioDroneVoice(k);
+      }
+      for (const n of audible) {
+        if (!liveKeys.has(n.id) || globalChanged) {
+          audioEngine.startRatioDroneVoice(n.id, n.freq / stripLowHz, gain, stripLowHz);
+        } else {
+          // Voice still active — just update gain.
+          audioEngine.setRatioDroneVoiceGain(n.id, gain);
+        }
+      }
       droneActiveRef.current = true;
     })();
     return () => { cancelled = true; };
@@ -384,7 +418,7 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   useEffect(() => {
     return () => {
       if (droneActiveRef.current) {
-        audioEngine.stopDrone();
+        audioEngine.stopAllRatioDroneVoices();
         droneActiveRef.current = false;
       }
     };
