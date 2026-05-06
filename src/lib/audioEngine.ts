@@ -69,13 +69,14 @@ const MUSYNGKITE_BASE   = "https://gleitz.github.io/midi-js-soundfonts/MusyngKit
 // shifts well — the user explicitly requested this trade-off
 // (2026-05-05): "they can stay in one octave as well as drones
 // aren't all over the place for octaves".
-// Kaczinski's "Tambura_Eb_fat" (Freesound 506312) — 189 s clean studio
-// recording from a custom-tambura builder (volker-kaczinski.de),
-// CC0.  Replaces sankalp 153262 which the user reported as having
-// "voices in the background seems like a video recording" while
-// still sounding tanpura-like (2026-05-05).  Pure Pa-Sa-Sa-Sa cycle,
-// no room ambience, no voices.  Sa ≈ Eb, tagged Ds3 (MIDI 51).
-const FREESOUND_TANPURA_URL = "https://cdn.freesound.org/previews/506/506312_408747-hq.mp3";
+// MieliTietty's "tanpura drone#3" (Freesound 619263) — 61 s of
+// sustained tanpura drone.  CC0.  Replaces both luckylittleraven
+// 416605 (had static) and Kaczinski 506312 (cycled Pa-Sa-Sa-Sa
+// arpeggios) per direct user feedback (2026-05-05): "tanpura is
+// still wrong its playing arpeggios" / "you brought back the wrong
+// tanpura its has static, you need to find another sample".
+// Single-tone soundscape, no arpeggios, no static.
+const FREESOUND_TANPURA_URL = "https://cdn.freesound.org/previews/619/619263_10486071-hq.mp3";
 const FREESOUND_BAGPIPE_URL = "https://cdn.freesound.org/previews/622/622929_931745-hq.mp3";
 const FREESOUND_CHOIR_URL   = "https://cdn.freesound.org/previews/763/763910_11744683-hq.mp3";
 // Real cello drone — Freesound 77764, xserra's `cello-G2-up-bow.wav`.
@@ -298,11 +299,13 @@ interface SourceConfig {
 }
 
 const INSTRUMENT_SOURCES: Record<DroneInstrument, SourceConfig> = {
-  // Kaczinski's "Tambura_Eb_fat" (Freesound 506312) — 189 s clean
-  // studio tanpura, CC0, Sa ≈ Eb (tagged Ds3 / MIDI 51).
+  // MieliTietty 619263 "tanpura drone#3" — 61 s sustained drone, CC0.
+  // Pitch unspecified by uploader; tagging C3 (MIDI 48) as a
+  // reasonable mid-tanpura default.  If it's actually higher/lower
+  // user pitches will be off-center — easy to retune later.
   tanpura: {
     url: () => FREESOUND_TANPURA_URL,
-    notes: ["Ds3"],
+    notes: ["C3"],
   },
   // Philharmonia: pro-recorded chromatic cello.  `_15_` = 1.5-second
   // sustain (longer than the default 1s) — gives the crossfade looper
