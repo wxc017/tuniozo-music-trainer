@@ -790,11 +790,25 @@ function buildOneXenMode(parent: number[], rotIdx: number, modeName: string, edo
     // 3rd-quality marker as SUPERSCRIPT SUFFIX — front prefixes are
     // reserved for scale-degree alteration only (sIII = root altered;
     // iˢ³ = root on degree 1 with subminor-3rd quality).
-    if (q3 === "sub") supParts.push("s3");
+    //
+    // Per direct user direction: s7 implies s3 by default (a chord
+    // with a subminor 7th is conventionally subminor in character),
+    // so we suppress the redundant s3 marker when the chord also
+    // carries s7.  The exception is s7+M3 (subminor 7th with a
+    // major 3rd — an unusual combo), where we keep both markers so
+    // the chord reads as the unusual quality it actually is.
+    const has_s3 = q3 === "sub";
+    const has_s7 = showSevenths && q7 === "sub";
+    if (has_s3 && !has_s7) supParts.push("s3");
     else if (q3 === "neu") supParts.push("n3");
     else if (q3 === "sup") supParts.push("S3");
     if (showSevenths) {
-      if (q7 === "sub") supParts.push("s7");
+      if (has_s7) {
+        // s7 alone if 3rd is subminor (s3 implied) or absent;
+        // s7 M3 explicitly if the 3rd is major (clarifies the unusual mix).
+        supParts.push("s7");
+        if (q3 === "M") supParts.push("M3");
+      }
       else if (q7 === "neu") supParts.push("n7");
       else if (q7 === "m" && upper) supParts.push("7");        // dom7
       else if (q7 === "M" && upper) supParts.push("M7");       // maj7
