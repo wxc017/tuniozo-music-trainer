@@ -349,9 +349,14 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
     })(),
 
     // ── AEOLIAN / NATURAL MINOR ─────────────────────────────────────
+    // Primary set per modal-harmony research (2026-05-05): the
+    // diagnostic Aeolian cadence is bVI–bVII–i, which is what
+    // distinguishes Aeolian from harmonic / melodic minor (where the
+    // raised 7 produces V).  Generic i/iv/v is too common across
+    // minor systems to identify the modal centre.
     (() => {
-      const pr = [chord("i", min(0)), chord("iv", min(P4)), chord("bVII", maj(m7))];
-      const di = [chord("ii°", dim(M2)), chord("bIII", maj(m3)), chord("v", min(P5)), chord("bVI", maj(m6))];
+      const pr = [chord("i", min(0)), chord("bVI", maj(m6)), chord("bVII", maj(m7))];
+      const di = [chord("ii°", dim(M2)), chord("bIII", maj(m3)), chord("iv", min(P4)), chord("v", min(P5))];
       // Curated modal-interchange set for Aeolian — roughly ordered by
       // usage frequency.  Covers harmonic-minor cadence (V, vii°),
       // Dorian inflections (IV, VI), Picardy (I), Phrygian Neapolitan
@@ -375,9 +380,13 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
     })(),
 
     // ── PHRYGIAN ────────────────────────────────────────────────────
+    // i / bII / iv per modal-harmony research (2026-05-05) — bII is
+    // the diagnostic Phrygian chord (i–bII–i is the canonical modal
+    // cadence) and iv reinforces the minor-i identity better than
+    // bvii does.
     (() => {
-      const pr = [chord("i", min(0)), chord("bII", maj(m3 - M2)), chord("bvii", min(m7))];
-      const di = [chord("bIII", maj(m3)), chord("iv", min(P4)), chord("v°", dim(P5)), chord("bVI", maj(m6))];
+      const pr = [chord("i", min(0)), chord("bII", maj(m3 - M2)), chord("iv", min(P4))];
+      const di = [chord("bIII", maj(m3)), chord("v°", dim(P5)), chord("bVI", maj(m6)), chord("bvii", min(m7))];
       return { name: "Phrygian", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
@@ -410,9 +419,13 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
     })(),
 
     // ── LYDIAN DOMINANT ─────────────────────────────────────────────
+    // I / II / bVII+ per modal-harmony research (2026-05-05) — bVII
+    // is the diagnostic mixolydian flavour; II major is the lydian
+    // raised-4 marker.  Together with I they capture the "acoustic
+    // scale" sound; v moves to Diatonic.
     (() => {
-      const pr = [chord("I", maj(0)), chord("II", maj(M2)), chord("v", min(P5))];
-      const di = [chord("iii°", dim(M3)), chord("#iv°", dim(P4 + A1)), chord("vi", min(M6)), chord("bVII+", aug(m7))];
+      const pr = [chord("I", maj(0)), chord("II", maj(M2)), chord("bVII+", aug(m7))];
+      const di = [chord("iii°", dim(M3)), chord("#iv°", dim(P4 + A1)), chord("v", min(P5)), chord("vi", min(M6))];
       return { name: "Lydian Dominant", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
@@ -431,9 +444,13 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
     })(),
 
     // ── LYDIAN #2 ───────────────────────────────────────────────────
+    // I / V+ / vi per modal-harmony research (2026-05-05) — Lydian #2
+    // is mode 6 of harmonic minor; the augmented V+ chord carries the
+    // #2 character (the #2 is the major-3rd of V+), and vi is the
+    // relative-major substitute.  VII moves to Diatonic.
     (() => {
-      const pr = [chord("I", maj(0)), chord("VII", maj(M7))];
-      const di = [chord("#ii°", dim(M2 + A1)), chord("iii", min(M3)), chord("#iv°", dim(P4 + A1)), chord("V+", aug(P5)), chord("vi", min(M6))];
+      const pr = [chord("I", maj(0)), chord("V+", aug(P5)), chord("vi", min(M6))];
+      const di = [chord("#ii°", dim(M2 + A1)), chord("iii", min(M3)), chord("#iv°", dim(P4 + A1)), chord("VII", maj(M7))];
       return { name: "Lydian #2", levels: [{ name: "Primary", chords: pr }, { name: "Diatonic", chords: di }, ...functionLevels(di, pr)] };
     })(),
 
