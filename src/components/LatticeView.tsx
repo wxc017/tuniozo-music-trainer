@@ -7022,12 +7022,12 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               labelDist={monzoLabelDist}
               rootPc={latticeDroneRoot}
               highlightedRatios={
-                externalHighlights && externalHighlights.size > 0
+                externalHighlights !== undefined
                   ? externalHighlights
                   : (customRatiosActive ? parsedCustomRatios : noteFilterTargets ?? undefined)
               }
               autoPathTargets={
-                externalHighlights && externalHighlights.size > 0
+                externalHighlights !== undefined
                   ? externalHighlights
                   : (customRatiosActive ? parsedCustomRatios : noteFilterTargets ?? undefined)
               }
