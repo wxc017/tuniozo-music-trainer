@@ -910,14 +910,15 @@ export default function App() {
             <CountdownTimer />
           </div>}
 
-          {/* Drone strip — visible in every non-academic section per
-              direct user direction (2026-05-05): "the drone should be
-              for all modes".  Always sounds a single tonic through the
-              chosen sampled instrument; tonic comes from the global
-              tonicPc state which persists across sections.  Hidden in
-              the Drone Continuum section (it has its own multi-node
-              drone control + instrument picker). */}
-          {!academicMode && section !== "drone-continuum" && (
+          {/* Drone strip — only in Tonal Audiation (ear-trainer) per
+              direct user direction (2026-05-06): "drone option should
+              only be in spacial audiation".  Other sections that
+              previously surfaced it (Scoring / Drum Patterns /
+              Chord Chart / etc.) no longer show the drone control row.
+              Drone Continuum has its own multi-node drone control
+              built into the section, so it doesn't need the global
+              strip either. */}
+          {!academicMode && section === "ear-trainer" && (
             <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-[#888] tracking-widest uppercase">Drone</span>
