@@ -330,13 +330,13 @@ export default function App() {
   // register; pitch-shifting from each source's recorded fundamental
   // to the user's tonic stays within ±6 semitones in this band.
   const DRONE_OCT = 3;
-  const [droneInstrument, setDroneInstrument] = useLS<DroneInstrument>("lt_app_droneInstrument", "tanpura");
+  const [droneInstrument, setDroneInstrument] = useLS<DroneInstrument>("lt_app_droneInstrument", "cello");
   // Snap stale localStorage values (e.g. "violin", "pad_2_warm" from
   // an older catalog) to the default — otherwise the dropdown shows
   // an empty selection and audioEngine.setInstrument silently falls
   // back to tanpura without telling the UI.
   useEffect(() => {
-    if (!AudioEngine.isValidInstrument(droneInstrument)) setDroneInstrument("tanpura");
+    if (!AudioEngine.isValidInstrument(droneInstrument)) setDroneInstrument("cello");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [droneVol, setDroneVol] = useLS<number>("lt_app_droneVol", 0.5);

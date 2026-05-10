@@ -112,9 +112,12 @@ const FREESOUND_VOICE_URL   = "https://cdn.freesound.org/previews/110/110423_147
 // series.  For single-fundamental visualisation pick Cello, Voice,
 // Harmonium, Church Organ, or Additive Synth.
 export const DRONE_INSTRUMENTS = [
-  { id: "tanpura",            label: "Tanpura (multi-string)" },
-  { id: "harmonium",          label: "Harmonium" },
+  // Tanpura removed per direct user direction (2026-05-06): 'tampura
+  // shouldnt be a sound option, bring back the original drone'.
+  // Cello is the new default — single-fundamental real-instrument
+  // drone closest to the engine's original CELLO_REAL synthesis.
   { id: "cello",              label: "Cello" },
+  { id: "harmonium",          label: "Harmonium" },
   { id: "bagpipe",            label: "Bagpipe (multi-drone)" },
   { id: "voice_oohs",         label: "Voice" },
   { id: "choir_aahs",         label: "Choir (multi-voice)" },
@@ -316,14 +319,6 @@ interface SourceConfig {
 }
 
 const INSTRUMENT_SOURCES: Record<DroneInstrument, SourceConfig> = {
-  // Sankalp 155485 "Electronic Tanpura 15" — 4 min 12 s sustained
-  // Raagini drone, CC-BY 4.0.  SA tuned to E (164.8 Hz ≈ E3) per
-  // the uploader's notes; tagged accordingly so the closest-sample
-  // picker aligns playbackRate to the recorded fundamental.
-  tanpura: {
-    url: () => FREESOUND_TANPURA_URL,
-    notes: ["E3"],
-  },
   // Philharmonia: pro-recorded chromatic cello.  `_15_` = 1.5-second
   // sustain (longer than the default 1s) — gives the crossfade looper
   // a steadier middle to anchor on before the release-tail fade.
@@ -386,7 +381,7 @@ export class AudioEngine {
   private sampleBuffer: AudioBuffer | null = null;
   private instrumentSamples: Map<string, InstrumentSample[]> = new Map();
   private instrumentLoadPromises: Map<string, Promise<void>> = new Map();
-  private currentInstrument: DroneInstrument = "tanpura";
+  private currentInstrument: DroneInstrument = "cello";
   // Mixed osc + gain + filter nodes spawned by the synth-fallback /
   // additive paths.  stopDrone calls .stop?.() (noop for non-source
   // nodes) then .disconnect() on each.

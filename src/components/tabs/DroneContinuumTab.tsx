@@ -283,9 +283,9 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
   const [highOct, setHighOct] = useLS<number>("lt_dc_highOct", 6);
   // Drone instrument — shares the same LS key as the global drone strip
   // so picking here also persists to the rest of the app (and vice versa).
-  const [instrument, setInstrumentState] = useLS<DroneInstrument>("lt_app_droneInstrument", "tanpura");
+  const [instrument, setInstrumentState] = useLS<DroneInstrument>("lt_app_droneInstrument", "cello");
   useEffect(() => {
-    if (!AudioEngine.isValidInstrument(instrument)) setInstrumentState("tanpura");
+    if (!AudioEngine.isValidInstrument(instrument)) setInstrumentState("cello");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const stripLowHz   = aOctaveHz(lowOct);
