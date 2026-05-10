@@ -1782,11 +1782,17 @@ function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused
     if (edo !== undefined) return "#c8c8d0";
     if (isUnison) return "#9395ea";
     if (node.monzo.isComma) return "#553344";
-    // Lightened the resting JI-mode color from #3a3a4a (almost black)
-    // to #6a6a7a per direct user feedback ('nodes shouldnt be black').
-    if (temperedClass !== undefined) return classColorMap.get(temperedClass) ?? "#6a6a7a";
+    // Per direct user direction (2026-05-06): "after tempering dont
+    // change colors of each node, just keep it the same but when i
+    // overlay it shows what tempered" — the tempered-class auto-
+    // colouring is suppressed.  Nodes keep their resting gray; the
+    // tempered equivalence-class colours surface only via explicit
+    // overlay paths (pinnedChordOverlays / activeClassIds) which
+    // continue to drive activeColor above.  classColorMap is still
+    // built (for those overlay consumers) but no longer affects the
+    // node's resting colour.
     return "#6a6a7a";
-  }, [isActive, activeColor, isUnison, isFocused, isOnPath, isPathEndpoint, isHighlighted, node.monzo.isComma, temperedClass, classColorMap, edo]);
+  }, [isActive, activeColor, isUnison, isFocused, isOnPath, isPathEndpoint, isHighlighted, node.monzo.isComma, edo]);
 
   const emissive = useMemo(() => {
     if (isHighlighted) return "#44ddff";
@@ -4801,7 +4807,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     // Helper: compute tempered cents for a node using the full basis
     const nodeCents = (node: typeof monzoLattice.nodes[number]) => {
       const fullExps = factorize(node.monzo.n, node.monzo.d, fullPrimes, false);
-      const c = temperedCents(fullExps, fullPrimes, validCommas, false, cfg.tuningMethod);
+      const c = temperedCents(fullExps, fullPrimes, validCommas, false, cfg.tuningMethod, cfg.temperingAmount ?? 1);
       return ((c % 1200) + 1200) % 1200;
     };
 
@@ -5500,7 +5506,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       const cfg = effectiveConfig;
       const isTempered = cfg.temperedCommas.length > 0;
       const ratio = isTempered
-        ? temperedRatio(node.monzo.exps, cfg.primes, cfg.temperedCommas, cfg.octaveEquivalence, cfg.tuningMethod)
+        ? temperedRatio(node.monzo.exps, cfg.primes, cfg.temperedCommas, cfg.octaveEquivalence, cfg.tuningMethod, cfg.temperingAmount ?? 1)
         : node.monzo.n / node.monzo.d;
       audioEngine.playRatioNote(ratio, 0.8, 0.6);
       return;
@@ -5522,7 +5528,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
           // Use tempered pitch when commas are active so equivalent nodes
           // produce the same frequency — the audible result of tempering
           if (isTempered) {
-            return temperedRatio(nd.monzo.exps, cfg.primes, cfg.temperedCommas, cfg.octaveEquivalence, cfg.tuningMethod);
+            return temperedRatio(nd.monzo.exps, cfg.primes, cfg.temperedCommas, cfg.octaveEquivalence, cfg.tuningMethod, cfg.temperingAmount ?? 1);
           }
           return nd.monzo.n / nd.monzo.d;
         });
@@ -5721,14 +5727,14 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
             : isMonzoMode
             ? `${monzoInfo.dimension}D · ${monzoInfo.nodeCount} nodes${monzoLattice.temperingClasses ? ` · ${monzoLattice.temperingClasses} classes` : ""} · ${monzoTopology.description}`
             : isOtonalMode
-            ? "Click nodes to drone. Adjust base and count below."
+            ? "Click nodes to sustain. Adjust base and count below."
             : isCommaMode
-              ? "Pairs of nearby ratios grouped by comma type. Click nodes to drone."
+              ? "Pairs of nearby ratios grouped by comma type. Click nodes to sustain."
               : isHarmonicMode
-                ? "Scroll to zoom. Click nodes to drone — click again to remove."
+                ? "Scroll to zoom. Click nodes to sustain — click again to release."
                 : isChainMode
-                  ? `2D interval chain · ${monzoLattice.nodes.length} nodes. Configure primes & bounds above. Click nodes to drone.`
-                  : "Drag to rotate. Scroll to zoom. Click nodes to drone — click again to remove."
+                  ? `2D interval chain · ${monzoLattice.nodes.length} nodes. Configure primes & bounds above. Click nodes to sustain.`
+                  : "Drag to rotate. Scroll to zoom. Click nodes to sustain — click again to release."
           }
           {activeDroneCount > 0 && (
             <button onClick={clearDrone}
@@ -5738,29 +5744,16 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
           )}
         </p>
 
-        {/* ── Drone strip ── */}
+        {/* ── Node-sound strip ── */}
+        {/* Drone on/off removed per direct user direction
+            ('remove drone option from harmonic lattice, but allow me
+            to change instrument for the nodes').  The instrument
+            selector below drives the sound that plays when the user
+            clicks a node; no sustained drone runs in the background. */}
         <div className="flex flex-wrap gap-2 items-center mb-3 py-1.5 px-2 rounded bg-[#0c0c0c] border border-[#1a1a1a]">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold text-[#666] uppercase tracking-widest">Drone</span>
-            {latticeDroneOn && <span className="w-2 h-2 rounded-full bg-[#7173e6] animate-pulse" />}
-          </div>
-          {/* On/Off toggle */}
-          <button
-            onClick={async () => {
-              if (latticeDroneOn) { stopLatticeDrone(); }
-              else { await startLatticeDrone(latticeDroneVol, latticeDroneRoot); }
-            }}
-            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors border ${
-              latticeDroneOn
-                ? "bg-[#7173e6] border-[#7173e6] text-white"
-                : "bg-[#111] border-[#222] text-[#888] hover:text-[#aaa] hover:border-[#444]"
-            }`}>
-            {latticeDroneOn ? "On" : "Off"}
-          </button>
-          <div className="w-px h-5 bg-[#222]" />
           {/* Instrument selector */}
           <label className="text-[10px] text-[#555] flex items-center gap-1">
-            Inst
+            Node sound
             <select
               value={latticeDroneInstrument}
               onChange={async (e) => {
@@ -5802,15 +5795,6 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                 <option key={i} value={i}>{name}</option>
               ))}
             </select>
-          </label>
-          <div className="w-px h-5 bg-[#222]" />
-          {/* Volume slider */}
-          <label className="text-[10px] text-[#555] flex items-center gap-1">
-            Vol
-            <input type="range" min={0} max={1.0} step={0.01} value={latticeDroneVol}
-              onChange={e => setLatticeDroneVol(Number(e.target.value))}
-              className="w-16 accent-[#7173e6]" />
-            <span className="text-[10px] text-[#444] w-6 text-right">{Math.round(latticeDroneVol * 100)}%</span>
           </label>
         </div>
 
@@ -6155,6 +6139,53 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                   {monzoConfig.tuningMethod === "Euclidean" && "unweighted · min exponent error"}
                 </span>
                 <div className="w-px h-4 bg-[#222]" />
+              </div>
+            )}
+            {/* Tempering amount slider — Scala-style fractional tempering.
+                0¢ shift = pure JI (no comma vanish); 100% = full projection
+                (the selected TE/POTE/TOP/CTE/Euclidean method).  Quarter-
+                comma meantone style temperaments map to amount = 1/4 of
+                the syntonic comma's vanish, etc.  Sliding this in real-
+                time literally shifts each node's audible cents — not a
+                relabel. */}
+            {monzoConfig.temperedCommas.length > 0 && (
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="text-[10px] text-[#555] uppercase tracking-wider mr-1">Amount</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={monzoConfig.temperingAmount ?? 1}
+                  onChange={e => setMonzoConfig(prev => ({ ...prev, temperingAmount: Number(e.target.value) }))}
+                  className="w-40 accent-[#ff6666]"
+                />
+                <span className="text-[10px] text-[#888] w-12 text-right tabular-nums">
+                  {Math.round((monzoConfig.temperingAmount ?? 1) * 100)}%
+                </span>
+                {/* Preset chips: pure JI / quarter-comma / half-comma / full */}
+                <div className="flex gap-1">
+                  {([
+                    [0,    "Pure"],
+                    [0.25, "¼"],
+                    [0.5,  "½"],
+                    [0.75, "¾"],
+                    [1,    "Full"],
+                  ] as [number, string][]).map(([v, label]) => {
+                    const active = Math.abs((monzoConfig.temperingAmount ?? 1) - v) < 0.005;
+                    return (
+                      <button key={v}
+                        onClick={() => setMonzoConfig(prev => ({ ...prev, temperingAmount: v }))}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors border ${
+                          active
+                            ? "bg-[#2a1a1a] text-[#ff6666] border-[#ff4444]"
+                            : "bg-[#111] text-[#555] border-[#222] hover:text-[#aaa]"
+                        }`}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
             {/* Generated Scale — shows unique tempered pitches when commas active */}
@@ -6877,11 +6908,18 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       </div>
       )}{/* /chromeless gate on controls block */}
 
-      {/* 3D Canvas */}
+      {/* 3D Canvas.
+          Non-fullscreen height per direct user direction (2026-05-06):
+          "spread out the harmonic lattice when on[ly] fullscreen its
+          super squished it doesnt have to fit on one page" — the
+          inline view now takes a full 100vh tall (was 80vh).  Page-
+          level scrolling carries the user past the lattice naturally,
+          so the lattice gets room to breathe without competing for
+          space with the controls above it. */}
       <div
         ref={canvasContainerRef}
         className={`rounded-xl border border-[#1a1a1a] bg-[#080808] relative ${isCommaMode ? "overflow-auto" : "overflow-hidden"}`}
-        style={chromeless ? { flex: 1, minHeight: 0 } : { height: "80vh" }}
+        style={chromeless ? { flex: 1, minHeight: 0 } : { height: "100vh", minHeight: "720px" }}
       >
         {/* Navigation help */}
         {(

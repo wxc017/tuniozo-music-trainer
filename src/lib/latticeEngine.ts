@@ -94,6 +94,13 @@ export interface LatticeConfig {
   edo?: number;
   /** Tuning optimization method for tempered pitch computation */
   tuningMethod?: TuningMethod;
+  /** Fractional tempering amount in [0, 1].  0 = pure JI cents (no
+   *  shift), 1 = full projected tempering (current behaviour), values
+   *  in between linearly interpolate between JI and tempered cents per
+   *  monzo — matches Scala's fractional / partial-tempering family
+   *  (Equaltemp/Fractional, Lineartemp at non-unity amounts).  Default
+   *  1 keeps current behaviour for existing configs. */
+  temperingAmount?: number;
 }
 
 export interface LatticeNode {
@@ -957,6 +964,7 @@ export function temperedCents(
   commas: CommaSpec[],
   octaveEq: boolean,
   method: TuningMethod = "TE",
+  amount: number = 1,
 ): number {
   // When octave-equivalent, stored monzos have prime-2 exponent = 0.
   // Reconstruct the full monzo (including prime-2) so the Tenney-weighted
@@ -972,13 +980,14 @@ export function temperedCents(
     fullExps[p2idx] = -Math.floor(log2ratio + 1e-9);
   }
 
-  if (commas.length === 0) {
-    // Pure JI cents
-    let cents = 0;
-    for (let i = 0; i < primes.length; i++) {
-      cents += fullExps[i] * Math.log2(primes[i]) * 1200;
-    }
-    return octaveEq ? ((cents % 1200) + 1200) % 1200 : cents;
+  // Pure JI cents — always computed since fractional tempering blends
+  // it with the projected cents below (amount = 0 returns pure JI).
+  let jiCents = 0;
+  for (let i = 0; i < primes.length; i++) {
+    jiCents += fullExps[i] * Math.log2(primes[i]) * 1200;
+  }
+  if (commas.length === 0 || amount <= 0) {
+    return octaveEq ? ((jiCents % 1200) + 1200) % 1200 : jiCents;
   }
 
   // Always use full comma monzos (including prime-2 exponent) so the
@@ -1065,8 +1074,16 @@ export function temperedCents(
     }
   }
 
+  // Fractional tempering: blend pure-JI cents and fully-tempered cents
+  // by the amount factor.  amount=1 returns the projection's full
+  // tempering (current behaviour); amount=0 short-circuited above to
+  // pure JI; intermediates interpolate linearly per monzo, matching
+  // Scala's fractional-temper / 1/n-comma temperament conventions.
+  const t = Math.max(0, Math.min(1, amount));
+  const blended = jiCents * (1 - t) + rawCents * t;
+
   // Octave-normalize to [0, 1200) when octave-equivalent
-  return octaveEq ? ((rawCents % 1200) + 1200) % 1200 : rawCents;
+  return octaveEq ? ((blended % 1200) + 1200) % 1200 : blended;
 }
 
 /**
@@ -1079,8 +1096,9 @@ export function temperedRatio(
   commas: CommaSpec[],
   octaveEq: boolean,
   method: TuningMethod = "TE",
+  amount: number = 1,
 ): number {
-  const cents = temperedCents(exps, primes, commas, octaveEq, method);
+  const cents = temperedCents(exps, primes, commas, octaveEq, method, amount);
   return Math.pow(2, cents / 1200);
 }
 
