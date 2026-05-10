@@ -816,7 +816,7 @@ export default function App() {
                   { id: "scalar-exploration",   label: "Scalar Explorations" },
                   { id: "lattice",              label: "Harmonic Lattice" },
                   { id: "drum-patterns",        label: "Drum Patterns" },
-                  { id: "melodic-patterns",     label: "Melodic Patterns" },
+                  { id: "melodic-patterns",     label: "Melodic Patterns",     beta: true },
                   { id: "chord-chart",          label: "Chord Chart" },
                   { id: "temperament-explorer", label: "Temperament Explorer" },
                   { id: "note-entry",           label: "Scoring" },
