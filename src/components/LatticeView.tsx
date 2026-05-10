@@ -1760,11 +1760,11 @@ function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused
   const isDimmed = (highlightMode && !isHighlighted && !isActive && !isFocused && !isOnPath)
     || (forceDim && !isActive && !isHovered && !isFocused && !isHighlighted)
     || isNonRepClass;
-  // Bigger nodes by default — easier to read note labels and to
-  // track which cells light up during chord playback.  In EDO
-  // mode the dots get a further bump so the 12 / 31 / 41 / 53
-  // reps stand out clearly against a black background.
-  const baseR = node.monzo.isComma ? 0.18 : (edo !== undefined ? 0.55 : 0.36);
+  // Node radii — kept compact per direct user feedback ('the nodes
+  // are very big too reduce the size').  The active-pulse and
+  // hover/highlight states scale up via the `r` multiplier below so
+  // chord-tones still pop visually.
+  const baseR = node.monzo.isComma ? 0.12 : (edo !== undefined ? 0.32 : 0.22);
   const r = isHighlighted ? baseR * 1.3 : (isOnPath && !isPathEndpoint) ? baseR * 0.45 : baseR;
   const isUnison = node.monzo.n === 1 && node.monzo.d === 1;
 
@@ -1782,8 +1782,10 @@ function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused
     if (edo !== undefined) return "#c8c8d0";
     if (isUnison) return "#9395ea";
     if (node.monzo.isComma) return "#553344";
-    if (temperedClass !== undefined) return classColorMap.get(temperedClass) ?? "#3a3a4a";
-    return "#3a3a4a";
+    // Lightened the resting JI-mode color from #3a3a4a (almost black)
+    // to #6a6a7a per direct user feedback ('nodes shouldnt be black').
+    if (temperedClass !== undefined) return classColorMap.get(temperedClass) ?? "#6a6a7a";
+    return "#6a6a7a";
   }, [isActive, activeColor, isUnison, isFocused, isOnPath, isPathEndpoint, isHighlighted, node.monzo.isComma, temperedClass, classColorMap, edo]);
 
   const emissive = useMemo(() => {
@@ -4176,7 +4178,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   const [betaComma] = useLS<boolean>("lt_beta_comma", false);
 
   // ── Persistent drone (sampled instrument tonic) ─────────────────────
-  const [latticeDroneInstrument, setLatticeDroneInstrument] = useLS<DroneInstrument>("lt_lattice_droneInstrument", "tanpura");
+  const [latticeDroneInstrument, setLatticeDroneInstrument] = useLS<DroneInstrument>("lt_lattice_droneInstrument", "cello");
   const [latticeDroneVol, setLatticeDroneVol] = useLS<number>("lt_lattice_droneVol", 0.5);
   const [internalDroneRoot, setLatticeDroneRoot] = useLS<number>("lt_lattice_droneRoot", 0); // 0-11 pitch class
   // Effective root used for note-name / HEJI / drone-freq computations.
@@ -4193,7 +4195,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   const [latticeDroneOn, setLatticeDroneOn] = useState(false);
   // Snap stale catalog values to the default (see App.tsx for context).
   useEffect(() => {
-    if (!AudioEngine.isValidInstrument(latticeDroneInstrument)) setLatticeDroneInstrument("tanpura");
+    if (!AudioEngine.isValidInstrument(latticeDroneInstrument)) setLatticeDroneInstrument("cello");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -4348,19 +4350,18 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       showPrime2: true,
       edo: temperingForEdo,
       temperedCommas: [],
-      // Parametric torus.  Cells project onto a torus surface
-      // where each fifth advances the major angle by P5_step/edo
-      // and each third advances the minor angle by M3_step/edo
-      // (full turn).  After class-rep filtering, every visible
-      // rep lands at its own clean (u, v) point on the torus,
-      // and the synthesised P5 + M3 edges trace continuous
-      // cycles around the surface instead of cutting chaotically
-      // through 3D space.
-      gridType: "toroidal",
+      // Keep the user's existing grid type (square / triangle /
+      // helical) so the 3rd and 5th axes stay geometrically
+      // legible under tempering.  Per direct user direction
+      // (2026-05-06): 'then with tempering keep the third and fifth
+      // geometry'.  The previous code forced 'toroidal' here, which
+      // wrapped both axes onto a donut — visually unique but it
+      // hid the straight-line 3rd / 5th relationships the user
+      // expects to read.
+      gridType: prev.gridType,
       projections: DEFAULT_PROJECTIONS,
     }));
-    setMonzoGridType("toroidal");
-    setMonzoPreset(`${temperingForEdo}-EDO 3,5-primespace toroidal lattice`);
+    setMonzoPreset(`${temperingForEdo}-EDO 3,5-primespace lattice`);
     // EDO context: keep prime edges visible (the M3 / P5 chains are
     // exactly what makes the toroidal structure legible), and
     // surface note names + class IDs so each cell reads as a real
