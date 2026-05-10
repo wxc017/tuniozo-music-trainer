@@ -39,11 +39,20 @@ export interface AxisBound {
   min: number;
 }
 
-/** A comma to temper out */
+/** A comma to temper out.
+ *
+ *  `fraction` ∈ [0, 1] controls how much of THIS specific comma is
+ *  vanished (Scala's per-comma fractional tempering, e.g. 1/4-comma
+ *  meantone vanishes 1/4 of the syntonic comma per fifth).  Default
+ *  1 = full vanish (the comma's monzo class fully collapses).  Each
+ *  comma in `LatticeConfig.temperedCommas` carries its own fraction
+ *  — there is no global "amount" knob.
+ */
 export interface CommaSpec {
   n: number;
   d: number;
   name: string;
+  fraction?: number;
 }
 
 /** 3D projection vector for a prime axis */
@@ -92,15 +101,12 @@ export interface LatticeConfig {
    *  which always produces exactly `edo` classes (instead of SNF which may
    *  give more classes when commas don't fully span the lattice dimensions). */
   edo?: number;
-  /** Tuning optimization method for tempered pitch computation */
+  /** Tuning optimization method for tempered pitch computation.
+   *  Kept internally as TE (Tenney-Euclidean) by default; the UI
+   *  no longer surfaces this knob per direct user direction
+   *  (2026-05-06): "i want it exact copy from scala for tempering,
+   *  equal temperments and JI. Scala doesnt have tuning method". */
   tuningMethod?: TuningMethod;
-  /** Fractional tempering amount in [0, 1].  0 = pure JI cents (no
-   *  shift), 1 = full projected tempering (current behaviour), values
-   *  in between linearly interpolate between JI and tempered cents per
-   *  monzo — matches Scala's fractional / partial-tempering family
-   *  (Equaltemp/Fractional, Lineartemp at non-unity amounts).  Default
-   *  1 keeps current behaviour for existing configs. */
-  temperingAmount?: number;
 }
 
 export interface LatticeNode {
@@ -958,13 +964,91 @@ export function rootPcToFreq(rootPc: number): number {
  * Comma-equivalent nodes produce the same tempered cents value,
  * which is the core audible consequence of tempering.
  */
+/** Compute the cents of a monzo if a SINGLE comma were fully vanished
+ *  under the given tuning method.  Used as the per-comma building
+ *  block of Scala-style fractional tempering, where each comma's
+ *  full-vanish shift is scaled by that comma's fraction and the
+ *  contributions sum. */
+function singleCommaTemperedCents(
+  fullExps: number[],
+  primes: number[],
+  comma: CommaSpec,
+  method: TuningMethod,
+): number {
+  const commaMonzos = [factorize(comma.n, comma.d, primes, false)];
+
+  function computeCents(tempered: number[]): number {
+    let c = 0;
+    for (let i = 0; i < primes.length; i++) c += tempered[i] * Math.log2(primes[i]) * 1200;
+    return c;
+  }
+
+  switch (method) {
+    case "Euclidean": {
+      const P = commaProjectionMatrix(commaMonzos, primes.length);
+      return computeCents(projectMonzo(fullExps, P));
+    }
+    case "POTE": {
+      const tenneyWeights = primes.map(p => Math.log2(p));
+      const P = commaProjectionMatrix(commaMonzos, primes.length, tenneyWeights);
+      const tempered = projectMonzo(fullExps, P);
+      const octaveMonzo = primes.map((p) => p === 2 ? 1 : 0);
+      const octaveCents = computeCents(projectMonzo(octaveMonzo, P));
+      const scale = octaveCents > 0 ? 1200 / octaveCents : 1;
+      return computeCents(tempered) * scale;
+    }
+    case "TOP": {
+      const n = primes.length;
+      let weights = primes.map(p => Math.log2(p));
+      let P = commaProjectionMatrix(commaMonzos, n, weights);
+      let tempered = projectMonzo(fullExps, P);
+      for (let iter = 0; iter < 20; iter++) {
+        const residuals = primes.map((p, i) => {
+          const jiVal = fullExps[i] * Math.log2(p) * 1200;
+          const teVal = tempered[i] * Math.log2(p) * 1200;
+          return Math.abs(jiVal - teVal) / (Math.log2(p) * 1200);
+        });
+        const maxR = Math.max(...residuals, 1e-15);
+        weights = primes.map((p, i) => {
+          const r = Math.max(residuals[i] / maxR, 0.01);
+          return Math.log2(p) / Math.sqrt(r);
+        });
+        P = commaProjectionMatrix(commaMonzos, n, weights);
+        tempered = projectMonzo(fullExps, P);
+      }
+      return computeCents(tempered);
+    }
+    case "CTE": {
+      const n = primes.length;
+      const tenneyWeights = primes.map(p => Math.log2(p));
+      const P = commaProjectionMatrix(commaMonzos, n, tenneyWeights);
+      const tempered = projectMonzo(fullExps, P);
+      const p2 = primes.indexOf(2);
+      if (p2 >= 0) {
+        const octaveMonzo = primes.map((_p, idx) => idx === 0 ? 1 : 0);
+        const octaveCents = computeCents(projectMonzo(octaveMonzo, P));
+        if (octaveCents > 0) {
+          const octaveError = (1200 - octaveCents) / (Math.log2(primes[p2]) * 1200);
+          tempered[p2] += octaveError * (fullExps[p2] || 1);
+        }
+      }
+      return computeCents(tempered);
+    }
+    case "TE":
+    default: {
+      const tenneyWeights = primes.map(p => Math.log2(p));
+      const P = commaProjectionMatrix(commaMonzos, primes.length, tenneyWeights);
+      return computeCents(projectMonzo(fullExps, P));
+    }
+  }
+}
+
 export function temperedCents(
   exps: number[],
   primes: number[],
   commas: CommaSpec[],
   octaveEq: boolean,
   method: TuningMethod = "TE",
-  amount: number = 1,
 ): number {
   // When octave-equivalent, stored monzos have prime-2 exponent = 0.
   // Reconstruct the full monzo (including prime-2) so the Tenney-weighted
@@ -980,110 +1064,36 @@ export function temperedCents(
     fullExps[p2idx] = -Math.floor(log2ratio + 1e-9);
   }
 
-  // Pure JI cents — always computed since fractional tempering blends
-  // it with the projected cents below (amount = 0 returns pure JI).
+  // Pure JI baseline — every fractional-temper contribution shifts
+  // FROM this value, so amount = 0 on every comma returns pure JI.
   let jiCents = 0;
   for (let i = 0; i < primes.length; i++) {
     jiCents += fullExps[i] * Math.log2(primes[i]) * 1200;
   }
-  if (commas.length === 0 || amount <= 0) {
+  if (commas.length === 0) {
     return octaveEq ? ((jiCents % 1200) + 1200) % 1200 : jiCents;
   }
 
-  // Always use full comma monzos (including prime-2 exponent) so the
-  // Tenney projection correctly handles octave contributions.
-  const commaMonzos = commas.map(c => factorize(c.n, c.d, primes, false));
-
-  function computeCents(tempered: number[]): number {
-    let c = 0;
-    for (let i = 0; i < primes.length; i++) c += tempered[i] * Math.log2(primes[i]) * 1200;
-    return c;
+  // Scala-style per-comma fractional tempering: for each comma c_i
+  // with fraction f_i ∈ [0, 1], compute the single-comma full-vanish
+  // shift Δ_i (using the chosen method) and add f_i × Δ_i to the JI
+  // cents.  At f_i = 0 the comma contributes nothing (pure JI for
+  // that prime motion); at f_i = 1 the comma fully vanishes for any
+  // monzo affected by it alone.  Multi-comma full-vanish (every
+  // f_i = 1) is approximated by per-comma superposition rather than
+  // simultaneous projection — close to the joint projection in
+  // practice but lets each comma's fraction slider drive its own
+  // independent vanish percentage.
+  let totalShift = 0;
+  for (const c of commas) {
+    const f = c.fraction ?? 1;
+    if (f <= 0) continue;
+    const singleCommaCents = singleCommaTemperedCents(fullExps, primes, c, method);
+    totalShift += f * (singleCommaCents - jiCents);
   }
 
-  let rawCents: number;
-
-  switch (method) {
-    case "Euclidean": {
-      const P = commaProjectionMatrix(commaMonzos, primes.length);
-      rawCents = computeCents(projectMonzo(fullExps, P));
-      break;
-    }
-
-    case "POTE": {
-      const tenneyWeights = primes.map(p => Math.log2(p));
-      const P = commaProjectionMatrix(commaMonzos, primes.length, tenneyWeights);
-      const tempered = projectMonzo(fullExps, P);
-      const octaveMonzo = primes.map((p) => p === 2 ? 1 : 0);
-      const octaveCents = computeCents(projectMonzo(octaveMonzo, P));
-      const scale = octaveCents > 0 ? 1200 / octaveCents : 1;
-      rawCents = computeCents(tempered) * scale;
-      break;
-    }
-
-    case "TOP": {
-      const n = primes.length;
-      let weights = primes.map(p => Math.log2(p));
-      let P = commaProjectionMatrix(commaMonzos, n, weights);
-      let tempered = projectMonzo(fullExps, P);
-
-      for (let iter = 0; iter < 20; iter++) {
-        const residuals = primes.map((p, i) => {
-          const jiVal = fullExps[i] * Math.log2(p) * 1200;
-          const teVal = tempered[i] * Math.log2(p) * 1200;
-          return Math.abs(jiVal - teVal) / (Math.log2(p) * 1200);
-        });
-        const maxR = Math.max(...residuals, 1e-15);
-        weights = primes.map((p, i) => {
-          const r = Math.max(residuals[i] / maxR, 0.01);
-          return Math.log2(p) / Math.sqrt(r);
-        });
-        P = commaProjectionMatrix(commaMonzos, n, weights);
-        tempered = projectMonzo(fullExps, P);
-      }
-
-      rawCents = computeCents(tempered);
-      break;
-    }
-
-    case "CTE": {
-      const n = primes.length;
-      const tenneyWeights = primes.map(p => Math.log2(p));
-      const P = commaProjectionMatrix(commaMonzos, n, tenneyWeights);
-      const tempered = projectMonzo(fullExps, P);
-
-      const p2 = primes.indexOf(2);
-      if (p2 >= 0) {
-        const octaveMonzo = primes.map((_p, idx) => idx === 0 ? 1 : 0);
-        const octaveCents = computeCents(projectMonzo(octaveMonzo, P));
-        if (octaveCents > 0) {
-          const octaveError = (1200 - octaveCents) / (Math.log2(primes[p2]) * 1200);
-          tempered[p2] += octaveError * (fullExps[p2] || 1);
-        }
-      }
-
-      rawCents = computeCents(tempered);
-      break;
-    }
-
-    case "TE":
-    default: {
-      const tenneyWeights = primes.map(p => Math.log2(p));
-      const P = commaProjectionMatrix(commaMonzos, primes.length, tenneyWeights);
-      rawCents = computeCents(projectMonzo(fullExps, P));
-      break;
-    }
-  }
-
-  // Fractional tempering: blend pure-JI cents and fully-tempered cents
-  // by the amount factor.  amount=1 returns the projection's full
-  // tempering (current behaviour); amount=0 short-circuited above to
-  // pure JI; intermediates interpolate linearly per monzo, matching
-  // Scala's fractional-temper / 1/n-comma temperament conventions.
-  const t = Math.max(0, Math.min(1, amount));
-  const blended = jiCents * (1 - t) + rawCents * t;
-
-  // Octave-normalize to [0, 1200) when octave-equivalent
-  return octaveEq ? ((blended % 1200) + 1200) % 1200 : blended;
+  const finalCents = jiCents + totalShift;
+  return octaveEq ? ((finalCents % 1200) + 1200) % 1200 : finalCents;
 }
 
 /**
@@ -1096,9 +1106,8 @@ export function temperedRatio(
   commas: CommaSpec[],
   octaveEq: boolean,
   method: TuningMethod = "TE",
-  amount: number = 1,
 ): number {
-  const cents = temperedCents(exps, primes, commas, octaveEq, method, amount);
+  const cents = temperedCents(exps, primes, commas, octaveEq, method);
   return Math.pow(2, cents / 1200);
 }
 

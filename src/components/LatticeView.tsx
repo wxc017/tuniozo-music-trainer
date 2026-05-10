@@ -4807,7 +4807,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     // Helper: compute tempered cents for a node using the full basis
     const nodeCents = (node: typeof monzoLattice.nodes[number]) => {
       const fullExps = factorize(node.monzo.n, node.monzo.d, fullPrimes, false);
-      const c = temperedCents(fullExps, fullPrimes, validCommas, false, cfg.tuningMethod, cfg.temperingAmount ?? 1);
+      const c = temperedCents(fullExps, fullPrimes, validCommas, false, cfg.tuningMethod);
       return ((c % 1200) + 1200) % 1200;
     };
 
@@ -5506,7 +5506,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       const cfg = effectiveConfig;
       const isTempered = cfg.temperedCommas.length > 0;
       const ratio = isTempered
-        ? temperedRatio(node.monzo.exps, cfg.primes, cfg.temperedCommas, cfg.octaveEquivalence, cfg.tuningMethod, cfg.temperingAmount ?? 1)
+        ? temperedRatio(node.monzo.exps, cfg.primes, cfg.temperedCommas, cfg.octaveEquivalence, cfg.tuningMethod)
         : node.monzo.n / node.monzo.d;
       audioEngine.playRatioNote(ratio, 0.8, 0.6);
       return;
@@ -5528,7 +5528,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
           // Use tempered pitch when commas are active so equivalent nodes
           // produce the same frequency — the audible result of tempering
           if (isTempered) {
-            return temperedRatio(nd.monzo.exps, cfg.primes, cfg.temperedCommas, cfg.octaveEquivalence, cfg.tuningMethod, cfg.temperingAmount ?? 1);
+            return temperedRatio(nd.monzo.exps, cfg.primes, cfg.temperedCommas, cfg.octaveEquivalence, cfg.tuningMethod);
           }
           return nd.monzo.n / nd.monzo.d;
         });
@@ -6105,87 +6105,79 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                   </button>
                 ))}
             </div>
-            {/* Tuning method selector — only shown when commas are active */}
+            {/* Per-comma fraction sliders — Scala-style.  Each active
+                comma carries its own vanish fraction in [0, 1]: 0 = leave
+                this comma fully audible (pure JI for that prime motion),
+                1 = fully vanish the comma, intermediate = "1/n-comma"
+                tempering of that specific comma (e.g. 1/4-comma meantone
+                = syntonic comma at 0.25).  Per direct user direction
+                (2026-05-06): "scala allows you to choose the fraction
+                for each" — no global amount, no tuning-method picker.
+                The underlying projection math defaults to TE silently. */}
             {monzoConfig.temperedCommas.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 items-start">
-                <span className="text-[10px] text-[#555] uppercase tracking-wider mr-1 pt-1">Tuning</span>
-                <div className="flex gap-1 flex-wrap">
-                  {([
-                    ["TE", "TE", "Tenney-Euclidean — min RMS cents error (octave may stretch)"],
-                    ["POTE", "POTE", "Pure-Octave TE — same as TE but octave pinned to 1200¢"],
-                    ["TOP", "TOP", "Tenney Optimal — min worst-case relative error (octave may stretch)"],
-                    ["CTE", "CTE", "Constrained TE — eigenmonzos stay pure, octave pinned"],
-                    ["Euclidean", "Euc", "Unweighted — all primes treated equally (exponent-space error)"],
-                  ] as [TuningMethod, string, string][]).map(([method, label, tooltip]) => {
-                    const active = (monzoConfig.tuningMethod ?? "TE") === method;
-                    return (
-                      <button key={method} title={tooltip}
-                        onClick={() => setMonzoConfig(prev => ({ ...prev, tuningMethod: method }))}
-                        className={`px-2 py-1 rounded text-xs font-medium transition-colors border ${
-                          active
-                            ? "bg-[#1a1a2e] text-[#9395ea] border-[#9395ea]"
-                            : "bg-[#111] text-[#444] border-[#222] hover:text-[#aaa]"
-                        }`}>
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <span className="text-[9px] text-[#333] pt-1">
-                  {(monzoConfig.tuningMethod ?? "TE") === "TE" && "min RMS cents error · octave may stretch"}
-                  {monzoConfig.tuningMethod === "POTE" && "min RMS cents · octave = 1200¢"}
-                  {monzoConfig.tuningMethod === "TOP" && "min worst-case error · octave may stretch"}
-                  {monzoConfig.tuningMethod === "CTE" && "eigenmonzos pure · octave = 1200¢"}
-                  {monzoConfig.tuningMethod === "Euclidean" && "unweighted · min exponent error"}
-                </span>
-                <div className="w-px h-4 bg-[#222]" />
-              </div>
-            )}
-            {/* Tempering amount slider — Scala-style fractional tempering.
-                0¢ shift = pure JI (no comma vanish); 100% = full projection
-                (the selected TE/POTE/TOP/CTE/Euclidean method).  Quarter-
-                comma meantone style temperaments map to amount = 1/4 of
-                the syntonic comma's vanish, etc.  Sliding this in real-
-                time literally shifts each node's audible cents — not a
-                relabel. */}
-            {monzoConfig.temperedCommas.length > 0 && (
-              <div className="flex flex-wrap gap-2 items-center">
-                <span className="text-[10px] text-[#555] uppercase tracking-wider mr-1">Amount</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={monzoConfig.temperingAmount ?? 1}
-                  onChange={e => setMonzoConfig(prev => ({ ...prev, temperingAmount: Number(e.target.value) }))}
-                  className="w-40 accent-[#ff6666]"
-                />
-                <span className="text-[10px] text-[#888] w-12 text-right tabular-nums">
-                  {Math.round((monzoConfig.temperingAmount ?? 1) * 100)}%
-                </span>
-                {/* Preset chips: pure JI / quarter-comma / half-comma / full */}
-                <div className="flex gap-1">
-                  {([
-                    [0,    "Pure"],
-                    [0.25, "¼"],
-                    [0.5,  "½"],
-                    [0.75, "¾"],
-                    [1,    "Full"],
-                  ] as [number, string][]).map(([v, label]) => {
-                    const active = Math.abs((monzoConfig.temperingAmount ?? 1) - v) < 0.005;
-                    return (
-                      <button key={v}
-                        onClick={() => setMonzoConfig(prev => ({ ...prev, temperingAmount: v }))}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors border ${
-                          active
-                            ? "bg-[#2a1a1a] text-[#ff6666] border-[#ff4444]"
-                            : "bg-[#111] text-[#555] border-[#222] hover:text-[#aaa]"
-                        }`}>
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="flex flex-col gap-1.5 mt-1">
+                <span className="text-[10px] text-[#555] uppercase tracking-wider">Per-comma fraction</span>
+                {monzoConfig.temperedCommas.map((c, idx) => {
+                  const f = c.fraction ?? 1;
+                  return (
+                    <div key={`${c.n}/${c.d}`} className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-[#ff6666] min-w-[64px]">
+                        {c.n}/{c.d}
+                      </span>
+                      <span className="text-[9px] text-[#666] min-w-[120px] truncate">{c.name}</span>
+                      <input
+                        type="range" min={0} max={1} step={0.01}
+                        value={f}
+                        onChange={e => {
+                          const next = Number(e.target.value);
+                          setMonzoConfig(prev => ({
+                            ...prev,
+                            temperedCommas: prev.temperedCommas.map((tc, i) =>
+                              i === idx ? { ...tc, fraction: next } : tc),
+                          }));
+                        }}
+                        className="w-40 accent-[#ff6666]"
+                      />
+                      <span className="text-[10px] text-[#888] w-10 text-right tabular-nums">
+                        {f === 0 ? "0" : f === 1 ? "1" : (() => {
+                          // Show as 1/n when close to a clean fraction
+                          const inv = 1 / f;
+                          if (Math.abs(inv - Math.round(inv)) < 0.02 && Math.round(inv) >= 2 && Math.round(inv) <= 16) {
+                            return `1/${Math.round(inv)}`;
+                          }
+                          return f.toFixed(2);
+                        })()}
+                      </span>
+                      <div className="flex gap-0.5">
+                        {([
+                          [0,    "0"],
+                          [1/4,  "¼"],
+                          [1/3,  "⅓"],
+                          [1/2,  "½"],
+                          [2/3,  "⅔"],
+                          [1,    "1"],
+                        ] as [number, string][]).map(([v, label]) => {
+                          const active = Math.abs(f - v) < 0.005;
+                          return (
+                            <button key={v}
+                              onClick={() => setMonzoConfig(prev => ({
+                                ...prev,
+                                temperedCommas: prev.temperedCommas.map((tc, i) =>
+                                  i === idx ? { ...tc, fraction: v } : tc),
+                              }))}
+                              className={`px-1 py-0.5 rounded text-[9px] font-medium transition-colors border ${
+                                active
+                                  ? "bg-[#2a1a1a] text-[#ff6666] border-[#ff4444]"
+                                  : "bg-[#111] text-[#555] border-[#222] hover:text-[#aaa]"
+                              }`}>
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {/* Generated Scale — shows unique tempered pitches when commas active */}
