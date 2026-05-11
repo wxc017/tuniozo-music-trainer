@@ -19,7 +19,7 @@ import {
   generateTorusMesh, generateCylinderMesh, projectNodesToTopoSurface,
   intervalName as monzoIntervalName, intervalAllNames as monzoIntervalAllNames, monzoLabel, ratioToCents as monzoRatioToCents,
   ratioToNoteName, ratioToPythagoreanName, rootPcToFreq, ROOT_NOTE_OPTIONS,
-  PRESET_CONFIGS, KNOWN_COMMAS, ALL_PRIMES, DEFAULT_PROJECTIONS, factorize, monzoToRatio,
+  PRESET_CONFIGS, KNOWN_COMMAS, NAMED_TEMPERAMENTS, ALL_PRIMES, DEFAULT_PROJECTIONS, factorize, monzoToRatio,
   PRIME_COLORS as MONZO_PRIME_COLORS,
   temperedCents, temperedRatio,
   ratioToHEJILabel,
@@ -2307,7 +2307,7 @@ interface MonzoSceneProps {
   onFocusNode?: (key: string) => void;
   focusKey: string | null;
   showTopoSurface: boolean;
-  layers: { nodes: boolean; primeEdges: boolean; temperedEdges: boolean; noteNames: boolean; pyth: boolean; intervals: boolean; ratios: boolean; monzo: boolean; heji: boolean; classes: boolean; commaVectors: boolean; fundamentalDomain: boolean; valArrows: boolean; generators: boolean };
+  layers: { nodes: boolean; primeEdges: boolean; temperedEdges: boolean; noteNames: boolean; pyth: boolean; intervals: boolean; ratios: boolean; monzo: boolean; heji: boolean; classes: boolean; commaVectors: boolean; fundamentalDomain: boolean; valArrows: boolean; generators: boolean; temperingShifts: boolean; mosLs: boolean; harmonicSeries: boolean; subharmonicSeries: boolean; superParticular: boolean; primeFilter: boolean; eulerFokker: boolean };
   pathMode: boolean;
   labelLOD: boolean;
   labelDist: number;
@@ -2978,6 +2978,160 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
             </Html>
           </>
         );
+      })()}
+
+      {/* Per-cell tempering-shift arrows — Show Temperings.
+          For each visible cell, draw a small arrow from its JI
+          position to its tempered position so the user can see
+          local displacement.  Skipped when no tempering is active
+          (everything would be a zero-length arrow). */}
+      {layers.temperingShifts && lattice.config.temperedCommas.length > 0 && (() => {
+        return lattice.nodes.map(n => {
+          const jiPos = lattice.jiPositions.get(n.key);
+          const tPos = lattice.positions.get(n.key);
+          if (!jiPos || !tPos) return null;
+          const dx = tPos[0] - jiPos[0];
+          const dy = tPos[1] - jiPos[1];
+          const dz = tPos[2] - jiPos[2];
+          const len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+          if (len < 0.02) return null;
+          return (
+            <Line
+              key={`tshift-${n.key}`}
+              points={[jiPos, tPos]}
+              color="#e87a44"
+              lineWidth={1.2}
+              transparent
+              opacity={0.6}
+            />
+          );
+        }).filter(Boolean);
+      })()}
+      {/* Harmonic-series highlight — over-rings on cells whose
+          ratio is a small-integer harmonic (n/1 or octave-reduced
+          variants).  Up to N=16 by default; shows the otonal
+          series's geometric layout on the lattice. */}
+      {layers.harmonicSeries && (() => {
+        const HARMONIC_KEYS = new Set<string>();
+        for (let n = 1; n <= 16; n++) {
+          let num = n, den = 1;
+          while (num >= 2 * den) den *= 2;
+          while (num < den) num *= 2;
+          // gcd-reduce for cleanliness
+          const g = (function gcd(a: number, b: number): number { return b === 0 ? a : gcd(b, a % b); })(num, den);
+          HARMONIC_KEYS.add(`${num/g}/${den/g}`);
+        }
+        const posMap = topoPositions ?? lattice.positions;
+        return lattice.nodes.filter(n => HARMONIC_KEYS.has(n.key)).map(n => {
+          const p = posMap.get(n.key);
+          if (!p) return null;
+          return (
+            <mesh key={`harm-${n.key}`} position={p}>
+              <torusGeometry args={[0.35, 0.05, 8, 24]} />
+              <meshBasicMaterial color="#66dd99" transparent opacity={0.7} />
+            </mesh>
+          );
+        }).filter(Boolean);
+      })()}
+      {/* Subharmonic-series highlight — utonal mirror of the
+          harmonic series.  Cells whose ratio is 1/n octave-reduced. */}
+      {layers.subharmonicSeries && (() => {
+        const SUBHARMONIC_KEYS = new Set<string>();
+        for (let n = 1; n <= 16; n++) {
+          let num = 1, den = n;
+          while (num >= 2 * den) den *= 2;
+          while (num < den) num *= 2;
+          const g = (function gcd(a: number, b: number): number { return b === 0 ? a : gcd(b, a % b); })(num, den);
+          SUBHARMONIC_KEYS.add(`${num/g}/${den/g}`);
+        }
+        const posMap = topoPositions ?? lattice.positions;
+        return lattice.nodes.filter(n => SUBHARMONIC_KEYS.has(n.key)).map(n => {
+          const p = posMap.get(n.key);
+          if (!p) return null;
+          return (
+            <mesh key={`subharm-${n.key}`} position={p}>
+              <torusGeometry args={[0.35, 0.05, 8, 24]} />
+              <meshBasicMaterial color="#dd99cc" transparent opacity={0.7} />
+            </mesh>
+          );
+        }).filter(Boolean);
+      })()}
+      {/* Super-particular highlight — (n+1)/n ratios up to N=16.
+          The structurally important "near-unison" intervals: 2/1,
+          3/2, 4/3, 5/4, 6/5, 7/6, 8/7, 9/8, ...  In JI lattice
+          theory these are the "core" intervals each prime introduces. */}
+      {layers.superParticular && (() => {
+        const SP_KEYS = new Set<string>();
+        for (let n = 1; n <= 16; n++) {
+          let num = n + 1, den = n;
+          while (num >= 2 * den) den *= 2;
+          while (num < den) num *= 2;
+          const g = (function gcd(a: number, b: number): number { return b === 0 ? a : gcd(b, a % b); })(num, den);
+          SP_KEYS.add(`${num/g}/${den/g}`);
+        }
+        const posMap = topoPositions ?? lattice.positions;
+        return lattice.nodes.filter(n => SP_KEYS.has(n.key)).map(n => {
+          const p = posMap.get(n.key);
+          if (!p) return null;
+          return (
+            <mesh key={`sp-${n.key}`} position={p}>
+              <torusGeometry args={[0.48, 0.035, 8, 24]} />
+              <meshBasicMaterial color="#88aadd" transparent opacity={0.6} />
+            </mesh>
+          );
+        }).filter(Boolean);
+      })()}
+      {/* Euler-Fokker parallelepiped — outline of the bounded
+          lattice's natural genus shape.  Walks the 8 corners of
+          the prime-axis bounds box (or 4 in 2D, 2 in 1D) and draws
+          the edges in 3D. */}
+      {layers.eulerFokker && (() => {
+        const primes = lattice.primes.filter(p => p !== 2);
+        if (primes.length < 1) return null;
+        const bounds = primes.map(p => lattice.config.bounds[p] ?? [-1, 1]);
+        // Generate all corners of the bounding box in monzo-space.
+        const corners: number[][] = [[]];
+        for (const [lo, hi] of bounds) {
+          const next: number[][] = [];
+          for (const c of corners) {
+            next.push([...c, lo]);
+            next.push([...c, hi]);
+          }
+          corners.splice(0, corners.length, ...next);
+        }
+        // Project each corner to 3D via the lattice's projection.
+        const project = (monzo: number[]): [number, number, number] => {
+          const fullMonzo = new Array(lattice.primes.length).fill(0);
+          for (let i = 0; i < primes.length; i++) {
+            const idx = lattice.primes.indexOf(primes[i]);
+            if (idx >= 0) fullMonzo[idx] = monzo[i];
+          }
+          const proj = lattice.config.projections;
+          let x = 0, y = 0, z = 0;
+          for (let i = 0; i < lattice.primes.length; i++) {
+            const p = lattice.primes[i];
+            const v = proj[p] ?? [0, 0, 0];
+            x += v[0] * fullMonzo[i];
+            y += v[1] * fullMonzo[i];
+            z += v[2] * fullMonzo[i];
+          }
+          return [x, y, z];
+        };
+        const cornerPos = corners.map(project);
+        // Connect every pair of corners that differ by 1 in exactly one axis.
+        const edges: [[number, number, number], [number, number, number]][] = [];
+        for (let i = 0; i < corners.length; i++) {
+          for (let j = i + 1; j < corners.length; j++) {
+            let diffs = 0;
+            for (let k = 0; k < corners[i].length; k++) {
+              if (corners[i][k] !== corners[j][k]) diffs++;
+            }
+            if (diffs === 1) edges.push([cornerPos[i], cornerPos[j]]);
+          }
+        }
+        return edges.map(([a, b], i) => (
+          <Line key={`ef-${i}`} points={[a, b]} color="#aacc66" lineWidth={1.5} dashed transparent opacity={0.55} />
+        ));
       })()}
 
       {/* Tempered edges — batched */}
@@ -4793,10 +4947,31 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     //   fundamentalDomain — wireframe of the quotient unit cell
     //   valArrows    — per-prime arrows showing the EDO val(p)
     //   generators   — period + generator vectors for rank-2 temperaments
+    //   temperingShifts — per-cell arrows from JI to tempered position
+    //                      (visualises Show Temperings cents-shift)
+    //   mosLs        — colour cells by their step size on the MOS chain
+    //                      (Lineartemp/Two_Size L/s pattern)
     commaVectors: false,
     fundamentalDomain: false,
     valArrows: false,
     generators: false,
+    temperingShifts: false,
+    mosLs: false,
+    // JI-feature overlays per direct user direction (2026-05-11):
+    // "and anything relating to JI".  Each highlights structurally
+    // significant rational cells in the bounded lattice:
+    //   harmonicSeries — cells matching 1/1, 2/1, 3/2, 4/3, 5/4, 6/5, ...
+    //                     (integer harmonics from tonic)
+    //   subharmonicSeries — utonal mirror: 1/1, 1/2, 2/3, 3/4, 4/5, ...
+    //   superParticular — (n+1)/n ratios (3/2, 4/3, 5/4, 6/5, 7/6, 8/7, ...)
+    //   primeFilter    — show only cells whose highest prime ≤ active limit
+    //   eulerFokker    — render the Euler-Fokker genus parallelepiped
+    //                     for the active primes' bounds
+    harmonicSeries: false,
+    subharmonicSeries: false,
+    superParticular: false,
+    primeFilter: false,
+    eulerFokker: false,
   });
   const [monzoPathMode, setMonzoPathMode] = useState(false);
   // Chain Layout — when on, lay each chain-step k around the origin at
@@ -6652,6 +6827,55 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
             </div>
             {/* Tempering commas (monzo only) */}
             {isMonzoMode && (<>
+            {/* Named-temperament preset selector — loads commas +
+                fractions + chain length from Scala's lintemp.par /
+                rankntemp.par catalog.  Per direct user direction
+                (2026-05-11): "i want all tempering features in
+                scala in the lattice".  Picking a preset replaces
+                the active comma list and snaps chain length to
+                the temperament's natural MOS / EDO closure. */}
+            <div className="flex flex-wrap gap-2 items-center mb-1">
+              <span className="text-[10px] text-[#555] uppercase tracking-wider mr-1">Preset</span>
+              <select
+                value=""
+                onChange={e => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  const preset = NAMED_TEMPERAMENTS.find(t => t.id === id);
+                  if (!preset) return;
+                  setMonzoConfig(prev => ({
+                    ...prev,
+                    temperedCommas: preset.commas.map(c => ({ ...c, fraction: 1 })),
+                    chainLength: preset.chainLength,
+                  }));
+                  e.target.value = "";  // reset so the same preset can be picked again
+                }}
+                className="bg-[#141414] border border-[#2a2a2a] text-white text-xs rounded px-2 py-1 max-w-[280px]"
+                title="Load a named temperament from Scala's catalog"
+              >
+                <option value="" disabled>— Choose a temperament —</option>
+                <optgroup label="5-limit rank-2">
+                  {NAMED_TEMPERAMENTS.filter(t => t.primeLimit === 5 && !t.id.includes("edo")).map(t => (
+                    <option key={t.id} value={t.id} title={t.description}>{t.name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="7-limit rank-2">
+                  {NAMED_TEMPERAMENTS.filter(t => t.primeLimit === 7).map(t => (
+                    <option key={t.id} value={t.id} title={t.description}>{t.name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="11+-limit rank-2">
+                  {NAMED_TEMPERAMENTS.filter(t => t.primeLimit >= 11).map(t => (
+                    <option key={t.id} value={t.id} title={t.description}>{t.name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Equal temperaments (rank-1)">
+                  {NAMED_TEMPERAMENTS.filter(t => t.id.includes("edo")).map(t => (
+                    <option key={t.id} value={t.id} title={t.description}>{t.name}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
             <div className="flex flex-wrap gap-1.5 items-center">
               <span className="text-[10px] text-[#555] uppercase tracking-wider mr-1">Temper</span>
               {KNOWN_COMMAS.map(c => {
@@ -6986,6 +7210,31 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                 ["fundamentalDomain", "Domain", "#5ab9b0", "Wireframe of the quotient unit cell (rank-2 parallelogram / rank-1 line / rank-0 point)"],
                 ["valArrows", "Val", "#ffaa44", "Per-prime arrows labelled with this EDO's val(p) = round(edo × log₂(p))"],
                 ["generators", "Gen+Per", "#9395ea", "Generator (3/2 tempered fifth) + Period (2/1 octave) vectors for rank-2 temperaments"],
+                ["temperingShifts", "Shifts", "#e87a44", "Per-cell arrows from JI position to tempered position (Scala Show Temperings)"],
+                ["mosLs", "MOS L/s", "#c8a860", "Colour cells by their L/s step size on the active MOS chain (Lineartemp/Two_Size)"],
+              ] as const).map(([key, label, color, tooltip]) => (
+                <button key={key}
+                  onClick={() => toggleMonzoLayer(key)}
+                  title={tooltip}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-colors border`}
+                  style={monzoLayers[key]
+                    ? { borderColor: color, background: color + "22", color: color }
+                    : { borderColor: "#222", background: "#111", color: "#555" }}>
+                  {label}
+                </button>
+              ))}
+              <div className="w-px h-4 bg-[#222]" />
+              {/* JI-feature overlays — surfaces structural JI cells
+                  per direct user direction (2026-05-11): "and
+                  anything relating to JI".  Each toggle highlights
+                  a class of rationals (harmonic / subharmonic series,
+                  super-particular ratios, Euler-Fokker genus, etc.). */}
+              <span className="text-[10px] text-[#555] uppercase tracking-wider ml-1 mr-1">JI</span>
+              {([
+                ["harmonicSeries", "Harmonic", "#66dd99", "Highlight cells on the harmonic series (1/1, 2/1, 3/2, 4/3, 5/4, 6/5, 7/4, ...)"],
+                ["subharmonicSeries", "Sub-harm", "#dd99cc", "Highlight cells on the subharmonic series (1/1, 1/2, 2/3, 3/4, 4/5, 5/6, ...)"],
+                ["superParticular", "Superpart", "#88aadd", "Highlight super-particular ratios (n+1)/n: 2/1, 3/2, 4/3, 5/4, 6/5, ..."],
+                ["eulerFokker", "Euler-Fokker", "#aacc66", "Outline the Euler-Fokker parallelepiped (the bounded lattice's natural genus shape)"],
               ] as const).map(([key, label, color, tooltip]) => (
                 <button key={key}
                   onClick={() => toggleMonzoLayer(key)}
