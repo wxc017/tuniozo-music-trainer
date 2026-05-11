@@ -2114,18 +2114,12 @@ export default function ChordsTab({
 
                   {/* Full-width Harmonic Lattice — re-uses the main
                       LatticeView (3D Tonnetz / Monzo viewer) and
-                      auto-tempers it to the active EDO so the
-                      visualization matches the playback (12-EDO
-                      heavily collapses cells; 41/53-EDO mostly
-                      preserves distinctions; meantone EDOs squash
-                      81/80 specifically).  Each chord-root in the
-                      progression converts to an "n/d" ratio key and
-                      is fed in as `externalHighlights`; the
-                      currently-sounding chord becomes
-                      `activeNodeKey` so the same chord-onset timer
-                      that drives the keyboard highlight also drives
-                      the lattice's pulsing node. */}
-                  {fhAnswer.progression.length > 0 && (() => {
+                      auto-tempers it to the active EDO.  Gated on
+                      `betaMode` per direct user direction
+                      (2026-05-11): "put harmonic lattice in spacial
+                      audiation to beta features" — surfaces only
+                      when the user has Beta enabled in Settings. */}
+                  {betaMode && fhAnswer.progression.length > 0 && (() => {
                     // The lattice is the Tonescape "3,5-primespace
                     // toroidal lattice" — 5-limit cells projected
                     // linearly with the EDO's vanishing commas
