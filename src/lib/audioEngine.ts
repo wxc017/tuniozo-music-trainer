@@ -1381,66 +1381,30 @@ export class AudioEngine {
   }
 
   /** Per-voice version of spawnSampleLoop — single src.loop=true
-   *  BufferSource, identical playback to the global drone path. */
+   *  BufferSource, identical playback to the global drone path.
+   *  preprocessDroneBuffer has baked 25 ms seam fades into the buffer
+   *  at loopStart / loopEnd, so the hardware wrap is silence→silence
+   *  with no click.  The earlier dual-voice 50%-overlap scheduler was
+   *  reverted here because adjacent voices both reached plateau gain 1
+   *  in the middle of the overlap, summing to 2× and producing audible
+   *  pulsing every loopDur/2 — exactly the "you can hear it restart"
+   *  artifact (user feedback 2026-05-11). */
   private spawnVoiceSampleLoop(
     ctx: AudioContext,
     sample: InstrumentSample,
     rate: number,
     voice: { noteGain: GainNode; samples: AudioBufferSourceNode[]; nodes: AudioNode[]; timers: ReturnType<typeof setTimeout>[]; generation: number },
-    voiceKey: string,
+    _voiceKey: string,
   ) {
-    // Dual-voice overlap looper — per direct user direction
-    // (2026-05-06): "its not looping seamlessly its supposed to start
-    // another sample every 50 percent".  Each loop iteration plays
-    // sample[loopStart..loopEnd] ONCE with a short fade-in / fade-out,
-    // and the NEXT iteration is scheduled at 50% of the loop duration.
-    // Two voices always overlap during the second half of one loop
-    // and the first half of the next, masking the loop seam.  Tracked
-    // in voice.timers + voice.samples so stopRatioDroneVoice tears
-    // everything down cleanly.
-    const loopDur = (sample.loopEnd - sample.loopStart) / rate;
-    const fadeSec = Math.min(0.5, loopDur * 0.25);
-    const scheduleAhead = 0.05;
-    const myGeneration = voice.generation;
-
-    const spawnOne = (when: number) => {
-      if (voice.generation !== myGeneration) return;
-      const src = ctx.createBufferSource();
-      src.buffer = sample.buffer;
-      // No hardware loop — we schedule manually.
-      src.playbackRate.value = rate;
-      const segGain = ctx.createGain();
-      // Fade-in then plateau then fade-out — equal-power-ish ramp so
-      // two overlapping voices sum to roughly unity.
-      segGain.gain.setValueAtTime(0, when);
-      segGain.gain.linearRampToValueAtTime(1, when + fadeSec);
-      segGain.gain.setValueAtTime(1, when + loopDur - fadeSec);
-      segGain.gain.linearRampToValueAtTime(0, when + loopDur);
-      src.connect(segGain);
-      segGain.connect(voice.noteGain);
-      try {
-        src.start(when, sample.loopStart, sample.loopEnd - sample.loopStart);
-      } catch { /* invalid time — ignore */ }
-      voice.samples.push(src);
-      voice.nodes.push(segGain);
-      // Schedule the next overlapping loop at 50% into this one.
-      const nextWhen = when + loopDur / 2;
-      const delayMs = Math.max(0, (nextWhen - ctx.currentTime - scheduleAhead) * 1000);
-      const t = setTimeout(() => spawnOne(nextWhen), delayMs);
-      voice.timers.push(t);
-      // Cleanup the source once it has stopped, so memory doesn't
-      // grow unbounded across long-running voices.
-      const stopT = setTimeout(() => {
-        try { src.disconnect(); segGain.disconnect(); } catch {}
-        const si = voice.samples.indexOf(src);
-        if (si >= 0) voice.samples.splice(si, 1);
-        const ni = voice.nodes.indexOf(segGain);
-        if (ni >= 0) voice.nodes.splice(ni, 1);
-      }, Math.ceil((when + loopDur - ctx.currentTime + 0.1) * 1000));
-      voice.timers.push(stopT);
-    };
-    void voiceKey;  // reserved for diagnostics
-    spawnOne(ctx.currentTime);
+    const src = ctx.createBufferSource();
+    src.buffer = sample.buffer;
+    src.loop = true;
+    src.loopStart = sample.loopStart;
+    src.loopEnd = sample.loopEnd;
+    src.playbackRate.value = rate;
+    src.connect(voice.noteGain);
+    src.start(0, sample.loopStart);
+    voice.samples.push(src);
   }
 
   // ── Separate interval drones (independent of main drone, multiple simultaneous) ──
