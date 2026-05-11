@@ -4275,10 +4275,9 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   // ── Node-click drone volume ──────────────────────────────────────
   const [nodeVolMaster, setNodeVolMaster] = useLS<number>("lt_nodeVol_master", 0.1);
   const [nodeVolMap, setNodeVolMap] = useState<Record<string, number>>({});
-  const [nodeVolAutoRamp, setNodeVolAutoRamp] = useLS<boolean>("lt_nodeVol_autoRamp", true);
-  // Base volume for first note, ramp step per additional note
-  const nodeVolRampBase = 0.3;
-  const nodeVolRampStep = 0.15;
+  // (Crescendo auto-ramp state removed 2026-05-06 — no longer surfaced
+  // in the UI per direct user direction "there should be no cresendo
+  // option".  Each clicked voice plays at its own per-key gain.)
 
   // Harmonic Series mode state
   const [harmonicLimit, setHarmonicLimit] = useState(0);
@@ -5640,20 +5639,38 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     setLatticeDroneOn(false);
   }, []);
 
-  // Compute per-note gains: when autoRamp is on, each successive note gets louder
-  const computePerNoteGains = useCallback((keys: string[], volMap: Record<string, number>): number[] => {
-    return keys.map((k, i) => {
-      if (volMap[k] !== undefined) return volMap[k];
-      if (!nodeVolAutoRamp) return 1.0;
-      return Math.min(1.0, nodeVolRampBase + i * nodeVolRampStep);
-    });
-  }, [nodeVolAutoRamp, nodeVolRampBase, nodeVolRampStep]);
-
-  // Start node-click drone with per-note volumes
+  // Start node-click drone — per-voice diff pattern copied from
+  // DroneContinuumTab per direct user direction (2026-05-06): "the
+  // nodes sound terrible there should be no crescendo option copy
+  // how the audio is done in drone continuum".
+  //
+  // Each click toggles a single voice on / off via startRatioDroneVoice
+  // / stopRatioDroneVoice — same one-loop-per-pitch scheduler that
+  // makes the Drone Continuum strip sound clean.  No crescendo / auto-
+  // ramp: every node plays at its individual per-key gain (or 1.0 if
+  // the user hasn't dialled it down).  Replaces the previous
+  // startRatioDrone(ratios[], gainArr) batch call which produced the
+  // noisy stacked-loop sound the user reported.
   const startNodeDrone = useCallback((ratios: number[], keys: string[], volMap: Record<string, number>) => {
-    const perNote = computePerNoteGains(keys, volMap);
-    audioEngine.startRatioDrone(ratios, nodeVolMaster, rootPcToFreq(latticeDroneRoot), perNote);
-  }, [computePerNoteGains, nodeVolMaster, latticeDroneRoot]);
+    const baseHz = rootPcToFreq(latticeDroneRoot);
+    const desiredKeys = new Set(keys);
+    const liveKeys = new Set(audioEngine.getActiveDroneVoiceKeys());
+    // Stop voices that are no longer in the desired set.
+    for (const k of liveKeys) {
+      if (!desiredKeys.has(k)) audioEngine.stopRatioDroneVoice(k);
+    }
+    // Start / update voices for every desired key.
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      const r = ratios[i];
+      const gain = volMap[k] ?? 1.0;
+      if (!liveKeys.has(k)) {
+        audioEngine.startRatioDroneVoice(k, r, nodeVolMaster * gain, baseHz);
+      } else {
+        audioEngine.setRatioDroneVoiceGain(k, nodeVolMaster * gain);
+      }
+    }
+  }, [nodeVolMaster, latticeDroneRoot]);
 
   // Restart drone when params change while it's on
   useEffect(() => {
@@ -5674,13 +5691,16 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     if (hasNodeDrone && !latticeDroneOn) audioEngine.setDroneGain(nodeVolMaster);
   }, [nodeVolMaster, droneNodes.size, stackActiveNodes.size, latticeDroneOn]);
 
-  // Update individual note volumes in real time
+  // Update individual node voice gains in real time — per-voice
+  // API matching DroneContinuum (each key has its own ratio-drone
+  // voice; setRatioDroneVoiceGain adjusts gain without restarting).
   useEffect(() => {
     const activeKeys = [...droneNodes, ...stackActiveNodes];
-    if (activeKeys.length === 0) return;
-    const gains = computePerNoteGains(activeKeys, nodeVolMap);
-    gains.forEach((g, i) => audioEngine.setDroneNoteGain(i, g));
-  }, [nodeVolMap, droneNodes, stackActiveNodes, computePerNoteGains]);
+    for (const k of activeKeys) {
+      const gain = nodeVolMap[k] ?? 1.0;
+      audioEngine.setRatioDroneVoiceGain(k, nodeVolMaster * gain);
+    }
+  }, [nodeVolMap, droneNodes, stackActiveNodes, nodeVolMaster]);
 
   const toggleMonzoComma = useCallback((comma: CommaSpec) => {
     setMonzoConfig(prev => {
@@ -6014,25 +6034,21 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               <span className="text-[10px] text-[#444] w-6 text-right">{Math.round(nodeVolMaster * 100 / 0.3)}%</span>
             </label>
             <div className="w-px h-5 bg-[#222]" />
-            <button
-              onClick={() => setNodeVolAutoRamp(!nodeVolAutoRamp)}
-              className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors border ${
-                nodeVolAutoRamp
-                  ? "bg-[#e67171] border-[#e67171] text-white"
-                  : "bg-[#111] border-[#222] text-[#444] hover:text-[#aaa]"
-              }`}>
-              Crescendo
-            </button>
-            <div className="w-px h-5 bg-[#222]" />
-            {(isOtonalMode ? [...stackActiveNodes] : [...droneNodes]).map((key, i) => (
+            {/* Per-node volume — Crescendo (auto-ramp) toggle removed
+                2026-05-06 per direct user direction: "there should be
+                no cresendo option".  Each clicked node now plays at
+                its own user-set gain (default 100%); the per-voice
+                audio path is borrowed from Drone Continuum so stacked
+                tones sound clean instead of mushy. */}
+            {(isOtonalMode ? [...stackActiveNodes] : [...droneNodes]).map((key) => (
               <label key={key} className="text-[10px] text-[#555] flex items-center gap-1">
                 <span className="max-w-[60px] truncate" title={key}>{key}</span>
                 <input type="range" min={0} max={1} step={0.02}
-                  value={nodeVolMap[key] ?? (nodeVolAutoRamp ? Math.min(1.0, nodeVolRampBase + i * nodeVolRampStep) : 1.0)}
+                  value={nodeVolMap[key] ?? 1.0}
                   onChange={e => setNodeVolMap(prev => ({ ...prev, [key]: Number(e.target.value) }))}
                   className="w-12 accent-[#e6a871]" />
                 <span className="text-[10px] text-[#444] w-6 text-right">
-                  {Math.round((nodeVolMap[key] ?? (nodeVolAutoRamp ? Math.min(1.0, nodeVolRampBase + i * nodeVolRampStep) : 1.0)) * 100)}%
+                  {Math.round((nodeVolMap[key] ?? 1.0) * 100)}%
                 </span>
               </label>
             ))}
