@@ -417,31 +417,36 @@ export function monzoTo3D(
 export function monzoTo3DHelical(
   exps: number[],
   primes: number[],
-  _edo: number | null,
+  edo: number | null,
 ): [number, number, number] {
   // Classical Tonescape helix: a 5-limit pitch-helix where the chain
   // of fifths winds around a cylinder and the chain of major thirds
-  // advances vertically.  Per direct user direction (2026-05-06):
-  // "fix the helix so its a 5 limit one like tonescape" — only the
-  // 3-axis (perfect fifths, 3/2) and 5-axis (major thirds, 5/4)
-  // affect position.  Higher primes are ignored; their cells get
-  // projected onto their 5-limit shadow (caller usually filters
-  // them out of the rendered set so they don't overlap).
+  // advances vertically.  Only the 3-axis (perfect fifths, 3/2) and
+  // 5-axis (major thirds, 5/4) affect position.
+  //
+  // FIFTHS-PER-TURN adapts to the active EDO context per direct user
+  // direction (2026-05-11): "this shape for 31 edo in spacial
+  // audiation also looks impallatable, there has to be a better
+  // shape that suits its geometry".  The 12-fifths-per-turn default
+  // is right for 12-EDO and meantone-family rank-2 temperaments, but
+  // it scrambles higher-EDO contexts: 31-EDO has 31 fifths per
+  // octave-closure (the 18-step fifth × 31 = 31 octaves, with
+  // small residue), so wrapping at 12 produces a chaotic helix.
+  // Reading `edo` here lets each EDO's natural fifth count drive
+  // the wrap, so 31-EDO lays its chain in a clean 31-pointed turn,
+  // 19-EDO in 19, etc.  Total per-turn rise stays constant (1.8
+  // units) regardless of EDO so the visualisation stays compact.
   const i3 = primes.indexOf(3);
   const i5 = primes.indexOf(5);
   const exp3 = i3 >= 0 ? (exps[i3] ?? 0) : 0;
   const exp5 = i5 >= 0 ? (exps[i5] ?? 0) : 0;
 
-  // Twelve fifths per full turn around the cylinder — matches the
-  // classical 12-tone chromatic circle that Tonescape uses for the
-  // chain-of-fifths spine.  Each fifth advances the angle by 30°.
-  const FIFTHS_PER_TURN = 12;
-  const RADIUS = 3.0;
-  // Vertical pitch (per third) and per-fifth lift — the small lift
-  // keeps the chain visible as a helix rather than a flat ring when
-  // there are no 5-axis cells active.
+  const FIFTHS_PER_TURN = edo && edo > 0 ? edo : 12;
+  // Radius scales mildly with EDO so larger chains don't overcrowd.
+  const RADIUS = 3.0 + 0.06 * Math.max(0, FIFTHS_PER_TURN - 12);
   const HEIGHT_PER_THIRD = 1.6;
-  const HEIGHT_PER_FIFTH = 0.15;
+  // Per-fifth lift: total per-turn rise = 1.8 regardless of EDO.
+  const HEIGHT_PER_FIFTH = 1.8 / FIFTHS_PER_TURN;
 
   const angle = 2 * Math.PI * exp3 / FIFTHS_PER_TURN;
   const y = exp5 * HEIGHT_PER_THIRD + exp3 * HEIGHT_PER_FIFTH;
