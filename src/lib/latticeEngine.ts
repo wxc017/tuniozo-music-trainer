@@ -255,6 +255,184 @@ export const KNOWN_COMMAS: CommaSpec[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
+// Named-temperament presets — extracted from Scala's lintemp.par
+// + en.xen.wiki/w/Proposed_names_for_rank_2_temperaments.  Each
+// entry defines the comma list that VANISHES under the temperament,
+// optionally a suggested chain length (the natural MOS / EDO size),
+// and a description.  Loading a preset replaces the active comma
+// set + sets chain length so the user lands directly in that
+// temperament without hand-configuration.
+// ═══════════════════════════════════════════════════════════════
+
+export interface NamedTemperament {
+  id: string;
+  name: string;
+  commas: CommaSpec[];
+  chainLength?: number;  // Natural MOS / EDO closure (12 for meantone, 19 for hanson, ...)
+  primeLimit: 3 | 5 | 7 | 11 | 13;
+  description: string;
+}
+
+export const NAMED_TEMPERAMENTS: NamedTemperament[] = [
+  // ─── 5-limit rank-2 ──────────────────────────────────────────
+  {
+    id: "meantone",
+    name: "Meantone",
+    commas: [{ n: 81, d: 80, name: "Syntonic comma" }],
+    chainLength: 12,
+    primeLimit: 5,
+    description: "81/80 vanishes — 4 fifths = M3.  Canonical 5-limit temperament; MOS at 5/7/12/19/31/50.",
+  },
+  {
+    id: "schismatic",
+    name: "Schismatic (Helmholtz)",
+    commas: [{ n: 32805, d: 32768, name: "Schisma" }],
+    chainLength: 12,
+    primeLimit: 5,
+    description: "32805/32768 vanishes — 8 fifths down + M3 = unison.  Near-JI 5-limit, ~2¢ schisma.",
+  },
+  {
+    id: "hanson",
+    name: "Hanson (Kleismic)",
+    commas: [{ n: 15625, d: 15552, name: "Kleisma" }],
+    chainLength: 19,
+    primeLimit: 5,
+    description: "15625/15552 vanishes — 6 minor thirds = octave + fifth.  MOS at 7/11/15/19/34/53.",
+  },
+  {
+    id: "mavila",
+    name: "Mavila (Pelogic)",
+    commas: [{ n: 135, d: 128, name: "Major chroma" }],
+    chainLength: 9,
+    primeLimit: 5,
+    description: "135/128 vanishes — Anti-meantone with FLAT fifths (~677¢).  MOS at 7/9/16/23/30.",
+  },
+  // ─── 7-limit rank-2 ──────────────────────────────────────────
+  {
+    id: "septimal-meantone",
+    name: "Septimal Meantone",
+    commas: [{ n: 81, d: 80, name: "Syntonic" }, { n: 126, d: 125, name: "Starling (septimal)" }],
+    chainLength: 31,
+    primeLimit: 7,
+    description: "81/80 + 126/125 vanish — extends meantone to 7-limit.  Best at 31-EDO.",
+  },
+  {
+    id: "magic",
+    name: "Magic",
+    commas: [{ n: 3125, d: 3072, name: "Magic comma" }],
+    chainLength: 19,
+    primeLimit: 5,
+    description: "3125/3072 vanishes — 5 M3s up = octave + fifth.  Generator ~380¢.  MOS at 7/10/13/16/19/22.",
+  },
+  {
+    id: "miracle",
+    name: "Miracle",
+    commas: [{ n: 225, d: 224, name: "Septimal kleisma (Marvel)" }, { n: 1029, d: 1024, name: "Gamelisma" }],
+    chainLength: 21,
+    primeLimit: 7,
+    description: "225/224 + 1029/1024 vanish — secor-generator (~116.7¢).  MOS at 10/11/21/31/41/72.",
+  },
+  {
+    id: "marvel",
+    name: "Marvel",
+    commas: [{ n: 225, d: 224, name: "Septimal kleisma" }],
+    chainLength: 22,
+    primeLimit: 7,
+    description: "225/224 vanishes alone — 7-limit equivalent of meantone.  Used in 22 / 41 / 72-EDO.",
+  },
+  {
+    id: "porcupine",
+    name: "Porcupine",
+    commas: [{ n: 250, d: 243, name: "Maximal diesis" }],
+    chainLength: 15,
+    primeLimit: 5,
+    description: "250/243 vanishes — 3 m3s up = wholetone.  Generator ~163¢.  MOS at 7/8/15/22.",
+  },
+  {
+    id: "pajara",
+    name: "Pajara",
+    commas: [{ n: 50, d: 49, name: "Tritonic diesis" }],
+    chainLength: 22,
+    primeLimit: 7,
+    description: "50/49 vanishes — 2 tritones = octave.  Period = half-octave.  MOS at 10/12/22/32.",
+  },
+  {
+    id: "dominant",
+    name: "Dominant (Schismatic-7)",
+    commas: [{ n: 36, d: 35, name: "Septimal quartertone" }, { n: 64, d: 63, name: "Septimal comma" }],
+    chainLength: 12,
+    primeLimit: 7,
+    description: "36/35 + 64/63 vanish — 7-limit version of 12-EDO's dominant chord identification.",
+  },
+  {
+    id: "negri",
+    name: "Negri",
+    commas: [{ n: 16875, d: 16384, name: "Negri comma" }],
+    chainLength: 19,
+    primeLimit: 5,
+    description: "16875/16384 vanishes — 5 m3s up = M3.  MOS at 9/10/19/29.",
+  },
+  // ─── 11/13-limit rank-2 ──────────────────────────────────────
+  {
+    id: "orwell",
+    name: "Orwell",
+    commas: [{ n: 1728, d: 1715, name: "Orwell comma" }],
+    chainLength: 22,
+    primeLimit: 7,
+    description: "1728/1715 vanishes — generator ~271¢.  MOS at 9/13/22/31.",
+  },
+  {
+    id: "mohajira",
+    name: "Mohajira",
+    commas: [{ n: 6144, d: 6655, name: "Mohajira comma" }],
+    chainLength: 24,
+    primeLimit: 11,
+    description: "6144/6655 vanishes — 11-limit neutral-thirds generator (~350¢).  MOS at 7/10/17/24/31.",
+  },
+  {
+    id: "garibaldi",
+    name: "Garibaldi (Cassandra)",
+    commas: [{ n: 32805, d: 32768, name: "Schisma" }, { n: 225, d: 224, name: "Marvel kleisma" }],
+    chainLength: 41,
+    primeLimit: 7,
+    description: "Schisma + Marvel vanish — Garibaldi/Cassandra 7-limit.  MOS at 12/29/41/53.",
+  },
+  // ─── EDOs as rank-1 presets ──────────────────────────────────
+  {
+    id: "12edo",
+    name: "12-EDO",
+    commas: [{ n: 81, d: 80, name: "Syntonic" }, { n: 128, d: 125, name: "Diesis" }],
+    chainLength: 12,
+    primeLimit: 5,
+    description: "12-EDO = meantone + diesis vanishes.  The standard chromatic.",
+  },
+  {
+    id: "19edo",
+    name: "19-EDO (1/3-comma meantone)",
+    commas: [{ n: 81, d: 80, name: "Syntonic" }, { n: 3125, d: 3072, name: "Magic" }],
+    chainLength: 19,
+    primeLimit: 5,
+    description: "19-EDO = meantone closing at 19 fifths.  Exact 1/3-comma meantone.",
+  },
+  {
+    id: "31edo",
+    name: "31-EDO (1/4-comma meantone)",
+    commas: [{ n: 81, d: 80, name: "Syntonic" }, { n: 81, d: 80, name: "Syntonic (squared)" }],
+    chainLength: 31,
+    primeLimit: 5,
+    description: "31-EDO ≈ 1/4-comma meantone.  Near-perfect 5-limit.  MOS at 5/7/12/19/31.",
+  },
+  {
+    id: "53edo",
+    name: "53-EDO (Mercator)",
+    commas: [{ n: 32805, d: 32768, name: "Schisma" }, { n: 15625, d: 15552, name: "Kleisma" }],
+    chainLength: 53,
+    primeLimit: 5,
+    description: "53-EDO = schismatic + kleismic.  Best small 5-limit EDO; near-pure JI thirds and fifths.",
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════
 // Preset configs
 // ═══════════════════════════════════════════════════════════════
 
