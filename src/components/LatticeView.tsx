@@ -1908,17 +1908,13 @@ function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused
             transparent={isDimmed} opacity={isDimmed ? 0.35 : 1} />
         </mesh>
       )}
-      {/* Chain-marker ring — visible only for nodes inside the active
-          rank-2 MOS chain.  Renders as a slightly-larger glowing torus
-          (a flat ring around the node sphere) in magenta so the chain
-          reads as a connected sequence on top of the rest of the
-          lattice without overriding the node's intrinsic colour. */}
-      {isInChain && (
-        <mesh>
-          <torusGeometry args={[r * 1.55, r * 0.18, 8, 24]} />
-          <meshStandardMaterial color="#ff44aa" emissive="#ff44aa" emissiveIntensity={1.2} transparent opacity={0.9} />
-        </mesh>
-      )}
+      {/* Chain-marker ring was removed per direct user direction
+          (2026-05-06): "i dont understand why you have rings around
+          individual nodes, remove it, it doesnt tell us anything".
+          The temperament-chain-length input above still drives the
+          closure-error readout (which is the meaningful signal); the
+          per-node ring overlay didn't carry useful information on
+          top of the lattice's own colour / position. */}
       {shouldShowLabel && (
         <Html
           position={[0, r + 0.12, 0]}
@@ -2848,22 +2844,7 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
         <MonzoNodeMesh
           key={node.key}
           node={node}
-          // Position-source rule per direct user direction (2026-05-06):
-          // "after tempting keep the thirds dont collapse to fifths and
-          // have it close" — helical / toroidal projections preserve
-          // the 3-axis ↔ 5-axis distinction even after tempering
-          // because they read each monzo's pre-projection exponents.
-          // For those projections we ALWAYS use jiPositions so the
-          // tempered equivalence classes show up as RINGS OF NODES
-          // (multiple cells at distinct helical positions, all
-          // sharing the same tempered class via the class-based
-          // chain highlight) instead of collapsing to a single
-          // projected point.  The default (square / triangle) still
-          // honours the projection when tempering, since those grids
-          // benefit from the comma-flattened visual.
-          pos={(layers.classes || lattice.config.gridType === "helical" || lattice.config.gridType === "toroidal")
-            ? lattice.jiPositions.get(node.key) ?? node.pos3d
-            : (topoPositions ?? lattice.positions).get(node.key) ?? node.pos3d}
+          pos={layers.classes ? lattice.jiPositions.get(node.key) ?? node.pos3d : (topoPositions ?? lattice.positions).get(node.key) ?? node.pos3d}
           isActive={droneNodes.has(node.key)}
           activeColors={nodeColorOverrides?.get(node.key)}
           forceDim={dimGeneratorEdges === true}
@@ -5183,6 +5164,55 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
         }
       }
       baseNodes = baseNodes.filter(n => onPath.has(n.key));
+    }
+
+    // Temperament chain-length filter — per direct user direction
+    // (2026-05-06): "i click 12 notes and i dont see only 12 i see
+    // more then 12".  When chainLength is set, restrict the visible
+    // lattice to exactly the N tempered equivalence classes that the
+    // generator chain visits.  This implements Scala's
+    // Lineartemp / Equaltemp-Val "give me N notes" semantic: pick a
+    // temperament, pick a chain length, and the lattice shows only
+    // those N pitches (each as a single representative cell).
+    const N = effectiveConfig.chainLength;
+    if (N && N >= 2 && effectiveConfig.primes.includes(3)) {
+      // Map each chain position 3^k (k = 0..N-1) to its class ID via
+      // classMap.  With tempering active, multiple lattice cells
+      // collapse to one class — we then keep the SIMPLEST cell per
+      // class (i.e. the one whose ratio is in `chainKeys`, the
+      // canonical chain-position key) so we end up with exactly N
+      // nodes visible.
+      const wantedClasses = new Set<number>();
+      const chainKeysSet = new Set<string>();
+      for (let k = 0; k < N; k++) {
+        let num = 1, den = 1;
+        if (k >= 0) num = 3 ** k; else den = 3 ** -k;
+        while (num >= 2 * den) den *= 2;
+        while (num < den) num *= 2;
+        const key = `${num}/${den}`;
+        chainKeysSet.add(key);
+        const cid = monzoLattice.classMap?.get(key);
+        if (cid !== undefined) wantedClasses.add(cid);
+      }
+      if (wantedClasses.size > 0) {
+        // Tempering active: pick ONE representative per wanted class
+        // (preferring the canonical chain-position cell when it exists
+        // in the lattice).
+        const pickedByClass = new Map<number, typeof baseNodes[number]>();
+        for (const node of baseNodes) {
+          const cid = node.temperedClass;
+          if (cid === undefined || !wantedClasses.has(cid)) continue;
+          const isCanonical = chainKeysSet.has(node.key);
+          const existing = pickedByClass.get(cid);
+          if (!existing || (isCanonical && !chainKeysSet.has(existing.key))) {
+            pickedByClass.set(cid, node);
+          }
+        }
+        baseNodes = Array.from(pickedByClass.values());
+      } else {
+        // No tempering → keep the canonical chain cells only.
+        baseNodes = baseNodes.filter(n => chainKeysSet.has(n.key));
+      }
     }
 
     if (baseNodes === monzoLattice.nodes) return monzoLattice;
