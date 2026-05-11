@@ -812,6 +812,16 @@ export default function ModeIdentificationTab({
   const curChord = useRef<{ name: string; degrees: string[] } | null>(null);
   const curPattern = useRef<ScalePattern | null>(null);
 
+  // Per-mode pick-count tracker.  Per direct user direction (2026-05-11):
+  // "in mode id sometimes it picks one mode way too much over the other,
+  // if one is playing more then the other you should bias towards the
+  // other tonalities".  Uniform randomChoice over the enabled pool was
+  // letting Math.random's clustering pile rounds onto the same mode
+  // for runs of 4-5 in a row.  This counter is consulted in pickMode()
+  // below to weight LESS-picked modes higher so the distribution
+  // smooths out over a session.
+  const modePickCounts = useRef<Map<string, number>>(new Map());
+
   const stopTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; audioEngine.stopDrone(); };
 
   const highlightFramesWithGap = useCallback((frames: number[][], gapMs: number) => {
@@ -851,7 +861,22 @@ export default function ModeIdentificationTab({
       picked === "chord" ? "chord" :
       picked === "color-set" ? "colors" : "scale";
 
-    const mode = randomChoice(pool);
+    // Weighted pick favouring the least-picked modes so far.  Weight
+    // = (maxCount + 1 - thisModesCount), so a mode that's been seen
+    // 0 times in the session has the highest weight and one that's
+    // been picked 5 times (when max is 5) has weight 1.  Plain
+    // uniform sampling was letting Math.random cluster repeats.
+    const counts = modePickCounts.current;
+    const maxCount = pool.reduce((m, info) => Math.max(m, counts.get(info.name) ?? 0), 0);
+    const weights = pool.map(info => Math.max(1, (maxCount + 1) - (counts.get(info.name) ?? 0)));
+    const total = weights.reduce((a, b) => a + b, 0);
+    let pick = Math.random() * total;
+    let mode = pool[0];
+    for (let i = 0; i < pool.length; i++) {
+      pick -= weights[i];
+      if (pick <= 0) { mode = pool[i]; break; }
+    }
+    counts.set(mode.name, (counts.get(mode.name) ?? 0) + 1);
     const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
     // Tonic-aligned anchor closest to the mid-pitch of the user's range.
     const midPitchRaw = Math.floor((lowestPitch + highestPitch) / 2);
@@ -863,19 +888,17 @@ export default function ModeIdentificationTab({
     let chordInfo: { name: string; degrees: string[] } | null = null;
     let pattern: ScalePattern | null = null;
 
-    // Window for horizontal phrases (Color Set + Scale).  Per direct
-    // user direction (2026-05-06): "mode id is not using the full
-    // range".  Previously this used tonic-aligned bounds via
-    //   tightHigh = firstTonic + edo * floor((highestPitch - firstTonic) / edo)
-    // which truncated to whole octave multiples — on a 2.5-octave
-    // range like C♯2–F♯4 the upper bound collapsed from F♯4 to C4
-    // (one octave below) because (54−36)/12 = 1.5 → floor = 1.
-    // Now: anchor low at the first tonic, but let high extend to the
-    // user's actual highestPitch.  Phrase generators don't strictly
-    // require tonic alignment on both ends; ceasing to enforce it
-    // gives them the full register the user asked for.
-    const firstTonic = lowestPitch + (((tonicPc - lowestPitch) % edo) + edo) % edo;
-    const tightLow = firstTonic <= highestPitch ? firstTonic : lowestPitch;
+    // Window for horizontal phrases (Color Set + Scale): the user's
+    // picked range, full stop.  Per direct user direction (2026-05-11):
+    // "lowest pitch is the one i pick that is lowest highest is one i
+    // pick that is highest not the root note or highest root note".
+    // The earlier "tightLow = firstTonic" snap clipped off everything
+    // below the first tonic-in-range (up to ~1 octave gone for a
+    // tonic just above lowestPitch); the phrase generators
+    // (voiceLeadSeq, tryBuildScale, archetypes) already handle non-
+    // tonic-aligned bounds via fitLineIntoWindow / per-note octave
+    // re-mapping, so passing raw bounds gives them the full register.
+    const tightLow = lowestPitch;
     const tightHigh = highestPitch;
 
     if (picked === "color-set") {
