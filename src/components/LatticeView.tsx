@@ -5230,13 +5230,114 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       }
     }
 
-    if (baseNodes === monzoLattice.nodes) return monzoLattice;
+    if (baseNodes === monzoLattice.nodes && !monzoChainLayout) return monzoLattice;
 
     const visibleKeys = new Set(baseNodes.map(n => n.key));
-    const visibleEdges = monzoLattice.edges.filter(e => visibleKeys.has(e.from) && visibleKeys.has(e.to));
+    let visibleEdges = monzoLattice.edges.filter(e => visibleKeys.has(e.from) && visibleKeys.has(e.to));
     const visiblePositions = new Map<string, [number, number, number]>();
     for (const [k, v] of monzoLattice.positions) {
       if (visibleKeys.has(k)) visiblePositions.set(k, v);
+    }
+
+    // Cents-based chain layout (USER-TOGGLED only — never default).
+    // Each chain step k is placed at angle = 2π·(tempered_cents_k mod
+    // 1200)/1200 and radius = R0 + r_inc·k.  Closed temperaments wrap
+    // cleanly into a circle of fifths (12-EDO at 700¢/step lands the
+    // 12th step back at angle 0 with a slightly larger radius);
+    // open / un-tempered chains spiral outward as the Pythagorean
+    // comma accumulates each turn.  This bypasses the JI projection
+    // entirely so rank-1 closures (which collapse every cell to one
+    // projected XYZ point) become visually distinguishable.  Per
+    // direct user direction (2026-05-11) — kept behind the
+    // monzoChainLayout toggle so the main spatial-audiation lattice
+    // is never touched by this code (fbf0445's leak was the original
+    // motivation to revert; toggle restores it opt-in).
+    const Nchain = effectiveConfig.chainLength;
+    if (monzoChainLayout && Nchain && Nchain >= 2 && effectiveConfig.primes.includes(3)) {
+      const fullPrimes = effectiveConfig.primes.includes(2)
+        ? effectiveConfig.primes
+        : [2, ...effectiveConfig.primes];
+      const p2idx = fullPrimes.indexOf(2);
+      const p3idx = fullPrimes.indexOf(3);
+
+      // classId → rep-node-key for every visible class.
+      const classToKey = new Map<number, string>();
+      for (const n of baseNodes) {
+        if (n.temperedClass !== undefined && !classToKey.has(n.temperedClass)) {
+          classToKey.set(n.temperedClass, n.key);
+        }
+      }
+
+      // Tempered cents for chain step k = monzo [-a, k] octave-reduced.
+      // For k ≥ 0, a is the smallest a ≥ 0 such that 3^k / 2^a ∈ [1,2).
+      // For k < 0, mirror: a = ceil(-k·log2(3)) negated appropriately.
+      const tcentsForStep = (k: number): number => {
+        const exps = new Array(fullPrimes.length).fill(0);
+        exps[p3idx] = k;
+        // Octave-reduce: choose a so cents lies in [0, 1200)
+        const rawCents = k * 1200 * Math.log2(3);
+        const a = -Math.floor(rawCents / 1200);
+        exps[p2idx] = a;
+        return temperedCents(
+          exps, fullPrimes, effectiveConfig.temperedCommas,
+          false, effectiveConfig.tuningMethod,
+        );
+      };
+
+      const stepToKey = new Map<number, string>();
+      for (let k = 0; k < Nchain; k++) {
+        // Resolve which visible rep represents this chain step.
+        let num = 1, den = 1;
+        if (k >= 0) num = 3 ** k; else den = 3 ** -k;
+        while (num >= 2 * den) den *= 2;
+        while (num < den) num *= 2;
+        const chainKey = `${num}/${den}`;
+        const cid = monzoLattice.classMap?.get(chainKey);
+        if (cid !== undefined) {
+          const repKey = classToKey.get(cid);
+          if (repKey) stepToKey.set(k, repKey);
+        } else if (visibleKeys.has(chainKey)) {
+          stepToKey.set(k, chainKey);
+        }
+      }
+
+      if (stepToKey.size >= 2) {
+        const R0 = Math.max(3.5, 0.6 * Math.min(Nchain, 24));
+        // Radial increment per step — small but non-zero so a closed
+        // ring still shows a faint outward spiral (so step k and step
+        // k+N at the same angle don't z-fight).
+        const rInc = 0.18;
+        for (const [k, key] of stepToKey) {
+          const cents = ((tcentsForStep(k) % 1200) + 1200) % 1200;
+          const angle = (2 * Math.PI * cents) / 1200;
+          const r = R0 + rInc * k;
+          visiblePositions.set(key, [r * Math.cos(angle), 0, r * Math.sin(angle)]);
+        }
+
+        // Synthesize fifth + third edges between chain reps so the
+        // ring/spiral reads as a connected structure.  k → k+1 is a
+        // fifth; k → k+4 is a meantone-identity major third (4 fifths
+        // up = M3).  Replace native JI edges (their cartesian lengths
+        // no longer reflect the new polar positions).
+        const synthEdges: typeof visibleEdges = [];
+        const have = new Set<string>();
+        const addE = (a: string, b: string, prime: number) => {
+          if (a === b) return;
+          const k1 = `${a}|${b}|${prime}`;
+          const k2 = `${b}|${a}|${prime}`;
+          if (have.has(k1) || have.has(k2)) return;
+          have.add(k1);
+          synthEdges.push({ from: a, to: b, prime, type: "generator" });
+        };
+        for (let k = 0; k < Nchain; k++) {
+          const here = stepToKey.get(k);
+          const nf = stepToKey.get(k + 1);
+          const nt = stepToKey.get(k + 4);
+          if (here && nf) addE(here, nf, 3);
+          if (here && nt) addE(here, nt, 5);
+        }
+        visibleEdges = synthEdges;
+      }
     }
 
     return {
@@ -5247,7 +5348,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     };
   }, [monzoLattice, monzoNeighborRadius, monzoFocusKey, latticeDroneRoot,
       customRatiosActive, customRatioMonzos, parsedCustomRatios, customRatioNeighbors, customRatioNeighborRadius,
-      effectiveConfig, debouncedConfig, noteFilterTargets]);
+      effectiveConfig, debouncedConfig, noteFilterTargets, monzoChainLayout]);
 
   // ── Chain-node highlight set ────────────────────────────────────────
   // Class-based chain highlight: for each step k on the generator
