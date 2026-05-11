@@ -2844,7 +2844,19 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
         <MonzoNodeMesh
           key={node.key}
           node={node}
-          pos={layers.classes ? lattice.jiPositions.get(node.key) ?? node.pos3d : (topoPositions ?? lattice.positions).get(node.key) ?? node.pos3d}
+          // Position-source rule per direct user direction (2026-05-06):
+          // "tempering should close the circle it should [not] be
+          // straight line".  When a chain length is set, ALWAYS use
+          // jiPositions (untempered 5-limit helix coordinates) so the
+          // N tempered classes wrap around the cylinder and the chain
+          // closes back to its starting angle after one full turn —
+          // exactly the visual the user wants.  Without chain length,
+          // the original "layers.classes uses JI / else use projected"
+          // rule still applies so non-chain tempering keeps its
+          // comma-flattened layout.
+          pos={(layers.classes || lattice.config.chainLength !== undefined)
+            ? lattice.jiPositions.get(node.key) ?? node.pos3d
+            : (topoPositions ?? lattice.positions).get(node.key) ?? node.pos3d}
           isActive={droneNodes.has(node.key)}
           activeColors={nodeColorOverrides?.get(node.key)}
           forceDim={dimGeneratorEdges === true}
