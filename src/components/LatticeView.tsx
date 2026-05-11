@@ -5601,47 +5601,29 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       baseNodes = baseNodes.filter(n => onPath.has(n.key));
     }
 
-    // Temperament chain-length filter.  Per the broken-screenshot
-    // diagnosis (2026-05-06): keeping every member of each tempered
-    // class scatters far-lattice cells (huge-exponent JI reps) all
-    // over the helix.  Instead pick the SIMPLEST representative per
-    // class (smallest sum of |monzo| exponents) so we end up with
-    // exactly N nodes — but the rep is the one closest to origin,
-    // which for meantone naturally mixes 3-axis cells (like [+1, 0]
-    // = G) with 5-axis cells (like [0, +1] = 5/4 = E) since the
-    // 5/4 representation of step 4 has |monzo| = 1 vs the [+4, 0]
-    // representation's |monzo| = 4.  So 3rds and 5ths still surface
-    // through the reps without cluttering with equivalents.
+    // Temperament chain-length filter.  Per direct user direction
+    // (2026-05-11): "not giving 31 nodes" — the previous "one rep
+    // per class" approach depended on the comma kernel reducing to
+    // exactly N classes, which only works at FULL fraction.  With
+    // fractional tempering (e.g. 81/80 + 128/125 each at 1/4) the
+    // class count diverges from N and the filter produces 12 / 36 /
+    // whatever instead of the requested 31.
+    //
+    // Fix: just show the N canonical chain-of-fifths positions —
+    // the cells 3^k octave-reduced for k = 0..N-1.  Each is its own
+    // lattice node, regardless of comma class.  Guaranteed exactly
+    // N visible cells matching the temperament input.
     const N = effectiveConfig.chainLength;
     if (N && N >= 2 && effectiveConfig.primes.includes(3)) {
-      const wantedClasses = new Set<number>();
       const chainKeysSet = new Set<string>();
       for (let k = 0; k < N; k++) {
         let num = 1, den = 1;
         if (k >= 0) num = 3 ** k; else den = 3 ** -k;
         while (num >= 2 * den) den *= 2;
         while (num < den) num *= 2;
-        const key = `${num}/${den}`;
-        chainKeysSet.add(key);
-        const cid = monzoLattice.classMap?.get(key);
-        if (cid !== undefined) wantedClasses.add(cid);
+        chainKeysSet.add(`${num}/${den}`);
       }
-      const monzoMagnitude = (exps: number[]) => exps.reduce((s, e) => s + Math.abs(e ?? 0), 0);
-      if (wantedClasses.size > 0) {
-        const bestByClass = new Map<number, typeof baseNodes[number]>();
-        for (const node of baseNodes) {
-          const cid = node.temperedClass;
-          if (cid === undefined || !wantedClasses.has(cid)) continue;
-          const existing = bestByClass.get(cid);
-          if (!existing) bestByClass.set(cid, node);
-          else if (monzoMagnitude(node.monzo.exps) < monzoMagnitude(existing.monzo.exps)) {
-            bestByClass.set(cid, node);
-          }
-        }
-        baseNodes = Array.from(bestByClass.values());
-      } else {
-        baseNodes = baseNodes.filter(n => chainKeysSet.has(n.key));
-      }
+      baseNodes = baseNodes.filter(n => chainKeysSet.has(n.key));
     }
 
     if (baseNodes === monzoLattice.nodes && !monzoChainLayout) return monzoLattice;
@@ -7077,19 +7059,28 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                     }}
                     className="w-14 bg-[#141414] border border-[#333] text-white text-xs font-mono rounded px-1.5 py-0.5 text-center"
                   />
-                  <div className="flex gap-1">
-                    {[5, 7, 12, 19, 22, 31, 41, 53].map(n => (
-                      <button key={n}
-                        onClick={() => setMonzoConfig(prev => ({ ...prev, chainLength: prev.chainLength === n ? undefined : n }))}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors border ${
-                          N === n
-                            ? "bg-[#2a1a1a] text-[#ff6666] border-[#ff4444]"
-                            : "bg-[#111] text-[#555] border-[#222] hover:text-[#aaa]"
-                        }`}>
-                        {n}
-                      </button>
-                    ))}
-                  </div>
+                  {/* EDO-style chain-length chip row hidden in
+                      chromeless mode (Spatial Audiation's embedded
+                      Lumatone lattice) per direct user direction
+                      (2026-05-11): "remove the edo options from
+                      harmonic lattice for the lumatone".  The
+                      standalone lattice still surfaces them; the
+                      embedded view only keeps the numeric input. */}
+                  {!chromeless && (
+                    <div className="flex gap-1">
+                      {[5, 7, 12, 19, 22, 31, 41, 53].map(n => (
+                        <button key={n}
+                          onClick={() => setMonzoConfig(prev => ({ ...prev, chainLength: prev.chainLength === n ? undefined : n }))}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors border ${
+                            N === n
+                              ? "bg-[#2a1a1a] text-[#ff6666] border-[#ff4444]"
+                              : "bg-[#111] text-[#555] border-[#222] hover:text-[#aaa]"
+                          }`}>
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {N !== undefined && closure !== null && (
                     <span className="text-[9px] text-[#777] tabular-nums"
                       title="Cents by which the Nth-generator step misses an exact octave (signed). 0 = perfect closure; small = near-MOS.">
