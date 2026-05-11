@@ -2561,6 +2561,13 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
           // prime-3 as orange.
           const COLOR_P5 = "#e85ad0";  // magenta
           const COLOR_M3 = "#5cca5c";  // green
+          // Dim (non-droned) background edges paint in plain grey
+          // rather than dimmed P5/M3 colours — per direct user
+          // direction (2026-05-11): "make the edges grey not dark".
+          // At 0.12 opacity the coloured versions read as nearly black
+          // on the dark canvas, which the user wanted replaced with a
+          // clearly grey neutral structural grid.
+          const COLOR_DIM = "#999999";
           // Split each chain into BRIGHT (both endpoints belong to an
           // active / pinned chord, i.e. both are in droneNodes — these
           // are the "edges of the chords themselves" and the voice-
@@ -2568,10 +2575,10 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
           // (every other structural edge).  Without the split the
           // chord motion drowns in the full P5 / M3 grid.
           const buckets: { color: string; pts: [number, number, number][]; bright: boolean }[] = [
-            { color: COLOR_P5, pts: [], bright: true  },
-            { color: COLOR_M3, pts: [], bright: true  },
-            { color: COLOR_P5, pts: [], bright: false },
-            { color: COLOR_M3, pts: [], bright: false },
+            { color: COLOR_P5,  pts: [], bright: true  },
+            { color: COLOR_M3,  pts: [], bright: true  },
+            { color: COLOR_DIM, pts: [], bright: false },
+            { color: COLOR_DIM, pts: [], bright: false },
           ];
           const drawBucket = (fromClass: number, stepDelta: number, bucketBase: 0 | 1) => {
             const fromRep = classToRep.get(fromClass);
@@ -2597,7 +2604,7 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
                   args={[new Float32Array(pts.flat()), 3]}
                 />
               </bufferGeometry>
-              <lineBasicMaterial color={color} transparent opacity={bright ? 0.95 : 0.12} linewidth={bright ? 3 : 1} />
+              <lineBasicMaterial color={color} transparent opacity={bright ? 0.95 : 0.35} linewidth={bright ? 3 : 1} />
             </lineSegments>
           ));
         }
