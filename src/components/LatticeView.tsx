@@ -3236,7 +3236,9 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
         <MonzoNodeMesh
           key={node.key}
           node={node}
-          pos={layers.classes ? lattice.jiPositions.get(node.key) ?? node.pos3d : (topoPositions ?? lattice.positions).get(node.key) ?? node.pos3d}
+          pos={(layers.classes || lattice.config.chainLength !== undefined)
+            ? lattice.jiPositions.get(node.key) ?? node.pos3d
+            : (topoPositions ?? lattice.positions).get(node.key) ?? node.pos3d}
           isActive={droneNodes.has(node.key)}
           activeColors={nodeColorOverrides?.get(node.key)}
           forceDim={dimGeneratorEdges === true}
