@@ -18,7 +18,7 @@ import {
   buildLattice, detectTopology, latticeInfo,
   generateTorusMesh, generateCylinderMesh, projectNodesToTopoSurface,
   intervalName as monzoIntervalName, intervalAllNames as monzoIntervalAllNames, monzoLabel, ratioToCents as monzoRatioToCents,
-  ratioToNoteName, rootPcToFreq, ROOT_NOTE_OPTIONS,
+  ratioToNoteName, ratioToPythagoreanName, rootPcToFreq, ROOT_NOTE_OPTIONS,
   PRESET_CONFIGS, KNOWN_COMMAS, ALL_PRIMES, DEFAULT_PROJECTIONS, factorize, monzoToRatio,
   PRIME_COLORS as MONZO_PRIME_COLORS,
   temperedCents, temperedRatio,
@@ -1709,6 +1709,7 @@ interface MonzoNodeMeshProps {
   rootPc?: number;
   /** Which label sub-layers are visible */
   showNoteNames?: boolean;
+  showPyth?: boolean;
   showIntervals?: boolean;
   showRatios?: boolean;
   showMonzo?: boolean;
@@ -1762,7 +1763,7 @@ const TEMPER_CLASS_COLORS = [
   "#ff8844", "#44ff88", "#8844ff", "#ffaa66", "#66ffaa", "#aa66ff",
 ];
 
-function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused, showLabel = true, labelLOD = false, labelDist = 15, onHover, onClick, onFocus, onCtrlClick, primes, temperedClass, classColorMap, rootPc, showNoteNames = true, showIntervals = true, showRatios = true, showMonzo = false, showHeji = false, temperedCommas, tuningMethod, octaveEquivalence, temperedSiblings, isClassRep, isOnPath, isPathEndpoint, isPinnedPath, isHighlighted, isInChain = false, highlightMode, isNonRepClass, showClassId, edo, forceDim = false }: MonzoNodeMeshProps) {
+function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused, showLabel = true, labelLOD = false, labelDist = 15, onHover, onClick, onFocus, onCtrlClick, primes, temperedClass, classColorMap, rootPc, showNoteNames = true, showPyth = false, showIntervals = true, showRatios = true, showMonzo = false, showHeji = false, temperedCommas, tuningMethod, octaveEquivalence, temperedSiblings, isClassRep, isOnPath, isPathEndpoint, isPinnedPath, isHighlighted, isInChain = false, highlightMode, isNonRepClass, showClassId, edo, forceDim = false }: MonzoNodeMeshProps) {
   // First colour from the override list — drives the legacy single-
   // colour code paths (emissive, label tint, etc.).  When the array
   // has more than one entry, the actual sphere fill is rendered as
@@ -1818,6 +1819,10 @@ function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused
   }, [isActive, activeColor, isHovered, isFocused, isOnPath, isPathEndpoint, isHighlighted]);
 
   const noteName = useMemo(() => ratioToNoteName(node.monzo.n, node.monzo.d, rootPc ?? 0), [node.monzo.n, node.monzo.d, rootPc]);
+  const pythName = useMemo(() => {
+    if (!showPyth) return null;
+    return ratioToPythagoreanName(node.monzo.n, node.monzo.d, rootPc ?? 0);
+  }, [showPyth, node.monzo.n, node.monzo.d, rootPc]);
 
   // HEJI notation data (computed when HEJI layer is active)
   const hejiLabel = useMemo(() => {
@@ -1980,6 +1985,16 @@ function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused
                 fontWeight: 700,
               }}>
                 {noteName}
+              </div>
+            )}
+            {showPyth && pythName && (
+              <div style={{
+                color: hi ? "#a8ff70" : "#7ad04a",
+                fontSize: edo !== undefined ? (isSmall ? 14 : 20) : (isSmall ? 9 : 14),
+                fontFamily: "Inter, system-ui, sans-serif",
+                fontWeight: 700,
+              }}>
+                {pythName}
               </div>
             )}
             {showIntervals && intervalText && (
@@ -2292,7 +2307,7 @@ interface MonzoSceneProps {
   onFocusNode?: (key: string) => void;
   focusKey: string | null;
   showTopoSurface: boolean;
-  layers: { nodes: boolean; primeEdges: boolean; temperedEdges: boolean; noteNames: boolean; intervals: boolean; ratios: boolean; monzo: boolean; heji: boolean; classes: boolean };
+  layers: { nodes: boolean; primeEdges: boolean; temperedEdges: boolean; noteNames: boolean; pyth: boolean; intervals: boolean; ratios: boolean; monzo: boolean; heji: boolean; classes: boolean };
   pathMode: boolean;
   labelLOD: boolean;
   labelDist: number;
@@ -2908,7 +2923,7 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
           forceDim={dimGeneratorEdges === true}
           isHovered={hoveredNode === node.key}
           isFocused={focusKey === node.key}
-          showLabel={layers.noteNames || layers.intervals || layers.ratios || layers.monzo || layers.heji}
+          showLabel={layers.noteNames || layers.pyth || layers.intervals || layers.ratios || layers.monzo || layers.heji}
           labelLOD={labelLOD}
           labelDist={labelDist}
           onHover={onHover}
@@ -2919,6 +2934,7 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
           classColorMap={classColorMap}
           rootPc={rootPc}
           showNoteNames={layers.noteNames}
+          showPyth={layers.pyth}
           showIntervals={layers.intervals}
           showRatios={layers.ratios}
           showMonzo={layers.monzo}
@@ -4600,6 +4616,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     primeEdges: true,
     temperedEdges: false,
     noteNames: true,
+    pyth: false,
     intervals: true,
     ratios: true,
     monzo: false,
@@ -6764,8 +6781,8 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                 longer sees the toggle in the layer strip. */}
             <div className="flex flex-wrap gap-1.5 items-center">
               <span className="text-[10px] text-[#555] uppercase tracking-wider mr-1">Layers</span>
-              {(["nodes", "primeEdges", "temperedEdges", "noteNames", "intervals", "ratios", "monzo", "heji"] as const).map(lk => {
-                const labels: Record<string, string> = { nodes: "Nodes", primeEdges: "Edges", temperedEdges: "Tempered", noteNames: "12TET", intervals: "Intervals", ratios: "Ratios", monzo: "Monzo", heji: "HEJI" };
+              {(["nodes", "primeEdges", "temperedEdges", "noteNames", "pyth", "intervals", "ratios", "monzo", "heji"] as const).map(lk => {
+                const labels: Record<string, string> = { nodes: "Nodes", primeEdges: "Edges", temperedEdges: "Tempered", noteNames: "12TET", pyth: "Pyth", intervals: "Intervals", ratios: "Ratios", monzo: "Monzo", heji: "HEJI" };
                 return (
                   <button key={lk} onClick={() => toggleMonzoLayer(lk)}
                     className={`px-2 py-1 rounded text-xs font-medium transition-colors border ${

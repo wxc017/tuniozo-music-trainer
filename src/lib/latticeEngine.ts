@@ -964,6 +964,84 @@ export function ratioToNoteName(n: number, d: number, rootPc: number = 0): strin
   return name;
 }
 
+/** Pythagorean (chain-of-fifths) note name for an arbitrary ratio.
+ *  Snaps cents to the nearest position on the infinite chain of pure
+ *  3/2 fifths and names that position with extended accidentals — so
+ *  fifths far up or down read as F#, C#, ... B#, F##, ... and
+ *  Bb, Eb, ... Cb, Fb, Bbb, Ebb, ... Quintuple-flat / quadruple-sharp
+ *  positions appear naturally once the chain extends past 28 fifths
+ *  in either direction.  Per direct user direction (2026-05-11): "add
+ *  pythagreom note names to harmonic lattice quadturple flats,
+ *  quintuplet flats exc.".
+ *
+ *  Letter cycle going UP by fifths from C: C, G, D, A, E, B, F, then
+ *  back to C with a sharp.  Going DOWN by fifths: C, F, B, E, A, D, G,
+ *  then back to C with a flat.  Each loop of 7 adds one extra
+ *  accidental to all letters.
+ *
+ *  rootPc rotates the chain so that the starting letter (chain-step 0)
+ *  matches the user's chosen root.  For root=0 (C), step 0 = C; for
+ *  root=7 (G), step 0 = G; etc. */
+export function ratioToPythagoreanName(n: number, d: number, rootPc: number = 0): string {
+  const cents = 1200 * Math.log2(n / d);
+  // Octave-reduced pitch class in cents (mod 1200).
+  const target = ((cents % 1200) + 1200) % 1200;
+  // Pure Pythagorean fifth in cents.
+  const P5 = 1200 * Math.log2(3 / 2);
+  // Search a wide enough chain to cover every commonly-used JI prime
+  // (5, 7, 11, 13...) AND any chain-of-fifths position the user might
+  // pick a chain length for.  ±31 gives names through quintuple
+  // accidentals (28 fifths is exactly 4×7, where the 5th-accidental
+  // tier starts).
+  const SEARCH = 36;
+  let bestK = 0;
+  let bestErr = Infinity;
+  for (let k = -SEARCH; k <= SEARCH; k++) {
+    const pyCents = ((k * P5) % 1200 + 1200) % 1200;
+    const diff = Math.abs(pyCents - target);
+    const wrapped = Math.min(diff, 1200 - diff);
+    if (wrapped < bestErr) { bestErr = wrapped; bestK = k; }
+  }
+  // Rotate the chain so the user's chosen root sits at step 0.
+  // rootPc shifts in semitones (0=C); the chain offset in fifths-
+  // steps for that root is rootPc * 7 mod 12, then unwrapped to the
+  // nearest signed equivalent so e.g. F (rootPc=5) reads as step -1
+  // not step 11.
+  const rootStepRaw = ((rootPc * 7) % 12 + 12) % 12;
+  const rootStep = rootStepRaw > 6 ? rootStepRaw - 12 : rootStepRaw;
+  const k = bestK + rootStep;
+
+  // Letter + accidental from k.
+  let letter: string;
+  let acc: number;  // positive = sharps, negative = flats
+  if (k >= 0) {
+    const LETTERS_UP = ["C", "G", "D", "A", "E", "B", "F"];
+    letter = LETTERS_UP[k % 7];
+    acc = Math.floor((k + 1) / 7);
+  } else {
+    const LETTERS_DOWN = ["F", "B", "E", "A", "D", "G", "C"];
+    const i = (-k - 1) % 7;
+    letter = LETTERS_DOWN[i];
+    acc = -Math.ceil((-k) / 7);
+  }
+  // Render accidentals.  Use the standard Unicode sharps / flats for
+  // 1..2; stack literal "#"/"b" beyond that so quadruple / quintuple
+  // accidentals stay legible (the Unicode "𝄪" doubles read poorly when
+  // stacked, and the user explicitly asked for "quadtuple flats" etc.
+  // by name).
+  let accText = "";
+  if (acc > 0) {
+    if (acc === 1) accText = "♯";
+    else if (acc === 2) accText = "𝄪";
+    else accText = "♯".repeat(acc);
+  } else if (acc < 0) {
+    if (acc === -1) accText = "♭";
+    else if (acc === -2) accText = "𝄫";
+    else accText = "♭".repeat(-acc);
+  }
+  return letter + accText;
+}
+
 /** Frequency for a root note pitch class (C4=261.63) */
 export function rootPcToFreq(rootPc: number): number {
   return 261.63 * Math.pow(2, rootPc / 12);
