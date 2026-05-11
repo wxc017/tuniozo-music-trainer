@@ -381,6 +381,11 @@ export default function App() {
   // section picker.  Always false in production (see BETA_AVAILABLE).
   const betaMode           = BETA_AVAILABLE && betaMode_raw;
   const [academicMode, setAcademicMode] = useLS<boolean>("lt_academic_mode", false);
+  // Metronome + countdown timer strip visibility.  Default OFF per
+  // direct user direction (2026-05-06): "remove metornome and timer
+  // from everything unless i toggle it on in settings".  The strip
+  // surfaces in App.tsx + Mixed Groups + DrumPatterns gates on this.
+  const [showMetronomeTimer, setShowMetronomeTimer] = useLS<boolean>("lt_show_metronome_timer", false);
   // Dynamically load academic components (only present in local dev)
   const [academicComps, setAcademicComps] = useState<{
     ReadingWorkflow?: ComponentType;
@@ -895,9 +900,14 @@ export default function App() {
             </div>
           </div>
 
-          {/* Metronome + Timer strip — hidden in academic mode and in
-              Mixed Groups (which has its own per-pulse metronome). */}
-          {!academicMode && section !== "mixed-groups" && <div className="flex flex-wrap items-center gap-3">
+          {/* Metronome + Timer strip — hidden in academic mode and
+              in Mixed Groups (which has its own per-pulse metronome).
+              Also gated on the `showMetronomeTimer` settings toggle
+              per direct user direction (2026-05-06): "remove
+              metornome and timer from everything unless i toggle it
+              on in settings" — default off so the page header stays
+              focused on the section content. */}
+          {showMetronomeTimer && !academicMode && section !== "mixed-groups" && <div className="flex flex-wrap items-center gap-3">
             <MetronomeStrip
               bpm={metronome.bpm}
               setBpm={metronome.setBpm}
@@ -1892,6 +1902,8 @@ export default function App() {
             setAcademicMode(v);
             setSection(v ? "reading-workflow" : "ear-trainer");
           }}
+          showMetronomeTimer={showMetronomeTimer}
+          onShowMetronomeTimerChange={setShowMetronomeTimer}
         />
       )}
 

@@ -5166,22 +5166,19 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       baseNodes = baseNodes.filter(n => onPath.has(n.key));
     }
 
-    // Temperament chain-length filter — per direct user direction
-    // (2026-05-06): "i click 12 notes and i dont see only 12 i see
-    // more then 12".  When chainLength is set, restrict the visible
-    // lattice to exactly the N tempered equivalence classes that the
-    // generator chain visits.  This implements Scala's
-    // Lineartemp / Equaltemp-Val "give me N notes" semantic: pick a
-    // temperament, pick a chain length, and the lattice shows only
-    // those N pitches (each as a single representative cell).
+    // Temperament chain-length filter.  Per direct user direction
+    // (2026-05-06): "for tempering i dont see the 3rds and fifths at
+    // once" — the previous "one rep per class" pick collapsed every
+    // visible cell onto the 3-axis chain (fifths only), hiding the
+    // 5-axis (thirds) entirely.  Now we keep ALL cells whose
+    // tempered class is one of the N classes the generator chain
+    // visits: so 12 chain classes might surface as ~20 lattice cells
+    // (12 along the fifths chain + the equivalent thirds-chain cells
+    // at [0, +1] = 5/4 for the 4-fifths-up class, etc.) — both axes
+    // remain visually present while still restricting the user to
+    // the N-tone temperament's pitch set.
     const N = effectiveConfig.chainLength;
     if (N && N >= 2 && effectiveConfig.primes.includes(3)) {
-      // Map each chain position 3^k (k = 0..N-1) to its class ID via
-      // classMap.  With tempering active, multiple lattice cells
-      // collapse to one class — we then keep the SIMPLEST cell per
-      // class (i.e. the one whose ratio is in `chainKeys`, the
-      // canonical chain-position key) so we end up with exactly N
-      // nodes visible.
       const wantedClasses = new Set<number>();
       const chainKeysSet = new Set<string>();
       for (let k = 0; k < N; k++) {
@@ -5195,22 +5192,14 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
         if (cid !== undefined) wantedClasses.add(cid);
       }
       if (wantedClasses.size > 0) {
-        // Tempering active: pick ONE representative per wanted class
-        // (preferring the canonical chain-position cell when it exists
-        // in the lattice).
-        const pickedByClass = new Map<number, typeof baseNodes[number]>();
-        for (const node of baseNodes) {
-          const cid = node.temperedClass;
-          if (cid === undefined || !wantedClasses.has(cid)) continue;
-          const isCanonical = chainKeysSet.has(node.key);
-          const existing = pickedByClass.get(cid);
-          if (!existing || (isCanonical && !chainKeysSet.has(existing.key))) {
-            pickedByClass.set(cid, node);
-          }
-        }
-        baseNodes = Array.from(pickedByClass.values());
+        // Tempering active: keep every cell whose class is in the
+        // chain's class set — both fifths-chain AND thirds-chain
+        // members of each shared class stay visible.
+        baseNodes = baseNodes.filter(n =>
+          n.temperedClass !== undefined && wantedClasses.has(n.temperedClass));
       } else {
-        // No tempering → keep the canonical chain cells only.
+        // No tempering → no equivalence classes exist, so just show
+        // the canonical fifths-chain cells.
         baseNodes = baseNodes.filter(n => chainKeysSet.has(n.key));
       }
     }
