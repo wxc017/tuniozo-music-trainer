@@ -2307,7 +2307,7 @@ interface MonzoSceneProps {
   onFocusNode?: (key: string) => void;
   focusKey: string | null;
   showTopoSurface: boolean;
-  layers: { nodes: boolean; primeEdges: boolean; temperedEdges: boolean; noteNames: boolean; pyth: boolean; intervals: boolean; ratios: boolean; monzo: boolean; heji: boolean; classes: boolean };
+  layers: { nodes: boolean; primeEdges: boolean; temperedEdges: boolean; noteNames: boolean; pyth: boolean; intervals: boolean; ratios: boolean; monzo: boolean; heji: boolean; classes: boolean; commaVectors: boolean; fundamentalDomain: boolean; valArrows: boolean; generators: boolean };
   pathMode: boolean;
   labelLOD: boolean;
   labelDist: number;
@@ -2813,6 +2813,171 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
             />
           );
         }).filter(Boolean);
+      })()}
+
+      {/* ── Tempering-geometry overlays ────────────────────────────
+          Scala's tempering features made geometric on the lattice.
+          Each overlay is independently togglable via the Layers
+          strip; together they make the temperament's structure
+          visible (which directions collapse, what the unit cell
+          looks like, how each prime maps to EDO steps, the
+          generator + period pair for rank-2). */}
+      {layers.commaVectors && lattice.commaDirections.length > 0 && (() => {
+        // Comma direction arrows — each active comma drawn as a 3D
+        // arrow from origin along its lattice direction, normalized
+        // to a fixed length so the user can see "this is which way
+        // the lattice is being collapsed".  Useful for understanding
+        // multi-comma temperaments where commas may not be
+        // orthogonal.
+        return lattice.commaDirections.map((cd, i) => {
+          const ARROW_LEN = 4.0;
+          const tip: [number, number, number] = [
+            cd.dir[0] * ARROW_LEN,
+            cd.dir[1] * ARROW_LEN,
+            cd.dir[2] * ARROW_LEN,
+          ];
+          const dirNorm = new THREE.Vector3(...cd.dir).normalize();
+          const quat = new THREE.Quaternion();
+          quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirNorm);
+          return (
+            <group key={`comma-${i}-${cd.name}`}>
+              <Line points={[[0, 0, 0], tip]} color="#ff5566" lineWidth={2} dashed transparent opacity={0.7} />
+              <mesh position={tip} quaternion={quat}>
+                <coneGeometry args={[0.18, 0.5, 12]} />
+                <meshBasicMaterial color="#ff5566" transparent opacity={0.85} />
+              </mesh>
+              <Html position={[tip[0] * 1.12, tip[1] * 1.12, tip[2] * 1.12]} center distanceFactor={10} style={{ pointerEvents: "none" }}>
+                <div style={{
+                  color: "#ff7788",
+                  fontSize: 11,
+                  fontFamily: "'Courier New', monospace",
+                  fontWeight: 600,
+                  textShadow: "0 0 4px #000",
+                  whiteSpace: "nowrap",
+                }}>{cd.name}</div>
+              </Html>
+            </group>
+          );
+        });
+      })()}
+      {layers.fundamentalDomain && lattice.fundamentalDomain && lattice.fundamentalDomain.length >= 2 && (() => {
+        // Fundamental domain — wireframe of the parallelogram /
+        // line / point enclosing one representative per class under
+        // the active tempering.  Rank-2 → parallelogram outline;
+        // rank-1 → line segment; rank-0 → single point.  Shows the
+        // "unit cell" that tiles the lattice modulo the comma kernel.
+        const fd = lattice.fundamentalDomain;
+        if (fd.length === 2) {
+          // Line segment (rank-1)
+          return <Line points={fd as [number, number, number][]} color="#5ab9b0" lineWidth={2.5} transparent opacity={0.8} />;
+        }
+        if (fd.length === 4) {
+          // Parallelogram (rank-2)
+          const loop = [...fd, fd[0]] as [number, number, number][];
+          return <Line points={loop} color="#5ab9b0" lineWidth={2.5} transparent opacity={0.8} />;
+        }
+        return null;
+      })()}
+      {layers.valArrows && lattice.config.edo && (() => {
+        // Val arrows — one per active prime, drawn from origin along
+        // the prime's projection axis, labelled with that prime's
+        // EDO step count (val[p] = round(edo × log2(p))).  Reading
+        // these together tells the user "in this EDO, prime 3 maps
+        // to step N, prime 5 to step M, ..." which is the
+        // Equaltemp/Val data Scala surfaces in text form.
+        const edo = lattice.config.edo;
+        return lattice.primes.filter(p => p !== 2).map((p, i) => {
+          const valStep = Math.round(edo * Math.log2(p));
+          // Place arrow tip at the prime's canonical lattice position
+          // (one step along that prime axis).  For helical / toroidal
+          // grids that's the projected position of the monzo with
+          // exp[primeIdx] = 1.
+          const primeIdx = lattice.primes.indexOf(p);
+          const monzoExp = lattice.primes.map((_, idx) => idx === primeIdx ? 1 : 0);
+          // Use the lattice's stored JI position when available.
+          const tipKey = `${p}/${1}`;
+          let tip = lattice.jiPositions.get(tipKey);
+          if (!tip) {
+            // Fall back to a synthesized projection.
+            tip = [monzoExp[0] * 3.0, monzoExp[1] * 1.6, 0] as [number, number, number];
+          }
+          const dirNorm = new THREE.Vector3(tip[0], tip[1], tip[2]).normalize();
+          const quat = new THREE.Quaternion();
+          quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirNorm);
+          const labelPos: [number, number, number] = [tip[0] * 1.18, tip[1] * 1.18 + 0.1, tip[2] * 1.18];
+          return (
+            <group key={`val-${i}-${p}`}>
+              <Line points={[[0, 0, 0], tip]} color="#ffaa44" lineWidth={1.5} transparent opacity={0.7} />
+              <mesh position={tip} quaternion={quat}>
+                <coneGeometry args={[0.12, 0.32, 12]} />
+                <meshBasicMaterial color="#ffaa44" transparent opacity={0.85} />
+              </mesh>
+              <Html position={labelPos} center distanceFactor={10} style={{ pointerEvents: "none" }}>
+                <div style={{
+                  color: "#ffcc77",
+                  fontSize: 11,
+                  fontFamily: "'Courier New', monospace",
+                  fontWeight: 700,
+                  textShadow: "0 0 4px #000",
+                  whiteSpace: "nowrap",
+                }}>{p} → {valStep}\\{edo}</div>
+              </Html>
+            </group>
+          );
+        });
+      })()}
+      {layers.generators && (() => {
+        // Generator + period vectors for rank-2 temperaments.  Period
+        // = octave (the [0,…,exp(2)=1,…] direction projected, or the
+        // y-axis in helical / toroidal mode); Generator = tempered
+        // fifth at lattice [+1, 0, 0, …] (or whichever cell the rank-
+        // 2 temperament uses as its non-period generator).  For
+        // simplicity here we always draw fifth as the generator —
+        // matches every meantone-family rank-2 temperament Scala's
+        // Lineartemp catalogs default to.
+        const fifthKey = "3/2";
+        const fifthPos = lattice.jiPositions.get(fifthKey);
+        if (!fifthPos) return null;
+        const fifthNorm = new THREE.Vector3(...fifthPos).normalize();
+        const fifthQuat = new THREE.Quaternion();
+        fifthQuat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), fifthNorm);
+        const fifthLabel: [number, number, number] = [fifthPos[0] * 1.2, fifthPos[1] * 1.2 + 0.1, fifthPos[2] * 1.2];
+        // Period = octave, drawn as a short upward arrow.
+        const periodTip: [number, number, number] = [0, 2.4, 0];
+        return (
+          <>
+            <Line points={[[0, 0, 0], fifthPos]} color="#9395ea" lineWidth={2.5} transparent opacity={0.85} />
+            <mesh position={fifthPos} quaternion={fifthQuat}>
+              <coneGeometry args={[0.16, 0.42, 12]} />
+              <meshBasicMaterial color="#9395ea" transparent opacity={0.9} />
+            </mesh>
+            <Html position={fifthLabel} center distanceFactor={10} style={{ pointerEvents: "none" }}>
+              <div style={{
+                color: "#b8baf2",
+                fontSize: 11,
+                fontFamily: "'Courier New', monospace",
+                fontWeight: 700,
+                textShadow: "0 0 4px #000",
+                whiteSpace: "nowrap",
+              }}>gen (3/2)</div>
+            </Html>
+            <Line points={[[0, 0, 0], periodTip]} color="#9395ea" lineWidth={2.5} dashed transparent opacity={0.85} />
+            <mesh position={periodTip}>
+              <coneGeometry args={[0.16, 0.42, 12]} />
+              <meshBasicMaterial color="#9395ea" transparent opacity={0.9} />
+            </mesh>
+            <Html position={[0, 2.7, 0]} center distanceFactor={10} style={{ pointerEvents: "none" }}>
+              <div style={{
+                color: "#b8baf2",
+                fontSize: 11,
+                fontFamily: "'Courier New', monospace",
+                fontWeight: 700,
+                textShadow: "0 0 4px #000",
+                whiteSpace: "nowrap",
+              }}>period (2/1)</div>
+            </Html>
+          </>
+        );
       })()}
 
       {/* Tempered edges — batched */}
@@ -4622,6 +4787,16 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     monzo: false,
     heji: false,
     classes: false,
+    // Tempering-geometry overlays — surfaces Scala's tempering
+    // features as visible structure on the lattice (2026-05-11):
+    //   commaVectors  — arrows from origin along each active comma
+    //   fundamentalDomain — wireframe of the quotient unit cell
+    //   valArrows    — per-prime arrows showing the EDO val(p)
+    //   generators   — period + generator vectors for rank-2 temperaments
+    commaVectors: false,
+    fundamentalDomain: false,
+    valArrows: false,
+    generators: false,
   });
   const [monzoPathMode, setMonzoPathMode] = useState(false);
   // Chain Layout — when on, lay each chain-step k around the origin at
@@ -6794,6 +6969,34 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                   </button>
                 );
               })}
+              <div className="w-px h-4 bg-[#222]" />
+              {/* Tempering-geometry overlays — Scala-feature toggles
+                  per direct user direction (2026-05-11): "all the
+                  features related to tempering in scala include it in
+                  the harmonic lattice in some format, i want a
+                  geometry representation".  Each button surfaces one
+                  geometric primitive from Scala's tempering surface
+                  (Project/Temper commas, Equaltemp val, Lineartemp
+                  generator + period, comma-quotient fundamental
+                  domain).  Off by default so the lattice stays clean
+                  for users who don't need the structural overlays. */}
+              <span className="text-[10px] text-[#555] uppercase tracking-wider ml-1 mr-1">Geometry</span>
+              {([
+                ["commaVectors", "Commas", "#ff5566", "Arrows from origin along each active comma's kernel direction"],
+                ["fundamentalDomain", "Domain", "#5ab9b0", "Wireframe of the quotient unit cell (rank-2 parallelogram / rank-1 line / rank-0 point)"],
+                ["valArrows", "Val", "#ffaa44", "Per-prime arrows labelled with this EDO's val(p) = round(edo × log₂(p))"],
+                ["generators", "Gen+Per", "#9395ea", "Generator (3/2 tempered fifth) + Period (2/1 octave) vectors for rank-2 temperaments"],
+              ] as const).map(([key, label, color, tooltip]) => (
+                <button key={key}
+                  onClick={() => toggleMonzoLayer(key)}
+                  title={tooltip}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-colors border`}
+                  style={monzoLayers[key]
+                    ? { borderColor: color, background: color + "22", color: color }
+                    : { borderColor: "#222", background: "#111", color: "#555" }}>
+                  {label}
+                </button>
+              ))}
               <div className="w-px h-4 bg-[#222]" />
               <button onClick={() => setMonzoPathMode(!monzoPathMode)}
                 className={`px-2 py-1 rounded text-xs font-medium transition-colors border ${
