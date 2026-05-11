@@ -1736,6 +1736,10 @@ interface MonzoNodeMeshProps {
   onCtrlClick?: (node: LatticeNode) => void;
   /** Whether this node matches a custom ratio entry */
   isHighlighted?: boolean;
+  /** Whether this node is a member of the active rank-2 MOS chain.
+   *  Renders a magenta marker ring + label tint so the chain is
+   *  legible on top of the rest of the lattice. */
+  isInChain?: boolean;
   /** When true, dim every node that isn't currently active /
    *  hovered / focused.  Used when chord overlays are showing —
    *  anything not in a pinned chord fades back so the chord-tone
@@ -1758,7 +1762,7 @@ const TEMPER_CLASS_COLORS = [
   "#ff8844", "#44ff88", "#8844ff", "#ffaa66", "#66ffaa", "#aa66ff",
 ];
 
-function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused, showLabel = true, labelLOD = false, labelDist = 15, onHover, onClick, onFocus, onCtrlClick, primes, temperedClass, classColorMap, rootPc, showNoteNames = true, showIntervals = true, showRatios = true, showMonzo = false, showHeji = false, temperedCommas, tuningMethod, octaveEquivalence, temperedSiblings, isClassRep, isOnPath, isPathEndpoint, isPinnedPath, isHighlighted, highlightMode, isNonRepClass, showClassId, edo, forceDim = false }: MonzoNodeMeshProps) {
+function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused, showLabel = true, labelLOD = false, labelDist = 15, onHover, onClick, onFocus, onCtrlClick, primes, temperedClass, classColorMap, rootPc, showNoteNames = true, showIntervals = true, showRatios = true, showMonzo = false, showHeji = false, temperedCommas, tuningMethod, octaveEquivalence, temperedSiblings, isClassRep, isOnPath, isPathEndpoint, isPinnedPath, isHighlighted, isInChain = false, highlightMode, isNonRepClass, showClassId, edo, forceDim = false }: MonzoNodeMeshProps) {
   // First colour from the override list — drives the legacy single-
   // colour code paths (emissive, label tint, etc.).  When the array
   // has more than one entry, the actual sphere fill is rendered as
@@ -1902,6 +1906,17 @@ function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused
             emissiveIntensity={isHighlighted ? 0.7 : isFocused ? 0.5 : isHovered ? 0.6 : isActive ? 0.8 : isPathEndpoint ? 0.5 : isOnPath ? 0.3 : 0}
             roughness={0.5} metalness={0.3}
             transparent={isDimmed} opacity={isDimmed ? 0.35 : 1} />
+        </mesh>
+      )}
+      {/* Chain-marker ring — visible only for nodes inside the active
+          rank-2 MOS chain.  Renders as a slightly-larger glowing torus
+          (a flat ring around the node sphere) in magenta so the chain
+          reads as a connected sequence on top of the rest of the
+          lattice without overriding the node's intrinsic colour. */}
+      {isInChain && (
+        <mesh>
+          <torusGeometry args={[r * 1.55, r * 0.18, 8, 24]} />
+          <meshStandardMaterial color="#ff44aa" emissive="#ff44aa" emissiveIntensity={1.2} transparent opacity={0.9} />
         </mesh>
       )}
       {shouldShowLabel && (
@@ -2206,9 +2221,13 @@ interface MonzoSceneProps {
   highlightedRatios?: Set<string>;
   autoPathTargets?: Set<string>;
   clearPinnedKey?: number;
+  /** Set of node.keys that belong to the active rank-2 MOS chain.
+   *  Highlighted with a chain-marker color so the user can see
+   *  which lattice nodes are inside the generator chain. */
+  chainNodes?: Set<string>;
 }
 
-function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compensationArcs, voiceLeadingArrows, dimGeneratorEdges, hoveredNode, onHover, onClickNode, onFocusNode, focusKey, showTopoSurface, layers, pathMode, labelLOD, labelDist, rootPc, highlightedRatios, autoPathTargets, clearPinnedKey }: MonzoSceneProps) {
+function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compensationArcs, voiceLeadingArrows, dimGeneratorEdges, hoveredNode, onHover, onClickNode, onFocusNode, focusKey, showTopoSurface, layers, pathMode, labelLOD, labelDist, rootPc, highlightedRatios, autoPathTargets, clearPinnedKey, chainNodes }: MonzoSceneProps) {
   const useTopoPositions = showTopoSurface && (topology.type === "torus" || topology.type === "cylinder");
   const topoPositions = useMemo(() => {
     if (!useTopoPositions) return null;
@@ -2853,6 +2872,7 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
           temperedCommas={lattice.config.temperedCommas}
           tuningMethod={lattice.config.tuningMethod}
           octaveEquivalence={lattice.config.octaveEquivalence}
+          isInChain={chainNodes?.has(node.key) ?? false}
           temperedSiblings={siblingsMap.get(node.key)}
           isClassRep={layers.classes || posLabelSet.has(node.key)}
           isOnPath={combinedNodeSet?.has(node.key) ?? false}
@@ -5144,6 +5164,36 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       customRatiosActive, customRatioMonzos, parsedCustomRatios, customRatioNeighbors, customRatioNeighborRadius,
       effectiveConfig, debouncedConfig, noteFilterTargets]);
 
+  // ── Chain-node highlight set ────────────────────────────────────────
+  // For the active rank-2 MOS chain, collect every lattice node whose
+  // monzo coordinates match a step on the generator chain.  Generator
+  // = the tempered fifth at 3-axis +1 (all other axes = 0).  The chain
+  // covers positions [0, 1, ..., N-1] on the 3-axis from origin.
+  // Nodes outside the bounds aren't reachable (the user can expand
+  // bounds if they want more of the chain visible); positions that
+  // land inside become magenta-ringed via MonzoNodeMesh's isInChain
+  // branch.  When chainLength is undefined the set is empty so no
+  // highlighting fires.
+  const chainNodeKeys = useMemo<Set<string>>(() => {
+    const set = new Set<string>();
+    const N = monzoConfig.chainLength;
+    if (!N || N < 2) return set;
+    const p3Idx = monzoConfig.primes.indexOf(3);
+    if (p3Idx < 0) return set;
+    for (const node of filteredMonzoLattice.nodes) {
+      const exps = node.monzo.exps;
+      const a3 = exps[p3Idx] ?? 0;
+      if (a3 < 0 || a3 >= N) continue;
+      let otherAxesZero = true;
+      for (let i = 0; i < exps.length; i++) {
+        if (i === p3Idx) continue;
+        if ((exps[i] ?? 0) !== 0) { otherAxesZero = false; break; }
+      }
+      if (otherAxesZero) set.add(node.key);
+    }
+    return set;
+  }, [monzoConfig.chainLength, monzoConfig.primes, filteredMonzoLattice]);
+
   const handleMonzoPresetChange = useCallback((presetName: string) => {
     setMonzoPreset(presetName);
     if (PRESET_CONFIGS[presetName]) {
@@ -7204,6 +7254,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                   : (customRatiosActive ? parsedCustomRatios : noteFilterTargets ?? undefined)
               }
               clearPinnedKey={clearPinnedKey}
+              chainNodes={chainNodeKeys}
             />
           </Canvas>
         ) : isOtonalMode ? (
