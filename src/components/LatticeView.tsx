@@ -4460,12 +4460,16 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   }, [temperingForEdo]);
   // monzoLabelMode removed — now individual layer toggles
   const [monzoShowTopo, setMonzoShowTopo] = useState(true);
-  // Default to the Tonescape-style helical projection so anyone
-  // opening the lattice — embedded or standalone — gets the
-  // spiral / helix view automatically.  Square / triangle remain
-  // available as manual overrides for users who explicitly want a
-  // flat 2D-ish layout.
-  const [monzoGridType, setMonzoGridType] = useState<GridType>("helical");
+  // Default to the TRIANGULAR TONNETZ projection per direct user
+  // direction (2026-05-11): "this is not a pallatable shape, use the
+  // shape that people usually use" + "i cant see anything with the
+  // geometry through this shape".  The canonical Tonnetz (Euler-
+  // Tonnetz / Neo-Riemannian triangular grid) is the standard
+  // visualisation in music theory + xen circles — fifths along one
+  // axis, thirds along a 60°-skewed axis, every cell tessellates
+  // into a major or minor triad with its neighbours.  Helical /
+  // toroidal / square remain available as manual overrides.
+  const [monzoGridType, setMonzoGridType] = useState<GridType>("triangle");
   const [customCommaInput, setCustomCommaInput] = useState("");
   const [jumpRatioInput, setJumpRatioInput] = useState("");
 
@@ -4556,6 +4560,17 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     classes: false,
   });
   const [monzoPathMode, setMonzoPathMode] = useState(false);
+  // Chain Layout — when on, lay each chain-step k around the origin at
+  // an angle proportional to its tempered cents (mod 1200) and a radius
+  // that grows slightly per step.  Per direct user direction
+  // (2026-05-11): "i want to see the spirals and these circle of fifths
+  // i dont want to see one node, have a option that allows me to toggle
+  // to see it".  Otherwise the rank-0/rank-1 closures collapse every
+  // class onto the same projected XYZ point and the canvas shows a
+  // single node despite generatedScale reporting N pitches.  Off by
+  // default so it does NOT leak into the main spatial-audiation lattice
+  // (the bug from fbf0445 → 7404e33).
+  const [monzoChainLayout, setMonzoChainLayout] = useState(false);
 
   const [clearPinnedKey, setClearPinnedKey] = useState(0);
   const toggleMonzoLayer = useCallback((key: keyof typeof monzoLayers) => {
@@ -6625,6 +6640,19 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               </button>
               {monzoPathMode && (
                 <span className="text-[10px] text-[#888]">Hover to see paths · Ctrl+click to pin</span>
+              )}
+              <div className="w-px h-4 bg-[#222]" />
+              <button onClick={() => setMonzoChainLayout(!monzoChainLayout)}
+                title="Lay chain steps around the origin at angle = tempered-cents mod 1200, radius growing per step. Closed temperaments form a circle of fifths; open ones spiral."
+                className={`px-2 py-1 rounded text-xs font-medium transition-colors border ${
+                  monzoChainLayout
+                    ? "bg-[#7173e6] text-white border-[#7173e6]"
+                    : "bg-[#111] text-[#444] border-[#222]"
+                }`}>
+                Chain Layout
+              </button>
+              {monzoChainLayout && (
+                <span className="text-[10px] text-[#888]">Spiral / circle by tempered cents</span>
               )}
             </div>
             {/* Neighborhood / Focus */}
