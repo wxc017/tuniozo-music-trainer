@@ -1025,19 +1025,58 @@ export class AudioEngine {
    *  every cycle on samples with rhythmic content (tanpura plucks,
    *  bagpipe drone beats, etc.).  This scheduler removes that. */
   private spawnSampleLoop(ctx: AudioContext, sample: InstrumentSample, rate: number, noteGain: GainNode) {
-    const src = ctx.createBufferSource();
-    src.buffer = sample.buffer;
-    src.loop = true;
-    src.loopStart = sample.loopStart;
-    src.loopEnd = sample.loopEnd;
-    src.playbackRate.value = rate;
-    src.connect(noteGain);
-    // Start playback inside the loop region so steady sustain is
-    // audible immediately.  The 25 ms in-buffer fade-in at
-    // loopStart (applied by preprocessDroneBuffer) is inaudible
-    // compared to a full attack.
-    src.start(0, sample.loopStart);
-    this.droneSamples.push(src);
+    // Dual-voice 50%-overlap looper — per direct user direction
+    // (2026-05-11): "voice is still broken i can hear the loop going
+    // in and out i need yu to start another loop at 50% just like the
+    // other instruments".  The lattice-node path (spawnVoiceSampleLoop)
+    // already does this; bringing the main-drone path here in line so
+    // voice / tanpura / bagpipe in Tonal Audiation stop showing the
+    // every-cycle seam.
+    //
+    // Each iteration plays sample[loopStart..loopEnd] ONCE with a
+    // short fade-in / fade-out; the next iteration is scheduled at
+    // 50% of the loop duration, so two voices always overlap through
+    // the crossfade region and the seam is masked.  Scheduled timers
+    // go into droneLoopTimers (already used by the older crossfade
+    // scheduler) so stopDrone tears the chain down cleanly.
+    const myGeneration = this.droneGeneration;
+    const loopDur = (sample.loopEnd - sample.loopStart) / rate;
+    const fadeSec = Math.min(0.5, loopDur * 0.25);
+    const scheduleAhead = 0.05;
+
+    const spawnOne = (when: number) => {
+      if (this.droneGeneration !== myGeneration) return;
+      const src = ctx.createBufferSource();
+      src.buffer = sample.buffer;
+      src.playbackRate.value = rate;
+      const segGain = ctx.createGain();
+      segGain.gain.setValueAtTime(0, when);
+      segGain.gain.linearRampToValueAtTime(1, when + fadeSec);
+      segGain.gain.setValueAtTime(1, when + loopDur - fadeSec);
+      segGain.gain.linearRampToValueAtTime(0, when + loopDur);
+      src.connect(segGain);
+      segGain.connect(noteGain);
+      try {
+        src.start(when, sample.loopStart, sample.loopEnd - sample.loopStart);
+      } catch { /* invalid start time — ignore */ }
+      this.droneSamples.push(src);
+      this.droneNodes.push(segGain);
+      const nextWhen = when + loopDur / 2;
+      const delayMs = Math.max(0, (nextWhen - ctx.currentTime - scheduleAhead) * 1000);
+      const t = setTimeout(() => spawnOne(nextWhen), delayMs);
+      this.droneLoopTimers.push(t);
+      // Disconnect this segment after it's fully faded out so memory
+      // doesn't grow unbounded across long-running drones.
+      const stopT = setTimeout(() => {
+        try { src.disconnect(); segGain.disconnect(); } catch {}
+        const si = this.droneSamples.indexOf(src);
+        if (si >= 0) this.droneSamples.splice(si, 1);
+        const ni = this.droneNodes.indexOf(segGain);
+        if (ni >= 0) this.droneNodes.splice(ni, 1);
+      }, Math.ceil((when + loopDur - ctx.currentTime + 0.1) * 1000));
+      this.droneLoopTimers.push(stopT);
+    };
+    spawnOne(ctx.currentTime);
   }
 
   /** Attach a slow ~4.5 Hz LFO to an oscillator's detune param so the
