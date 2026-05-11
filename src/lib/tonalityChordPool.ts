@@ -34,8 +34,9 @@ export const TONALITY_FAMILIES: { key: string; label: string; color: string; ton
   // system: s = sub, m = min, N = neu, M = maj (implicit), S = sup.
   { key: "subminor",   label: "SUBMINOR DIATONIC",   color: "#7aaa6a",
     tonalities: ["Subminor Diatonic","Locrian s2 s5 s6","Supermajor Ionian","Dorian s3 bb4 s7","Subminor Phrygian m7","Supermajor Lydian M2 b5","Supermajor Mixolydian ##5 m7"] },
-  { key: "neutral",    label: "NEUTRAL DIATONIC",    color: "#9a66c0",
-    tonalities: ["Neutral Diatonic","Dorian n2 bb5 n6","Neutral Ionian","Ionian n3 ##4 n7","Neutral Dorian m7","Neutral Ionian M2 ##4","Neutral Dorian bb5 m7"] },
+  // "neutral" / Neutral Diatonic family removed 2026-05-11 per direct
+  // user direction "remove diatonic neutral".  11-limit content
+  // surfaces via the maqam family + Mohajira instead.
   { key: "supermajor", label: "SUPERMAJOR DIATONIC", color: "#cc6a8a",
     tonalities: ["Supermajor Diatonic","Dorian S2 ##5 S6","Subminor Phrygian","Lydian S3 b5 S7","Supermajor Mixolydian m7","Subminor Aeolian M2 bb4","Subminor Locrian m7"] },
   { key: "subharmonic",label: "SUBHARMONIC DIATONIC M7",color: "#4a9ac7",

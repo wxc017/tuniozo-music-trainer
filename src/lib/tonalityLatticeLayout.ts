@@ -93,7 +93,9 @@ export const LATTICE_FAMILIES: LatticeFamily[] = [
   { id: "harmonic",       label: "Harmonic Minor",       short: "Hrm",  color: "#f5b030", dim: "#281804", zOrd: 1, familyName: "Harmonic Minor Family" },
   { id: "melodic",        label: "Melodic Minor",        short: "Mel",  color: "#4de898", dim: "#041f10", zOrd: 2, familyName: "Melodic Minor Family" },
   { id: "subminor",       label: "Subminor Diatonic",    short: "Sub",  color: "#7aaa6a", dim: "#13260c", zOrd: 3, familyName: "Subminor Diatonic Family" },
-  { id: "neutral",        label: "Neutral Diatonic",     short: "Neu",  color: "#9a66c0", dim: "#1b0e26", zOrd: 4, familyName: "Neutral Diatonic Family" },
+  // "neutral" / Neutral Diatonic removed 2026-05-11 per direct user
+  // direction "remove diatonic neutral".  zOrd numbers stay sparse;
+  // the lattice layout reads them as ordering hints, not indices.
   { id: "supermajor",     label: "Supermajor Diatonic",  short: "Sup",  color: "#cc6a8a", dim: "#260e16", zOrd: 5, familyName: "Supermajor Diatonic Family" },
   { id: "subharmonic",    label: "Subharmonic Diatonic", short: "Shr",  color: "#4a9ac7", dim: "#0b2030", zOrd: 6, familyName: "Subharmonic Diatonic Family" },
   { id: "doubleharmonic", label: "Double Harmonic",      short: "DbH",  color: "#e08040", dim: "#2a160a", zOrd: 7, familyName: "Double Harmonic Family" },
