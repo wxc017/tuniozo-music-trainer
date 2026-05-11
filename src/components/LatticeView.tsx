@@ -2844,19 +2844,7 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
         <MonzoNodeMesh
           key={node.key}
           node={node}
-          // Position-source rule per direct user direction (2026-05-06):
-          // "tempering should close the circle it should [not] be
-          // straight line".  When a chain length is set, ALWAYS use
-          // jiPositions (untempered 5-limit helix coordinates) so the
-          // N tempered classes wrap around the cylinder and the chain
-          // closes back to its starting angle after one full turn —
-          // exactly the visual the user wants.  Without chain length,
-          // the original "layers.classes uses JI / else use projected"
-          // rule still applies so non-chain tempering keeps its
-          // comma-flattened layout.
-          pos={(layers.classes || lattice.config.chainLength !== undefined)
-            ? lattice.jiPositions.get(node.key) ?? node.pos3d
-            : (topoPositions ?? lattice.positions).get(node.key) ?? node.pos3d}
+          pos={layers.classes ? lattice.jiPositions.get(node.key) ?? node.pos3d : (topoPositions ?? lattice.positions).get(node.key) ?? node.pos3d}
           isActive={droneNodes.has(node.key)}
           activeColors={nodeColorOverrides?.get(node.key)}
           forceDim={dimGeneratorEdges === true}
@@ -5223,68 +5211,10 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     if (baseNodes === monzoLattice.nodes) return monzoLattice;
 
     const visibleKeys = new Set(baseNodes.map(n => n.key));
-    let visibleEdges = monzoLattice.edges.filter(e => visibleKeys.has(e.from) && visibleKeys.has(e.to));
+    const visibleEdges = monzoLattice.edges.filter(e => visibleKeys.has(e.from) && visibleKeys.has(e.to));
     const visiblePositions = new Map<string, [number, number, number]>();
     for (const [k, v] of monzoLattice.positions) {
       if (visibleKeys.has(k)) visiblePositions.set(k, v);
-    }
-
-    // Synthetic chain edges — per direct user direction (2026-05-06):
-    // "the fifth and third lines are not following the nodes, nodes
-    // just sit in empty space".  After the simplest-rep-per-class
-    // filter, most of the lattice's native fifth/third edges have
-    // one endpoint clipped, so the chain's connectivity disappears.
-    // Rebuild it: for each chain step k, find the visible rep that
-    // shares its tempered class, then add fifth-edges between
-    // consecutive steps and third-edges between steps 4 apart
-    // (meantone: M3 = 4 fifths, so step k's 5-limit M3 lives at step
-    // k+4).  Wraps modulo N so the cycle closes.
-    const Nchain = effectiveConfig.chainLength;
-    if (Nchain && Nchain >= 2 && effectiveConfig.primes.includes(3)) {
-      const stepToKey = new Map<number, string>();
-      // Build classId → rep-node-key from baseNodes.
-      const classToKey = new Map<number, string>();
-      for (const n of baseNodes) {
-        if (n.temperedClass !== undefined && !classToKey.has(n.temperedClass)) {
-          classToKey.set(n.temperedClass, n.key);
-        }
-      }
-      // For each chain step, look up its class via monzoLattice.classMap
-      // (which is keyed by the canonical ratio string 3^k/2^…), then
-      // find the rep we kept.
-      for (let k = 0; k < Nchain; k++) {
-        let num = 1, den = 1;
-        if (k >= 0) num = 3 ** k; else den = 3 ** -k;
-        while (num >= 2 * den) den *= 2;
-        while (num < den) num *= 2;
-        const chainKey = `${num}/${den}`;
-        const cid = monzoLattice.classMap?.get(chainKey);
-        if (cid !== undefined) {
-          const repKey = classToKey.get(cid);
-          if (repKey) stepToKey.set(k, repKey);
-        } else if (visibleKeys.has(chainKey)) {
-          // No tempering: the canonical chain cell IS the rep.
-          stepToKey.set(k, chainKey);
-        }
-      }
-      const synthEdges: typeof visibleEdges = [];
-      const have = new Set<string>();
-      const addEdge = (a: string, b: string, prime: number) => {
-        if (a === b) return;
-        const k1 = `${a}|${b}|${prime}`;
-        const k2 = `${b}|${a}|${prime}`;
-        if (have.has(k1) || have.has(k2)) return;
-        have.add(k1);
-        synthEdges.push({ from: a, to: b, prime, type: "generator" });
-      };
-      for (let k = 0; k < Nchain; k++) {
-        const here = stepToKey.get(k);
-        const nextFifth = stepToKey.get((k + 1) % Nchain);
-        const nextThird = stepToKey.get((k + 4) % Nchain);
-        if (here && nextFifth) addEdge(here, nextFifth, 3);
-        if (here && nextThird) addEdge(here, nextThird, 5);
-      }
-      visibleEdges = [...visibleEdges, ...synthEdges];
     }
 
     return {
@@ -6657,22 +6587,23 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                 )}
               </span>
             </div>
-            {/* Layers */}
+            {/* Layers — "Classes" toggle removed 2026-05-06 per direct
+                user direction: "remove the classes".  Tempering still
+                produces equivalence classes internally (used by the
+                chain filter, overlay paints, etc.) but the user no
+                longer sees the toggle in the layer strip. */}
             <div className="flex flex-wrap gap-1.5 items-center">
               <span className="text-[10px] text-[#555] uppercase tracking-wider mr-1">Layers</span>
-              {(["nodes", "primeEdges", "temperedEdges", "noteNames", "intervals", "ratios", "monzo", "heji", "classes"] as const).map(lk => {
-                const labels: Record<string, string> = { nodes: "Nodes", primeEdges: "Edges", temperedEdges: "Tempered", noteNames: "12TET", intervals: "Intervals", ratios: "Ratios", monzo: "Monzo", heji: "HEJI", classes: "Classes" };
-                const classCount = monzoLattice.temperingClasses;
-                const isClassBtn = lk === "classes";
+              {(["nodes", "primeEdges", "temperedEdges", "noteNames", "intervals", "ratios", "monzo", "heji"] as const).map(lk => {
+                const labels: Record<string, string> = { nodes: "Nodes", primeEdges: "Edges", temperedEdges: "Tempered", noteNames: "12TET", intervals: "Intervals", ratios: "Ratios", monzo: "Monzo", heji: "HEJI" };
                 return (
                   <button key={lk} onClick={() => toggleMonzoLayer(lk)}
                     className={`px-2 py-1 rounded text-xs font-medium transition-colors border ${
                       monzoLayers[lk]
-                        ? isClassBtn && classCount ? "bg-[#2a1a2a] text-[#e060e0] border-[#e060e0]" : "bg-[#1a1a1a] text-[#ccc] border-[#555]"
-                        : isClassBtn && !classCount ? "bg-[#111] text-[#333] border-[#1a1a1a] cursor-default" : "bg-[#111] text-[#444] border-[#222]"
-                    }`}
-                    disabled={isClassBtn && !classCount}>
-                    {labels[lk]}{isClassBtn && classCount ? ` (${classCount})` : ""}
+                        ? "bg-[#1a1a1a] text-[#ccc] border-[#555]"
+                        : "bg-[#111] text-[#444] border-[#222]"
+                    }`}>
+                    {labels[lk]}
                   </button>
                 );
               })}
