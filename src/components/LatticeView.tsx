@@ -5177,17 +5177,17 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       baseNodes = baseNodes.filter(n => onPath.has(n.key));
     }
 
-    // Temperament chain-length filter.  Per direct user direction
-    // (2026-05-06): "for tempering i dont see the 3rds and fifths at
-    // once" — the previous "one rep per class" pick collapsed every
-    // visible cell onto the 3-axis chain (fifths only), hiding the
-    // 5-axis (thirds) entirely.  Now we keep ALL cells whose
-    // tempered class is one of the N classes the generator chain
-    // visits: so 12 chain classes might surface as ~20 lattice cells
-    // (12 along the fifths chain + the equivalent thirds-chain cells
-    // at [0, +1] = 5/4 for the 4-fifths-up class, etc.) — both axes
-    // remain visually present while still restricting the user to
-    // the N-tone temperament's pitch set.
+    // Temperament chain-length filter.  Per the broken-screenshot
+    // diagnosis (2026-05-06): keeping every member of each tempered
+    // class scatters far-lattice cells (huge-exponent JI reps) all
+    // over the helix.  Instead pick the SIMPLEST representative per
+    // class (smallest sum of |monzo| exponents) so we end up with
+    // exactly N nodes — but the rep is the one closest to origin,
+    // which for meantone naturally mixes 3-axis cells (like [+1, 0]
+    // = G) with 5-axis cells (like [0, +1] = 5/4 = E) since the
+    // 5/4 representation of step 4 has |monzo| = 1 vs the [+4, 0]
+    // representation's |monzo| = 4.  So 3rds and 5ths still surface
+    // through the reps without cluttering with equivalents.
     const N = effectiveConfig.chainLength;
     if (N && N >= 2 && effectiveConfig.primes.includes(3)) {
       const wantedClasses = new Set<number>();
@@ -5202,15 +5202,20 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
         const cid = monzoLattice.classMap?.get(key);
         if (cid !== undefined) wantedClasses.add(cid);
       }
+      const monzoMagnitude = (exps: number[]) => exps.reduce((s, e) => s + Math.abs(e ?? 0), 0);
       if (wantedClasses.size > 0) {
-        // Tempering active: keep every cell whose class is in the
-        // chain's class set — both fifths-chain AND thirds-chain
-        // members of each shared class stay visible.
-        baseNodes = baseNodes.filter(n =>
-          n.temperedClass !== undefined && wantedClasses.has(n.temperedClass));
+        const bestByClass = new Map<number, typeof baseNodes[number]>();
+        for (const node of baseNodes) {
+          const cid = node.temperedClass;
+          if (cid === undefined || !wantedClasses.has(cid)) continue;
+          const existing = bestByClass.get(cid);
+          if (!existing) bestByClass.set(cid, node);
+          else if (monzoMagnitude(node.monzo.exps) < monzoMagnitude(existing.monzo.exps)) {
+            bestByClass.set(cid, node);
+          }
+        }
+        baseNodes = Array.from(bestByClass.values());
       } else {
-        // No tempering → no equivalence classes exist, so just show
-        // the canonical fifths-chain cells.
         baseNodes = baseNodes.filter(n => chainKeysSet.has(n.key));
       }
     }
