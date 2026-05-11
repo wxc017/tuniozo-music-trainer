@@ -1874,10 +1874,21 @@ export function detectTopology(config: LatticeConfig): TopologyInfo {
     bestGeometry = "3d-lattice";
   }
 
+  // Per xen-wiki convention (Trivial temperament page): rank is the
+  // number of GENERATORS needed to span the temperament — counting
+  // both free dimensions AND cyclic generators.  An EDO (freeDims=0,
+  // nCyclic=1) is rank-1 because the EDO step generates the whole
+  // pitch class set; meantone (freeDims=2, nCyclic=0) is rank-2
+  // because it needs both octave and tempered fifth; the trivial
+  // / Om temperament (freeDims=0, nCyclic=0) is true rank-0.
+  // Previously this reported `freeDims` only, which mis-labelled
+  // 12-EDO (12 distinct pitches) as "rank 0" — the wiki definition
+  // of rank-0 (every interval is a comma, all notes collapse to
+  // unison).
   return {
     type, description,
     commasTempered: commaRank,
-    rank: freeDims,
+    rank: freeDims + nCyclic,
     dimension: dim,
     invariantFactors, cyclicOrders,
     bestGeometry,

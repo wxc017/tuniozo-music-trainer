@@ -5211,10 +5211,83 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     if (baseNodes === monzoLattice.nodes) return monzoLattice;
 
     const visibleKeys = new Set(baseNodes.map(n => n.key));
-    const visibleEdges = monzoLattice.edges.filter(e => visibleKeys.has(e.from) && visibleKeys.has(e.to));
+    let visibleEdges = monzoLattice.edges.filter(e => visibleKeys.has(e.from) && visibleKeys.has(e.to));
     const visiblePositions = new Map<string, [number, number, number]>();
     for (const [k, v] of monzoLattice.positions) {
       if (visibleKeys.has(k)) visiblePositions.set(k, v);
+    }
+
+    // Flat-circle chain layout — per xen-wiki "Mapping to lattice"
+    // convention for rank-1 / EDO temperaments: when the generator
+    // chain closes, draw the N reps around a flat ring with the
+    // wrap point as the start.  This handles the failure mode where
+    // rank-0/comma-collapsed projected positions stack every cell
+    // onto the same point (so "12 nodes" reports but you can't see
+    // any of them).  We position purely by chain-step index, not by
+    // JI lattice math, and connect consecutive steps with fifth-
+    // edges + 4-step-apart steps with third-edges so the Tonnetz
+    // structure reads on the ring.
+    const Nchain = effectiveConfig.chainLength;
+    if (Nchain && Nchain >= 2 && effectiveConfig.primes.includes(3)) {
+      // Build classId → rep-node-key (the cell we kept per class).
+      const classToKey = new Map<number, string>();
+      for (const n of baseNodes) {
+        if (n.temperedClass !== undefined && !classToKey.has(n.temperedClass)) {
+          classToKey.set(n.temperedClass, n.key);
+        }
+      }
+      // Index each chain step k to the rep we kept for its class.
+      const stepToKey = new Map<number, string>();
+      for (let k = 0; k < Nchain; k++) {
+        let num = 1, den = 1;
+        if (k >= 0) num = 3 ** k; else den = 3 ** -k;
+        while (num >= 2 * den) den *= 2;
+        while (num < den) num *= 2;
+        const chainKey = `${num}/${den}`;
+        const cid = monzoLattice.classMap?.get(chainKey);
+        if (cid !== undefined) {
+          const repKey = classToKey.get(cid);
+          if (repKey) stepToKey.set(k, repKey);
+        } else if (visibleKeys.has(chainKey)) {
+          stepToKey.set(k, chainKey);
+        }
+      }
+      // Override visiblePositions: lay out each step at a flat-ring
+      // angle 2π·k/N around origin.  Radius scaled with N so larger
+      // chains spread out more.
+      if (stepToKey.size >= 2) {
+        const R = Math.max(3.5, 0.8 * Nchain);
+        for (const [k, key] of stepToKey) {
+          const angle = (2 * Math.PI * k) / Nchain;
+          visiblePositions.set(key, [R * Math.cos(angle), 0, R * Math.sin(angle)]);
+        }
+        // Synthesise fifth + third edges between chain reps so the
+        // ring reads as a connected structure.  Fifth = step+1,
+        // third = step+4 (meantone identity M3 = 4 fifths).  All
+        // edges wrap modulo N so the cycle closes.
+        const synthEdges: typeof visibleEdges = [];
+        const have = new Set<string>();
+        const addE = (a: string, b: string, prime: number) => {
+          if (a === b) return;
+          const k1 = `${a}|${b}|${prime}`;
+          const k2 = `${b}|${a}|${prime}`;
+          if (have.has(k1) || have.has(k2)) return;
+          have.add(k1);
+          synthEdges.push({ from: a, to: b, prime, type: "generator" });
+        };
+        for (let k = 0; k < Nchain; k++) {
+          const here = stepToKey.get(k);
+          const nf = stepToKey.get((k + 1) % Nchain);
+          const nt = stepToKey.get((k + 4) % Nchain);
+          if (here && nf) addE(here, nf, 3);
+          if (here && nt) addE(here, nt, 5);
+        }
+        // Replace visibleEdges with just the synthetic ring — the
+        // projected JI edges between simplest reps land at lengths
+        // that don't reflect the flat-ring layout, so drawing them
+        // adds noise.
+        visibleEdges = synthEdges;
+      }
     }
 
     return {
