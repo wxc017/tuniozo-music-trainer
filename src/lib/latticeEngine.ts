@@ -419,22 +419,32 @@ export function monzoTo3DHelical(
   primes: number[],
   _edo: number | null,
 ): [number, number, number] {
-  let cents = 0;
-  for (let i = 0; i < primes.length; i++) {
-    const p = primes[i];
-    const exp = exps[i] ?? 0;
-    if (exp !== 0) cents += exp * 1200 * Math.log2(p);
-  }
+  // Classical Tonescape helix: a 5-limit pitch-helix where the chain
+  // of fifths winds around a cylinder and the chain of major thirds
+  // advances vertically.  Per direct user direction (2026-05-06):
+  // "fix the helix so its a 5 limit one like tonescape" — only the
+  // 3-axis (perfect fifths, 3/2) and 5-axis (major thirds, 5/4)
+  // affect position.  Higher primes are ignored; their cells get
+  // projected onto their 5-limit shadow (caller usually filters
+  // them out of the rendered set so they don't overlap).
+  const i3 = primes.indexOf(3);
+  const i5 = primes.indexOf(5);
+  const exp3 = i3 >= 0 ? (exps[i3] ?? 0) : 0;
+  const exp5 = i5 >= 0 ? (exps[i5] ?? 0) : 0;
 
-  // Spacing tuned to match the linear-lattice scale (DEFAULT_PROJECTIONS
-  // puts cells ~3 units apart per prime axis).  RADIUS sets cylinder
-  // diameter; Y_PER_OCTAVE keeps the helix from over-stretching
-  // vertically so chord-tone clusters stay close together on screen
-  // and the user can follow chord motion at a glance.
+  // Twelve fifths per full turn around the cylinder — matches the
+  // classical 12-tone chromatic circle that Tonescape uses for the
+  // chain-of-fifths spine.  Each fifth advances the angle by 30°.
+  const FIFTHS_PER_TURN = 12;
   const RADIUS = 3.0;
-  const Y_PER_OCTAVE = 1.5;
-  const angle = 2 * Math.PI * (((cents % 1200) + 1200) % 1200) / 1200;
-  const y = (cents / 1200) * Y_PER_OCTAVE;
+  // Vertical pitch (per third) and per-fifth lift — the small lift
+  // keeps the chain visible as a helix rather than a flat ring when
+  // there are no 5-axis cells active.
+  const HEIGHT_PER_THIRD = 1.6;
+  const HEIGHT_PER_FIFTH = 0.15;
+
+  const angle = 2 * Math.PI * exp3 / FIFTHS_PER_TURN;
+  const y = exp5 * HEIGHT_PER_THIRD + exp3 * HEIGHT_PER_FIFTH;
   const x = RADIUS * Math.cos(angle);
   const z = RADIUS * Math.sin(angle);
   return [x, y, z];

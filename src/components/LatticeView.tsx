@@ -4733,7 +4733,32 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
 
   const effectiveConfig = useMemo(() => {
     const base = customRatiosConfig ?? debouncedConfig;
-    return { ...base, gridType: monzoGridType };
+    let next = { ...base, gridType: monzoGridType };
+    // Auto-expand the 3-axis upper bound when a chain length is
+    // requested.  Per direct user direction (2026-05-06): "i clicked
+    // scale size 12 and all it did was make three rings around c d g,
+    // it didnt give me 12 notes" — the chain needs lattice cells at
+    // positions [0..N-1] on the 3-axis, but the default bounds only
+    // cover ~3 fifths, so the rings clipped.  This guarantees every
+    // chain step has a node to wear its ring.
+    const N = debouncedConfig.chainLength;
+    if (N && N >= 2 && next.primes.includes(3)) {
+      const existing = next.bounds[3] ?? [-1, 1];
+      const targetMax = N - 1;
+      if (existing[1] < targetMax) {
+        next = {
+          ...next,
+          bounds: { ...next.bounds, 3: [Math.min(existing[0], 0), targetMax] },
+        };
+      } else if (existing[0] > 0) {
+        // Chain starts at 0; make sure the lower bound includes the tonic.
+        next = {
+          ...next,
+          bounds: { ...next.bounds, 3: [0, existing[1]] },
+        };
+      }
+    }
+    return next;
   }, [customRatiosConfig, debouncedConfig, monzoGridType]);
   const monzoLattice = useMemo(() => buildLattice(effectiveConfig), [effectiveConfig]);
   const monzoTopology = useMemo(() => {
@@ -6259,7 +6284,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                       >
                         {vanishCents.toFixed(1)}¢ / {commaCents.toFixed(1)}¢
                       </span>
-                      <div className="flex gap-0.5">
+                      <div className="flex gap-1 items-center">
                         {([
                           // No "0" preset — fraction = 0 is equivalent to
                           // removing the comma from the active list, so
@@ -6269,6 +6294,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                           [1/3,  "⅓"],
                           [1/2,  "½"],
                           [2/3,  "⅔"],
+                          [3/4,  "¾"],
                           [1,    "1"],
                         ] as [number, string][]).map(([v, label]) => {
                           const active = Math.abs(f - v) < 0.005;
@@ -6279,15 +6305,53 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                                 temperedCommas: prev.temperedCommas.map((tc, i) =>
                                   i === idx ? { ...tc, fraction: v } : tc),
                               }))}
-                              className={`px-1 py-0.5 rounded text-[9px] font-medium transition-colors border ${
+                              className={`px-2.5 py-1 rounded text-sm font-semibold transition-colors border min-w-[28px] ${
                                 active
                                   ? "bg-[#2a1a1a] text-[#ff6666] border-[#ff4444]"
-                                  : "bg-[#111] text-[#555] border-[#222] hover:text-[#aaa]"
+                                  : "bg-[#141414] text-[#888] border-[#2a2a2a] hover:text-[#ddd] hover:border-[#555]"
                               }`}>
                               {label}
                             </button>
                           );
                         })}
+                        {/* Write-in fraction input.  Accepts "n/d" (e.g.
+                            "2/7", "5/9") or a plain decimal in [0, 1]
+                            (e.g. "0.4").  Press Enter to commit; the
+                            slider + readout update immediately. */}
+                        <input
+                          type="text"
+                          placeholder="n/d"
+                          defaultValue=""
+                          onKeyDown={e => {
+                            if (e.key !== "Enter") return;
+                            const raw = e.currentTarget.value.trim();
+                            if (!raw) return;
+                            const slash = raw.indexOf("/");
+                            let v: number | null = null;
+                            if (slash > 0) {
+                              const n = Number(raw.slice(0, slash));
+                              const d = Number(raw.slice(slash + 1));
+                              if (Number.isFinite(n) && Number.isFinite(d) && d > 0) {
+                                const candidate = n / d;
+                                if (candidate >= 0 && candidate <= 1) v = candidate;
+                              }
+                            } else {
+                              const candidate = Number(raw);
+                              if (Number.isFinite(candidate) && candidate >= 0 && candidate <= 1) v = candidate;
+                            }
+                            if (v !== null) {
+                              const fv = v;
+                              setMonzoConfig(prev => ({
+                                ...prev,
+                                temperedCommas: prev.temperedCommas.map((tc, i) =>
+                                  i === idx ? { ...tc, fraction: fv } : tc),
+                              }));
+                              e.currentTarget.value = "";
+                            }
+                          }}
+                          className="w-14 bg-[#141414] border border-[#2a2a2a] text-white text-xs font-mono rounded px-1.5 py-1 text-center focus:outline-none focus:border-[#ff4444] placeholder:text-[#444]"
+                          title="Type a fraction (e.g. 2/7) or decimal (e.g. 0.4) then press Enter"
+                        />
                       </div>
                     </div>
                   );
@@ -6322,7 +6386,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               })() : null;
               return (
                 <div className="flex flex-wrap items-center gap-2 mt-1">
-                  <span className="text-[10px] text-[#555] uppercase tracking-wider mr-1">Scale size</span>
+                  <span className="text-[10px] text-[#555] uppercase tracking-wider mr-1">Temperament</span>
                   <input
                     type="number"
                     min={3} max={200}
