@@ -6119,6 +6119,14 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                 <span className="text-[10px] text-[#555] uppercase tracking-wider">Per-comma fraction</span>
                 {monzoConfig.temperedCommas.map((c, idx) => {
                   const f = c.fraction ?? 1;
+                  // The comma's own size in cents (e.g. 21.5¢ for 81/80).
+                  // Multiplied by the fraction gives the concrete amount
+                  // being vanished for this comma — display this instead
+                  // of the bare fraction since "1/4" misleadingly reads
+                  // like "1/4-comma meantone" (which has a different
+                  // tuning math).  The honest number is the cents.
+                  const commaCents = 1200 * Math.log2(c.n / c.d);
+                  const vanishCents = commaCents * f;
                   return (
                     <div key={`${c.n}/${c.d}`} className="flex items-center gap-2">
                       <span className="text-[10px] font-mono text-[#ff6666] min-w-[64px]">
@@ -6138,19 +6146,18 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                         }}
                         className="w-40 accent-[#ff6666]"
                       />
-                      <span className="text-[10px] text-[#888] w-10 text-right tabular-nums">
-                        {f === 0 ? "0" : f === 1 ? "1" : (() => {
-                          // Show as 1/n when close to a clean fraction
-                          const inv = 1 / f;
-                          if (Math.abs(inv - Math.round(inv)) < 0.02 && Math.round(inv) >= 2 && Math.round(inv) <= 16) {
-                            return `1/${Math.round(inv)}`;
-                          }
-                          return f.toFixed(2);
-                        })()}
+                      <span
+                        className="text-[10px] text-[#888] w-20 text-right tabular-nums"
+                        title={`Vanishing ${vanishCents.toFixed(2)}¢ of the comma's full ${commaCents.toFixed(2)}¢`}
+                      >
+                        {vanishCents.toFixed(1)}¢ / {commaCents.toFixed(1)}¢
                       </span>
                       <div className="flex gap-0.5">
                         {([
-                          [0,    "0"],
+                          // No "0" preset — fraction = 0 is equivalent to
+                          // removing the comma from the active list, so
+                          // the user just deselects the comma chip above
+                          // instead of dialling its fraction to zero.
                           [1/4,  "¼"],
                           [1/3,  "⅓"],
                           [1/2,  "½"],
