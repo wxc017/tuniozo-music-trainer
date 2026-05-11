@@ -419,50 +419,31 @@ export function monzoTo3DHelical(
   primes: number[],
   edo: number | null,
 ): [number, number, number] {
-  // Helix projection.  Two modes:
+  // Classical Tonescape pitch-helix.  Fifths wrap the cylinder
+  // (exp3 → angle), thirds advance vertically (exp5 → y).  Both
+  // axes are visible as orthogonal structure — every cell sits at
+  // its (angle, height) pair so 3rds-and-5ths are simultaneously
+  // legible.  EDO-adaptive: FIFTHS_PER_TURN = edo when set, so
+  // 31-EDO gets a 31-pointed turn and the chain closes naturally
+  // after one rotation; falls back to 12 in pure-JI contexts.
   //
-  // (A) EDO MODE — when an EDO context is set, every cell's angular
-  // position is its VAL-mapped step (5-axis cells collapse onto the
-  // fifths chain via the EDO's consistent val).  In 31-EDO the M3
-  // (5/4) lands at step 10 = exactly where 10 fifths up sits in the
-  // chain, so the 5-axis cells join the 3-axis cells on the same
-  // ring instead of stacking into vertical rows.  Result: one
-  // clean spiral with `edo` points per turn — per direct user
-  // direction (2026-05-11): "this is not a clean spiral that your
-  // talking about for spacial audiaiton".  A tiny per-fifth lift
-  // (1.8/edo) preserves enough vertical structure to distinguish
-  // multi-octave overlaps without scattering into rows.
-  //
-  // (B) NON-EDO / JI MODE — classical Tonescape: fifths wrap the
-  // cylinder (12-per-turn default), thirds advance vertically.
+  // Per direct user direction (2026-05-11): "use a helical view
+  // 3rds fifth" — both axes must be visually present.  The earlier
+  // EDO-mode "collapse 5-axis onto chain-of-fifths ring" version
+  // hid the thirds entirely; reverted here.
   const i3 = primes.indexOf(3);
   const i5 = primes.indexOf(5);
   const exp3 = i3 >= 0 ? (exps[i3] ?? 0) : 0;
   const exp5 = i5 >= 0 ? (exps[i5] ?? 0) : 0;
 
-  if (edo && edo > 0) {
-    // EDO mode — val-mapped step drives the angle, all cells in the
-    // same EDO step share an angular position.
-    const valVec = primes.map(p => Math.round(edo * Math.log2(p)));
-    let step = 0;
-    for (let i = 0; i < primes.length; i++) step += valVec[i] * (exps[i] ?? 0);
-    step = ((step % edo) + edo) % edo;
-    const RADIUS = 3.0 + 0.06 * Math.max(0, edo - 12);
-    const angle = 2 * Math.PI * step / edo;
-    // Minimal y so cells overlapping in step don't z-fight, but the
-    // helix reads as a flat ring.  Sign on exp5 lifts 5-axis cells
-    // slightly above the 3-axis chain so coincident equivalence-class
-    // cells are still individually clickable.
-    const y = exp5 * 0.18 + exp3 * (1.8 / edo);
-    return [RADIUS * Math.cos(angle), y, RADIUS * Math.sin(angle)];
-  }
-
-  // Non-EDO / pure-JI fallback — classical Tonescape: 12 fifths per
-  // turn, thirds advance vertically by HEIGHT_PER_THIRD.
-  const FIFTHS_PER_TURN = 12;
-  const RADIUS = 3.0;
+  const FIFTHS_PER_TURN = edo && edo > 0 ? edo : 12;
+  const RADIUS = 3.0 + 0.06 * Math.max(0, FIFTHS_PER_TURN - 12);
+  // Vertical spacing per third — kept moderate so 5-axis chains
+  // stack cleanly without overshooting the screen height.  Per-fifth
+  // lift normalised so total per-turn rise = 1.8 regardless of EDO.
   const HEIGHT_PER_THIRD = 1.6;
   const HEIGHT_PER_FIFTH = 1.8 / FIFTHS_PER_TURN;
+
   const angle = 2 * Math.PI * exp3 / FIFTHS_PER_TURN;
   const y = exp5 * HEIGHT_PER_THIRD + exp3 * HEIGHT_PER_FIFTH;
   return [RADIUS * Math.cos(angle), y, RADIUS * Math.sin(angle)];

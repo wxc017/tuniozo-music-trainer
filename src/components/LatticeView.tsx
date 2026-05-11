@@ -4460,16 +4460,12 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   }, [temperingForEdo]);
   // monzoLabelMode removed — now individual layer toggles
   const [monzoShowTopo, setMonzoShowTopo] = useState(true);
-  // Default to the TRIANGULAR TONNETZ projection per direct user
-  // direction (2026-05-11): "this is not a pallatable shape, use the
-  // shape that people usually use" + "i cant see anything with the
-  // geometry through this shape".  The canonical Tonnetz (Euler-
-  // Tonnetz / Neo-Riemannian triangular grid) is the standard
-  // visualisation in music theory + xen circles — fifths along one
-  // axis, thirds along a 60°-skewed axis, every cell tessellates
-  // into a major or minor triad with its neighbours.  Helical /
-  // toroidal / square remain available as manual overrides.
-  const [monzoGridType, setMonzoGridType] = useState<GridType>("triangle");
+  // Default back to HELICAL per direct user direction (2026-05-11):
+  // "this shape is absolute nonsense, use a helical view 3rds fifth".
+  // Fifths wrap the cylinder, thirds advance vertically — classic
+  // Tonescape pitch-helix in 3D.  EDO-adaptive via monzoTo3DHelical
+  // (12-EDO → 12 fifths per turn, 31-EDO → 31, etc.).
+  const [monzoGridType, setMonzoGridType] = useState<GridType>("helical");
   const [customCommaInput, setCustomCommaInput] = useState("");
   const [jumpRatioInput, setJumpRatioInput] = useState("");
 
