@@ -2848,7 +2848,22 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
         <MonzoNodeMesh
           key={node.key}
           node={node}
-          pos={layers.classes ? lattice.jiPositions.get(node.key) ?? node.pos3d : (topoPositions ?? lattice.positions).get(node.key) ?? node.pos3d}
+          // Position-source rule per direct user direction (2026-05-06):
+          // "after tempting keep the thirds dont collapse to fifths and
+          // have it close" — helical / toroidal projections preserve
+          // the 3-axis ↔ 5-axis distinction even after tempering
+          // because they read each monzo's pre-projection exponents.
+          // For those projections we ALWAYS use jiPositions so the
+          // tempered equivalence classes show up as RINGS OF NODES
+          // (multiple cells at distinct helical positions, all
+          // sharing the same tempered class via the class-based
+          // chain highlight) instead of collapsing to a single
+          // projected point.  The default (square / triangle) still
+          // honours the projection when tempering, since those grids
+          // benefit from the comma-flattened visual.
+          pos={(layers.classes || lattice.config.gridType === "helical" || lattice.config.gridType === "toroidal")
+            ? lattice.jiPositions.get(node.key) ?? node.pos3d
+            : (topoPositions ?? lattice.positions).get(node.key) ?? node.pos3d}
           isActive={droneNodes.has(node.key)}
           activeColors={nodeColorOverrides?.get(node.key)}
           forceDim={dimGeneratorEdges === true}
@@ -5190,31 +5205,69 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       effectiveConfig, debouncedConfig, noteFilterTargets]);
 
   // ── Chain-node highlight set ────────────────────────────────────────
-  // For the active rank-2 MOS chain, collect every lattice node whose
-  // monzo coordinates match a step on the generator chain.  Generator
-  // = the tempered fifth at 3-axis +1 (all other axes = 0).  The chain
-  // covers positions [0, 1, ..., N-1] on the 3-axis from origin.
-  // Nodes outside the bounds aren't reachable (the user can expand
-  // bounds if they want more of the chain visible); positions that
-  // land inside become magenta-ringed via MonzoNodeMesh's isInChain
-  // branch.  When chainLength is undefined the set is empty so no
-  // highlighting fires.
+  // Class-based chain highlight: for each step k on the generator
+  // chain (k = 0..N-1 fifths up from tonic), find the tempered
+  // equivalence class that step belongs to, then mark EVERY lattice
+  // node in those classes.  So with N=12 + 81/80 fully vanished
+  // (meantone), the 4-fifths-up step at [+4, 0] AND the 5-limit M3
+  // at [0, +1] both ring as "step 4 of the chain" because meantone
+  // identifies them.  Per direct user direction (2026-05-06): "all
+  // it is currently doing is putting a ring around a node its not
+  // actually giving us rings of nodes" — class-based grouping is
+  // what surfaces the temperament's "12 notes" as groups of cells.
+  //
+  // When no tempering is active (and no EDO context fills classMap),
+  // each cell is its own class, so this gracefully degrades to the
+  // single-cell-per-step behaviour.
   const chainNodeKeys = useMemo<Set<string>>(() => {
     const set = new Set<string>();
     const N = monzoConfig.chainLength;
     if (!N || N < 2) return set;
     const p3Idx = monzoConfig.primes.indexOf(3);
     if (p3Idx < 0) return set;
-    for (const node of filteredMonzoLattice.nodes) {
-      const exps = node.monzo.exps;
-      const a3 = exps[p3Idx] ?? 0;
-      if (a3 < 0 || a3 >= N) continue;
-      let otherAxesZero = true;
-      for (let i = 0; i < exps.length; i++) {
-        if (i === p3Idx) continue;
-        if ((exps[i] ?? 0) !== 0) { otherAxesZero = false; break; }
+
+    // Build the canonical chain-position keys [0..N-1] on the 3-axis.
+    // Each key is "n/d" formatted to match the lattice's classMap
+    // lookup; for octave-equivalent lattices the n/d is the
+    // octave-reduced ratio of 3^k.
+    const chainClassIds = new Set<number>();
+    const chainKeys = new Set<string>();
+    for (let k = 0; k < N; k++) {
+      // 3^k / 2^floor(k * log2(3)) → octave-reduced ratio.
+      let num = 1, den = 1;
+      const exp = k;
+      if (exp >= 0) num = 3 ** exp;
+      else den = 3 ** -exp;
+      // Octave-reduce into [1, 2)
+      while (num >= 2 * den) den *= 2;
+      while (num < den) num *= 2;
+      const key = `${num}/${den}`;
+      chainKeys.add(key);
+      const classId = filteredMonzoLattice.classMap?.get(key);
+      if (classId !== undefined) chainClassIds.add(classId);
+    }
+
+    // If tempering / EDO context produced class IDs, mark every node
+    // in those classes.  Otherwise fall back to raw chain-key match
+    // (no tempering = each cell is its own class).
+    if (chainClassIds.size > 0) {
+      for (const node of filteredMonzoLattice.nodes) {
+        if (node.temperedClass !== undefined && chainClassIds.has(node.temperedClass)) {
+          set.add(node.key);
+        }
       }
-      if (otherAxesZero) set.add(node.key);
+    } else {
+      for (const node of filteredMonzoLattice.nodes) {
+        const exps = node.monzo.exps;
+        const a3 = exps[p3Idx] ?? 0;
+        if (a3 < 0 || a3 >= N) continue;
+        let otherAxesZero = true;
+        for (let i = 0; i < exps.length; i++) {
+          if (i === p3Idx) continue;
+          if ((exps[i] ?? 0) !== 0) { otherAxesZero = false; break; }
+        }
+        if (otherAxesZero) set.add(node.key);
+      }
     }
     return set;
   }, [monzoConfig.chainLength, monzoConfig.primes, filteredMonzoLattice]);
