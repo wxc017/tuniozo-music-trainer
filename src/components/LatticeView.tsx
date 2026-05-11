@@ -2172,6 +2172,89 @@ function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused
   );
 }
 
+// ── Animated voice-leading arrow ───────────────────────────────────
+// Per direct user direction (2026-05-11): "make the chord changes
+// lines move towards the chords dont make it stationary like for
+// the 1 to 5 the nodes that are changing it disconnects from the
+// one that is changing and slow collapsing onto the right node".
+//
+// The line + arrowhead grow from `from` toward `to` over ~0.7 s with
+// an ease-out cubic so motion decelerates as it lands.  The chord
+// index badge follows the arrow tip so the user can track which
+// voice is moving where.  Re-mounts (new from/to via key change in
+// the parent) restart the animation from 0 — so each new chord
+// transition gets its own fresh sweep.
+function AnimatedVoiceLeadingArrow({ from, to, color, index }: {
+  from: [number, number, number];
+  to: [number, number, number];
+  color: string;
+  index: number;
+}) {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const start = performance.now();
+    const duration = 700;  // ms — slow enough to read as motion, fast enough to land before next chord
+    let raf = 0;
+    const tick = () => {
+      const t = Math.min(1, (performance.now() - start) / duration);
+      // Ease-out cubic — fast at start, slow as it lands on the
+      // destination, matching the user's "slow collapsing onto the
+      // right node" phrasing.
+      setProgress(1 - Math.pow(1 - t, 3));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [from[0], from[1], from[2], to[0], to[1], to[2]]);
+
+  const cx = from[0] + (to[0] - from[0]) * progress;
+  const cy = from[1] + (to[1] - from[1]) * progress;
+  const cz = from[2] + (to[2] - from[2]) * progress;
+
+  const dirVec = new THREE.Vector3(to[0] - from[0], to[1] - from[1], to[2] - from[2]);
+  const dirNorm = dirVec.lengthSq() > 1e-8 ? dirVec.clone().normalize() : new THREE.Vector3(0, 1, 0);
+  const quat = new THREE.Quaternion();
+  quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirNorm);
+
+  // Arrowhead sits at the moving tip (pulled back ~0.18 from the
+  // current endpoint when the tip is past the from-node sphere).
+  const offset = progress > 0.05 ? 0.18 : 0;
+  const arrowPos: [number, number, number] = [
+    cx - dirNorm.x * offset,
+    cy - dirNorm.y * offset,
+    cz - dirNorm.z * offset,
+  ];
+  const labelPos: [number, number, number] = [cx, cy + 0.18, cz];
+
+  return (
+    <group>
+      <Line
+        points={[from, [cx, cy, cz]] as [number, number, number][]}
+        color={color} lineWidth={3} dashed={false} transparent opacity={0.95}
+      />
+      <mesh position={arrowPos} quaternion={quat}>
+        <coneGeometry args={[0.13, 0.36, 12]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <Html position={labelPos} center distanceFactor={8} style={{ pointerEvents: "none" }} zIndexRange={[100, 0]}>
+        <div style={{
+          background: color,
+          color: "#000",
+          fontSize: "11px",
+          fontWeight: 700,
+          padding: "1px 6px",
+          borderRadius: "10px",
+          border: "1px solid rgba(0,0,0,0.6)",
+          minWidth: "16px",
+          textAlign: "center",
+          whiteSpace: "nowrap",
+          userSelect: "none",
+        }}>{index}</div>
+      </Html>
+    </group>
+  );
+}
+
 interface MonzoSceneProps {
   lattice: BuiltLattice;
   topology: TopologyInfo;
@@ -2704,47 +2787,15 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
           const b = posMap.get(toKey);
           if (!a || !b) return null;
           const dirVec = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-          const lengthVec = dirVec.length();
-          if (lengthVec < 0.001) return null;
-          const dirNorm = dirVec.clone().normalize();
-          const quat = new THREE.Quaternion();
-          quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirNorm);
-          // Pull the arrowhead back ~0.18 units from the destination so
-          // it sits visibly on the line rather than buried inside the
-          // destination node sphere.
-          const arrowPos: [number, number, number] = [
-            b[0] - dirNorm.x * 0.18,
-            b[1] - dirNorm.y * 0.18,
-            b[2] - dirNorm.z * 0.18,
-          ];
-          const mid: [number, number, number] = [
-            (a[0] + b[0]) / 2,
-            (a[1] + b[1]) / 2 + 0.18,
-            (a[2] + b[2]) / 2,
-          ];
+          if (dirVec.length() < 0.001) return null;
           return (
-            <group key={`vl-${i}-${arrow.fromClassId}-${arrow.toClassId}`}>
-              <Line points={[a, b]} color={arrow.color} lineWidth={3} dashed={false} transparent opacity={0.95} />
-              <mesh position={arrowPos} quaternion={quat}>
-                <coneGeometry args={[0.13, 0.36, 12]} />
-                <meshBasicMaterial color={arrow.color} />
-              </mesh>
-              <Html position={mid} center distanceFactor={8} style={{ pointerEvents: "none" }} zIndexRange={[100, 0]}>
-                <div style={{
-                  background: arrow.color,
-                  color: "#000",
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  padding: "1px 6px",
-                  borderRadius: "10px",
-                  border: "1px solid rgba(0,0,0,0.6)",
-                  minWidth: "16px",
-                  textAlign: "center",
-                  whiteSpace: "nowrap",
-                  userSelect: "none",
-                }}>{arrow.index}</div>
-              </Html>
-            </group>
+            <AnimatedVoiceLeadingArrow
+              key={`vl-${i}-${arrow.fromClassId}-${arrow.toClassId}`}
+              from={a}
+              to={b}
+              color={arrow.color}
+              index={arrow.index}
+            />
           );
         }).filter(Boolean);
       })()}
