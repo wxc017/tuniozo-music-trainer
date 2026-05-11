@@ -45,8 +45,12 @@ export const TONALITY_FAMILIES: TonalityFamilyGroup[] = [
   // qualifiers (s = sub, m = min, n = neu, M = maj, S = sup, # = aug).
   { key: "subminor",   label: "SUBMINOR DIATONIC",   color: "#7aaa6a",
     tonalities: ["Subminor Diatonic","Locrian s2 s5 s6","Supermajor Ionian","Dorian s3 bb4 s7","Subminor Phrygian m7","Supermajor Lydian M2 b5","Supermajor Mixolydian ##5 m7"] },
-  { key: "neutral",    label: "NEUTRAL DIATONIC",    color: "#9a66c0",
-    tonalities: ["Neutral Diatonic","Dorian n2 bb5 n6","Neutral Ionian","Ionian n3 ##4 n7","Neutral Dorian m7","Neutral Ionian M2 ##4","Neutral Dorian bb5 m7"] },
+  // "neutral" / Neutral Diatonic family removed 2026-05-11 per direct
+  // user direction "remove diatonic neutral" — grafted 11-limit
+  // neutral 3rd onto a 3-limit (Pyth M2/P4/P5) backbone produced
+  // chord-comma wolves (same problem the now-removed 41/53-EDO
+  // "Diatonic Neutral" had).  11-limit content lives in the maqam
+  // family + Mohajira instead.
   { key: "supermajor", label: "SUPERMAJOR DIATONIC", color: "#cc6a8a",
     tonalities: ["Supermajor Diatonic","Dorian S2 ##5 S6","Subminor Phrygian","Lydian S3 b5 S7","Supermajor Mixolydian m7","Subminor Aeolian M2 bb4","Subminor Locrian m7"] },
   { key: "subharmonic",label: "SUBHARMONIC DIATONIC M7",color: "#4a9ac7",
@@ -77,8 +81,9 @@ const MEANTONE_LIMIT_SECTIONS: { key: string; label: string; color: string; fami
     familyKeys: ["major", "harmonic", "melodic", "doubleharmonic"] },
   { key: "lim7",  label: "7-LIMIT (SEPTIMAL)", color: "#7aaa6a",
     familyKeys: ["subminor", "supermajor", "subharmonic"] },
-  { key: "lim11", label: "11-LIMIT (NEUTRAL)", color: "#9a66c0",
-    familyKeys: ["neutral"] },
+  // lim11 / Neutral Diatonic family removed 2026-05-11 per direct
+  // user direction "remove diatonic neutral".  11-limit content
+  // surfaces through the maqam family + Mohajira instead.
   { key: "sym",   label: "SYMMETRIC",          color: "#5ab9b0",
     familyKeys: ["symmetric"] },
 ];
@@ -101,7 +106,9 @@ const THIRTY_ONE_EDO_SECTIONS: CuratedSection[] = [
   { key: "31-subminor",   label: "DIATONIC SUBMINOR",             color: "#7aaa6a", familyKey: "subminor" },
   { key: "31-supermajor", label: "DIATONIC SUPERMAJOR",           color: "#cc6a8a", familyKey: "supermajor" },
   { key: "31-subharm",    label: "DIATONIC SUBHARMONIC MINOR M7", color: "#4a9ac7", familyKey: "subharmonic" },
-  { key: "31-neutral",    label: "DIATONIC NEUTRAL",              color: "#9a66c0", familyKey: "neutral" },
+  // 31-neutral / DIATONIC NEUTRAL section removed 2026-05-11 per
+  // direct user direction "remove diatonic neutral".  Mohajira +
+  // Maqam carry the 11-limit content now.
   { key: "31-maqam",      label: "MAQAM",                          color: "#d08a5a", familyKey: "maqam" },
   { key: "31-sym",        label: "SYMMETRICAL",                   color: "#5ab9b0", familyKey: "symmetric" },
 ];

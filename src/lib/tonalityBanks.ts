@@ -632,7 +632,14 @@ function buildXenFamilyBanks(edo: number, showSevenths: boolean): TonalityBank[]
 
   const out: TonalityBank[] = [];
   out.push(...buildOneXenFamilyBanks(SUBMINOR,    SUBMINOR_MODES, edo, showSevenths));
-  out.push(...buildOneXenFamilyBanks(NEUTRAL,     NEUTRAL_MODES, edo, showSevenths));
+  // Neutral family removed 2026-05-11 per direct user direction
+  // "remove diatonic neutral".  11-limit content surfaces via the
+  // maqam family + Mohajira instead.
+  // void NEUTRAL / NEUTRAL_MODES — declared above but no longer
+  // registered as a bank.  Kept as dead code so the references
+  // upstream (xen tests, family-name lookups) still resolve while
+  // we tighten the catalog.
+  void NEUTRAL; void NEUTRAL_MODES;
   out.push(...buildOneXenFamilyBanks(SUPERMAJOR,  SUPERMAJOR_MODES, edo, showSevenths));
   out.push(...buildOneXenFamilyBanks(SUBHARMONIC, SUBHARMONIC_MODES, edo, showSevenths));
   return out;
