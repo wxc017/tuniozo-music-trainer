@@ -69,8 +69,15 @@ export default function FloatingPanel({
   return (
     <div
       style={{
+        // z-60 sits above the sticky main visualizer (z-50 in
+        // App.tsx) so the chord-analysis overlay isn't covered by
+        // the keyboard.  Per direct user direction (2026-05-11):
+        // "this overlay is not visible in scalar explorations" —
+        // in Scalar Explorations the FloatingPanel and the sticky
+        // visualizer share the same wrapper and the z-30 panel was
+        // being painted under the z-50 visualizer.
         position: "fixed",
-        zIndex: 30,
+        zIndex: 60,
         maxWidth,
         minWidth: 260,
         maxHeight,
