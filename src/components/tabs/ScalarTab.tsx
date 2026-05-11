@@ -190,6 +190,28 @@ export default function ScalarTab({
   // button again (toggle).  Identified by `${level}-${idx}` so the same
   // Roman numeral can appear in multiple levels without colliding.
   const [highlightedChordKey, setHighlightedChordKey] = useState<string | null>(null);
+  // Sticky chord pitches kept on the keyboard as a baseline that other
+  // transient highlights (playing a syllable / chord / scale / pump)
+  // union with rather than replace.  Per direct user direction
+  // (2026-05-11): "scalarcar explorations highlight chords should be
+  // toggled" / "it doesnt highlight indefinitely" — every previous
+  // action wiped highlightedChordKey, so the user's ⬚ pick lasted only
+  // until the next click.  Storing the pitches in a ref lets the
+  // emitHighlight helper merge them into every onHighlight call without
+  // re-rendering the chord toggles each time the keyboard updates.
+  const stickyChordPitches = useRef<number[]>([]);
+  // Wrap onHighlight so transient highlights union with the sticky
+  // chord pitches.  Use this in any transient action; for one-shots
+  // that intentionally REPLACE the highlight (highlightAll, Clear),
+  // call onHighlight directly after clearing stickyChordPitches.
+  const emitHighlight = useCallback((pitches: number[]) => {
+    const sticky = stickyChordPitches.current;
+    if (sticky.length === 0) { onHighlight(pitches); return; }
+    if (pitches.length === 0) { onHighlight(sticky.slice()); return; }
+    const set = new Set(pitches);
+    for (const p of sticky) set.add(p);
+    onHighlight(Array.from(set));
+  }, [onHighlight]);
   // True while playSequence's ascending run + 5 s sustained hold are
   // still in flight.  Used to disable Play Scale so the user can't
   // stack overlapping playbacks of the same scale.
@@ -272,6 +294,7 @@ export default function ScalarTab({
     audioEngine.silencePlay();
     setDronedStep(null);
     setHighlightedChordKey(null);
+    stickyChordPitches.current = [];
     onHighlight([]);
   }, [onHighlight]);
 
@@ -295,14 +318,14 @@ export default function ScalarTab({
       edo, gapMs, frames.length
     );
     for (let i = 0; i < frames.length; i++) {
-      const id = setTimeout(() => onHighlight(frames[i]), i * gapMs);
+      const id = setTimeout(() => emitHighlight(frames[i]), i * gapMs);
       frameTimers.current.push(id);
     }
     const allNotes = allSteps.map(s => baseTonic + s);
     const holdStart = frames.length * gapMs;
-    const holdId = setTimeout(() => onHighlight(allNotes), holdStart);
+    const holdId = setTimeout(() => emitHighlight(allNotes), holdStart);
     frameTimers.current.push(holdId);
-    const clearId = setTimeout(() => onHighlight([]), holdStart + HOLD_MS);
+    const clearId = setTimeout(() => emitHighlight([]), holdStart + HOLD_MS);
     frameTimers.current.push(clearId);
     // Lock the Play Scale button until the run + sustained hold both
     // finish — clearing any prior lockout so a Clear / new scale
@@ -313,10 +336,11 @@ export default function ScalarTab({
       setIsPlayingSequence(false);
       playSequenceTimer.current = null;
     }, holdStart + HOLD_MS);
-  }, [view, baseTonic, edo, ensureAudio, playVol, onHighlight]);
+  }, [view, baseTonic, edo, ensureAudio, playVol, emitHighlight]);
 
   // Static highlight: light up the entire scale at once on the keyboard.
-  // Stays lit until the user takes another action — no auto-clear.
+  // Replaces any sticky chord highlight (this is itself a sticky
+  // highlight, just at the scale level).
   const highlightAll = useCallback(() => {
     if (!view) return;
     frameTimers.current.forEach(id => clearTimeout(id));
@@ -324,6 +348,7 @@ export default function ScalarTab({
     audioEngine.stopDrone();
     setDronedStep(null);
     setHighlightedChordKey(null);
+    stickyChordPitches.current = [];
     const allSteps = [...view.scale.map(s => s.step), view.scale[0].step + edo];
     onHighlight(allSteps.map(s => baseTonic + s));
   }, [view, baseTonic, edo, onHighlight]);
@@ -353,14 +378,13 @@ export default function ScalarTab({
     frameTimers.current = [];
     audioEngine.stopDrone();
     setDronedStep(null);
-    setHighlightedChordKey(null);
     const pitches = steps.map(s => baseTonic + s);
     audioEngine.playMultiVoice(
       [{ frames: [pitches], noteDuration: 1.4, gain: playVol * 1.6 }],
       edo, 0, 1
     );
-    onHighlight(pitches);
-  }, [baseTonic, edo, ensureAudio, playVol, onHighlight]);
+    emitHighlight(pitches);
+  }, [baseTonic, edo, ensureAudio, playVol, emitHighlight]);
 
   // Comma-pump playback: walk the progression, applying the per-chord
   // syntonic-comma drift (in EDO steps) so the audible pump is ACTUALLY
@@ -377,8 +401,7 @@ export default function ScalarTab({
       frameTimers.current = [];
       if (pumpStopTimer.current) { clearTimeout(pumpStopTimer.current); pumpStopTimer.current = null; }
       setPlayingPumpKey(null);
-      setHighlightedChordKey(null);
-      onHighlight([]);
+      emitHighlight([]);
       return;
     }
     await ensureAudio();
@@ -386,7 +409,6 @@ export default function ScalarTab({
     frameTimers.current = [];
     audioEngine.stopDrone();
     setDronedStep(null);
-    setHighlightedChordKey(null);
 
     const drifts = pumpChordDrifts(pump);
     const framesByChord: number[][] = [];
@@ -409,7 +431,7 @@ export default function ScalarTab({
       edo, gapMs, framesByChord.length
     );
     framesByChord.forEach((pitches, i) => {
-      const id = setTimeout(() => onHighlight(pitches), i * gapMs);
+      const id = setTimeout(() => emitHighlight(pitches), i * gapMs);
       frameTimers.current.push(id);
     });
     setPlayingPumpKey(pump.key);
@@ -419,13 +441,16 @@ export default function ScalarTab({
       setPlayingPumpKey(null);
       pumpStopTimer.current = null;
     }, totalMs);
-  }, [playingPumpKey, baseChordMap, baseTonic, edo, ensureAudio, playVol, onHighlight]);
+  }, [playingPumpKey, baseChordMap, baseTonic, edo, ensureAudio, playVol, emitHighlight]);
 
   // Sticky highlight for a chord — no audio, no auto-clear.  Stays lit
-  // until the user takes another action.
-  // Toggle a chord's keyboard highlight.  If the requested chord is
-  // already the active one, clear; otherwise switch to it.  Stays on
-  // until the user clicks the same ⬚ again (or another action wipes it).
+  // INDEFINITELY (across other interactions) until the user clicks the
+  // same ⬚ again or hits Clear.  Per direct user direction (2026-05-11):
+  // "it doesnt highlight indefinitely" — previously every transient
+  // action wiped this; now the chord pitches live in
+  // stickyChordPitches and are merged into every other onHighlight call
+  // via emitHighlight, so they survive scale plays, single-note clicks,
+  // pump runs, etc.
   const toggleChordHighlight = useCallback((key: string, steps: number[]) => {
     if (!steps || steps.length === 0) return;
     frameTimers.current.forEach(id => clearTimeout(id));
@@ -434,10 +459,13 @@ export default function ScalarTab({
     setDronedStep(null);
     if (highlightedChordKey === key) {
       setHighlightedChordKey(null);
+      stickyChordPitches.current = [];
       onHighlight([]);
     } else {
+      const pitches = steps.map(s => baseTonic + s);
       setHighlightedChordKey(key);
-      onHighlight(steps.map(s => baseTonic + s));
+      stickyChordPitches.current = pitches;
+      onHighlight(pitches);
     }
   }, [baseTonic, onHighlight, highlightedChordKey]);
 
@@ -453,21 +481,23 @@ export default function ScalarTab({
       [{ frames: [[pitch]], noteDuration: 0.7, gain: playVol * 1.2 }],
       edo, 0, 1
     );
-    onHighlight([pitch]);
-  }, [baseTonic, edo, ensureAudio, playVol, onHighlight]);
+    emitHighlight([pitch]);
+  }, [baseTonic, edo, ensureAudio, playVol, emitHighlight]);
 
   const startSyllableDrone = useCallback(async (step: number) => {
     await ensureAudio();
     audioEngine.stopDrone();
     audioEngine.startDrone([baseTonic + step], edo, 0.07);
-    onHighlight([baseTonic + step]);
+    emitHighlight([baseTonic + step]);
     setDronedStep(step);
-  }, [baseTonic, edo, ensureAudio, onHighlight]);
+  }, [baseTonic, edo, ensureAudio, emitHighlight]);
 
   const stopSyllableDrone = useCallback(() => {
     audioEngine.stopDrone();
     setDronedStep(null);
-  }, []);
+    // Drop the drone-note highlight but leave the sticky chord lit.
+    emitHighlight([]);
+  }, [emitHighlight]);
 
   const onSyllablePressStart = useCallback((step: number) => {
     // If something is already droning, treat this press as the toggle-off
