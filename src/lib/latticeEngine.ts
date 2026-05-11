@@ -107,6 +107,14 @@ export interface LatticeConfig {
    *  (2026-05-06): "i want it exact copy from scala for tempering,
    *  equal temperments and JI. Scala doesnt have tuning method". */
   tuningMethod?: TuningMethod;
+  /** Rank-2 chain length: when set, the lattice is generated as a
+   *  chain of N tempered fifths from the origin (per Scala's
+   *  `Lineartemp` / MOS scale-size concept).  Each step is one
+   *  generator iteration (the tempered fifth at lattice [+1, 0]).
+   *  The chain "encloses on itself" near canonical N values for
+   *  each temperament family — 7 / 12 / 19 / 31 / 50 for meantone,
+   *  etc.  Undefined = no chain restriction (default lattice). */
+  chainLength?: number;
 }
 
 export interface LatticeNode {

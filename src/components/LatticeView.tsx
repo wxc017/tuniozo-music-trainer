@@ -1713,6 +1713,15 @@ interface MonzoNodeMeshProps {
   showRatios?: boolean;
   showMonzo?: boolean;
   showHeji?: boolean;
+  /** Active commas — when non-empty and any has fraction > 0, the
+   *  "ratios" layer auto-decomposes into a cents readout instead of
+   *  the original n/d (since the tempered value is no longer rational). */
+  temperedCommas?: CommaSpec[];
+  /** Tuning-method for the auto-cents projection.  Defaults to TE
+   *  silently; UI no longer exposes this knob. */
+  tuningMethod?: TuningMethod;
+  /** Octave-equivalence flag (matches the lattice config). */
+  octaveEquivalence?: boolean;
   /** When tempered, all ratio keys sharing this equivalence class */
   temperedSiblings?: string[];
   /** Whether this node is the "simplest" representative of its tempered class */
@@ -1749,7 +1758,7 @@ const TEMPER_CLASS_COLORS = [
   "#ff8844", "#44ff88", "#8844ff", "#ffaa66", "#66ffaa", "#aa66ff",
 ];
 
-function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused, showLabel = true, labelLOD = false, labelDist = 15, onHover, onClick, onFocus, onCtrlClick, primes, temperedClass, classColorMap, rootPc, showNoteNames = true, showIntervals = true, showRatios = true, showMonzo = false, showHeji = false, temperedSiblings, isClassRep, isOnPath, isPathEndpoint, isPinnedPath, isHighlighted, highlightMode, isNonRepClass, showClassId, edo, forceDim = false }: MonzoNodeMeshProps) {
+function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused, showLabel = true, labelLOD = false, labelDist = 15, onHover, onClick, onFocus, onCtrlClick, primes, temperedClass, classColorMap, rootPc, showNoteNames = true, showIntervals = true, showRatios = true, showMonzo = false, showHeji = false, temperedCommas, tuningMethod, octaveEquivalence, temperedSiblings, isClassRep, isOnPath, isPathEndpoint, isPinnedPath, isHighlighted, highlightMode, isNonRepClass, showClassId, edo, forceDim = false }: MonzoNodeMeshProps) {
   // First colour from the override list — drives the legacy single-
   // colour code paths (emissive, label tint, etc.).  When the array
   // has more than one entry, the actual sphere fill is rendered as
@@ -1972,16 +1981,55 @@ function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused
                 {intervalText}
               </div>
             )}
-            {showRatios && (!showIntervals || intervalText !== node.key) && (
-              <div style={{
-                color: hi ? "#e8c76a" : "#8a7540",
-                fontSize: isSmall ? 9 : 11,
-                fontFamily: "'Courier New', monospace",
-                fontWeight: 400,
-              }}>
-                {node.key}
-              </div>
-            )}
+            {showRatios && (!showIntervals || intervalText !== node.key) && (() => {
+              // Auto-decompose to cents when tempering has shifted this
+              // node off its rational n/d position.  Threshold of 0.05¢
+              // catches every meaningful per-comma fraction (the
+              // smallest known commas like schisma are ~2¢, so any
+              // fraction > ~2.5% of those produces a > 0.05¢ shift).
+              // Per direct user direction (2026-05-06): "ratios should
+              // automatically decompose into cents if its not rational".
+              const hasActiveComma = (temperedCommas?.length ?? 0) > 0
+                && (temperedCommas ?? []).some(c => (c.fraction ?? 1) > 0);
+              if (hasActiveComma) {
+                const tcents = temperedCents(
+                  node.monzo.exps, primes, temperedCommas ?? [],
+                  octaveEquivalence ?? true, tuningMethod ?? "TE",
+                );
+                // Pure-JI cents for the SAME monzo — if the tempered
+                // value sits within 0.05¢ of the rational cents (i.e.
+                // this node lies on the comma's kernel), keep showing
+                // the n/d ratio since nothing's been displaced.
+                let jicents = 0;
+                for (let i = 0; i < primes.length; i++) {
+                  jicents += (node.monzo.exps[i] ?? 0) * Math.log2(primes[i]) * 1200;
+                }
+                const wrapped = octaveEquivalence === false ? jicents : ((jicents % 1200) + 1200) % 1200;
+                const shifted = Math.abs(tcents - wrapped) > 0.05;
+                if (shifted) {
+                  return (
+                    <div style={{
+                      color: hi ? "#ffd166" : "#a8804a",
+                      fontSize: isSmall ? 9 : 11,
+                      fontFamily: "'Courier New', monospace",
+                      fontWeight: 500,
+                    }}>
+                      {tcents.toFixed(1)}¢
+                    </div>
+                  );
+                }
+              }
+              return (
+                <div style={{
+                  color: hi ? "#e8c76a" : "#8a7540",
+                  fontSize: isSmall ? 9 : 11,
+                  fontFamily: "'Courier New', monospace",
+                  fontWeight: 400,
+                }}>
+                  {node.key}
+                </div>
+              );
+            })()}
             {showMonzo && (
               <div style={{
                 color: hi ? "#c8b0ff" : "#8870aa",
@@ -2802,6 +2850,9 @@ function MonzoScene({ lattice, topology, droneNodes, nodeColorOverrides, compens
           showRatios={layers.ratios}
           showMonzo={layers.monzo}
           showHeji={layers.heji}
+          temperedCommas={lattice.config.temperedCommas}
+          tuningMethod={lattice.config.tuningMethod}
+          octaveEquivalence={lattice.config.octaveEquivalence}
           temperedSiblings={siblingsMap.get(node.key)}
           isClassRep={layers.classes || posLabelSet.has(node.key)}
           isOnPath={combinedNodeSet?.has(node.key) ?? false}
@@ -4464,7 +4515,13 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     setCustomCommaInput("");
   }, [customCommaInput]);
 
-  // Layers system
+  // Layers system.  Per direct user direction (2026-05-06): "ratios
+  // should automatically decompose into cents if its not rational" —
+  // there is no separate cents toggle; the existing `ratios` layer
+  // is "smart" and switches to a cents readout when any active
+  // per-comma fraction has shifted the node's tempered value off
+  // its rational n/d position.  Pure JI (or fraction = 0 across
+  // every comma) keeps the original ratio.
   const [monzoLayers, setMonzoLayers] = useState({
     nodes: true,
     primeEdges: true,
@@ -6187,6 +6244,68 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
                 })}
               </div>
             )}
+            {/* Scale size N — Scala-style rank-2 MOS / Lineartemp chain
+                length.  When tempering is active, set the number of
+                notes the temperament's generator chain encloses on
+                itself.  Generator is the tempered fifth at lattice
+                [+1, 0]; canonical N values for each temperament family
+                are surfaced as chips.  Per direct user direction
+                (2026-05-06): "for tempering you can pick amount of
+                notes that it then encloses on itself for". */}
+            {monzoConfig.temperedCommas.length > 0 && (() => {
+              const N = monzoConfig.chainLength;
+              // Compute the tempered fifth's cents under the active
+              // commas so the closure-error readout is honest.
+              const fifthCents = (() => {
+                if (monzoConfig.temperedCommas.length === 0) return 701.955;
+                const fifthMonzo = monzoConfig.primes.map(p => p === 3 ? 1 : 0);
+                return temperedCents(
+                  fifthMonzo, monzoConfig.primes, monzoConfig.temperedCommas,
+                  monzoConfig.octaveEquivalence, monzoConfig.tuningMethod ?? "TE",
+                );
+              })();
+              // N×fifth mod 1200, mapped into [-600, +600] so we read
+              // it as a signed "wrap by ±X¢" closure error.
+              const closure = N ? (() => {
+                const raw = (N * fifthCents) % 1200;
+                return raw > 600 ? raw - 1200 : raw < -600 ? raw + 1200 : raw;
+              })() : null;
+              return (
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <span className="text-[10px] text-[#555] uppercase tracking-wider mr-1">Scale size</span>
+                  <input
+                    type="number"
+                    min={3} max={200}
+                    value={N ?? ""}
+                    placeholder="—"
+                    onChange={e => {
+                      const v = e.target.value === "" ? undefined : Math.max(3, Math.min(200, Number(e.target.value)));
+                      setMonzoConfig(prev => ({ ...prev, chainLength: v }));
+                    }}
+                    className="w-14 bg-[#141414] border border-[#333] text-white text-xs font-mono rounded px-1.5 py-0.5 text-center"
+                  />
+                  <div className="flex gap-1">
+                    {[5, 7, 12, 19, 22, 31, 41, 53].map(n => (
+                      <button key={n}
+                        onClick={() => setMonzoConfig(prev => ({ ...prev, chainLength: prev.chainLength === n ? undefined : n }))}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors border ${
+                          N === n
+                            ? "bg-[#2a1a1a] text-[#ff6666] border-[#ff4444]"
+                            : "bg-[#111] text-[#555] border-[#222] hover:text-[#aaa]"
+                        }`}>
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                  {N !== undefined && closure !== null && (
+                    <span className="text-[9px] text-[#777] tabular-nums"
+                      title="Cents by which the Nth-generator step misses an exact octave (signed). 0 = perfect closure; small = near-MOS.">
+                      {N}×fifth = {(N * fifthCents).toFixed(1)}¢ · wraps {closure >= 0 ? "+" : ""}{closure.toFixed(1)}¢
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
             {/* Generated Scale — shows unique tempered pitches when commas active */}
             {generatedScale && (
               <div className="flex flex-col gap-1">
