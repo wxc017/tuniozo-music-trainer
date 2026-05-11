@@ -5223,10 +5223,68 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     if (baseNodes === monzoLattice.nodes) return monzoLattice;
 
     const visibleKeys = new Set(baseNodes.map(n => n.key));
-    const visibleEdges = monzoLattice.edges.filter(e => visibleKeys.has(e.from) && visibleKeys.has(e.to));
+    let visibleEdges = monzoLattice.edges.filter(e => visibleKeys.has(e.from) && visibleKeys.has(e.to));
     const visiblePositions = new Map<string, [number, number, number]>();
     for (const [k, v] of monzoLattice.positions) {
       if (visibleKeys.has(k)) visiblePositions.set(k, v);
+    }
+
+    // Synthetic chain edges — per direct user direction (2026-05-06):
+    // "the fifth and third lines are not following the nodes, nodes
+    // just sit in empty space".  After the simplest-rep-per-class
+    // filter, most of the lattice's native fifth/third edges have
+    // one endpoint clipped, so the chain's connectivity disappears.
+    // Rebuild it: for each chain step k, find the visible rep that
+    // shares its tempered class, then add fifth-edges between
+    // consecutive steps and third-edges between steps 4 apart
+    // (meantone: M3 = 4 fifths, so step k's 5-limit M3 lives at step
+    // k+4).  Wraps modulo N so the cycle closes.
+    const Nchain = effectiveConfig.chainLength;
+    if (Nchain && Nchain >= 2 && effectiveConfig.primes.includes(3)) {
+      const stepToKey = new Map<number, string>();
+      // Build classId → rep-node-key from baseNodes.
+      const classToKey = new Map<number, string>();
+      for (const n of baseNodes) {
+        if (n.temperedClass !== undefined && !classToKey.has(n.temperedClass)) {
+          classToKey.set(n.temperedClass, n.key);
+        }
+      }
+      // For each chain step, look up its class via monzoLattice.classMap
+      // (which is keyed by the canonical ratio string 3^k/2^…), then
+      // find the rep we kept.
+      for (let k = 0; k < Nchain; k++) {
+        let num = 1, den = 1;
+        if (k >= 0) num = 3 ** k; else den = 3 ** -k;
+        while (num >= 2 * den) den *= 2;
+        while (num < den) num *= 2;
+        const chainKey = `${num}/${den}`;
+        const cid = monzoLattice.classMap?.get(chainKey);
+        if (cid !== undefined) {
+          const repKey = classToKey.get(cid);
+          if (repKey) stepToKey.set(k, repKey);
+        } else if (visibleKeys.has(chainKey)) {
+          // No tempering: the canonical chain cell IS the rep.
+          stepToKey.set(k, chainKey);
+        }
+      }
+      const synthEdges: typeof visibleEdges = [];
+      const have = new Set<string>();
+      const addEdge = (a: string, b: string, prime: number) => {
+        if (a === b) return;
+        const k1 = `${a}|${b}|${prime}`;
+        const k2 = `${b}|${a}|${prime}`;
+        if (have.has(k1) || have.has(k2)) return;
+        have.add(k1);
+        synthEdges.push({ from: a, to: b, prime, type: "generator" });
+      };
+      for (let k = 0; k < Nchain; k++) {
+        const here = stepToKey.get(k);
+        const nextFifth = stepToKey.get((k + 1) % Nchain);
+        const nextThird = stepToKey.get((k + 4) % Nchain);
+        if (here && nextFifth) addEdge(here, nextFifth, 3);
+        if (here && nextThird) addEdge(here, nextThird, 5);
+      }
+      visibleEdges = [...visibleEdges, ...synthEdges];
     }
 
     return {
