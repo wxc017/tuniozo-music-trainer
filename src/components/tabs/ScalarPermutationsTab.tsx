@@ -96,6 +96,37 @@ const CATEGORY_COLORS: Record<Category, string> = {
   perm:  "#5cbfae",   // teal — interval / scale-shape permutations
 };
 
+// In-category family display order, by pedagogical importance.  Order
+// per direct user direction (2026-05-12) "reorder all the ones by
+// importance the options in each family" applied to family-rows too:
+//   • Chord-based: Triad Pairs first (primary chord-based exercise,
+//     best-for-mode-ID per prior analysis), then Hexatonics (Bergonzi
+//     Vol 7, closely related), then Cadences (harmonic motion),
+//     Chord Tone Arpeggios (single-chord), Guide-Tone Lines (advanced
+//     voice-leading across changes — needs the others to make sense).
+//   • Jazz-Inspired: Bebop Fragments (most idiomatic), Enclosures
+//     (most-used bebop ornament), Digital Patterns (advanced cells).
+//   • Permutations: Pentatonics (fundamental subset scales) before
+//     Intervallic (interval cycles — wider, covers more ground).
+const CATEGORY_FAMILY_ORDER: Record<Category, string[]> = {
+  chord: [
+    "Bergonzi Triad Pairs",
+    "Bergonzi Hexatonics",
+    "Cadences",
+    "Chord Tone Arpeggios",
+    "Guide-Tone Lines",
+  ],
+  jazzy: [
+    "Bebop Fragments",
+    "Enclosures",
+    "Bergonzi Digital Patterns",
+  ],
+  perm: [
+    "Bergonzi Pentatonics",
+    "Bergonzi Intervallic",
+  ],
+};
+
 // Bergonzi prefix dropped from display per direct user direction
 // (2026-05-12) "remove and bergonzi references just have the main ideas".
 // The engine keys stay verbatim so generateJazzCell still dispatches.
@@ -195,7 +226,7 @@ export default function ScalarPermutationsTab({
   const [contourNotes, setContourNotes] = useState<number[] | null>(null);
   const [contourDegrees, setContourDegrees] = useState<string[] | null>(null);
   const [contourVisible, setContourVisible] = useState(false);
-  const [lastVariantText, setLastVariantText] = useState<string>("");
+  const [lastChordContext, setLastChordContext] = useState<string>("");
 
   useEffect(() => {
     unregisterKnownOptionsForPrefix("perm:");
@@ -285,7 +316,50 @@ export default function ScalarPermutationsTab({
     });
   };
 
-  type Built = { frames: number[][]; degrees: string[]; absNotes: number[]; optKey: string; label: string; variantText?: string };
+  type Built = { frames: number[][]; degrees: string[]; absNotes: number[]; optKey: string; label: string; variantText?: string; chordContext?: string };
+
+  // Roman-numeral chord context for the rendered phrase.  Surfaces the
+  // active chord(s) — single triad for Arpeggios, pair for Triad
+  // Pairs / Hexatonics, progression for Cadence chords and Guide-Tone
+  // progressions.  Per direct user direction (2026-05-12) "i want
+  // roman numerals for whatever is relevant like triad pairs or
+  // arpeggios" — the variant text was removed from Show Answer, so
+  // this re-surfaces the harmonic info in a single clean line.
+  function chordContextFor(family: string, variantText: string | undefined, progId?: string): string {
+    const triads = getDiatonicTriadsForMode(scaleFam, modeName);
+    const romansFor = (degrees: number[]): string =>
+      degrees.map(d => triads[d - 1]?.roman ?? String(d)).join("-");
+    if (family === "Cadences" && progId && progId.startsWith("cad_")) {
+      const degs = progId.slice("cad_".length).split("_").map(s => parseInt(s));
+      return romansFor(degs);
+    }
+    if (family === "Guide-Tone Lines" && variantText) {
+      // Generator emits "guide-tone line over 2-5-1".  Convert the
+      // numeric progression to Roman; tonic-only variants ("starting
+      // on 3" / "starting on 7") have no chord context.
+      const m = variantText.match(/guide-tone line over ([\d_\-]+)/);
+      if (m) {
+        const degs = m[1].split(/[_-]/).map(s => parseInt(s)).filter(n => !isNaN(n));
+        if (degs.length) return romansFor(degs);
+      }
+      return "";
+    }
+    if (family === "Bergonzi Triad Pairs" && variantText) {
+      // Variant text: "ascending triad pair I+ii sequenced through scale"
+      const m = variantText.match(/triad pair (\S+)/);
+      if (m) return m[1];
+    }
+    if (family === "Bergonzi Hexatonics" && variantText) {
+      // Variant text: "I+ii hexatonic — cell4" OR "augmented hexatonic — …"
+      const m = variantText.match(/^(.+?) hexatonic/);
+      if (m && m[1] !== "augmented" && m[1] !== "whole-tone") return m[1];
+    }
+    if (family === "Chord Tone Arpeggios") {
+      // Arpeggios always outline the tonic chord — show its Roman.
+      return triads[0]?.roman ?? "I";
+    }
+    return "";
+  }
 
   // Build a melodic-phrase cadence (curated bank).  Original behaviour.
   function buildMelodicPhrase(family: string): Built | null {
@@ -347,6 +421,7 @@ export default function ScalarPermutationsTab({
       optKey: `perm:melody:Cadences:${progId}`,
       label: `Cadence: ${progId.replace(/^cad_/, "").replace(/_/g, "-")}`,
       variantText: `${progId.replace(/^cad_/, "").replace(/_/g, "-")} cadence`,
+      chordContext: chordContextFor("Cadences", undefined, progId),
     };
   }
 
@@ -378,6 +453,7 @@ export default function ScalarPermutationsTab({
     const rawSteps = jazzPhraseToStepsEdo(phrase.degrees, base - tonicPc, scaleFam, modeName, edo);
     const absNotes = fitLineIntoWindow(rawSteps.map(s => tonicPc + s), edo, low, high);
     if (!absNotes.length) return null;
+    const cleanedVariant = phrase.variant.replace(/Bergonzi[^\s]*\s*/g, "");
     return {
       frames: absNotes.map(n => [n]),
       degrees: phrase.degrees,
@@ -387,7 +463,8 @@ export default function ScalarPermutationsTab({
       // Variant strings from musicTheory.ts may also embed "Bergonzi"
       // (e.g. pentatonic descriptions); strip them in the display layer
       // so the user never sees the prefix.
-      variantText: phrase.variant.replace(/Bergonzi[^\s]*\s*/g, ""),
+      variantText: cleanedVariant,
+      chordContext: chordContextFor(family, cleanedVariant),
     };
   }
 
@@ -408,7 +485,7 @@ export default function ScalarPermutationsTab({
     setContourNotes(built.absNotes);
     setContourDegrees(built.degrees);
     setContourVisible(false);
-    setLastVariantText(built.variantText ?? "");
+    setLastChordContext(built.chordContext ?? "");
     pendingInfo.current = { text: info, isTarget: responseMode !== "Play Audio" };
     setHasPendingInfo(true);
     onResult(built.label);
@@ -497,7 +574,18 @@ export default function ScalarPermutationsTab({
           <button onClick={() => setChecked(new Set())} className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">None</button>
         </div>
         {CATEGORY_ORDER.map(cat => {
-          const catFamilies = FAMILIES.filter(f => f.category === cat);
+          // Order families within this category by pedagogical
+          // importance per CATEGORY_FAMILY_ORDER, falling back to data-
+          // layer order for any family not listed there.
+          const order = CATEGORY_FAMILY_ORDER[cat] ?? [];
+          const indexOf = (name: string) => {
+            const i = order.indexOf(name);
+            return i === -1 ? 1000 + FAMILIES.findIndex(f => f.name === name) : i;
+          };
+          const catFamilies = FAMILIES
+            .filter(f => f.category === cat)
+            .slice()
+            .sort((a, b) => indexOf(a.name) - indexOf(b.name));
           if (!catFamilies.length) return null;
           const catColor = CATEGORY_COLORS[cat];
           const catLabel = CATEGORY_LABELS[cat];
@@ -602,32 +690,26 @@ export default function ScalarPermutationsTab({
         })}
       </div>
 
-      {(showTarget || infoText) && contourDegrees && (() => {
-        // Strip raw degree-run tokens (e.g. "2-4-6 / 3-5-7") from the
-        // variant text so it reads as just the human-friendly header
-        // ("ascending triad pair IV+V") — the boxed Degrees-played row
-        // already shows the literal notes, so duplicating them above
-        // (as Triad 1 / Triad 2 boxes) was redundant per direct user
-        // direction (2026-05-12) "this is too note pad like, you can
-        // make it simple with the roman numerals and the degrees
-        // played".
-        const tokenRE = /\b(?:[b#]{0,2}\d{1,2}(?:-[b#]{0,2}\d{1,2})+)\b/g;
-        const prose = lastVariantText
-          ? lastVariantText
-              .replace(tokenRE, "")
-              .replace(/\s*\/\s*/g, " ")
-              .replace(/\s+/g, " ")
-              .replace(/[:\s]+$/, "")
-              .trim()
-          : "";
-        return (
+      {/* Show Answer panel — Roman-numeral chord context (when
+          relevant for the family) + Degrees-played row.  No more
+          variant prose per direct user direction (2026-05-12) "i odnt
+          need to see the varient information, this show answer looks
+          like notepad information" + "i want roman numerals for
+          whatever is relevant like triad pairs or arpeggios". */}
+      {(showTarget || infoText) && contourDegrees && (
         <div className={`rounded p-3 border space-y-2 ${
           showTarget ? "bg-[#1a2a1a] border-[#3a5a3a]" : "bg-[#141414] border-[#2a2a2a]"
         }`}>
-          {prose && (
-            <div className="text-xs text-[#aaa]">
-              <span className="text-[#666]">Variant: </span>
-              <span className={showTarget ? "text-[#bfdfbf]" : "text-[#bbbbee]"}>{prose}</span>
+          {lastChordContext && (
+            <div className="flex gap-1 items-center flex-wrap">
+              <span className="text-[#666] text-xs mr-1">Chord:</span>
+              <span className={`px-2 py-0.5 rounded text-xs font-mono font-semibold border ${
+                showTarget
+                  ? "bg-[#1a2a1a] text-[#8fc88f] border-[#3a5a3a]"
+                  : "bg-[#1a1a2a] text-[#bbbbee] border-[#3a3a5a]"
+              }`}>
+                {lastChordContext}
+              </span>
             </div>
           )}
           <div className="flex gap-1 items-center flex-wrap">
@@ -648,8 +730,7 @@ export default function ScalarPermutationsTab({
             })}
           </div>
         </div>
-        );
-      })()}
+      )}
 
       <div className="flex gap-2 flex-wrap items-center">
         <button onClick={play} disabled={isPlaying}

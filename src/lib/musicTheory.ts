@@ -1481,11 +1481,15 @@ export const JAZZ_VARIANTS: Record<string, { id: string; label: string }[]> = {
     { id: "pendulum",   label: "Pendulum" },
     { id: "return",     label: "Return" },
   ],
+  // Enclosure targets by drill importance: 3 and 7 are the guide
+  // tones (define chord quality and 7th-chord identity respectively —
+  // most-drilled in bebop pedagogy); 1 (root) is the resolution; 5
+  // is unstable and least-targeted.
   "Enclosures": [
-    { id: "1", label: "→ 1" },
     { id: "3", label: "→ 3" },
-    { id: "5", label: "→ 5" },
     { id: "7", label: "→ 7" },
+    { id: "1", label: "→ 1" },
+    { id: "5", label: "→ 5" },
   ],
   "Bebop Fragments": [
     { id: "ascending",  label: "Ascending" },
@@ -1498,18 +1502,27 @@ export const JAZZ_VARIANTS: Record<string, { id: string; label: string }[]> = {
   // Roman-numeral case reflects the active mode (lowercase = minor /
   // dim, uppercase = major) — see jazzVariantLabel in
   // ScalarPermutationsTab.
+  // Tonic-only modes come first (simplest 3↔7 alternation within the
+  // tonic chord), then progressions ordered by pedagogical importance:
+  //   V-I → ii-V → ii-V-I (jazz core)
+  //   I-IV-V-I → I-vi-ii-V (rhythm changes turnaround)
+  //   iii-vi-ii-V → I-vi-IV-V → I-IV-I-V (extended / blues / folk)
   "Guide-Tone Lines": [
     { id: "from_3",         label: "Start on 3" },
     { id: "from_7",         label: "Start on 7" },
-    { id: "prog_2_5_1",     label: "ii-V-I" },
-    { id: "prog_2_5",       label: "ii-V" },
     { id: "prog_5_1",       label: "V-I" },
+    { id: "prog_2_5",       label: "ii-V" },
+    { id: "prog_2_5_1",     label: "ii-V-I" },
     { id: "prog_1_4_5_1",   label: "I-IV-V-I" },
     { id: "prog_1_6_2_5",   label: "I-vi-ii-V" },
-    { id: "prog_1_6_4_5",   label: "I-vi-IV-V" },
     { id: "prog_3_6_2_5",   label: "iii-vi-ii-V" },
+    { id: "prog_1_6_4_5",   label: "I-vi-IV-V" },
     { id: "prog_1_4_1_5",   label: "I-IV-I-V" },
   ],
+  // Pentatonics by importance: Major and minor pentatonics are the
+  // foundational shapes (most common in every tradition); Dominant
+  // pentatonic is the next-most-drilled bebop voicing.  Japanese
+  // shapes (Kumoi, Hirajoshi, In-Sen) are advanced / exotic.
   "Bergonzi Pentatonics": [
     { id: "major",     label: "Major" },
     { id: "minor",     label: "Minor" },
@@ -1518,40 +1531,63 @@ export const JAZZ_VARIANTS: Record<string, { id: string; label: string }[]> = {
     { id: "Hirajoshi", label: "Hirajoshi" },
     { id: "In-Sen",    label: "In-Sen" },
   ],
+  // Digital Patterns by importance:
+  //   1235 — Bergonzi's primary cell (Vol 3 cornerstone)
+  //   1357 — pure chord-tone cell (most musically transparent)
+  //   1345 — skip-2nd variation, common
+  //   1256 — skip-3-4 variation, less common
   "Bergonzi Digital Patterns": [
     { id: "1235", label: "1235" },
+    { id: "1357", label: "1357" },
     { id: "1345", label: "1345" },
     { id: "1256", label: "1256" },
-    { id: "1357", label: "1357" },
   ],
-  // Triad pair variant IDs are mode-independent degree pairs ("1+4" = triad on
-  // degree 1 + triad on degree 4). The actual triad qualities (M/m/dim) come
-  // from the selected mode. Display labels are computed at render time.
+  // Triad pair variant IDs are mode-independent degree pairs ("1+4" =
+  // triad on degree 1 + triad on degree 4).  Actual triad qualities
+  // (M/m/dim) come from the selected mode; display labels are
+  // computed at render time.  Ordering by pedagogical importance:
+  //   1. Tonic-anchored pairs (1+anything) — most fundamental, train
+  //      hearing the tonic triad against another diatonic triad.
+  //   2. Adjacent pairs walking up the scale — Bergonzi's primary drill.
+  //   3. Wider intra-scale pairs (functional / ii-V related).
   "Bergonzi Triad Pairs": [
     { id: "1+2", label: "1+2" },
+    { id: "1+4", label: "1+4" },
+    { id: "1+5", label: "1+5" },
     { id: "2+3", label: "2+3" },
     { id: "3+4", label: "3+4" },
     { id: "4+5", label: "4+5" },
     { id: "5+6", label: "5+6" },
     { id: "6+7", label: "6+7" },
-    { id: "1+4", label: "1+4" },
-    { id: "1+5", label: "1+5" },
     { id: "2+5", label: "2+5" },
     { id: "4+7", label: "4+7" },
   ],
-  // Hexatonic variants: triad-derived pairs are mode-aware (notes change with
-  // mode); "augmented" and "whole-tone" are symmetric and mode-independent.
+  // Hexatonic variants: triad-derived pairs are mode-aware (notes
+  // change with mode); "augmented" and "whole-tone" are symmetric and
+  // mode-independent.  Same importance ordering as Triad Pairs:
+  // tonic-anchored, then adjacent, then symmetric (special-case
+  // scales last since they're unrelated to the mode).
   "Bergonzi Hexatonics": [
     { id: "1+2",         label: "1+2" },
+    { id: "1+4",         label: "1+4" },
+    { id: "1+5",         label: "1+5" },
     { id: "2+3",         label: "2+3" },
     { id: "3+4",         label: "3+4" },
     { id: "4+5",         label: "4+5" },
     { id: "5+6",         label: "5+6" },
-    { id: "1+4",         label: "1+4" },
-    { id: "1+5",         label: "1+5" },
     { id: "augmented",   label: "Augmented" },
     { id: "whole-tone",  label: "Whole-tone" },
   ],
+  // Intervallic by importance:
+  //   Pure intervals first, with 4ths leading (Bergonzi's primary
+  //   intervallic drill — cycle of 4ths) then 5ths (cycle of 5ths)
+  //   then wider 6ths / 7ths.  Tritones + Chromatic are special-case.
+  //   Mixed permutations follow, ordered:
+  //     - Bergonzi classics first (4ths/2nds, 5ths/2nds)
+  //     - Then *3rds combinations (4/3, 5/3, 6/3)
+  //     - Then the small-interval mix (3rds/2nds)
+  //     - Then wide / less-common (5/4, 4/6, 5/6, 6/2, 6/4)
+  //     - Then 7th-based (rare)
   "Bergonzi Intervallic": [
     { id: "fourths",   label: "4ths" },
     { id: "fifths",    label: "5ths" },
@@ -1559,16 +1595,16 @@ export const JAZZ_VARIANTS: Record<string, { id: string; label: string }[]> = {
     { id: "sevenths",  label: "7ths" },
     { id: "tritones",  label: "Tritones" },
     { id: "chromatic", label: "Chromatic" },
-    { id: "mix_3_2",   label: "Mix 3rds/2nds" },
     { id: "mix_4_2",   label: "Mix 4ths/2nds" },
-    { id: "mix_4_3",   label: "Mix 4ths/3rds" },
-    { id: "mix_4_6",   label: "Mix 4ths/6ths" },
     { id: "mix_5_2",   label: "Mix 5ths/2nds" },
+    { id: "mix_4_3",   label: "Mix 4ths/3rds" },
     { id: "mix_5_3",   label: "Mix 5ths/3rds" },
+    { id: "mix_6_3",   label: "Mix 6ths/3rds" },
+    { id: "mix_3_2",   label: "Mix 3rds/2nds" },
     { id: "mix_5_4",   label: "Mix 5ths/4ths" },
+    { id: "mix_4_6",   label: "Mix 4ths/6ths" },
     { id: "mix_5_6",   label: "Mix 5ths/6ths" },
     { id: "mix_6_2",   label: "Mix 6ths/2nds" },
-    { id: "mix_6_3",   label: "Mix 6ths/3rds" },
     { id: "mix_6_4",   label: "Mix 6ths/4ths" },
     { id: "mix_7_2",   label: "Mix 7ths/2nds" },
     { id: "mix_7_3",   label: "Mix 7ths/3rds" },
@@ -1774,16 +1810,26 @@ export const CADENCE_PROGRESSIONS: Record<string, number[]> = {
 // melody-bank families.  Currently only Cadences carries variants
 // (curated phrase vs cadence chord progressions); other melody
 // families have no variants and render a single big toggle.
+// Cadence variants ordered by pedagogical importance (fundamental →
+// extended), mirroring the Triad-Pair "adjacent first" convention:
+//   1. V-I  — the foundational authentic cadence
+//   2. ii-V-I — the canonical jazz cadence (drilled most)
+//   3. IV-V-I — the classical full cadence
+//   4. I-IV-V-I — basic four-chord turnaround
+//   5. vi-ii-V-I — common jazz turnaround
+//   6. I-vi-ii-V-I — rhythm-changes turnaround
+//   7. I-vi-IV-V-I — 50s ballad / doo-wop
+//   8. Melodic phrase — curated bank (least structured, last)
 export const MELODY_VARIANTS: Record<string, { id: string; label: string }[]> = {
   "Cadences": [
-    { id: "phrase",          label: "Melodic phrase" },
     { id: "cad_5_1",         label: "V-I" },
     { id: "cad_2_5_1",       label: "ii-V-I" },
     { id: "cad_4_5_1",       label: "IV-V-I" },
-    { id: "cad_6_2_5_1",     label: "vi-ii-V-I" },
     { id: "cad_1_4_5_1",     label: "I-IV-V-I" },
+    { id: "cad_6_2_5_1",     label: "vi-ii-V-I" },
     { id: "cad_1_6_2_5_1",   label: "I-vi-ii-V-I" },
     { id: "cad_1_6_4_5_1",   label: "I-vi-IV-V-I" },
+    { id: "phrase",          label: "Melodic phrase" },
   ],
 };
 
