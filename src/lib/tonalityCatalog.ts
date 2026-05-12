@@ -74,6 +74,22 @@ export const TONALITY_FAMILIES: TonalityFamilyGroup[] = [
   // FORTY_ONE/FIFTY_THREE_EDO_TONALITY_FAMILIES directly).
   { key: "maqam", label: "MAQAM", color: "#d08a5a",
     tonalities: ["Rast", "Bayati", "Hijaz", "Saba", "Sikah", "Huzam", "Nikriz", "Hijazkar"] },
+  // 31-EDO MOS families — Miracle / Orwell / Magic / Mohajira / Sensi.
+  // Per direct user direction (2026-05-12): the xen-circle staples
+  // Zheanna Erose / Sevish actually compose against.  Each MOS exposes
+  // all its rotations (N modes per N-note MOS) as individual tonalities
+  // so the picker shows every selectable starting point.  The banks
+  // themselves live in tonalityBanks.ts (buildMosBanksFor31).
+  { key: "miracle",  label: "MIRACLE",  color: "#bf6cd0",
+    tonalities: Array.from({ length: 10 }, (_, i) => `Miracle ${i + 1}`) },
+  { key: "orwell",   label: "ORWELL",   color: "#5cbfae",
+    tonalities: Array.from({ length:  9 }, (_, i) => `Orwell ${i + 1}`) },
+  { key: "magic",    label: "MAGIC",    color: "#d0a050",
+    tonalities: Array.from({ length: 16 }, (_, i) => `Magic ${i + 1}`) },
+  { key: "mohajira", label: "MOHAJIRA", color: "#a07ad0",
+    tonalities: Array.from({ length:  7 }, (_, i) => `Mohajira ${i + 1}`) },
+  { key: "sensi",    label: "SENSI",    color: "#70a8c8",
+    tonalities: Array.from({ length:  8 }, (_, i) => `Sensi ${i + 1}`) },
 ];
 
 const MEANTONE_LIMIT_SECTIONS: { key: string; label: string; color: string; familyKeys: string[] }[] = [
@@ -110,6 +126,12 @@ const THIRTY_ONE_EDO_SECTIONS: CuratedSection[] = [
   // direct user direction "remove diatonic neutral".  Mohajira +
   // Maqam carry the 11-limit content now.
   { key: "31-maqam",      label: "MAQAM",                          color: "#d08a5a", familyKey: "maqam" },
+  // ── 31-EDO MOS scales (Zheanna Erose / Sevish territory) ───────────
+  { key: "31-miracle",    label: "MIRACLE (10-MOS)",              color: "#bf6cd0", familyKey: "miracle" },
+  { key: "31-orwell",     label: "ORWELL (9-MOS)",                color: "#5cbfae", familyKey: "orwell" },
+  { key: "31-magic",      label: "MAGIC (16-MOS)",                color: "#d0a050", familyKey: "magic" },
+  { key: "31-mohajira",   label: "MOHAJIRA (7-MOS)",              color: "#a07ad0", familyKey: "mohajira" },
+  { key: "31-sensi",      label: "SENSI (8-MOS)",                 color: "#70a8c8", familyKey: "sensi" },
   { key: "31-sym",        label: "SYMMETRICAL",                   color: "#5ab9b0", familyKey: "symmetric" },
 ];
 

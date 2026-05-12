@@ -17,7 +17,7 @@ import NotationLegend from "@/components/NotationLegend";
 const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
 import { formatRomanNumeral } from "@/lib/formatRoman";
 import { driftCentsToSteps } from "@/lib/jiLattice";
-import { pumpsForTonality, pumpChordDrifts, pumpFinalDriftCents, type CommaPump } from "@/lib/commaPumps";
+// Comma-pump UI removed per direct user direction (2026-05-12).
 import ModeLattice3D from "../scalar/ModeLattice3D";
 
 interface Props {
@@ -218,11 +218,6 @@ export default function ScalarTab({
   const [isPlayingSequence, setIsPlayingSequence] = useState(false);
   const playSequenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Comma-pump playback state.  Only one pump can play at a time;
-  // clicking the active pump's button again stops it.  Identified by
-  // pump.key so the button can flip between play/stop styling.
-  const [playingPumpKey, setPlayingPumpKey] = useState<string | null>(null);
-  const pumpStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // All tonality banks for the current EDO.  showSevenths = true so the
   // chord pool exposes 7th-quality suffixes (Scalar Exploration is a
@@ -258,20 +253,6 @@ export default function ScalarTab({
     return `${fam}::${mode}`;
   }, [banksByName, selected]);
 
-  // Comma pumps available in the active tonality.  Pre-computed here
-  // so the JSX render below stays a thin map.  Empty list for non-
-  // 41/53 EDO or for tonalities whose chord pool doesn't include the
-  // Roman-numeral labels each pump's progression needs.
-  const availablePumps: CommaPump[] = useMemo(() => {
-    if (!view) return [];
-    const labels = new Set<string>();
-    view.bank.levels.forEach(l => l.chords.forEach(c => labels.add(c.label)));
-    // Pass `selected` through so commaPumps can gate templates by the
-    // tonality's primary colour prime — a 5-limit syntonic pump must
-    // not surface on Diatonic Supermajor / Subminor (7-limit) etc.
-    return pumpsForTonality(edo, selected, labels);
-  }, [view, edo, selected]);
-
   const baseTonic = lowestPitch + (((tonicPc - lowestPitch) % edo) + edo) % edo;
 
   // Helper: clear any pending highlight scheduling, stop audio, kill
@@ -285,11 +266,6 @@ export default function ScalarTab({
       playSequenceTimer.current = null;
       setIsPlayingSequence(false);
     }
-    if (pumpStopTimer.current) {
-      clearTimeout(pumpStopTimer.current);
-      pumpStopTimer.current = null;
-    }
-    setPlayingPumpKey(null);
     audioEngine.stopDrone();
     audioEngine.silencePlay();
     setDronedStep(null);
@@ -385,63 +361,6 @@ export default function ScalarTab({
     );
     emitHighlight(pitches);
   }, [baseTonic, edo, ensureAudio, playVol, emitHighlight]);
-
-  // Comma-pump playback: walk the progression, applying the per-chord
-  // syntonic-comma drift (in EDO steps) so the audible pump is ACTUALLY
-  // heard — i.e. the final I sits ~22¢ below the opening I after one
-  // syntonic cycle.  Audio uses playMultiVoice with multiple frames,
-  // matching the existing playChord pattern but extended to N chords.
-  // Highlights step through chord-by-chord on the same gapMs schedule
-  // so the Lumatone displays the progression as a sequence.
-  const playPump = useCallback(async (pump: CommaPump) => {
-    // Toggle behaviour — clicking the active pump's button stops it.
-    if (playingPumpKey === pump.key) {
-      audioEngine.silencePlay();
-      frameTimers.current.forEach(id => clearTimeout(id));
-      frameTimers.current = [];
-      if (pumpStopTimer.current) { clearTimeout(pumpStopTimer.current); pumpStopTimer.current = null; }
-      setPlayingPumpKey(null);
-      emitHighlight([]);
-      return;
-    }
-    await ensureAudio();
-    frameTimers.current.forEach(id => clearTimeout(id));
-    frameTimers.current = [];
-    audioEngine.stopDrone();
-    setDronedStep(null);
-
-    const drifts = pumpChordDrifts(pump);
-    const framesByChord: number[][] = [];
-    for (let i = 0; i < pump.progression.length; i++) {
-      const label = pump.progression[i];
-      const steps = baseChordMap[label];
-      if (!steps || steps.length === 0) continue;
-      const offsetSteps = driftCentsToSteps(drifts[i] ?? 0, edo);
-      // ADD the drift (instead of the ChordsTab compensation
-      // subtraction) so the pump is DEMONSTRATED, not cancelled —
-      // the user wants to hear the comma walk, not have it papered
-      // over by adaptive-mode anchoring.
-      framesByChord.push(steps.map(s => baseTonic + s + offsetSteps));
-    }
-    if (framesByChord.length === 0) return;
-    const noteDur = 1.0;
-    const gapMs = 1100;
-    audioEngine.playMultiVoice(
-      [{ frames: framesByChord, noteDuration: noteDur, gain: playVol * 1.6 }],
-      edo, gapMs, framesByChord.length
-    );
-    framesByChord.forEach((pitches, i) => {
-      const id = setTimeout(() => emitHighlight(pitches), i * gapMs);
-      frameTimers.current.push(id);
-    });
-    setPlayingPumpKey(pump.key);
-    if (pumpStopTimer.current) clearTimeout(pumpStopTimer.current);
-    const totalMs = (framesByChord.length - 1) * gapMs + noteDur * 1000 + 250;
-    pumpStopTimer.current = setTimeout(() => {
-      setPlayingPumpKey(null);
-      pumpStopTimer.current = null;
-    }, totalMs);
-  }, [playingPumpKey, baseChordMap, baseTonic, edo, ensureAudio, playVol, emitHighlight]);
 
   // Sticky highlight for a chord — no audio, no auto-clear.  Stays lit
   // INDEFINITELY (across other interactions) until the user clicks the
@@ -892,49 +811,6 @@ export default function ScalarTab({
               </div>
             ))}
 
-          {/* ── Progressions — up to 5 interesting cadential
-              shapes (1-5-1, 1-4-5-1, 1-6-4-5-1, 1-6-2-5-1,
-              1-4-6-2-5-1) resolved against the tonality's actual
-              chord-pool labels.  In 41/53-EDO some of these realise
-              as comma pumps (drift label shows the cents); in
-              meantone EDOs they close back to the tonic and the
-              drift label reads 0¢. */}
-          {availablePumps.length > 0 && (
-            <div className="rounded p-2 border border-[#1a1a1a] bg-[#0a0a0a]">
-              <p className="text-[10px] mb-1.5 font-semibold tracking-wider"
-                 style={{ color: activeFamilyColor }}>
-                PROGRESSIONS
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {availablePumps.map(pump => {
-                  const playing = playingPumpKey === pump.key;
-                  const driftCents = pumpFinalDriftCents(pump);
-                  const driftStr = (driftCents > 0 ? "+" : "") + driftCents.toFixed(1) + "¢";
-                  return (
-                    <button
-                      key={pump.key}
-                      onClick={() => playPump(pump)}
-                      title={`${pump.description}  Drift after one cycle: ${driftStr}`}
-                      className="px-3 py-2 text-[12px] rounded border transition-colors flex items-center gap-2"
-                      style={playing
-                        ? { borderColor: activeFamilyColor,
-                            background: activeFamilyColor + "30",
-                            color: activeFamilyColor }
-                        : { borderColor: "#2a2a2a",
-                            background: "#141414",
-                            color: "#bbb" }}>
-                      <span>{playing ? "■" : "▶"}</span>
-                      <span className="font-semibold">{pump.label}</span>
-                      <span className="text-[10px] text-[#777]">{driftStr}</span>
-                      <span className="text-[9px] text-[#555] uppercase tracking-wider">
-                        {pump.primeLimit}-limit
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
