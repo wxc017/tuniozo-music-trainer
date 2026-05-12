@@ -407,12 +407,21 @@ export default function DroneContinuumTab({ edo: globalEdo, ensureAudio }: Props
       for (const k of liveKeys) {
         if (!desiredKeys.has(k)) audioEngine.stopRatioDroneVoice(k);
       }
+      // Continuum voice gain boost per direct user direction
+      // (2026-05-12) "drone continuuum volume is too low".  The
+      // shared lt_app_droneVol value is calibrated for the single-
+      // voice Tonal Audiation drone strip; the continuum stacks
+      // multiple simultaneous voices that the playLimiter compresses
+      // down to a quieter aggregate.  A 2.5× boost restores
+      // perceived parity for typical 1-4 voice stacks.
+      const CONTINUUM_BOOST = 2.5;
+      const boostedGain = Math.min(1, gain * CONTINUUM_BOOST);
       for (const n of audible) {
         if (!liveKeys.has(n.id) || globalChanged) {
-          audioEngine.startRatioDroneVoice(n.id, n.freq / stripLowHz, gain, stripLowHz);
+          audioEngine.startRatioDroneVoice(n.id, n.freq / stripLowHz, boostedGain, stripLowHz);
         } else {
           // Voice still active — just update gain.
-          audioEngine.setRatioDroneVoiceGain(n.id, gain);
+          audioEngine.setRatioDroneVoiceGain(n.id, boostedGain);
         }
       }
       droneActiveRef.current = true;

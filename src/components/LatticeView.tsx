@@ -225,11 +225,18 @@ function NodeMesh({ node, pos, isActive, isHovered, onHover, onClick, labelMode,
           metalness={0.3}
         />
       </mesh>
-      {/* Label */}
+      {/* Label — colors brightened + distanceFactor tightened
+          2026-05-12 per direct user direction "the notes on the
+          lattice are missing".  The 2025-05 node-shrink commit left
+          labels intact but at distanceFactor=12 they were so small
+          against the lightened-but-still-dark background that note
+          names disappeared.  Brightened #4ac → #8df (note name)
+          and #999 → #ccc (interval) so the text reads at normal
+          viewing distance. */}
       <Html
         position={[0, r + 0.08, 0]}
         center
-        distanceFactor={12}
+        distanceFactor={9}
         zIndexRange={[1, 0]}
         style={{ pointerEvents: "none" }}
       >
@@ -242,8 +249,8 @@ function NodeMesh({ node, pos, isActive, isHovered, onHover, onClick, labelMode,
         }}>
           {/* Note name on top */}
           <div style={{
-            color: isHovered || isActive ? "#7df" : "#4ac",
-            fontSize: node.isComma ? 7 : 11,
+            color: isHovered || isActive ? "#aef" : "#8df",
+            fontSize: node.isComma ? 8 : 12,
             fontFamily: "Inter, system-ui, sans-serif",
             fontWeight: 700,
           }}>
@@ -252,7 +259,7 @@ function NodeMesh({ node, pos, isActive, isHovered, onHover, onClick, labelMode,
           {labelMode === "intervals" ? (
             <>
               <div style={{
-                color: isHovered || isActive ? "#fff" : "#999",
+                color: isHovered || isActive ? "#fff" : "#ccc",
                 fontSize: node.isComma ? 8 : 10,
                 fontFamily: "Inter, system-ui, sans-serif",
                 fontWeight: 600,
@@ -260,7 +267,7 @@ function NodeMesh({ node, pos, isActive, isHovered, onHover, onClick, labelMode,
                 {intervalName(node)}
               </div>
               <div style={{
-                color: isHovered || isActive ? "#aaa" : "#444",
+                color: isHovered || isActive ? "#ccc" : "#888",
                 fontSize: node.isComma ? 7 : 8,
                 fontFamily: "'Courier New', monospace",
                 fontWeight: 400,
@@ -270,7 +277,7 @@ function NodeMesh({ node, pos, isActive, isHovered, onHover, onClick, labelMode,
             </>
           ) : (
             <div style={{
-              color: isHovered || isActive ? "#fff" : "#999",
+              color: isHovered || isActive ? "#fff" : "#ccc",
               fontSize: node.isComma ? 8 : 11,
               fontFamily: "'Courier New', monospace",
               fontWeight: 600,
