@@ -1544,10 +1544,20 @@ export const JAZZ_VARIANTS: Record<string, { id: string; label: string }[]> = {
     { id: "sevenths",  label: "7ths" },
     { id: "tritones",  label: "Tritones" },
     { id: "chromatic", label: "Chromatic" },
+    { id: "mix_3_2",   label: "Mix 3rds/2nds" },
     { id: "mix_4_2",   label: "Mix 4ths/2nds" },
+    { id: "mix_4_3",   label: "Mix 4ths/3rds" },
+    { id: "mix_4_6",   label: "Mix 4ths/6ths" },
     { id: "mix_5_2",   label: "Mix 5ths/2nds" },
     { id: "mix_5_3",   label: "Mix 5ths/3rds" },
+    { id: "mix_5_4",   label: "Mix 5ths/4ths" },
+    { id: "mix_5_6",   label: "Mix 5ths/6ths" },
+    { id: "mix_6_2",   label: "Mix 6ths/2nds" },
     { id: "mix_6_3",   label: "Mix 6ths/3rds" },
+    { id: "mix_6_4",   label: "Mix 6ths/4ths" },
+    { id: "mix_7_2",   label: "Mix 7ths/2nds" },
+    { id: "mix_7_3",   label: "Mix 7ths/3rds" },
+    { id: "mix_7_4",   label: "Mix 7ths/4ths" },
   ],
 };
 
@@ -1558,15 +1568,15 @@ function pickAllowed<T>(items: T[], idOf: (it: T) => string, enabled?: Set<strin
 }
 
 export const JAZZ_FAMILY_DESCRIPTIONS: Record<string, string> = {
-  "Chord Tone Arpeggios": "Arpeggiated chord tones (1-3-5-7-9) in various orderings — broken, ascending, descending, pendulum, with returns.",
-  "Enclosures": "Chromatic or diatonic approach from above and below into a target chord tone. The core bebop ornament.",
+  "Chord Tone Arpeggios": "Arpeggiated chord tones (1-3-5-7-9) in various orderings — ascending, descending, broken, pendulum, with returns.",
+  "Enclosures": "Chromatic or diatonic approach from above and below into a target chord tone — the core bebop ornament.",
   "Bebop Fragments": "Scale runs with chromatic passing tones inserted between diatonic degrees — the bebop scale sound.",
   "Guide-Tone Lines": "Stepwise motion connecting chord tones (3rds and 7ths), forming smooth voice-leading lines across changes.",
-  "Bergonzi Pentatonics": "All pentatonic permutations from Bergonzi Vol 1 & 2: major, minor, dominant, Kumoi, Hirajoshi, In-Sen pentatonics — ascending, descending, skip, and superimposition cells.",
-  "Bergonzi Digital Patterns": "Digital patterns from Bergonzi Vol 3 (Jazz Line): all 24 permutations of 1235 plus interval variants (1345, 1256, 1357), sequenced through the scale, with chromatic approaches and compound chains.",
-  "Bergonzi Triad Pairs": "Triad pair cells from Bergonzi Vol 6 (Developing a Jazz Language): adjacent major/minor/augmented triads in all inversions, permutations, and with chromatic approaches.",
-  "Bergonzi Hexatonics": "Six-note scales from Bergonzi Vol 7: two triads combined — major, minor, dominant, augmented hexatonics — in 4-note cells, skip patterns, and compound forms.",
-  "Bergonzi Intervallic": "Intervallic melodies from Bergonzi Vol 5: patterns built on all-seconds, all-thirds, all-fourths, all-fifths, mixed intervals, tritones, 6ths, 7ths, and chromatic intervallic cells.",
+  "Bergonzi Pentatonics": "Pentatonic permutations: major, minor, dominant, Kumoi, Hirajoshi, In-Sen — ascending, descending, skip, and superimposition cells.",
+  "Bergonzi Digital Patterns": "Numbered four-note digital cells (1235, 1345, 1256, 1357) sequenced through the scale across all permutations.",
+  "Bergonzi Triad Pairs": "Two adjacent triads played in succession (e.g. I + ii) — covers all diatonic pair combinations with mode-aware qualities.",
+  "Bergonzi Hexatonics": "Six-note scales formed by combining two triads — major, minor, dominant, augmented, and whole-tone hexatonics.",
+  "Bergonzi Intervallic": "Patterns built on a single interval (4ths, 5ths, 6ths, 7ths, tritones, chromatic) or mixed-interval permutations.",
 };
 
 // ── Generative jazz cell engine ───────────────────────────────────────
@@ -1578,27 +1588,36 @@ function generateArpeggio(length: number, enabled?: Set<string>): { degrees: str
   const styles = ["ascending", "descending", "broken", "pendulum", "return"];
   const style = pickAllowed(styles, s => s, enabled);
   const pool = length > 5 ? CHORD_TONES_EXT : CHORD_TONES;
-  const variant = `${style} arpeggio (${pool.join("-")})`;
+  // Random starting chord-tone index per direct user direction
+  // (2026-05-12) "there is a lot of from 1 for arpeggios ... these
+  // things should start from any degree".  All four shape variants
+  // (ascending / broken / pendulum / return) used to seed from index 0
+  // (the tonic), making every arpeggio open on "1"; descending opened
+  // on the top of the pool (also fixed).  We now rotate the pool by a
+  // random index so the listener hears every chord-tone as a possible
+  // opening note.
+  const startIdx = Math.floor(Math.random() * pool.length);
+  const variant = `${style} arpeggio (${pool.join("-")}) from ${pool[startIdx]}`;
 
   switch (style) {
     case "ascending": {
       const out: string[] = [];
-      for (let i = 0; out.length < length; i++) out.push(pool[i % pool.length]);
+      for (let i = 0; out.length < length; i++) out.push(pool[(startIdx + i) % pool.length]);
       return { degrees: out, variant };
     }
     case "descending": {
       const out: string[] = [];
-      for (let i = pool.length - 1; out.length < length; i--) {
-        if (i < 0) i = pool.length - 1;
-        out.push(pool[i]);
+      for (let i = 0; out.length < length; i++) {
+        out.push(pool[((startIdx - i) % pool.length + pool.length) % pool.length]);
       }
       return { degrees: out, variant };
     }
     case "broken": {
-      // Interleave low and high: 1,7,3,5,9,1,...
+      // Interleave from startIdx: e.g. start=2 → 5, 1, 7, 3, 9, …
       const sorted = [...pool];
       const out: string[] = [];
-      let lo = 0, hi = sorted.length - 1;
+      let lo = startIdx;
+      let hi = ((startIdx - 1) % pool.length + pool.length) % pool.length;
       while (out.length < length) {
         if (out.length % 2 === 0) { out.push(sorted[lo]); lo = (lo + 1) % sorted.length; }
         else { out.push(sorted[hi]); hi = (hi - 1 + sorted.length) % sorted.length; }
@@ -1606,20 +1625,23 @@ function generateArpeggio(length: number, enabled?: Set<string>): { degrees: str
       return { degrees: out, variant };
     }
     case "pendulum": {
-      // Up by thirds then back: 1,5,3,7,5,9,...
+      // Up by thirds then back, offset by startIdx — e.g. start=1 →
+      // 3, 7, 5, 9, 7, 1, …  (jump +2 indices, then step -1, repeat).
       const out: string[] = [];
-      let idx = 0, dir = 2;
+      let idx = startIdx, dir = 2;
       for (let i = 0; i < length; i++) {
         out.push(pool[((idx % pool.length) + pool.length) % pool.length]);
         idx += dir;
-        dir = i % 2 === 0 ? 2 : -1; // jump up 2, step back 1
+        dir = i % 2 === 0 ? 2 : -1;
       }
       return { degrees: out, variant };
     }
     case "return":
     default: {
-      // 1,3,5,7,5,3,1,...
-      const up = pool.slice(0, Math.min(Math.ceil((length + 1) / 2), pool.length));
+      // Up-then-back arch, rotated to start at startIdx: e.g. start=2
+      // for [1,3,5,7] → 5,7,3,5,7,… (rotate pool then arch).
+      const rotated = [...pool.slice(startIdx), ...pool.slice(0, startIdx)];
+      const up = rotated.slice(0, Math.min(Math.ceil((length + 1) / 2), rotated.length));
       const down = [...up].reverse().slice(1);
       const cycle = [...up, ...down];
       const out: string[] = [];
@@ -1779,11 +1801,16 @@ function generateBergonziPentatonic(length: number, enabled?: Set<string>): { de
       break;
     }
     case "pendulum": {
-      let lo = 0, hi = pent.length - 1;
+      // Random offset so pendulum doesn't always open on the
+      // pentatonic's first degree.  We rotate the array by `offset`
+      // before pendulum-walking it.
+      const offset = Math.floor(Math.random() * pent.length);
+      const rot = [...pent.slice(offset), ...pent.slice(0, offset)];
+      let lo = 0, hi = rot.length - 1;
       while (out.length < length) {
-        out.push(pent[lo]); lo++;
-        if (out.length < length) { out.push(pent[hi]); hi--; }
-        if (lo > hi) { lo = 0; hi = pent.length - 1; }
+        out.push(rot[lo]); lo++;
+        if (out.length < length) { out.push(rot[hi]); hi--; }
+        if (lo > hi) { lo = 0; hi = rot.length - 1; }
       }
       break;
     }
@@ -1972,10 +1999,25 @@ function generateBergonziIntervallic(length: number, enabled?: Set<string>): { d
     { id: "sevenths",  kind: "diatonic", step: 6, intName: "sevenths" },
     { id: "tritones",  kind: "tritone" },
     { id: "chromatic", kind: "chromatic" },
-    { id: "mix_4_2", kind: "mixed", primary: 3, secondary: 1, primaryName: "fourths", secondaryName: "seconds" },
-    { id: "mix_5_2", kind: "mixed", primary: 4, secondary: 1, primaryName: "fifths",  secondaryName: "seconds" },
-    { id: "mix_5_3", kind: "mixed", primary: 4, secondary: 2, primaryName: "fifths",  secondaryName: "thirds" },
-    { id: "mix_6_3", kind: "mixed", primary: 5, secondary: 2, primaryName: "sixths",  secondaryName: "thirds" },
+    // Mixed variants: walk up by `primary` scale steps then down by
+    // `secondary`, alternating.  primary/secondary use the scale-step
+    // convention (3 = a 4th, 4 = a 5th, etc.).  The IDs follow
+    // `mix_<bigInterval>_<smallInterval>`, named by the music
+    // interval not the step count.
+    { id: "mix_3_2", kind: "mixed", primary: 2, secondary: 1, primaryName: "thirds",   secondaryName: "seconds" },
+    { id: "mix_4_2", kind: "mixed", primary: 3, secondary: 1, primaryName: "fourths",  secondaryName: "seconds" },
+    { id: "mix_4_3", kind: "mixed", primary: 3, secondary: 2, primaryName: "fourths",  secondaryName: "thirds"  },
+    { id: "mix_4_6", kind: "mixed", primary: 3, secondary: 5, primaryName: "fourths",  secondaryName: "sixths"  },
+    { id: "mix_5_2", kind: "mixed", primary: 4, secondary: 1, primaryName: "fifths",   secondaryName: "seconds" },
+    { id: "mix_5_3", kind: "mixed", primary: 4, secondary: 2, primaryName: "fifths",   secondaryName: "thirds"  },
+    { id: "mix_5_4", kind: "mixed", primary: 4, secondary: 3, primaryName: "fifths",   secondaryName: "fourths" },
+    { id: "mix_5_6", kind: "mixed", primary: 4, secondary: 5, primaryName: "fifths",   secondaryName: "sixths"  },
+    { id: "mix_6_2", kind: "mixed", primary: 5, secondary: 1, primaryName: "sixths",   secondaryName: "seconds" },
+    { id: "mix_6_3", kind: "mixed", primary: 5, secondary: 2, primaryName: "sixths",   secondaryName: "thirds"  },
+    { id: "mix_6_4", kind: "mixed", primary: 5, secondary: 3, primaryName: "sixths",   secondaryName: "fourths" },
+    { id: "mix_7_2", kind: "mixed", primary: 6, secondary: 1, primaryName: "sevenths", secondaryName: "seconds" },
+    { id: "mix_7_3", kind: "mixed", primary: 6, secondary: 2, primaryName: "sevenths", secondaryName: "thirds"  },
+    { id: "mix_7_4", kind: "mixed", primary: 6, secondary: 3, primaryName: "sevenths", secondaryName: "fourths" },
   ];
   const picked = pickAllowed(variants, v => v.id, enabled);
   const ascending = Math.random() > 0.4;
