@@ -1047,7 +1047,18 @@ export class AudioEngine {
     // enough to feel like steady sustain.
     const myGeneration = this.droneGeneration;
     const rawLoopDur = (sample.loopEnd - sample.loopStart) / rate;
-    const iterDur = Math.max(4.0, rawLoopDur * 2);
+    // iterDur is now exactly one natural loop cycle.  Previously we
+    // forced max(4s, 2*rawLoopDur), which made each iteration play
+    // the buffer's loop region TWICE via the internal src.loop=true
+    // wrap — and the wrap from loopEnd→loopStart on a vocal sample
+    // is exactly the seam the user hears.  Per direct user direction
+    // (2026-05-12) "for voice it is still not starting a loop every
+    // 50%": each iteration now plays ONE cycle of the loop region;
+    // the next iteration starts at iterDur/2 (the 50% mark) so the
+    // overlap is half the natural loop.  The internal hardware loop
+    // is still enabled with extended bounds so a slightly-long
+    // iteration doesn't run out of buffer.
+    const iterDur = Math.max(2.0, rawLoopDur);
     const scheduleAhead = 0.05;
 
     const spawnOne = (when: number) => {
@@ -1055,8 +1066,9 @@ export class AudioEngine {
       const src = ctx.createBufferSource();
       src.buffer = sample.buffer;
       src.playbackRate.value = rate;
-      // Internal hardware loop so each iteration can run for up to
-      // iterDur regardless of the raw loop region's length.
+      // Internal hardware loop so the source has continuous audio
+      // material throughout the iteration even if iterDur was
+      // rounded up to the 2.0s minimum on a short sample.
       src.loop = true;
       src.loopStart = sample.loopStart;
       src.loopEnd = sample.loopEnd;
@@ -1462,7 +1474,10 @@ export class AudioEngine {
     // so there's no perceptible loudness pulsation.
     const myGen = voice.generation;
     const rawLoopDur = (sample.loopEnd - sample.loopStart) / rate;
-    const iterDur = Math.max(4.0, rawLoopDur * 2);
+    // iterDur = one natural loop cycle (see spawnSampleLoop's
+    // matching comment for the rationale — prior 2x doubling re-
+    // introduced the internal-wrap seam mid-iteration).
+    const iterDur = Math.max(2.0, rawLoopDur);
     const scheduleAhead = 0.05;
 
     const spawnOne = (when: number) => {
