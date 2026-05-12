@@ -2055,48 +2055,68 @@ export default function ChordsTab({
           </button>
         </div>
       )}
-      {/* Show-Target info panel — surfaces chord + inversion per step
-          when responseMode is "Show Target (Sing It)".  Per direct
-          user direction (2026-05-12) "for show target it shouldnt
-          play any audio, it should visualize in sequence on the
-          visualizer and give information at the bottom for what
-          chords and what inversions". */}
-      {targetChordInfo && (
-        <div className="bg-[#0e0e0e] border border-[#3a3a8a] rounded p-3 mt-2 space-y-1">
+      {/* Show-Target info panel — per direct user direction
+          (2026-05-12) "remove the information you put for show target
+          sing it and have the information show exatly how information
+          shows in melodic patterns with the scale degrees and
+          solfege".  Each chord card shows the Roman numeral header
+          + per-tone breakdown (scale degree + Heathwaite solfege).
+          Clicking a card lights up its pitches on the visualizer. */}
+      {targetChordInfo && (() => {
+        const heathwaiteTable = getHeathwaiteSolfege(edo);
+        return (
+        <div className="bg-[#0e0e0e] border border-[#3a3a8a] rounded p-3 mt-2 space-y-2">
           <div className="flex items-baseline gap-2 mb-1">
             <span className="text-[10px] text-[#7a7af0] font-semibold tracking-wider">SHOW TARGET</span>
             <span className="text-[11px] text-[#aaa] font-mono">{targetChordInfo.progression}</span>
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-2">
             {targetChordInfo.perChord.map((c, i) => {
               const active = i === targetChordInfo.activeIndex;
-              // Click-to-highlight per direct user direction
-              // (2026-05-12) "when i click on it it should visualize
-              // as well" — clicking any chord card lights up that
-              // chord's notes on the active visualizer (Lumatone /
-              // piano / guitar / bass).
               return (
                 <button key={i}
                   onClick={() => {
                     onHighlight(c.pitches);
                     setTargetChordInfo(prev => prev ? { ...prev, activeIndex: i } : prev);
                   }}
-                  className={`px-2 py-1 rounded border text-[11px] transition-colors text-left ${
+                  className={`rounded border text-left transition-colors p-2 ${
                     active
-                      ? "bg-[#3a3a8a] border-[#7a7af0] text-white"
-                      : "bg-[#1a1a2a] border-[#2a2a3a] text-[#888] hover:border-[#5a5a8a] hover:text-[#bbb]"
+                      ? "bg-[#1a1a3a] border-[#7a7af0]"
+                      : "bg-[#1a1a2a] border-[#2a2a3a] hover:border-[#5a5a8a]"
                   }`}>
-                  {/* Inversion sits between Roman and quality per
-                      direct user direction "after roman numeral". */}
-                  <span className="font-mono font-semibold">[{i + 1}] {c.roman}</span>
-                  <span className="text-[#9999cc] ml-1 font-mono">{c.inversion}</span>
-                  <span className="text-[#666] ml-1">({c.quality})</span>
+                  <div className="text-[10px] font-mono mb-1.5">
+                    <span className={active ? "text-white font-semibold" : "text-[#9999ee] font-semibold"}>[{i + 1}] {c.roman}</span>
+                    <span className="text-[#888] ml-1.5">({c.quality})</span>
+                  </div>
+                  {/* Per-tone breakdown — scale degree (interval-from-
+                      tonic) on top, Heathwaite solfege below, mirrors
+                      MelodicPatterns / the Answer reveal display. */}
+                  <div className="flex flex-wrap gap-1">
+                    {c.pitches.map((pitch, j) => {
+                      const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
+                      const degree = intervalLabel(pcFromTonic, edo);
+                      const solf = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
+                      return (
+                        <div key={j} className={`flex flex-col items-center px-1.5 py-0.5 rounded border min-w-[40px] ${
+                          active
+                            ? "bg-[#2a2a4a] border-[#5a5a8a]"
+                            : "bg-[#0a0a14] border-[#2a2a3a]"
+                        }`}>
+                          <span className="text-[10px] font-bold leading-tight" style={{ color: active ? "#bbf" : "#9999cc" }}>
+                            {degree}
+                          </span>
+                          <span className="text-[9px] leading-tight text-[#aaa]">{solf}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </button>
               );
             })}
           </div>
         </div>
-      )}
+        );
+      })()}
       {fhShowAnswer && fhAnswer && (() => {
         const heathwaiteTable = getHeathwaiteSolfege(edo);
         // JI chord-row analysis (3rd / 5th / pure vs wolf) for
