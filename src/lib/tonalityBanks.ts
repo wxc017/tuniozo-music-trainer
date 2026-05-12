@@ -536,7 +536,68 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
     ...(edo === 31 ? ["Rast", "Bayati", "Hijaz", "Saba", "Sikah", "Huzam", "Nikriz", "Hijazkar"].map(modeName => buildBankFromRegisteredFamily(
       JI_FAMILY, modeName, edo, [0], buildModeFromScale,
     )) : []),
+
+    // ── Larger 31-EDO MOS scales (Miracle / Orwell / Magic / Mohajira /
+    // Sensi) — the xen-circle staples Zheanna Erose / Sevish lean on.
+    // Per direct user direction (2026-05-12): "Miracle / Decimal —
+    // 10-note MOS … Orwell — 9-note MOS … Magic — 16-note MOS …
+    // Mohajira — 7-note neutral-third MOS … Sensi …".  Each MOS is
+    // built from its (generator, period, n-notes) triple, expanded into
+    // n rotations (modes), and labelled "Family k" so the picker shows
+    // every rotation as a selectable tonality.  buildModeFromScale
+    // generates the chord pool generically — the auto-quality fallback
+    // (sub3 / neutral3 / sup3) handles every non-canonical third the
+    // MOS produces.
+    ...(edo === 31 ? buildMosBanksFor31(buildModeFromScale) : []),
   ];
+}
+
+/** Generate the N rotations of an n-note MOS with given generator,
+ *  octave-reduced into [0, period).  Returns one sorted-ascending
+ *  scale per rotation. */
+function generateMosRotations(period: number, generator: number, n: number): number[][] {
+  const base = Array.from({ length: n }, (_, i) => (i * generator) % period).sort((a, b) => a - b);
+  return base.map(offset =>
+    base.map(s => ((s - offset) % period + period) % period).sort((a, b) => a - b),
+  );
+}
+
+/** Hand-build the 31-EDO MOS tonality banks (Miracle, Orwell, Magic,
+ *  Mohajira, Sensi).  Each rotation becomes its own bank labelled
+ *  "${Family} ${k}" so the picker exposes every mode of every MOS. */
+function buildMosBanksFor31(
+  buildModeFromScale: (
+    name: string,
+    degLabels: string[],
+    scaleSemis: number[],
+    primaryIdx: number[],
+  ) => TonalityBank,
+): TonalityBank[] {
+  const FAMILIES: { name: string; gen: number; n: number }[] = [
+    // Miracle / Decimal — secor generator 3\31 (~116.7¢), 10-note MOS.
+    // 11-limit + 7-limit harmony in one scale.
+    { name: "Miracle",  gen: 3,  n: 10 },
+    // Orwell — generator 7\31 (~271¢), 9-note MOS.  Subgroup-friendly.
+    { name: "Orwell",   gen: 7,  n: 9  },
+    // Magic — generator 10\31 (~387¢ ≈ 5/4), 16-note MOS.  Stacks of
+    // major thirds; gives 5-limit + 7-limit chords up the chain.
+    { name: "Magic",    gen: 10, n: 16 },
+    // Mohajira — generator 9\31 (~348¢ ≈ 11/9 neutral 3rd), 7-note
+    // MOS.  Maqam-adjacent but with its own MOS structure.
+    { name: "Mohajira", gen: 9,  n: 7  },
+    // Sensi — generator 11\31 (~426¢), 8-note MOS.  Septimal / 7-limit
+    // colour.
+    { name: "Sensi",    gen: 11, n: 8  },
+  ];
+  const banks: TonalityBank[] = [];
+  for (const fam of FAMILIES) {
+    const rotations = generateMosRotations(31, fam.gen, fam.n);
+    rotations.forEach((scale, k) => {
+      const degLabels = scale.map((_, i) => String(i + 1));
+      banks.push(buildModeFromScale(`${fam.name} ${k + 1}`, degLabels, scale, [0]));
+    });
+  }
+  return banks;
 }
 
 // Mode-name lists used to expand the new families inside getTonalityBanks.
