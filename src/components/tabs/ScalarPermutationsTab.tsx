@@ -33,7 +33,12 @@ interface Props {
 }
 
 const LENGTH_OPTIONS = ["Any", "3", "4", "5", "6", "7", "8", "10", "12"];
-const GAP = 560;
+// Default note spacing (ms between successive note onsets).  Per
+// direct user direction (2026-05-12) "i should be able to control
+// length of the notes in scalar permuations" the value is now a
+// user-controlled state read from noteGap and only used as the
+// useLS default below.
+const DEFAULT_GAP_MS = 560;
 
 // Pentatonic Hooks / Neighbor-Tone Cells / Triadic Shapes / Folk-Pop
 // Phrases all dropped 2026-05-12 — first three are covered by Bergonzi
@@ -210,6 +215,12 @@ export default function ScalarPermutationsTab({
   // distribution rather than hardcoding fairness into LS).
   const tonalityPickCounts = useRef<Map<string, number>>(new Map());
   const [lengthFilter, setLengthFilter] = useLS<string>("lt_perm_length", "Any");
+  // User-controllable note spacing (gap between successive note
+  // onsets) — replaces the prior hard-coded 560ms.  Stored in
+  // milliseconds; UI exposes seconds (0.20s..1.50s) so the unit is
+  // intuitive.  Lives in the OPTIONS collapsible per direct user
+  // direction "and it should be in options".
+  const [noteGap, setNoteGap] = useLS<number>("lt_perm_note_gap_ms", DEFAULT_GAP_MS);
 
   const [checked, setChecked] = useLS<Set<string>>(
     "lt_perm_checked",
@@ -549,22 +560,22 @@ export default function ScalarPermutationsTab({
     setHasPlayed(true);
 
     setIsPlaying(true);
-    audioEngine.playSequence(built.frames, edo, GAP, 0.8);
-    setTimeout(() => setIsPlaying(false), built.frames.length * GAP + 500);
+    audioEngine.playSequence(built.frames, edo, noteGap, 0.8);
+    setTimeout(() => setIsPlaying(false), built.frames.length * noteGap + 500);
   };
 
   const highlightFrames = useCallback((frames: number[][]) => {
     frameTimers.current.forEach(id => clearTimeout(id));
     frameTimers.current = [];
     frames.forEach((frame, i) => {
-      const id = setTimeout(() => onHighlight(frame), i * GAP);
+      const id = setTimeout(() => onHighlight(frame), i * noteGap);
       frameTimers.current.push(id);
     });
   }, [onHighlight]);
 
   const contourReplay = useContourReplay(
     contourVisible && contourNotes ? contourNotes.map(n => [n]) : null,
-    GAP,
+    noteGap,
   );
 
   const replay = () => {
@@ -572,9 +583,9 @@ export default function ScalarPermutationsTab({
     if (!lp) return;
     setIsPlaying(true);
     if (contourVisible) contourReplay.startReplay();
-    audioEngine.playSequence(lp.frames, edo, GAP, 0.8);
+    audioEngine.playSequence(lp.frames, edo, noteGap, 0.8);
     if (showTarget || infoText) highlightFrames(lp.frames);
-    setTimeout(() => setIsPlaying(false), lp.frames.length * GAP + 500);
+    setTimeout(() => setIsPlaying(false), lp.frames.length * noteGap + 500);
   };
 
   const handleShowInfo = () => {
@@ -589,9 +600,9 @@ export default function ScalarPermutationsTab({
     const lp = lastPlayed.current;
     if (lp && !isPlaying) {
       setIsPlaying(true);
-      audioEngine.playSequence(lp.frames, edo, GAP, 0.8);
+      audioEngine.playSequence(lp.frames, edo, noteGap, 0.8);
       highlightFrames(lp.frames);
-      setTimeout(() => setIsPlaying(false), lp.frames.length * GAP + 500);
+      setTimeout(() => setIsPlaying(false), lp.frames.length * noteGap + 500);
     } else if (lp) {
       highlightFrames(lp.frames);
     }
@@ -635,7 +646,41 @@ export default function ScalarPermutationsTab({
         )}
       </div>
 
-      {/* Options — collapsible (Length filter + selection counter). */}
+      {/* Length filter + Note Length — always visible (no collapsible)
+          per direct user direction (2026-05-12) "these should be
+          always visible never collapsible and above the play buttons
+          for scalar permutations".  Lifted out of the OPTIONS
+          collapsible so the user can adjust playback parameters
+          without expanding any section. */}
+      <div className="flex flex-wrap gap-3 items-end px-3 py-2 bg-[#0e0e0e] border border-[#1a1a1a] rounded">
+        <div>
+          <label className="text-xs text-[#888] block mb-1">Length Filter</label>
+          <select value={lengthFilter} onChange={e => setLengthFilter(e.target.value)}
+            className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
+            {LENGTH_OPTIONS.map(l => <option key={l}>{l}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-[#888] block mb-1">Note Length (s)</label>
+          <input type="number" min={0.2} max={1.5} step={0.05}
+            value={(noteGap / 1000).toFixed(2)}
+            onChange={e => {
+              const v = parseFloat(e.target.value);
+              if (!isNaN(v)) setNoteGap(Math.max(200, Math.min(1500, Math.round(v * 1000))));
+            }}
+            className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white text-center focus:outline-none"
+          />
+        </div>
+        <div className="text-xs text-[#555]">
+          {FAMILY_NAMES.filter(f => checked.has(f)).length} families selected
+        </div>
+      </div>
+
+      {/* Family categories — collapsible per direct user direction
+          (2026-05-12) "these should be under options" (kept for the
+          family lists themselves) but with the Length / Note Length
+          controls promoted out per the later direction "always
+          visible never collapsible". */}
       <div className="rounded border border-[#1e1e1e] bg-[#0e0e0e]">
         <div
           onClick={() => setCollapsedOptions(v => !v)}
@@ -643,32 +688,13 @@ export default function ScalarPermutationsTab({
           style={{ borderLeft: "3px solid #888" }}
         >
           <span className="text-[10px] text-[#666] w-3">{collapsedOptions ? "▸" : "▾"}</span>
-          <span className="text-xs font-semibold tracking-wider text-[#aaa]">OPTIONS</span>
+          <span className="text-xs font-semibold tracking-wider text-[#aaa]">FAMILIES</span>
           <span className="text-[10px] text-[#555] ml-auto">
-            length: {lengthFilter} · {FAMILY_NAMES.filter(f => checked.has(f)).length} families
+            {FAMILY_NAMES.filter(f => checked.has(f)).length} selected
           </span>
         </div>
         {!collapsedOptions && (
           <div className="px-3 pb-3 pt-1 space-y-3">
-            {/* Length filter at the top of OPTIONS so it reads as a
-                global filter that applies to all family categories
-                nested below. */}
-            <div className="flex flex-wrap gap-3 items-end">
-              <div>
-                <label className="text-xs text-[#888] block mb-1">Length Filter</label>
-                <select value={lengthFilter} onChange={e => setLengthFilter(e.target.value)}
-                  className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-                  {LENGTH_OPTIONS.map(l => <option key={l}>{l}</option>)}
-                </select>
-              </div>
-              <div className="text-xs text-[#555]">
-                {FAMILY_NAMES.filter(f => checked.has(f)).length} families selected
-              </div>
-            </div>
-            {/* Family-category collapsibles nested inside OPTIONS per
-                direct user direction (2026-05-12) "these should be
-                under options" — folding OPTIONS hides the entire
-                family picker, leaving only Tonalities + Play visible. */}
             <div className="space-y-2">
         {CATEGORY_ORDER.map(cat => {
           // Order families within this category by pedagogical
@@ -817,6 +843,38 @@ export default function ScalarPermutationsTab({
           need to see the varient information, this show answer looks
           like notepad information" + "i want roman numerals for
           whatever is relevant like triad pairs or arpeggios". */}
+      {/* Show Answer reveal panel relocated to AFTER the Play row per
+          direct user direction (2026-05-12) "the collapsibles should
+          be always visible above random permutations" — keeps the
+          family pickers + play button anchored at consistent vertical
+          positions instead of getting pushed down whenever Show
+          Answer renders. */}
+
+      {/* Top row: Play / Replay (primary action). */}
+      <div className="flex gap-2 flex-wrap items-center">
+        <button onClick={play} disabled={isPlaying}
+          className="bg-[#7173e6] hover:bg-[#5a5cc8] disabled:opacity-50 text-white px-5 py-2 rounded text-sm font-medium transition-colors">
+          {isPlaying ? "♪ Playing…" : "▶ Random Permutation"}
+        </button>
+        {hasPlayed && (
+          <button onClick={replay} disabled={isPlaying}
+            className="bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-50 border border-[#333] text-[#aaa] px-4 py-2 rounded text-sm transition-colors">
+            Replay
+          </button>
+        )}
+        {answerButtons}
+      </div>
+      {/* Bottom row: Show Answer — kept below Play per direct user
+          direction (2026-05-12) "show answer should always be below
+          play" so it never visually competes with the primary action. */}
+      {hasPendingInfo && (
+        <div className="flex gap-2 flex-wrap items-center mt-2">
+          <button onClick={handleShowInfo}
+            className="bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#444] text-[#9999ee] px-4 py-2 rounded text-sm transition-colors">
+            Show Answer
+          </button>
+        </div>
+      )}
       {(showTarget || infoText) && contourDegrees && (
         <div className={`rounded p-3 border space-y-2 ${
           showTarget ? "bg-[#1a2a1a] border-[#3a5a3a]" : "bg-[#141414] border-[#2a2a2a]"
@@ -850,32 +908,6 @@ export default function ScalarPermutationsTab({
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* Top row: Play / Replay (primary action). */}
-      <div className="flex gap-2 flex-wrap items-center">
-        <button onClick={play} disabled={isPlaying}
-          className="bg-[#7173e6] hover:bg-[#5a5cc8] disabled:opacity-50 text-white px-5 py-2 rounded text-sm font-medium transition-colors">
-          {isPlaying ? "♪ Playing…" : "▶ Random Permutation"}
-        </button>
-        {hasPlayed && (
-          <button onClick={replay} disabled={isPlaying}
-            className="bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-50 border border-[#333] text-[#aaa] px-4 py-2 rounded text-sm transition-colors">
-            Replay
-          </button>
-        )}
-        {answerButtons}
-      </div>
-      {/* Bottom row: Show Answer — kept below Play per direct user
-          direction (2026-05-12) "show answer should always be below
-          play" so it never visually competes with the primary action. */}
-      {hasPendingInfo && (
-        <div className="flex gap-2 flex-wrap items-center mt-2">
-          <button onClick={handleShowInfo}
-            className="bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#444] text-[#9999ee] px-4 py-2 rounded text-sm transition-colors">
-            Show Answer
-          </button>
         </div>
       )}
     </div>
