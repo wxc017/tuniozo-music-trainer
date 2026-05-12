@@ -219,6 +219,7 @@ export default function ChordsTab({
   const [collapsedTonalities, setCollapsedTonalities] = useLS<boolean>("lt_crd_collapsed_tonalities", false);
   const [collapsedProgressions, setCollapsedProgressions] = useLS<boolean>("lt_crd_collapsed_progressions", false);
   const [collapsedVoicings, setCollapsedVoicings] = useLS<boolean>("lt_crd_collapsed_voicings", false);
+  const [collapsedChordPicker, setCollapsedChordPicker] = useLS<boolean>("lt_crd_collapsed_chord_picker", false);
 
   // Approach-chord toggles, scoped per tonality.  Outer key = tonality
   // name; inner key = target chord label; value = enabled approach kinds.
@@ -1725,35 +1726,13 @@ export default function ChordsTab({
       </div>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* PROGRESSIONS section — collapsible 2026-05-12 per direct user  */}
-      {/* direction "make progressions it own collapsible and put play   */}
-      {/* at the bottom".  The Play row was moved out of this section to */}
-      {/* sit at the very bottom of the tab; this collapsible body now   */}
-      {/* houses Settings + Show-Answer reveal only.  Show Answer auto-  */}
-      {/* expands this section so the reveal becomes visible after the   */}
-      {/* user clicks it.                                                */}
+      {/* PROGRESSIONS section — no collapsible per direct user           */}
+      {/* direction (2026-05-12) "this should be with the play button no  */}
+      {/* collapsible".  The Loop Length / Spacing / Duration / Register */}
+      {/* controls are intended to sit with the Play button at the       */}
+      {/* bottom of the tab.                                              */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <div className="bg-[#141008] border border-[#2a2210] rounded-lg">
-        <div
-          onClick={() => setCollapsedProgressions(v => !v)}
-          className="flex items-center gap-2 px-4 py-2 cursor-pointer select-none transition-colors hover:bg-[#1a140c]"
-          style={{ borderLeft: "3px solid #e0a040" }}
-        >
-          <span className="text-[10px] text-[#866c30] w-3">{collapsedProgressions ? "▸" : "▾"}</span>
-          <span className="text-xs font-semibold tracking-wider text-[#e0a040]">PROGRESSIONS</span>
-          <span className="text-[10px] text-[#866c30] ml-auto">
-            loop: {loopLength} · {regMode.replace(/.+ /, "")}
-          </span>
-        </div>
-        {!collapsedProgressions && (
-        <div className="px-4 pb-3 pt-1 space-y-3">
-            {/* Description paragraph removed 2026-05-12 per direct
-                user direction "remove the harmony option from the
-                play in chords as well its redundant" — the
-                functional-harmony explanatory blurb above the
-                controls was redundant with the section heading
-                "PROGRESSIONS" itself.  Controls row follows directly. */}
-
+      <div className="bg-[#141008] border border-[#2a2210] rounded-lg px-4 py-3 space-y-3">
             {/* Controls row */}
             <div className="flex gap-4 flex-wrap items-end">
               <div>
@@ -1794,36 +1773,15 @@ export default function ChordsTab({
               />
             </div>
 
-            {/* ── Texture Layers ── */}
+            {/* ── Texture Layers row removed 2026-05-12 per direct
+                user direction "then remove the harmony button" — the
+                row contained a single Harmony checkbox + volume
+                slider with no other layers to choose from, so the
+                checkbox was redundant.  `textureLayers` is now
+                effectively forced to {"harmony"} via the default
+                useLS value; harmonyVol still applies internally. */}
+            {false && (
             <div className="flex gap-4 flex-wrap items-end">
-              <div>
-                <p className="text-[10px] text-[#886622] mb-1 font-medium">TEXTURE</p>
-                <div className="flex gap-3">
-                  {([
-                    { layer: "harmony" as const, vol: harmonyVol, setVol: setHarmonyVol },
-                  ]).map(({ layer, vol, setVol }) => {
-                    const checked = textureLayers.has(layer);
-                    return (
-                      <div key={layer} className="flex flex-col items-center gap-0.5">
-                        <label className="flex items-center gap-1 cursor-pointer">
-                          <input type="checkbox" checked={checked}
-                            onChange={() => setTextureLayers(toggleSet(textureLayers, layer))}
-                            className="accent-[#e0a040]" />
-                          <span className="text-xs" style={{ color: checked ? "#e0a040" : "#555" }}>
-                            {layer.charAt(0).toUpperCase() + layer.slice(1)}
-                          </span>
-                        </label>
-                        {checked && (
-                          <input type="range" min={0} max={1} step={0.05} value={vol}
-                            onChange={e => setVol(parseFloat(e.target.value))}
-                            title={`${layer} vol: ${Math.round(vol * 100)}%`}
-                            style={{ width: 60, accentColor: "#e0a040" }} />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
               {/* Bass layer + BASS MODE selector intentionally removed —
                   Tonal Audiation chord progressions are harmony-only.
                   The bassLineMode state still exists but is never read by
@@ -1850,6 +1808,7 @@ export default function ChordsTab({
                 </div>
               )}
             </div>
+            )}
 
             {/* Play row relocated to the bottom of the tab 2026-05-12
                 per direct user direction "put play at the bottom".
@@ -2355,8 +2314,6 @@ export default function ChordsTab({
                 releases instead of riding the rest of the page. */}
             <div ref={latticeEndSentinelRef} aria-hidden style={{ height: 1 }} />
 
-        </div>
-        )}
       </div>
 
           {/* Extensions + Voicings — wrapped in a collapsible section
@@ -2391,9 +2348,24 @@ export default function ChordsTab({
           </div>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* CHORD SELECTION (per checked tonality)                          */}
+      {/* CHORD SELECTION (per checked tonality) — collapsible            */}
+      {/* 2026-05-12 per direct user direction "this should be             */}
+      {/* collapsible" pointing at the Roman-numeral picker.              */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <div className="space-y-3">
+      <div className="rounded border border-[#1e1e1e] bg-[#0e0e0e]">
+        <div
+          onClick={() => setCollapsedChordPicker(v => !v)}
+          className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none transition-colors hover:bg-[#161616]"
+          style={{ borderLeft: "3px solid #5b5be6" }}
+        >
+          <span className="text-[10px] text-[#666] w-3">{collapsedChordPicker ? "▸" : "▾"}</span>
+          <span className="text-xs font-semibold tracking-wider text-[#9999ee]">ROMAN NUMERAL PICKER</span>
+          <span className="text-[10px] text-[#555] ml-auto">
+            {Object.values(checkedByTonality).reduce((sum, arr) => sum + (arr?.length ?? 0), 0)} chords selected
+          </span>
+        </div>
+        {!collapsedChordPicker && (
+        <div className="p-2 space-y-3">
         {Array.from(tonalitySet).map(t => {
           const bank = banksByName[t];
           if (!bank) return null;
@@ -2431,6 +2403,8 @@ export default function ChordsTab({
           <div className="text-xs text-[#666] italic px-3 py-2 border border-[#222] rounded">
             Pick at least one tonality above to choose chords.
           </div>
+        )}
+        </div>
         )}
       </div>
 
