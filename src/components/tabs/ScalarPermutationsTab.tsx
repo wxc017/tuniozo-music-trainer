@@ -12,7 +12,7 @@ import { getDegreeMap } from "@/lib/edoData";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
 import { weightedRandomChoice } from "@/lib/stats";
 import { useContourReplay } from "@/components/PitchContour";
-import ModeScalePicker from "@/components/ModeScalePicker";
+import ModeScalePicker, { tonalityKey, parseTonalityKey } from "@/components/ModeScalePicker";
 import type { TabSettingsSnapshot } from "@/App";
 
 interface Props {
@@ -193,8 +193,22 @@ export default function ScalarPermutationsTab({
 }: Props) {
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const famNames = Object.keys(PATTERN_SCALE_FAMILIES);
+  // Multi-select tonality pool per direct user direction (2026-05-12)
+  // "in scalar permuations i should be able to click more then one
+  // tonality and you renadomize which one is chosen further there
+  // should be a bias towards the ones that havent been chosen often".
+  // The current per-play "picked" tonality (scaleFam + modeName) is
+  // held in state so the build functions + variantLabel can keep
+  // computing against a single concrete tonality without API churn.
+  const defaultKey = tonalityKey(famNames[0], PATTERN_SCALE_FAMILIES[famNames[0]][0]);
+  const [tonalityPool, setTonalityPool] = useLS<Set<string>>("lt_perm_tonality_pool", new Set([defaultKey]));
   const [scaleFam, setScaleFam] = useLS<string>("lt_perm_scaleFam", famNames[0]);
   const [modeName, setModeName] = useLS<string>("lt_perm_mode", PATTERN_SCALE_FAMILIES[famNames[0]][0]);
+  // Per-tonality pick counter — drives the bias toward less-picked
+  // entries.  Stored in a ref so it doesn't trigger re-renders and
+  // resets per session (a long session converges to uniform
+  // distribution rather than hardcoding fairness into LS).
+  const tonalityPickCounts = useRef<Map<string, number>>(new Map());
   const [lengthFilter, setLengthFilter] = useLS<string>("lt_perm_length", "Any");
 
   const [checked, setChecked] = useLS<Set<string>>(
@@ -371,7 +385,13 @@ export default function ScalarPermutationsTab({
   }
 
   // Build a melodic-phrase cadence (curated bank).  Original behaviour.
-  function buildMelodicPhrase(family: string): Built | null {
+  // Build functions take explicit scaleFam/modeName per direct user
+  // direction (2026-05-12) "in scalar permuations i should be able to
+  // click more then one tonality and you renadomize which one is
+  // chosen" — play() picks one tonality from the multi-select pool
+  // per call and passes it through so the build doesn't read stale
+  // closure state after setScaleFam/setModeName.
+  function buildMelodicPhrase(family: string, sFam: string, sMode: string): Built | null {
     let pool = MELODY_BANK_31.filter(m => m.family === family);
     if (lengthFilter !== "Any") {
       const len = parseInt(lengthFilter);
@@ -383,7 +403,7 @@ export default function ScalarPermutationsTab({
     const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
     const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
     const base = midPitch - (((midPitch - tonicPc) % edo + edo) % edo);
-    const rawSteps = resolveMelodyDegrees(phrase, base - tonicPc, scaleFam, modeName, isGen, edo);
+    const rawSteps = resolveMelodyDegrees(phrase, base - tonicPc, sFam, sMode, isGen, edo);
     const absNotes = fitLineIntoWindow(rawSteps.map(s => tonicPc + s), edo, low, high);
     if (!absNotes.length) return null;
     return {
@@ -398,10 +418,10 @@ export default function ScalarPermutationsTab({
   // Build a cadence as a chord progression — each chord in the
   // progression is stacked (root, 3rd, 5th, 7th of the diatonic chord
   // at that scale degree) and played as a single multi-note frame.
-  function buildCadenceChords(progId: string): Built | null {
+  function buildCadenceChords(progId: string, sFam: string, sMode: string): Built | null {
     const chords = CADENCE_PROGRESSIONS[progId];
     if (!chords || !chords.length) return null;
-    const modeMap = getModeDegreeMap(edo, scaleFam, modeName);
+    const modeMap = getModeDegreeMap(edo, sFam, sMode);
     const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
     const tonicAbs = midPitch - (((midPitch - tonicPc) % edo + edo) % edo);
     const frames: number[][] = [];
@@ -434,7 +454,7 @@ export default function ScalarPermutationsTab({
     };
   }
 
-  function buildMelody(family: string): Built | null {
+  function buildMelody(family: string, sFam: string, sMode: string): Built | null {
     if (family === "Cadences") {
       // If any variant is enabled, pick one; otherwise default to
       // "phrase" (the curated melodic bank).
@@ -442,24 +462,24 @@ export default function ScalarPermutationsTab({
       const allIds = (MELODY_VARIANTS["Cadences"] ?? []).map(v => v.id);
       const active = (enabled && enabled.length) ? enabled : allIds;
       const picked = active.length ? randomChoice(active) : "phrase";
-      if (picked === "phrase") return buildMelodicPhrase(family);
-      const chord = buildCadenceChords(picked);
+      if (picked === "phrase") return buildMelodicPhrase(family, sFam, sMode);
+      const chord = buildCadenceChords(picked, sFam, sMode);
       if (chord) return chord;
       // Fall back to melodic phrase if chord build failed.
-      return buildMelodicPhrase(family);
+      return buildMelodicPhrase(family, sFam, sMode);
     }
-    return buildMelodicPhrase(family);
+    return buildMelodicPhrase(family, sFam, sMode);
   }
 
-  function buildJazz(family: string): Built | null {
+  function buildJazz(family: string, sFam: string, sMode: string): Built | null {
     const len = lengthFilter !== "Any" ? parseInt(lengthFilter) : 3 + Math.floor(Math.random() * 5);
     const enabledList = jazzVariants[family];
     const enabledSet = enabledList && enabledList.length > 0 ? new Set(enabledList) : undefined;
-    const phrase = generateJazzCell(family, len, enabledSet, scaleFam, modeName);
+    const phrase = generateJazzCell(family, len, enabledSet, sFam, sMode);
     const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
     const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
     const base = midPitch - (((midPitch - tonicPc) % edo + edo) % edo);
-    const rawSteps = jazzPhraseToStepsEdo(phrase.degrees, base - tonicPc, scaleFam, modeName, edo);
+    const rawSteps = jazzPhraseToStepsEdo(phrase.degrees, base - tonicPc, sFam, sMode, edo);
     const absNotes = fitLineIntoWindow(rawSteps.map(s => tonicPc + s), edo, low, high);
     if (!absNotes.length) return null;
     const cleanedVariant = phrase.variant.replace(/Bergonzi[^\s]*\s*/g, "");
@@ -482,9 +502,35 @@ export default function ScalarPermutationsTab({
     await ensureAudio();
     const active = FAMILY_NAMES.filter(f => checked.has(f));
     if (!active.length) { onResult("Select at least one family."); return; }
+
+    // Pick a tonality from the pool with bias toward the least-picked
+    // entries per direct user direction "there should be a bias
+    // towards the ones that havent been chosen often".  Weight =
+    // (maxCount + 1 - thisCount), so a tonality never picked yet has
+    // the highest weight; one that's been picked `max` times still
+    // gets weight 1 (never fully starved).  Plain uniform picking
+    // was letting Math.random cluster repeats; this smooths the
+    // distribution over a session.
+    const poolKeys = Array.from(tonalityPool);
+    if (poolKeys.length === 0) { onResult("Select at least one tonality."); return; }
+    const counts = tonalityPickCounts.current;
+    const maxCount = poolKeys.reduce((m, k) => Math.max(m, counts.get(k) ?? 0), 0);
+    const weights = poolKeys.map(k => Math.max(1, (maxCount + 1) - (counts.get(k) ?? 0)));
+    const total = weights.reduce((a, b) => a + b, 0);
+    let pick = Math.random() * total;
+    let pickedKey = poolKeys[0];
+    for (let i = 0; i < poolKeys.length; i++) {
+      pick -= weights[i];
+      if (pick <= 0) { pickedKey = poolKeys[i]; break; }
+    }
+    counts.set(pickedKey, (counts.get(pickedKey) ?? 0) + 1);
+    const { scaleFam: pickedFam, modeName: pickedMode } = parseTonalityKey(pickedKey);
+    setScaleFam(pickedFam);
+    setModeName(pickedMode);
+
     const family = weightedRandomChoice(active, f => `perm:${FAMILY_KIND[f]}:${f}`);
     const kind = FAMILY_KIND[family];
-    const built = kind === "jazz" ? buildJazz(family) : buildMelody(family);
+    const built = kind === "jazz" ? buildJazz(family, pickedFam, pickedMode) : buildMelody(family, pickedFam, pickedMode);
     if (!built) { onResult("Could not build a phrase. Try wider range or another family."); return; }
 
     const info = built.degrees.join(" → ");
@@ -566,12 +612,25 @@ export default function ScalarPermutationsTab({
         >
           <span className="text-[10px] text-[#666] w-3">{collapsedTonalities ? "▸" : "▾"}</span>
           <span className="text-xs font-semibold tracking-wider text-[#aaa]">TONALITIES</span>
-          <span className="text-[10px] text-[#555] ml-auto">{scaleFam} · {modeName}</span>
+          <span className="text-[10px] text-[#555] ml-auto">{tonalityPool.size} selected</span>
         </div>
         {!collapsedTonalities && (
           <div className="px-2 pb-2">
-            <ModeScalePicker scaleFam={scaleFam} modeName={modeName}
-              onChange={(fam, mode) => { setScaleFam(fam); setModeName(mode); }} />
+            <ModeScalePicker
+              selected={tonalityPool}
+              onToggle={(fam, mode) => {
+                const k = tonalityKey(fam, mode);
+                setTonalityPool(prev => {
+                  const next = new Set(prev);
+                  if (next.has(k)) {
+                    // Don't allow the pool to drop to zero — keep at
+                    // least one tonality selected so play() always has
+                    // material.
+                    if (next.size > 1) next.delete(k);
+                  } else next.add(k);
+                  return next;
+                });
+              }} />
           </div>
         )}
       </div>
