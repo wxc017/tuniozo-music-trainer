@@ -1377,32 +1377,12 @@ export default function App() {
       {section === "ear-trainer" && (
       <div className="px-4 pt-3 flex-1 flex flex-col">
       <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
-        {/* Temperament selector — splits Tonal Audiation into Meantone
-            (12/31), Pythagorean (41), and Schismatic (53) families.  Each
-            temperament filters the EDO selector and the game-mode tabs
-            below.  Clicking a temperament snaps EDO to its first
-            available value if the current EDO doesn't belong. */}
-        <div className="flex gap-1 flex-wrap items-center mb-3">
-          <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-2">TEMPERAMENT</span>
-          {TEMPERAMENTS.map(t => (
-            <button key={t}
-              onClick={() => {
-                const allowed = TEMPERAMENT_EDOS[t];
-                if (!allowed.includes(edo)) {
-                  stopAllAudio();
-                  setEdo(allowed[0]);
-                }
-              }}
-              className={`px-3 py-1 rounded text-[11px] font-medium transition-colors ${
-                temperament === t
-                  ? "bg-[#3a3a8a] text-white border border-[#5b5be6]"
-                  : "bg-[#0e0e0e] text-[#666] hover:text-[#aaa] hover:bg-[#181818] border border-[#222]"
-              }`}>
-              {TEMPERAMENT_LABELS[t]}
-            </button>
-          ))}
-          <div className="ml-auto"><NotationLegend /></div>
-        </div>
+        {/* TEMPERAMENT selector removed 2026-05-12 per direct user
+            direction "remove this" — the family-grouped EDO buttons
+            below (MEANTONE / PYTHAGOREAN / SCHISMATIC headers) now
+            convey the same family information inline, so the
+            separate row was redundant.  NotationLegend moves into
+            the EDO row to keep its corner placement. */}
         {/* EDO + Visualizer row — family-grouped buttons matching
             the Scalar Explorations row per direct user direction
             (2026-05-12) "have the otions for edo in tonal audiation

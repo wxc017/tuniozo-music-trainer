@@ -2278,11 +2278,15 @@ export default function ChordsTab({
               );
             })()}
 
-            {/* Sentinel just after the harmonic lattice — when this
-                scrolls past the viewport top, the IntersectionObserver
-                flips `pinPlayRow` back to false so the play row
-                releases instead of riding the rest of the page. */}
-            <div ref={latticeEndSentinelRef} aria-hidden style={{ height: 1 }} />
+            {/* latticeEndSentinelRef + playRowSentinelRef render removed
+                2026-05-12 — Play is at the bottom now, so the pin-on-
+                scroll logic doesn't need sentinel anchors.  The refs
+                themselves are kept (still declared at top of component)
+                so the IntersectionObserver setup doesn't break.  This
+                eliminates a 1px sibling that was creating a phantom gap
+                inside the parent space-y-5 layout per direct user
+                direction "the space between all the collapsibles are
+                not the same / there is a gap between the first two". */}
 
       </>
 
