@@ -6,6 +6,7 @@ import {
   generateJazzCell, getDiatonicTriadsForMode,
   jazzPhraseToStepsEdo, randomChoice, fitLineIntoWindow, strictWindowBounds,
   PATTERN_SCALE_FAMILIES, getModeDegreeMap,
+  CADENCE_PROGRESSIONS, MELODY_VARIANTS, buildDiatonicChord,
 } from "@/lib/musicTheory";
 import { getDegreeMap } from "@/lib/edoData";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
@@ -47,12 +48,52 @@ const MELODY_DESCRIPTIONS: Record<string, string> = {
 };
 
 type FamilyKind = "melody" | "jazz";
+type Category = "chord" | "jazzy" | "perm";
 type FamilyEntry = {
   name: string;        // underlying engine key (passed to musicTheory.ts)
   displayName: string; // what the UI shows — strips "Bergonzi " prefix
   kind: FamilyKind;
+  category: Category;
   description: string;
   generative: boolean;
+};
+
+// Family categorisation per direct user direction (2026-05-12)
+// "organize these into three tabs Chord-based, Jazz-Inspired,
+// Permutations".  The categories are pedagogical, not engine-based —
+// Cadences and Guide-Tone Lines both expose chord-progression
+// variants and live in Chord-based regardless of whether their
+// underlying engine is the melody-bank or the jazz-cell generator.
+const FAMILY_CATEGORY: Record<string, Category> = {
+  // Chord-based: harmony / chord-tone identity is the point of the
+  // exercise.
+  "Cadences":              "chord",
+  "Chord Tone Arpeggios":  "chord",
+  "Bergonzi Triad Pairs":  "chord",
+  "Bergonzi Hexatonics":   "chord",
+  "Guide-Tone Lines":      "chord",
+  // Jazz-Inspired: bebop / Bergonzi vocabulary built around chord
+  // changes, but the unit-of-learning is a phrase shape rather than
+  // pure harmony.
+  "Enclosures":               "jazzy",
+  "Bebop Fragments":          "jazzy",
+  "Bergonzi Digital Patterns": "jazzy",
+  // Permutations: interval / scale-shape permutation patterns.  Mode
+  // identity comes from the underlying scale, not from chord stacks.
+  "Bergonzi Pentatonics":  "perm",
+  "Bergonzi Intervallic":  "perm",
+};
+
+const CATEGORY_ORDER: Category[] = ["chord", "jazzy", "perm"];
+const CATEGORY_LABELS: Record<Category, string> = {
+  chord: "Chord-based",
+  jazzy: "Jazz-Inspired",
+  perm:  "Permutations",
+};
+const CATEGORY_COLORS: Record<Category, string> = {
+  chord: "#bf6cd0",   // purple — harmonic identity
+  jazzy: "#d0a050",   // amber — bebop / Bergonzi vocabulary
+  perm:  "#5cbfae",   // teal — interval / scale-shape permutations
 };
 
 // Bergonzi prefix dropped from display per direct user direction
@@ -62,14 +103,15 @@ function displayNameFor(family: string): string {
   return family.startsWith("Bergonzi ") ? family.slice("Bergonzi ".length) : family;
 }
 
-// Unified family list, ordered melody (Cadences first) → jazz so the
-// cadential exercise sits at the top and the longer intervallic
-// material follows.
+// Unified family list, ordered melody → jazz at the data-layer; the UI
+// regroups them by FAMILY_CATEGORY (Chord-based / Jazz-Inspired /
+// Permutations) at render time.
 const FAMILIES: FamilyEntry[] = [
   ...KEPT_MELODY_FAMILIES.map<FamilyEntry>(name => ({
     name,
     displayName: name,
     kind: "melody",
+    category: FAMILY_CATEGORY[name] ?? "perm",
     description: MELODY_DESCRIPTIONS[name] ?? "",
     generative: MELODY_GENERATIVE_FAMILIES.has(name),
   })),
@@ -77,6 +119,7 @@ const FAMILIES: FamilyEntry[] = [
     name,
     displayName: displayNameFor(name),
     kind: "jazz",
+    category: FAMILY_CATEGORY[name] ?? "perm",
     description: JAZZ_FAMILY_DESCRIPTIONS[name] ?? "",
     generative: true,
   })),
@@ -130,8 +173,18 @@ export default function ScalarPermutationsTab({
       "Chord Tone Arpeggios", "Enclosures", "Bebop Fragments", "Guide-Tone Lines",
     ])
   );
-  // Per-jazz-family variant filter (matches the prior JazzTab UI).
+  // Per-family variant filters.  Jazz families and melody families
+  // share the same shape (empty array = all enabled), so jazzVariants
+  // doubles as the storage for melody variants too (Cadences only at
+  // present).  Distinct LS keys keep them separable.
   const [jazzVariants, setJazzVariants] = useLS<Record<string, string[]>>("lt_perm_jazz_variants", {});
+  const [melodyVariants, setMelodyVariants] = useLS<Record<string, string[]>>("lt_perm_mel_variants", {});
+  // Collapsible state per category.  Defaults: all expanded so first-
+  // time users see everything; preference persists per browser.
+  const [collapsed, setCollapsed] = useLS<Record<Category, boolean>>(
+    "lt_perm_collapsed",
+    { chord: false, jazzy: false, perm: false } as Record<Category, boolean>,
+  );
 
   const [showTarget, setShowTarget] = useState<string | null>(null);
   const [infoText, setInfoText] = useState<string>("");
@@ -189,19 +242,22 @@ export default function ScalarPermutationsTab({
   // Re-label variants whose Roman case depends on the active mode:
   //   • Triad Pairs / Hexatonics "1+4" → "I+IV" in Ionian, "i+iv" in Aeolian, …
   //   • Guide-Tone Lines "prog_2_5_1" → "ii-V-I" in Ionian, "ii°-v-i" in Aeolian, …
+  //   • Cadences "cad_2_5_1" → "ii-V-I" with the active mode's case.
   // Augmented / whole-tone hexes are symmetric and mode-independent
   // so they keep their fallback labels.
-  const jazzVariantLabel = (family: string, vid: string, fallback: string): string => {
-    if (family === "Guide-Tone Lines" && vid.startsWith("prog_")) {
+  const variantLabel = (family: string, vid: string, fallback: string): string => {
+    const romansFromUnderscoreSeq = (prefix: string): string => {
       const triads = getDiatonicTriadsForMode(scaleFam, modeName);
       if (triads.length < 7) return fallback;
-      const parts = vid.slice("prog_".length).split("_");
+      const parts = vid.slice(prefix.length).split("_");
       const romans = parts.map(p => {
         const idx = parseInt(p) - 1;
         return triads[idx]?.roman ?? p;
       });
       return romans.join("-");
-    }
+    };
+    if (family === "Guide-Tone Lines" && vid.startsWith("prog_")) return romansFromUnderscoreSeq("prog_");
+    if (family === "Cadences" && vid.startsWith("cad_"))         return romansFromUnderscoreSeq("cad_");
     if (family !== "Bergonzi Triad Pairs" && family !== "Bergonzi Hexatonics") return fallback;
     if (vid === "augmented" || vid === "whole-tone") return fallback;
     if (!/^\d\+\d$/.test(vid)) return fallback;
@@ -213,9 +269,26 @@ export default function ScalarPermutationsTab({
     return `${a}+${b}`;
   };
 
+  // Melody-variant toggle helpers (parallel to the jazz ones).
+  const isMelodyVariantOn = (family: string, vid: string): boolean => {
+    const list = melodyVariants[family];
+    if (!list || list.length === 0) return true;
+    return list.includes(vid);
+  };
+  const toggleMelodyVariant = (family: string, vid: string) => {
+    setMelodyVariants(prev => {
+      const all = (MELODY_VARIANTS[family] ?? []).map(v => v.id);
+      const current = prev[family] && prev[family].length > 0 ? prev[family] : all;
+      const next = current.includes(vid) ? current.filter(v => v !== vid) : [...current, vid];
+      const safe = next.length === 0 ? all : next;
+      return { ...prev, [family]: safe };
+    });
+  };
+
   type Built = { frames: number[][]; degrees: string[]; absNotes: number[]; optKey: string; label: string; variantText?: string };
 
-  function buildMelody(family: string): Built | null {
+  // Build a melodic-phrase cadence (curated bank).  Original behaviour.
+  function buildMelodicPhrase(family: string): Built | null {
     let pool = MELODY_BANK_31.filter(m => m.family === family);
     if (lengthFilter !== "Any") {
       const len = parseInt(lengthFilter);
@@ -237,6 +310,61 @@ export default function ScalarPermutationsTab({
       optKey: `perm:melody:${family}`,
       label: `Melody: ${family}`,
     };
+  }
+
+  // Build a cadence as a chord progression — each chord in the
+  // progression is stacked (root, 3rd, 5th, 7th of the diatonic chord
+  // at that scale degree) and played as a single multi-note frame.
+  function buildCadenceChords(progId: string): Built | null {
+    const chords = CADENCE_PROGRESSIONS[progId];
+    if (!chords || !chords.length) return null;
+    const modeMap = getModeDegreeMap(edo, scaleFam, modeName);
+    const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
+    const tonicAbs = midPitch - (((midPitch - tonicPc) % edo + edo) % edo);
+    const frames: number[][] = [];
+    const displayDegrees: string[] = [];
+    for (const root of chords) {
+      const chordDegs = buildDiatonicChord(root);
+      // Stack ascending starting from the chord root's pitch class.
+      // Each subsequent voice is bumped up by an octave when it'd
+      // otherwise be at or below the previous voice — produces a
+      // root-position 7th chord stack.
+      const rootStep = modeMap[chordDegs[0]] ?? (root - 1);
+      const notes: number[] = [tonicAbs + rootStep];
+      for (let i = 1; i < chordDegs.length; i++) {
+        let step = modeMap[chordDegs[i]] ?? 0;
+        let n = tonicAbs + step;
+        while (n <= notes[notes.length - 1]) n += edo;
+        notes.push(n);
+      }
+      frames.push(notes);
+      displayDegrees.push(`(${chordDegs.join("-")})`);
+    }
+    return {
+      frames,
+      degrees: displayDegrees,
+      absNotes: frames.flat(),
+      optKey: `perm:melody:Cadences:${progId}`,
+      label: `Cadence: ${progId.replace(/^cad_/, "").replace(/_/g, "-")}`,
+      variantText: `${progId.replace(/^cad_/, "").replace(/_/g, "-")} cadence`,
+    };
+  }
+
+  function buildMelody(family: string): Built | null {
+    if (family === "Cadences") {
+      // If any variant is enabled, pick one; otherwise default to
+      // "phrase" (the curated melodic bank).
+      const enabled = melodyVariants["Cadences"];
+      const allIds = (MELODY_VARIANTS["Cadences"] ?? []).map(v => v.id);
+      const active = (enabled && enabled.length) ? enabled : allIds;
+      const picked = active.length ? randomChoice(active) : "phrase";
+      if (picked === "phrase") return buildMelodicPhrase(family);
+      const chord = buildCadenceChords(picked);
+      if (chord) return chord;
+      // Fall back to melodic phrase if chord build failed.
+      return buildMelodicPhrase(family);
+    }
+    return buildMelodicPhrase(family);
   }
 
   function buildJazz(family: string): Built | null {
@@ -355,61 +483,120 @@ export default function ScalarPermutationsTab({
       <ModeScalePicker scaleFam={scaleFam} modeName={modeName}
         onChange={(fam, mode) => { setScaleFam(fam); setModeName(mode); }} />
 
-      {/* Family rows sit immediately under the mode picker so Play is
-          at the bottom of the tab — per direct user direction
-          (2026-05-12) "put it below modes so play is at the bottom". */}
-      <div>
-        <div className="flex items-center gap-3 mb-2">
+      {/* Family rows grouped into three collapsible categories per
+          direct user direction (2026-05-12) "organize these into three
+          tabs Chord-based, Jazz-Inspired, Permutations" with "where i
+          can collapse like a list".  Each category header shows the
+          on/off count for its families and toggles a collapse. */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-3 mb-1">
           <button onClick={() => setChecked(new Set(FAMILY_NAMES))} className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">All</button>
           <button onClick={() => setChecked(new Set())} className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">None</button>
         </div>
-        <div className="space-y-2">
-          {FAMILIES.map(f => {
-            const on = checked.has(f.name);
-            const variants = f.kind === "jazz" ? (JAZZ_VARIANTS[f.name] ?? []) : [];
-            return (
-              <div key={f.name} className={`rounded border transition-colors ${
-                on ? "bg-[#1a1a2a] border-[#3a3a5a]" : "bg-[#111] border-[#222]"
-              }`}>
-                <button onClick={() => toggle(f.name)}
-                  className={`w-full flex items-start gap-2 px-3 py-2 text-left text-sm transition-colors ${
-                    on ? "text-[#9999ee]" : "text-[#666] hover:text-[#aaa]"
-                  }`}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      {f.displayName}
-                      {f.generative ? (
-                        <span className="text-[10px] px-1 rounded text-[#7aaa7a] border border-[#3a6a3a]">generative</span>
-                      ) : (
-                        <span className="text-[10px] px-1 rounded text-[#8888cc] border border-[#3a3a6a]">fixed bank</span>
-                      )}
-                    </div>
-                    {f.description && (
-                      <p className="text-[10px] text-[#555] mt-0.5 leading-snug">{f.description}</p>
-                    )}
-                  </div>
-                </button>
-                {on && variants.length > 0 && (
-                  <div className="flex flex-wrap gap-1 px-3 pb-2">
-                    {variants.map(v => {
-                      const vOn = isJazzVariantOn(f.name, v.id);
-                      return (
-                        <button key={v.id} onClick={() => toggleJazzVariant(f.name, v.id)}
-                          className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
-                            vOn
-                              ? "bg-[#7173e6]/20 border-[#7173e6] text-[#bbbbee]"
-                              : "bg-[#0e0e0e] border-[#2a2a2a] text-[#555] hover:text-[#999]"
-                          }`}>
-                          {jazzVariantLabel(f.name, v.id, v.label)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+        {CATEGORY_ORDER.map(cat => {
+          const catFamilies = FAMILIES.filter(f => f.category === cat);
+          if (!catFamilies.length) return null;
+          const catColor = CATEGORY_COLORS[cat];
+          const catLabel = CATEGORY_LABELS[cat];
+          const isCollapsed = collapsed[cat];
+          const onCount = catFamilies.filter(f => checked.has(f.name)).length;
+          return (
+            <div key={cat} className="rounded border border-[#1e1e1e] bg-[#0e0e0e]">
+              <div
+                onClick={() => setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }))}
+                className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer select-none transition-colors hover:bg-[#161616]"
+                style={{ borderLeft: `3px solid ${catColor}` }}
+              >
+                <span className="text-[10px] text-[#666] w-3">{isCollapsed ? "▸" : "▾"}</span>
+                <span className="text-xs font-semibold tracking-wider" style={{ color: catColor }}>
+                  {catLabel.toUpperCase()}
+                </span>
+                <span className="text-[10px] text-[#555] ml-auto">
+                  {onCount}/{catFamilies.length}
+                </span>
+                {/* Bulk on/off for this category — click events stop
+                    propagation so they don't also collapse the panel. */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setChecked(prev => {
+                      const n = new Set(prev);
+                      catFamilies.forEach(f => n.add(f.name));
+                      return n;
+                    });
+                  }}
+                  className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-1.5 py-0.5">All</button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setChecked(prev => {
+                      const n = new Set(prev);
+                      catFamilies.forEach(f => n.delete(f.name));
+                      return n;
+                    });
+                  }}
+                  className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-1.5 py-0.5">None</button>
               </div>
-            );
-          })}
-        </div>
+              {!isCollapsed && (
+                <div className="space-y-2 px-2 pb-2">
+                  {catFamilies.map(f => {
+                    const on = checked.has(f.name);
+                    const variants = f.kind === "jazz"
+                      ? (JAZZ_VARIANTS[f.name] ?? [])
+                      : (MELODY_VARIANTS[f.name] ?? []);
+                    const isVariantActive = (vid: string) => f.kind === "jazz"
+                      ? isJazzVariantOn(f.name, vid)
+                      : isMelodyVariantOn(f.name, vid);
+                    const onToggleVariant = (vid: string) => f.kind === "jazz"
+                      ? toggleJazzVariant(f.name, vid)
+                      : toggleMelodyVariant(f.name, vid);
+                    return (
+                      <div key={f.name} className={`rounded border transition-colors ${
+                        on ? "bg-[#1a1a2a] border-[#3a3a5a]" : "bg-[#111] border-[#222]"
+                      }`}>
+                        <button onClick={() => toggle(f.name)}
+                          className={`w-full flex items-start gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                            on ? "text-[#9999ee]" : "text-[#666] hover:text-[#aaa]"
+                          }`}>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              {f.displayName}
+                              {f.generative ? (
+                                <span className="text-[10px] px-1 rounded text-[#7aaa7a] border border-[#3a6a3a]">generative</span>
+                              ) : (
+                                <span className="text-[10px] px-1 rounded text-[#8888cc] border border-[#3a3a6a]">fixed bank</span>
+                              )}
+                            </div>
+                            {f.description && (
+                              <p className="text-[10px] text-[#555] mt-0.5 leading-snug">{f.description}</p>
+                            )}
+                          </div>
+                        </button>
+                        {on && variants.length > 0 && (
+                          <div className="flex flex-wrap gap-1 px-3 pb-2">
+                            {variants.map(v => {
+                              const vOn = isVariantActive(v.id);
+                              return (
+                                <button key={v.id} onClick={() => onToggleVariant(v.id)}
+                                  className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
+                                    vOn
+                                      ? "bg-[#7173e6]/20 border-[#7173e6] text-[#bbbbee]"
+                                      : "bg-[#0e0e0e] border-[#2a2a2a] text-[#555] hover:text-[#999]"
+                                  }`}>
+                                  {variantLabel(f.name, v.id, v.label)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {(showTarget || infoText) && contourDegrees && (() => {

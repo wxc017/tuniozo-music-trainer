@@ -16,6 +16,7 @@ import {
   JAZZ_FAMILIES, JAZZ_VARIANTS,
   generateJazzCell,
   PATTERN_SCALE_FAMILIES,
+  CADENCE_PROGRESSIONS, MELODY_VARIANTS, buildDiatonicChord,
 } from "./musicTheory";
 
 const ITERATIONS = 50;
@@ -33,6 +34,39 @@ for (const fam of Object.keys(PATTERN_SCALE_FAMILIES)) {
   SCALE_PAIRS.push({ fam, mode: modes[0] });
   if (modes.length > 2) SCALE_PAIRS.push({ fam, mode: modes[Math.floor(modes.length / 2)] });
 }
+
+describe("Scalar Permutations — Cadence chord progressions", () => {
+  it("MELODY_VARIANTS['Cadences'] includes 'phrase' plus 7 chord progressions", () => {
+    const ids = (MELODY_VARIANTS["Cadences"] ?? []).map(v => v.id);
+    expect(ids).toContain("phrase");
+    const cadIds = ids.filter(id => id.startsWith("cad_"));
+    expect(cadIds.length).toBe(Object.keys(CADENCE_PROGRESSIONS).length);
+  });
+
+  it("every cadence progression resolves to the tonic (last chord = degree 1)", () => {
+    for (const [id, chords] of Object.entries(CADENCE_PROGRESSIONS)) {
+      expect(chords.length).toBeGreaterThanOrEqual(2);
+      expect(chords[chords.length - 1]).toBe(1);
+      // ID format check: cad_<digit>_<digit>...
+      expect(id).toMatch(/^cad_\d+(_\d+)+$/);
+    }
+  });
+
+  it("buildDiatonicChord produces 4-note stacks (root, 3rd, 5th, 7th)", () => {
+    for (let root = 1; root <= 7; root++) {
+      const chord = buildDiatonicChord(root);
+      expect(chord.length).toBe(4);
+      // Each label is a 1..7 scale-degree string (no chromatic accidentals
+      // — qualities come from the mode's degree map at playback time).
+      for (const d of chord) expect(d).toMatch(/^[1-7]$/);
+    }
+  });
+
+  it("V-I cadence: V's chord stack = [5,7,2,4], I's = [1,3,5,7]", () => {
+    expect(buildDiatonicChord(5)).toEqual(["5", "7", "2", "4"]);
+    expect(buildDiatonicChord(1)).toEqual(["1", "3", "5", "7"]);
+  });
+});
 
 describe("Scalar Permutations — Cadences melody bank", () => {
   it("every Cadences phrase has 2+ degrees and contains only known degree tokens", () => {
