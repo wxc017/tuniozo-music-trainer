@@ -1641,18 +1641,21 @@ export default function ChordsTab({
           below the picker. */}
 
       {/* Tonality multi-select — family-grouped boxes (Mode ID style).
-          Click a mode to add it to the pool. At play time a random
-          tonality is chosen and only its chord pool is used.  Wrapped
-          in a collapsible header 2026-05-12 per direct user direction
-          "chords should have the collapsible as well". */}
+          Each collapsible section in ChordsTab uses a distinct accent
+          colour per direct user direction (2026-05-12) "have each
+          tab a different color":
+            TONALITIES        — purple (#bf6cd0)
+            EXTENSIONS & VOICINGS — teal   (#5cbfae)
+            CHORDS            — amber  (#e0a040)  [same as Play accent]
+      */}
       <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded">
         <div
           onClick={() => setCollapsedTonalities(v => !v)}
           className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none transition-colors hover:bg-[#161616]"
-          style={{ borderLeft: "3px solid #888" }}
+          style={{ borderLeft: "3px solid #bf6cd0" }}
         >
           <span className="text-[10px] text-[#666] w-3">{collapsedTonalities ? "▸" : "▾"}</span>
-          <span className="text-xs font-semibold tracking-wider text-[#aaa]">TONALITIES</span>
+          <span className="text-xs font-semibold tracking-wider" style={{ color: "#bf6cd0" }}>TONALITIES</span>
           <span className="text-[10px] text-[#555] ml-auto">{tonalitySet.size} selected</span>
           <button
             onClick={(e) => { e.stopPropagation(); setTonalitySet(new Set()); }}
@@ -1733,45 +1736,12 @@ export default function ChordsTab({
       {/* bottom of the tab.                                              */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <div className="bg-[#141008] border border-[#2a2210] rounded-lg px-4 py-3 space-y-3">
-            {/* Controls row */}
-            <div className="flex gap-4 flex-wrap items-end">
-              <div>
-                <p className="text-[10px] text-[#886622] mb-1 font-medium">LOOP LENGTH</p>
-                <div className="flex gap-1">
-                  {LOOP_LENGTHS.map(n => (
-                    <button key={n} onClick={() => setLoopLength(n)}
-                      style={{
-                        width: 28, height: 28, borderRadius: 4, fontSize: 11, fontWeight: 700,
-                        border: `1.5px solid ${loopLength === n ? "#e0a040" : "#1a1a1a"}`,
-                        background: loopLength === n ? "#e0a04018" : "#0e0e0e",
-                        color: loopLength === n ? "#e0a040" : "#444",
-                        cursor: "pointer",
-                      }}
-                    >{n}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#886622] mb-1 font-medium">SPACING (s)</p>
-                <input type="number" min={0.5} max={10} step={0.5} value={loopGap}
-                  onChange={e => setLoopGap(Math.max(0.5, Math.min(10, parseFloat(e.target.value) || 0.5)))}
-                  className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-xs text-white text-center focus:outline-none"
-                />
-              </div>
-              <div>
-                <p className="text-[10px] text-[#886622] mb-1 font-medium">DURATION (s)</p>
-                <input type="number" min={0.1} max={8} step={0.1} value={chordDur}
-                  onChange={e => setChordDur(Math.max(0.1, Math.min(8, parseFloat(e.target.value) || 0.5)))}
-                  className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-xs text-white text-center focus:outline-none"
-                />
-              </div>
-
-              {/* Voicing controls inline */}
-              <VoicingControls
-                regMode={regMode} setRegMode={setRegMode}
-                compact
-              />
-            </div>
+            {/* Playback controls row (LOOP LENGTH / SPACING / DURATION
+                / Register) moved out to the Play row at the bottom of
+                the tab 2026-05-12 per direct user direction "this has
+                to be attached to the play button like how it was
+                before the changes just at the bottom".  See
+                <playControlsRow /> JSX near the Play button. */}
 
             {/* ── Texture Layers row removed 2026-05-12 per direct
                 user direction "then remove the harmony button" — the
@@ -2326,10 +2296,10 @@ export default function ChordsTab({
             <div
               onClick={() => setCollapsedVoicings(v => !v)}
               className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none transition-colors hover:bg-[#161616]"
-              style={{ borderLeft: "3px solid #888" }}
+              style={{ borderLeft: "3px solid #5cbfae" }}
             >
               <span className="text-[10px] text-[#666] w-3">{collapsedVoicings ? "▸" : "▾"}</span>
-              <span className="text-xs font-semibold tracking-wider text-[#aaa]">EXTENSIONS &amp; VOICINGS</span>
+              <span className="text-xs font-semibold tracking-wider" style={{ color: "#5cbfae" }}>EXTENSIONS &amp; VOICINGS</span>
               <span className="text-[10px] text-[#555] ml-auto">
                 {checkedExts.size} exts · {checkedPatterns.size} voicings
               </span>
@@ -2348,20 +2318,26 @@ export default function ChordsTab({
           </div>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* CHORD SELECTION (per checked tonality) — collapsible            */}
-      {/* 2026-05-12 per direct user direction "this should be             */}
-      {/* collapsible" pointing at the Roman-numeral picker.              */}
+      {/* CHORDS (per-tonality chord-card picker) — collapsible           */}
+      {/* 2026-05-12.  Renamed from "ROMAN NUMERAL PICKER" per direct     */}
+      {/* user direction "rename it to Chords not roman numeral".        */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <div className="rounded border border-[#1e1e1e] bg-[#0e0e0e]">
         <div
           onClick={() => setCollapsedChordPicker(v => !v)}
           className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none transition-colors hover:bg-[#161616]"
-          style={{ borderLeft: "3px solid #5b5be6" }}
+          style={{ borderLeft: "3px solid #e0a040" }}
         >
           <span className="text-[10px] text-[#666] w-3">{collapsedChordPicker ? "▸" : "▾"}</span>
-          <span className="text-xs font-semibold tracking-wider text-[#9999ee]">ROMAN NUMERAL PICKER</span>
+          <span className="text-xs font-semibold tracking-wider" style={{ color: "#e0a040" }}>CHORDS</span>
           <span className="text-[10px] text-[#555] ml-auto">
-            {Object.values(checkedByTonality).reduce((sum, arr) => sum + (arr?.length ?? 0), 0)} chords selected
+            {/* Count only chords for tonalities currently in the
+                pool — checkedByTonality persists historical
+                selections for de-selected tonalities, which inflated
+                the count earlier (e.g. "81 chords selected" when only
+                2 were actually active per direct user feedback
+                2026-05-12 "i only have 2 roman numerals selected"). */}
+            {Array.from(tonalitySet).reduce((sum, t) => sum + (checkedByTonality[t]?.length ?? 0), 0)} chords selected
           </span>
         </div>
         {!collapsedChordPicker && (
@@ -2408,12 +2384,49 @@ export default function ChordsTab({
         )}
       </div>
 
-      {/* Play / Stop / Replay / Show Answer — relocated to the bottom
-          of the tab 2026-05-12 per direct user direction "put play at
-          the bottom".  Show Answer auto-expands the PROGRESSIONS
-          collapsible so the reveal becomes visible without the user
-          having to manually expand it. */}
-      <div className="flex gap-2 flex-wrap items-center bg-[#0d0d0d] py-2 px-4 border-y border-[#1e1e1e]">
+      {/* Playback controls row + Play / Stop / Replay / Show Answer —
+          attached to the Play button at the bottom 2026-05-12 per
+          direct user direction "this has to be attached to the play
+          button like how it was before the changes just at the
+          bottom".  The controls (LOOP LENGTH / SPACING / DURATION /
+          Register) used to live inline in the PROGRESSIONS section;
+          they're now right above the Play button so the user can
+          adjust playback parameters at the moment of pressing Play. */}
+      <div className="bg-[#0d0d0d] border-t border-[#1e1e1e] px-4 py-2 space-y-2">
+        <div className="flex gap-4 flex-wrap items-end">
+          <div>
+            <p className="text-[10px] text-[#886622] mb-1 font-medium">LOOP LENGTH</p>
+            <div className="flex gap-1">
+              {LOOP_LENGTHS.map(n => (
+                <button key={n} onClick={() => setLoopLength(n)}
+                  style={{
+                    width: 28, height: 28, borderRadius: 4, fontSize: 11, fontWeight: 700,
+                    border: `1.5px solid ${loopLength === n ? "#e0a040" : "#1a1a1a"}`,
+                    background: loopLength === n ? "#e0a04018" : "#0e0e0e",
+                    color: loopLength === n ? "#e0a040" : "#444",
+                    cursor: "pointer",
+                  }}
+                >{n}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] text-[#886622] mb-1 font-medium">SPACING (s)</p>
+            <input type="number" min={0.5} max={10} step={0.5} value={loopGap}
+              onChange={e => setLoopGap(Math.max(0.5, Math.min(10, parseFloat(e.target.value) || 0.5)))}
+              className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-xs text-white text-center focus:outline-none"
+            />
+          </div>
+          <div>
+            <p className="text-[10px] text-[#886622] mb-1 font-medium">DURATION (s)</p>
+            <input type="number" min={0.1} max={8} step={0.1} value={chordDur}
+              onChange={e => setChordDur(Math.max(0.1, Math.min(8, parseFloat(e.target.value) || 0.5)))}
+              className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-xs text-white text-center focus:outline-none"
+            />
+          </div>
+          <VoicingControls regMode={regMode} setRegMode={setRegMode} compact />
+        </div>
+      <div className="flex gap-2 flex-wrap items-center">
         <button onClick={startFunctionalLoop} disabled={isLooping || !canPlay}
           title={disabledReason ?? undefined}
           className="bg-[#e0a040] hover:bg-[#c89030] disabled:opacity-50 disabled:cursor-not-allowed text-black px-5 py-2 rounded text-sm font-bold transition-colors">
@@ -2443,6 +2456,7 @@ export default function ChordsTab({
           </button>
         )}
         {answerButtons}
+      </div>
       </div>
     </div>
   );
