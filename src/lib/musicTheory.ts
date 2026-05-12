@@ -1702,9 +1702,12 @@ const BEBOP_CHROMATICS: Record<string, string> = {
   "5_6": "#5",
   "6_7": "#6",
 };
-// Descending chromatic insertions
+// Descending chromatic insertions.  Each entry inserts a chromatic
+// approach tone between two adjacent diatonic scale degrees on the way
+// down.  "8_7" omitted on purpose — b8 enharmonically equals 7 in
+// 12-EDO, which produced an audible 8→7→7 stutter.  The classical
+// descending bebop scale resolves 8 directly to 7 anyway.
 const BEBOP_CHROMATICS_DESC: Record<string, string> = {
-  "8_7": "b8",
   "7_6": "b7",
   "6_5": "b6",
   "5_4": "b5",
@@ -1909,22 +1912,49 @@ function generateBergonziPentatonic(length: number, enabled?: Set<string>): { de
   const out: string[] = [];
   let detail = style;
 
+  // Per direct user direction (2026-05-12) "ensure all is a moving
+  // formula" — pentatonic asc/desc/skip now sequence a 3-note cell
+  // through the pentatonic instead of looping the full 5-note shape.
+  // Cell anchors at pent[k] for k = startOffset, startOffset+1, …
+  // producing Bergonzi-style upward shifts.  Pendulum keeps its
+  // rotated-pendulum behaviour (still moves because the rotation
+  // offset is random per call).
   switch (style) {
     case "ascending": {
-      const start = Math.floor(Math.random() * pent.length);
-      for (let i = 0; out.length < length; i++) out.push(pent[(start + i) % pent.length]);
+      const cellLen = 3;
+      let k = Math.floor(Math.random() * pent.length);
+      while (out.length < length) {
+        for (let j = 0; j < cellLen && out.length < length; j++) {
+          out.push(pent[(k + j) % pent.length]);
+        }
+        k = (k + 1) % pent.length;  // shift cell up one pent step
+      }
+      detail = "ascending cell (3-note, sequenced)";
       break;
     }
     case "descending": {
-      const start = Math.floor(Math.random() * pent.length);
-      for (let i = 0; out.length < length; i++) out.push(pent[((start - i) % pent.length + pent.length) % pent.length]);
+      const cellLen = 3;
+      let k = Math.floor(Math.random() * pent.length);
+      while (out.length < length) {
+        for (let j = 0; j < cellLen && out.length < length; j++) {
+          out.push(pent[((k - j) % pent.length + pent.length) % pent.length]);
+        }
+        k = (k - 1 + pent.length) % pent.length;  // shift cell down one pent step
+      }
+      detail = "descending cell (3-note, sequenced)";
       break;
     }
     case "skip": {
-      const start = Math.floor(Math.random() * pent.length);
+      const cellLen = 3;
       const step = randomChoice([2, 3]);
-      detail = `skip-${step}`;
-      for (let i = 0; out.length < length; i++) out.push(pent[(start + i * step) % pent.length]);
+      let k = Math.floor(Math.random() * pent.length);
+      while (out.length < length) {
+        for (let j = 0; j < cellLen && out.length < length; j++) {
+          out.push(pent[(k + j * step) % pent.length]);
+        }
+        k = (k + 1) % pent.length;
+      }
+      detail = `skip-${step} cell (sequenced)`;
       break;
     }
     case "pendulum": {
@@ -1993,38 +2023,67 @@ function generateBergonziTriadPair(
   scaleFam: string = "Major Family",
   modeName: string = "Ionian",
 ): { degrees: string[]; variant: string } {
-  // Pair IDs are mode-independent ("1+4" = triad on degree 1 + triad on degree 4).
-  // Notes are derived from the selected mode's diatonic triads.
+  // Pair IDs are mode-independent ("1+4" = triad on degree 1 + triad
+  // on degree 4).  Notes are derived from the selected mode's diatonic
+  // triads.
   const PAIR_IDS = ["1+2","2+3","3+4","4+5","5+6","6+7","1+4","1+5","2+5","4+7"];
   const triads = getDiatonicTriadsForMode(scaleFam, modeName);
-  const fallbackI = ["1","3","5"], fallbackII = ["2","4","6"];
 
   const pickedId = pickAllowed(PAIR_IDS, p => p, enabled);
   const [aStr, bStr] = pickedId.split("+");
   const aIdx = parseInt(aStr) - 1;
   const bIdx = parseInt(bStr) - 1;
-  const t1 = triads[aIdx]?.notes ?? fallbackI;
-  const t2 = triads[bIdx]?.notes ?? fallbackII;
+  const offsetAB = ((bIdx - aIdx) % 7 + 7) % 7;  // scale-degree gap between the two triads
   const aRoman = triads[aIdx]?.roman ?? aStr;
   const bRoman = triads[bIdx]?.roman ?? bStr;
   const pairLabel = `${aRoman}+${bRoman}`;
-  const picked = { id: pickedId, label: pairLabel };
 
-  // Permute each triad independently
+  // Per-pair permutations (the two triads' internal note orderings) so
+  // every cell sounds different.  Re-picked per *cell*, not once for
+  // the whole phrase — that way sequencing the pair upward through the
+  // scale produces musically varied output rather than xeroxed loops.
   const perms = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
-  const p1 = randomChoice(perms);
-  const p2 = randomChoice(perms);
-
   const ascending = Math.random() > 0.4;
-  const cell = ascending
-    ? [...p1.map(i => t1[i]), ...p2.map(i => t2[i])]
-    : [...p2.map(i => t2[i]).reverse(), ...p1.map(i => t1[i]).reverse()];
 
-  // Repeat / truncate to target length
+  // Helper: read the diatonic triad rooted at scale degree `rootDeg`
+  // (1-indexed, wraps mod 7).  Falls back to scale-built triad when
+  // the mode's getDiatonicTriadsForMode list is shorter than expected.
+  function triadAt(rootDeg: number): string[] {
+    const idx = ((rootDeg - 1) % 7 + 7) % 7;
+    const notes = triads[idx]?.notes;
+    if (notes && notes.length >= 3) return notes;
+    // Fallback: scale-step triad (1-3-5 spelling) starting at rootDeg.
+    return [String(((rootDeg - 1) % 7) + 1), String(((rootDeg + 1) % 7) + 1), String(((rootDeg + 3) % 7) + 1)];
+  }
+
+  // Moving formula per direct user direction (2026-05-12) "ensure all
+  // is a moving formula" — the pair sequences upward (or downward) one
+  // scale degree per 6-note cell instead of looping a single cell.
+  // For pair "1+4": cell 1 = triads(1,4), cell 2 = triads(2,5),
+  // cell 3 = triads(3,6), … wrapping mod 7 of the diatonic cycle.
   const out: string[] = [];
-  for (let i = 0; out.length < length; i++) out.push(cell[i % cell.length]);
+  let aRoot = aIdx + 1;  // 1-indexed root of the first triad
+  while (out.length < length) {
+    const bRoot = ((aRoot - 1 + offsetAB) % 7) + 1;
+    const t1 = triadAt(aRoot);
+    const t2 = triadAt(bRoot);
+    const p1 = randomChoice(perms);
+    const p2 = randomChoice(perms);
+    const cell = ascending
+      ? [...p1.map(i => t1[i]), ...p2.map(i => t2[i])]
+      : [...p2.map(i => t2[i]).reverse(), ...p1.map(i => t1[i]).reverse()];
+    for (const n of cell) {
+      if (out.length >= length) break;
+      out.push(n);
+    }
+    aRoot = ((aRoot - 1 + (ascending ? 1 : -1) + 7) % 7) + 1;  // shift pair by one scale degree
+  }
+
   const dir = ascending ? "ascending" : "descending";
-  const variant = `${dir} triad pair ${picked.label}: ${t1.join("-")} / ${t2.join("-")}`;
+  // The variant string carries only the seed-pair label; the actual
+  // sequenced output traverses the diatonic cycle, so showing only
+  // the first cell's notes (as before) would mis-state the phrase.
+  const variant = `${dir} triad pair ${pairLabel} sequenced through scale`;
   return { degrees: out.slice(0, length), variant };
 }
 
@@ -2067,34 +2126,54 @@ function generateBergonziHexatonic(
   const style = randomChoice(["ascending", "descending", "skip", "cell4"]);
   const out: string[] = [];
 
+  // Per direct user direction (2026-05-12) "ensure all is a moving
+  // formula" — hex asc/desc/skip now sequence a 4-note cell through
+  // the hex (matching cell4's behaviour) instead of looping the
+  // whole hex.  Each variant differs in CELL SHAPE rather than in
+  // whether or not it moves.
   switch (style) {
     case "ascending": {
-      const start = Math.floor(Math.random() * hex.length);
-      for (let i = 0; out.length < length; i++) out.push(hex[(start + i) % hex.length]);
-      break;
-    }
-    case "descending": {
-      const start = Math.floor(Math.random() * hex.length);
-      for (let i = 0; out.length < length; i++) out.push(hex[((start - i) % hex.length + hex.length) % hex.length]);
-      break;
-    }
-    case "skip": {
-      const start = Math.floor(Math.random() * hex.length);
-      for (let i = 0; out.length < length; i++) {
-        out.push(hex[(start + i) % hex.length]);
-        if (out.length < length) out.push(hex[(start + i + 2) % hex.length]);
-      }
-      break;
-    }
-    case "cell4": {
-      // 4-note cells through hexatonic, sequencing up
-      const start = Math.floor(Math.random() * hex.length);
-      let offset = start;
+      // 4-note ascending cell: [0,1,2,3] within hex, shifted up
+      let offset = Math.floor(Math.random() * hex.length);
       while (out.length < length) {
         for (let j = 0; j < 4 && out.length < length; j++) {
           out.push(hex[(offset + j) % hex.length]);
         }
-        offset++;
+        offset = (offset + 1) % hex.length;
+      }
+      break;
+    }
+    case "descending": {
+      // 4-note descending cell: [0,-1,-2,-3] within hex, shifted down
+      let offset = Math.floor(Math.random() * hex.length);
+      while (out.length < length) {
+        for (let j = 0; j < 4 && out.length < length; j++) {
+          out.push(hex[((offset - j) % hex.length + hex.length) % hex.length]);
+        }
+        offset = (offset - 1 + hex.length) % hex.length;
+      }
+      break;
+    }
+    case "skip": {
+      // 4-note cell with one internal skip: [0,2,1,3], shifted up
+      let offset = Math.floor(Math.random() * hex.length);
+      const skipCell = [0, 2, 1, 3];
+      while (out.length < length) {
+        for (let j = 0; j < skipCell.length && out.length < length; j++) {
+          out.push(hex[(offset + skipCell[j]) % hex.length]);
+        }
+        offset = (offset + 1) % hex.length;
+      }
+      break;
+    }
+    case "cell4": {
+      // 4-note cells through hexatonic, sequencing up — original cell4
+      let offset = Math.floor(Math.random() * hex.length);
+      while (out.length < length) {
+        for (let j = 0; j < 4 && out.length < length; j++) {
+          out.push(hex[(offset + j) % hex.length]);
+        }
+        offset = (offset + 1) % hex.length;
       }
       break;
     }
