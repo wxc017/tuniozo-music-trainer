@@ -1929,17 +1929,21 @@ export default function ChordsTab({
               ))}
             </div>
           </div>
+          {/* Merged SPACING + DURATION 2026-05-12 per direct user
+              direction "spacing and durations can be merged" — one
+              "CHORD TIME" input drives both the spacing between chord
+              onsets (loopGap) and the sustain length of each chord
+              (chordDur).  loopGap is the primary value the user
+              cares about; chordDur is auto-synced to match (legato
+              playback: each chord rings until the next starts). */}
           <div>
-            <p className="text-[10px] text-[#886622] mb-1 font-medium">SPACING (s)</p>
+            <p className="text-[10px] text-[#886622] mb-1 font-medium">CHORD TIME (s)</p>
             <input type="number" min={0.5} max={10} step={0.5} value={loopGap}
-              onChange={e => setLoopGap(Math.max(0.5, Math.min(10, parseFloat(e.target.value) || 0.5)))}
-              className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-xs text-white text-center focus:outline-none"
-            />
-          </div>
-          <div>
-            <p className="text-[10px] text-[#886622] mb-1 font-medium">DURATION (s)</p>
-            <input type="number" min={0.1} max={8} step={0.1} value={chordDur}
-              onChange={e => setChordDur(Math.max(0.1, Math.min(8, parseFloat(e.target.value) || 0.5)))}
+              onChange={e => {
+                const v = Math.max(0.5, Math.min(10, parseFloat(e.target.value) || 0.5));
+                setLoopGap(v);
+                setChordDur(v);
+              }}
               className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-xs text-white text-center focus:outline-none"
             />
           </div>
