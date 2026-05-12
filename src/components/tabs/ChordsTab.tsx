@@ -212,6 +212,14 @@ export default function ChordsTab({
   const [tonalitySet, setTonalitySet] = useLS<Set<string>>("lt_crd_tonalities", new Set(["Major"]));
   const [collapsedLevels, setCollapsedLevels] = useState<Set<string>>(new Set());
 
+  // Top-level section collapse state per direct user direction
+  // (2026-05-12) "chords should have the collapsible as well" — mirrors
+  // Scalar Permutations.  Each section persists its own state via
+  // localStorage so the user's layout sticks across reloads.
+  const [collapsedTonalities, setCollapsedTonalities] = useLS<boolean>("lt_crd_collapsed_tonalities", false);
+  const [collapsedProgressions, setCollapsedProgressions] = useLS<boolean>("lt_crd_collapsed_progressions", false);
+  const [collapsedVoicings, setCollapsedVoicings] = useLS<boolean>("lt_crd_collapsed_voicings", false);
+
   // Approach-chord toggles, scoped per tonality.  Outer key = tonality
   // name; inner key = target chord label; value = enabled approach kinds.
   const [approachesByTonality, setApproachesByTonality] = useLS<Record<string, Record<string, ApproachKind[]>>>(
@@ -1633,13 +1641,24 @@ export default function ChordsTab({
 
       {/* Tonality multi-select — family-grouped boxes (Mode ID style).
           Click a mode to add it to the pool. At play time a random
-          tonality is chosen and only its chord pool is used. */}
-      <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2">
-        <div className="flex items-center gap-2">
-          <p className="text-xs text-[#888] font-medium">TONALITIES</p>
-          <button onClick={() => setTonalitySet(new Set())}
-            className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5 ml-auto">Clear</button>
+          tonality is chosen and only its chord pool is used.  Wrapped
+          in a collapsible header 2026-05-12 per direct user direction
+          "chords should have the collapsible as well". */}
+      <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded">
+        <div
+          onClick={() => setCollapsedTonalities(v => !v)}
+          className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none transition-colors hover:bg-[#161616]"
+          style={{ borderLeft: "3px solid #888" }}
+        >
+          <span className="text-[10px] text-[#666] w-3">{collapsedTonalities ? "▸" : "▾"}</span>
+          <span className="text-xs font-semibold tracking-wider text-[#aaa]">TONALITIES</span>
+          <span className="text-[10px] text-[#555] ml-auto">{tonalitySet.size} selected</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); setTonalitySet(new Set()); }}
+            className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5">Clear</button>
         </div>
+        {!collapsedTonalities && (
+        <div className="p-2 space-y-2">
         {tonalitySectionsForEdo(edo).map(section => {
           // Filter families to those with at least one bank-backed
           // tonality available for this EDO; drop empty sections so the
@@ -1701,6 +1720,8 @@ export default function ChordsTab({
             </div>
           );
         })}
+        </div>
+        )}
       </div>
 
       {/* ════════════════════════════════════════════════════════════════ */}
@@ -2362,15 +2383,36 @@ export default function ChordsTab({
 
           </div>
 
-          {/* Extensions + Voicings (shared controls) */}
-          <ExtensionControls
-            extTendency={extTendency} setExtTendency={setExtTendency}
-            checkedExts={checkedExts} setCheckedExts={setCheckedExts}
-            checkedExtCounts={checkedExtCounts} setCheckedExtCounts={setCheckedExtCounts} toggleSet={toggleSet}
-          />
-          <VoicingPatternControls checkedPatterns={checkedPatterns} setCheckedPatterns={setCheckedPatterns} toggleSet={toggleSet} betaMode={betaMode} />
-
-          <LilPreviewPanel checkedChords={effectiveChecked} chordMap={chordMap} edo={edo} tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch} getCompatibleTypes={getCompatibleTypes} applyChordType={applyChordType} />
+          {/* Extensions + Voicings — wrapped in a collapsible section
+              2026-05-12 per direct user direction "chords should have
+              the collapsible as well".  Folding hides Extension /
+              Voicing controls + the LilPreview panel so the user can
+              focus on Tonalities + Play without scrolling past
+              advanced controls. */}
+          <div className="rounded border border-[#1e1e1e] bg-[#0e0e0e]">
+            <div
+              onClick={() => setCollapsedVoicings(v => !v)}
+              className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none transition-colors hover:bg-[#161616]"
+              style={{ borderLeft: "3px solid #888" }}
+            >
+              <span className="text-[10px] text-[#666] w-3">{collapsedVoicings ? "▸" : "▾"}</span>
+              <span className="text-xs font-semibold tracking-wider text-[#aaa]">EXTENSIONS &amp; VOICINGS</span>
+              <span className="text-[10px] text-[#555] ml-auto">
+                {checkedExts.size} exts · {checkedPatterns.size} voicings
+              </span>
+            </div>
+            {!collapsedVoicings && (
+              <div className="p-3 space-y-3">
+                <ExtensionControls
+                  extTendency={extTendency} setExtTendency={setExtTendency}
+                  checkedExts={checkedExts} setCheckedExts={setCheckedExts}
+                  checkedExtCounts={checkedExtCounts} setCheckedExtCounts={setCheckedExtCounts} toggleSet={toggleSet}
+                />
+                <VoicingPatternControls checkedPatterns={checkedPatterns} setCheckedPatterns={setCheckedPatterns} toggleSet={toggleSet} betaMode={betaMode} />
+                <LilPreviewPanel checkedChords={effectiveChecked} chordMap={chordMap} edo={edo} tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch} getCompatibleTypes={getCompatibleTypes} applyChordType={applyChordType} />
+              </div>
+            )}
+          </div>
 
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* CHORD SELECTION (per checked tonality)                          */}
