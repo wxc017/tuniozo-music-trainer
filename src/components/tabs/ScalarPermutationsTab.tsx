@@ -186,9 +186,22 @@ export default function ScalarPermutationsTab({
       return { ...prev, [family]: safe };
     });
   };
-  // Bergonzi families re-label their triad-pair variants based on the
-  // active mode (e.g. "1+2" → "I+ii" in Ionian) — preserved from JazzTab.
+  // Re-label variants whose Roman case depends on the active mode:
+  //   • Triad Pairs / Hexatonics "1+4" → "I+IV" in Ionian, "i+iv" in Aeolian, …
+  //   • Guide-Tone Lines "prog_2_5_1" → "ii-V-I" in Ionian, "ii°-v-i" in Aeolian, …
+  // Augmented / whole-tone hexes are symmetric and mode-independent
+  // so they keep their fallback labels.
   const jazzVariantLabel = (family: string, vid: string, fallback: string): string => {
+    if (family === "Guide-Tone Lines" && vid.startsWith("prog_")) {
+      const triads = getDiatonicTriadsForMode(scaleFam, modeName);
+      if (triads.length < 7) return fallback;
+      const parts = vid.slice("prog_".length).split("_");
+      const romans = parts.map(p => {
+        const idx = parseInt(p) - 1;
+        return triads[idx]?.roman ?? p;
+      });
+      return romans.join("-");
+    }
     if (family !== "Bergonzi Triad Pairs" && family !== "Bergonzi Hexatonics") return fallback;
     if (vid === "augmented" || vid === "whole-tone") return fallback;
     if (!/^\d\+\d$/.test(vid)) return fallback;

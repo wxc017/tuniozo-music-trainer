@@ -1491,9 +1491,24 @@ export const JAZZ_VARIANTS: Record<string, { id: string; label: string }[]> = {
     { id: "ascending",  label: "Ascending" },
     { id: "descending", label: "Descending" },
   ],
+  // Tonic-only modes ("from_3" / "from_7") play guide-tone lines within
+  // the tonic chord.  Progression modes ("prog_*") walk through a chord
+  // progression's diatonic 3rds and 7ths — the canonical jazz texture.
+  // Display labels for prog_* IDs are computed at render time so the
+  // Roman-numeral case reflects the active mode (lowercase = minor /
+  // dim, uppercase = major) — see jazzVariantLabel in
+  // ScalarPermutationsTab.
   "Guide-Tone Lines": [
-    { id: "from_3", label: "Start on 3" },
-    { id: "from_7", label: "Start on 7" },
+    { id: "from_3",         label: "Start on 3" },
+    { id: "from_7",         label: "Start on 7" },
+    { id: "prog_2_5_1",     label: "ii-V-I" },
+    { id: "prog_2_5",       label: "ii-V" },
+    { id: "prog_5_1",       label: "V-I" },
+    { id: "prog_1_4_5_1",   label: "I-IV-V-I" },
+    { id: "prog_1_6_2_5",   label: "I-vi-ii-V" },
+    { id: "prog_1_6_4_5",   label: "I-vi-IV-V" },
+    { id: "prog_3_6_2_5",   label: "iii-vi-ii-V" },
+    { id: "prog_1_4_1_5",   label: "I-IV-I-V" },
   ],
   "Bergonzi Pentatonics": [
     { id: "major",     label: "Major" },
@@ -1734,8 +1749,52 @@ function generateBebopFragment(length: number, enabled?: Set<string>): { degrees
   }
 }
 
+// Common chord progressions for guide-tone exercises.  Each chord is a
+// scale degree (1-7); the chord's diatonic 3rd is degree (n+2) mod 7
+// and its diatonic 7th is degree (n+6) mod 7 — see chordGuideTones().
+// Labels are computed at render time from the active mode (lowercase
+// = minor / dim, uppercase = major / aug) using getDiatonicTriadsForMode.
+export const GUIDE_TONE_PROGRESSIONS: Record<string, number[]> = {
+  "prog_2_5_1":     [2, 5, 1],
+  "prog_2_5":       [2, 5],
+  "prog_5_1":       [5, 1],
+  "prog_1_4_5_1":   [1, 4, 5, 1],
+  "prog_1_6_2_5":   [1, 6, 2, 5],
+  "prog_1_6_4_5":   [1, 6, 4, 5],
+  "prog_3_6_2_5":   [3, 6, 2, 5],
+  "prog_1_4_1_5":   [1, 4, 1, 5],
+};
+
+// For a chord built on diatonic degree N (1..7), return its 3rd and 7th
+// expressed as tonic-relative scale degrees.  Degrees wrap into the
+// upper octave (8..14) when N+2 / N+6 cross the tonic, so the line can
+// voice-lead smoothly across the octave boundary.
+function chordGuideTones(chordDeg: number): { third: number; seventh: number } {
+  // (degree - 1) gives 0-indexed slot; +2/+6 = diatonic 3rd/7th.
+  const third   = chordDeg + 2;
+  const seventh = chordDeg + 6;
+  return { third, seventh };
+}
+
 function generateGuideToneLine(length: number, enabled?: Set<string>): { degrees: string[]; variant: string } {
-  // Guide tones are 3rds and 7ths; connect them stepwise
+  // Guide tones are 3rds and 7ths; connect them stepwise.  Two modes:
+  //   1. Tonic-only mode ("from_3" / "from_7"): walks 3 ↔ 7 within the
+  //      tonic chord, original behaviour.
+  //   2. Progression mode ("prog_..." IDs): walks the 3rds / 7ths of a
+  //      chord sequence (ii-V-I, I-vi-ii-V, …) with optional passing
+  //      tones between chords.  This is the canonical jazz use case —
+  //      hearing guide-tone voice-leading across changes.
+  if (enabled && enabled.size > 0) {
+    const progIds = Array.from(enabled).filter(id => id.startsWith("prog_"));
+    if (progIds.length > 0) {
+      const pickedId = randomChoice(progIds);
+      const chords = GUIDE_TONE_PROGRESSIONS[pickedId];
+      if (chords && chords.length > 0) {
+        return generateProgressionGuideTones(chords, length, pickedId);
+      }
+    }
+  }
+
   const guideTones = ["3", "7"];
   const startCandidates = enabled && enabled.size > 0
     ? guideTones.filter(t => enabled.has(`from_${t}`))
@@ -1766,6 +1825,70 @@ function generateGuideToneLine(length: number, enabled?: Set<string>): { degrees
     current = current === "3" ? "7" : "3";
   }
   return { degrees: out.slice(0, length), variant: `guide-tone line (3 ↔ 7) starting on ${startTone}` };
+}
+
+// Build a guide-tone line over a chord progression.  For each chord
+// (specified by its diatonic scale-degree), we compute its 3rd and 7th
+// and pick whichever lies closer to the previous note — that's the
+// canonical jazz voice-leading approach (the 3rd of ii falls a half-
+// step to the 7th of V, etc.).  Notes between chords are filled with
+// stepwise passing tones if length > number of chords.
+function generateProgressionGuideTones(
+  chords: number[],
+  length: number,
+  progId: string,
+): { degrees: string[]; variant: string } {
+  // Compute the two candidate guide tones (3rd, 7th) for each chord,
+  // expressed as tonic-relative degree labels (e.g. "3", "b7", "8").
+  const targets = chords.map(c => {
+    const { third, seventh } = chordGuideTones(c);
+    // Use generic numeric labels; the actual mode quality is applied at
+    // playback time via getModeDegreeMap so e.g. "3" becomes "b3" in
+    // a minor mode.  Wrap into [1..14] for octave continuity.
+    const norm = (n: number) => {
+      while (n > 14) n -= 7;
+      while (n < 1)  n += 7;
+      return String(n > 7 ? n - 7 : n);  // collapse to 1..7 for the label set
+    };
+    return { third: norm(third), seventh: norm(seventh) };
+  });
+
+  // Allocate phrase slots: roughly equal share per chord.
+  const perChord = Math.max(1, Math.floor(length / chords.length));
+  const out: string[] = [];
+
+  for (let ci = 0; ci < chords.length && out.length < length; ci++) {
+    const { third, seventh } = targets[ci];
+    // Pick guide tone: 3rd or 7th.  Alternate per chord so the line
+    // weaves between the two guide-tone voices (a 3rd-line and a 7th-
+    // line), which is the texture players actually hear in changes.
+    const useThird = (ci % 2 === 0);
+    const gt = useThird ? third : seventh;
+    out.push(gt);
+    // Fill remaining per-chord slots with stepwise passing motion
+    // toward the next chord's chosen guide tone.  Falls back to a
+    // diatonic neighbor when at the end of the progression.
+    const isLast = ci === chords.length - 1;
+    const next = isLast ? gt : (((ci + 1) % 2 === 0) ? targets[ci + 1].third : targets[ci + 1].seventh);
+    const gtNum = parseInt(gt) || 1;
+    const nextNum = parseInt(next) || 1;
+    const dir = nextNum >= gtNum ? 1 : -1;
+    let cur = gtNum;
+    for (let s = 1; s < perChord && out.length < length; s++) {
+      cur = ((cur - 1 + dir + 7) % 7) + 1;
+      out.push(String(cur));
+    }
+  }
+  // Pad with the final guide tone if we ran short.
+  while (out.length < length) out.push(out[out.length - 1] ?? "1");
+
+  // Roman label is computed at display time (mode-aware); the variant
+  // string just carries the progression ID so ScalarPermutationsTab
+  // can re-render it correctly.
+  return {
+    degrees: out.slice(0, length),
+    variant: `guide-tone line over ${progId.replace(/^prog_/, "").replace(/_/g, "-")}`,
+  };
 }
 
 // ── Bergonzi generative engines ──────────────────────────────────────

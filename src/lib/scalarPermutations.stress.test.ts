@@ -79,6 +79,23 @@ describe("Scalar Permutations — Jazz families generate non-empty phrases", () 
   }
 });
 
+describe("Scalar Permutations — Guide-Tone Lines progression variants", () => {
+  const progIds = ["prog_2_5_1", "prog_2_5", "prog_5_1", "prog_1_4_5_1", "prog_1_6_2_5", "prog_1_6_4_5", "prog_3_6_2_5", "prog_1_4_1_5"];
+  for (const progId of progIds) {
+    it(`Guide-Tone Lines / ${progId} produces non-empty phrases`, () => {
+      for (let i = 0; i < 20; i++) {
+        const phrase = generateJazzCell("Guide-Tone Lines", 8, new Set([progId]), "Major Family", "Ionian");
+        expect(phrase.degrees.length).toBe(8);
+        expect(phrase.variant).toContain("guide-tone");
+        for (const d of phrase.degrees) {
+          expect(typeof d).toBe("string");
+          expect(d.length).toBeGreaterThan(0);
+        }
+      }
+    });
+  }
+});
+
 describe("Scalar Permutations — Bergonzi Intervallic mix-* variants", () => {
   // The 2026-05-12 expansion added 10 new mix variants on top of the
   // original 4.  This test pins every variant to its enabled set so
