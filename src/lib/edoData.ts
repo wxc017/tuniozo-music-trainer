@@ -457,23 +457,36 @@ export function getSolfege(edo: number): string[] | null {
 
 // ── Andrew Heathwaite's solfege (31-EDO) ─────────────────────────────────
 // An alternative 31-EDO solfege that expands the conventional Do-Re-Mi
-// system with consistent vowel families.  Differs from the
-// SOLFEGE_31 above in having 5 syllables per scale-step group (with two
-// unisons / two octaves) and a tighter pattern matching:
-//   Between Do and Fa, intervals share syllables with their fifth-up
-//   counterparts (do→so, di→si, ro→lo, ra→le, ru→lu, re→la, ri→li,
-//   ma→ta, etc.) — useful for tetrachordal-scale and 7th-chord ear
-//   training where the upper / lower tetrachord motions mirror.
-// Source: Xenharmonic Wiki, Andrew Heathwaite's solfege article.
+// system with consistent vowel families per interval class.  Layout
+// matches the table on the Xenharmonic Wiki "Andrew Heathwaite's
+// solfege" article exactly:
+//
+//   class    step indexes   solfege names                ups-and-downs
+//   ─────    ────────────   ──────────────────────────   ─────────────────────
+//   unison   0 – 1          Do  Di                       P1   ^1
+//   2nds     2 – 6          Ro  Ra  Ru  Re  Ri           vm2  m2  ~2  M2  ^M2
+//   3rds     7 – 11         Ma  Me  Mu  Mi  Mo           vm3  m3  ~3  M3  ^M3
+//   4ths     12 – 15        Fe  Fa  Fu  Fi               v4   P4  ^4  A4
+//   5ths     16 – 19        Se  Su  So  Si               d5   v5  P5  ^5
+//   6ths     20 – 24        Lo  Le  Lu  La  Li           vm6  m6  ~6  M6  ^M6
+//   7ths     25 – 29        Ta  Te  Tu  Ti  To           vm7  m7  ~7  M7  ^M7
+//   octave   30 – 31        Da  Do                       v8   P8
+//
+// Between Do and Fa, intervals share syllables with their fifth-up
+// counterparts (do→so, di→si, ro→lo, ra→le, ru→lu, re→la, ri→li,
+// ma→ta, etc.) — useful for tetrachordal-scale + 7th-chord ear
+// training where the upper / lower tetrachord motions mirror.
+//
+// 32-element array — index 0 = unison, index 31 = perfect octave.
 const HEATHWAITE_SOLFEGE_31 = [
-  "Do", "Di",                         //  0  1   unisons
-  "Ro", "Ra", "Ru", "Re", "Ri",       //  2-6   2nds
-  "Ma", "Me", "Mu", "Mi", "Mo",       //  7-11  3rds
-  "Fe", "Fa", "Fu", "Fi",             // 12-15  4ths
-  "Se", "Su", "So", "Si",             // 16-19  5ths
-  "Lo", "Le", "Lu", "La", "Li",       // 20-24  6ths
-  "Ta", "Te", "Tu", "Ti", "To",       // 25-29  7ths
-  "Da", "Do",                         // 30-31  octaves
+  "Do", "Di",                         //  0,1   unisons (P1, ^1)
+  "Ro", "Ra", "Ru", "Re", "Ri",       //  2-6   2nds    (vm2, m2, ~2, M2, ^M2)
+  "Ma", "Me", "Mu", "Mi", "Mo",       //  7-11  3rds    (vm3, m3, ~3, M3, ^M3)
+  "Fe", "Fa", "Fu", "Fi",             // 12-15  4ths    (v4, P4, ^4, A4)
+  "Se", "Su", "So", "Si",             // 16-19  5ths    (d5, v5, P5, ^5)
+  "Lo", "Le", "Lu", "La", "Li",       // 20-24  6ths    (vm6, m6, ~6, M6, ^M6)
+  "Ta", "Te", "Tu", "Ti", "To",       // 25-29  7ths    (vm7, m7, ~7, M7, ^M7)
+  "Da", "Do",                         // 30-31  octaves (v8, P8)
 ];
 
 // 12-EDO chromatic solfege — the conventional Heathwaite subset used in
