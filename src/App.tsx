@@ -8,12 +8,9 @@ import { computeLayout, LayoutResult, ComputedKey } from "@/lib/lumatoneLayout";
 import { audioEngine, AudioEngine, DRONE_INSTRUMENTS, type DroneInstrument } from "@/lib/audioEngine";
 import IntervalsTab from "@/components/tabs/IntervalsTab";
 import ChordsTab from "@/components/tabs/ChordsTab";
-import MelodyTab from "@/components/tabs/MelodyTab";
-import JazzTab from "@/components/tabs/JazzTab";
-import PatternsTab from "@/components/tabs/PatternsTab";
+import ScalarPermutationsTab from "@/components/tabs/ScalarPermutationsTab";
 import DroneTab from "@/components/tabs/DroneTab";
 import DroneContinuumTab from "@/components/tabs/DroneContinuumTab";
-import ModeIdentificationTab from "@/components/tabs/ModeIdentificationTab";
 import ScalarTab from "@/components/tabs/ScalarTab";
 
 
@@ -57,7 +54,7 @@ import { getLayoutFile, pcToNoteNameWithEnharmonic, formatHalfAccidentals } from
 // Side-effect import: registers the 19 curated JI scales (Pythagorean,
 // 5-limit, septimal, neutral / Maqam) into edoData's pattern-map cache
 // for 41-EDO and 53-EDO so getModeDegreeMap() resolves them.  No exports
-// are used directly here — ChordsTab and ModeIdentificationTab consume
+// are used directly here — ChordsTab and ScalarPermutationsTab consume
 // the scales via their dynamic family lists.
 import "@/lib/jiScaleData";
 import {
@@ -80,16 +77,24 @@ const VIZ_LABELS: Record<VisualizerType, string> = {
   bass: "Bass",
 };
 
-type Tab = "intervals"|"chords"|"melody"|"jazz"|"patterns"|"drone"|"modeid";
+// Mode ID + Melody + Jazz Cells + Patterns merged 2026-05-12 into a
+// single "Scalar Permutations" tab per direct user direction "they can
+// all be one mode called Scalar Permutations".  All four were
+// scale-degree-sequence exercises (curated banks or algorithmic
+// permutations); ScalarPermutationsTab unifies them with a Source
+// selector — each round picks one enabled source (Pattern Sequences,
+// Melody Bank, Jazz Cells, or Scale Traversals) and dispatches to
+// that engine.
+type Tab = "intervals"|"chords"|"permutations"|"drone";
 type ResponseMode = "Play Audio"|"Show Target (Sing It)";
 
 const TAB_LABELS: Record<Tab, string> = {
   intervals: "Intervals", chords: "Chords",
-  melody: "Melody", jazz: "Jazz Cells", patterns: "Patterns",
-  drone: "Chord Drone", modeid: "Mode ID",
+  permutations: "Scalar Permutations",
+  drone: "Chord Drone",
 };
 
-const VALID_TABS: Tab[] = ["intervals","chords","modeid","melody","jazz","patterns","drone"];
+const VALID_TABS: Tab[] = ["intervals","chords","permutations","drone"];
 
 // ── Temperament classification ──────────────────────────────────────────
 // Tonal Audiation groups the available EDOs by their underlying tuning
@@ -116,14 +121,14 @@ const TEMPERAMENT_EDOS: Record<Temperament, number[]> = {
   pythagorean: [41],
   schismatic:  [53],
 };
-// Pythagorean and Schismatic temperaments expose only the three tabs whose
-// content has a comma-aware story today.  Melody/Jazz/Patterns/Drone stay
-// hidden in those temperaments until the chord-progression infrastructure
-// is rebuilt around tuning lineages.
+// Pythagorean and Schismatic temperaments expose only the tabs whose
+// content has a comma-aware story today.  Drone stays hidden in those
+// temperaments until the chord-progression infrastructure is rebuilt
+// around tuning lineages.
 const TEMPERAMENT_TABS: Record<Temperament, Tab[]> = {
-  meantone:    ["intervals", "chords", "modeid", "melody", "jazz", "patterns", "drone"],
-  pythagorean: ["intervals", "modeid", "chords"],
-  schismatic:  ["intervals", "modeid", "chords"],
+  meantone:    ["intervals", "chords", "permutations", "drone"],
+  pythagorean: ["intervals", "chords", "permutations"],
+  schismatic:  ["intervals", "chords", "permutations"],
 };
 function temperamentForEdo(edo: number): Temperament {
   if (TEMPERAMENT_EDOS.pythagorean.includes(edo)) return "pythagorean";
@@ -787,7 +792,7 @@ export default function App() {
     betaMode,
   };
 
-  const tabs = (["intervals","chords","modeid","melody","jazz","patterns","drone"] as Tab[]);
+  const tabs = (["intervals","chords","permutations","drone"] as Tab[]);
 
   const sessionAcc = (sessionC + sessionW) ? `${Math.round(100 * sessionC / (sessionC + sessionW))}%` : "";
   const slotAcc = (slotC + slotW) ? `${Math.round(100 * slotC / (slotC + slotW))}%` : "";
@@ -1763,10 +1768,10 @@ export default function App() {
 
         <div ref={tabContentRef} className="flex-1 pb-8">
           {/* Tab content.  Pythagorean (41) and Schismatic (53) only expose
-              Intervals / Chord Progressions / Mode Identification — the other
-              tabs are filtered out by temperamentTabs above and never become
-              activeTab in those temperaments.  The three exposed tabs handle
-              41/53 internally now: ChordsTab and ModeIdentificationTab swap
+              Intervals / Chords / Scalar Permutations — Drone is filtered
+              out by temperamentTabs above and never becomes activeTab in
+              those temperaments.  The three exposed tabs handle 41/53
+              internally now: ChordsTab and ScalarPermutationsTab swap
               their family/limit lists per EDO; IntervalsTab is naturally
               EDO-agnostic (interval index → cents). */}
           {activeTab === "intervals" && (
@@ -1783,24 +1788,10 @@ export default function App() {
             </div>
           )}
 
-          {activeTab === "melody" && (
+          {activeTab === "permutations" && (
             <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Melody Recognition</h2>
-              <MelodyTab key={tabKey} {...sharedTabProps} />
-            </div>
-          )}
-
-          {activeTab === "jazz" && (
-            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Jazz Cells</h2>
-              <JazzTab key={tabKey} {...sharedTabProps} />
-            </div>
-          )}
-
-          {activeTab === "patterns" && (
-            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Pattern Sequences</h2>
-              <PatternsTab key={tabKey} {...sharedTabProps} />
+              <h2 className="font-semibold mb-4">Scalar Permutations</h2>
+              <ScalarPermutationsTab key={tabKey} {...sharedTabProps} />
             </div>
           )}
 
@@ -1811,13 +1802,6 @@ export default function App() {
                 edo={edo} onHighlight={handleHighlight} onResult={handleResult}
                 onPlay={handlePlay} onAnswer={trackAnswer} lastPlayed={lastPlayed} ensureAudio={ensureAudio}
                 onDroneStateChange={(active) => { if (!active) setDroneIsOn(false); }} />
-            </div>
-          )}
-
-          {activeTab === "modeid" && (
-            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Mode Identification</h2>
-              <ModeIdentificationTab key={tabKey} {...sharedTabProps} />
             </div>
           )}
 
