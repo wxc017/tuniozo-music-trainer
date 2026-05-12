@@ -1445,15 +1445,60 @@ export class AudioEngine {
     voice: { noteGain: GainNode; samples: AudioBufferSourceNode[]; nodes: AudioNode[]; timers: ReturnType<typeof setTimeout>[]; generation: number },
     _voiceKey: string,
   ) {
-    const src = ctx.createBufferSource();
-    src.buffer = sample.buffer;
-    src.loop = true;
-    src.loopStart = sample.loopStart;
-    src.loopEnd = sample.loopEnd;
-    src.playbackRate.value = rate;
-    src.connect(voice.noteGain);
-    src.start(0, sample.loopStart);
-    voice.samples.push(src);
+    // Dual-voice 50%-overlap looper with pure-triangular envelope —
+    // ported from spawnSampleLoop per direct user direction
+    // (2026-05-12) "voice drone instrument fades in and out too
+    // aggressivelly its not seemless it should start a another loop
+    // every 50%".  The previous single-source src.loop=true approach
+    // worked for short stable samples (cello/sine) but the voice
+    // sample has audible vocal articulation; the hard buffer-internal
+    // wrap left a perceivable seam every cycle even with the
+    // preprocessDroneBuffer micro-crossfade.
+    //
+    // Each iteration plays the loop region with a 0 → 1 → 0 triangle
+    // gain ramp; iterations are scheduled to start every iterDur/2 so
+    // two voices overlap by 50%.  Triangular envelopes at 50% offset
+    // sum to a constant 1.0 (A at gain `1 - x` + B at gain `x` = 1)
+    // so there's no perceptible loudness pulsation.
+    const myGen = voice.generation;
+    const rawLoopDur = (sample.loopEnd - sample.loopStart) / rate;
+    const iterDur = Math.max(4.0, rawLoopDur * 2);
+    const scheduleAhead = 0.05;
+
+    const spawnOne = (when: number) => {
+      if (voice.generation !== myGen) return;
+      const src = ctx.createBufferSource();
+      src.buffer = sample.buffer;
+      src.playbackRate.value = rate;
+      src.loop = true;
+      src.loopStart = sample.loopStart;
+      src.loopEnd = sample.loopEnd;
+      const segGain = ctx.createGain();
+      segGain.gain.setValueAtTime(0, when);
+      segGain.gain.linearRampToValueAtTime(1, when + iterDur / 2);
+      segGain.gain.linearRampToValueAtTime(0, when + iterDur);
+      src.connect(segGain);
+      segGain.connect(voice.noteGain);
+      try {
+        src.start(when, sample.loopStart);
+        src.stop(when + iterDur + 0.05);
+      } catch { /* invalid start/stop — ignore */ }
+      voice.samples.push(src);
+      voice.nodes.push(segGain);
+      const nextWhen = when + iterDur / 2;
+      const delayMs = Math.max(0, (nextWhen - ctx.currentTime - scheduleAhead) * 1000);
+      const t = setTimeout(() => spawnOne(nextWhen), delayMs);
+      voice.timers.push(t);
+      const stopT = setTimeout(() => {
+        try { src.disconnect(); segGain.disconnect(); } catch {}
+        const si = voice.samples.indexOf(src);
+        if (si >= 0) voice.samples.splice(si, 1);
+        const ni = voice.nodes.indexOf(segGain);
+        if (ni >= 0) voice.nodes.splice(ni, 1);
+      }, Math.ceil((when + iterDur - ctx.currentTime + 0.2) * 1000));
+      voice.timers.push(stopT);
+    };
+    spawnOne(ctx.currentTime);
   }
 
   // ── Separate interval drones (independent of main drone, multiple simultaneous) ──
