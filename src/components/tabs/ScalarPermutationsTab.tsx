@@ -467,6 +467,12 @@ export default function ScalarPermutationsTab({
 
   return (
     <div className="space-y-4">
+      <ModeScalePicker scaleFam={scaleFam} modeName={modeName}
+        onChange={(fam, mode) => { setScaleFam(fam); setModeName(mode); }} />
+
+      {/* Length filter sits directly above the categories per direct
+          user direction (2026-05-12) "put length above the categories"
+          so it reads as the filter that applies to every family below. */}
       <div className="flex flex-wrap gap-3 items-end">
         <div>
           <label className="text-xs text-[#888] block mb-1">Length Filter</label>
@@ -479,9 +485,6 @@ export default function ScalarPermutationsTab({
           {FAMILY_NAMES.filter(f => checked.has(f)).length} families selected
         </div>
       </div>
-
-      <ModeScalePicker scaleFam={scaleFam} modeName={modeName}
-        onChange={(fam, mode) => { setScaleFam(fam); setModeName(mode); }} />
 
       {/* Family rows grouped into three collapsible categories per
           direct user direction (2026-05-12) "organize these into three
