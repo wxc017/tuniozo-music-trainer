@@ -216,6 +216,15 @@ export default function ScalarPermutationsTab({
     "lt_perm_collapsed",
     { chord: false, jazzy: false, perm: false } as Record<Category, boolean>,
   );
+  // Additional top-level collapsibles per direct user direction
+  // (2026-05-12) "allow me to collapse each part like we can collapse
+  // the options in scalar permutations, so i can collapse tonalities,
+  // the options, and roman numerals".  Each persists its own state.
+  const [collapsedTonalities, setCollapsedTonalities] = useLS<boolean>("lt_perm_collapsed_tonalities", false);
+  const [collapsedOptions, setCollapsedOptions] = useLS<boolean>("lt_perm_collapsed_options", false);
+  // Per-family collapse for the Roman-numeral / variant chip rows.
+  // Keyed by family name so each family remembers its own state.
+  const [collapsedVariants, setCollapsedVariants] = useLS<Record<string, boolean>>("lt_perm_collapsed_variants", {});
 
   const [showTarget, setShowTarget] = useState<string | null>(null);
   const [infoText, setInfoText] = useState<string>("");
@@ -544,23 +553,56 @@ export default function ScalarPermutationsTab({
 
   return (
     <div className="space-y-4">
-      <ModeScalePicker scaleFam={scaleFam} modeName={modeName}
-        onChange={(fam, mode) => { setScaleFam(fam); setModeName(mode); }} />
+      {/* Tonalities — collapsible (wraps the scale/mode picker).  Per
+          direct user direction (2026-05-12) "allow me to collapse each
+          part" — defaults to expanded so first-time users see the
+          picker, but the user can fold it away once their preferred
+          scale is set. */}
+      <div className="rounded border border-[#1e1e1e] bg-[#0e0e0e]">
+        <div
+          onClick={() => setCollapsedTonalities(v => !v)}
+          className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer select-none transition-colors hover:bg-[#161616]"
+          style={{ borderLeft: "3px solid #888" }}
+        >
+          <span className="text-[10px] text-[#666] w-3">{collapsedTonalities ? "▸" : "▾"}</span>
+          <span className="text-xs font-semibold tracking-wider text-[#aaa]">TONALITIES</span>
+          <span className="text-[10px] text-[#555] ml-auto">{scaleFam} · {modeName}</span>
+        </div>
+        {!collapsedTonalities && (
+          <div className="px-2 pb-2">
+            <ModeScalePicker scaleFam={scaleFam} modeName={modeName}
+              onChange={(fam, mode) => { setScaleFam(fam); setModeName(mode); }} />
+          </div>
+        )}
+      </div>
 
-      {/* Length filter sits directly above the categories per direct
-          user direction (2026-05-12) "put length above the categories"
-          so it reads as the filter that applies to every family below. */}
-      <div className="flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="text-xs text-[#888] block mb-1">Length Filter</label>
-          <select value={lengthFilter} onChange={e => setLengthFilter(e.target.value)}
-            className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-            {LENGTH_OPTIONS.map(l => <option key={l}>{l}</option>)}
-          </select>
+      {/* Options — collapsible (Length filter + selection counter). */}
+      <div className="rounded border border-[#1e1e1e] bg-[#0e0e0e]">
+        <div
+          onClick={() => setCollapsedOptions(v => !v)}
+          className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer select-none transition-colors hover:bg-[#161616]"
+          style={{ borderLeft: "3px solid #888" }}
+        >
+          <span className="text-[10px] text-[#666] w-3">{collapsedOptions ? "▸" : "▾"}</span>
+          <span className="text-xs font-semibold tracking-wider text-[#aaa]">OPTIONS</span>
+          <span className="text-[10px] text-[#555] ml-auto">
+            length: {lengthFilter} · {FAMILY_NAMES.filter(f => checked.has(f)).length} families
+          </span>
         </div>
-        <div className="text-xs text-[#555]">
-          {FAMILY_NAMES.filter(f => checked.has(f)).length} families selected
-        </div>
+        {!collapsedOptions && (
+          <div className="flex flex-wrap gap-3 items-end px-3 pb-3 pt-1">
+            <div>
+              <label className="text-xs text-[#888] block mb-1">Length Filter</label>
+              <select value={lengthFilter} onChange={e => setLengthFilter(e.target.value)}
+                className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
+                {LENGTH_OPTIONS.map(l => <option key={l}>{l}</option>)}
+              </select>
+            </div>
+            <div className="text-xs text-[#555]">
+              {FAMILY_NAMES.filter(f => checked.has(f)).length} families selected
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Family rows grouped into three collapsible categories per
@@ -663,23 +705,44 @@ export default function ScalarPermutationsTab({
                             )}
                           </div>
                         </button>
-                        {on && variants.length > 0 && (
-                          <div className="flex flex-wrap gap-1 px-3 pb-2">
-                            {variants.map(v => {
-                              const vOn = isVariantActive(v.id);
-                              return (
-                                <button key={v.id} onClick={() => onToggleVariant(v.id)}
-                                  className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
-                                    vOn
-                                      ? "bg-[#7173e6]/20 border-[#7173e6] text-[#bbbbee]"
-                                      : "bg-[#0e0e0e] border-[#2a2a2a] text-[#555] hover:text-[#999]"
-                                  }`}>
-                                  {variantLabel(f.name, v.id, v.label)}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
+                        {on && variants.length > 0 && (() => {
+                          // Roman-numeral / variant chip row is itself
+                          // collapsible per direct user direction
+                          // (2026-05-12) "i can collapse … roman
+                          // numerals".  Per-family state so each
+                          // family remembers its own collapse.
+                          const variantsCollapsed = !!collapsedVariants[f.name];
+                          const enabledCount = variants.filter(v => isVariantActive(v.id)).length;
+                          return (
+                            <div className="px-3 pb-2">
+                              <div
+                                onClick={() => setCollapsedVariants(prev => ({ ...prev, [f.name]: !prev[f.name] }))}
+                                className="flex items-center gap-1.5 mb-1 cursor-pointer select-none text-[#666] hover:text-[#aaa]"
+                              >
+                                <span className="text-[9px] w-3">{variantsCollapsed ? "▸" : "▾"}</span>
+                                <span className="text-[9px] tracking-wider">VARIANTS</span>
+                                <span className="text-[9px] text-[#444]">({enabledCount}/{variants.length})</span>
+                              </div>
+                              {!variantsCollapsed && (
+                                <div className="flex flex-wrap gap-1">
+                                  {variants.map(v => {
+                                    const vOn = isVariantActive(v.id);
+                                    return (
+                                      <button key={v.id} onClick={() => onToggleVariant(v.id)}
+                                        className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
+                                          vOn
+                                            ? "bg-[#7173e6]/20 border-[#7173e6] text-[#bbbbee]"
+                                            : "bg-[#0e0e0e] border-[#2a2a2a] text-[#555] hover:text-[#999]"
+                                        }`}>
+                                        {variantLabel(f.name, v.id, v.label)}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
