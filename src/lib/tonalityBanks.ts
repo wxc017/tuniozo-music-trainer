@@ -552,19 +552,22 @@ export function getTonalityBanks(edo: number, showSevenths: boolean = false): To
   ];
 }
 
-/** Generate the N rotations of an n-note MOS with given generator,
- *  octave-reduced into [0, period).  Returns one sorted-ascending
- *  scale per rotation. */
-function generateMosRotations(period: number, generator: number, n: number): number[][] {
-  const base = Array.from({ length: n }, (_, i) => (i * generator) % period).sort((a, b) => a - b);
-  return base.map(offset =>
-    base.map(s => ((s - offset) % period + period) % period).sort((a, b) => a - b),
-  );
+/** Build the canonical scale for an n-note MOS with given generator
+ *  in `period`-EDO — the rotation that starts at scale-degree 0 of the
+ *  bright-side stack.  Numbered rotations were dropped per direct user
+ *  direction (2026-05-12): "some of these names are non sense dont
+ *  have the modes and magic 1 is just Ionian" — every numbered rotation
+ *  of these large MOSes labelled "Magic 1 … Magic 16" produced a
+ *  meaningless chord pool through buildModeFromScale's diatonic-style
+ *  triad stacking.  One canonical scale per MOS is the right surface. */
+function buildMosScale(period: number, generator: number, n: number): number[] {
+  return Array.from({ length: n }, (_, i) => (i * generator) % period).sort((a, b) => a - b);
 }
 
 /** Hand-build the 31-EDO MOS tonality banks (Miracle, Orwell, Magic,
- *  Mohajira, Sensi).  Each rotation becomes its own bank labelled
- *  "${Family} ${k}" so the picker exposes every mode of every MOS. */
+ *  Mohajira, Sensi).  One bank per MOS, named after the family.  Each
+ *  scale's chord pool comes from buildModeFromScale's auto-quality
+ *  triad stack; rotations are NOT exposed (they confused the picker). */
 function buildMosBanksFor31(
   buildModeFromScale: (
     name: string,
@@ -589,15 +592,11 @@ function buildMosBanksFor31(
     // colour.
     { name: "Sensi",    gen: 11, n: 8  },
   ];
-  const banks: TonalityBank[] = [];
-  for (const fam of FAMILIES) {
-    const rotations = generateMosRotations(31, fam.gen, fam.n);
-    rotations.forEach((scale, k) => {
-      const degLabels = scale.map((_, i) => String(i + 1));
-      banks.push(buildModeFromScale(`${fam.name} ${k + 1}`, degLabels, scale, [0]));
-    });
-  }
-  return banks;
+  return FAMILIES.map(fam => {
+    const scale = buildMosScale(31, fam.gen, fam.n);
+    const degLabels = scale.map((_, i) => String(i + 1));
+    return buildModeFromScale(fam.name, degLabels, scale, [0]);
+  });
 }
 
 // Mode-name lists used to expand the new families inside getTonalityBanks.
