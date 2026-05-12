@@ -1048,16 +1048,15 @@ export default function App() {
                bottom edge. See the sticky wrapper after the header block. */}
           </>)}
 
-          {/* EDO selector row — rendered for every section EXCEPT
-              ear-trainer (which has its own per-temperament EDO chips
-              below the temperament tabs).  Previously this row was
-              nested inside the `section === "ear-trainer"` wrapper
-              AND gated on `section !== "ear-trainer"` internally,
-              making it unreachable in every section.  Moved out of
-              the wrapper so Scalar Explorations' EDO family buttons
-              actually render.  Per direct user direction
-              (2026-05-11): "i cant pick edos in scalar explorations". */}
-          {section !== "ear-trainer" && (
+          {/* EDO selector row — restricted to Scalar Explorations
+              per direct user direction (2026-05-11): "edo option
+              should only be spacial audiation and scalar
+              explorations".  Spatial Audiation (chords tab inside
+              ear-trainer) gets its EDO selector via the in-body
+              Temperament/EDO/Visualizer row instead.  Every other
+              section (drone-continuum, drum-patterns, chord-chart,
+              etc.) no longer renders this row. */}
+          {section === "scalar-exploration" && (
             <div className="flex items-center gap-3 min-h-6">
               <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
                 {getImportBias() && (
@@ -1384,10 +1383,13 @@ export default function App() {
           ))}
           <div className="ml-auto"><NotationLegend /></div>
         </div>
-        {/* EDO + Visualizer row — moved out of the global header into
-            the Tonal Audiation body so it sits next to the
-            temperament context that gates which EDOs are available. */}
-        <div className="flex gap-2 flex-wrap items-center mb-3">
+        {/* EDO + Visualizer row — only rendered for the Spatial
+            Audiation (chords) tab per direct user direction
+            (2026-05-11): "edo option should only be spacial
+            audiation and scalar explorations".  Tonal Audiation's
+            other tabs (intervals / mode-id / melody / etc.) hide
+            the EDO selector entirely. */}
+        {activeTab === "chords" && <div className="flex gap-2 flex-wrap items-center mb-3">
           <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">EDO</span>
           <select value={edo} onChange={e => setEdo(Number(e.target.value))}
             className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
@@ -1405,7 +1407,7 @@ export default function App() {
               </select>
             </>
           )}
-        </div>
+        </div>}
         <div className="flex gap-1 flex-wrap items-center mb-4">
           <PresetBar onPresetLoaded={() => setTabKey(k => k + 1)} />
           <div className="w-px h-4 bg-[#2a2a2a]" />
