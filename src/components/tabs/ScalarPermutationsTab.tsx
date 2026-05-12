@@ -400,42 +400,23 @@ export default function ScalarPermutationsTab({
       </div>
 
       {(showTarget || infoText) && contourDegrees && (() => {
-        // Variant strings from musicTheory.ts encode the family-specific
-        // sub-structure of each phrase.  Examples:
-        //   triad pair:  "ascending triad pair ii+iii: 2-4-6 / 3-5-7"
-        //   arpeggio:    "ascending arpeggio (1-3-5-7-9)"
-        //   enclosure:   "enclosure → 3 (4 above, 2 below)"
-        //   digital:     "digital cell, perm 1234 (sequenced from …)"
-        // Rather than family-by-family parsers, we walk the variant text
-        // and extract every dash-separated degree run (`1-3-5-7`) as a
-        // numbered group, then render the surrounding text + groups.
-        // Single bare degrees inside parens (e.g. enclosure target,
-        // "above" / "below" tokens) are kept inline as small boxes too.
-        const boxColor = showTarget ? "text-[#8fc88f] bg-[#1a2a1a] border-[#3a5a3a]"
-                                    : "text-[#9999ee] bg-[#1a1a2a] border-[#333]";
-        // Match: dash-separated degree run (2+ tokens) OR single degree-like token.
-        // Degree tokens: optional b/#/bb, then digit(s).  Examples: 1, b3, #11, 13.
+        // Strip raw degree-run tokens (e.g. "2-4-6 / 3-5-7") from the
+        // variant text so it reads as just the human-friendly header
+        // ("ascending triad pair IV+V") — the boxed Degrees-played row
+        // already shows the literal notes, so duplicating them above
+        // (as Triad 1 / Triad 2 boxes) was redundant per direct user
+        // direction (2026-05-12) "this is too note pad like, you can
+        // make it simple with the roman numerals and the degrees
+        // played".
         const tokenRE = /\b(?:[b#]{0,2}\d{1,2}(?:-[b#]{0,2}\d{1,2})+)\b/g;
-        const groups: string[][] = [];
-        let prose = lastVariantText;
-        if (lastVariantText) {
-          const matches = Array.from(lastVariantText.matchAll(tokenRE));
-          matches.forEach(m => groups.push(m[0].split("-")));
-          // Strip the matched degree-runs from the prose so we don't
-          // duplicate them in text form below the boxes.  Also strip
-          // any orphaned " / " separators left behind.
-          prose = lastVariantText.replace(tokenRE, "").replace(/\s*\/\s*/g, " ").replace(/\s+/g, " ").trim();
-          // If prose ends with a stray colon (from "label: a-b-c / d-e-f"
-          // pattern), trim it for readability.
-          prose = prose.replace(/[:\s]+$/, "").trim();
-        }
-        // Group label: "Triad N" for the triad-pair case (two groups
-        // from "X / Y"), "Degrees" otherwise (single arpeggio pool, etc.)
-        const isTriadPair = groups.length === 2 && /triad pair/i.test(lastVariantText);
-        const groupLabel = (i: number) =>
-          isTriadPair ? `Triad ${i + 1}` :
-          groups.length === 1 ? "Tones" :
-          `Group ${i + 1}`;
+        const prose = lastVariantText
+          ? lastVariantText
+              .replace(tokenRE, "")
+              .replace(/\s*\/\s*/g, " ")
+              .replace(/\s+/g, " ")
+              .replace(/[:\s]+$/, "")
+              .trim()
+          : "";
         return (
         <div className={`rounded p-3 border space-y-2 ${
           showTarget ? "bg-[#1a2a1a] border-[#3a5a3a]" : "bg-[#141414] border-[#2a2a2a]"
@@ -444,20 +425,6 @@ export default function ScalarPermutationsTab({
             <div className="text-xs text-[#aaa]">
               <span className="text-[#666]">Variant: </span>
               <span className={showTarget ? "text-[#bfdfbf]" : "text-[#bbbbee]"}>{prose}</span>
-            </div>
-          )}
-          {groups.length > 0 && (
-            <div className="space-y-1.5">
-              {groups.map((g, gi) => (
-                <div key={gi} className="flex gap-1 items-center flex-wrap">
-                  <span className="text-[#666] text-xs mr-1">{groupLabel(gi)}:</span>
-                  {g.map((deg, i) => (
-                    <span key={i} className={`px-1.5 py-0.5 rounded text-xs font-mono border ${boxColor}`}>
-                      {deg}
-                    </span>
-                  ))}
-                </div>
-              ))}
             </div>
           )}
           <div className="flex gap-1 items-center flex-wrap">
