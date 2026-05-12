@@ -1792,491 +1792,6 @@ export default function ChordsTab({
                 systems (Heathwaite + Universal IPA) so the user can
                 see the same note labelled three ways at once.  Click
                 the tone to hear it through the audio engine. */}
-            {fhShowAnswer && fhAnswer && (() => {
-              const heathwaiteTable = getHeathwaiteSolfege(edo);
-              // JI chord-row analysis (3rd / 5th / pure vs wolf) for
-              // the currently-played scale tonality, when it's a JI
-              // tonality.  Indexed by Roman numeral so each chord row
-              // can show its own row inline instead of relying on a
-              // separate floating panel.
-              const ROMAN_INDEX: Record<string, number> = {
-                I: 0, II: 1, III: 2, IV: 3, V: 4, VI: 5, VII: 6,
-              };
-              const tagColor = (k: string) => {
-                if (k === "wolf") return "#cc6a8a";
-                if (k === "off-grid") return "#c8aa50";
-                if (k === "pure-3") return "#9999cc";
-                if (k === "pure-5") return "#6acca0";
-                if (k === "pure-7") return "#cc8855";
-                if (k === "pure-11") return "#9a66c0";
-                return "#888";
-              };
-              const jiAnalysis = fhAnswer.scaleTonality && JI_SCALE_NAMES_SET.has(fhAnswer.scaleTonality)
-                ? analyzeJiScale(fhAnswer.scaleTonality)
-                : null;
-              const analysisForChord = (numeral: string) => {
-                if (!jiAnalysis) return null;
-                const stripped = stripChordLabel(numeral);
-                const idx = ROMAN_INDEX[stripped.replace(/[^IVX]/gi, "").toUpperCase()];
-                if (idx === undefined) return null;
-                return jiAnalysis[idx] ?? null;
-              };
-              return (
-                <div className="bg-[#1a1a0a] border border-[#3a3a1a] rounded p-3 space-y-3">
-                  <div className="flex items-baseline gap-2 pb-1.5 border-b border-[#3a3a1a]">
-                    <p className="text-[10px] text-[#888] font-semibold tracking-wider">LOOP</p>
-                    <p className="text-[12px] text-[#c8a850] font-mono">
-                      {(() => {
-                        const prefix = (edo === 41 || edo === 53) && fhAnswer.scaleTonality
-                          ? familyAbbreviationForTonality(fhAnswer.scaleTonality)
-                          : null;
-                        return fhAnswer.progression.map((rn, i) => (
-                          <Fragment key={i}>
-                            {i > 0 && " → "}
-                            {formatRomanNumeralWithFamily(rn, prefix)}
-                          </Fragment>
-                        ));
-                      })()}
-                    </p>
-                    {fhAnswer.scaleTonality && (
-                      <p className="text-[10px] text-[#888] ml-auto italic">
-                        Scale: {fhAnswer.scaleTonality}
-                      </p>
-                    )}
-                  </div>
-                  {/* Single-column body — chord-tone reveal stretches
-                      full width.  The right-column live visualizer
-                      mirror was removed; the App-level main visualizer
-                      stays sticky at the top of the page so the user
-                      always has a keyboard view of the active chord. */}
-                  <div className="space-y-3">
-                  {/* Live lattice trace — meaningful in Adaptive and
-                      Pure 3/5-limit modes on 41/53-EDO.  Shows each
-                      chord in the progression with its accumulated
-                      drift in cents, colour-coded green / amber / pink
-                      by magnitude. */}
-                  {(edo === 41 || edo === 53) && (() => {
-                    void latticeRevision;
-                    const trace = latticeDriftsRef.current;
-                    if (!trace || !trace.drifts) return null;
-                    const drifts = trace.drifts;
-                    const finalDrift = drifts[drifts.length - 1] ?? 0;
-                    const maxAbsDrift = Math.max(...drifts.map(d => Math.abs(d)));
-                    return (
-                      <div className="rounded border border-[#3a8a5a] bg-[#0e1a14] p-3">
-                        <div className="flex items-baseline gap-2 mb-2">
-                          <p className="text-[10px] text-[#5cca8a] font-semibold tracking-wider">LIVE LATTICE TRACE</p>
-                          <span className="text-[9px] text-[#888]">
-                            Final drift: <span className="font-mono" style={{ color: Math.abs(finalDrift) < 1 ? "#5cca8a" : "#cc6a8a" }}>
-                              {finalDrift >= 0 ? "+" : ""}{finalDrift.toFixed(1)}¢
-                            </span>
-                            {" · "}
-                            Peak: <span className="font-mono text-[#ccc]">{maxAbsDrift.toFixed(1)}¢</span>
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {trace.progression.map((chord, i) => {
-                            const drift = drifts[i];
-                            const driftAbs = Math.abs(drift);
-                            const driftColor = driftAbs < 1 ? "#5cca8a" : driftAbs < 15 ? "#c8aa50" : "#cc6a8a";
-                            return (
-                              <div key={i} className="flex flex-col items-center px-2 py-1 rounded border border-[#222] bg-[#0a1410]">
-                                <span className="text-[10px] text-[#aaa] font-mono">{stripChordLabel(chord)}</span>
-                                <span className="text-[9px] font-mono" style={{ color: driftColor }}>
-                                  {drift >= 0 ? "+" : ""}{drift.toFixed(1)}¢
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                  {/* Chord cards laid out side by side (flex-wrap)
-                      so the user sees the whole progression at a
-                      glance and the cards reflow onto multiple rows
-                      only when the viewport is too narrow.  Each card
-                      keeps its internal stacked-tone layout — chord-
-                      relative gold on top, scale-relative mauve below
-                      per note. */}
-                  <div className="flex flex-wrap gap-2 items-start">
-                  {fhAnswer.chords.map(chord => {
-                    const ana = analysisForChord(chord.numeral);
-                    // Comma-compensation note for this chord, if any.
-                    // Only fires when in Adaptive mode AND the chord
-                    // accumulated a non-zero EDO-step compensation; the
-                    // text spells out which root pitch was bent and by
-                    // how many cents to keep the tonic anchored.
-                    const driftsForNote = latticeDriftsRef.current?.drifts ?? null;
-                    let commaNote: { from: string; to: string; cents: number; steps: number } | null = null;
-                    if (jiMode === "adaptive" && driftsForNote && (edo === 41 || edo === 53)) {
-                      const idx = chord.index - 1;
-                      if (idx >= 0 && idx < driftsForNote.length) {
-                        const driftCents = driftsForNote[idx];
-                        const steps = driftCentsToSteps(driftCents, edo);
-                        if (steps !== 0) {
-                          // chord.chordRootPc is post-comp.  Pre-comp =
-                          // post + steps (the audio engine subtracted
-                          // `steps` from each tone, so the un-compensated
-                          // pitch sits `steps` higher).
-                          const postRootPc = chord.chordRootPc;
-                          const preRootPc = ((postRootPc + steps) % edo + edo) % edo;
-                          const preAbsPc = ((tonicPc + preRootPc) % edo + edo) % edo;
-                          const postAbsPc = ((tonicPc + postRootPc) % edo + edo) % edo;
-                          commaNote = {
-                            from: pcToNoteNameWithEnharmonic(preAbsPc, edo) ?? `${preAbsPc}\\${edo}`,
-                            to: pcToNoteNameWithEnharmonic(postAbsPc, edo) ?? `${postAbsPc}\\${edo}`,
-                            cents: -driftCents,
-                            steps: -steps,
-                          };
-                        }
-                      }
-                    }
-                    return (
-                    <div key={chord.index} className="space-y-1 flex-shrink-0 rounded border border-[#1a1a14] bg-[#0c0a08] p-2">
-                      <p className="text-[10px] text-[#c8a850] font-medium flex items-baseline gap-2 flex-wrap">
-                        <span>[{chord.index}] <span className="font-mono text-[12px]">{(() => {
-                          const prefix = (edo === 41 || edo === 53) && fhAnswer.scaleTonality
-                            ? familyAbbreviationForTonality(fhAnswer.scaleTonality)
-                            : null;
-                          return formatRomanNumeralWithFamily(chord.numeral, prefix);
-                        })()}</span></span>
-                        <span className="text-[#888]">({chord.quality})</span>
-                        {ana && (
-                          <span className="text-[9px] flex items-baseline gap-1 ml-2 px-1.5 py-0.5 rounded border border-[#222] bg-[#0a0a0a]">
-                            <span className="text-[#555]">3rd</span>
-                            <span className="font-mono" style={{ color: tagColor(ana.third.kind) }}>{ana.third.ratio}</span>
-                            <span className="text-[#333]">·</span>
-                            <span className="text-[#555]">5th</span>
-                            <span className="font-mono" style={{ color: tagColor(ana.fifth.kind) }}>{ana.fifth.ratio}</span>
-                            <span className="text-[#333]">·</span>
-                            <span style={{ color: ana.pure ? "#5cca5c" : "#cc6a8a", fontWeight: 600 }}>
-                              {ana.pure ? "✓" : "✗ Wolf"}
-                            </span>
-                          </span>
-                        )}
-                      </p>
-                      {commaNote && (
-                        <p className="text-[10px] text-[#cc6a8a] flex items-baseline gap-1.5 px-1.5 py-0.5 rounded border border-[#3a1a2a] bg-[#1a0a14]">
-                          <span className="font-semibold tracking-wider">COMMA FIX</span>
-                          <span className="text-[#aaa]">root</span>
-                          <span className="font-mono text-[#e0c860]">{commaNote.from}</span>
-                          <span className="text-[#cc6a8a]">→</span>
-                          <span className="font-mono text-[#5cca5c]">{commaNote.to}</span>
-                          <span className="text-[#888]">
-                            ({commaNote.steps > 0 ? "+" : ""}{commaNote.steps} step{Math.abs(commaNote.steps) !== 1 ? "s" : ""}, {commaNote.cents > 0 ? "+" : ""}{commaNote.cents.toFixed(1)}¢)
-                          </span>
-                          <span className="text-[#666] italic">— bent to keep the tonic anchored, otherwise this chord's root would drift away from {pcToNoteNameWithEnharmonic(tonicPc, edo) ?? "the tonic"}</span>
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-1.5">
-                        {chord.notes.map((pitch, i) => {
-                          // Two reference frames per tone:
-                          //   "scale" — pitch class relative to tonic (Do = 1)
-                          //   "chord" — pitch class relative to chord root
-                          // Solfege labels (Heathwaite + Universal IPA) computed
-                          // for each frame so the user sees the same note named
-                          // four ways: chord 3rd vs scale 5th, etc.
-                          const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
-                          const pcFromChord = ((pcFromTonic - chord.chordRootPc) % edo + edo) % edo;
-
-                          const intervalScale = intervalLabel(pcFromTonic, edo);
-                          const heathwaiteScale = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
-                          const microScale = syllableForEdoStep(pcFromTonic, edo);
-
-                          const intervalChord = intervalLabel(pcFromChord, edo);
-                          const heathwaiteChord = heathwaiteTable ? heathwaiteTable[pcFromChord] ?? "—" : "—";
-                          const microChord = syllableForEdoStep(pcFromChord, edo);
-
-                          return (
-                            <button key={i}
-                              onClick={async () => {
-                                await ensureAudio();
-                                audioEngine.playNote(pitch, edo, 0.7, 0.6);
-                              }}
-                              title={
-                                `▶ click main button to play pitch\n` +
-                                `Click any syllable to hear it spoken.\n` +
-                                `chord-relative: ${intervalChord} · ${heathwaiteChord} · ${microChord.label} /${microChord.ipa}/\n` +
-                                `scale-relative: ${intervalScale} · ${heathwaiteScale} · ${microScale.label} /${microScale.ipa}/`
-                              }
-                              className="flex flex-col items-center px-2 py-1 rounded border border-[#3a3a1a] bg-[#2a1a0a] hover:bg-[#3a2a1a] hover:border-[#c8a850] transition-colors min-w-[64px]">
-                              {/* Chord-relative block (gold).  Each syllable
-                                  is an independent clickable that triggers
-                                  TTS via the browser's Web Speech API.
-                                  stopPropagation prevents the parent button
-                                  from also firing the pitch-play handler. */}
-                              <span className="text-[10px] text-[#e0c860] font-bold leading-tight">
-                                {intervalChord}
-                              </span>
-                              <SaySpan text={heathwaiteChord} ipa={heathwaiteIpa(heathwaiteChord)}
-                                className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
-                                title={`Hear "${heathwaiteChord}" spoken`} />
-                              <SaySpan text={microChord.label} ipa={microChord.ipa}
-                                className="text-[8px] text-[#777] font-mono leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
-                                title={`Hear "${microChord.label}" /${microChord.ipa}/ spoken`} />
-                              <span className="block w-full border-t border-[#3a3a1a] my-1"></span>
-                              {/* Scale-relative block (mauve) */}
-                              <span className="text-[10px] text-[#c896c8] font-bold leading-tight">
-                                {intervalScale}
-                              </span>
-                              <SaySpan text={heathwaiteScale} ipa={heathwaiteIpa(heathwaiteScale)}
-                                className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
-                                title={`Hear "${heathwaiteScale}" spoken`} />
-                              <SaySpan text={microScale.label} ipa={microScale.ipa}
-                                className="text-[8px] text-[#777] font-mono leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
-                                title={`Hear "${microScale.label}" /${microScale.ipa}/ spoken`} />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    );
-                  })}
-                  </div>{/* end side-by-side chord-card row */}
-                  </div>{/* end chord-tone column */}
-
-                  {/* Full-width Harmonic Lattice — re-uses the main
-                      LatticeView (3D Tonnetz / Monzo viewer) and
-                      auto-tempers it to the active EDO.  Gated on
-                      `betaMode` per direct user direction
-                      (2026-05-11): "put harmonic lattice in spacial
-                      audiation to beta features" — surfaces only
-                      when the user has Beta enabled in Settings. */}
-                  {betaMode && fhAnswer.progression.length > 0 && (() => {
-                    // The lattice is the Tonescape "3,5-primespace
-                    // toroidal lattice" — 5-limit cells projected
-                    // linearly with the EDO's vanishing commas
-                    // tempered out, producing a torus where each
-                    // visible cell is one EDO equivalence class.
-                    // Class reps are picked by simplest JI ratio,
-                    // so chord tones at (0,0)=1/1, (0,1)=5/4,
-                    // (1,0)=3/2, (1,-1)=6/5, … land on the visible
-                    // nodes directly without any chain-of-fifths
-                    // remapping.
-                    const positions = tracePath(fhAnswer.progression);
-                    // Per-chord compensation step.  In Adaptive mode the
-                    // audio engine subtracts this from each chord-tone
-                    // before playback so the tonic stays anchored; the
-                    // visual highlight has to match what's actually
-                    // playing, so we apply the same subtraction here.
-                    // In Frozen mode the compensation is zero and the
-                    // chord plays at the drifted position verbatim.
-                    void latticeRevision;
-                    const driftsForCompPre = latticeDriftsRef.current?.drifts ?? null;
-                    const compStepPerChord: number[] = positions.map((_, i) => {
-                      if (jiMode !== "adaptive") return 0;
-                      if (!driftsForCompPre || i >= driftsForCompPre.length) return 0;
-                      return driftCentsToSteps(driftsForCompPre[i], edo);
-                    });
-                    // Per-chord chord-tone EDO classes — drives the
-                    // lattice highlight.  Built from the lattice walk's
-                    // drifted positions, then shifted back by the per-
-                    // chord comp step so the highlight matches the
-                    // post-compensation pitches the audio actually
-                    // plays.  In Frozen mode comp step is 0 and the
-                    // highlight stays at the drifted position (which is
-                    // also what plays).  In Adaptive mode the highlight
-                    // lands on the compensated rep, leaving the drifted
-                    // rep free to receive a separate red marker from
-                    // the compensation-arc pipeline.
-                    const classesPerChord: Set<number>[] = positions.map((root, i) => {
-                      const chord = fhAnswer.chords[i];
-                      let quality = chord ? chordQualityFromSteps(chord.notes, edo) : null;
-                      if (!quality) {
-                        const stripped = chord ? stripChordLabel(chord.numeral) : "";
-                        if (stripped.endsWith("°")) quality = "dim";
-                        else if (stripped.endsWith("ø")) quality = "m7b5";
-                        else quality = /^[A-Z]/.test(stripped) ? "major" : "minor";
-                      }
-                      const v = voicingFor(quality) ?? voicingFor("major")!;
-                      const drifted = v.voices.map(vp => latticeToEdoStep(latticeAdd(root, vp), edo));
-                      const comp = compStepPerChord[i];
-                      const out = new Set<number>();
-                      for (const c of drifted) out.add(((c - comp) % edo + edo) % edo);
-                      return out;
-                    });
-                    const activeClasses = currentChordIdx >= 0 && currentChordIdx < classesPerChord.length
-                      ? classesPerChord[currentChordIdx]
-                      : new Set<number>();
-                    // Per-pinned-chord overlay palette.  Picked from
-                    // distinct hues so 2-3 simultaneous toggles stay
-                    // visually distinguishable on the dark lattice
-                    // background; cycles past 8 pinned chords (rare).
-                    const PIN_PALETTE = [
-                      "#e85ad0",  // magenta
-                      "#5cca5c",  // green
-                      "#e0a040",  // amber
-                      "#5acca0",  // teal
-                      "#cc6a8a",  // rose
-                      "#9a66c0",  // violet
-                      "#c8aa50",  // gold
-                      "#5acce0",  // cyan
-                    ];
-                    const pinnedOverlays = [...pinnedChordIdxs]
-                      .filter(i => i >= 0 && i < classesPerChord.length)
-                      .map(i => ({
-                        classes: classesPerChord[i],
-                        color: PIN_PALETTE[i % PIN_PALETTE.length],
-                      }));
-                    // Comma-compensation arcs.  For each chord that
-                    // ended up with a non-zero EDO-step compensation,
-                    // draw an arc from the chord's uncompensated root
-                    // class to its compensated root class so the user
-                    // can see the exact step the playback shifted by.
-                    // Gated on Adaptive mode — in Frozen mode no audio
-                    // compensation actually runs, so showing a red arc
-                    // would be misleading (the user would see "this is
-                    // being compensated" while still hearing the drift).
-                    const driftsForArcs = latticeDriftsRef.current?.drifts ?? null;
-                    const compensationArcs: Array<{ fromClassId: number; toClassId: number; color: string; chordIdx: number }> = [];
-                    if (driftsForArcs && jiMode === "adaptive") {
-                      for (let i = 0; i < positions.length && i < driftsForArcs.length; i++) {
-                        const compStep = compStepPerChord[i];
-                        if (compStep === 0) continue;
-                        // Only render the compensation indicator on
-                        // chords the user is currently highlighting —
-                        // either the live-playback chord or one the
-                        // user pinned via the chord-toggle buttons.
-                        // Showing arrows for every drifted chord at
-                        // once would clutter the lattice with
-                        // information the user can't act on.
-                        const isHighlighted = currentChordIdx === i || pinnedChordIdxs.has(i);
-                        if (!isHighlighted) continue;
-                        const rootClass = latticeToEdoStep(positions[i], edo);
-                        const fromClassId = ((rootClass) % edo + edo) % edo;
-                        const toClassId = ((rootClass - compStep) % edo + edo) % edo;
-                        compensationArcs.push({
-                          fromClassId,
-                          toClassId,
-                          color: PIN_PALETTE[i % PIN_PALETTE.length],
-                          chordIdx: i,
-                        });
-                      }
-                    }
-                    // Voice-leading arrows for the active preview
-                    // transition (set ~220ms before each chord onsets
-                    // by the playback scheduler in highlightAllVoices).
-                    // For each moving voice between chord N and N+1,
-                    // pair the source pitch class to the destination
-                    // pitch class via minimum-cost assignment so the
-                    // arrows trace the smallest-move voice leading.
-                    // Common tones (held voices) are filtered out and
-                    // get no arrow.  All arrows for the same transition
-                    // share `index = N+1` (1-based).
-                    let voiceLeadingArrows: Array<{ fromClassId: number; toClassId: number; index: number; color: string }> | undefined;
-                    if (voiceLeadTransitionIdx !== null
-                        && voiceLeadTransitionIdx >= 0
-                        && voiceLeadTransitionIdx + 1 < classesPerChord.length) {
-                      const fromSet = classesPerChord[voiceLeadTransitionIdx];
-                      const toSet = classesPerChord[voiceLeadTransitionIdx + 1];
-                      const fromOnly = [...fromSet].filter(p => !toSet.has(p));
-                      const toOnly = [...toSet].filter(p => !fromSet.has(p));
-                      const pairCount = Math.min(fromOnly.length, toOnly.length);
-                      if (pairCount > 0 && pairCount <= 5) {
-                        // Brute-force minimum-cost assignment.  Up to
-                        // 5! = 120 perms — trivial; chord pools rarely
-                        // exceed 4 moving voices.
-                        const permute = (arr: number[]): number[][] => {
-                          if (arr.length <= 1) return [arr.slice()];
-                          const out: number[][] = [];
-                          for (let i = 0; i < arr.length; i++) {
-                            const rest = arr.slice(0, i).concat(arr.slice(i + 1));
-                            for (const sub of permute(rest)) out.push([arr[i], ...sub]);
-                          }
-                          return out;
-                        };
-                        let bestPairs: Array<[number, number]> = [];
-                        let bestCost = Infinity;
-                        for (const perm of permute(toOnly)) {
-                          let cost = 0;
-                          for (let i = 0; i < pairCount; i++) {
-                            const diff = Math.abs(fromOnly[i] - perm[i]);
-                            cost += Math.min(diff, edo - diff);
-                          }
-                          if (cost < bestCost) {
-                            bestCost = cost;
-                            bestPairs = fromOnly.slice(0, pairCount).map((f, i) => [f, perm[i]] as [number, number]);
-                          }
-                        }
-                        const idx = voiceLeadTransitionIdx + 1;
-                        const color = PIN_PALETTE[voiceLeadTransitionIdx % PIN_PALETTE.length];
-                        voiceLeadingArrows = bestPairs.map(([f, t]) => ({
-                          fromClassId: f, toClassId: t, index: idx, color,
-                        }));
-                      }
-                    }
-                    const togglePin = (i: number) => {
-                      setPinnedChordIdxs(prev => {
-                        const next = new Set(prev);
-                        if (next.has(i)) next.delete(i); else next.add(i);
-                        return next;
-                      });
-                    };
-                    return (
-                      <div className="rounded border border-[#3a3a5a] bg-[#0a0a14] mt-2 overflow-hidden">
-                        <div className="px-3 py-2 border-b border-[#3a3a5a] flex items-baseline gap-2">
-                          <p className="text-[10px] text-[#7a7af0] font-semibold tracking-wider">HARMONIC LATTICE</p>
-                          <p className="text-[10px] text-[#666] italic">
-                            auto-tempered for {edo}-EDO · cells the temperament collapses share a position
-                          </p>
-                          {pinnedChordIdxs.size > 0 && (
-                            <button
-                              onClick={() => setPinnedChordIdxs(new Set())}
-                              className="ml-auto text-[10px] px-2 py-0.5 rounded border border-[#3a3a5a] text-[#7a7af0] hover:bg-[#1a1a2a]"
-                            >Clear pins</button>
-                          )}
-                        </div>
-                        <div style={{ position: "relative", width: "100%", height: "70vh", overflow: "hidden" }}>
-                          <LatticeView
-                            activeClassIds={activeClasses}
-                            pinnedChordOverlays={pinnedOverlays}
-                            compensationArcs={compensationArcs}
-                            voiceLeadingArrows={voiceLeadingArrows}
-                            temperingForEdo={edo}
-                            chromeless
-                          />
-                          {/* Per-chord toggle buttons in the bottom-
-                              left corner of the lattice canvas.  Each
-                              button is the chord's roman numeral; the
-                              accent border / fill matches the colour
-                              the lattice will use to highlight that
-                              chord's notes.  Multiple toggles render
-                              all pinned chords in their distinct
-                              colours simultaneously. */}
-                          <div
-                            className="absolute bottom-2 left-2 flex flex-wrap gap-1 z-10"
-                            style={{ maxWidth: "60%" }}
-                          >
-                            {fhAnswer.progression.map((rn, i) => {
-                              const on = pinnedChordIdxs.has(i);
-                              const color = PIN_PALETTE[i % PIN_PALETTE.length];
-                              const familyPrefix = (edo === 41 || edo === 53) && fhAnswer.scaleTonality
-                                ? familyAbbreviationForTonality(fhAnswer.scaleTonality)
-                                : null;
-                              return (
-                                <button
-                                  key={i}
-                                  onClick={() => togglePin(i)}
-                                  title={on ? `Unpin ${rn}` : `Pin ${rn} — highlight in ${color}`}
-                                  className="px-2 py-1 text-[11px] font-mono rounded border-2 transition-colors bg-[#0a0a14cc] backdrop-blur-sm"
-                                  style={on
-                                    ? { borderColor: color, color: "#fff", backgroundColor: color + "40" }
-                                    : { borderColor: "#3a3a5a", color: "#888" }}
-                                >
-                                  <span className="mr-0.5 text-[8px] opacity-60">[{i + 1}]</span>
-                                  {formatRomanNumeralWithFamily(rn, familyPrefix)}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              );
-            })()}
 
             {/* latticeEndSentinelRef + playRowSentinelRef render removed
                 2026-05-12 — Play is at the bottom now, so the pin-on-
@@ -2471,6 +1986,491 @@ export default function ChordsTab({
           </button>
         </div>
       )}
+      {fhShowAnswer && fhAnswer && (() => {
+        const heathwaiteTable = getHeathwaiteSolfege(edo);
+        // JI chord-row analysis (3rd / 5th / pure vs wolf) for
+        // the currently-played scale tonality, when it's a JI
+        // tonality.  Indexed by Roman numeral so each chord row
+        // can show its own row inline instead of relying on a
+        // separate floating panel.
+        const ROMAN_INDEX: Record<string, number> = {
+          I: 0, II: 1, III: 2, IV: 3, V: 4, VI: 5, VII: 6,
+        };
+        const tagColor = (k: string) => {
+          if (k === "wolf") return "#cc6a8a";
+          if (k === "off-grid") return "#c8aa50";
+          if (k === "pure-3") return "#9999cc";
+          if (k === "pure-5") return "#6acca0";
+          if (k === "pure-7") return "#cc8855";
+          if (k === "pure-11") return "#9a66c0";
+          return "#888";
+        };
+        const jiAnalysis = fhAnswer.scaleTonality && JI_SCALE_NAMES_SET.has(fhAnswer.scaleTonality)
+          ? analyzeJiScale(fhAnswer.scaleTonality)
+          : null;
+        const analysisForChord = (numeral: string) => {
+          if (!jiAnalysis) return null;
+          const stripped = stripChordLabel(numeral);
+          const idx = ROMAN_INDEX[stripped.replace(/[^IVX]/gi, "").toUpperCase()];
+          if (idx === undefined) return null;
+          return jiAnalysis[idx] ?? null;
+        };
+        return (
+          <div className="bg-[#1a1a0a] border border-[#3a3a1a] rounded p-3 space-y-3">
+            <div className="flex items-baseline gap-2 pb-1.5 border-b border-[#3a3a1a]">
+              <p className="text-[10px] text-[#888] font-semibold tracking-wider">LOOP</p>
+              <p className="text-[12px] text-[#c8a850] font-mono">
+                {(() => {
+                  const prefix = (edo === 41 || edo === 53) && fhAnswer.scaleTonality
+                    ? familyAbbreviationForTonality(fhAnswer.scaleTonality)
+                    : null;
+                  return fhAnswer.progression.map((rn, i) => (
+                    <Fragment key={i}>
+                      {i > 0 && " → "}
+                      {formatRomanNumeralWithFamily(rn, prefix)}
+                    </Fragment>
+                  ));
+                })()}
+              </p>
+              {fhAnswer.scaleTonality && (
+                <p className="text-[10px] text-[#888] ml-auto italic">
+                  Scale: {fhAnswer.scaleTonality}
+                </p>
+              )}
+            </div>
+            {/* Single-column body — chord-tone reveal stretches
+                full width.  The right-column live visualizer
+                mirror was removed; the App-level main visualizer
+                stays sticky at the top of the page so the user
+                always has a keyboard view of the active chord. */}
+            <div className="space-y-3">
+            {/* Live lattice trace — meaningful in Adaptive and
+                Pure 3/5-limit modes on 41/53-EDO.  Shows each
+                chord in the progression with its accumulated
+                drift in cents, colour-coded green / amber / pink
+                by magnitude. */}
+            {(edo === 41 || edo === 53) && (() => {
+              void latticeRevision;
+              const trace = latticeDriftsRef.current;
+              if (!trace || !trace.drifts) return null;
+              const drifts = trace.drifts;
+              const finalDrift = drifts[drifts.length - 1] ?? 0;
+              const maxAbsDrift = Math.max(...drifts.map(d => Math.abs(d)));
+              return (
+                <div className="rounded border border-[#3a8a5a] bg-[#0e1a14] p-3">
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <p className="text-[10px] text-[#5cca8a] font-semibold tracking-wider">LIVE LATTICE TRACE</p>
+                    <span className="text-[9px] text-[#888]">
+                      Final drift: <span className="font-mono" style={{ color: Math.abs(finalDrift) < 1 ? "#5cca8a" : "#cc6a8a" }}>
+                        {finalDrift >= 0 ? "+" : ""}{finalDrift.toFixed(1)}¢
+                      </span>
+                      {" · "}
+                      Peak: <span className="font-mono text-[#ccc]">{maxAbsDrift.toFixed(1)}¢</span>
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {trace.progression.map((chord, i) => {
+                      const drift = drifts[i];
+                      const driftAbs = Math.abs(drift);
+                      const driftColor = driftAbs < 1 ? "#5cca8a" : driftAbs < 15 ? "#c8aa50" : "#cc6a8a";
+                      return (
+                        <div key={i} className="flex flex-col items-center px-2 py-1 rounded border border-[#222] bg-[#0a1410]">
+                          <span className="text-[10px] text-[#aaa] font-mono">{stripChordLabel(chord)}</span>
+                          <span className="text-[9px] font-mono" style={{ color: driftColor }}>
+                            {drift >= 0 ? "+" : ""}{drift.toFixed(1)}¢
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+            {/* Chord cards laid out side by side (flex-wrap)
+                so the user sees the whole progression at a
+                glance and the cards reflow onto multiple rows
+                only when the viewport is too narrow.  Each card
+                keeps its internal stacked-tone layout — chord-
+                relative gold on top, scale-relative mauve below
+                per note. */}
+            <div className="flex flex-wrap gap-2 items-start">
+            {fhAnswer.chords.map(chord => {
+              const ana = analysisForChord(chord.numeral);
+              // Comma-compensation note for this chord, if any.
+              // Only fires when in Adaptive mode AND the chord
+              // accumulated a non-zero EDO-step compensation; the
+              // text spells out which root pitch was bent and by
+              // how many cents to keep the tonic anchored.
+              const driftsForNote = latticeDriftsRef.current?.drifts ?? null;
+              let commaNote: { from: string; to: string; cents: number; steps: number } | null = null;
+              if (jiMode === "adaptive" && driftsForNote && (edo === 41 || edo === 53)) {
+                const idx = chord.index - 1;
+                if (idx >= 0 && idx < driftsForNote.length) {
+                  const driftCents = driftsForNote[idx];
+                  const steps = driftCentsToSteps(driftCents, edo);
+                  if (steps !== 0) {
+                    // chord.chordRootPc is post-comp.  Pre-comp =
+                    // post + steps (the audio engine subtracted
+                    // `steps` from each tone, so the un-compensated
+                    // pitch sits `steps` higher).
+                    const postRootPc = chord.chordRootPc;
+                    const preRootPc = ((postRootPc + steps) % edo + edo) % edo;
+                    const preAbsPc = ((tonicPc + preRootPc) % edo + edo) % edo;
+                    const postAbsPc = ((tonicPc + postRootPc) % edo + edo) % edo;
+                    commaNote = {
+                      from: pcToNoteNameWithEnharmonic(preAbsPc, edo) ?? `${preAbsPc}\\${edo}`,
+                      to: pcToNoteNameWithEnharmonic(postAbsPc, edo) ?? `${postAbsPc}\\${edo}`,
+                      cents: -driftCents,
+                      steps: -steps,
+                    };
+                  }
+                }
+              }
+              return (
+              <div key={chord.index} className="space-y-1 flex-shrink-0 rounded border border-[#1a1a14] bg-[#0c0a08] p-2">
+                <p className="text-[10px] text-[#c8a850] font-medium flex items-baseline gap-2 flex-wrap">
+                  <span>[{chord.index}] <span className="font-mono text-[12px]">{(() => {
+                    const prefix = (edo === 41 || edo === 53) && fhAnswer.scaleTonality
+                      ? familyAbbreviationForTonality(fhAnswer.scaleTonality)
+                      : null;
+                    return formatRomanNumeralWithFamily(chord.numeral, prefix);
+                  })()}</span></span>
+                  <span className="text-[#888]">({chord.quality})</span>
+                  {ana && (
+                    <span className="text-[9px] flex items-baseline gap-1 ml-2 px-1.5 py-0.5 rounded border border-[#222] bg-[#0a0a0a]">
+                      <span className="text-[#555]">3rd</span>
+                      <span className="font-mono" style={{ color: tagColor(ana.third.kind) }}>{ana.third.ratio}</span>
+                      <span className="text-[#333]">·</span>
+                      <span className="text-[#555]">5th</span>
+                      <span className="font-mono" style={{ color: tagColor(ana.fifth.kind) }}>{ana.fifth.ratio}</span>
+                      <span className="text-[#333]">·</span>
+                      <span style={{ color: ana.pure ? "#5cca5c" : "#cc6a8a", fontWeight: 600 }}>
+                        {ana.pure ? "✓" : "✗ Wolf"}
+                      </span>
+                    </span>
+                  )}
+                </p>
+                {commaNote && (
+                  <p className="text-[10px] text-[#cc6a8a] flex items-baseline gap-1.5 px-1.5 py-0.5 rounded border border-[#3a1a2a] bg-[#1a0a14]">
+                    <span className="font-semibold tracking-wider">COMMA FIX</span>
+                    <span className="text-[#aaa]">root</span>
+                    <span className="font-mono text-[#e0c860]">{commaNote.from}</span>
+                    <span className="text-[#cc6a8a]">→</span>
+                    <span className="font-mono text-[#5cca5c]">{commaNote.to}</span>
+                    <span className="text-[#888]">
+                      ({commaNote.steps > 0 ? "+" : ""}{commaNote.steps} step{Math.abs(commaNote.steps) !== 1 ? "s" : ""}, {commaNote.cents > 0 ? "+" : ""}{commaNote.cents.toFixed(1)}¢)
+                    </span>
+                    <span className="text-[#666] italic">— bent to keep the tonic anchored, otherwise this chord's root would drift away from {pcToNoteNameWithEnharmonic(tonicPc, edo) ?? "the tonic"}</span>
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-1.5">
+                  {chord.notes.map((pitch, i) => {
+                    // Two reference frames per tone:
+                    //   "scale" — pitch class relative to tonic (Do = 1)
+                    //   "chord" — pitch class relative to chord root
+                    // Solfege labels (Heathwaite + Universal IPA) computed
+                    // for each frame so the user sees the same note named
+                    // four ways: chord 3rd vs scale 5th, etc.
+                    const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
+                    const pcFromChord = ((pcFromTonic - chord.chordRootPc) % edo + edo) % edo;
+
+                    const intervalScale = intervalLabel(pcFromTonic, edo);
+                    const heathwaiteScale = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
+                    const microScale = syllableForEdoStep(pcFromTonic, edo);
+
+                    const intervalChord = intervalLabel(pcFromChord, edo);
+                    const heathwaiteChord = heathwaiteTable ? heathwaiteTable[pcFromChord] ?? "—" : "—";
+                    const microChord = syllableForEdoStep(pcFromChord, edo);
+
+                    return (
+                      <button key={i}
+                        onClick={async () => {
+                          await ensureAudio();
+                          audioEngine.playNote(pitch, edo, 0.7, 0.6);
+                        }}
+                        title={
+                          `▶ click main button to play pitch\n` +
+                          `Click any syllable to hear it spoken.\n` +
+                          `chord-relative: ${intervalChord} · ${heathwaiteChord} · ${microChord.label} /${microChord.ipa}/\n` +
+                          `scale-relative: ${intervalScale} · ${heathwaiteScale} · ${microScale.label} /${microScale.ipa}/`
+                        }
+                        className="flex flex-col items-center px-2 py-1 rounded border border-[#3a3a1a] bg-[#2a1a0a] hover:bg-[#3a2a1a] hover:border-[#c8a850] transition-colors min-w-[64px]">
+                        {/* Chord-relative block (gold).  Each syllable
+                            is an independent clickable that triggers
+                            TTS via the browser's Web Speech API.
+                            stopPropagation prevents the parent button
+                            from also firing the pitch-play handler. */}
+                        <span className="text-[10px] text-[#e0c860] font-bold leading-tight">
+                          {intervalChord}
+                        </span>
+                        <SaySpan text={heathwaiteChord} ipa={heathwaiteIpa(heathwaiteChord)}
+                          className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
+                          title={`Hear "${heathwaiteChord}" spoken`} />
+                        <SaySpan text={microChord.label} ipa={microChord.ipa}
+                          className="text-[8px] text-[#777] font-mono leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
+                          title={`Hear "${microChord.label}" /${microChord.ipa}/ spoken`} />
+                        <span className="block w-full border-t border-[#3a3a1a] my-1"></span>
+                        {/* Scale-relative block (mauve) */}
+                        <span className="text-[10px] text-[#c896c8] font-bold leading-tight">
+                          {intervalScale}
+                        </span>
+                        <SaySpan text={heathwaiteScale} ipa={heathwaiteIpa(heathwaiteScale)}
+                          className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
+                          title={`Hear "${heathwaiteScale}" spoken`} />
+                        <SaySpan text={microScale.label} ipa={microScale.ipa}
+                          className="text-[8px] text-[#777] font-mono leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
+                          title={`Hear "${microScale.label}" /${microScale.ipa}/ spoken`} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              );
+            })}
+            </div>{/* end side-by-side chord-card row */}
+            </div>{/* end chord-tone column */}
+
+            {/* Full-width Harmonic Lattice — re-uses the main
+                LatticeView (3D Tonnetz / Monzo viewer) and
+                auto-tempers it to the active EDO.  Gated on
+                `betaMode` per direct user direction
+                (2026-05-11): "put harmonic lattice in spacial
+                audiation to beta features" — surfaces only
+                when the user has Beta enabled in Settings. */}
+            {betaMode && fhAnswer.progression.length > 0 && (() => {
+              // The lattice is the Tonescape "3,5-primespace
+              // toroidal lattice" — 5-limit cells projected
+              // linearly with the EDO's vanishing commas
+              // tempered out, producing a torus where each
+              // visible cell is one EDO equivalence class.
+              // Class reps are picked by simplest JI ratio,
+              // so chord tones at (0,0)=1/1, (0,1)=5/4,
+              // (1,0)=3/2, (1,-1)=6/5, … land on the visible
+              // nodes directly without any chain-of-fifths
+              // remapping.
+              const positions = tracePath(fhAnswer.progression);
+              // Per-chord compensation step.  In Adaptive mode the
+              // audio engine subtracts this from each chord-tone
+              // before playback so the tonic stays anchored; the
+              // visual highlight has to match what's actually
+              // playing, so we apply the same subtraction here.
+              // In Frozen mode the compensation is zero and the
+              // chord plays at the drifted position verbatim.
+              void latticeRevision;
+              const driftsForCompPre = latticeDriftsRef.current?.drifts ?? null;
+              const compStepPerChord: number[] = positions.map((_, i) => {
+                if (jiMode !== "adaptive") return 0;
+                if (!driftsForCompPre || i >= driftsForCompPre.length) return 0;
+                return driftCentsToSteps(driftsForCompPre[i], edo);
+              });
+              // Per-chord chord-tone EDO classes — drives the
+              // lattice highlight.  Built from the lattice walk's
+              // drifted positions, then shifted back by the per-
+              // chord comp step so the highlight matches the
+              // post-compensation pitches the audio actually
+              // plays.  In Frozen mode comp step is 0 and the
+              // highlight stays at the drifted position (which is
+              // also what plays).  In Adaptive mode the highlight
+              // lands on the compensated rep, leaving the drifted
+              // rep free to receive a separate red marker from
+              // the compensation-arc pipeline.
+              const classesPerChord: Set<number>[] = positions.map((root, i) => {
+                const chord = fhAnswer.chords[i];
+                let quality = chord ? chordQualityFromSteps(chord.notes, edo) : null;
+                if (!quality) {
+                  const stripped = chord ? stripChordLabel(chord.numeral) : "";
+                  if (stripped.endsWith("°")) quality = "dim";
+                  else if (stripped.endsWith("ø")) quality = "m7b5";
+                  else quality = /^[A-Z]/.test(stripped) ? "major" : "minor";
+                }
+                const v = voicingFor(quality) ?? voicingFor("major")!;
+                const drifted = v.voices.map(vp => latticeToEdoStep(latticeAdd(root, vp), edo));
+                const comp = compStepPerChord[i];
+                const out = new Set<number>();
+                for (const c of drifted) out.add(((c - comp) % edo + edo) % edo);
+                return out;
+              });
+              const activeClasses = currentChordIdx >= 0 && currentChordIdx < classesPerChord.length
+                ? classesPerChord[currentChordIdx]
+                : new Set<number>();
+              // Per-pinned-chord overlay palette.  Picked from
+              // distinct hues so 2-3 simultaneous toggles stay
+              // visually distinguishable on the dark lattice
+              // background; cycles past 8 pinned chords (rare).
+              const PIN_PALETTE = [
+                "#e85ad0",  // magenta
+                "#5cca5c",  // green
+                "#e0a040",  // amber
+                "#5acca0",  // teal
+                "#cc6a8a",  // rose
+                "#9a66c0",  // violet
+                "#c8aa50",  // gold
+                "#5acce0",  // cyan
+              ];
+              const pinnedOverlays = [...pinnedChordIdxs]
+                .filter(i => i >= 0 && i < classesPerChord.length)
+                .map(i => ({
+                  classes: classesPerChord[i],
+                  color: PIN_PALETTE[i % PIN_PALETTE.length],
+                }));
+              // Comma-compensation arcs.  For each chord that
+              // ended up with a non-zero EDO-step compensation,
+              // draw an arc from the chord's uncompensated root
+              // class to its compensated root class so the user
+              // can see the exact step the playback shifted by.
+              // Gated on Adaptive mode — in Frozen mode no audio
+              // compensation actually runs, so showing a red arc
+              // would be misleading (the user would see "this is
+              // being compensated" while still hearing the drift).
+              const driftsForArcs = latticeDriftsRef.current?.drifts ?? null;
+              const compensationArcs: Array<{ fromClassId: number; toClassId: number; color: string; chordIdx: number }> = [];
+              if (driftsForArcs && jiMode === "adaptive") {
+                for (let i = 0; i < positions.length && i < driftsForArcs.length; i++) {
+                  const compStep = compStepPerChord[i];
+                  if (compStep === 0) continue;
+                  // Only render the compensation indicator on
+                  // chords the user is currently highlighting —
+                  // either the live-playback chord or one the
+                  // user pinned via the chord-toggle buttons.
+                  // Showing arrows for every drifted chord at
+                  // once would clutter the lattice with
+                  // information the user can't act on.
+                  const isHighlighted = currentChordIdx === i || pinnedChordIdxs.has(i);
+                  if (!isHighlighted) continue;
+                  const rootClass = latticeToEdoStep(positions[i], edo);
+                  const fromClassId = ((rootClass) % edo + edo) % edo;
+                  const toClassId = ((rootClass - compStep) % edo + edo) % edo;
+                  compensationArcs.push({
+                    fromClassId,
+                    toClassId,
+                    color: PIN_PALETTE[i % PIN_PALETTE.length],
+                    chordIdx: i,
+                  });
+                }
+              }
+              // Voice-leading arrows for the active preview
+              // transition (set ~220ms before each chord onsets
+              // by the playback scheduler in highlightAllVoices).
+              // For each moving voice between chord N and N+1,
+              // pair the source pitch class to the destination
+              // pitch class via minimum-cost assignment so the
+              // arrows trace the smallest-move voice leading.
+              // Common tones (held voices) are filtered out and
+              // get no arrow.  All arrows for the same transition
+              // share `index = N+1` (1-based).
+              let voiceLeadingArrows: Array<{ fromClassId: number; toClassId: number; index: number; color: string }> | undefined;
+              if (voiceLeadTransitionIdx !== null
+                  && voiceLeadTransitionIdx >= 0
+                  && voiceLeadTransitionIdx + 1 < classesPerChord.length) {
+                const fromSet = classesPerChord[voiceLeadTransitionIdx];
+                const toSet = classesPerChord[voiceLeadTransitionIdx + 1];
+                const fromOnly = [...fromSet].filter(p => !toSet.has(p));
+                const toOnly = [...toSet].filter(p => !fromSet.has(p));
+                const pairCount = Math.min(fromOnly.length, toOnly.length);
+                if (pairCount > 0 && pairCount <= 5) {
+                  // Brute-force minimum-cost assignment.  Up to
+                  // 5! = 120 perms — trivial; chord pools rarely
+                  // exceed 4 moving voices.
+                  const permute = (arr: number[]): number[][] => {
+                    if (arr.length <= 1) return [arr.slice()];
+                    const out: number[][] = [];
+                    for (let i = 0; i < arr.length; i++) {
+                      const rest = arr.slice(0, i).concat(arr.slice(i + 1));
+                      for (const sub of permute(rest)) out.push([arr[i], ...sub]);
+                    }
+                    return out;
+                  };
+                  let bestPairs: Array<[number, number]> = [];
+                  let bestCost = Infinity;
+                  for (const perm of permute(toOnly)) {
+                    let cost = 0;
+                    for (let i = 0; i < pairCount; i++) {
+                      const diff = Math.abs(fromOnly[i] - perm[i]);
+                      cost += Math.min(diff, edo - diff);
+                    }
+                    if (cost < bestCost) {
+                      bestCost = cost;
+                      bestPairs = fromOnly.slice(0, pairCount).map((f, i) => [f, perm[i]] as [number, number]);
+                    }
+                  }
+                  const idx = voiceLeadTransitionIdx + 1;
+                  const color = PIN_PALETTE[voiceLeadTransitionIdx % PIN_PALETTE.length];
+                  voiceLeadingArrows = bestPairs.map(([f, t]) => ({
+                    fromClassId: f, toClassId: t, index: idx, color,
+                  }));
+                }
+              }
+              const togglePin = (i: number) => {
+                setPinnedChordIdxs(prev => {
+                  const next = new Set(prev);
+                  if (next.has(i)) next.delete(i); else next.add(i);
+                  return next;
+                });
+              };
+              return (
+                <div className="rounded border border-[#3a3a5a] bg-[#0a0a14] mt-2 overflow-hidden">
+                  <div className="px-3 py-2 border-b border-[#3a3a5a] flex items-baseline gap-2">
+                    <p className="text-[10px] text-[#7a7af0] font-semibold tracking-wider">HARMONIC LATTICE</p>
+                    <p className="text-[10px] text-[#666] italic">
+                      auto-tempered for {edo}-EDO · cells the temperament collapses share a position
+                    </p>
+                    {pinnedChordIdxs.size > 0 && (
+                      <button
+                        onClick={() => setPinnedChordIdxs(new Set())}
+                        className="ml-auto text-[10px] px-2 py-0.5 rounded border border-[#3a3a5a] text-[#7a7af0] hover:bg-[#1a1a2a]"
+                      >Clear pins</button>
+                    )}
+                  </div>
+                  <div style={{ position: "relative", width: "100%", height: "70vh", overflow: "hidden" }}>
+                    <LatticeView
+                      activeClassIds={activeClasses}
+                      pinnedChordOverlays={pinnedOverlays}
+                      compensationArcs={compensationArcs}
+                      voiceLeadingArrows={voiceLeadingArrows}
+                      temperingForEdo={edo}
+                      chromeless
+                    />
+                    {/* Per-chord toggle buttons in the bottom-
+                        left corner of the lattice canvas.  Each
+                        button is the chord's roman numeral; the
+                        accent border / fill matches the colour
+                        the lattice will use to highlight that
+                        chord's notes.  Multiple toggles render
+                        all pinned chords in their distinct
+                        colours simultaneously. */}
+                    <div
+                      className="absolute bottom-2 left-2 flex flex-wrap gap-1 z-10"
+                      style={{ maxWidth: "60%" }}
+                    >
+                      {fhAnswer.progression.map((rn, i) => {
+                        const on = pinnedChordIdxs.has(i);
+                        const color = PIN_PALETTE[i % PIN_PALETTE.length];
+                        const familyPrefix = (edo === 41 || edo === 53) && fhAnswer.scaleTonality
+                          ? familyAbbreviationForTonality(fhAnswer.scaleTonality)
+                          : null;
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => togglePin(i)}
+                            title={on ? `Unpin ${rn}` : `Pin ${rn} — highlight in ${color}`}
+                            className="px-2 py-1 text-[11px] font-mono rounded border-2 transition-colors bg-[#0a0a14cc] backdrop-blur-sm"
+                            style={on
+                              ? { borderColor: color, color: "#fff", backgroundColor: color + "40" }
+                              : { borderColor: "#3a3a5a", color: "#888" }}
+                          >
+                            <span className="mr-0.5 text-[8px] opacity-60">[{i + 1}]</span>
+                            {formatRomanNumeralWithFamily(rn, familyPrefix)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        );
+      })()}
       </div>
     </div>
   );
