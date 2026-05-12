@@ -1752,6 +1752,60 @@ function generateBebopFragment(length: number, enabled?: Set<string>): { degrees
   }
 }
 
+// Cadential chord progressions.  Each variant in this map specifies a
+// chord-root sequence (1-indexed scale degrees) that resolves to the
+// tonic.  When the user selects a cadence variant in the Scalar
+// Permutations tab, the engine builds a stacked-chord frame for each
+// chord (root + diatonic 3rd / 5th / 7th in the current mode) and
+// plays them as a chord progression instead of a single-line melody.
+// Display labels are mode-aware (computed via getDiatonicTriadsForMode
+// so the Roman case reflects each chord's actual quality per mode).
+export const CADENCE_PROGRESSIONS: Record<string, number[]> = {
+  "cad_5_1":       [5, 1],
+  "cad_2_5_1":     [2, 5, 1],
+  "cad_4_5_1":     [4, 5, 1],
+  "cad_6_2_5_1":   [6, 2, 5, 1],
+  "cad_1_4_5_1":   [1, 4, 5, 1],
+  "cad_1_6_2_5_1": [1, 6, 2, 5, 1],
+  "cad_1_6_4_5_1": [1, 6, 4, 5, 1],
+};
+
+// Per-family melody variants — parallels JAZZ_VARIANTS but for the
+// melody-bank families.  Currently only Cadences carries variants
+// (curated phrase vs cadence chord progressions); other melody
+// families have no variants and render a single big toggle.
+export const MELODY_VARIANTS: Record<string, { id: string; label: string }[]> = {
+  "Cadences": [
+    { id: "phrase",          label: "Melodic phrase" },
+    { id: "cad_5_1",         label: "V-I" },
+    { id: "cad_2_5_1",       label: "ii-V-I" },
+    { id: "cad_4_5_1",       label: "IV-V-I" },
+    { id: "cad_6_2_5_1",     label: "vi-ii-V-I" },
+    { id: "cad_1_4_5_1",     label: "I-IV-V-I" },
+    { id: "cad_1_6_2_5_1",   label: "I-vi-ii-V-I" },
+    { id: "cad_1_6_4_5_1",   label: "I-vi-IV-V-I" },
+  ],
+};
+
+// Build a 4-note chord (root + diatonic 3rd, 5th, 7th) at scale degree
+// `rootDeg` (1-indexed) within the current mode.  Returned as an array
+// of degree labels relative to the tonic — e.g. for V in Ionian:
+// ["5", "7", "2", "4"] meaning G-B-D-F over a C tonic.
+//
+// The diatonic 7th's quality (maj7 / dom7 / m7 / m7b5 / dim7) comes
+// automatically from the mode's degree map — degrees collapse mod 7
+// then get resolved through getModeDegreeMap() at playback time, so
+// the chord rings with the right intervals for every mode.
+export function buildDiatonicChord(rootDeg: number): string[] {
+  const norm = (n: number) => String(((n - 1) % 7 + 7) % 7 + 1);
+  return [
+    norm(rootDeg),       // root
+    norm(rootDeg + 2),   // 3rd
+    norm(rootDeg + 4),   // 5th
+    norm(rootDeg + 6),   // 7th
+  ];
+}
+
 // Common chord progressions for guide-tone exercises.  Each chord is a
 // scale degree (1-7); the chord's diatonic 3rd is degree (n+2) mod 7
 // and its diatonic 7th is degree (n+6) mod 7 — see chordGuideTones().
