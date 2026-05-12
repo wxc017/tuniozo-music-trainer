@@ -1403,18 +1403,44 @@ export default function App() {
           ))}
           <div className="ml-auto"><NotationLegend /></div>
         </div>
-        {/* EDO + Visualizer row — only rendered for the Spatial
-            Audiation (chords) tab per direct user direction
-            (2026-05-11): "edo option should only be spacial
-            audiation and scalar explorations".  Tonal Audiation's
-            other tabs (intervals / mode-id / melody / etc.) hide
-            the EDO selector entirely. */}
+        {/* EDO + Visualizer row — family-grouped buttons matching
+            the Scalar Explorations row per direct user direction
+            (2026-05-12) "have the otions for edo in tonal audiation
+            like it is in scalar explorations".  Still gated to the
+            chords tab; other Tonal Audiation tabs (intervals /
+            mode-id / melody / etc.) keep the EDO selector hidden. */}
         {activeTab === "chords" && <div className="flex gap-2 flex-wrap items-center mb-3">
           <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">EDO</span>
-          <select value={edo} onChange={e => setEdo(Number(e.target.value))}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
-            {TEMPERAMENT_EDOS[temperament].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
+          <div className="flex items-center gap-2 flex-wrap">
+            {([
+              { fam: "MEANTONE",    color: "#cfe6ff", edos: [12, 19, 31] },
+              { fam: "PYTHAGOREAN", color: "#e6cfa0", edos: [41]         },
+              { fam: "SCHISMATIC",  color: "#cfe6cf", edos: [53]         },
+            ] as const).map(group => (
+              <div key={group.fam} className="flex items-center gap-1.5">
+                <span
+                  className="text-[9px] font-semibold tracking-wider px-1 border-l border-[#2a2a2a]"
+                  style={{ color: group.color }}
+                >
+                  {group.fam}
+                </span>
+                {group.edos.map(n => {
+                  const active = edo === n;
+                  return (
+                    <button key={n} onClick={() => { stopAllAudio(); setEdo(n); }}
+                      title={`${n}-EDO (${group.fam.toLowerCase()} family)`}
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                        active
+                          ? "bg-[#7173e6] text-white border-[#7173e6]"
+                          : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"
+                      }`}>
+                      {n}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
           {edo === 12 && (
             <>
               <div className="w-px h-4 bg-[#2a2a2a]" />
