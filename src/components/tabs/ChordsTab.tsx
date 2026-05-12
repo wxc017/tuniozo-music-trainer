@@ -1731,11 +1731,14 @@ export default function ChordsTab({
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* PROGRESSIONS section — no collapsible per direct user           */}
       {/* direction (2026-05-12) "this should be with the play button no  */}
-      {/* collapsible".  The Loop Length / Spacing / Duration / Register */}
-      {/* controls are intended to sit with the Play button at the       */}
-      {/* bottom of the tab.                                              */}
+      {/* collapsible".  Controls moved to the bottom; the bordered box   */}
+      {/* (bg-[#141008] border border-[#2a2210] rounded-lg) was removed   */}
+      {/* per direct user direction "remove this" pointing at the empty  */}
+      {/* amber-bordered rectangle.  Only the Answer reveal + harmonic   */}
+      {/* lattice live in this section now, and both bring their own     */}
+      {/* containers when visible.                                        */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <div className="bg-[#141008] border border-[#2a2210] rounded-lg px-4 py-3 space-y-3">
+      <div className="space-y-3">
             {/* Playback controls row (LOOP LENGTH / SPACING / DURATION
                 / Register) moved out to the Play row at the bottom of
                 the tab 2026-05-12 per direct user direction "this has
@@ -2424,7 +2427,11 @@ export default function ChordsTab({
               className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-xs text-white text-center focus:outline-none"
             />
           </div>
-          <VoicingControls regMode={regMode} setRegMode={setRegMode} compact />
+          {/* Register / voicing control removed 2026-05-12 per direct
+              user direction "remove register voice leading function
+              makes it obsolete and its not musical".  regMode still
+              defaults to "Fixed Register" via useLS; the playback
+              path silently uses that value with no UI exposure. */}
         </div>
       <div className="flex gap-2 flex-wrap items-center">
         <button onClick={startFunctionalLoop} disabled={isLooping || !canPlay}
