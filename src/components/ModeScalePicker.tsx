@@ -48,7 +48,7 @@ export default function ModeScalePicker({ scaleFam, modeName, onChange, selected
   const isMulti = selected !== undefined;
   return (
     <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2">
-      <p className="text-xs text-[#888] font-medium">{isMulti ? "MODES (multi-select)" : "MODE"}</p>
+      <p className="text-xs text-[#888] font-medium">{isMulti ? "MODES" : "MODE"}</p>
       {FAMILY_GROUPS.map(group => {
         const modes = PATTERN_SCALE_FAMILIES[group.key] ?? [];
         return (
