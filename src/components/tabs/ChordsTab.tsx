@@ -1728,17 +1728,14 @@ export default function ChordsTab({
         )}
       </div>
 
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* PROGRESSIONS section — no collapsible per direct user           */}
-      {/* direction (2026-05-12) "this should be with the play button no  */}
-      {/* collapsible".  Controls moved to the bottom; the bordered box   */}
-      {/* (bg-[#141008] border border-[#2a2210] rounded-lg) was removed   */}
-      {/* per direct user direction "remove this" pointing at the empty  */}
-      {/* amber-bordered rectangle.  Only the Answer reveal + harmonic   */}
-      {/* lattice live in this section now, and both bring their own     */}
-      {/* containers when visible.                                        */}
-      {/* ════════════════════════════════════════════════════════════════ */}
-      <div className="space-y-3">
+      {/* PROGRESSIONS section — replaced with a Fragment 2026-05-12
+          per direct user direction "there is space between tonalities
+          and extenons&voicings that is unnecessary".  The wrapping
+          <div> was rendering as an empty child of the parent
+          space-y-5 layout and creating phantom vertical gaps; using
+          <> emits no DOM node so the parent treats the Answer reveal
+          as a direct sibling of TONALITIES / EXTENSIONS & VOICINGS. */}
+      <>
             {/* Playback controls row (LOOP LENGTH / SPACING / DURATION
                 / Register) moved out to the Play row at the bottom of
                 the tab 2026-05-12 per direct user direction "this has
@@ -2287,7 +2284,7 @@ export default function ChordsTab({
                 releases instead of riding the rest of the page. */}
             <div ref={latticeEndSentinelRef} aria-hidden style={{ height: 1 }} />
 
-      </div>
+      </>
 
           {/* Extensions + Voicings — wrapped in a collapsible section
               2026-05-12 per direct user direction "chords should have
