@@ -276,7 +276,7 @@ export default function ChordsTab({
   // shown while the visualizer steps through the loop with no audio.
   const [targetChordInfo, setTargetChordInfo] = useState<{
     progression: string;
-    perChord: { roman: string; quality: string; inversion: string }[];
+    perChord: { roman: string; quality: string; inversion: string; pitches: number[] }[];
     activeIndex: number;
   } | null>(null);
   // Pre-warm piper TTS for the most common syllables on first
@@ -1524,8 +1524,8 @@ export default function ChordsTab({
       const perChord = progression.map((rn, idx) => {
         const applied = voices.appliedShapes[idx];
         const quality = applied ? triadQuality(applied, edo) : "?";
-        const chordPitches = voices.chords[idx] ?? [];
-        let inversion = "root";
+        const chordPitches = [...(voices.chords[idx] ?? [])].sort((a, b) => a - b);
+        let inversion = "R";
         if (applied && chordPitches.length >= 2) {
           const rootPc = ((applied[0] % edo) + edo) % edo;
           const lowestPc = ((chordPitches[0] % edo) + edo) % edo;
@@ -1533,13 +1533,13 @@ export default function ChordsTab({
           // Compare against applied[1..3] offsets to identify inversion.
           const offsets = applied.map(n => (((n - applied[0]) % edo) + edo) % edo);
           const inv = offsets.indexOf(offset);
-          inversion = inv === 0 ? "root pos"
-                    : inv === 1 ? "1st inv"
-                    : inv === 2 ? "2nd inv"
-                    : inv === 3 ? "3rd inv"
+          inversion = inv === 0 ? "R"
+                    : inv === 1 ? "1st"
+                    : inv === 2 ? "2nd"
+                    : inv === 3 ? "3rd"
                     : `low ${intervalLabel(offset, edo)}`;
         }
-        return { roman: rn, quality, inversion };
+        return { roman: rn, quality, inversion, pitches: chordPitches };
       });
       setTargetChordInfo({ progression: info, perChord, activeIndex: -1 });
       setIsLooping(true);
@@ -2029,7 +2029,11 @@ export default function ChordsTab({
             Stop
           </button>
         )}
-        {fhFramesRef.current && fhFramesRef.current.length > 0 && !isLooping && (
+        {/* Replay + Show Answer hidden in Show Target mode per direct
+            user direction (2026-05-12) "there should be no show
+            answer / and no replay" — the visual-step exercise is
+            self-contained: the target chord cards are the answer. */}
+        {responseMode !== "Show Target (Sing It)" && fhFramesRef.current && fhFramesRef.current.length > 0 && !isLooping && (
           <button onClick={replayFunctionalLoop}
             className="bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#333] text-[#aaa] px-4 py-2 rounded text-sm transition-colors">
             Replay
@@ -2039,8 +2043,9 @@ export default function ChordsTab({
       </div>
       {/* Bottom row: Show Answer — kept below Play per direct user
           direction (2026-05-12) "show answer should always be below
-          play" so it never visually competes with the primary action. */}
-      {fhDetailInfo && (
+          play" so it never visually competes with the primary action.
+          Hidden in Show Target mode (see Replay note above). */}
+      {responseMode !== "Show Target (Sing It)" && fhDetailInfo && (
         <div className="flex gap-2 flex-wrap items-center mt-2">
           <button
             onClick={() => { setCollapsedProgressions(false); showFhAnswer(); }}
@@ -2065,17 +2070,28 @@ export default function ChordsTab({
           <div className="flex flex-wrap gap-1">
             {targetChordInfo.perChord.map((c, i) => {
               const active = i === targetChordInfo.activeIndex;
+              // Click-to-highlight per direct user direction
+              // (2026-05-12) "when i click on it it should visualize
+              // as well" — clicking any chord card lights up that
+              // chord's notes on the active visualizer (Lumatone /
+              // piano / guitar / bass).
               return (
-                <div key={i}
-                  className={`px-2 py-1 rounded border text-[11px] transition-colors ${
+                <button key={i}
+                  onClick={() => {
+                    onHighlight(c.pitches);
+                    setTargetChordInfo(prev => prev ? { ...prev, activeIndex: i } : prev);
+                  }}
+                  className={`px-2 py-1 rounded border text-[11px] transition-colors text-left ${
                     active
                       ? "bg-[#3a3a8a] border-[#7a7af0] text-white"
-                      : "bg-[#1a1a2a] border-[#2a2a3a] text-[#888]"
+                      : "bg-[#1a1a2a] border-[#2a2a3a] text-[#888] hover:border-[#5a5a8a] hover:text-[#bbb]"
                   }`}>
+                  {/* Inversion sits between Roman and quality per
+                      direct user direction "after roman numeral". */}
                   <span className="font-mono font-semibold">[{i + 1}] {c.roman}</span>
+                  <span className="text-[#9999cc] ml-1 font-mono">{c.inversion}</span>
                   <span className="text-[#666] ml-1">({c.quality})</span>
-                  <span className="text-[#9999cc] ml-1">· {c.inversion}</span>
-                </div>
+                </button>
               );
             })}
           </div>
