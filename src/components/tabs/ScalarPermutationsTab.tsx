@@ -794,6 +794,7 @@ export default function ScalarPermutationsTab({
         </div>
       )}
 
+      {/* Top row: Play / Replay (primary action). */}
       <div className="flex gap-2 flex-wrap items-center">
         <button onClick={play} disabled={isPlaying}
           className="bg-[#7173e6] hover:bg-[#5a5cc8] disabled:opacity-50 text-white px-5 py-2 rounded text-sm font-medium transition-colors">
@@ -805,14 +806,19 @@ export default function ScalarPermutationsTab({
             Replay
           </button>
         )}
-        {hasPendingInfo && (
+        {answerButtons}
+      </div>
+      {/* Bottom row: Show Answer — kept below Play per direct user
+          direction (2026-05-12) "show answer should always be below
+          play" so it never visually competes with the primary action. */}
+      {hasPendingInfo && (
+        <div className="flex gap-2 flex-wrap items-center mt-2">
           <button onClick={handleShowInfo}
             className="bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#444] text-[#9999ee] px-4 py-2 rounded text-sm transition-colors">
             Show Answer
           </button>
-        )}
-        {answerButtons}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
