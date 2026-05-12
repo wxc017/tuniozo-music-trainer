@@ -75,21 +75,16 @@ export const TONALITY_FAMILIES: TonalityFamilyGroup[] = [
   { key: "maqam", label: "MAQAM", color: "#d08a5a",
     tonalities: ["Rast", "Bayati", "Hijaz", "Saba", "Sikah", "Huzam", "Nikriz", "Hijazkar"] },
   // 31-EDO MOS families — Miracle / Orwell / Magic / Mohajira / Sensi.
-  // Per direct user direction (2026-05-12): the xen-circle staples
-  // Zheanna Erose / Sevish actually compose against.  Each MOS exposes
-  // all its rotations (N modes per N-note MOS) as individual tonalities
-  // so the picker shows every selectable starting point.  The banks
-  // themselves live in tonalityBanks.ts (buildMosBanksFor31).
-  { key: "miracle",  label: "MIRACLE",  color: "#bf6cd0",
-    tonalities: Array.from({ length: 10 }, (_, i) => `Miracle ${i + 1}`) },
-  { key: "orwell",   label: "ORWELL",   color: "#5cbfae",
-    tonalities: Array.from({ length:  9 }, (_, i) => `Orwell ${i + 1}`) },
-  { key: "magic",    label: "MAGIC",    color: "#d0a050",
-    tonalities: Array.from({ length: 16 }, (_, i) => `Magic ${i + 1}`) },
-  { key: "mohajira", label: "MOHAJIRA", color: "#a07ad0",
-    tonalities: Array.from({ length:  7 }, (_, i) => `Mohajira ${i + 1}`) },
-  { key: "sensi",    label: "SENSI",    color: "#70a8c8",
-    tonalities: Array.from({ length:  8 }, (_, i) => `Sensi ${i + 1}`) },
+  // One tonality per MOS (the canonical bright-side rotation); numbered
+  // rotations were dropped per direct user direction (2026-05-12):
+  // "some of these names are non sense dont have the modes and magic 1
+  // is just Ionian".  The banks themselves live in tonalityBanks.ts
+  // (buildMosBanksFor31).
+  { key: "miracle",  label: "MIRACLE",  color: "#bf6cd0", tonalities: ["Miracle"]  },
+  { key: "orwell",   label: "ORWELL",   color: "#5cbfae", tonalities: ["Orwell"]   },
+  { key: "magic",    label: "MAGIC",    color: "#d0a050", tonalities: ["Magic"]    },
+  { key: "mohajira", label: "MOHAJIRA", color: "#a07ad0", tonalities: ["Mohajira"] },
+  { key: "sensi",    label: "SENSI",    color: "#70a8c8", tonalities: ["Sensi"]    },
 ];
 
 const MEANTONE_LIMIT_SECTIONS: { key: string; label: string; color: string; familyKeys: string[] }[] = [
