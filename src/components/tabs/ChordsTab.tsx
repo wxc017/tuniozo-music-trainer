@@ -2434,6 +2434,7 @@ export default function ChordsTab({
               defaults to "Fixed Register" via useLS; the playback
               path silently uses that value with no UI exposure. */}
         </div>
+      {/* Top row: Play / Stop / Replay (action). */}
       <div className="flex gap-2 flex-wrap items-center">
         <button onClick={startFunctionalLoop} disabled={isLooping || !canPlay}
           title={disabledReason ?? undefined}
@@ -2455,16 +2456,21 @@ export default function ChordsTab({
             Replay
           </button>
         )}
-        {fhDetailInfo && (
+        {answerButtons}
+      </div>
+      {/* Bottom row: Show Answer — kept below Play per direct user
+          direction (2026-05-12) "show answer should always be below
+          play" so it never visually competes with the primary action. */}
+      {fhDetailInfo && (
+        <div className="flex gap-2 flex-wrap items-center mt-2">
           <button
             onClick={() => { setCollapsedProgressions(false); showFhAnswer(); }}
             disabled={isLooping}
             className="bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-50 border border-[#444] text-[#e0a040] px-4 py-2 rounded text-sm transition-colors">
             {fhShowAnswer ? "Replay Answer" : "Show Answer"}
           </button>
-        )}
-        {answerButtons}
-      </div>
+        </div>
+      )}
       </div>
     </div>
   );
