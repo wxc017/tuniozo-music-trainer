@@ -590,31 +590,27 @@ export default function ScalarPermutationsTab({
           </span>
         </div>
         {!collapsedOptions && (
-          <div className="flex flex-wrap gap-3 items-end px-3 pb-3 pt-1">
-            <div>
-              <label className="text-xs text-[#888] block mb-1">Length Filter</label>
-              <select value={lengthFilter} onChange={e => setLengthFilter(e.target.value)}
-                className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-                {LENGTH_OPTIONS.map(l => <option key={l}>{l}</option>)}
-              </select>
+          <div className="px-3 pb-3 pt-1 space-y-3">
+            {/* Length filter at the top of OPTIONS so it reads as a
+                global filter that applies to all family categories
+                nested below. */}
+            <div className="flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="text-xs text-[#888] block mb-1">Length Filter</label>
+                <select value={lengthFilter} onChange={e => setLengthFilter(e.target.value)}
+                  className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
+                  {LENGTH_OPTIONS.map(l => <option key={l}>{l}</option>)}
+                </select>
+              </div>
+              <div className="text-xs text-[#555]">
+                {FAMILY_NAMES.filter(f => checked.has(f)).length} families selected
+              </div>
             </div>
-            <div className="text-xs text-[#555]">
-              {FAMILY_NAMES.filter(f => checked.has(f)).length} families selected
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Family rows grouped into three collapsible categories per
-          direct user direction (2026-05-12) "organize these into three
-          tabs Chord-based, Jazz-Inspired, Permutations" with "where i
-          can collapse like a list".  Each category header shows the
-          on/off count for its families and toggles a collapse. */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-3 mb-1">
-          <button onClick={() => setChecked(new Set(FAMILY_NAMES))} className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">All</button>
-          <button onClick={() => setChecked(new Set())} className="text-[9px] text-[#555] hover:text-[#9999ee] border border-[#222] rounded px-2 py-0.5">None</button>
-        </div>
+            {/* Family-category collapsibles nested inside OPTIONS per
+                direct user direction (2026-05-12) "these should be
+                under options" — folding OPTIONS hides the entire
+                family picker, leaving only Tonalities + Play visible. */}
+            <div className="space-y-2">
         {CATEGORY_ORDER.map(cat => {
           // Order families within this category by pedagogical
           // importance per CATEGORY_FAMILY_ORDER, falling back to data-
@@ -751,6 +747,9 @@ export default function ScalarPermutationsTab({
             </div>
           );
         })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Show Answer panel — Roman-numeral chord context (when
