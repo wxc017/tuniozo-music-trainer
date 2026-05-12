@@ -1701,13 +1701,17 @@ function generateBebopFragment(length: number, enabled?: Set<string>): { degrees
   const dirs = ["ascending", "descending"];
   const dir = pickAllowed(dirs, d => d, enabled);
   const ascending = dir === "ascending";
-
+  // Random start across the FULL scale, not the bottom or top half —
+  // per direct user direction (2026-05-12) "they should just be
+  // formulas that can start from any scale degree".  Ascending starts
+  // anywhere in [0, 7) so we always have room to walk up at least one
+  // step; descending starts anywhere in [1, 8] so we always have room
+  // to walk down.
   if (ascending) {
-    const start = Math.floor(Math.random() * 4); // start on 1-4
+    const start = Math.floor(Math.random() * 7); // 0..6  ("1".."7")
     const raw: string[] = [];
     for (let i = start; raw.length < length + 4 && i < scale.length; i++) {
       raw.push(scale[i]);
-      // Insert chromatic passing tone with some probability
       if (i + 1 < scale.length) {
         const key = `${scale[i]}_${scale[i + 1]}`;
         const chromatic = BEBOP_CHROMATICS[key];
@@ -1716,7 +1720,7 @@ function generateBebopFragment(length: number, enabled?: Set<string>): { degrees
     }
     return { degrees: raw.slice(0, length), variant: `ascending bebop scale fragment from ${scale[start]}` };
   } else {
-    const start = 4 + Math.floor(Math.random() * 4); // start on 5-8
+    const start = 1 + Math.floor(Math.random() * 7); // 1..7  ("2".."8")
     const raw: string[] = [];
     for (let i = start; raw.length < length + 4 && i >= 0; i--) {
       raw.push(scale[i]);
