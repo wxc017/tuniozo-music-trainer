@@ -646,35 +646,13 @@ export default function ScalarPermutationsTab({
         )}
       </div>
 
-      {/* Length filter + Note Length — always visible (no collapsible)
-          per direct user direction (2026-05-12) "these should be
-          always visible never collapsible and above the play buttons
-          for scalar permutations".  Lifted out of the OPTIONS
-          collapsible so the user can adjust playback parameters
-          without expanding any section. */}
-      <div className="flex flex-wrap gap-3 items-end px-3 py-2 bg-[#0e0e0e] border border-[#1a1a1a] rounded">
-        <div>
-          <label className="text-xs text-[#888] block mb-1">Length Filter</label>
-          <select value={lengthFilter} onChange={e => setLengthFilter(e.target.value)}
-            className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
-            {LENGTH_OPTIONS.map(l => <option key={l}>{l}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-[#888] block mb-1">Note Length (s)</label>
-          <input type="number" min={0.2} max={1.5} step={0.05}
-            value={(noteGap / 1000).toFixed(2)}
-            onChange={e => {
-              const v = parseFloat(e.target.value);
-              if (!isNaN(v)) setNoteGap(Math.max(200, Math.min(1500, Math.round(v * 1000))));
-            }}
-            className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white text-center focus:outline-none"
-          />
-        </div>
-        <div className="text-xs text-[#555]">
-          {FAMILY_NAMES.filter(f => checked.has(f)).length} families selected
-        </div>
-      </div>
+      {/* Length filter + Note Length row moved to right ABOVE the
+          Play row per direct user direction (2026-05-12) "these need
+          to be above the play button not below tonality" — the row
+          was sitting between TONALITIES and FAMILIES which made it
+          feel like a settings section rather than a playback
+          parameter.  See <playControlsRow /> JSX just above the
+          Random Permutation button. */}
 
       {/* Family categories — collapsible per direct user direction
           (2026-05-12) "these should be under options" (kept for the
@@ -849,6 +827,35 @@ export default function ScalarPermutationsTab({
           family pickers + play button anchored at consistent vertical
           positions instead of getting pushed down whenever Show
           Answer renders. */}
+
+      {/* Length Filter + Note Length — always visible, immediately
+          above the Play row per direct user direction (2026-05-12)
+          "these need to be above the play button not below
+          tonality".  Acts as the playback-parameter row that the
+          user adjusts right before pressing Play. */}
+      <div className="flex flex-wrap gap-3 items-end px-3 py-2 bg-[#0e0e0e] border border-[#1a1a1a] rounded">
+        <div>
+          <label className="text-xs text-[#888] block mb-1">Length Filter</label>
+          <select value={lengthFilter} onChange={e => setLengthFilter(e.target.value)}
+            className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
+            {LENGTH_OPTIONS.map(l => <option key={l}>{l}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-[#888] block mb-1">Note Length (s)</label>
+          <input type="number" min={0.2} max={1.5} step={0.05}
+            value={(noteGap / 1000).toFixed(2)}
+            onChange={e => {
+              const v = parseFloat(e.target.value);
+              if (!isNaN(v)) setNoteGap(Math.max(200, Math.min(1500, Math.round(v * 1000))));
+            }}
+            className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white text-center focus:outline-none"
+          />
+        </div>
+        <div className="text-xs text-[#555]">
+          {FAMILY_NAMES.filter(f => checked.has(f)).length} families selected
+        </div>
+      </div>
 
       {/* Top row: Play / Replay (primary action). */}
       <div className="flex gap-2 flex-wrap items-center">
