@@ -308,13 +308,12 @@ export default function App() {
   // Melody tab to Pythagorean, which has no Melody), fall back to the
   // first tab in the temperament's list.
   const temperamentTabs: Tab[] = TEMPERAMENT_TABS[temperament];
-  // Snap activeTab to a valid tab for the current temperament whenever the
-  // user crosses a boundary (e.g. 31-EDO Melody → 41-EDO, where Melody
-  // doesn't exist).  Without this the tab content would render nothing.
-  useEffect(() => {
-    if (!temperamentTabs.includes(activeTab)) setActiveTab(temperamentTabs[0]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [temperament]);
+  // The drone-filtered list (visibleTemperamentTabs) is computed
+  // further down — `betaChordDrone` is declared together with the
+  // other beta flags, which sits after this point.  Define a forward
+  // reference here via a useRef-style placeholder is overkill; the
+  // simpler fix is to defer the filter + snap-to-valid effect until
+  // after the flag exists.  See line ~395 below.
   const [vizType, setVizType] = useLS<VisualizerType>("lt_app_vizType", "lumatone");
   const [tonicPc, setTonicPc] = useLS<number>("lt_app_tonic", 0);
   // Exercise range — absolute pitch bounds (both inclusive). Set by clicking
@@ -376,12 +375,28 @@ export default function App() {
   const [betaComma_raw, setBetaComma] = useLS<boolean>("lt_beta_comma", false);
   const [betaMathLab_raw, setBetaMathLab] = useLS<boolean>("lt_beta_math_lab", false);
   const [betaTransform_raw, setBetaTransform] = useLS<boolean>("lt_beta_transform", false);
+  const [betaChordDrone_raw, setBetaChordDrone] = useLS<boolean>("lt_beta_chord_drone", false);
   const [betaMode_raw, setBetaMode] = useLS<boolean>("lt_beta_mode", false);
   const betaPlayRotation   = BETA_AVAILABLE && betaPlayRotation_raw;
   const betaIntervalChain  = BETA_AVAILABLE && betaIntervalChain_raw;
   const betaComma          = BETA_AVAILABLE && betaComma_raw;
   const betaMathLab        = BETA_AVAILABLE && betaMathLab_raw;
   const betaTransform      = BETA_AVAILABLE && betaTransform_raw;
+  const betaChordDrone     = BETA_AVAILABLE && betaChordDrone_raw;
+
+  // Filter Drone out of the temperament's tabs unless betaChordDrone
+  // is on — Chord Drone moved behind the beta gate 2026-05-12 per
+  // direct user direction "put chord drone in beta features".  The
+  // full TEMPERAMENT_TABS list still references it so flipping the
+  // beta on immediately surfaces the tab without further plumbing.
+  const visibleTemperamentTabs: Tab[] = temperamentTabs.filter(t => t !== "drone" || betaChordDrone);
+  // Snap activeTab to a valid tab for the current temperament whenever
+  // the user crosses a boundary, OR whenever the Chord Drone beta is
+  // toggled off while the user is currently viewing the Drone tab.
+  useEffect(() => {
+    if (!visibleTemperamentTabs.includes(activeTab)) setActiveTab(visibleTemperamentTabs[0]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [temperament, betaChordDrone]);
   // Master "Beta" gate: when off, hides experimental modes from the
   // section picker.  Always false in production (see BETA_AVAILABLE).
   const betaMode           = BETA_AVAILABLE && betaMode_raw;
@@ -1416,7 +1431,7 @@ export default function App() {
         <div className="flex gap-1 flex-wrap items-center mb-4">
           <PresetBar onPresetLoaded={() => setTabKey(k => k + 1)} />
           <div className="w-px h-4 bg-[#2a2a2a]" />
-          {temperamentTabs.map(t => (
+          {visibleTemperamentTabs.map(t => (
             <button key={t} onClick={() => { stopAllAudio(); setActiveTab(t); }}
               className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                 activeTab === t ? "bg-[#7173e6] text-white"
@@ -1868,6 +1883,13 @@ export default function App() {
           onBetaMathLabChange={(v) => {
             setBetaMathLab(v);
             if (!v && section === "math-lab") setSection("ear-trainer");
+          }}
+          betaChordDrone={betaChordDrone}
+          onBetaChordDroneChange={(v) => {
+            setBetaChordDrone(v);
+            // Snap off the Drone tab if it's currently active and beta
+            // is being turned off.
+            if (!v && activeTab === "drone") setActiveTab("intervals");
           }}
           betaMode={betaMode}
           onBetaModeChange={(v) => {
