@@ -1725,13 +1725,34 @@ export default function ChordsTab({
       </div>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* PROGRESSIONS section                                           */}
+      {/* PROGRESSIONS section — collapsible 2026-05-12 per direct user  */}
+      {/* direction "make progressions it own collapsible and put play   */}
+      {/* at the bottom".  The Play row was moved out of this section to */}
+      {/* sit at the very bottom of the tab; this collapsible body now   */}
+      {/* houses Settings + Show-Answer reveal only.  Show Answer auto-  */}
+      {/* expands this section so the reveal becomes visible after the   */}
+      {/* user clicks it.                                                */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <div className="bg-[#141008] border border-[#2a2210] rounded-lg px-4 py-3 space-y-3">
-            <p className="text-xs text-[#a08840] leading-relaxed">
-              Automatically builds looping progressions from your selected chords using functional-harmony rules.
-              The engine finds chord movements that make musical sense and loops them continuously.
-            </p>
+      <div className="bg-[#141008] border border-[#2a2210] rounded-lg">
+        <div
+          onClick={() => setCollapsedProgressions(v => !v)}
+          className="flex items-center gap-2 px-4 py-2 cursor-pointer select-none transition-colors hover:bg-[#1a140c]"
+          style={{ borderLeft: "3px solid #e0a040" }}
+        >
+          <span className="text-[10px] text-[#866c30] w-3">{collapsedProgressions ? "▸" : "▾"}</span>
+          <span className="text-xs font-semibold tracking-wider text-[#e0a040]">PROGRESSIONS</span>
+          <span className="text-[10px] text-[#866c30] ml-auto">
+            loop: {loopLength} · {regMode.replace(/.+ /, "")}
+          </span>
+        </div>
+        {!collapsedProgressions && (
+        <div className="px-4 pb-3 pt-1 space-y-3">
+            {/* Description paragraph removed 2026-05-12 per direct
+                user direction "remove the harmony option from the
+                play in chords as well its redundant" — the
+                functional-harmony explanatory blurb above the
+                controls was redundant with the section heading
+                "PROGRESSIONS" itself.  Controls row follows directly. */}
 
             {/* Controls row */}
             <div className="flex gap-4 flex-wrap items-end">
@@ -1830,58 +1851,11 @@ export default function ChordsTab({
               )}
             </div>
 
-            {/* Sentinel: lives just above the play row.  The
-                IntersectionObserver above flips `pinPlayRow` true
-                once this sentinel scrolls up past the viewport top. */}
-            <div ref={playRowSentinelRef} aria-hidden style={{ height: 1 }} />
-
-            {/* Play / Stop / Replay / Show Answer — pinned to the
-                viewport top via position:fixed when the user has
-                scrolled past the row's natural position AND the
-                harmonic lattice hasn't yet fully scrolled out.  CSS
-                position:sticky was unreliable inside the chord tab's
-                nested flex layout, so the IntersectionObserver
-                sentinels (just above this row + just after the
-                lattice) drive the pinning explicitly.  When pinned
-                we render a matching-height spacer below so the
-                following content doesn't collapse upward. */}
-            <div className={
-                pinPlayRow
-                  ? "flex gap-2 flex-wrap items-center fixed top-0 left-0 right-0 z-50 bg-[#0d0d0d] py-2 px-4 border-b border-[#1e1e1e] shadow-md shadow-black/40"
-                  : "flex gap-2 flex-wrap items-center bg-[#0d0d0d] py-2 -mx-4 px-4 border-b border-[#1e1e1e]"
-              }>
-              <button onClick={startFunctionalLoop} disabled={isLooping || !canPlay}
-                title={disabledReason ?? undefined}
-                className="bg-[#e0a040] hover:bg-[#c89030] disabled:opacity-50 disabled:cursor-not-allowed text-black px-5 py-2 rounded text-sm font-bold transition-colors">
-                Play
-              </button>
-              {disabledReason && (
-                <span className="text-[10px] text-[#c06060]">{disabledReason}</span>
-              )}
-              {isLooping && (
-                <button onClick={stopLoop}
-                  className="bg-[#3a1a1a] hover:bg-[#4a2020] border border-[#6a3a3a] text-[#e06060] px-4 py-2 rounded text-sm font-bold transition-colors">
-                  Stop
-                </button>
-              )}
-              {fhFramesRef.current && fhFramesRef.current.length > 0 && !isLooping && (
-                <button onClick={replayFunctionalLoop}
-                  className="bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#333] text-[#aaa] px-4 py-2 rounded text-sm transition-colors">
-                  Replay
-                </button>
-              )}
-              {fhDetailInfo && (
-                <button onClick={showFhAnswer} disabled={isLooping}
-                  className="bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-50 border border-[#444] text-[#e0a040] px-4 py-2 rounded text-sm transition-colors">
-                  {fhShowAnswer ? "Replay Answer" : "Show Answer"}
-                </button>
-              )}
-              {answerButtons}
-            </div>
-            {/* Layout spacer — only present while the row is pinned
-                (rendered as fixed and pulled out of the flow), so the
-                following content doesn't visually jump upward. */}
-            {pinPlayRow && <div aria-hidden style={{ height: 56 }} />}
+            {/* Play row relocated to the bottom of the tab 2026-05-12
+                per direct user direction "put play at the bottom".
+                The pinPlayRow IntersectionObserver logic is retained
+                but no longer triggers anything visible — the play row
+                is always at the bottom now. */}
 
             {/* Answer — only visible after clicking Show Answer.
                 Per-chord rows with clickable tone buttons; each tone
@@ -2381,7 +2355,9 @@ export default function ChordsTab({
                 releases instead of riding the rest of the page. */}
             <div ref={latticeEndSentinelRef} aria-hidden style={{ height: 1 }} />
 
-          </div>
+        </div>
+        )}
+      </div>
 
           {/* Extensions + Voicings — wrapped in a collapsible section
               2026-05-12 per direct user direction "chords should have
@@ -2456,6 +2432,43 @@ export default function ChordsTab({
             Pick at least one tonality above to choose chords.
           </div>
         )}
+      </div>
+
+      {/* Play / Stop / Replay / Show Answer — relocated to the bottom
+          of the tab 2026-05-12 per direct user direction "put play at
+          the bottom".  Show Answer auto-expands the PROGRESSIONS
+          collapsible so the reveal becomes visible without the user
+          having to manually expand it. */}
+      <div className="flex gap-2 flex-wrap items-center bg-[#0d0d0d] py-2 px-4 border-y border-[#1e1e1e]">
+        <button onClick={startFunctionalLoop} disabled={isLooping || !canPlay}
+          title={disabledReason ?? undefined}
+          className="bg-[#e0a040] hover:bg-[#c89030] disabled:opacity-50 disabled:cursor-not-allowed text-black px-5 py-2 rounded text-sm font-bold transition-colors">
+          Play
+        </button>
+        {disabledReason && (
+          <span className="text-[10px] text-[#c06060]">{disabledReason}</span>
+        )}
+        {isLooping && (
+          <button onClick={stopLoop}
+            className="bg-[#3a1a1a] hover:bg-[#4a2020] border border-[#6a3a3a] text-[#e06060] px-4 py-2 rounded text-sm font-bold transition-colors">
+            Stop
+          </button>
+        )}
+        {fhFramesRef.current && fhFramesRef.current.length > 0 && !isLooping && (
+          <button onClick={replayFunctionalLoop}
+            className="bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#333] text-[#aaa] px-4 py-2 rounded text-sm transition-colors">
+            Replay
+          </button>
+        )}
+        {fhDetailInfo && (
+          <button
+            onClick={() => { setCollapsedProgressions(false); showFhAnswer(); }}
+            disabled={isLooping}
+            className="bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-50 border border-[#444] text-[#e0a040] px-4 py-2 rounded text-sm transition-colors">
+            {fhShowAnswer ? "Replay Answer" : "Show Answer"}
+          </button>
+        )}
+        {answerButtons}
       </div>
     </div>
   );
