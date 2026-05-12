@@ -268,6 +268,17 @@ export default function ChordsTab({
   const [loopInfo, setLoopInfo] = useState<string>("");
   const [fhDetailInfo, setFhDetailInfo] = useState<string>("");
   const [fhShowAnswer, setFhShowAnswer] = useState(false);
+  // Show-Target "silent visualizer" state per direct user direction
+  // (2026-05-12) "for show target it shouldnt play any audio, it
+  // should visualize in sequence on the visualizer and give
+  // information at the bottom for what chords and what inversions".
+  // Holds the per-chord description (Roman + quality + inversion)
+  // shown while the visualizer steps through the loop with no audio.
+  const [targetChordInfo, setTargetChordInfo] = useState<{
+    progression: string;
+    perChord: { roman: string; quality: string; inversion: string }[];
+    activeIndex: number;
+  } | null>(null);
   // Pre-warm piper TTS for the most common syllables on first
   // mount so the first user click on a syllable doesn't pay the
   // ~5–10 s cold-start cost (worker init + ONNX runtime fetch +
@@ -1499,15 +1510,64 @@ export default function ChordsTab({
     fhVoicesRef.current = voices;
     lastPlayed.current = { frames: voices.chords, info };
     onPlay(`crd:fh:${info}`, `Chords: ${info}`);
-    onResult(`Listen to the loop...`);
 
     const gapMs = loopGap * 1000;
     const noteDur = chordDur;
+
+    // Show-Target branch: no audio, just step the visualizer through
+    // each chord and surface chord / inversion info at the bottom.
+    // Inversion is detected from the lowest pitch class relative to
+    // the chord root: 0 = root position, 3rd's pc offset = 1st inv,
+    // 5th's pc offset = 2nd inv, 7th's pc offset = 3rd inv.
+    if (responseMode === "Show Target (Sing It)") {
+      onResult(`Watch the loop — sing it back...`);
+      const perChord = progression.map((rn, idx) => {
+        const applied = voices.appliedShapes[idx];
+        const quality = applied ? triadQuality(applied, edo) : "?";
+        const chordPitches = voices.chords[idx] ?? [];
+        let inversion = "root";
+        if (applied && chordPitches.length >= 2) {
+          const rootPc = ((applied[0] % edo) + edo) % edo;
+          const lowestPc = ((chordPitches[0] % edo) + edo) % edo;
+          const offset = ((lowestPc - rootPc) % edo + edo) % edo;
+          // Compare against applied[1..3] offsets to identify inversion.
+          const offsets = applied.map(n => (((n - applied[0]) % edo) + edo) % edo);
+          const inv = offsets.indexOf(offset);
+          inversion = inv === 0 ? "root pos"
+                    : inv === 1 ? "1st inv"
+                    : inv === 2 ? "2nd inv"
+                    : inv === 3 ? "3rd inv"
+                    : `low ${intervalLabel(offset, edo)}`;
+        }
+        return { roman: rn, quality, inversion };
+      });
+      setTargetChordInfo({ progression: info, perChord, activeIndex: -1 });
+      setIsLooping(true);
+      for (let i = 0; i < voices.chords.length; i++) {
+        const frame = voices.chords[i];
+        const t = i * gapMs;
+        const id = setTimeout(() => {
+          onHighlight(frame);
+          setTargetChordInfo(prev => prev ? { ...prev, activeIndex: i } : prev);
+        }, t);
+        frameTimers.current.push(id);
+      }
+      const d = setTimeout(() => {
+        setIsLooping(false);
+        onHighlight([]);
+        setTargetChordInfo(prev => prev ? { ...prev, activeIndex: -1 } : prev);
+      }, voices.chords.length * gapMs + 500);
+      frameTimers.current.push(d);
+      return;
+    }
+
+    setTargetChordInfo(null);
+    onResult(`Listen to the loop...`);
     setIsLooping(true);
     playVoices(voices, gapMs, noteDur, playVol * 0.7);
     const d = setTimeout(() => { setIsLooping(false); }, voices.chords.length * gapMs + 500);
     frameTimers.current.push(d);
-  }, [ensureAudio, stopLoop, tonalitySet, buildEffectiveCheckedForTonality, buildChordMapForTonality, buildApproachEntriesForTonality, buildDiatonicScaleRootsForTonality, lastPlayed, loopLength, loopGap, chordDur, buildLoopFrames, playVoices, onPlay, onResult, edo, tonicPc, playVol, textureLayers, xenByTonality]);
+  }, [ensureAudio, stopLoop, tonalitySet, buildEffectiveCheckedForTonality, buildChordMapForTonality, buildApproachEntriesForTonality, buildDiatonicScaleRootsForTonality, lastPlayed, loopLength, loopGap, chordDur, buildLoopFrames, playVoices, onHighlight, onPlay, onResult, edo, tonicPc, playVol, responseMode, textureLayers, xenByTonality]);
 
   const replayFunctionalLoop = useCallback(() => {
     const voices = fhVoicesRef.current;
@@ -1988,6 +2048,37 @@ export default function ChordsTab({
             className="bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-50 border border-[#444] text-[#e0a040] px-4 py-2 rounded text-sm transition-colors">
             {fhShowAnswer ? "Replay Answer" : "Show Answer"}
           </button>
+        </div>
+      )}
+      {/* Show-Target info panel — surfaces chord + inversion per step
+          when responseMode is "Show Target (Sing It)".  Per direct
+          user direction (2026-05-12) "for show target it shouldnt
+          play any audio, it should visualize in sequence on the
+          visualizer and give information at the bottom for what
+          chords and what inversions". */}
+      {targetChordInfo && (
+        <div className="bg-[#0e0e0e] border border-[#3a3a8a] rounded p-3 mt-2 space-y-1">
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-[10px] text-[#7a7af0] font-semibold tracking-wider">SHOW TARGET</span>
+            <span className="text-[11px] text-[#aaa] font-mono">{targetChordInfo.progression}</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {targetChordInfo.perChord.map((c, i) => {
+              const active = i === targetChordInfo.activeIndex;
+              return (
+                <div key={i}
+                  className={`px-2 py-1 rounded border text-[11px] transition-colors ${
+                    active
+                      ? "bg-[#3a3a8a] border-[#7a7af0] text-white"
+                      : "bg-[#1a1a2a] border-[#2a2a3a] text-[#888]"
+                  }`}>
+                  <span className="font-mono font-semibold">[{i + 1}] {c.roman}</span>
+                  <span className="text-[#666] ml-1">({c.quality})</span>
+                  <span className="text-[#9999cc] ml-1">· {c.inversion}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
       {fhShowAnswer && fhAnswer && (() => {
