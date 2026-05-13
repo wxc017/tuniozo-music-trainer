@@ -1110,6 +1110,11 @@ export default function NoteEntryMode({ controlledActiveId, onBack }: NoteEntryM
   const [notes, setNotes] = useState<NoteData[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [duration, setDuration] = useState<Duration>("q");
+  // Editor visibility — when hidden, the toolbar rows collapse so the
+  // score area can be viewed alone (e.g. for sight-reading or before
+  // exporting).  Per direct user direction (2026-05-13) "further allow
+  // me to hide the editor".
+  const [editorHidden, setEditorHidden] = useState(false);
   // Update layout density for 16th/32nd note grids (2 bars per line, double width)
   // Derive from actual note content OR selected duration tool
   const _denseGrid = duration === "16" || duration === "32"
@@ -1894,7 +1899,21 @@ export default function NoteEntryMode({ controlledActiveId, onBack }: NoteEntryM
 
   return (
     <div className="flex flex-col h-full max-w-6xl mx-auto w-full" onKeyDown={() => {}}>
+      {/* Hide-editor toggle — always visible above the toolbar so the
+          user can collapse the editing chrome and see the score on
+          its own.  Per direct user direction (2026-05-13) "further
+          allow me to hide the editor". */}
+      <div className="flex items-center gap-2 py-1">
+        <button
+          onClick={() => setEditorHidden(v => !v)}
+          className="text-[10px] px-2 py-1 rounded border border-[#222] text-[#888] hover:text-[#9999ee] hover:border-[#3a3a5a] transition-colors"
+          title={editorHidden ? "Show editor toolbars" : "Hide editor toolbars"}
+        >
+          {editorHidden ? "▸ Show editor" : "▾ Hide editor"}
+        </button>
+      </div>
       {/* ── Toolbar rows ── */}
+      {!editorHidden && (
       <div className="flex flex-wrap items-center gap-2 py-2">
         {/* Projects + Duration + Rest + Accidentals */}
         <div className="flex items-center gap-2 bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2">
@@ -1968,6 +1987,7 @@ export default function NoteEntryMode({ controlledActiveId, onBack }: NoteEntryM
           <NoteEntryLogBar activeProject={activeProject} />
         </div>
       </div>
+      )}
 
       {/* ── YouTube Sync panel — above the score ── */}
       {showYT && (
