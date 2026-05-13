@@ -2163,10 +2163,9 @@ export default function ChordsTab({
                       {headerLabel}
                     </div>
                   </div>
-                  {/* Voicing notes — one cell per pitch, each cell shows
-                      degree (top) + Andrew Heathwaite solfege (bottom).
-                      Single row reflecting the ACTUAL voicing from the
-                      bank, not generated permutations. */}
+                  {/* Voicing notes — one cell per pitch (the actual
+                      voicing picked from the voicings bank).  Degree
+                      (top) + Andrew Heathwaite solfege (bottom). */}
                   <div className="flex gap-1">
                     {c.pitches.map((pitch, j) => {
                       const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
@@ -2180,6 +2179,56 @@ export default function ChordsTab({
                       );
                     })}
                   </div>
+                  {/* Permutation rows — alternative voicings for the
+                      singer to practice per direct user direction
+                      (2026-05-13) "i still want all the permuations
+                      below".  N inversions (rotated voicings) +
+                      N retrogrades; each row labeled with slash-form
+                      inversion notation matching the header style.
+                      Descending (retrograde) rows append ↓. */}
+                  {(() => {
+                    const pcs = c.pitches.map(p => ((p - tonicPc) % edo + edo) % edo);
+                    const inversions: number[][] = [];
+                    for (let k = 0; k < pcs.length; k++) {
+                      inversions.push([...pcs.slice(k), ...pcs.slice(0, k)]);
+                    }
+                    const labelFor = (permPcs: number[]): string => {
+                      if (!permPcs.length) return c.roman;
+                      const bassRel = ((permPcs[0] - c.chordRootPc) % edo + edo) % edo;
+                      const idx = c.chordToneOffsets.indexOf(bassRel);
+                      const num = idx >= 0 ? CHORD_TONE_NUM[idx] : null;
+                      return num && num !== 1 ? `${num}/${c.roman}` : c.roman;
+                    };
+                    const rows = [
+                      ...inversions.map(inv => ({ label: labelFor(inv), pcs: inv })),
+                      ...inversions.map(inv => {
+                        const rev = [...inv].reverse();
+                        return { label: `${labelFor(inv)}↓`, pcs: rev };
+                      }),
+                    ];
+                    return (
+                      <div className="mt-3 pt-2 border-t border-[#2a2a3a] space-y-1">
+                        <div className="text-[8px] text-[#666] uppercase tracking-wider mb-1">Voicing permutations</div>
+                        {rows.map((row, ri) => (
+                          <div key={ri} className="flex items-center gap-1">
+                            <span className="text-[9px] text-[#a07ec0] font-mono w-10 text-right flex-shrink-0">{row.label}</span>
+                            <div className="flex gap-1 flex-1">
+                              {row.pcs.map((pc, j) => {
+                                const solfege = heathwaiteTable ? heathwaiteTable[pc] ?? "—" : "—";
+                                const degree = pythagoreanDegree(pc);
+                                return (
+                                  <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#141420] border-[#2a2a3a] px-0.5">
+                                    <span className="text-[9px] font-mono font-bold leading-tight text-[#9999ee]">{degree}</span>
+                                    <span className="text-[8px] leading-tight text-[#888]">{solfege}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </button>
               );
             })}
