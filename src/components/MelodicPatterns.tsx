@@ -2453,7 +2453,7 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
                           {/* Scale degree relative to tonic — colored by category */}
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border hover:brightness-125 transition-all w-full overflow-hidden"
                             style={{ height: 24, borderColor: catColor + "80", backgroundColor: catColor + "15", color: catColor }}>
-                            {renderAccidentals(degreeName(((pc - tonicRoot) % edo + edo) % edo, edo))}{octLabel && <span className="text-[8px] ml-0.5 opacity-70">{octLabel}</span>}
+                            {renderAccidentals(degreeName(((pc - tonicRoot) % edo + edo) % edo, edo))}{octLabel && <sup className="text-[7px] ml-0.5 opacity-70">{octLabel.trim()}</sup>}
                           </span>
                           {/* Extension name relative to chord root — colored by chord function */}
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all w-full overflow-hidden"
@@ -2492,7 +2492,7 @@ export default function MelodicPatterns({ restoreTrigger = 0 }: { restoreTrigger
                             onClick={e => { e.stopPropagation(); previewPc(pcV); }}>
                             <span className="w-12 h-7 flex items-center justify-center rounded text-[10px] font-bold border hover:brightness-125 transition-all"
                               style={{ borderColor: catColorV + "60", backgroundColor: catColorV + "10", color: catColorV + "cc" }}>
-                              {renderAccidentals(degreeName(pcV, edo))}{octLabelV && <span className="text-[9px] ml-0.5 opacity-70">{octLabelV}</span>}
+                              {renderAccidentals(degreeName(pcV, edo))}{octLabelV && <sup className="text-[8px] ml-0.5 opacity-70">{octLabelV.trim()}</sup>}
                             </span>
                           </div>
                         );
@@ -3310,7 +3310,7 @@ function PatternDrillSection({
                           )}
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border hover:brightness-125 transition-all w-full overflow-hidden"
                             style={{ height: 24, borderColor: catColor + "80", backgroundColor: catColor + "15", color: catColor }}>
-                            {renderAccidentals(degreeName(((pc - tonicRoot) % edo + edo) % edo, edo))}{octLabel && <span className="text-[8px] ml-0.5 opacity-70">{octLabel}</span>}
+                            {renderAccidentals(degreeName(((pc - tonicRoot) % edo + edo) % edo, edo))}{octLabel && <sup className="text-[7px] ml-0.5 opacity-70">{octLabel.trim()}</sup>}
                           </span>
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 hover:brightness-125 transition-all w-full overflow-hidden"
                             style={{ height: 24, borderColor: chordCatColor + "40", backgroundColor: chordCatColor + "08", color: chordCatColor + "99" }}>
