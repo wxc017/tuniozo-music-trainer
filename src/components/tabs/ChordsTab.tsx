@@ -2225,6 +2225,29 @@ export default function ChordsTab({
         // Chord-tone numbers in stacked thirds, indexed by chordToneOffsets
         // position: 0=root → 1, 1=third → 3, 2=fifth → 5, 3=seventh → 7.
         const CHORD_TONE_NUM = [1, 3, 5, 7];
+        // Per-cell octave displacement to keep a PC sequence
+        // ascending — used to annotate Show Target voicing and
+        // singing-permutation cells with <sup>+N</sup> octave marks
+        // per direct user direction "ensure the permuations have
+        // this as well … for show target".  Reads each PC; whenever
+        // the next PC would land at-or-below the previous absolute
+        // position, bumps the octave counter so the sequence keeps
+        // climbing.  Returns the octave number for each cell.
+        const ascendingOctaves = (pcs: number[]): number[] => {
+          if (pcs.length === 0) return [];
+          const octs: number[] = [0];
+          let prevAbs = pcs[0];
+          for (let k = 1; k < pcs.length; k++) {
+            let oct = octs[k - 1];
+            let abs = pcs[k] + oct * edo;
+            while (abs <= prevAbs) { oct++; abs += edo; }
+            octs.push(oct);
+            prevAbs = abs;
+          }
+          return octs;
+        };
+        const renderOctSup = (oct: number) =>
+          oct !== 0 ? <sup className="text-[7px] ml-0.5 opacity-70">{oct > 0 ? `+${oct}` : `${oct}`}</sup> : null;
         return (
         <div className="bg-[#0e0e0e] border border-[#3a3a8a] rounded p-3 mt-2 space-y-2">
           <div className="flex items-baseline gap-2 mb-1">
@@ -2285,20 +2308,31 @@ export default function ChordsTab({
                   </div>
                   {/* Voicing notes — one cell per pitch (the actual
                       voicing picked from the voicings bank).  Degree
-                      (top) + Andrew Heathwaite solfege (bottom). */}
-                  <div className="flex gap-1">
-                    {c.pitches.map((pitch, j) => {
-                      const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
-                      const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
-                      const degree = pythagoreanDegree(pcFromTonic);
-                      return (
-                        <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#1a1a2a] border-[#2a2a3a] px-1 py-0.5">
-                          <span className="text-[10px] font-mono font-bold leading-tight text-[#9999ee]">{degree}</span>
-                          <span className="text-[9px] leading-tight text-[#aaa]">{solfege}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                      (top, +<sup> octave-offset when above bass) +
+                      Andrew Heathwaite solfege (bottom). */}
+                  {(() => {
+                    const bassAbs = c.pitches.length > 0 ? c.pitches[0] : 0;
+                    return (
+                    <div className="flex gap-1">
+                      {c.pitches.map((pitch, j) => {
+                        const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
+                        const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
+                        const degree = pythagoreanDegree(pcFromTonic);
+                        // Octave shift relative to the bass note —
+                        // exposes the actual vertical structure of the
+                        // played voicing (e.g. 5⁺¹ means the 5th sits
+                        // one octave above the bass).
+                        const oct = Math.floor((pitch - bassAbs) / edo);
+                        return (
+                          <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#1a1a2a] border-[#2a2a3a] px-1 py-0.5">
+                            <span className="text-[10px] font-mono font-bold leading-tight text-[#9999ee]">{degree}{renderOctSup(oct)}</span>
+                            <span className="text-[9px] leading-tight text-[#aaa]">{solfege}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    );
+                  })()}
                   {/* Permutation rows — alternative voicings for the
                       singer to practice per direct user direction
                       (2026-05-13) "i still want all the permuations
@@ -2324,20 +2358,23 @@ export default function ChordsTab({
                     return (
                       <div className="mt-3 pt-2 border-t border-[#2a2a3a] space-y-1">
                         <div className="text-[8px] text-[#666] uppercase tracking-wider mb-1">Singing permutations</div>
-                        {rows.map((permPcs, ri) => (
+                        {rows.map((permPcs, ri) => {
+                          const octs = ascendingOctaves(permPcs);
+                          return (
                           <div key={ri} className="flex gap-1">
                             {permPcs.map((pc, j) => {
                               const solfege = heathwaiteTable ? heathwaiteTable[pc] ?? "—" : "—";
                               const degree = pythagoreanDegree(pc);
                               return (
                                 <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#141420] border-[#2a2a3a] px-0.5">
-                                  <span className="text-[9px] font-mono font-bold leading-tight text-[#9999ee]">{degree}</span>
+                                  <span className="text-[9px] font-mono font-bold leading-tight text-[#9999ee]">{degree}{renderOctSup(octs[j])}</span>
                                   <span className="text-[8px] leading-tight text-[#888]">{solfege}</span>
                                 </div>
                               );
                             })}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     );
                   })()}
