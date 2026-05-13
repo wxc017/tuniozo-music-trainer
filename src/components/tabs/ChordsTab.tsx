@@ -3019,6 +3019,19 @@ function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet
   toggleSet: <T>(s: Set<T>, v: T) => Set<T>;
   betaMode?: boolean;
 }) {
+  // Render voicing-pattern labels with any "+N" / "-N" octave-offset
+  // segment wrapped in <sup> per direct user direction "they still
+  // have +1 they need be superscript" — labels like "1 3+1 5+1"
+  // become "1 3⁺¹ 5⁺¹" visually so the octave offset reads as a
+  // floating exponent rather than inline text.
+  const renderPatternLabel = (label: string) => {
+    const parts = label.split(/([+-]\d+)/);
+    return parts.map((part, i) =>
+      /^[+-]\d+$/.test(part)
+        ? <sup key={i} className="text-[8px] opacity-70">{part}</sup>
+        : <span key={i}>{part}</span>
+    );
+  };
   const selectGroup = (g: string) => {
     const ids = ALL_VOICING_PATTERNS.filter(p => p.group === g).map(p => p.id);
     const n = new Set(checkedPatterns); ids.forEach(id => n.add(id)); setCheckedPatterns(n);
@@ -3071,7 +3084,7 @@ function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet
                   on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
                 }`}
                 style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
-                {p.label}
+                {renderPatternLabel(p.label)}
               </button>
             );
           })}
@@ -3130,7 +3143,7 @@ function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet
                       on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
                     }`}
                     style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
-                    {p.label}
+                    {renderPatternLabel(p.label)}
                   </button>
                 );
               })}
