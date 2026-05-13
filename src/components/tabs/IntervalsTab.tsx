@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import { randomChoice } from "@/lib/musicTheory";
-import { getIntervalNames } from "@/lib/edoData";
+import { getIntervalNames, getHeathwaiteSolfege, getFullDegreeNames } from "@/lib/edoData";
 import { getModeDegreeMap } from "@/lib/musicTheory";
 import { jiLimitGroupsForEdo } from "@/lib/jiTonalityFamilies";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
@@ -108,6 +108,14 @@ export default function IntervalsTab({
   const pendingInfo = useRef<{text: string; isTarget: boolean} | null>(null);
   const [hasPendingInfo, setHasPendingInfo] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
+  // Notes that were played in the last round — drives the card-style
+  // Degrees-played panel per direct user direction (2026-05-12)
+  // "random permuations should show a box of the scale degrees
+  // played with the solfege as well in similar card style" + "same
+  // with intervals".  Each entry carries the absolute pitch so we
+  // can compute pcFromTonic for both the degree label and the
+  // Heathwaite solfege lookup.
+  const [lastPlayedNotes, setLastPlayedNotes] = useState<{ note: number; label: string }[]>([]);
 
   // Recency tracker: maps interval step → sequential play counter when last picked
   const playCounter = useRef(0);
@@ -262,6 +270,7 @@ export default function IntervalsTab({
     setShowTarget(null);
     setInfoText("");
     setHasPendingInfo(false);
+    setLastPlayedNotes(notes);
     pendingInfo.current = { text: `Intervals: ${desc}`, isTarget: responseMode !== "Play Audio" };
     setHasPendingInfo(true);
     onResult(`Intervals: ${desc}`);
@@ -393,12 +402,42 @@ export default function IntervalsTab({
         <button onClick={clearAll} className="text-xs text-[#666] hover:text-[#aaa] px-2 py-1">None</button>
       </div>
 
-      {showTarget && (
-        <div className="bg-[#1a2a1a] border border-[#3a5a3a] rounded p-3 text-sm text-[#8fc88f] font-mono whitespace-pre">{showTarget}</div>
-      )}
-      {infoText && !showTarget && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded p-3 text-xs text-[#888] font-mono whitespace-pre">{infoText}</div>
-      )}
+      {(showTarget || infoText) && lastPlayedNotes.length > 0 && (() => {
+        // Card-style Degrees-played panel per direct user direction
+        // (2026-05-12) "same with intervals" — each played note
+        // shows its scale-degree number on top and the Andrew
+        // Heathwaite solfege below, matching the Scalar
+        // Permutations / Show Target cards.
+        const heathwaiteTable = getHeathwaiteSolfege(edo);
+        const degreeNames = getFullDegreeNames(edo);
+        return (
+          <div className={`rounded p-3 border ${showTarget ? "bg-[#1a2a1a] border-[#3a5a3a]" : "bg-[#141414] border-[#2a2a2a]"}`}>
+            <span className="text-[#666] text-xs block mb-1">Notes played:</span>
+            <div className="flex gap-1 items-stretch flex-wrap">
+              {lastPlayedNotes.map((n, i) => {
+                const pcFromTonic = ((n.note - tonicPc) % edo + edo) % edo;
+                const degree = degreeNames[pcFromTonic] ?? String(pcFromTonic);
+                const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
+                const isAltered = /[b#]/.test(degree);
+                const degColor = isAltered ? "#bb88ee" : showTarget ? "#8fc88f" : "#9999ee";
+                const bg = isAltered ? "bg-[#2a1a3a]" : showTarget ? "bg-[#1a2a1a]" : "bg-[#1a1a2a]";
+                const border = isAltered ? "border-[#6644aa]" : showTarget ? "border-[#3a5a3a]" : "border-[#333]";
+                return (
+                  <div key={i} className={`flex flex-col items-center px-2 py-1 rounded border ${bg} ${border}`}
+                       style={{ minWidth: 36 }}>
+                    <span className="text-[11px] font-mono font-bold leading-tight" style={{ color: degColor }}>
+                      {degree}
+                    </span>
+                    <span className="text-[9px] leading-tight mt-0.5" style={{ color: degColor + "cc" }}>
+                      {solfege}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Tonality quick-fill picker — same LIMIT > FAMILY > MODES
           structure as Spatial Audiation (ChordsTab) so the two tabs

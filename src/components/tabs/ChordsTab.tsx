@@ -19,6 +19,7 @@ import {
   getModeDegreeMap,
   getHeathwaiteSolfege,
   pcToNoteNameWithEnharmonic,
+  getFullDegreeNames,
 } from "@/lib/edoData";
 import { syllableForEdoStep } from "@/lib/microtonalSolfege";
 import { getTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS, type TonalityBank, type ChordEntry, type ApproachKind } from "@/lib/tonalityBanks";
@@ -2068,14 +2069,14 @@ export default function ChordsTab({
           Clicking a card highlights that chord's voicing on the
           visualizer. */}
       {targetChordInfo && (() => {
-        // Andrew Heathwaite solfege table for the current EDO —
-        // drives BOTH solfege rows per direct user direction
-        // (2026-05-12) "use numbers and have the solfege" +
-        // "solfege by scale and solfege by chord" + "andrew".
-        // Numbers (intervalLabel) fill KEY / CHORD; the two solfege
-        // rows show the same syllable lookup applied to the scale-
-        // relative PC and the chord-relative PC respectively.
+        // Andrew Heathwaite solfege table + full degree-name table
+        // for the current EDO.  DEGREE row now uses
+        // getFullDegreeNames so it shows pure numbers ("1", "b3",
+        // "#4") per direct user direction "degree should be the
+        // numbers" — intervalLabel had been emitting "Major 3rd
+        // (Mi)" style strings.
         const heathwaiteTable = getHeathwaiteSolfege(edo);
+        const degreeNames = getFullDegreeNames(edo);
         return (
         <div className="bg-[#0e0e0e] border border-[#3a3a8a] rounded p-3 mt-2 space-y-2">
           <div className="flex items-baseline gap-2 mb-1">
@@ -2131,7 +2132,7 @@ export default function ChordsTab({
                       const solfegeKey = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
                       const solfegeChord = heathwaiteTable ? heathwaiteTable[pcFromChord] ?? "—" : "—";
                       const noteName = pcToNoteNameWithEnharmonic(((tonicPc + pcFromTonic) % edo + edo) % edo, edo) ?? "—";
-                      const degreeLabel = intervalLabel(pcFromTonic, edo);
+                      const degreeLabel = degreeNames[pcFromTonic] ?? String(pcFromTonic);
                       return (
                         <div key={j} className="flex flex-col items-center flex-1 min-w-0">
                           {/* KEY — Heathwaite solfege, scale-relative */}
