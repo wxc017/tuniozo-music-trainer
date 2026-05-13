@@ -389,14 +389,21 @@ export default function App() {
   // direct user direction "put chord drone in beta features".  The
   // full TEMPERAMENT_TABS list still references it so flipping the
   // beta on immediately surfaces the tab without further plumbing.
-  const visibleTemperamentTabs: Tab[] = temperamentTabs.filter(t => t !== "drone" || betaChordDrone);
+  // Show Target (Sing It) only applies to Chords — Scalar Permutations
+  // and Intervals don't have a "sing along" visual mode.  Per direct
+  // user direction (2026-05-13) "remove scalar permuations and
+  // intervals from show target in tonal audiation", restrict the tab
+  // row to Chords (+ Drone if beta) when responseMode is Show Target.
+  const visibleTemperamentTabs: Tab[] = temperamentTabs
+    .filter(t => t !== "drone" || betaChordDrone)
+    .filter(t => responseMode !== "Show Target (Sing It)" || t === "chords" || t === "drone");
   // Snap activeTab to a valid tab for the current temperament whenever
   // the user crosses a boundary, OR whenever the Chord Drone beta is
   // toggled off while the user is currently viewing the Drone tab.
   useEffect(() => {
     if (!visibleTemperamentTabs.includes(activeTab)) setActiveTab(visibleTemperamentTabs[0]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [temperament, betaChordDrone]);
+  }, [temperament, betaChordDrone, responseMode]);
   // Master "Beta" gate: when off, hides experimental modes from the
   // section picker.  Always false in production (see BETA_AVAILABLE).
   const betaMode           = BETA_AVAILABLE && betaMode_raw;
