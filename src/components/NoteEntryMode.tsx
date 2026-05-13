@@ -14,7 +14,7 @@ import {
   loadProjects, saveProject, deleteProject, newProject, generateMusicXML,
 } from "@/lib/noteEntryData";
 import PracticeLogSaveBar from "./PracticeLogSaveBar";
-import { exportToPdf } from "@/lib/exportPdf";
+import { exportToPdfViaVerovio } from "@/lib/exportPdfVerovio";
 import { writePendingRestore } from "@/lib/practiceLog";
 
 // ── YouTube API global ──────────────────────────────────────────────────────
@@ -1665,11 +1665,21 @@ export default function NoteEntryMode({ controlledActiveId, onBack }: NoteEntryM
   }
 
   async function handleExportPdf() {
-    if (!activeProject || !scoreRef.current) return;
-    await exportToPdf(
-      [{ title: activeProject.title, element: scoreRef.current }],
+    if (!activeProject) return;
+    // Route through Verovio rather than the VexFlow-SVG screenshot
+    // path per direct user report (2026-05-13) "export pdf for
+    // scoring is not working correctly" + screenshot showing missing
+    // round noteheads (only stems / beams / staff lines / X-noteheads
+    // rendered).  VexFlow renders noteheads as <text> elements in
+    // the Bravura music font; svg2pdf can't embed that font, so the
+    // glyphs dropped out of the PDF.  Verovio is a real engraving
+    // engine that outputs SVG paths (not font glyphs), which svg2pdf
+    // handles cleanly.
+    const xml = generateMusicXML({ ...activeProject, notes, syncPoints, youtubeUrl });
+    await exportToPdfViaVerovio(
+      [{ title: activeProject.title, musicXml: xml }],
       activeProject.title.replace(/\s+/g, "_"),
-      { showTitles: true, splitSections: false },
+      { showTitles: true },
     );
   }
 
