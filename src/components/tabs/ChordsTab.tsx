@@ -277,7 +277,18 @@ export default function ChordsTab({
   // shown while the visualizer steps through the loop with no audio.
   const [targetChordInfo, setTargetChordInfo] = useState<{
     progression: string;
-    perChord: { roman: string; quality: string; inversion: string; pitches: number[]; chordRootPc: number }[];
+    perChord: {
+      roman: string;
+      quality: string;
+      inversion: string;
+      pitches: number[];
+      chordRootPc: number;
+      // Pitch-class offsets of each chord tone relative to the
+      // chord root (e.g. [0, 4, 7, 11] for a major-7 chord in 12-
+      // EDO).  Used to identify which chord tone sits in the bass
+      // for each permutation (root → label "V", 3rd → "3/V", etc.).
+      chordToneOffsets: number[];
+    }[];
     activeIndex: number;
   } | null>(null);
   // Pre-warm piper TTS for the most common syllables on first
@@ -1527,20 +1538,21 @@ export default function ChordsTab({
         const quality = applied ? triadQuality(applied, edo) : "?";
         const chordPitches = [...(voices.chords[idx] ?? [])].sort((a, b) => a - b);
         const chordRootPc = applied ? ((applied[0] % edo) + edo) % edo : 0;
+        const chordToneOffsets = applied
+          ? applied.map(n => (((n - applied[0]) % edo) + edo) % edo)
+          : [];
         let inversion = "R";
         if (applied && chordPitches.length >= 2) {
-          const rootPc = chordRootPc;
           const lowestPc = ((chordPitches[0] % edo) + edo) % edo;
-          const offset = ((lowestPc - rootPc) % edo + edo) % edo;
-          const offsets = applied.map(n => (((n - applied[0]) % edo) + edo) % edo);
-          const inv = offsets.indexOf(offset);
+          const offset = ((lowestPc - chordRootPc) % edo + edo) % edo;
+          const inv = chordToneOffsets.indexOf(offset);
           inversion = inv === 0 ? "R"
                     : inv === 1 ? "1st"
                     : inv === 2 ? "2nd"
                     : inv === 3 ? "3rd"
                     : `low ${intervalLabel(offset, edo)}`;
         }
-        return { roman: rn, quality, inversion, pitches: chordPitches, chordRootPc };
+        return { roman: rn, quality, inversion, pitches: chordPitches, chordRootPc, chordToneOffsets };
       });
       setTargetChordInfo({ progression: info, perChord, activeIndex: -1 });
       setIsLooping(true);
@@ -2080,17 +2092,12 @@ export default function ChordsTab({
           12: 7, 17: 10, 19: 11, 31: 18, 41: 24, 53: 31,
         };
         const fifthStep = FIFTHS_PER_EDO[edo] ?? Math.round(edo * Math.log2(3 / 2));
-        // Map fifth-chain index n (signed) → diatonic degree number.
-        //   n=-1 → F (4), n=0 → C (1), n=1 → G (5), n=2 → D (2),
-        //   n=3 → A (6), n=4 → E (3), n=5 → B (7), then wraps.
         const degreeAtFifth = [1, 5, 2, 6, 3, 7, 4];
         const pythagoreanDegree = (step: number): string => {
           const s = ((step % edo) + edo) % edo;
-          // Find n with smallest |n| such that (n * fifthStep) mod edo === s.
           let bestN: number | null = null;
           for (let d = 0; d <= edo * 2; d++) {
-            const cand = [d, -d];
-            for (const n of cand) {
+            for (const n of [d, -d]) {
               if (((n * fifthStep) % edo + edo) % edo === s) { bestN = n; break; }
             }
             if (bestN !== null) break;
@@ -2103,6 +2110,9 @@ export default function ChordsTab({
           const acc = layer > 0 ? "#".repeat(layer) : layer < 0 ? "b".repeat(-layer) : "";
           return `${acc}${naturalDeg}`;
         };
+        // Chord-tone numbers in stacked thirds, indexed by chordToneOffsets
+        // position: 0=root → 1, 1=third → 3, 2=fifth → 5, 3=seventh → 7.
+        const CHORD_TONE_NUM = [1, 3, 5, 7];
         return (
         <div className="bg-[#0e0e0e] border border-[#3a3a8a] rounded p-3 mt-2 space-y-2">
           <div className="flex items-baseline gap-2 mb-1">
@@ -2112,26 +2122,26 @@ export default function ChordsTab({
           <div className="flex flex-wrap gap-2">
             {targetChordInfo.perChord.map((c, i) => {
               const active = i === targetChordInfo.activeIndex;
-              // Voicing permutations per direct user direction
-              // (2026-05-13) "under each chart for play have all
-              // different permuations of the degrees like retrograde
-              // exc.  since we are singing we should practice all
-              // permuations of the voicings".  For an N-note chord
-              // we emit N inversions (each rotating the pitch order)
-              // and their retrogrades — 2N rows total.  For a triad
-              // that's 6 voicings; for a 7th chord, 8.
-              const pcs = c.pitches.map(p => ((p - tonicPc) % edo + edo) % edo);
-              const inversions: number[][] = [];
-              for (let k = 0; k < pcs.length; k++) {
-                inversions.push([...pcs.slice(k), ...pcs.slice(0, k)]);
-              }
-              const permutations: { label: string; pcs: number[] }[] = [];
-              inversions.forEach((inv, k) => {
-                permutations.push({ label: `v${k + 1}`, pcs: inv });
-              });
-              inversions.forEach((inv, k) => {
-                permutations.push({ label: `v${k + 1 + inversions.length}`, pcs: [...inv].reverse() });
-              });
+              // Inversion slash notation — per direct user direction
+              // (2026-05-13) "next to roman numerals put the inversion
+              // like 3/V 5/V to dicate inversions".  Find the lowest
+              // played pitch's chord-tone position and emit "<N>/<Roman>"
+              // (e.g. "3/V" for V in 1st inversion).  Root position
+              // shows just the Roman with no slash.
+              const lowestPc = c.pitches.length > 0
+                ? ((c.pitches[0] - tonicPc) % edo + edo) % edo
+                : 0;
+              const bassOffset = ((lowestPc - c.chordRootPc) % edo + edo) % edo;
+              const bassIdx = c.chordToneOffsets.indexOf(bassOffset);
+              const bassNum = bassIdx >= 0 ? CHORD_TONE_NUM[bassIdx] : null;
+              const inversionLabel = bassNum && bassNum !== 1 ? `${bassNum}/${c.roman}` : null;
+              // Header label per direct user direction (2026-05-13):
+              //   "i just want the whole roman numral itself to dicate
+              //   that the base is an iversion" — slash notation
+              //   replaces the bare Roman entirely (no extra inversion
+              //   chip).  Root position uses the plain Roman; any
+              //   non-root bass renders as "<bassDegree>/<Roman>".
+              const headerLabel = inversionLabel ?? c.roman;
               return (
                 <button key={i}
                   onClick={() => {
@@ -2143,36 +2153,32 @@ export default function ChordsTab({
                       ? "bg-[#1a1a3a] border-[#7a7af0]"
                       : "bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#5a5a8a]"
                   }`}
-                  style={{ minWidth: 240 }}>
+                  style={{ minWidth: 220 }}>
+                  {/* Header: just the (possibly slash-form) Roman.
+                      Quality line removed per direct user direction
+                      "remove the (major) stuff below the roman
+                      numerals". */}
                   <div className="text-center mb-3">
-                    <div className="text-[16px] font-bold leading-tight" style={{ color: "#c8a0e0" }}>{c.roman}</div>
-                    <div className="text-[9px] text-[#888] mt-0.5">({c.quality})</div>
+                    <div className="text-[16px] font-bold leading-tight font-mono" style={{ color: "#c8a0e0" }}>
+                      {headerLabel}
+                    </div>
                   </div>
-                  {/* Permutation rows — each row is one voicing
-                      (inversion or retrograde).  Per cell: degree
-                      number on top, Andrew Heathwaite solfege below.
-                      Per direct user direction (2026-05-13) "Only
-                      have the degrees and key solfege, so vs
-                      keydegree v2 key degree where the v are
-                      different permuations". */}
-                  <div className="space-y-1">
-                    {permutations.map(({ label, pcs: permPcs }, pi) => (
-                      <div key={pi} className="flex items-center gap-1">
-                        <span className="text-[8px] text-[#666] font-mono w-5 text-right flex-shrink-0">{label}</span>
-                        <div className="flex gap-1 flex-1">
-                          {permPcs.map((pc, j) => {
-                            const solfege = heathwaiteTable ? heathwaiteTable[pc] ?? "—" : "—";
-                            const degree = pythagoreanDegree(pc);
-                            return (
-                              <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#1a1a2a] border-[#2a2a3a] px-0.5 py-0.5">
-                                <span className="text-[10px] font-mono font-bold leading-tight text-[#9999ee]">{degree}</span>
-                                <span className="text-[9px] leading-tight text-[#aaa]">{solfege}</span>
-                              </div>
-                            );
-                          })}
+                  {/* Voicing notes — one cell per pitch, each cell shows
+                      degree (top) + Andrew Heathwaite solfege (bottom).
+                      Single row reflecting the ACTUAL voicing from the
+                      bank, not generated permutations. */}
+                  <div className="flex gap-1">
+                    {c.pitches.map((pitch, j) => {
+                      const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
+                      const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
+                      const degree = pythagoreanDegree(pcFromTonic);
+                      return (
+                        <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#1a1a2a] border-[#2a2a3a] px-1 py-0.5">
+                          <span className="text-[10px] font-mono font-bold leading-tight text-[#9999ee]">{degree}</span>
+                          <span className="text-[9px] leading-tight text-[#aaa]">{solfege}</span>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </button>
               );
