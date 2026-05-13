@@ -2784,22 +2784,59 @@ function ExtensionControls({ extTendency, setExtTendency, checkedExts, setChecke
         </div>
       </div>
       <div>
+        {/* Extension picker — gated by # EXTENSIONS per direct user
+            direction (2026-05-13) "dont allow me to click an
+            extensions if i dont have amoutn of extensions selected,
+            2 extensions have to be selected exc.".  Adding an
+            extension is blocked once the selected count reaches
+            the highest active # EXTENSIONS value.  Already-on
+            extensions can still be removed.  If no positive count
+            is in # EXTENSIONS the entire row is disabled. */}
         <p className="text-xs text-[#888] mb-1.5 font-medium">EXTENSIONS</p>
-        <div className="flex flex-wrap gap-1">
-          {EXTENSION_LABELS_UI.map(lbl => {
-            const on = checkedExts.has(lbl);
-            const color = "#b07acc";
-            return (
-              <button key={lbl} onClick={() => setCheckedExts(toggleSet(checkedExts, lbl))}
-                className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-                  on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                }`}
-                style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
-                {lbl}
-              </button>
-            );
-          })}
-        </div>
+        {(() => {
+          const positiveCounts = Array.from(checkedExtCounts).filter(n => n > 0);
+          const maxCount = positiveCounts.length > 0 ? Math.max(...positiveCounts) : 0;
+          const atLimit = checkedExts.size >= maxCount;
+          return (
+            <>
+              <div className="flex flex-wrap gap-1">
+                {EXTENSION_LABELS_UI.map(lbl => {
+                  const on = checkedExts.has(lbl);
+                  const color = "#b07acc";
+                  const blocked = !on && atLimit;
+                  return (
+                    <button key={lbl}
+                      onClick={() => { if (!blocked) setCheckedExts(toggleSet(checkedExts, lbl)); }}
+                      disabled={blocked}
+                      title={blocked
+                        ? maxCount === 0
+                          ? "Select a # EXTENSIONS count first"
+                          : `Already at limit (${maxCount}).  Deselect one to swap.`
+                        : undefined}
+                      className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                        on ? "text-white"
+                          : blocked ? "bg-[#0a0a0a] border-[#1a1a1a] text-[#333] cursor-not-allowed"
+                          : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                      }`}
+                      style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
+                      {lbl}
+                    </button>
+                  );
+                })}
+              </div>
+              {maxCount > 0 && (
+                <div className="text-[9px] text-[#666] mt-1">
+                  {checkedExts.size}/{maxCount} selected{atLimit ? " · at limit" : ""}
+                </div>
+              )}
+              {maxCount === 0 && (
+                <div className="text-[9px] text-[#c8a860] mt-1">
+                  Select a count in # EXTENSIONS below to enable extension picks.
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
       <div>
         <p className="text-xs text-[#888] mb-1.5 font-medium"># EXTENSIONS</p>
