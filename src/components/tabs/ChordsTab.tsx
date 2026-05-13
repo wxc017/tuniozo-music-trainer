@@ -1974,8 +1974,11 @@ export default function ChordsTab({
           adjust playback parameters at the moment of pressing Play. */}
       <div className="bg-[#0d0d0d] border-t border-[#1e1e1e] px-4 py-2 space-y-2">
         <div className="flex gap-4 flex-wrap items-end">
+          {/* "LOOP LENGTH" → "# CHORDS" per direct user direction
+              (2026-05-13) "rename loop length to some reminicent to
+              amount of chords". */}
           <div>
-            <p className="text-[10px] text-[#886622] mb-1 font-medium">LOOP LENGTH</p>
+            <p className="text-[10px] text-[#886622] mb-1 font-medium"># CHORDS</p>
             <div className="flex gap-1">
               {LOOP_LENGTHS.map(n => (
                 <button key={n} onClick={() => setLoopLength(n)}
@@ -1990,36 +1993,33 @@ export default function ChordsTab({
               ))}
             </div>
           </div>
-          {/* Merged SPACING + DURATION 2026-05-12 per direct user
-              direction "spacing and durations can be merged" — one
-              "CHORD TIME" input drives both the spacing between chord
-              onsets (loopGap) and the sustain length of each chord
-              (chordDur).  loopGap is the primary value the user
-              cares about; chordDur is auto-synced to match (legato
-              playback: each chord rings until the next starts). */}
-          <div>
-            <p className="text-[10px] text-[#886622] mb-1 font-medium">CHORD TIME (s)</p>
-            <input type="number" min={0.5} max={10} step={0.5} value={loopGap}
-              onChange={e => {
-                const v = Math.max(0.5, Math.min(10, parseFloat(e.target.value) || 0.5));
-                setLoopGap(v);
-                setChordDur(v);
-              }}
-              className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-xs text-white text-center focus:outline-none"
-            />
-          </div>
-          {/* Register / voicing control removed 2026-05-12 per direct
-              user direction "remove register voice leading function
-              makes it obsolete and its not musical".  regMode still
-              defaults to "Fixed Register" via useLS; the playback
-              path silently uses that value with no UI exposure. */}
+          {/* CHORD TIME control hidden in Show Target mode per direct
+              user direction (2026-05-13) "then remove chord time" —
+              no audio plays so the timing parameter is irrelevant.
+              Play Audio mode keeps the input. */}
+          {responseMode !== "Show Target (Sing It)" && (
+            <div>
+              <p className="text-[10px] text-[#886622] mb-1 font-medium">CHORD TIME (s)</p>
+              <input type="number" min={0.5} max={10} step={0.5} value={loopGap}
+                onChange={e => {
+                  const v = Math.max(0.5, Math.min(10, parseFloat(e.target.value) || 0.5));
+                  setLoopGap(v);
+                  setChordDur(v);
+                }}
+                className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-xs text-white text-center focus:outline-none"
+              />
+            </div>
+          )}
         </div>
-      {/* Top row: Play / Stop / Replay (action). */}
+      {/* Top row: Show / Stop / Replay.  Play button label changes
+          to "Show" in Show Target mode per direct user direction
+          (2026-05-13) "rename play to something more relevant as
+          this is show". */}
       <div className="flex gap-2 flex-wrap items-center">
         <button onClick={startFunctionalLoop} disabled={isLooping || !canPlay}
           title={disabledReason ?? undefined}
           className="bg-[#e0a040] hover:bg-[#c89030] disabled:opacity-50 disabled:cursor-not-allowed text-black px-5 py-2 rounded text-sm font-bold transition-colors">
-          Play
+          {responseMode === "Show Target (Sing It)" ? "Show" : "Play"}
         </button>
         {disabledReason && (
           <span className="text-[10px] text-[#c06060]">{disabledReason}</span>
@@ -2069,14 +2069,40 @@ export default function ChordsTab({
           Clicking a card highlights that chord's voicing on the
           visualizer. */}
       {targetChordInfo && (() => {
-        // Andrew Heathwaite solfege table + full degree-name table
-        // for the current EDO.  DEGREE row now uses
-        // getFullDegreeNames so it shows pure numbers ("1", "b3",
-        // "#4") per direct user direction "degree should be the
-        // numbers" — intervalLabel had been emitting "Major 3rd
-        // (Mi)" style strings.
         const heathwaiteTable = getHeathwaiteSolfege(edo);
-        const degreeNames = getFullDegreeNames(edo);
+        // Pythagorean fifth size per EDO — drives the chain-of-fifths
+        // degree-name algorithm below.  Per direct user direction
+        // (2026-05-13) "for microtonal degrees use pythagoreon naming
+        // with triple and double flats", microtonal steps (especially
+        // in 41 / 53) are spelled by walking the fifth chain and
+        // accumulating sharps / flats instead of using comma arrows.
+        const FIFTHS_PER_EDO: Record<number, number> = {
+          12: 7, 17: 10, 19: 11, 31: 18, 41: 24, 53: 31,
+        };
+        const fifthStep = FIFTHS_PER_EDO[edo] ?? Math.round(edo * Math.log2(3 / 2));
+        // Map fifth-chain index n (signed) → diatonic degree number.
+        //   n=-1 → F (4), n=0 → C (1), n=1 → G (5), n=2 → D (2),
+        //   n=3 → A (6), n=4 → E (3), n=5 → B (7), then wraps.
+        const degreeAtFifth = [1, 5, 2, 6, 3, 7, 4];
+        const pythagoreanDegree = (step: number): string => {
+          const s = ((step % edo) + edo) % edo;
+          // Find n with smallest |n| such that (n * fifthStep) mod edo === s.
+          let bestN: number | null = null;
+          for (let d = 0; d <= edo * 2; d++) {
+            const cand = [d, -d];
+            for (const n of cand) {
+              if (((n * fifthStep) % edo + edo) % edo === s) { bestN = n; break; }
+            }
+            if (bestN !== null) break;
+          }
+          if (bestN === null) return String(s);
+          const n = bestN;
+          const naturalIdx = ((n % 7) + 7) % 7;
+          const naturalDeg = degreeAtFifth[naturalIdx];
+          const layer = Math.floor((n + 1) / 7);
+          const acc = layer > 0 ? "#".repeat(layer) : layer < 0 ? "b".repeat(-layer) : "";
+          return `${acc}${naturalDeg}`;
+        };
         return (
         <div className="bg-[#0e0e0e] border border-[#3a3a8a] rounded p-3 mt-2 space-y-2">
           <div className="flex items-baseline gap-2 mb-1">
@@ -2086,7 +2112,26 @@ export default function ChordsTab({
           <div className="flex flex-wrap gap-2">
             {targetChordInfo.perChord.map((c, i) => {
               const active = i === targetChordInfo.activeIndex;
-              const chordPcsFromTonic = new Set(c.pitches.map(p => ((p - tonicPc) % edo + edo) % edo));
+              // Voicing permutations per direct user direction
+              // (2026-05-13) "under each chart for play have all
+              // different permuations of the degrees like retrograde
+              // exc.  since we are singing we should practice all
+              // permuations of the voicings".  For an N-note chord
+              // we emit N inversions (each rotating the pitch order)
+              // and their retrogrades — 2N rows total.  For a triad
+              // that's 6 voicings; for a 7th chord, 8.
+              const pcs = c.pitches.map(p => ((p - tonicPc) % edo + edo) % edo);
+              const inversions: number[][] = [];
+              for (let k = 0; k < pcs.length; k++) {
+                inversions.push([...pcs.slice(k), ...pcs.slice(0, k)]);
+              }
+              const permutations: { label: string; pcs: number[] }[] = [];
+              inversions.forEach((inv, k) => {
+                permutations.push({ label: `v${k + 1}`, pcs: inv });
+              });
+              inversions.forEach((inv, k) => {
+                permutations.push({ label: `v${k + 1 + inversions.length}`, pcs: [...inv].reverse() });
+              });
               return (
                 <button key={i}
                   onClick={() => {
@@ -2098,66 +2143,36 @@ export default function ChordsTab({
                       ? "bg-[#1a1a3a] border-[#7a7af0]"
                       : "bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#5a5a8a]"
                   }`}
-                  style={{ minWidth: 220 }}>
-                  {/* Header: chord name + quality.  The chord-pc pill
-                      row was removed per direct user direction
-                      (2026-05-12) "then remove the interval below the
-                      roman numerals" — the scale-degree numbers now
-                      live in a DEGREE row inside the voicing grid
-                      (below NOTE) instead. */}
+                  style={{ minWidth: 240 }}>
                   <div className="text-center mb-3">
                     <div className="text-[16px] font-bold leading-tight" style={{ color: "#c8a0e0" }}>{c.roman}</div>
                     <div className="text-[9px] text-[#888] mt-0.5">({c.quality})</div>
                   </div>
-                  {/* Voicing columns — KEY / CHORD are Heathwaite
-                      solfege (scale-relative and chord-relative);
-                      NOTE is the absolute pitch-class name; DEGREE is
-                      the scale-degree number from tonic.  DEGREE row
-                      added per direct user direction (2026-05-12)
-                      "then have scale degree under notes". */}
-                  <div className="flex items-start gap-1 min-w-0">
-                    {/* Row labels */}
-                    <div className="flex flex-col items-end mr-0.5 flex-shrink-0" style={{ minWidth: 38 }}>
-                      <span className="text-[7px] text-[#c8aa50] uppercase tracking-wider flex items-center justify-end" style={{ height: 22 }}>key</span>
-                      <span className="text-[7px] text-[#7a9ec0] uppercase tracking-wider flex items-center justify-end mt-0.5" style={{ height: 22 }}>chord</span>
-                      <span className="text-[7px] text-[#9a7ac0] uppercase tracking-wider flex items-center justify-end mt-0.5" style={{ height: 22 }}>note</span>
-                      <span className="text-[7px] text-[#c8aa50] uppercase tracking-wider flex items-center justify-end mt-0.5" style={{ height: 22 }}>degree</span>
-                    </div>
-                    {c.pitches.map((pitch, j) => {
-                      const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
-                      const pcFromChord = ((pcFromTonic - c.chordRootPc) % edo + edo) % edo;
-                      const isCt = chordPcsFromTonic.has(pcFromTonic);
-                      const keyColor = isCt ? "#5a8a5a" : "#c8aa50";
-                      const chordColor = isCt ? "#5a8a5a" : "#c8aa50";
-                      const solfegeKey = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
-                      const solfegeChord = heathwaiteTable ? heathwaiteTable[pcFromChord] ?? "—" : "—";
-                      const noteName = pcToNoteNameWithEnharmonic(((tonicPc + pcFromTonic) % edo + edo) % edo, edo) ?? "—";
-                      const degreeLabel = degreeNames[pcFromTonic] ?? String(pcFromTonic);
-                      return (
-                        <div key={j} className="flex flex-col items-center flex-1 min-w-0">
-                          {/* KEY — Heathwaite solfege, scale-relative */}
-                          <span className="flex items-center justify-center rounded text-[9px] font-bold border w-full overflow-hidden"
-                            style={{ height: 22, borderColor: keyColor + "80", backgroundColor: keyColor + "15", color: keyColor }}>
-                            {solfegeKey}
-                          </span>
-                          {/* CHORD — Heathwaite solfege, chord-relative */}
-                          <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 w-full overflow-hidden"
-                            style={{ height: 22, borderColor: chordColor + "40", backgroundColor: chordColor + "08", color: chordColor + "cc" }}>
-                            {solfegeChord}
-                          </span>
-                          {/* NOTE — absolute note name */}
-                          <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 w-full overflow-hidden"
-                            style={{ height: 22, borderColor: "#9a7ac040", backgroundColor: "#9a7ac008", color: "#9a7ac099" }}>
-                            {noteName}
-                          </span>
-                          {/* DEGREE — scale-degree number from tonic */}
-                          <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 w-full overflow-hidden font-mono"
-                            style={{ height: 22, borderColor: keyColor + "60", backgroundColor: keyColor + "10", color: keyColor }}>
-                            {degreeLabel}
-                          </span>
+                  {/* Permutation rows — each row is one voicing
+                      (inversion or retrograde).  Per cell: degree
+                      number on top, Andrew Heathwaite solfege below.
+                      Per direct user direction (2026-05-13) "Only
+                      have the degrees and key solfege, so vs
+                      keydegree v2 key degree where the v are
+                      different permuations". */}
+                  <div className="space-y-1">
+                    {permutations.map(({ label, pcs: permPcs }, pi) => (
+                      <div key={pi} className="flex items-center gap-1">
+                        <span className="text-[8px] text-[#666] font-mono w-5 text-right flex-shrink-0">{label}</span>
+                        <div className="flex gap-1 flex-1">
+                          {permPcs.map((pc, j) => {
+                            const solfege = heathwaiteTable ? heathwaiteTable[pc] ?? "—" : "—";
+                            const degree = pythagoreanDegree(pc);
+                            return (
+                              <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#1a1a2a] border-[#2a2a3a] px-0.5 py-0.5">
+                                <span className="text-[10px] font-mono font-bold leading-tight text-[#9999ee]">{degree}</span>
+                                <span className="text-[9px] leading-tight text-[#aaa]">{solfege}</span>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 </button>
               );
