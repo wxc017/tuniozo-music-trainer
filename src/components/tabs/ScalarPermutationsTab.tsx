@@ -8,7 +8,7 @@ import {
   PATTERN_SCALE_FAMILIES, getModeDegreeMap,
   CADENCE_PROGRESSIONS, MELODY_VARIANTS, buildDiatonicChord,
 } from "@/lib/musicTheory";
-import { getDegreeMap } from "@/lib/edoData";
+import { getDegreeMap, getHeathwaiteSolfege } from "@/lib/edoData";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
 import { weightedRandomChoice } from "@/lib/stats";
 import { useContourReplay } from "@/components/PitchContour";
@@ -882,7 +882,14 @@ export default function ScalarPermutationsTab({
           </button>
         </div>
       )}
-      {(showTarget || infoText) && contourDegrees && (
+      {(showTarget || infoText) && contourDegrees && (() => {
+        // Per direct user direction (2026-05-12) "random permuations
+        // should show a box of the scale degrees played with the
+        // solfege as well in similar card style" — each played degree
+        // becomes a card with the degree number on top and the
+        // Heathwaite solfege below.
+        const heathwaiteTable = getHeathwaiteSolfege(edo);
+        return (
         <div className={`rounded p-3 border space-y-2 ${
           showTarget ? "bg-[#1a2a1a] border-[#3a5a3a]" : "bg-[#141414] border-[#2a2a2a]"
         }`}>
@@ -898,25 +905,38 @@ export default function ScalarPermutationsTab({
               </span>
             </div>
           )}
-          <div className="flex gap-1 items-center flex-wrap">
-            <span className="text-[#666] text-xs mr-1">Degrees played:</span>
-            {contourDegrees.map((deg, i) => {
-              const isAltered = /[b#]/.test(deg);
-              return (
-                <span key={i} className={`px-1.5 py-0.5 rounded text-xs font-mono border ${
-                  isAltered
-                    ? "bg-[#2a1a3a] text-[#bb88ee] border-[#6644aa] font-bold"
-                    : showTarget
-                      ? "bg-[#1a2a1a] text-[#8fc88f] border-[#3a5a3a]"
-                      : "bg-[#1a1a2a] text-[#9999ee] border-[#333]"
-                }`}>
-                  {deg}
-                </span>
-              );
-            })}
+          <div className="space-y-1">
+            <span className="text-[#666] text-xs">Degrees played:</span>
+            <div className="flex gap-1 items-stretch flex-wrap">
+              {contourDegrees.map((deg, i) => {
+                const isAltered = /[b#]/.test(deg);
+                const absPitch = contourNotes?.[i] ?? 0;
+                const pcFromTonic = ((absPitch - tonicPc) % edo + edo) % edo;
+                const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
+                const degColor = isAltered ? "#bb88ee" : showTarget ? "#8fc88f" : "#9999ee";
+                const bg = isAltered
+                  ? "bg-[#2a1a3a]"
+                  : showTarget ? "bg-[#1a2a1a]" : "bg-[#1a1a2a]";
+                const border = isAltered
+                  ? "border-[#6644aa]"
+                  : showTarget ? "border-[#3a5a3a]" : "border-[#333]";
+                return (
+                  <div key={i} className={`flex flex-col items-center px-2 py-1 rounded border ${bg} ${border}`}
+                       style={{ minWidth: 36 }}>
+                    <span className="text-[11px] font-mono font-bold leading-tight" style={{ color: degColor }}>
+                      {deg}
+                    </span>
+                    <span className="text-[9px] leading-tight mt-0.5" style={{ color: degColor + "cc" }}>
+                      {solfege}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
