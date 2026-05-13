@@ -2196,24 +2196,22 @@ export default function ChordsTab({
                       Descending (retrograde) rows append ↓. */}
                   {(() => {
                     const pcs = c.pitches.map(p => ((p - tonicPc) % edo + edo) % edo);
+                    // Skip inversions[0] — it's the played voicing
+                    // verbatim and would duplicate the row directly
+                    // above this block.  Per direct user direction
+                    // (2026-05-13) "for show target voicing
+                    // permuations the first once is unecessary".
                     const inversions: number[][] = [];
-                    for (let k = 0; k < pcs.length; k++) {
+                    for (let k = 1; k < pcs.length; k++) {
                       inversions.push([...pcs.slice(k), ...pcs.slice(0, k)]);
                     }
-                    // Per-row slash labels removed 2026-05-13 per direct
-                    // user direction "the voicing permuations do not need
-                    // roman numerals as even if you sing it in a different
-                    // order the chord is still 5 1 b3 remove the roman
-                    // numerals" — pitch-class content is constant across
-                    // permutations, so the label is redundant with the
-                    // chord-card header.
                     const rows = [
                       ...inversions,
                       ...inversions.map(inv => [...inv].reverse()),
                     ];
                     return (
                       <div className="mt-3 pt-2 border-t border-[#2a2a3a] space-y-1">
-                        <div className="text-[8px] text-[#666] uppercase tracking-wider mb-1">Voicing permutations</div>
+                        <div className="text-[8px] text-[#666] uppercase tracking-wider mb-1">Singing permutations</div>
                         {rows.map((permPcs, ri) => (
                           <div key={ri} className="flex gap-1">
                             {permPcs.map((pc, j) => {
