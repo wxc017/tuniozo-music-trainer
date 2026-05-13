@@ -2134,7 +2134,15 @@ export default function ChordsTab({
               const bassOffset = ((lowestPc - c.chordRootPc) % edo + edo) % edo;
               const bassIdx = c.chordToneOffsets.indexOf(bassOffset);
               const bassNum = bassIdx >= 0 ? CHORD_TONE_NUM[bassIdx] : null;
-              const inversionLabel = bassNum && bassNum !== 1 ? `${bassNum}/${c.roman}` : null;
+              // Standard jazz slash-chord notation per direct user
+              // direction (2026-05-13) "find a better inversion
+              // notation jazz one" + "in our system anything
+              // superscript implies extensions" — figured-bass
+              // superscripts conflict with the chord-extension system
+              // already in use.  Format mirrors jazz lead sheets:
+              // chord on top of the slash, bass chord-tone below
+              // (V/3 = V with its 3rd in bass, V/5 = V/its 5th, etc.).
+              const inversionLabel = bassNum && bassNum !== 1 ? `${c.roman}/${bassNum}` : null;
               // Header label per direct user direction (2026-05-13):
               //   "i just want the whole roman numral itself to dicate
               //   that the base is an iversion" — slash notation
@@ -2192,38 +2200,32 @@ export default function ChordsTab({
                     for (let k = 0; k < pcs.length; k++) {
                       inversions.push([...pcs.slice(k), ...pcs.slice(0, k)]);
                     }
-                    const labelFor = (permPcs: number[]): string => {
-                      if (!permPcs.length) return c.roman;
-                      const bassRel = ((permPcs[0] - c.chordRootPc) % edo + edo) % edo;
-                      const idx = c.chordToneOffsets.indexOf(bassRel);
-                      const num = idx >= 0 ? CHORD_TONE_NUM[idx] : null;
-                      return num && num !== 1 ? `${num}/${c.roman}` : c.roman;
-                    };
+                    // Per-row slash labels removed 2026-05-13 per direct
+                    // user direction "the voicing permuations do not need
+                    // roman numerals as even if you sing it in a different
+                    // order the chord is still 5 1 b3 remove the roman
+                    // numerals" — pitch-class content is constant across
+                    // permutations, so the label is redundant with the
+                    // chord-card header.
                     const rows = [
-                      ...inversions.map(inv => ({ label: labelFor(inv), pcs: inv })),
-                      ...inversions.map(inv => {
-                        const rev = [...inv].reverse();
-                        return { label: `${labelFor(inv)}↓`, pcs: rev };
-                      }),
+                      ...inversions,
+                      ...inversions.map(inv => [...inv].reverse()),
                     ];
                     return (
                       <div className="mt-3 pt-2 border-t border-[#2a2a3a] space-y-1">
                         <div className="text-[8px] text-[#666] uppercase tracking-wider mb-1">Voicing permutations</div>
-                        {rows.map((row, ri) => (
-                          <div key={ri} className="flex items-center gap-1">
-                            <span className="text-[9px] text-[#a07ec0] font-mono w-10 text-right flex-shrink-0">{row.label}</span>
-                            <div className="flex gap-1 flex-1">
-                              {row.pcs.map((pc, j) => {
-                                const solfege = heathwaiteTable ? heathwaiteTable[pc] ?? "—" : "—";
-                                const degree = pythagoreanDegree(pc);
-                                return (
-                                  <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#141420] border-[#2a2a3a] px-0.5">
-                                    <span className="text-[9px] font-mono font-bold leading-tight text-[#9999ee]">{degree}</span>
-                                    <span className="text-[8px] leading-tight text-[#888]">{solfege}</span>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                        {rows.map((permPcs, ri) => (
+                          <div key={ri} className="flex gap-1">
+                            {permPcs.map((pc, j) => {
+                              const solfege = heathwaiteTable ? heathwaiteTable[pc] ?? "—" : "—";
+                              const degree = pythagoreanDegree(pc);
+                              return (
+                                <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#141420] border-[#2a2a3a] px-0.5">
+                                  <span className="text-[9px] font-mono font-bold leading-tight text-[#9999ee]">{degree}</span>
+                                  <span className="text-[8px] leading-tight text-[#888]">{solfege}</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         ))}
                       </div>
