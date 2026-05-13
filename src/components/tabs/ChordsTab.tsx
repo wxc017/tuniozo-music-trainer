@@ -169,6 +169,15 @@ export default function ChordsTab({
   // Default is empty so nothing is added on top of the triad/7th voicing.
   const [checkedExts, setCheckedExts] = useLS<Set<string>>("lt_crd_exts", new Set());
   const [checkedExtCounts, setCheckedExtCounts] = useLS<Set<number>>("lt_crd_extCounts", new Set([0, 1]));
+  // Where extensions sit relative to the chord-tone stack.
+  //   "top"      — stacked-tertian textbook form (1-3-5-7-9-11-13 piled up)
+  //   "anywhere" — Bill Evans / Herbie Hancock / McCoy Tyner style: any
+  //                octave is fair game, including between chord tones.
+  // Per direct user direction (2026-05-13) "Bill Evans, Herbie Hancock,
+  // and McCoy Tyner routinely voice 9ths, 11ths, and 13ths anywhere in
+  // the chord. add options for this, extensions at the top, or
+  // extensions anywhere".
+  const [extPlacement, setExtPlacement] = useLS<"top" | "anywhere">("lt_crd_extPlace", "top");
   const [checkedPatterns, setCheckedPatterns] = useLS<Set<string>>("lt_crd_vpatterns", new Set(["t-135"]));
   // Per-tonality, per-numeral xenharmonic chord-type opt-ins.  Each entry is
   // a list of xen 3rd-quality IDs (e.g. "neu3","sub3","sup3") that the user
@@ -963,16 +972,52 @@ export default function ChordsTab({
     const buildVoicing = (rootAbs: number, pattern: typeof ALL_VOICING_PATTERNS[number]): number[] => {
       const content = relSteps.map(s => rootAbs + s).sort((a, b) => a - b);
       const voiced = applyVoicingPattern(content, edo, pattern);
-      // Stack upper extensions above the voicing's current top, each one
-      // octave-shifted up as needed so 9/11/13 always sit higher than the
-      // chord's 1/3/5/7 — regardless of the pattern (including inversions).
+      // Two extension-placement modes per direct user direction
+      // (2026-05-13).  "top" stacks the 9/11/13 above the chord-tone
+      // pile (textbook tertian).  "anywhere" picks each extension's
+      // octave at random within ±1 of the chord's natural range —
+      // produces the Bill Evans / Herbie / McCoy mixed-position
+      // colour-tone sound where 9ths can sit between the 3 and 5,
+      // 11ths between the 5 and 7, etc.
       if (upperExtStepsPicked.length > 0) {
         const sortedExts = [...upperExtStepsPicked].sort((a, b) => a - b);
-        for (const extStep of sortedExts) {
-          let note = rootAbs + extStep;
+        if (extPlacement === "top") {
+          for (const extStep of sortedExts) {
+            let note = rootAbs + extStep;
+            const top = voiced.length > 0 ? Math.max(...voiced) : rootAbs;
+            while (note <= top) note += edo;
+            voiced.push(note);
+          }
+        } else {
+          // "anywhere" — fold each extension into the chord's existing
+          // octave range.  We compute the chord's bottom/top bounds,
+          // then pick the octave of the extension that lands inside
+          // [bottom, top + edo] (one octave above top, never below
+          // the bass).  If multiple octaves are valid, pick at random.
+          const low = voiced.length > 0 ? Math.min(...voiced) : rootAbs;
           const top = voiced.length > 0 ? Math.max(...voiced) : rootAbs;
-          while (note <= top) note += edo;
-          voiced.push(note);
+          for (const extStep of sortedExts) {
+            const pc = ((extStep % edo) + edo) % edo;
+            // Generate candidate absolute positions for this PC inside
+            // [low, top + edo].  At minimum the candidate above `low`
+            // exists; usually one or two more fit.
+            const candidates: number[] = [];
+            // Find the lowest absolute pitch in this PC at or above low.
+            const lowOctBase = Math.floor((low - rootAbs - pc) / edo) * edo;
+            let cand = rootAbs + pc + lowOctBase;
+            while (cand < low) cand += edo;
+            while (cand <= top + edo) {
+              candidates.push(cand);
+              cand += edo;
+            }
+            // Filter out positions that DUPLICATE an existing chord
+            // tone (same absolute pitch) — those would be inaudible.
+            const fresh = candidates.filter(c => !voiced.includes(c));
+            const pool = fresh.length > 0 ? fresh : candidates;
+            const picked = pool[Math.floor(Math.random() * pool.length)];
+            voiced.push(picked);
+            voiced.sort((a, b) => a - b);  // keep voicing sorted for downstream
+          }
         }
       }
       return clampToLayout(voiced);
@@ -1902,6 +1947,7 @@ export default function ChordsTab({
                   extTendency={extTendency} setExtTendency={setExtTendency}
                   checkedExts={checkedExts} setCheckedExts={setCheckedExts}
                   checkedExtCounts={checkedExtCounts} setCheckedExtCounts={setCheckedExtCounts} toggleSet={toggleSet}
+                  extPlacement={extPlacement} setExtPlacement={setExtPlacement}
                 />
                 <VoicingPatternControls checkedPatterns={checkedPatterns} setCheckedPatterns={setCheckedPatterns} toggleSet={toggleSet} betaMode={betaMode} />
                 <LilPreviewPanel checkedChords={effectiveChecked} chordMap={chordMap} edo={edo} tonicPc={tonicPc} lowestPitch={lowestPitch} highestPitch={highestPitch} getCompatibleTypes={getCompatibleTypes} applyChordType={applyChordType} />
@@ -2753,11 +2799,13 @@ function VoicingControls({ regMode, setRegMode, compact }: {
 const EXTENSION_LABELS_UI = ["2nd", "4th", "6th", "9th", "11th", "13th"];
 const EXT_COUNTS = [1, 2, 3, 4];
 
-function ExtensionControls({ extTendency, setExtTendency, checkedExts, setCheckedExts, checkedExtCounts, setCheckedExtCounts, toggleSet }: {
+function ExtensionControls({ extTendency, setExtTendency, checkedExts, setCheckedExts, checkedExtCounts, setCheckedExtCounts, toggleSet, extPlacement, setExtPlacement }: {
   extTendency: string; setExtTendency: (v: string) => void;
   checkedExts: Set<string>; setCheckedExts: (s: Set<string>) => void;
   checkedExtCounts: Set<number>; setCheckedExtCounts: (s: Set<number>) => void;
   toggleSet: <T>(s: Set<T>, v: T) => Set<T>;
+  extPlacement: "top" | "anywhere";
+  setExtPlacement: (v: "top" | "anywhere") => void;
 }) {
   const tendencyOpts: { value: string; color: string; desc: string }[] = [
     { value: "Any",    color: "#9999ee", desc: "Any extension allowed" },
@@ -2778,6 +2826,32 @@ function ExtensionControls({ extTendency, setExtTendency, checkedExts, setChecke
                 }`}
                 style={on ? { backgroundColor: o.color + "30", borderColor: o.color, color: o.color } : {}}>
                 {o.value}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {/* EXT PLACEMENT toggle per direct user direction (2026-05-13)
+          "add options for this, extensions at the top, or extensions
+          anywhere".  Top = textbook stacked tertian (9/11/13 piled
+          above the chord-tone stack).  Anywhere = Bill Evans / Herbie
+          Hancock / McCoy Tyner style, extensions woven through the
+          voicing at any octave. */}
+      <div>
+        <p className="text-xs text-[#888] mb-1.5 font-medium">EXT PLACEMENT</p>
+        <div className="flex flex-wrap gap-1">
+          {([
+            { value: "top",      label: "On top",   color: "#9999ee", desc: "Textbook stacked tertian — 9/11/13 sit above the chord tones" },
+            { value: "anywhere", label: "Anywhere", color: "#c8a0e0", desc: "Bill Evans / Herbie / McCoy style — extensions can sit between chord tones at any octave" },
+          ] as const).map(o => {
+            const on = extPlacement === o.value;
+            return (
+              <button key={o.value} onClick={() => setExtPlacement(o.value)} title={o.desc}
+                className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                  on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                }`}
+                style={on ? { backgroundColor: o.color + "30", borderColor: o.color, color: o.color } : {}}>
+                {o.label}
               </button>
             );
           })}
