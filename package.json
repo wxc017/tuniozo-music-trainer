@@ -87,6 +87,7 @@
     "piper-wasm": "^0.1.4",
     "svg2pdf.js": "^2.7.0",
     "three": "^0.183.2",
+    "verovio": "^6.1.0",
     "vexflow": "^5.0.0"
   }
 }
