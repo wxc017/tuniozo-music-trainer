@@ -2067,7 +2067,16 @@ export default function ChordsTab({
                 NOTE   — absolute note name (purple)
           Clicking a card highlights that chord's voicing on the
           visualizer. */}
-      {targetChordInfo && (
+      {targetChordInfo && (() => {
+        // Andrew Heathwaite solfege table for the current EDO —
+        // drives BOTH solfege rows per direct user direction
+        // (2026-05-12) "use numbers and have the solfege" +
+        // "solfege by scale and solfege by chord" + "andrew".
+        // Numbers (intervalLabel) fill KEY / CHORD; the two solfege
+        // rows show the same syllable lookup applied to the scale-
+        // relative PC and the chord-relative PC respectively.
+        const heathwaiteTable = getHeathwaiteSolfege(edo);
+        return (
         <div className="bg-[#0e0e0e] border border-[#3a3a8a] rounded p-3 mt-2 space-y-2">
           <div className="flex items-baseline gap-2 mb-1">
             <span className="text-[10px] text-[#7a7af0] font-semibold tracking-wider">SHOW TARGET</span>
@@ -2076,12 +2085,6 @@ export default function ChordsTab({
           <div className="flex flex-wrap gap-2">
             {targetChordInfo.perChord.map((c, i) => {
               const active = i === targetChordInfo.activeIndex;
-              // Voicing = the pattern — each pitch in c.pitches gets
-              // a column.  ctSet lets us tint chord-tones green and
-              // non-chord-tones gold (matching MelodicPatterns).
-              const chordPcs = new Set(c.pitches.map(p => ((p - tonicPc) % edo + edo) % edo).map(rel => (rel + tonicPc) % edo));
-              // chordPcs above is in absolute PC space; rebuild as
-              // PC-from-tonic for comparison against pcFromTonic.
               const chordPcsFromTonic = new Set(c.pitches.map(p => ((p - tonicPc) % edo + edo) % edo));
               return (
                 <button key={i}
@@ -2094,26 +2097,30 @@ export default function ChordsTab({
                       ? "bg-[#1a1a3a] border-[#7a7af0]"
                       : "bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#5a5a8a]"
                   }`}
-                  style={{ minWidth: 200 }}>
-                  {/* Header: chord name + chord-pc pills + quality */}
+                  style={{ minWidth: 220 }}>
+                  {/* Header: chord name + quality.  The chord-pc pill
+                      row was removed per direct user direction
+                      (2026-05-12) "then remove the interval below the
+                      roman numerals" — the scale-degree numbers now
+                      live in a DEGREE row inside the voicing grid
+                      (below NOTE) instead. */}
                   <div className="text-center mb-3">
                     <div className="text-[16px] font-bold leading-tight" style={{ color: "#c8a0e0" }}>{c.roman}</div>
                     <div className="text-[9px] text-[#888] mt-0.5">({c.quality})</div>
-                    <div className="flex gap-1 mt-1 justify-center flex-wrap">
-                      {Array.from(chordPcsFromTonic).sort((a, b) => a - b).map((relPc, j) => (
-                        <span key={j} className="text-[9px] px-1 py-0.5 rounded bg-[#1a1a1a] text-[#666] border border-[#1e1e1e] font-mono">
-                          {intervalLabel(relPc, edo)}
-                        </span>
-                      ))}
-                    </div>
                   </div>
-                  {/* Voicing columns — one per pitch in the chord */}
+                  {/* Voicing columns — KEY / CHORD are Heathwaite
+                      solfege (scale-relative and chord-relative);
+                      NOTE is the absolute pitch-class name; DEGREE is
+                      the scale-degree number from tonic.  DEGREE row
+                      added per direct user direction (2026-05-12)
+                      "then have scale degree under notes". */}
                   <div className="flex items-start gap-1 min-w-0">
                     {/* Row labels */}
-                    <div className="flex flex-col items-end mr-0.5 flex-shrink-0" style={{ minWidth: 32 }}>
+                    <div className="flex flex-col items-end mr-0.5 flex-shrink-0" style={{ minWidth: 38 }}>
                       <span className="text-[7px] text-[#c8aa50] uppercase tracking-wider flex items-center justify-end" style={{ height: 22 }}>key</span>
                       <span className="text-[7px] text-[#7a9ec0] uppercase tracking-wider flex items-center justify-end mt-0.5" style={{ height: 22 }}>chord</span>
                       <span className="text-[7px] text-[#9a7ac0] uppercase tracking-wider flex items-center justify-end mt-0.5" style={{ height: 22 }}>note</span>
+                      <span className="text-[7px] text-[#c8aa50] uppercase tracking-wider flex items-center justify-end mt-0.5" style={{ height: 22 }}>degree</span>
                     </div>
                     {c.pitches.map((pitch, j) => {
                       const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
@@ -2121,25 +2128,31 @@ export default function ChordsTab({
                       const isCt = chordPcsFromTonic.has(pcFromTonic);
                       const keyColor = isCt ? "#5a8a5a" : "#c8aa50";
                       const chordColor = isCt ? "#5a8a5a" : "#c8aa50";
-                      const keyLabel = intervalLabel(pcFromTonic, edo);
-                      const chordLabel = intervalLabel(pcFromChord, edo);
+                      const solfegeKey = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
+                      const solfegeChord = heathwaiteTable ? heathwaiteTable[pcFromChord] ?? "—" : "—";
                       const noteName = pcToNoteNameWithEnharmonic(((tonicPc + pcFromTonic) % edo + edo) % edo, edo) ?? "—";
+                      const degreeLabel = intervalLabel(pcFromTonic, edo);
                       return (
                         <div key={j} className="flex flex-col items-center flex-1 min-w-0">
-                          {/* KEY row — degree from tonic */}
+                          {/* KEY — Heathwaite solfege, scale-relative */}
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border w-full overflow-hidden"
                             style={{ height: 22, borderColor: keyColor + "80", backgroundColor: keyColor + "15", color: keyColor }}>
-                            {keyLabel}
+                            {solfegeKey}
                           </span>
-                          {/* CHORD row — degree from chord root */}
+                          {/* CHORD — Heathwaite solfege, chord-relative */}
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 w-full overflow-hidden"
                             style={{ height: 22, borderColor: chordColor + "40", backgroundColor: chordColor + "08", color: chordColor + "cc" }}>
-                            {chordLabel}
+                            {solfegeChord}
                           </span>
-                          {/* NOTE row — absolute note name */}
+                          {/* NOTE — absolute note name */}
                           <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 w-full overflow-hidden"
                             style={{ height: 22, borderColor: "#9a7ac040", backgroundColor: "#9a7ac008", color: "#9a7ac099" }}>
                             {noteName}
+                          </span>
+                          {/* DEGREE — scale-degree number from tonic */}
+                          <span className="flex items-center justify-center rounded text-[9px] font-bold border mt-0.5 w-full overflow-hidden font-mono"
+                            style={{ height: 22, borderColor: keyColor + "60", backgroundColor: keyColor + "10", color: keyColor }}>
+                            {degreeLabel}
                           </span>
                         </div>
                       );
@@ -2150,7 +2163,8 @@ export default function ChordsTab({
             })}
           </div>
         </div>
-      )}
+        );
+      })()}
       {fhShowAnswer && fhAnswer && (() => {
         const heathwaiteTable = getHeathwaiteSolfege(edo);
         // JI chord-row analysis (3rd / 5th / pure vs wolf) for
