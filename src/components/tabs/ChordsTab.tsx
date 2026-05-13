@@ -20,6 +20,7 @@ import {
   getHeathwaiteSolfege,
   pcToNoteNameWithEnharmonic,
   getFullDegreeNames,
+  getDegreeMap,
 } from "@/lib/edoData";
 import { syllableForEdoStep } from "@/lib/microtonalSolfege";
 import { getTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS, type TonalityBank, type ChordEntry, type ApproachKind } from "@/lib/tonalityBanks";
@@ -169,15 +170,25 @@ export default function ChordsTab({
   // Default is empty so nothing is added on top of the triad/7th voicing.
   const [checkedExts, setCheckedExts] = useLS<Set<string>>("lt_crd_exts", new Set());
   const [checkedExtCounts, setCheckedExtCounts] = useLS<Set<number>>("lt_crd_extCounts", new Set([0, 1]));
-  // Where extensions sit relative to the chord-tone stack.
-  //   "top"      — stacked-tertian textbook form (1-3-5-7-9-11-13 piled up)
-  //   "anywhere" — Bill Evans / Herbie Hancock / McCoy Tyner style: any
-  //                octave is fair game, including between chord tones.
-  // Per direct user direction (2026-05-13) "Bill Evans, Herbie Hancock,
-  // and McCoy Tyner routinely voice 9ths, 11ths, and 13ths anywhere in
-  // the chord. add options for this, extensions at the top, or
-  // extensions anywhere".
-  const [extPlacement, setExtPlacement] = useLS<"top" | "anywhere">("lt_crd_extPlace", "top");
+  // Where extensions sit relative to the chord-tone stack.  Per direct
+  // user iteration (2026-05-13) "add options for this, extensions at
+  // the top, or extensions anywhere" then refined: pure "anywhere"
+  // generates pointless voicings, so we split into musical modes:
+  //   "top"    — stacked-tertian textbook form (9/11/13 piled above the
+  //              chord tones; predictable, slightly rookie-jazz).
+  //   "mixed"  — Bill-Evans modal voicings: extensions may land in any
+  //              octave inside [bass, top+edo] but candidates that form
+  //              a minor 9th against ANY chord-defining tone (3 or 7)
+  //              are filtered out before random pick.
+  //   "spread" — McCoy-Tyner / Herbie spread: the chord tones get
+  //              pre-widened across two octaves before extensions land
+  //              at their lowest natural position inside the widened
+  //              range — produces quartal / wide-modal sound with the
+  //              colour tones woven through the chord tones.
+  // Low-interval-limits (LIL) checks are handled elsewhere in the
+  // pipeline (checkLowIntervalLimits / formatLilWarnings) and stay in
+  // force regardless of placement mode.
+  const [extPlacement, setExtPlacement] = useLS<"top" | "mixed" | "spread">("lt_crd_extPlace", "top");
   const [checkedPatterns, setCheckedPatterns] = useLS<Set<string>>("lt_crd_vpatterns", new Set(["t-135"]));
   // Per-tonality, per-numeral xenharmonic chord-type opt-ins.  Each entry is
   // a list of xen 3rd-quality IDs (e.g. "neu3","sub3","sup3") that the user
@@ -971,16 +982,38 @@ export default function ChordsTab({
     const relSteps = chordAbsRef.map(n => n - refRootAbs);
     const buildVoicing = (rootAbs: number, pattern: typeof ALL_VOICING_PATTERNS[number]): number[] => {
       const content = relSteps.map(s => rootAbs + s).sort((a, b) => a - b);
-      const voiced = applyVoicingPattern(content, edo, pattern);
-      // Two extension-placement modes per direct user direction
-      // (2026-05-13).  "top" stacks the 9/11/13 above the chord-tone
-      // pile (textbook tertian).  "anywhere" picks each extension's
-      // octave at random within ±1 of the chord's natural range —
-      // produces the Bill Evans / Herbie / McCoy mixed-position
-      // colour-tone sound where 9ths can sit between the 3 and 5,
-      // 11ths between the 5 and 7, etc.
+      let voiced = applyVoicingPattern(content, edo, pattern);
       if (upperExtStepsPicked.length > 0) {
         const sortedExts = [...upperExtStepsPicked].sort((a, b) => a - b);
+
+        // m9 (minor 9th) step count for the current EDO — used in the
+        // "mixed" mode's chord-defining-tone clash filter.  Octave +
+        // minor 2nd.  The minor 2nd in the degree map is "b2".
+        const m2Step = (getDegreeMap(edo)["b2"] ?? 1);
+        const m9Step = edo + m2Step;
+
+        // Identify the chord's 3rd and 7th step indices relative to
+        // the chord root — these are the chord-defining tones and the
+        // m9-avoidance filter applies against THESE only (not against
+        // the root or 5th).  We treat the diatonic 3rd / 7th positions
+        // generically: 2 scale steps and 6 scale steps above root in
+        // the chord's voicing relSteps.
+        const chordDefiningPCs = new Set<number>();
+        // Heuristic: any voice that sits 3-4 step or 9-11 step relative
+        // to the chord root (i.e. somewhere in the 3rd/7th range).
+        // Robust enough for triads + 7ths + microtonal qualities.
+        for (const s of relSteps) {
+          const rel = ((s - relSteps[0]) % edo + edo) % edo;
+          // 3rd zone: ~3-5 EDO steps (minor 3rd to neutral/major 3rd)
+          // 7th zone: ~9-11 EDO steps (minor 7th to major 7th) for 12-EDO,
+          // scaled proportionally for other EDOs.
+          const thirdLow  = Math.round(edo * 3 / 12), thirdHi  = Math.round(edo * 5 / 12);
+          const seventhLow = Math.round(edo * 9 / 12), seventhHi = Math.round(edo * 11 / 12);
+          if ((rel >= thirdLow && rel <= thirdHi) || (rel >= seventhLow && rel <= seventhHi)) {
+            chordDefiningPCs.add(((rootAbs + s) % edo + edo) % edo);
+          }
+        }
+
         if (extPlacement === "top") {
           for (const extStep of sortedExts) {
             let note = rootAbs + extStep;
@@ -988,21 +1021,17 @@ export default function ChordsTab({
             while (note <= top) note += edo;
             voiced.push(note);
           }
-        } else {
-          // "anywhere" — fold each extension into the chord's existing
-          // octave range.  We compute the chord's bottom/top bounds,
-          // then pick the octave of the extension that lands inside
-          // [bottom, top + edo] (one octave above top, never below
-          // the bass).  If multiple octaves are valid, pick at random.
+        } else if (extPlacement === "mixed") {
+          // Bill Evans modal placement: extensions in any octave inside
+          // [bass, top+edo], but any candidate that forms a minor 9th
+          // against a chord-defining 3rd or 7th is filtered out.  If
+          // no valid candidate remains, fall back to "on top" placement
+          // for that extension.
           const low = voiced.length > 0 ? Math.min(...voiced) : rootAbs;
           const top = voiced.length > 0 ? Math.max(...voiced) : rootAbs;
           for (const extStep of sortedExts) {
             const pc = ((extStep % edo) + edo) % edo;
-            // Generate candidate absolute positions for this PC inside
-            // [low, top + edo].  At minimum the candidate above `low`
-            // exists; usually one or two more fit.
             const candidates: number[] = [];
-            // Find the lowest absolute pitch in this PC at or above low.
             const lowOctBase = Math.floor((low - rootAbs - pc) / edo) * edo;
             let cand = rootAbs + pc + lowOctBase;
             while (cand < low) cand += edo;
@@ -1010,13 +1039,50 @@ export default function ChordsTab({
               candidates.push(cand);
               cand += edo;
             }
-            // Filter out positions that DUPLICATE an existing chord
-            // tone (same absolute pitch) — those would be inaudible.
             const fresh = candidates.filter(c => !voiced.includes(c));
-            const pool = fresh.length > 0 ? fresh : candidates;
-            const picked = pool[Math.floor(Math.random() * pool.length)];
-            voiced.push(picked);
-            voiced.sort((a, b) => a - b);  // keep voicing sorted for downstream
+            // m9 filter — drop positions sitting an octave + m2 from
+            // any chord-defining (3 / 7) voice.
+            const m9Clean = fresh.filter(c => {
+              for (const v of voiced) {
+                const vPc = ((v % edo) + edo) % edo;
+                if (!chordDefiningPCs.has(vPc)) continue;
+                if (Math.abs(c - v) === m9Step) return false;
+              }
+              return true;
+            });
+            const pool = m9Clean.length > 0 ? m9Clean : fresh;
+            if (pool.length > 0) {
+              voiced.push(pool[Math.floor(Math.random() * pool.length)]);
+              voiced.sort((a, b) => a - b);
+            } else {
+              // Fall back to stacked placement above the current top.
+              let note = rootAbs + extStep;
+              while (note <= Math.max(...voiced)) note += edo;
+              voiced.push(note);
+            }
+          }
+        } else {
+          // "spread" — McCoy Tyner / Herbie style.  Widen the chord-tone
+          // range to ~2 octaves by lifting the top half of the voicing
+          // up by one octave, then place each extension at its lowest
+          // natural position inside the widened range so it falls
+          // between chord tones rather than above them.
+          if (voiced.length >= 2) {
+            const half = Math.ceil(voiced.length / 2);
+            for (let i = half; i < voiced.length; i++) voiced[i] += edo;
+            voiced.sort((a, b) => a - b);
+          }
+          const low = voiced.length > 0 ? Math.min(...voiced) : rootAbs;
+          const top = voiced.length > 0 ? Math.max(...voiced) : rootAbs;
+          for (const extStep of sortedExts) {
+            const pc = ((extStep % edo) + edo) % edo;
+            // Lowest absolute pitch in this PC at or above the bass.
+            let note = rootAbs + pc;
+            while (note < low) note += edo;
+            // Walk up until it doesn't collide with an existing tone.
+            while (voiced.includes(note) && note <= top + edo) note += edo;
+            voiced.push(note);
+            voiced.sort((a, b) => a - b);
           }
         }
       }
@@ -2534,7 +2600,8 @@ export default function ChordsTab({
                           title={`Hear "${microScale.label}" /${microScale.ipa}/ spoken`} />
                       </button>
                     );
-                  })}
+                    });
+                  })()}
                 </div>
               </div>
               );
@@ -2820,8 +2887,8 @@ function ExtensionControls({ extTendency, setExtTendency, checkedExts, setChecke
   checkedExts: Set<string>; setCheckedExts: (s: Set<string>) => void;
   checkedExtCounts: Set<number>; setCheckedExtCounts: (s: Set<number>) => void;
   toggleSet: <T>(s: Set<T>, v: T) => Set<T>;
-  extPlacement: "top" | "anywhere";
-  setExtPlacement: (v: "top" | "anywhere") => void;
+  extPlacement: "top" | "mixed" | "spread";
+  setExtPlacement: (v: "top" | "mixed" | "spread") => void;
 }) {
   const tendencyOpts: { value: string; color: string; desc: string }[] = [
     { value: "Any",    color: "#9999ee", desc: "Any extension allowed" },
@@ -2847,18 +2914,15 @@ function ExtensionControls({ extTendency, setExtTendency, checkedExts, setChecke
           })}
         </div>
       </div>
-      {/* EXT PLACEMENT toggle per direct user direction (2026-05-13)
-          "add options for this, extensions at the top, or extensions
-          anywhere".  Top = textbook stacked tertian (9/11/13 piled
-          above the chord-tone stack).  Anywhere = Bill Evans / Herbie
-          Hancock / McCoy Tyner style, extensions woven through the
-          voicing at any octave. */}
+      {/* EXT PLACEMENT toggle — three musically-curated modes per
+          direct user direction (2026-05-13) "go ahead with this": */}
       <div>
         <p className="text-xs text-[#888] mb-1.5 font-medium">EXT PLACEMENT</p>
         <div className="flex flex-wrap gap-1">
           {([
-            { value: "top",      label: "On top",   color: "#9999ee", desc: "Textbook stacked tertian — 9/11/13 sit above the chord tones" },
-            { value: "anywhere", label: "Anywhere", color: "#c8a0e0", desc: "Bill Evans / Herbie / McCoy style — extensions can sit between chord tones at any octave" },
+            { value: "top",    label: "On top",  color: "#9999ee", desc: "Textbook stacked tertian — 9/11/13 sit above the chord tones" },
+            { value: "mixed",  label: "Mixed",   color: "#c8a0e0", desc: "Bill Evans modal voicings — extensions can sit between chord tones, m9 against 3/7 filtered out" },
+            { value: "spread", label: "Spread",  color: "#88c8d0", desc: "McCoy Tyner / Herbie spread — chord tones widen across 2 octaves with extensions woven in between" },
           ] as const).map(o => {
             const on = extPlacement === o.value;
             return (
