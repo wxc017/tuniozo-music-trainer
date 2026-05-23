@@ -30,9 +30,9 @@ const ROW_GAP = 36;
 const STAVE_GAP = 80;          // treble-top → bass-top within a row
 const ROW_H = STAVE_GAP + ROW_GAP + 44;
 const FIRST_BAR_EXTRA = 90;    // clef + key + time-sig overhead on a row's first bar
-const PER_TICKABLE = 26;       // horizontal px budget per note/rest
-const MIN_BAR_W = 96;
-const MAX_ROW_W = 1040;
+const PER_TICKABLE = 42;       // horizontal px budget per distinct onset
+const MIN_BAR_W = 130;
+const MAX_ROW_W = 1180;
 const LEFT = 10;
 const TOP = 22;
 const INK = "#e8e8e8";
@@ -155,7 +155,11 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
       const bassV = showBassStaff
         ? cellsToVoice(layoutBarCells(bassLineByBar[b], bpb), (m: number) => [midiToVexKey(m, flat)], ["d/3"], carryBass, "bass")
         : null;
-      const count = Math.max(melody?.tickables.length ?? 0, bassV?.tickables.length ?? 0, 1);
+      // Width is driven by the number of DISTINCT onsets across both voices,
+      // because the formatter creates one column per shared tick position —
+      // sizing by max(voice) alone leaves dense bars cramped/overlapping.
+      const onsets = new Set<number>([...(melody?.beatStarts ?? []), ...(bassV?.beatStarts ?? [])]);
+      const count = Math.max(onsets.size, 1);
       built.push({ melody, bassV, contentW: Math.max(MIN_BAR_W, count * PER_TICKABLE), labels: chordLabelByBar[b] });
     }
 
@@ -246,7 +250,9 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           }
 
           const noteStartX = (treble as unknown as { getNoteStartX(): number }).getNoteStartX();
-          const justify = Math.max(40, x + w - noteStartX - 16);
+          // Leave a wider right margin so the last note never lands on the
+          // end barline, and format to the bar's note area.
+          const justify = Math.max(60, x + w - noteStartX - 28);
           const fmt = new Formatter();
           if (allVoices.length) { fmt.joinVoices(allVoices); fmt.format(allVoices, justify); }
 
