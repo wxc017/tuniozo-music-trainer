@@ -7,7 +7,7 @@
 // melody (the rest are chords-only placeholders) — those are filtered out
 // downstream by the <6-note rule in the importer.
 
-import { httpGet, makeChord, curate, writeSource, rebuildIndex, isMain } from "./common.mjs";
+import { httpGet, makeChord, curate, clipBars, writeSource, rebuildIndex, isMain } from "./common.mjs";
 
 const TREE = "https://api.github.com/repos/Computational-Cognitive-Musicology-Lab/CoCoPops/git/trees/main";
 const RAW = "https://raw.githubusercontent.com/Computational-Cognitive-Musicology-Lab/CoCoPops/main/Billboard/Data/";
@@ -192,7 +192,7 @@ export async function build() {
     process.stdout.write(`\r  parsed ${items.length} (scanned ${Math.min(i + BATCH, humFiles.length)}/${humFiles.length})`);
   }
   process.stdout.write("\n");
-  const curated = curate(items, { max: 300, minBars: 8 });
+  const curated = curate(items, { max: 300, minBars: 8 }).map(it => clipBars(it, 48));
   writeSource("cocopops", curated);
 }
 
