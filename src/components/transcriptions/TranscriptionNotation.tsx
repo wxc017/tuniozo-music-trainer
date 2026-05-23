@@ -55,7 +55,7 @@ interface BuiltVoice {
  *  continuations.  `keyFn` maps a cell's payload to VexFlow key strings. */
 function cellsToVoice<T>(
   cells: BarCell<T>[], keyFn: (d: T) => string[], restKeys: string[],
-  carryTieFrom: { note: StaveNote | null }, clef: "treble" | "bass" = "treble",
+  carryTieFrom: { note: StaveNote | null }, clef: "treble" | "bass" = "treble", stemDir = 0,
 ): BuiltVoice {
   const tickables: StaveNote[] = [];
   const beatStarts: number[] = [];
@@ -68,6 +68,7 @@ function cellsToVoice<T>(
     let prev: StaveNote | null = null;
     pieces.forEach((p, i) => {
       const note = new StaveNote({ keys, duration: p.dur + (isRest ? "r" : ""), clef } as StaveNoteStruct);
+      if (stemDir && !isRest) { try { (note as unknown as { setStemDirection(d: number): void }).setStemDirection(stemDir); } catch { /* */ } }
       styleNote(note);
       if (p.dots) { try { Dot.buildAndAttach([note], { all: true }); } catch { /* */ } }
       tickables.push(note);
@@ -85,13 +86,22 @@ function cellsToVoice<T>(
   return { tickables, beatStarts, ties };
 }
 
+/** Block-chord voicing (root, 3rd, 5th, [7th]) in the bass-clef register. */
+function chordVoicing(rootPc: number, intervals: number[]): number[] {
+  let root = 48 + rootPc;                       // C3..B3
+  if (root > 57) root -= 12;
+  const reduced = [...new Set(intervals.map(i => ((i % 12) + 12) % 12))].sort((a, b) => a - b);
+  return reduced.slice(0, 4).map(i => root + i);
+}
+
 export interface NotationProps {
   excerpt: TxExcerpt;
   showMelody?: boolean;
   showChords?: boolean;
+  showBass?: boolean;
 }
 
-export default function TranscriptionNotation({ excerpt, showMelody = true, showChords = true }: NotationProps) {
+export default function TranscriptionNotation({ excerpt, showMelody = true, showChords = true, showBass = false }: NotationProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -114,14 +124,20 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
       ? excerpt.melody.map(n => ({ startBeat: n.startBeat, durBeats: n.durBeats, data: n.midi }))
       : [];
     const melodyByBar = segmentByBar(melodyEvents, bars, bpb);
-    // Bass staff = the actual played bass line (the comping bass), notated an
-    // octave up so it sits cleanly in the bass clef. This is what's heard,
-    // and the chord symbols above carry the full harmony.
-    const comp = hasChords
+    // Two independent accompaniment voices on the bass staff:
+    //   • "Chords" → a block-chord voicing (the harmony you see);
+    //   • "Bass"   → the played walking/root bass line (octave up to sit in
+    //     the bass clef).  Both are toggleable; chord symbols above the
+    //     treble carry the full harmony either way.
+    const comp = (showBass && hasChords)
       ? compEvents(excerpt.chords, COMP_GENRE[excerpt.item.source] ?? "folk", bpb, ts, bars * bpb)
       : { chord: [], bass: [] };
-    const bassEvents: TimedEvent<number>[] = comp.bass.map(e => ({ startBeat: e.startBeat, durBeats: e.durBeats, data: e.midi + 12 }));
-    const chordByBar = segmentByBar(bassEvents, bars, bpb);
+    const chordVoicingByBar = segmentByBar<number[]>(
+      showChords && hasChords
+        ? excerpt.chords.map(c => ({ startBeat: c.startBeat, durBeats: c.durBeats, data: chordVoicing(c.rootPc, c.intervals) }))
+        : [], bars, bpb);
+    const bassLineByBar = segmentByBar<number>(
+      comp.bass.map(e => ({ startBeat: e.startBeat, durBeats: e.durBeats, data: e.midi + 12 })), bars, bpb);
 
     // Chord symbols per bar (carry-over at downbeat + mid-bar changes).
     const chordLabelByBar: { beatInBar: number; sym: string }[][] = Array.from({ length: bars }, () => []);
@@ -136,35 +152,28 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     }
 
     // ── Phase 1: build voices for every bar (sequential, ties carry) ─
-    // Put the melody on whichever clef fits its register, so low (e.g.
-    // baritone-sax) lines render on the bass staff instead of drowning the
-    // treble in ledger lines.  `treble`/`bass` below are the TOP/BOTTOM
-    // staves; the melody+chord content swaps between them accordingly.
-    const mids = excerpt.melody.map(n => n.midi).sort((a, b) => a - b);
-    const median = mids.length ? mids[Math.floor(mids.length / 2)] : 71;
-    const melodyOnBass = showMelody && mids.length > 0 && median < 56;
-    const bassOctave = melodyOnBass ? 12 : 0;     // lift the bass line if it has to share the treble staff
-    const melodyRest = melodyOnBass ? ["d/3"] : ["b/4"];
-    const bassRest = melodyOnBass ? ["b/4"] : ["d/3"];
-
+    // Treble = melody.  Bass staff carries up to two voices: chord voicing
+    // (stems up) and the bass line (stems down).
     const carryMelody = { note: null as StaveNote | null };
     const carryChord = { note: null as StaveNote | null };
-    interface BuiltBar { treble: BuiltVoice; bass: BuiltVoice; contentW: number; labels: { beatInBar: number; sym: string }[] }
+    const carryBass = { note: null as StaveNote | null };
+    interface BuiltBar {
+      melody: BuiltVoice | null; chordV: BuiltVoice | null; bassV: BuiltVoice | null;
+      contentW: number; labels: { beatInBar: number; sym: string }[];
+    }
     const built: BuiltBar[] = [];
     for (let b = 0; b < bars; b++) {
-      const melodyVoice = cellsToVoice(
-        layoutBarCells(melodyByBar[b], bpb), (m: number) => [midiToVexKey(m, flat)], melodyRest, carryMelody,
-        melodyOnBass ? "bass" : "treble",
-      );
-      const bassVoice = cellsToVoice(
-        hasChords ? layoutBarCells(chordByBar[b], bpb) : [],
-        (m: number) => [midiToVexKey(m + bassOctave, flat)], bassRest, carryChord,
-        melodyOnBass ? "treble" : "bass",
-      );
-      const top = melodyOnBass ? bassVoice : melodyVoice;
-      const bottom = melodyOnBass ? melodyVoice : bassVoice;
-      const count = Math.max(top.tickables.length, bottom.tickables.length);
-      built.push({ treble: top, bass: bottom, contentW: Math.max(MIN_BAR_W, count * PER_TICKABLE), labels: chordLabelByBar[b] });
+      const melody = showMelody
+        ? cellsToVoice(layoutBarCells(melodyByBar[b], bpb), (m: number) => [midiToVexKey(m, flat)], ["b/4"], carryMelody, "treble")
+        : null;
+      const chordV = showChords && hasChords
+        ? cellsToVoice(layoutBarCells(chordVoicingByBar[b], bpb), (ms: number[]) => ms.map(m => midiToVexKey(m, flat)), ["d/3"], carryChord, "bass", 1)
+        : null;
+      const bassV = showBass && hasChords
+        ? cellsToVoice(layoutBarCells(bassLineByBar[b], bpb), (m: number) => [midiToVexKey(m, flat)], ["d/3"], carryBass, "bass", -1)
+        : null;
+      const count = Math.max(melody?.tickables.length ?? 0, chordV?.tickables.length ?? 0, bassV?.tickables.length ?? 0, 1);
+      built.push({ melody, chordV, bassV, contentW: Math.max(MIN_BAR_W, count * PER_TICKABLE), labels: chordLabelByBar[b] });
     }
 
     // ── Phase 2: pack bars into rows by width ───────────────────────
@@ -219,50 +228,55 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           bass.setContext(ctx).draw();
           lastTreble = treble; lastBass = bass;
 
-          const tb = built[b].treble, bb = built[b].bass;
-          const trebleVoice = new Voice({ numBeats: ts[0], beatValue: ts[1] });
-          (trebleVoice as unknown as { setMode(m: number): void }).setMode(2);
-          trebleVoice.addTickables(tb.tickables);
-          const bassVoice = new Voice({ numBeats: ts[0], beatValue: ts[1] });
-          (bassVoice as unknown as { setMode(m: number): void }).setMode(2);
-          bassVoice.addTickables(bb.tickables);
+          const mkVoice = (bv: BuiltVoice) => {
+            const v = new Voice({ numBeats: ts[0], beatValue: ts[1] });
+            (v as unknown as { setMode(m: number): void }).setMode(2);
+            v.addTickables(bv.tickables);
+            return v;
+          };
+          const mv = built[b].melody, cv = built[b].chordV, bv = built[b].bassV;
+          const trebleVoice = mv ? mkVoice(mv) : null;
+          const chordVoice = cv ? mkVoice(cv) : null;
+          const bassVoice = bv ? mkVoice(bv) : null;
+          const allVoices = [trebleVoice, chordVoice, bassVoice].filter(Boolean) as Voice[];
+          for (const v of allVoices) { try { Accidental.applyAccidentals([v], keySpec); } catch { /* */ } }
 
-          try { Accidental.applyAccidentals([trebleVoice], keySpec); } catch { /* */ }
-          try { Accidental.applyAccidentals([bassVoice], keySpec); } catch { /* */ }
-
-          for (const lbl of built[b].labels) {
-            let idx = tb.beatStarts.findIndex(bs => bs >= lbl.beatInBar - 1e-6);
-            if (idx < 0) idx = tb.tickables.length - 1;
-            const a = new Annotation(lbl.sym);
-            a.setVerticalJustification(Annotation.VerticalJustify.TOP);
-            a.setJustification(Annotation.HorizontalJustify.LEFT);
-            a.setFont("Arial", 11, "bold");
-            try { tb.tickables[idx]?.addModifier(a, 0); } catch { /* */ }
+          // Chord symbols above the staff — attach to the melody (treble)
+          // voice, else the chord voice.
+          const labelHost = mv ?? cv;
+          if (labelHost) {
+            for (const lbl of built[b].labels) {
+              let idx = labelHost.beatStarts.findIndex(bs => bs >= lbl.beatInBar - 1e-6);
+              if (idx < 0) idx = labelHost.tickables.length - 1;
+              const a = new Annotation(lbl.sym);
+              a.setVerticalJustification(Annotation.VerticalJustify.TOP);
+              a.setJustification(Annotation.HorizontalJustify.LEFT);
+              a.setFont("Arial", 11, "bold");
+              try { labelHost.tickables[idx]?.addModifier(a, 0); } catch { /* */ }
+            }
           }
 
-          // Beam the melody BEFORE formatting/drawing.  The Beam constructor
-          // marks each grouped note so VexFlow suppresses its individual flag
-          // — generating beams *after* draw (the old bug) left stray tails on
-          // beamed notes.  Pass the FULL tickable list (incl. rests) with
-          // beamRests:false so beams break correctly at rests + beat groups.
-          let melodyBeams: Beam[] = [];
-          try {
-            melodyBeams = Beam.generateBeams(tb.tickables, { groups: beamGroups, beamRests: false, maintainStemDirections: true });
-          } catch { /* */ }
+          // Beam melody + bass line BEFORE drawing so VexFlow suppresses the
+          // individual note flags (generating beams after draw left stray
+          // tails on beamed notes).
+          const beams: Beam[] = [];
+          for (const v of [mv, bv]) {
+            if (!v) continue;
+            try { beams.push(...Beam.generateBeams(v.tickables, { groups: beamGroups, beamRests: false, maintainStemDirections: true })); } catch { /* */ }
+          }
 
           const noteStartX = (treble as unknown as { getNoteStartX(): number }).getNoteStartX();
           const justify = Math.max(40, x + w - noteStartX - 16);
           const fmt = new Formatter();
-          // Join both staves into one tick context so melody notes align
-          // vertically over the chords they sound against.
-          fmt.joinVoices([trebleVoice, bassVoice]);
-          fmt.format([trebleVoice, bassVoice], justify);
+          if (allVoices.length) { fmt.joinVoices(allVoices); fmt.format(allVoices, justify); }
 
-          trebleVoice.draw(ctx, treble);
-          bassVoice.draw(ctx, bass);
-          melodyBeams.forEach(beam => { try { beam.setStyle(NOTE_STYLE); } catch { /* */ } beam.setContext(ctx).draw(); });
-          for (const [a, z] of [...tb.ties, ...bb.ties]) {
-            try { new StaveTie({ firstNote: a, lastNote: z }).setContext(ctx).draw(); } catch { /* */ }
+          if (trebleVoice) trebleVoice.draw(ctx, treble);
+          if (chordVoice) chordVoice.draw(ctx, bass);
+          if (bassVoice) bassVoice.draw(ctx, bass);
+          beams.forEach(beam => { try { beam.setStyle(NOTE_STYLE); } catch { /* */ } beam.setContext(ctx).draw(); });
+          for (const v of [mv, cv, bv]) {
+            if (!v) continue;
+            for (const [a, z] of v.ties) { try { new StaveTie({ firstNote: a, lastNote: z }).setContext(ctx).draw(); } catch { /* */ } }
           }
           x += w;
         }
@@ -280,7 +294,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     } catch (err) {
       el.innerHTML = `<div style="color:#a55;font-size:12px;padding:8px">Notation render error: ${String(err)}</div>`;
     }
-  }, [excerpt, showMelody, showChords]);
+  }, [excerpt, showMelody, showChords, showBass]);
 
   return <div ref={ref} style={{ overflowX: "auto", maxWidth: "100%" }} />;
 }
