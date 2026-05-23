@@ -26,12 +26,15 @@ let indexPromise: Promise<TxIndex> | null = null;
 const sourceCache = new Map<TxSource, Promise<TxItem[]>>();
 const itemById = new Map<string, TxItem>();
 
-/** Normalize an item's notation conventions in place.  3/2 has the same six
- *  quarter-beats per bar as 6/4 but reads far more clearly on the staff (and
- *  matches how players count these tunes), so we relabel it — no beat math
- *  changes since beatsPerBar([3,2]) === beatsPerBar([6,4]). Idempotent. */
+/** Normalize an item's notation conventions in place.  Some source meters read
+ *  oddly and have an identical quarter-beats-per-bar equivalent that matches how
+ *  players actually count the tune, so we relabel them (no beat-math change,
+ *  idempotent): 3/2→6/4, and 2/2 (cut time, how Wikifonia tags many standards)
+ *  →4/4 — both jazz standards and the rest are counted in 4. */
 function normalizeItem(item: TxItem): TxItem {
-  if (item.timeSig[0] === 3 && item.timeSig[1] === 2) item.timeSig = [6, 4];
+  const [num, den] = item.timeSig;
+  if (num === 3 && den === 2) item.timeSig = [6, 4];
+  else if (num === 2 && den === 2) item.timeSig = [4, 4];
   return item;
 }
 
