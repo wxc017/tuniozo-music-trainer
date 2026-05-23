@@ -17,7 +17,7 @@
 // the half-open beat range [startBar*beatsPerBar, (startBar+N)*beatsPerBar).
 
 /** Which corpus an item came from. Doubles as the coarse genre key. */
-export type TxSource = "thesession" | "essen" | "weimar" | "cocopops";
+export type TxSource = "thesession" | "essen" | "weimar" | "cocopops" | "ewld";
 
 /** Coarse genre shown in the UI and used for the genre filter. */
 export type TxGenre = "Irish Trad" | "Folk" | "Jazz" | "Pop/Rock";
@@ -27,6 +27,7 @@ export const SOURCE_GENRE: Record<TxSource, TxGenre> = {
   essen: "Folk",
   weimar: "Jazz",
   cocopops: "Pop/Rock",
+  ewld: "Jazz",
 };
 
 export const SOURCE_LABEL: Record<TxSource, string> = {
@@ -34,6 +35,7 @@ export const SOURCE_LABEL: Record<TxSource, string> = {
   essen: "Essen Folksong",
   weimar: "Weimar Jazz DB",
   cocopops: "CoCoPops / Billboard",
+  ewld: "Jazz Standards (EWLD)",
 };
 
 /** A single melody note. `midi` is a standard MIDI pitch (C4 = 60). */

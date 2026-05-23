@@ -71,6 +71,8 @@ const SOURCE_KIT: Record<TxSource, VoiceKit> = {
   weimar: { melody: "tenor_sax", chords: "acoustic_grand_piano", bass: "acoustic_bass" },
   // Nylon comps warmer than the plinky GM steel; bass is the sampled upright.
   cocopops: { melody: "acoustic_grand_piano", chords: "acoustic_guitar_nylon", bass: "acoustic_bass" },
+  // Jazz-standard lead sheets: sax head over piano comp + upright (a combo).
+  ewld: { melody: "tenor_sax", chords: "acoustic_grand_piano", bass: "acoustic_bass" },
 };
 
 // ── Instrument cache + shared output gain ───────────────────────────
