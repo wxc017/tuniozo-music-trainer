@@ -6,7 +6,7 @@
 // it), then Show Answer to reveal the title, notation (grand staff w/
 // chords above each bar), and a YouTube link.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLS } from "@/lib/storage";
 import { SOURCE_LABEL, SOURCE_GENRE, type TxSource, type TxItem, type TxIndex } from "@/lib/transcriptions/types";
 import { pickItem, pickExcerpt, fullExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
@@ -18,6 +18,25 @@ const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops"];
 interface Props {
   ensureAudio: () => Promise<void>;
   playVol?: number;
+}
+
+/** Collapsible options section, styled to match the other modes
+ *  (accent bar + ▸/▾ disclosure + uppercase tracking-wide label). */
+function OptSection({ title, accent, defaultOpen = true, children }: {
+  title: string; accent: string; defaultOpen?: boolean; children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded">
+      <div onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none transition-colors hover:bg-[#161616]"
+        style={{ borderLeft: `3px solid ${accent}` }}>
+        <span className="text-[10px] text-[#666] w-3">{open ? "▾" : "▸"}</span>
+        <span className="text-xs font-semibold tracking-wider" style={{ color: accent }}>{title}</span>
+      </div>
+      {open && <div className="p-3">{children}</div>}
+    </div>
+  );
 }
 
 export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props) {
@@ -211,20 +230,19 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
       )}
       </>)}
 
-      {/* Options panel (its own sub-tab) */}
+      {/* Options panel (its own sub-tab) — collapsible accent sections */}
       {view === "options" && (
-        <div className="bg-[#111] border border-[#222] rounded-lg p-4 space-y-4">
-          {/* Bars */}
-          <div className="flex items-center gap-3">
-            <label className="text-xs text-[#888] w-28">Bars per excerpt</label>
-            <input type="range" min={1} max={8} step={1} value={bars}
-              onChange={e => setBars(Number(e.target.value))} className="w-40 accent-[#7173e6]" />
-            <span className="text-xs text-[#bbb] w-6">{bars}</span>
-          </div>
+        <div className="space-y-2">
+          <OptSection title="EXCERPT" accent="#bf6cd0">
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-[#888] w-28">Bars per excerpt</label>
+              <input type="range" min={1} max={8} step={1} value={bars}
+                onChange={e => setBars(Number(e.target.value))} className="w-40 accent-[#7173e6]" />
+              <span className="text-xs text-[#bbb] w-6">{bars}</span>
+            </div>
+          </OptSection>
 
-          {/* Databases / genres */}
-          <div>
-            <div className="text-xs text-[#888] mb-1.5">Databases</div>
+          <OptSection title="DATABASES" accent="#7173e6">
             <div className="flex flex-wrap gap-2">
               {ALL_SOURCES.map(s => {
                 const on = sources.includes(s);
@@ -240,16 +258,12 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
                 );
               })}
             </div>
-          </div>
+          </OptSection>
 
-          {/* Style / genre sub-filter */}
           {availableStyles.length > 0 && (
-            <div>
-              <div className="text-xs text-[#888] mb-1.5 flex items-center gap-2">
-                Styles
-                <span className="text-[10px] text-[#555]">
-                  {styleFilter.length ? `${styleFilter.length} selected` : "any"}
-                </span>
+            <OptSection title="STYLES" accent="#5cbf8a">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="text-[10px] text-[#555]">{styleFilter.length ? `${styleFilter.length} selected` : "any"}</span>
                 {styleFilter.length > 0 && (
                   <button onClick={() => setStyleFilter([])}
                     className="text-[10px] text-[#7aa] hover:text-[#9cc] underline">clear</button>
@@ -268,52 +282,49 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
                   );
                 })}
               </div>
-            </div>
+            </OptSection>
           )}
 
-          {/* Voices */}
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-[#888] w-28">Play</span>
-            <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
-              <input type="checkbox" checked={withMelody} onChange={e => setWithMelody(e.target.checked)} className="accent-[#7173e6]" /> Melody
-            </label>
-            <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
-              <input type="checkbox" checked={withChords} onChange={e => setWithChords(e.target.checked)} className="accent-[#7173e6]" /> Chords
-            </label>
-          </div>
-
-          {/* Tempo */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs text-[#888] w-28">Tempo</span>
-            <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
-              <input type="radio" name="txTempo" checked={tempoMode === "original"} onChange={() => setTempoMode("original")} className="accent-[#7173e6]" /> Original
-            </label>
-            <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
-              <input type="radio" name="txTempo" checked={tempoMode === "fixed"} onChange={() => setTempoMode("fixed")} className="accent-[#7173e6]" /> Fixed
-            </label>
-            {tempoMode === "fixed" && (
-              <>
-                <input type="range" min={40} max={220} step={2} value={fixedBpm}
-                  onChange={e => setFixedBpm(Number(e.target.value))} className="w-32 accent-[#7173e6]" />
-                <span className="text-xs text-[#bbb] w-12">{fixedBpm} bpm</span>
-              </>
-            )}
-          </div>
-
-          {/* Count-in + metronome */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs text-[#888] w-28">Count-in</span>
-            {[0, 1, 2].map(n => (
-              <label key={n} className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
-                <input type="radio" name="txCountIn" checked={countInBars === n} onChange={() => setCountInBars(n)} className="accent-[#7173e6]" />
-                {n === 0 ? "None" : `${n} bar${n > 1 ? "s" : ""}`}
+          <OptSection title="PLAYBACK" accent="#e0a040">
+            <div className="flex items-center gap-4 mb-3">
+              <span className="text-xs text-[#888] w-28">Voices</span>
+              <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
+                <input type="checkbox" checked={withMelody} onChange={e => setWithMelody(e.target.checked)} className="accent-[#7173e6]" /> Melody
               </label>
-            ))}
-            <span className="w-px h-4 bg-[#2a2a2a]" />
-            <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
-              <input type="checkbox" checked={metronome} onChange={e => setMetronome(e.target.checked)} className="accent-[#7173e6]" /> Metronome
-            </label>
-          </div>
+              <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
+                <input type="checkbox" checked={withChords} onChange={e => setWithChords(e.target.checked)} className="accent-[#7173e6]" /> Chords
+              </label>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap mb-3">
+              <span className="text-xs text-[#888] w-28">Tempo</span>
+              <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
+                <input type="radio" name="txTempo" checked={tempoMode === "original"} onChange={() => setTempoMode("original")} className="accent-[#7173e6]" /> Original
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
+                <input type="radio" name="txTempo" checked={tempoMode === "fixed"} onChange={() => setTempoMode("fixed")} className="accent-[#7173e6]" /> Fixed
+              </label>
+              {tempoMode === "fixed" && (
+                <>
+                  <input type="range" min={40} max={220} step={2} value={fixedBpm}
+                    onChange={e => setFixedBpm(Number(e.target.value))} className="w-32 accent-[#7173e6]" />
+                  <span className="text-xs text-[#bbb] w-12">{fixedBpm} bpm</span>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-[#888] w-28">Count-in</span>
+              {[0, 1, 2].map(n => (
+                <label key={n} className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
+                  <input type="radio" name="txCountIn" checked={countInBars === n} onChange={() => setCountInBars(n)} className="accent-[#7173e6]" />
+                  {n === 0 ? "None" : `${n} bar${n > 1 ? "s" : ""}`}
+                </label>
+              ))}
+              <span className="w-px h-4 bg-[#2a2a2a]" />
+              <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
+                <input type="checkbox" checked={metronome} onChange={e => setMetronome(e.target.checked)} className="accent-[#7173e6]" /> Metronome
+              </label>
+            </div>
+          </OptSection>
         </div>
       )}
 
