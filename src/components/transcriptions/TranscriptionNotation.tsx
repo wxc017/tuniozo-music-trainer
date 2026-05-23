@@ -150,10 +150,10 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const built: BuiltBar[] = [];
     for (let b = 0; b < bars; b++) {
       const melody = showMelody
-        ? cellsToVoice(layoutBarCells(melodyByBar[b], bpb), (m: number) => [midiToVexKey(m, flat)], ["b/4"], carryMelody, "treble")
+        ? cellsToVoice(layoutBarCells(melodyByBar[b], bpb, excerpt.item.source === "weimar" ? 0.5 : 0.25), (m: number) => [midiToVexKey(m, flat)], ["b/4"], carryMelody, "treble")
         : null;
       const bassV = showBassStaff
-        ? cellsToVoice(layoutBarCells(bassLineByBar[b], bpb), (m: number) => [midiToVexKey(m, flat)], ["d/3"], carryBass, "bass")
+        ? cellsToVoice(layoutBarCells(bassLineByBar[b], bpb, 0.5), (m: number) => [midiToVexKey(m, flat)], ["d/3"], carryBass, "bass")
         : null;
       // Width is driven by the number of DISTINCT onsets across both voices,
       // because the formatter creates one column per shared tick position —
