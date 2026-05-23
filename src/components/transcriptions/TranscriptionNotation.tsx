@@ -348,7 +348,9 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           // Leave a wider right margin so the last note never lands on the
           // end barline, and format to the bar's note area.
           const justify = Math.max(60, x + w - noteStartX - 28);
-          const fmt = new Formatter();
+          // Low softmaxFactor → more EVEN note spacing (VexFlow's default is
+          // strongly duration-proportional, which looks lopsided in short bars).
+          const fmt = new Formatter({ softmaxFactor: 5 });
           if (allVoices.length) { fmt.joinVoices(allVoices); fmt.format(allVoices, justify); }
 
           // Re-assert ink: stave.draw() leaves the context stroke dark, which
