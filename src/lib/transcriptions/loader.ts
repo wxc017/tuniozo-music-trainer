@@ -186,3 +186,17 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
 
   return { item, startBar, bars: usableBars, beatsPerBar: bpb, windowBeats, melody, chords };
 }
+
+/** A whole-item excerpt (the full tune from bar 1), for "play the full
+ *  song".  Same shape as pickExcerpt, with melody-only tunes harmonized. */
+export function fullExcerpt(item: TxItem): TxExcerpt {
+  const bpb = beatsPerBar(item.timeSig);
+  const melody: TxNoteRebased[] = (item.melody ?? []).map(n => ({ midi: n.midi, startBeat: n.startBeat, durBeats: n.durBeats }));
+  const chords: TxChordRebased[] = (item.chords ?? []).map(c => ({ ...c }));
+  if (!chords.length && melody.length) {
+    for (const c of harmonizeMelody(melody, item.key, bpb, item.barCount)) {
+      chords.push({ sym: c.sym, rootPc: c.rootPc, intervals: c.intervals, bassPc: c.bassPc, startBeat: c.startBeat, durBeats: c.durBeats });
+    }
+  }
+  return { item, startBar: 0, bars: item.barCount, beatsPerBar: bpb, windowBeats: item.barCount * bpb, melody, chords };
+}
