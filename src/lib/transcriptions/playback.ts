@@ -188,8 +188,13 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
   const hrand = () => { hseed = (hseed * 1103515245 + 12345) & 0x7fffffff; return hseed / 0x7fffffff; };
   const humanTime = (beat: number) => {
     let t = t0 + beat * secPerBeat;
-    if (swing) { const frac = beat - Math.floor(beat); if (Math.abs(frac - 0.5) < 0.06) t += secPerBeat / 6; }
-    return t + (hrand() * 2 - 1) * 0.012;            // ±12 ms feel
+    const frac = beat - Math.floor(beat);
+    if (swing) {
+      if (Math.abs(frac - 0.5) < 0.06) t += secPerBeat / 6;          // swung 8ths (triplet feel)
+    } else if (Math.abs(frac - 0.5) < 0.06) {
+      t += secPerBeat * 0.03;                                        // subtle laid-back 8ths (un-square straight feel)
+    }
+    return t + (hrand() * 2 - 1) * 0.015;            // ±15 ms human jitter
   };
   const hvel = (v: number) => Math.max(1, Math.min(127, Math.round(v + (hrand() * 2 - 1) * 6)));
 
@@ -267,13 +272,13 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
         const base = humanTime(g[0].startBeat);
         const accent = metricAccent(g[0].startBeat);
         ordered.forEach((e, i) => {
-          // Guitars ring through; pianos comp shorter.  Either way, sustain
-          // long enough that the stab doesn't sound clipped/staccato.
-          const dur = e.durBeats * secPerBeat * (guitar ? 1.6 : 1.05);
+          // Guitars ring a little past the stab (not staccato), pianos shorter,
+          // but not so long that successive stabs overlap into mud.
+          const dur = e.durBeats * secPerBeat * (guitar ? 1.2 : 0.95);
           activeStops.push(chordInst.start({
             note: e.midi,
             time: base + i * step,
-            duration: Math.max(guitar ? 0.3 : 0.12, dur),
+            duration: Math.max(guitar ? 0.25 : 0.12, dur),
             velocity: hvel(e.velocity * 0.82 + accent + (i === ordered.length - 1 ? 3 : 0)),
           }));
         });
