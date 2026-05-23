@@ -215,10 +215,9 @@ export default function TranscriptionNotation({ excerpt }: { excerpt: TxExcerpt 
             let idx = tb.beatStarts.findIndex(bs => bs >= lbl.beatInBar - 1e-6);
             if (idx < 0) idx = tb.tickables.length - 1;
             const a = new Annotation(lbl.sym);
-            (a as unknown as { setPosition(p: number): void }).setPosition(3);   // ABOVE
-            try {
-              (a as unknown as { setVerticalJustification(v: number): void }).setVerticalJustification(1); // TOP
-            } catch { /* */ }
+            a.setVerticalJustification(Annotation.VerticalJustify.TOP);
+            a.setJustification(Annotation.HorizontalJustify.LEFT);
+            a.setFont("Arial", 11, "bold");
             try { tb.tickables[idx]?.addModifier(a, 0); } catch { /* */ }
           }
 
