@@ -22,7 +22,7 @@ const COMP_GENRE: Record<TxSource, CompGenre> = {
   thesession: "folk", essen: "folk", weimar: "jazz", cocopops: "pop",
 };
 import {
-  decomposeDuration, segmentByBar, layoutBarCells, keySpecFor, keyIsFlat, midiToVexKey, melodyGridFor,
+  decomposeDuration, segmentByBar, layoutBarCells, splitCellsAtBeats, keySpecFor, keyIsFlat, midiToVexKey, melodyGridFor,
   type TimedEvent, type BarCell,
 } from "@/lib/transcriptions/notation";
 
@@ -104,6 +104,9 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const bpb = excerpt.beatsPerBar;
     const bars = excerpt.bars;
     const ts = excerpt.item.timeSig;
+    // Felt beat (quarter-beats): quarter in simple metres, dotted-quarter in
+    // compound. Notes are split + tied at these so every beat stays visible.
+    const beatUnit = ts[1] === 8 && ts[0] % 3 === 0 ? 1.5 : 1;
     const keySpec = keySpecFor(excerpt.item.key.tonicPc, excerpt.item.key.mode);
     const flat = keyIsFlat(keySpec);
     const hasChordData = excerpt.chords.length > 0;
@@ -152,10 +155,10 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const built: BuiltBar[] = [];
     for (let b = 0; b < bars; b++) {
       const melody = showMelody
-        ? cellsToVoice(layoutBarCells(melodyByBar[b], bpb, melodyGridFor(excerpt.item.source)), (m: number) => [midiToVexKey(m, flat)], ["b/4"], carryMelody, "treble")
+        ? cellsToVoice(splitCellsAtBeats(layoutBarCells(melodyByBar[b], bpb, melodyGridFor(excerpt.item.source)), beatUnit), (m: number) => [midiToVexKey(m, flat)], ["b/4"], carryMelody, "treble")
         : null;
       const bassV = showBassStaff
-        ? cellsToVoice(layoutBarCells(bassLineByBar[b], bpb, 0.5), (m: number) => [midiToVexKey(m, flat)], ["d/3"], carryBass, "bass")
+        ? cellsToVoice(splitCellsAtBeats(layoutBarCells(bassLineByBar[b], bpb, 0.5), beatUnit), (m: number) => [midiToVexKey(m, flat)], ["d/3"], carryBass, "bass")
         : null;
       // Width is driven by the number of DISTINCT onsets across both voices,
       // because the formatter creates one column per shared tick position —
