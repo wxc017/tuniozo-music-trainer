@@ -277,8 +277,20 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
         <div className="bg-[#0f0f0f] border border-[#242424] rounded-lg p-4 space-y-3">
           <div className="flex items-baseline justify-between gap-3 flex-wrap">
             <div>
-              <div className="text-base font-semibold text-white">{prettyTitle(item.title)}</div>
-              {item.artist && <div className="text-xs text-[#888]">{item.artist}</div>}
+              {item.source === "weimar" ? (
+                <>
+                  <div className="text-[10px] uppercase tracking-wider text-[#cd6] font-semibold">Transcribed solo</div>
+                  <div className="text-base font-semibold text-white">
+                    {item.artist ? `${item.artist}'s solo` : "Solo"}
+                  </div>
+                  <div className="text-xs text-[#888]">on “{prettyTitle(item.title)}” (original tune)</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-base font-semibold text-white">{prettyTitle(item.title)}</div>
+                  {item.artist && <div className="text-xs text-[#888]">{item.artist}</div>}
+                </>
+              )}
             </div>
             <div className="text-xs text-[#666] text-right">
               {SOURCE_LABEL[item.source]} · {item.genre}{item.style ? ` · ${item.style}` : ""}
@@ -326,11 +338,9 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           className="px-3 py-2 rounded-md text-sm bg-[#1a1a1a] border border-[#333] text-[#888] hover:border-[#555] transition-colors">
           ■ Stop
         </button>
-        <button onClick={() => setShowAnswer(s => !s)} disabled={!excerpt}
-          className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors disabled:opacity-40 ${
-            showAnswer ? "bg-[#2a2a1a] border-[#8a7] text-[#cd6]" : "bg-[#1a1a1a] border-[#333] text-[#bbb] hover:border-[#555]"
-          }`}>
-          {showAnswer ? "Hide Answer" : "Show Answer"}
+        <button onClick={() => setShowAnswer(true)} disabled={!excerpt || showAnswer}
+          className="px-4 py-2 rounded-md text-sm font-medium border border-[#333] bg-[#1a1a1a] text-[#bbb] hover:border-[#555] transition-colors disabled:opacity-40">
+          Show Answer
         </button>
       </div>
     </div>
