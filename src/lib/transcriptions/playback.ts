@@ -10,19 +10,41 @@
 // limiter (via audioEngine), so the global volume slider and dynamics
 // apply uniformly with the rest of the trainer.
 
-import { Soundfont, SplendidGrandPiano, Smolken, Reverb } from "smplr";
+import { Soundfont, SplendidGrandPiano, Smolken, Sampler, Reverb } from "smplr";
 import { audioEngine } from "@/lib/audioEngine";
 import type { TxExcerpt } from "./loader";
 import type { TxSource } from "./types";
 import { compEvents, compGenreFor } from "./accompaniment";
 
-// A real multi-velocity Steinway (SplendidGrandPiano) and a sampled pizzicato
-// upright bass (Smolken) sound far less "MIDI" than the GM soundfont versions —
-// use them wherever a corpus calls for acoustic grand / acoustic bass.
+// Replace the thin GM soundfonts with real recorded samples wherever possible:
+// a multi-velocity Steinway (SplendidGrandPiano), a sampled pizzicato upright
+// bass (Smolken), and recorded guitar / sax / flute (tonejs-instruments, loaded
+// via a generic Sampler).  All sound far less "MIDI" than General-MIDI.
 type SoundfontInst =
   | ReturnType<typeof Soundfont>
   | ReturnType<typeof SplendidGrandPiano>
-  | ReturnType<typeof Smolken>;
+  | ReturnType<typeof Smolken>
+  | ReturnType<typeof Sampler>;
+
+// ── Recorded sample sets (tonejs-instruments, CC-licensed, CORS-open) ──
+// Maps a corpus instrument name → { dir, notes } on the hosted sample CDN.
+// `notes` are the files that actually exist; the Sampler pitch-shifts between
+// them.  File names use "s" for sharp (As2 = A#2); the Sampler key needs the
+// real note name, so we swap s→# when building the buffer map.
+const TONE_BASE = "https://nbrosowsky.github.io/tonejs-instruments/samples";
+const TONE_LIB: Record<string, { dir: string; notes: string[] }> = {
+  acoustic_guitar_steel: { dir: "guitar-acoustic", notes: ["A2","A3","A4","As2","As3","As4","B2","B3","B4","C3","C4","C5","Cs3","Cs4","Cs5","D2","D3","D4","D5","Ds2","Ds3","Ds4","E2","E3","E4","F2","F3","F4","Fs2","Fs3","Fs4","G2","G3","G4","Gs2","Gs3","Gs4"] },
+  acoustic_guitar_nylon: { dir: "guitar-nylon", notes: ["A2","A3","A4","A5","As5","B1","B2","B3","B4","Cs3","Cs4","Cs5","D2","D3","D5","Ds4","E2","E3","E4","E5","Fs2","Fs3","Fs4","Fs5","G3","G5","Gs2","Gs4","Gs5"] },
+  tenor_sax: { dir: "saxophone", notes: ["A4","A5","As3","As4","B3","B4","C4","C5","Cs3","Cs4","Cs5","D3","D4","D5","Ds3","Ds4","Ds5","E3","E4","E5","F3","F4","F5","Fs3","Fs4","Fs5","G3","G4","G5","Gs3","Gs4","Gs5"] },
+  flute: { dir: "flute", notes: ["A4","A5","A6","C4","C5","C6","C7","E4","E5","E6"] },
+};
+
+/** Build the Sampler buffer map { realNoteName → sampleUrl } for a tonejs lib. */
+function toneBuffers(lib: { dir: string; notes: string[] }): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const n of lib.notes) out[n.replace("s", "#")] = `${TONE_BASE}/${lib.dir}/${n}.mp3`;
+  return out;
+}
 
 /** GM instrument assignment per corpus. `chords`/`bass` omitted ⇒ that
  *  voice isn't played (melody-only sources). */
@@ -83,15 +105,31 @@ async function ensureReverb(): Promise<void> {
 function getInstrument(name: string): Promise<SoundfontInst> {
   const cached = instCache.get(name);
   if (cached) return cached;
-  const ctx = audioEngine.getOutputContext();
-  const dest = outputGain();
-  const inst: SoundfontInst =
-    name === "acoustic_grand_piano" ? SplendidGrandPiano(ctx, { destination: dest })
-    : name === "acoustic_bass" ? Smolken(ctx, { instrument: "Pizzicato", destination: dest })
-    : Soundfont(ctx, { instrument: name, destination: dest });
-  const p = inst.ready.then(() => inst);
+  const p = loadInstrument(name);
   instCache.set(name, p);
   return p;
+}
+
+/** Pick the best available timbre for a corpus instrument: dedicated sampled
+ *  instruments first (piano/bass), then recorded tonejs samples (guitar/sax/
+ *  flute), and the GM soundfont as a universal fallback — including if a
+ *  recorded set fails to load, so playback is never left silent. */
+async function loadInstrument(name: string): Promise<SoundfontInst> {
+  const ctx = audioEngine.getOutputContext();
+  const dest = outputGain();
+  if (name === "acoustic_grand_piano") {
+    const i = SplendidGrandPiano(ctx, { destination: dest }); await i.ready; return i;
+  }
+  if (name === "acoustic_bass") {
+    const i = Smolken(ctx, { instrument: "Pizzicato", destination: dest }); await i.ready; return i;
+  }
+  const lib = TONE_LIB[name];
+  if (lib) {
+    try {
+      const i = Sampler(ctx, { buffers: toneBuffers(lib), destination: dest }); await i.ready; return i;
+    } catch { /* recorded set unavailable → fall back to GM below */ }
+  }
+  const i = Soundfont(ctx, { instrument: name, destination: dest }); await i.ready; return i;
 }
 
 /** Distinct instrument names a set of sources will need — for preloading. */
