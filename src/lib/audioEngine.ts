@@ -592,6 +592,15 @@ export class AudioEngine {
 
   async resume() { await this.ctx?.resume(); }
 
+  /** Public access to the shared AudioContext (lazily created).  Used by
+   *  the sample-based Transcriptions player (smplr) so its output shares
+   *  the same context, limiter, and master gain as everything else. */
+  getOutputContext(): AudioContext { return this.getCtx(); }
+
+  /** Node that external sources should connect to so they pass through
+   *  the app's play limiter + master gain (matching the synth play path). */
+  getPlayDestination(): AudioNode { this.getCtx(); return this.getPlayDest(); }
+
   private getCtx(): AudioContext {
     if (!this.ctx) {
       this.ctx = new AudioContext();
