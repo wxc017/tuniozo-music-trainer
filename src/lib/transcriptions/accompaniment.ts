@@ -15,19 +15,24 @@ import type { TxChord, TxKey } from "./types";
 import { spellPc } from "./chordSymbols";
 import { Voicing, VoicingDictionary, VoiceLeading, Note } from "tonal";
 
-/** Voice a chord with tonal's left-hand (rootless) jazz dictionary, voice-led
- *  from the previous voicing (minimal top-note motion). Returns MIDI notes.
- *  Falls back to a simple triad voicing for symbols tonal can't parse.
- *  When no bassist is present, the root is added underneath so the harmony
- *  is still grounded. */
-function voicedChord(sym: string, rootPc: number, intervals: number[], prev: string[] | undefined, rootless: boolean): { midis: number[]; voicing: string[] | undefined } {
-  const name = sym.split("/")[0];
-  let v: string[] = [];
-  try { v = Voicing.get(name, ["F3", "A4"], VoicingDictionary.lefthand, VoiceLeading.topNoteDiff, prev) ?? []; } catch { v = []; }
-  let midis = v.map(n => Note.midi(n)).filter((m): m is number => m != null);
-  if (!midis.length) { midis = voiceChord(rootPc, intervals); v = []; }
-  if (!rootless) midis = [36 + (((rootPc % 12) + 12) % 12), ...midis];
-  return { midis, voicing: v.length ? v : undefined };
+/** Voice a chord for comping, genre-appropriately:
+ *   • jazz / fusion → tonal's left-hand (rootless) dictionary, voice-led from
+ *     the previous voicing (minimal top-note motion) — the 3rd/7th carry the
+ *     harmony, the bass (or the ear) supplies the root.
+ *   • folk / pop → a plain mid-register root-position triad — no jazz tensions,
+ *     no separate sub-bass note.
+ *  No octave-low root is ever added: that produced an inaudible "super bassy"
+ *  note and piled deep ledger lines under the staff. */
+function voicedChord(sym: string, rootPc: number, intervals: number[], prev: string[] | undefined, genre: CompGenre): { midis: number[]; voicing: string[] | undefined } {
+  if (genre === "jazz" || genre === "fusion") {
+    const name = sym.split("/")[0];
+    let v: string[] = [];
+    try { v = Voicing.get(name, ["F3", "A4"], VoicingDictionary.lefthand, VoiceLeading.topNoteDiff, prev) ?? []; } catch { v = []; }
+    const midis = v.map(n => Note.midi(n)).filter((m): m is number => m != null);
+    if (midis.length) return { midis, voicing: v };
+  }
+  // Folk / pop (and any jazz symbol tonal can't parse): simple triad.
+  return { midis: voiceChord(rootPc, intervals), voicing: undefined };
 }
 
 // ── Diatonic vocabulary (self-contained, 12-EDO) ────────────────────
@@ -307,11 +312,11 @@ function buildBass(
   return out;
 }
 
-/** Realize a chord track into idiomatic accompaniment events.
- *  `rootless` = a bassist is present, so the chord voicing omits the root
- *  (rootless left-hand voicings); otherwise the root is added underneath. */
+/** Realize a chord track into idiomatic accompaniment events.  Voicings are
+ *  genre-appropriate (jazz/fusion = rootless left-hand, folk/pop = triads);
+ *  no octave-low root is added — the bass line (when present) grounds it. */
 export function compEvents(
-  chords: TxChord[], genre: CompGenre, beatsPerBar: number, timeSig: [number, number], windowBeats: number, rootless = false,
+  chords: TxChord[], genre: CompGenre, beatsPerBar: number, timeSig: [number, number], windowBeats: number,
 ): Accompaniment {
   const [num, den] = timeSig;
   const out: Accompaniment = { chord: [], bass: [] };
@@ -320,7 +325,7 @@ export function compEvents(
   // Voice every chord up front, voice-led (minimal motion) from the prior one.
   let prevV: string[] | undefined;
   const voicings = chords.map(c => {
-    const r = voicedChord(c.sym, c.rootPc, c.intervals, prevV, rootless);
+    const r = voicedChord(c.sym, c.rootPc, c.intervals, prevV, genre);
     if (r.voicing) prevV = r.voicing;
     return r.midis;
   });

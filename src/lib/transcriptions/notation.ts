@@ -124,6 +124,13 @@ export function splitCellsAtBeats<T>(cells: BarCell<T>[], beatUnit: number): Bar
   if (!(beatUnit > 0)) return cells;
   const out: BarCell<T>[] = [];
   for (const c of cells) {
+    // A cell that starts ON a beat and is a SINGLE clean notatable value
+    // (quarter, dotted-quarter, half, dotted-half, whole…) needs no internal
+    // beat split: it already renders as one notehead, and splitting it only
+    // manufactures ugly tied pairs (e.g. quarter-tied-eighth for a dotted
+    // quarter).  Keep it whole — its start still marks the beat.
+    const onBeat = Math.abs(c.startInBar / beatUnit - Math.round(c.startInBar / beatUnit)) < 1e-9;
+    if (onBeat && decomposeDuration(c.durBeats).length === 1) { out.push(c); continue; }
     const cellEnd = c.startInBar + c.durBeats;
     let start = c.startInBar;
     while (start < cellEnd - 1e-9) {

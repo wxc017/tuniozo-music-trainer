@@ -193,17 +193,53 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
   };
   const hvel = (v: number) => Math.max(1, Math.min(127, Math.round(v + (hrand() * 2 - 1) * 6)));
 
+  // Felt pulse + bar length in quarter-beats, for metric accents.
+  const beatsPerBar = ex.beatsPerBar;
+  const pulse = den === 8 && num % 3 === 0 ? 1.5 : 1;
+  // Metric stress: downbeat strong, on-pulse medium, off-pulse weak.  Real
+  // players lean on the beat and ghost the offbeats — flat velocities are the
+  // single biggest "robotic" tell.
+  const metricAccent = (beat: number) => {
+    const inBar = ((beat % beatsPerBar) + beatsPerBar) % beatsPerBar;
+    if (inBar < 1e-6) return 10;                      // downbeat
+    if (Math.abs(((inBar % pulse) + pulse) % pulse) < 1e-6) return 3; // on a pulse
+    return -7;                                        // off the pulse → ghosted
+  };
+
   // ── Melody ────────────────────────────────────────────────────────
+  // A solo isn't a flat sequence of equal notes.  We shape three things:
+  //   • metric accent (lean on beats, ghost offbeats),
+  //   • pitch contour (higher = a touch brighter/louder),
+  //   • phrase arch (swell into a phrase, taper out of it — phrases are split
+  //     by rests), plus a hair of laid-back time on swing tunes.
   if (opts.withMelody) {
     const inst = loaded.get(kit.melody)!;
-    for (const note of ex.melody) {
+    const mel = ex.melody;
+    // Phrase arch: sin-curve swell across each run of notes between rests.
+    const swell = new Array(mel.length).fill(0.5);
+    for (let s = 0, i = 1; i <= mel.length; i++) {
+      const gap = i < mel.length && (mel[i].startBeat - (mel[i - 1].startBeat + mel[i - 1].durBeats)) > pulse * 1.2;
+      if (i === mel.length || gap) {
+        const n = i - s;
+        for (let k = s; k < i; k++) swell[k] = Math.sin((n > 1 ? (k - s) / (n - 1) : 0.5) * Math.PI);
+        s = i;
+      }
+    }
+    const lo = Math.min(...mel.map(n => n.midi)), hi = Math.max(...mel.map(n => n.midi));
+    const mid = (lo + hi) / 2, span = Math.max(6, hi - lo);
+    mel.forEach((note, i) => {
+      const contour = ((note.midi - mid) / (span / 2)) * 5;     // ±5 by register
+      const base = 88 + metricAccent(note.startBeat) + contour + swell[i] * 10;
+      // Slightly detached on long notes that precede a rest, legato otherwise.
+      const next = i + 1 < mel.length ? mel[i + 1].startBeat : Infinity;
+      const rest = next - (note.startBeat + note.durBeats) > pulse * 0.5;
       activeStops.push(inst.start({
         note: note.midi,
-        time: humanTime(note.startBeat),
-        duration: Math.max(0.05, note.durBeats * secPerBeat * 0.96),
-        velocity: hvel(102),                          // lead sits on top of the mix
+        time: humanTime(note.startBeat) + (swing ? 0.012 : 0),  // lay back the lead on swing
+        duration: Math.max(0.05, note.durBeats * secPerBeat * (rest ? 0.9 : 0.97)),
+        velocity: hvel(base),
       }));
-    }
+    });
   }
 
   // ── Accompaniment (idiomatic comping + bass, per genre) ───────────
@@ -211,17 +247,43 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
   // (jazz Charleston + walking bass, pop, folk boom-chick, waltz, 6/8)
   // rather than a single block per chord.
   if ((opts.withChords || opts.withBass) && ex.chords.length) {
-    const comp = compEvents(ex.chords, compGenreFor(ex.item.source, ex.item.style), ex.beatsPerBar, ex.item.timeSig, ex.windowBeats, opts.withBass);
+    const comp = compEvents(ex.chords, compGenreFor(ex.item.source, ex.item.style), ex.beatsPerBar, ex.item.timeSig, ex.windowBeats);
     if (opts.withChords && kit.chords) {
       const chordInst = loaded.get(kit.chords)!;
+      const guitar = /guitar/.test(kit.chords);
+      // Group simultaneous chord notes so we can STRUM them rather than hit
+      // every string at once (the dead giveaway of a fake guitar).
+      const groups = new Map<number, typeof comp.chord>();
       for (const e of comp.chord) {
-        activeStops.push(chordInst.start({ note: e.midi, time: humanTime(e.startBeat), duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: hvel(e.velocity * 0.85) }));
+        const k = Math.round(e.startBeat / 0.0625) * 0.0625;
+        (groups.get(k) ?? groups.set(k, []).get(k)!).push(e);
+      }
+      for (const [, g] of groups) {
+        const onBeat = Math.abs(((g[0].startBeat % pulse) + pulse) % pulse) < 1e-6;
+        // Down-stroke (on the beat) sweeps low→high; up-stroke (offbeat) high→low.
+        const ordered = [...g].sort((a, b) => onBeat ? a.midi - b.midi : b.midi - a.midi);
+        // Guitars spread ~10 ms/string, piano barely rolls; humans aren't tight.
+        const step = (guitar ? 0.011 : 0.004) + hrand() * 0.004;
+        const base = humanTime(g[0].startBeat);
+        const accent = metricAccent(g[0].startBeat);
+        ordered.forEach((e, i) => {
+          // Guitars ring through; pianos comp shorter.  Either way, sustain
+          // long enough that the stab doesn't sound clipped/staccato.
+          const dur = e.durBeats * secPerBeat * (guitar ? 1.6 : 1.05);
+          activeStops.push(chordInst.start({
+            note: e.midi,
+            time: base + i * step,
+            duration: Math.max(guitar ? 0.3 : 0.12, dur),
+            velocity: hvel(e.velocity * 0.82 + accent + (i === ordered.length - 1 ? 3 : 0)),
+          }));
+        });
       }
     }
     if (opts.withBass && kit.bass) {
       const bassInst = loaded.get(kit.bass)!;
       for (const e of comp.bass) {
-        activeStops.push(bassInst.start({ note: e.midi, time: humanTime(e.startBeat), duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: hvel(e.velocity) }));
+        const onBeat = Math.abs(((e.startBeat % pulse) + pulse) % pulse) < 1e-6;
+        activeStops.push(bassInst.start({ note: e.midi, time: humanTime(e.startBeat), duration: Math.max(0.1, e.durBeats * secPerBeat * 0.96), velocity: hvel(e.velocity + (onBeat ? 4 : -4)) }));
       }
     }
   }
