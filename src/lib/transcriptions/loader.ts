@@ -26,9 +26,18 @@ let indexPromise: Promise<TxIndex> | null = null;
 const sourceCache = new Map<TxSource, Promise<TxItem[]>>();
 const itemById = new Map<string, TxItem>();
 
+/** Normalize an item's notation conventions in place.  3/2 has the same six
+ *  quarter-beats per bar as 6/4 but reads far more clearly on the staff (and
+ *  matches how players count these tunes), so we relabel it — no beat math
+ *  changes since beatsPerBar([3,2]) === beatsPerBar([6,4]). Idempotent. */
+function normalizeItem(item: TxItem): TxItem {
+  if (item.timeSig[0] === 3 && item.timeSig[1] === 2) item.timeSig = [6, 4];
+  return item;
+}
+
 /** Build a fallback index/corpus from the bundled seed items. */
 function seedItemsBySource(source: TxSource): TxItem[] {
-  return SEED_ITEMS.filter(i => i.source === source);
+  return SEED_ITEMS.filter(i => i.source === source).map(normalizeItem);
 }
 
 function indexEntryFor(item: TxItem): TxIndexEntry {
@@ -72,7 +81,7 @@ export function loadSource(source: TxSource): Promise<TxItem[]> {
       const res = await fetch(dataUrl(`${source}.json`));
       if (!res.ok) throw new Error(`${source} ${res.status}`);
       const json = (await res.json()) as TxItem[];
-      items = json?.length ? json : seedItemsBySource(source);
+      items = json?.length ? json.map(normalizeItem) : seedItemsBySource(source);
     } catch {
       items = seedItemsBySource(source);
     }
