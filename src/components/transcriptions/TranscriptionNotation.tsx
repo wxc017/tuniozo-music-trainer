@@ -49,7 +49,7 @@ interface BuiltVoice {
  *  continuations.  `keyFn` maps a cell's payload to VexFlow key strings. */
 function cellsToVoice<T>(
   cells: BarCell<T>[], keyFn: (d: T) => string[], restKeys: string[],
-  carryTieFrom: { note: StaveNote | null },
+  carryTieFrom: { note: StaveNote | null }, clef: "treble" | "bass" = "treble",
 ): BuiltVoice {
   const tickables: StaveNote[] = [];
   const beatStarts: number[] = [];
@@ -61,7 +61,7 @@ function cellsToVoice<T>(
     const pieces = decomposeDuration(cell.durBeats);
     let prev: StaveNote | null = null;
     pieces.forEach((p, i) => {
-      const note = new StaveNote({ keys, duration: p.dur + (isRest ? "r" : "") } as StaveNoteStruct);
+      const note = new StaveNote({ keys, duration: p.dur + (isRest ? "r" : ""), clef } as StaveNoteStruct);
       styleNote(note);
       if (p.dots) { try { Dot.buildAndAttach([note], { all: true }); } catch { /* */ } }
       tickables.push(note);
@@ -139,18 +139,35 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     }
 
     // ── Phase 1: build voices for every bar (sequential, ties carry) ─
-    const carryTreble = { note: null as StaveNote | null };
-    const carryBass = { note: null as StaveNote | null };
+    // Put the melody on whichever clef fits its register, so low (e.g.
+    // baritone-sax) lines render on the bass staff instead of drowning the
+    // treble in ledger lines.  `treble`/`bass` below are the TOP/BOTTOM
+    // staves; the melody+chord content swaps between them accordingly.
+    const mids = excerpt.melody.map(n => n.midi).sort((a, b) => a - b);
+    const median = mids.length ? mids[Math.floor(mids.length / 2)] : 71;
+    const melodyOnBass = showMelody && mids.length > 0 && median < 56;
+    const chordOctave = melodyOnBass ? 12 : 0;     // lift chord voicing onto the treble staff
+    const melodyRest = melodyOnBass ? ["d/3"] : ["b/4"];
+    const chordRest = melodyOnBass ? ["b/4"] : ["d/3"];
+
+    const carryMelody = { note: null as StaveNote | null };
+    const carryChord = { note: null as StaveNote | null };
     interface BuiltBar { treble: BuiltVoice; bass: BuiltVoice; contentW: number; labels: { beatInBar: number; sym: string }[] }
     const built: BuiltBar[] = [];
     for (let b = 0; b < bars; b++) {
-      const treble = cellsToVoice(layoutBarCells(melodyByBar[b], bpb), (m: number) => [midiToVexKey(m, flat)], ["b/4"], carryTreble);
-      const bass = cellsToVoice(
-        hasChords ? layoutBarCells(chordByBar[b], bpb) : [],
-        (ms: number[]) => ms.map(m => midiToVexKey(m, flat)), ["d/3"], carryBass,
+      const melodyVoice = cellsToVoice(
+        layoutBarCells(melodyByBar[b], bpb), (m: number) => [midiToVexKey(m, flat)], melodyRest, carryMelody,
+        melodyOnBass ? "bass" : "treble",
       );
-      const count = Math.max(treble.tickables.length, bass.tickables.length);
-      built.push({ treble, bass, contentW: Math.max(MIN_BAR_W, count * PER_TICKABLE), labels: chordLabelByBar[b] });
+      const chordVoice = cellsToVoice(
+        hasChords ? layoutBarCells(chordByBar[b], bpb) : [],
+        (ms: number[]) => ms.map(m => midiToVexKey(m + chordOctave, flat)), chordRest, carryChord,
+        melodyOnBass ? "treble" : "bass",
+      );
+      const top = melodyOnBass ? chordVoice : melodyVoice;
+      const bottom = melodyOnBass ? melodyVoice : chordVoice;
+      const count = Math.max(top.tickables.length, bottom.tickables.length);
+      built.push({ treble: top, bass: bottom, contentW: Math.max(MIN_BAR_W, count * PER_TICKABLE), labels: chordLabelByBar[b] });
     }
 
     // ── Phase 2: pack bars into rows by width ───────────────────────
