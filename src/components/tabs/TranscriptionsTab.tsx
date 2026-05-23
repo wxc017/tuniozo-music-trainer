@@ -15,6 +15,17 @@ import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
 
 const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops"];
 
+/** Add spaces to run-together titles from filename-derived data, e.g.
+ *  "25Or6To4" → "25 Or 6 To 4", "HoneyHoney" → "Honey Honey". */
+function prettyTitle(t: string): string {
+  return t
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Za-z])(\d)/g, "$1 $2")
+    .replace(/(\d)([A-Za-z])/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 interface Props {
   ensureAudio: () => Promise<void>;
   playVol?: number;
@@ -266,7 +277,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
         <div className="bg-[#0f0f0f] border border-[#242424] rounded-lg p-4 space-y-3">
           <div className="flex items-baseline justify-between gap-3 flex-wrap">
             <div>
-              <div className="text-base font-semibold text-white">{item.title}</div>
+              <div className="text-base font-semibold text-white">{prettyTitle(item.title)}</div>
               {item.artist && <div className="text-xs text-[#888]">{item.artist}</div>}
             </div>
             <div className="text-xs text-[#666] text-right">

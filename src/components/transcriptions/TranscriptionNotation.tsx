@@ -22,7 +22,7 @@ const COMP_GENRE: Record<TxSource, CompGenre> = {
   thesession: "folk", essen: "folk", weimar: "jazz", cocopops: "pop",
 };
 import {
-  decomposeDuration, segmentByBar, layoutBarCells, keySpecFor, keyIsFlat, midiToVexKey,
+  decomposeDuration, segmentByBar, layoutBarCells, keySpecFor, keyIsFlat, midiToVexKey, melodyGridFor,
   type TimedEvent, type BarCell,
 } from "@/lib/transcriptions/notation";
 
@@ -127,16 +127,18 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const bassLineByBar = segmentByBar<number>(
       comp.bass.map(e => ({ startBeat: e.startBeat, durBeats: e.durBeats, data: e.midi + 12 })), bars, bpb);
 
-    // Chord symbols per bar (carry-over at downbeat + mid-bar changes).
+    // Chord symbols: one per actual chord change, at its onset.  No
+    // per-bar carry-over duplicates (those produced "Fmaj7 Fmaj7" nonsense);
+    // the excerpt already includes the chord sounding at the window start.
     const chordLabelByBar: { beatInBar: number; sym: string }[][] = Array.from({ length: bars }, () => []);
-    for (let b = 0; showChordSymbols && b < bars; b++) {
-      const barStart = b * bpb, barEnd = (b + 1) * bpb;
-      const changes = excerpt.chords.filter(c => c.startBeat >= barStart - 1e-6 && c.startBeat < barEnd - 1e-6);
-      if (!changes.some(c => Math.abs(c.startBeat - barStart) < 1e-6)) {
-        const carry = [...excerpt.chords].reverse().find(c => c.startBeat <= barStart + 1e-6);
-        if (carry) chordLabelByBar[b].push({ beatInBar: 0, sym: carry.sym });
+    if (showChordSymbols) {
+      let lastSym: string | null = null;
+      for (const c of excerpt.chords) {
+        if (c.sym === lastSym) continue;                 // skip repeats of the same chord
+        lastSym = c.sym;
+        const bar = Math.floor(c.startBeat / bpb + 1e-6);
+        if (bar >= 0 && bar < bars) chordLabelByBar[bar].push({ beatInBar: c.startBeat - bar * bpb, sym: c.sym });
       }
-      for (const c of changes) chordLabelByBar[b].push({ beatInBar: c.startBeat - barStart, sym: c.sym });
     }
 
     // ── Phase 1: build voices for every bar (sequential, ties carry) ─
@@ -150,7 +152,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const built: BuiltBar[] = [];
     for (let b = 0; b < bars; b++) {
       const melody = showMelody
-        ? cellsToVoice(layoutBarCells(melodyByBar[b], bpb, excerpt.item.source === "weimar" ? 0.5 : 0.25), (m: number) => [midiToVexKey(m, flat)], ["b/4"], carryMelody, "treble")
+        ? cellsToVoice(layoutBarCells(melodyByBar[b], bpb, melodyGridFor(excerpt.item.source)), (m: number) => [midiToVexKey(m, flat)], ["b/4"], carryMelody, "treble")
         : null;
       const bassV = showBassStaff
         ? cellsToVoice(layoutBarCells(bassLineByBar[b], bpb, 0.5), (m: number) => [midiToVexKey(m, flat)], ["d/3"], carryBass, "bass")
