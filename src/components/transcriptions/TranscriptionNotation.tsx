@@ -40,12 +40,18 @@ function styleNote(note: StaveNote) {
   try { note.setStyle(NOTE_STYLE); } catch { /* */ }
   try { (note as unknown as { setStemStyle(s: typeof NOTE_STYLE): void }).setStemStyle(NOTE_STYLE); } catch { /* */ }
   try { (note as unknown as { setFlagStyle(s: typeof NOTE_STYLE): void }).setFlagStyle(NOTE_STYLE); } catch { /* */ }
+  // Ledger lines have their own style and otherwise render grey on the dark canvas.
+  try { (note as unknown as { setLedgerLineStyle(s: typeof NOTE_STYLE): void }).setLedgerLineStyle(NOTE_STYLE); } catch { /* */ }
 }
 
 interface BuiltVoice {
   tickables: StaveNote[];
   beatStarts: number[];        // bar-relative start beat of each tickable
   ties: [StaveNote, StaveNote][];
+  // A tie INTO this bar from the previous bar's last note (cross-bar carry),
+  // kept separate so the renderer can drop it at a row break (where it would
+  // otherwise be drawn as a long diagonal line across the page).
+  carryTie: [StaveNote, StaveNote] | null;
 }
 
 /** Turn one bar's laid-out cells into VexFlow tickables, splitting each
@@ -58,6 +64,7 @@ function cellsToVoice<T>(
   const tickables: StaveNote[] = [];
   const beatStarts: number[] = [];
   const ties: [StaveNote, StaveNote][] = [];
+  let carryTie: [StaveNote, StaveNote] | null = null;
 
   for (const cell of cells) {
     const isRest = cell.data === null;
@@ -71,7 +78,9 @@ function cellsToVoice<T>(
       if (p.dots) { try { Dot.buildAndAttach([note], { all: true }); } catch { /* */ } }
       tickables.push(note);
       beatStarts.push(cell.startInBar);
-      if (!isRest && i === 0 && carryTieFrom.note) { ties.push([carryTieFrom.note, note]); carryTieFrom.note = null; }
+      // First note of this bar continuing a tie from the previous bar: keep it
+      // as the (separate) carry tie so the renderer can suppress it at a row break.
+      if (!isRest && i === 0 && carryTieFrom.note) { carryTie = [carryTieFrom.note, note]; carryTieFrom.note = null; }
       if (!isRest && prev) ties.push([prev, note]);
       prev = isRest ? null : note;
     });
@@ -81,7 +90,7 @@ function cellsToVoice<T>(
     const rest = new StaveNote({ keys: restKeys, duration: "wr" } as StaveNoteStruct);
     styleNote(rest); tickables.push(rest); beatStarts.push(0);
   }
-  return { tickables, beatStarts, ties };
+  return { tickables, beatStarts, ties, carryTie };
 }
 
 export interface NotationProps {
@@ -124,7 +133,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     // is on) and the bass line (when Bass is on).
     const wantComp = (showChordSymbols || showBassStaff);
     const comp = wantComp
-      ? compEvents(excerpt.chords, compGenreFor(excerpt.item.source, excerpt.item.style), bpb, ts, bars * bpb, showBassStaff)
+      ? compEvents(excerpt.chords, compGenreFor(excerpt.item.source, excerpt.item.style), bpb, ts, bars * bpb)
       : { chord: [], bass: [] };
     // Chord stabs grouped by onset → one stacked chord per hit, shifted down
     // an octave so it sits in the bass clef.
@@ -265,10 +274,12 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
             }
           }
 
-          // Beam melody + bass line BEFORE drawing so VexFlow suppresses the
-          // individual note flags (beams after draw left stray tails).
+          // Beam ONLY the bass line BEFORE drawing (beams after draw left stray
+          // tails).  The melody is intentionally left un-beamed: with all the
+          // beat-split ties, beams blurred where each beat fell — individual
+          // flags read more clearly per the user's request.
           const beams: Beam[] = [];
-          for (const v of [mv, bv]) {
+          for (const v of [bv]) {
             if (!v) continue;
             try { beams.push(...Beam.generateBeams(v.tickables, { groups: beamGroups, beamRests: false, maintainStemDirections: true })); } catch { /* */ }
           }
@@ -287,9 +298,22 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           if (chordVoice && bass) chordVoice.draw(ctx, bass);
           if (bassVoice && bass) bassVoice.draw(ctx, bass);
           beams.forEach(beam => { try { beam.setStyle(NOTE_STYLE); } catch { /* */ } beam.setContext(ctx).draw(); });
+          const drawTie = (a: StaveNote, z: StaveNote) => {
+            try {
+              // firstIndexes/lastIndexes pin the tie to the actual noteheads,
+              // otherwise VexFlow floats it in the gap between notes.
+              const tie = new StaveTie({ firstNote: a, lastNote: z, firstIndexes: [0], lastIndexes: [0] });
+              try { (tie as unknown as { setStyle(s: typeof NOTE_STYLE): void }).setStyle(NOTE_STYLE); } catch { /* */ }
+              tie.setContext(ctx).draw();
+            } catch { /* */ }
+          };
           for (const v of [mv, cv, bv]) {
             if (!v) continue;
-            for (const [a, z] of v.ties) { try { new StaveTie({ firstNote: a, lastNote: z }).setContext(ctx).draw(); } catch { /* */ } }
+            for (const [a, z] of v.ties) drawTie(a, z);
+            // Cross-bar carry tie: draw only WITHIN a row (not at a row's first
+            // bar) — across a row break its two notes sit on different systems
+            // and VexFlow renders a long diagonal line across the page.
+            if (v.carryTie && !isFirst) drawTie(v.carryTie[0], v.carryTie[1]);
           }
           x += w;
         }
