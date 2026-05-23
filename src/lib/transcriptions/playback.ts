@@ -99,6 +99,10 @@ export interface PlayHandle {
 
 // Track scheduled metronome oscillators so stop() can silence them.
 let activeClicks: { osc: OscillatorNode; gain: GainNode }[] = [];
+// smplr start() returns a stop-fn per note.  We collect them so Stop can
+// cancel notes scheduled in the FUTURE (a full song queues hundreds up
+// front; inst.stop() alone only kills currently-sounding voices).
+let activeStops: Array<(time?: number) => void> = [];
 
 function scheduleClick(time: number, accent: boolean, dest: AudioNode) {
   const ctx = audioEngine.getOutputContext();
@@ -117,6 +121,10 @@ function scheduleClick(time: number, accent: boolean, dest: AudioNode) {
 
 /** Stop all transcription audio immediately. */
 export function stopPlayback() {
+  // Cancel every scheduled note (including ones not yet started — full-song
+  // playback queues the whole tune up front).
+  for (const stop of activeStops) { try { stop(0); } catch { /* */ } }
+  activeStops = [];
   for (const p of instCache.values()) p.then(inst => inst.stop()).catch(() => {});
   for (const c of activeClicks) {
     try { c.gain.gain.cancelScheduledValues(0); c.gain.gain.value = 0; c.osc.stop(); } catch { /* already stopped */ }
@@ -174,12 +182,12 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
   if (opts.withMelody) {
     const inst = loaded.get(kit.melody)!;
     for (const note of ex.melody) {
-      inst.start({
+      activeStops.push(inst.start({
         note: note.midi,
         time: t0 + note.startBeat * secPerBeat,
         duration: Math.max(0.05, note.durBeats * secPerBeat * 0.96),
         velocity: 96,
-      });
+      }));
     }
   }
 
@@ -192,13 +200,13 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
     if (opts.withChords && kit.chords) {
       const chordInst = loaded.get(kit.chords)!;
       for (const e of comp.chord) {
-        chordInst.start({ note: e.midi, time: t0 + e.startBeat * secPerBeat, duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: e.velocity });
+        activeStops.push(chordInst.start({ note: e.midi, time: t0 + e.startBeat * secPerBeat, duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: e.velocity }));
       }
     }
     if (opts.withBass && kit.bass) {
       const bassInst = loaded.get(kit.bass)!;
       for (const e of comp.bass) {
-        bassInst.start({ note: e.midi, time: t0 + e.startBeat * secPerBeat, duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: e.velocity });
+        activeStops.push(bassInst.start({ note: e.midi, time: t0 + e.startBeat * secPerBeat, duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: e.velocity }));
       }
     }
   }
