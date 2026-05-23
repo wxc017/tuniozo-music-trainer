@@ -170,6 +170,101 @@ function barPattern(genre: CompGenre, beatsPerBar: number, den: number, num: num
   return hits;
 }
 
+// Tiny deterministic RNG (mulberry32) so a tune's line varies bar-to-bar
+// yet is identical each replay.
+function makeRng(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Place a pitch-class in the upright-bass register nearest to `prev` so the
+ *  line moves by small steps instead of leaping octaves (the robotic feel). */
+function nearBass(pc: number, prev: number): number {
+  pc = ((pc % 12) + 12) % 12;
+  let best = pc + 36, bd = Infinity;
+  for (let m = 24; m <= 48; m += 12) {           // C1..C3 octaves
+    const cand = m + pc;
+    if (cand < 28 || cand > 52) continue;        // keep within E1..E3
+    const d = Math.abs(cand - prev);
+    if (d < bd) { bd = d; best = cand; }
+  }
+  return best;
+}
+
+/** A musical, voice-led bass line.  Jazz = walking line: root on each chord,
+ *  chord tones / scale steps through the bar, a chromatic-or-step approach
+ *  into the next chord's root, plus the occasional eighth-note skip.
+ *  Folk/pop = root-led with fifths and passing tones.  Register is kept
+ *  continuous (small steps) and lightly humanised, and a per-tune seed makes
+ *  successive bars differ rather than repeating one canned shape. */
+function buildBass(
+  chords: TxChord[], genre: CompGenre, timeSig: [number, number], windowBeats: number,
+): CompEvent[] {
+  const out: CompEvent[] = [];
+  if (!chords.length) return out;
+  const [num, den] = timeSig;
+  const compound = den === 8 && num % 3 === 0;
+  const pulse = compound ? 1.5 : 1;
+  const rand = makeRng(Math.round(chords.reduce((a, c) => a + c.rootPc * 31 + c.startBeat * 7, windowBeats * 13 + num)));
+
+  const chordAt = (beat: number): TxChord => {
+    let f = chords[0];
+    for (const c of chords) { if (c.startBeat <= beat + 1e-6) f = c; else break; }
+    return f;
+  };
+  const rootAfter = (beat: number): number => {
+    for (const c of chords) if (c.startBeat > beat + 1e-6) return c.rootPc;
+    return chords[chords.length - 1].rootPc;
+  };
+
+  let prev = 40;                                  // start around E2
+  for (let beat = 0; beat < windowBeats - 1e-6; beat += pulse) {
+    const ch = chordAt(beat);
+    const tones = ch.intervals.map(i => (ch.rootPc + i) % 12);
+    const onChordStart = Math.abs(beat - ch.startBeat) < 1e-6 || beat < 1e-6;
+    const changeNext = chordAt(beat + pulse) !== ch || beat + pulse >= windowBeats - 1e-6;
+
+    let pc: number;
+    if (genre === "folk" || genre === "pop") {
+      if (onChordStart) pc = ch.rootPc;
+      else if (changeNext && rand() < 0.5) pc = (rootAfter(beat) + (rand() < 0.5 ? 2 : 10)) % 12; // step into next
+      else pc = rand() < 0.6 ? (ch.rootPc + 7) % 12 : (tones[1] ?? ch.rootPc);                     // fifth or third
+    } else {
+      if (onChordStart) pc = ch.rootPc;
+      else if (changeNext) {
+        const target = rootAfter(beat);
+        pc = rand() < 0.6 ? (target + (rand() < 0.5 ? 1 : 11)) % 12     // chromatic approach
+                          : (target + (rand() < 0.5 ? 2 : 10)) % 12;    // scale-step approach
+      } else {
+        const pool = tones.length > 1 ? tones.slice(1) : tones;        // 3rd/5th/(7th)
+        pc = rand() < 0.25 ? (ch.rootPc + (rand() < 0.5 ? 2 : 9)) % 12  // scale passing tone
+                           : pool[Math.floor(rand() * pool.length)];
+      }
+    }
+
+    const midi = nearBass(pc, prev);
+    prev = midi;
+    const vel = (onChordStart ? 80 : 70) + Math.floor(rand() * 7) - 3;
+
+    if (genre === "jazz" && !onChordStart && !changeNext && rand() < 0.2) {
+      // eighth-note skip: a quick stepwise passing note for life
+      out.push({ midi, startBeat: beat, durBeats: pulse * 0.5, velocity: vel });
+      const stepMidi = nearBass((pc + (rand() < 0.5 ? 2 : 10)) % 12, midi);
+      out.push({ midi: stepMidi, startBeat: beat + pulse * 0.5, durBeats: pulse * 0.5, velocity: vel - 10 });
+      prev = stepMidi;
+    } else {
+      out.push({ midi, startBeat: beat, durBeats: pulse * 0.92, velocity: vel });
+    }
+  }
+  return out;
+}
+
 /** Realize a chord track into idiomatic accompaniment events. */
 export function compEvents(
   chords: TxChord[], genre: CompGenre, beatsPerBar: number, timeSig: [number, number], windowBeats: number,
@@ -178,42 +273,27 @@ export function compEvents(
   const out: Accompaniment = { chord: [], bass: [] };
   if (!chords.length) return out;
 
-  const chordAt = (beat: number): TxChord | null => {
-    let found: TxChord | null = null;
+  const chordAt = (beat: number): TxChord => {
+    let found = chords[0];
     for (const c of chords) if (c.startBeat <= beat + 1e-6) found = c; else break;
-    return found ?? chords[0];
-  };
-  const nextRootAfter = (beat: number): number => {
-    for (const c of chords) if (c.startBeat > beat + 1e-6) return c.rootPc;
-    return chords[0].rootPc;
+    return found;
   };
 
+  // Chord comping (stabs/arpeggio) from the metre template; the bass line is
+  // generated separately as a continuous, voice-led line.
   const totalBars = Math.max(1, Math.round(windowBeats / beatsPerBar));
   for (let bar = 0; bar < totalBars; bar++) {
     const barStart = bar * beatsPerBar;
-    const pattern = barPattern(genre, beatsPerBar, den, num);
-    for (const h of pattern) {
+    for (const h of barPattern(genre, beatsPerBar, den, num)) {
+      if (h.role !== "chord") continue;
       const beat = barStart + h.at;
       if (beat >= windowBeats - 1e-6) continue;
       const ch = chordAt(beat);
-      if (!ch) continue;
-      const voiced = voiceChord(ch.rootPc, ch.intervals);
-      if (h.role === "chord") {
-        for (const m of voiced) out.chord.push({ midi: m, startBeat: beat, durBeats: h.dur, velocity: 58 });
-      } else {
-        // Bass: walking-ish in jazz (root/3rd/5th/approach), else root+fifth.
-        let pc = ch.rootPc;
-        const idx = h.tone ?? 0;
-        if (genre === "jazz") {
-          const next = nextRootAfter(beat);
-          const choices = [ch.rootPc, (ch.rootPc + 4) % 12, (ch.rootPc + 7) % 12, (next + 11) % 12];
-          pc = choices[idx % 4];
-        } else if (idx % 2 === 1) {
-          pc = (ch.rootPc + 7) % 12;        // alternate to the fifth
-        }
-        out.bass.push({ midi: bassMidi(pc), startBeat: beat, durBeats: h.dur, velocity: 74 });
+      for (const m of voiceChord(ch.rootPc, ch.intervals)) {
+        out.chord.push({ midi: m, startBeat: beat, durBeats: h.dur, velocity: 56 });
       }
     }
   }
+  out.bass = buildBass(chords, genre, timeSig, windowBeats);
   return out;
 }
