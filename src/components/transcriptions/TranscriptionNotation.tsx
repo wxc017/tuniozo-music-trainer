@@ -94,7 +94,15 @@ function bassVoicing(rootPc: number, intervals: number[], bassPc?: number): numb
   return tones.sort((a, b) => a - b);
 }
 
-export default function TranscriptionNotation({ excerpt }: { excerpt: TxExcerpt }) {
+interface NotationProps {
+  excerpt: TxExcerpt;
+  /** Show the melody line on the treble staff (default true). */
+  showMelody?: boolean;
+  /** Show the chord voicing + chord symbols (default true). */
+  showChords?: boolean;
+}
+
+export default function TranscriptionNotation({ excerpt, showMelody = true, showChords = true }: NotationProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -109,22 +117,24 @@ export default function TranscriptionNotation({ excerpt }: { excerpt: TxExcerpt 
     const flat = keyIsFlat(keySpec);
 
     // ── Per-bar segments for melody + chords ────────────────────────
-    const melodyEvents: TimedEvent<number>[] = excerpt.melody.map(n => ({
-      startBeat: n.startBeat, durBeats: n.durBeats, data: n.midi,
-    }));
+    const melodyEvents: TimedEvent<number>[] = showMelody
+      ? excerpt.melody.map(n => ({ startBeat: n.startBeat, durBeats: n.durBeats, data: n.midi }))
+      : [];
     const melodyByBar = segmentByBar(melodyEvents, bars, bpb);
 
-    const chordEvents: TimedEvent<number[]>[] = excerpt.chords.map(c => ({
-      startBeat: c.startBeat, durBeats: c.durBeats,
-      data: bassVoicing(c.rootPc, c.intervals, c.bassPc),
-    }));
+    const chordEvents: TimedEvent<number[]>[] = showChords
+      ? excerpt.chords.map(c => ({
+        startBeat: c.startBeat, durBeats: c.durBeats,
+        data: bassVoicing(c.rootPc, c.intervals, c.bassPc),
+      }))
+      : [];
     const chordByBar = segmentByBar(chordEvents, bars, bpb);
-    const hasChords = excerpt.chords.length > 0;
+    const hasChords = showChords && excerpt.chords.length > 0;
 
     // Chord symbol to show above each bar: the symbol sounding at the bar
     // downbeat plus any change starting inside the bar.
     const chordLabelByBar: { beatInBar: number; sym: string }[][] = Array.from({ length: bars }, () => []);
-    for (let b = 0; b < bars; b++) {
+    for (let b = 0; showChords && b < bars; b++) {
       const barStart = b * bpb, barEnd = (b + 1) * bpb;
       const changes = excerpt.chords.filter(c => c.startBeat >= barStart - 1e-6 && c.startBeat < barEnd - 1e-6);
       const startsAtDownbeat = changes.some(c => Math.abs(c.startBeat - barStart) < 1e-6);
@@ -263,7 +273,7 @@ export default function TranscriptionNotation({ excerpt }: { excerpt: TxExcerpt 
     } catch (err) {
       el.innerHTML = `<div style="color:#a55;font-size:12px;padding:8px">Notation render error: ${String(err)}</div>`;
     }
-  }, [excerpt]);
+  }, [excerpt, showMelody, showChords]);
 
   return <div ref={ref} style={{ overflowX: "auto", maxWidth: "100%" }} />;
 }

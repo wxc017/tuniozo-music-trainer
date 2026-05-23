@@ -88,17 +88,31 @@ export interface TxFilter {
   minBars: number;
   /** Restrict to items that carry chords (e.g. for chord-focused study). */
   requireChords?: boolean;
+  /** Restrict to these style/genre sub-tags (empty/undefined = any). */
+  styles?: string[];
+}
+
+/** Distinct style tags available across the given sources, from the index. */
+export async function stylesForSources(sources: TxSource[]): Promise<string[]> {
+  const index = await loadIndex();
+  const set = new Set<string>();
+  for (const e of index.items) {
+    if (sources.includes(e.source) && e.hasMelody && e.style) set.add(e.style);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
 }
 
 /** Pick a random full item matching the filter, loading its corpus on demand.
  *  Returns null when nothing qualifies (e.g. all sources deselected). */
 export async function pickItem(filter: TxFilter): Promise<TxItem | null> {
   const index = await loadIndex();
+  const styleSet = filter.styles?.length ? new Set(filter.styles) : null;
   const pool = index.items.filter(e =>
     filter.sources.includes(e.source) &&
     e.barCount >= filter.minBars &&
     e.hasMelody &&                                  // this is a melody-transcription tool
-    (!filter.requireChords || e.hasChords)
+    (!filter.requireChords || e.hasChords) &&
+    (!styleSet || (e.style != null && styleSet.has(e.style)))
   );
   if (!pool.length) return null;
   const entry = pool[Math.floor(Math.random() * pool.length)];
