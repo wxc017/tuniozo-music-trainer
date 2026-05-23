@@ -46,6 +46,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const [styleFilter, setStyleFilter] = useLS<string[]>("lt_tx_styles", []);
   const [withMelody, setWithMelody] = useLS<boolean>("lt_tx_melody", true);
   const [withChords, setWithChords] = useLS<boolean>("lt_tx_chords", true);
+  const [withBass, setWithBass] = useLS<boolean>("lt_tx_bass", false);
   const [countInBars, setCountInBars] = useLS<number>("lt_tx_countbars", 0);
   const [metronome, setMetronome] = useLS<boolean>("lt_tx_metro", false);
   // Playback tempo for Play / Replay / Full song. 0 = follow the tune's
@@ -54,9 +55,6 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const [bpm, setBpm] = useLS<number>("lt_tx_bpm", 0);
 
   // Answer-reveal display toggles (which voices to show in the notation).
-  const [revealMelody, setRevealMelody] = useLS<boolean>("lt_tx_reveal_mel", true);
-  const [revealChords, setRevealChords] = useLS<boolean>("lt_tx_reveal_chd", true);
-  const [revealBass, setRevealBass] = useLS<boolean>("lt_tx_reveal_bass", false);
 
   // ── Runtime state ─────────────────────────────────────────────────
   const [index, setIndex] = useState<TxIndex | null>(null);
@@ -100,6 +98,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
         bpm: effectiveBpm(it),
         withMelody: withMelody && (it.melody?.length ?? 0) > 0,
         withChords: withChords && ex.chords.length > 0,
+        withBass: withBass && ex.chords.length > 0,
         countInBeats,
         metronome,
         volume: playVol,
@@ -112,7 +111,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     } catch (e) {
       if (myToken === playToken.current) { setStatus(`Playback error: ${String(e)}`); setBusy(false); }
     }
-  }, [ensureAudio, withMelody, withChords, countInBars, metronome, playVol, bpm]);
+  }, [ensureAudio, withMelody, withChords, withBass, countInBars, metronome, playVol, bpm]);
 
   const playNew = useCallback(async () => {
     clearEndTimer();
@@ -231,14 +230,20 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           )}
 
           <OptSection title="PLAYBACK" accent="#e0a040">
-            <div className="flex items-center gap-4 mb-3">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
               <span className="text-xs text-[#888] w-28">Voices</span>
-              <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
-                <input type="checkbox" checked={withMelody} onChange={e => setWithMelody(e.target.checked)} className="accent-[#7173e6]" /> Melody
-              </label>
-              <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
-                <input type="checkbox" checked={withChords} onChange={e => setWithChords(e.target.checked)} className="accent-[#7173e6]" /> Chords
-              </label>
+              {([
+                ["Melody", withMelody, setWithMelody],
+                ["Chords", withChords, setWithChords],
+                ["Bass", withBass, setWithBass],
+              ] as const).map(([label, on, set]) => (
+                <button key={label} onClick={() => set(v => !v)}
+                  className={`px-3 py-1.5 rounded-md text-xs border transition-colors ${
+                    on ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#141414] border-[#2a2a2a] text-[#666]"
+                  }`}>
+                  {label}
+                </button>
+              ))}
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-xs text-[#888] w-28">Count-in</span>
@@ -269,28 +274,8 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
             </div>
           </div>
 
-          {/* Notation voice toggles — buttons like the other modes' sections */}
-          <div className="flex items-center gap-2 text-xs flex-wrap">
-            <span className="text-[#888] mr-1">Show</span>
-            {([
-              ["Melody", revealMelody, setRevealMelody, true, "#bf6cd0"],
-              ["Chords", revealChords, setRevealChords, !!excerpt.chords.length, "#e0a040"],
-              ["Bass", revealBass, setRevealBass, !!excerpt.chords.length, "#5cbf8a"],
-            ] as const).map(([label, on, set, enabled, accent]) => (
-              <button key={label} disabled={!enabled} onClick={() => set(v => !v)}
-                className="px-3 py-1 rounded-md text-xs font-medium border transition-colors disabled:opacity-40"
-                style={{
-                  borderColor: on && enabled ? accent : "#2a2a2a",
-                  background: on && enabled ? "#161616" : "#111",
-                  color: on && enabled ? accent : "#666",
-                }}>
-                {label}
-              </button>
-            ))}
-          </div>
-
           <div className="bg-[#161616] rounded-md p-2 overflow-x-auto">
-            <TranscriptionNotation excerpt={excerpt} showMelody={revealMelody} showChords={revealChords} showBass={revealBass} />
+            <TranscriptionNotation excerpt={excerpt} showMelody={withMelody} showChords={withChords} showBass={withBass} />
           </div>
 
           <div className="text-xs text-[#777]">
