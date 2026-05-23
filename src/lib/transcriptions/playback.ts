@@ -211,7 +211,7 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
   // (jazz Charleston + walking bass, pop, folk boom-chick, waltz, 6/8)
   // rather than a single block per chord.
   if ((opts.withChords || opts.withBass) && ex.chords.length) {
-    const comp = compEvents(ex.chords, compGenreFor(ex.item.source, ex.item.style), ex.beatsPerBar, ex.item.timeSig, ex.windowBeats);
+    const comp = compEvents(ex.chords, compGenreFor(ex.item.source, ex.item.style), ex.beatsPerBar, ex.item.timeSig, ex.windowBeats, opts.withBass);
     if (opts.withChords && kit.chords) {
       const chordInst = loaded.get(kit.chords)!;
       for (const e of comp.chord) {
