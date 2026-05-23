@@ -21,15 +21,18 @@ import {
   type TimedEvent, type BarCell,
 } from "@/lib/transcriptions/notation";
 
-const ROW_GAP = 36;
-const STAVE_GAP = 80;          // treble-top → bass-top within a row
-const ROW_H = STAVE_GAP + ROW_GAP + 44;
+const ROW_GAP = 44;            // vertical gap below each row
+const STAVE_GAP = 90;          // treble-top → bass-top within a row
+// Generous bottom allowance (72px) so the bass staff + its ledger lines /
+// descending notes are never clipped.
+const ROW_H = STAVE_GAP + ROW_GAP + 72;
 const FIRST_BAR_EXTRA = 90;    // clef + key + time-sig overhead on a row's first bar
 const PER_TICKABLE = 42;       // horizontal px budget per distinct onset
 const MIN_BAR_W = 130;
 const MAX_ROW_W = 1180;
 const LEFT = 10;
-const TOP = 22;
+const TOP = 34;                // room above the first row for chord symbols
+const BOTTOM_PAD = 28;         // extra height so the last row isn't cut off
 const INK = "#e8e8e8";
 const NOTE_STYLE = { fillStyle: INK, strokeStyle: INK };
 
@@ -197,7 +200,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
 
     const rowWidths = rows.map(r => r.reduce((sum, b, i) => sum + built[b].contentW + (i === 0 ? FIRST_BAR_EXTRA : 0), 0));
     const totalW = LEFT * 2 + Math.max(MIN_BAR_W + FIRST_BAR_EXTRA, ...rowWidths);
-    const totalH = TOP + rows.length * ROW_H;
+    const totalH = TOP + rows.length * ROW_H + BOTTOM_PAD;
 
     const renderer = new Renderer(el, Renderer.Backends.SVG);
     renderer.resize(totalW, totalH);
