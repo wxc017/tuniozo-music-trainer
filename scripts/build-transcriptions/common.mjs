@@ -262,6 +262,55 @@ export function makeChord(sym, startBeat, durBeats) {
   return { sym, rootPc: p.rootPc, intervals: p.intervals, bassPc: p.bassPc, startBeat, durBeats };
 }
 
+export { NOTE_PC };
+
+// ── Harte chord syntax (CoCoPops **harte): "C:maj7", "A:min", "F:hdim7/b3" ──
+const HARTE_SHORTHAND = {
+  "": [0, 4, 7], maj: [0, 4, 7], min: [0, 3, 7], dim: [0, 3, 6], aug: [0, 4, 8],
+  maj7: [0, 4, 7, 11], min7: [0, 3, 7, 10], 7: [0, 4, 7, 10],
+  dim7: [0, 3, 6, 9], hdim7: [0, 3, 6, 10], minmaj7: [0, 3, 7, 11],
+  maj6: [0, 4, 7, 9], min6: [0, 3, 7, 9], 9: [0, 4, 7, 10, 14], maj9: [0, 4, 7, 11, 14], min9: [0, 3, 7, 10, 14],
+  sus2: [0, 2, 7], sus4: [0, 5, 7], "7sus4": [0, 5, 7, 10], 11: [0, 4, 7, 10, 14, 17], 13: [0, 4, 7, 10, 14, 21],
+};
+const HARTE_SYM = {
+  maj: "", min: "m", dim: "dim", aug: "aug", maj7: "maj7", min7: "m7", 7: "7",
+  dim7: "dim7", hdim7: "m7b5", minmaj7: "mMaj7", maj6: "6", min6: "m6",
+  9: "9", maj9: "maj9", min9: "m9", sus2: "sus2", sus4: "sus4", "7sus4": "7sus4", 11: "11", 13: "13",
+};
+const PC_NAME = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+
+/** Parse a Harte chord token → { sym, rootPc, intervals, bassPc } or null. */
+export function parseHarte(tok) {
+  if (!tok || tok === "N" || tok === "*" || tok === ".") return null;
+  const m = /^([A-G])([#b]*)(?::([^/]*))?(?:\/(.+))?$/.exec(String(tok).trim());
+  if (!m) return null;
+  let rootPc = NOTE_PC[m[1]];
+  for (const c of m[2] || "") rootPc += c === "#" ? 1 : -1;
+  rootPc = ((rootPc % 12) + 12) % 12;
+  let shorthand = (m[3] || "maj").replace(/\(.*?\)/g, "");
+  if (!(shorthand in HARTE_SHORTHAND)) shorthand = /min|m(?!aj)/.test(shorthand) ? "min" : "maj";
+  let bassPc;
+  if (m[4]) { const bm = /^([A-G])([#b]*)/.exec(m[4]); if (bm) { let b = NOTE_PC[bm[1]]; for (const c of bm[2] || "") b += c === "#" ? 1 : -1; bassPc = ((b % 12) + 12) % 12; } }
+  return { sym: PC_NAME[rootPc] + (HARTE_SYM[shorthand] ?? ""), rootPc, intervals: HARTE_SHORTHAND[shorthand], bassPc };
+}
+
+/** Collapse consecutive identical chords and assign each a duration up to
+ *  the next change (or `totalBeats` at the end). */
+export function consolidateChords(events, totalBeats) {
+  const out = [];
+  for (const e of events) {
+    const prev = out[out.length - 1];
+    if (prev && prev.sym === e.sym && prev.startBeat === e.startBeat) continue;
+    if (prev && prev.sym === e.sym) continue;
+    out.push({ ...e });
+  }
+  for (let i = 0; i < out.length; i++) {
+    const end = i + 1 < out.length ? out[i + 1].startBeat : totalBeats;
+    out[i].durBeats = Math.max(0.25, end - out[i].startBeat);
+  }
+  return out;
+}
+
 // ── Curation + output ───────────────────────────────────────────────
 function shuffle(arr, seed = 42) {
   let s = seed;

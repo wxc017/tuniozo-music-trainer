@@ -2,6 +2,9 @@ node_modules/
 dist/
 release/
 *.tsbuildinfo
+
+# Transcriptions ETL — cached raw corpora (large; re-downloadable)
+scripts/build-transcriptions/.cache/
 .env
 .env.local
 .DS_Store
