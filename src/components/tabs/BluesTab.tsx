@@ -10,40 +10,25 @@
 // isolation — and a reference recording link lets you hear the real
 // player's inflections.
 //
-// Sourcing: drop your own .gp / .gp3-.gp7 files in (e.g. the DadaGP blues
-// subset, which is access-gated for research/personal use).  A small
-// built-in AlphaTex blues ships so the player works out of the box.
+// Corpus: public/blues/ (curated canonical solos from the great blues
+// guitarists — BB/Albert/Freddie King, SRV, Buddy Guy, … — built by
+// scripts/build-transcriptions/blues.mjs from the Internet Archive Guitar
+// Pro collection; fan transcriptions, personal/educational use only).  The
+// "Load .gp file" button also opens any local Guitar Pro file.
 
 import { useEffect, useRef, useState } from "react";
 import * as alphaTab from "@coderline/alphatab";
 
-// A tiny 12-bar-style blues in A with three separate tracks (Lead / Chords
-// / Bass), authored in AlphaTex so it needs no external file.  The lead has
-// a whole-step bend so you can hear that alphaTab's synth plays inflections.
-const SAMPLE_BLUES = String.raw`\title "Blues Shuffle in A" \subtitle "alphaTab sample — drop in your own .gp below" \tempo 96
-.
-\track "Lead"
-\instrument 27
-\tuning E4 B3 G3 D3 A2 E2
-:8 5.4 8.4 5.3 7.3{b (0 4)} 5.3 8.4 5.4 8.4 |
-:8 5.4 8.4 5.3 7.3{b (0 4)} :4 5.3 5.4 :8 r r |
-\track "Chords"
-\instrument 27
-\tuning E4 B3 G3 D3 A2 E2
-:4 (5.4 5.3 6.2) (5.4 5.3 6.2) (5.4 5.3 6.2) (5.4 5.3 6.2) |
-:4 (5.4 5.3 6.2) (5.4 5.3 6.2) (5.4 5.3 6.2) (5.4 5.3 6.2) |
-\track "Bass"
-\instrument 33
-\clef F4
-\tuning G2 D2 A1 E1
-:8 5.3 5.3 7.3 7.3 9.3 9.3 7.3 7.3 |
-:8 5.3 5.3 7.3 7.3 9.3 9.3 7.3 7.3 |`;
+const BASE = import.meta.env.BASE_URL ?? "/";
 
+interface BluesTune { file: string; title: string; artist: string; youtube: string; }
 interface TrackInfo { index: number; name: string; }
 
 export default function BluesTab() {
   const hostRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<alphaTab.AlphaTabApi | null>(null);
+  const [tunes, setTunes] = useState<BluesTune[]>([]);
+  const [current, setCurrent] = useState<BluesTune | null>(null);
   const [tracks, setTracks] = useState<TrackInfo[]>([]);
   const [soloed, setSoloed] = useState<Set<number>>(new Set());
   const [muted, setMuted] = useState<Set<number>>(new Set());
@@ -51,23 +36,16 @@ export default function BluesTab() {
   const [status, setStatus] = useState("Loading player…");
   const [title, setTitle] = useState("");
 
+  // ── Create the alphaTab API once ──────────────────────────────────
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    const base = import.meta.env.BASE_URL ?? "/";
-
     const api = new alphaTab.AlphaTabApi(host, {
-      core: {
-        // Run on the UI thread — avoids needing a separately-hosted worker
-        // script (the audio worklet is created in-process by alphaTab).
-        useWorkers: false,
-        engine: "svg",
-        fontDirectory: `${base}alphatab/font/`,
-      },
+      core: { engine: "svg", fontDirectory: `${BASE}alphatab/font/` },
       player: {
         enablePlayer: true,
         enableCursor: true,
-        soundFont: `${base}alphatab/soundfont/sonivox.sf2`,
+        soundFont: `${BASE}alphatab/soundfont/sonivox.sf2`,
         scrollMode: alphaTab.ScrollMode.Off,
       },
       display: { scale: 0.9 },
@@ -85,89 +63,109 @@ export default function BluesTab() {
     api.playerStateChanged.on(e => setPlaying(e.state === alphaTab.synth.PlayerState.Playing));
     api.error.on(() => setStatus("alphaTab error — see console."));
 
-    api.tex(SAMPLE_BLUES);
-
     return () => { try { api.destroy(); } catch { /* */ } apiRef.current = null; };
   }, []);
 
-  const trackOf = (i: number) => apiRef.current?.score?.tracks[i];
+  // ── Load the curated corpus index ─────────────────────────────────
+  useEffect(() => {
+    fetch(`${BASE}blues/index.json`)
+      .then(r => r.ok ? r.json() : [])
+      .then((list: BluesTune[]) => { setTunes(list); if (list.length && !current) loadTune(list[0]); })
+      .catch(() => { /* corpus not built — the Load .gp button still works */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  const loadTune = async (t: BluesTune) => {
+    if (!apiRef.current) return;
+    setCurrent(t); setStatus(`Loading ${t.title}…`);
+    try {
+      const res = await fetch(`${BASE}blues/${t.file}`);
+      const buf = await res.arrayBuffer();
+      if (!apiRef.current.load(new Uint8Array(buf))) setStatus(`Could not read ${t.title}.`);
+    } catch { setStatus(`Failed to load ${t.title}.`); }
+  };
+
+  const trackOf = (i: number) => apiRef.current?.score?.tracks[i];
   const toggleSolo = (i: number) => {
     const api = apiRef.current; const t = trackOf(i); if (!api || !t) return;
-    const next = new Set(soloed);
-    next.has(i) ? next.delete(i) : next.add(i);
-    setSoloed(next);
-    api.changeTrackSolo([t], next.has(i));
+    const next = new Set(soloed); next.has(i) ? next.delete(i) : next.add(i);
+    setSoloed(next); api.changeTrackSolo([t], next.has(i));
   };
   const toggleMute = (i: number) => {
     const api = apiRef.current; const t = trackOf(i); if (!api || !t) return;
-    const next = new Set(muted);
-    next.has(i) ? next.delete(i) : next.add(i);
-    setMuted(next);
-    api.changeTrackMute([t], next.has(i));
+    const next = new Set(muted); next.has(i) ? next.delete(i) : next.add(i);
+    setMuted(next); api.changeTrackMute([t], next.has(i));
   };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !apiRef.current) return;
-    setStatus(`Loading ${file.name}…`);
+    setCurrent(null); setStatus(`Loading ${file.name}…`);
     try {
-      const buf = await file.arrayBuffer();
-      const ok = apiRef.current.load(new Uint8Array(buf));
+      const ok = apiRef.current.load(new Uint8Array(await file.arrayBuffer()));
       if (!ok) setStatus(`Could not read ${file.name} (not a valid Guitar Pro file?).`);
     } catch { setStatus(`Failed to load ${file.name}.`); }
   };
 
+  // Group tunes by artist for the picker.
+  const byArtist = tunes.reduce<Record<string, BluesTune[]>>((acc, t) => {
+    (acc[t.artist] ??= []).push(t); return acc;
+  }, {});
+
   return (
     <div className="flex flex-col gap-3 text-neutral-100">
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => apiRef.current?.playPause()}
-          className="rounded bg-emerald-600 px-4 py-1.5 text-sm font-medium hover:bg-emerald-500"
-        >
+        <button onClick={() => apiRef.current?.playPause()} className="rounded bg-emerald-600 px-4 py-1.5 text-sm font-medium hover:bg-emerald-500">
           {playing ? "Pause" : "Play"}
         </button>
-        <button
-          onClick={() => apiRef.current?.stop()}
-          className="rounded bg-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-600"
-        >
-          Stop
-        </button>
+        <button onClick={() => apiRef.current?.stop()} className="rounded bg-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-600">Stop</button>
         <label className="ml-2 cursor-pointer rounded bg-neutral-800 px-3 py-1.5 text-sm hover:bg-neutral-700">
           Load .gp file…
-          <input type="file" accept=".gp,.gp3,.gp4,.gp5,.gpx,.gp7,.musicxml,.xml" onChange={onFile} className="hidden" />
+          <input type="file" accept=".gp,.gp3,.gp4,.gp5,.gpx,.gp7,.gtp,.musicxml,.xml" onChange={onFile} className="hidden" />
         </label>
-        {title && <span className="text-sm text-neutral-400">{title}</span>}
+        {current?.youtube && (
+          <a href={current.youtube} target="_blank" rel="noreferrer" className="rounded bg-red-700/80 px-3 py-1.5 text-sm hover:bg-red-600">▶ Reference recording</a>
+        )}
         {status && <span className="text-xs text-amber-400">{status}</span>}
       </div>
 
-      {/* Per-track Solo / Mute — isolate the bass, the chords, or the lead. */}
-      {tracks.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {tracks.map(t => (
-            <div key={t.index} className="flex items-center gap-1 rounded bg-neutral-800/60 px-2 py-1 text-sm">
-              <span className="mr-1 max-w-[10rem] truncate">{t.name}</span>
-              <button
-                onClick={() => toggleSolo(t.index)}
-                className={`rounded px-2 py-0.5 text-xs font-semibold ${soloed.has(t.index) ? "bg-amber-500 text-black" : "bg-neutral-700 hover:bg-neutral-600"}`}
-              >S</button>
-              <button
-                onClick={() => toggleMute(t.index)}
-                className={`rounded px-2 py-0.5 text-xs font-semibold ${muted.has(t.index) ? "bg-rose-600" : "bg-neutral-700 hover:bg-neutral-600"}`}
-              >M</button>
+      <div className="flex flex-wrap gap-4">
+        {/* Tune picker, grouped by artist. */}
+        <div className="max-h-64 w-56 shrink-0 overflow-auto rounded bg-neutral-900/60 p-2 text-sm">
+          {tunes.length === 0 && <div className="text-xs text-neutral-500">No corpus found. Use “Load .gp file”, or run scripts/build-transcriptions/blues.mjs.</div>}
+          {Object.entries(byArtist).map(([artist, list]) => (
+            <div key={artist} className="mb-2">
+              <div className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-amber-400/80">{artist}</div>
+              {list.map(t => (
+                <button
+                  key={t.file}
+                  onClick={() => loadTune(t)}
+                  className={`block w-full truncate rounded px-2 py-0.5 text-left ${current?.file === t.file ? "bg-emerald-700/60" : "hover:bg-neutral-800"}`}
+                >{t.title}</button>
+              ))}
             </div>
           ))}
         </div>
-      )}
 
-      <p className="text-xs text-neutral-500">
-        Tip: solo (S) the Lead to study the solo, the Bass to lock in the groove, or the Chords for the comp.
-        Bends, slides and vibrato play back through alphaTab's synth. Drop in your own Guitar Pro files
-        (e.g. the DadaGP blues subset — research/personal use) to load real transcriptions.
-      </p>
-
-      {/* alphaTab renders notation + tab into this host element. */}
-      <div ref={hostRef} className="overflow-auto rounded bg-white p-2" />
+        {/* Notation + tab + transport for the loaded tune. */}
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            {title && <span className="text-sm font-medium">{title}</span>}
+            {tracks.map(t => (
+              <div key={t.index} className="flex items-center gap-1 rounded bg-neutral-800/60 px-2 py-0.5 text-xs">
+                <span className="mr-1 max-w-[8rem] truncate">{t.name}</span>
+                <button onClick={() => toggleSolo(t.index)} className={`rounded px-1.5 py-0.5 font-semibold ${soloed.has(t.index) ? "bg-amber-500 text-black" : "bg-neutral-700 hover:bg-neutral-600"}`}>S</button>
+                <button onClick={() => toggleMute(t.index)} className={`rounded px-1.5 py-0.5 font-semibold ${muted.has(t.index) ? "bg-rose-600" : "bg-neutral-700 hover:bg-neutral-600"}`}>M</button>
+              </div>
+            ))}
+          </div>
+          <p className="mb-2 text-xs text-neutral-500">
+            Solo (S) the lead to study the solo, the bass to lock the groove, or the rhythm for the comp.
+            Bends/slides/vibrato play through alphaTab's synth.
+          </p>
+          <div ref={hostRef} className="overflow-auto rounded bg-white p-2" />
+        </div>
+      </div>
     </div>
   );
 }
