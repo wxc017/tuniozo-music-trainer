@@ -1,96 +1,116 @@
 // ── Blues tab corpus (curated Guitar Pro files) ─────────────────────
 //
-// Curates a starter set of canonical blues-guitar transcriptions for the
-// Blues tab (alphaTab).  Source: the openly-downloadable Internet Archive
-// "Guitar Pro Tabs" collection (archive.org/details/GuitarProTabs) — extract
-// it to scripts/build-transcriptions/.cache/blues-src/tabs/GuitarPro_Tabs/
-// first (the .cache dir is gitignored).  These are fan transcriptions of
-// copyrighted songs: PERSONAL / EDUCATIONAL use only, do not redistribute.
+// Curates canonical blues-guitar transcriptions for the Blues tab (alphaTab)
+// by MERGING two openly-downloadable Internet Archive Guitar Pro collections
+// (extract both into the gitignored .cache first):
+//   • .cache/blues-src/tabs/GuitarPro_Tabs/   — archive.org/details/GuitarProTabs
+//       flat files named "Artist - Song.gpN"   (GuitarPro_Tabs.rar)
+//   • .cache/blues-src2/gt/<Letter>/<artist>.zip — archive.org/details/gtptabs
+//       one zip per artist, each holding that artist's .gp files
 //
-// Output: public/blues/<artist>__<title>.gpN  +  public/blues/index.json
-// (title / artist / file / youtube reference query).  The Blues tab fetches
-// that index, lists the tunes, and loads the selected .gp via alphaTab.
+// These are fan transcriptions of copyrighted songs: PERSONAL / EDUCATIONAL
+// use only, do not redistribute.  Output: public/blues/<artist>__<title>.gpN +
+// public/blues/index.json (title / artist / file / youtube reference query).
 
-import { readdirSync, copyFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { unzipSync } from "fflate";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SRC = join(__dirname, ".cache", "blues-src", "tabs", "GuitarPro_Tabs");
+const SRC1 = join(__dirname, ".cache", "blues-src", "tabs", "GuitarPro_Tabs");   // flat files
+const GT = join(__dirname, ".cache", "blues-src2", "gt");                         // per-artist zips
 const OUT = join(__dirname, "..", "..", "public", "blues");
 
-// Keep at most this many tunes per artist so the corpus is balanced (the source
-// archive is heavy on a few names) — EQUAL representation, not whoever has most.
-const PER_ARTIST = 6;
+const PER_ARTIST = 20;   // EQUAL representation — cap so no artist dominates
 
-// The great blues guitarists.  `match` = case-insensitive filename substrings
-// (BOTH "First Last" and "Last, First" orders the archive uses), specific
-// forms first so titles strip cleanly; `name` = the display/normalised artist.
+// `a1` = filename substrings in archive 1 (both name orders).  `zips` = the
+// artist's zip(s) in archive 2.  `name` = display/normalised artist.
 const ARTISTS = [
-  { name: "B.B. King", match: ["b.b. king", "bb king", "king, b.b", "king, bb"] },
-  { name: "Albert King", match: ["albert king", "king, albert"] },
-  { name: "Freddie King", match: ["freddie king", "king, freddie"] },
-  { name: "Stevie Ray Vaughan", match: ["stevie ray vaughan", "vaughan, stevie ray", "vaughan, stevie"] },
-  { name: "Buddy Guy", match: ["buddy guy", "guy, buddy"] },
-  { name: "Muddy Waters", match: ["muddy waters", "waters, muddy"] },
-  { name: "John Lee Hooker", match: ["john lee hooker", "hooker, john lee", "hooker, john"] },
-  { name: "Lightnin' Hopkins", match: ["lightnin' hopkins", "hopkins, lightnin", "lightnin"] },
-  { name: "Howlin' Wolf", match: ["howlin' wolf", "howlin"] },
-  { name: "Robert Johnson", match: ["robert johnson", "johnson, robert"] },
-  { name: "Johnny Winter", match: ["johnny winter", "winter, johnny"] },
-  { name: "Gary Moore", match: ["gary moore", "moore, gary"] },
-  { name: "Eric Clapton", match: ["eric clapton", "clapton, eric", "clapton"] },
-  { name: "Jimi Hendrix", match: ["jimi hendrix", "hendrix, jimi", "hendrix"] },
+  { name: "B.B. King", a1: ["b.b. king", "bb king", "king, b.b", "king, bb"], zips: ["B/bb_king.zip"] },
+  { name: "Albert King", a1: ["albert king", "king, albert"], zips: [] },
+  { name: "Freddie King", a1: ["freddie king", "king, freddie"], zips: ["F/freddie_king.zip"] },
+  { name: "T-Bone Walker", a1: ["t-bone"], zips: ["T/t_bone_walker.zip"] },
+  { name: "Stevie Ray Vaughan", a1: ["stevie ray vaughan", "vaughan, stevie"], zips: ["V/vaughan_stevie_ray.zip"] },
+  { name: "Buddy Guy", a1: ["buddy guy", "guy, buddy"], zips: ["B/buddy_guy.zip", "G/guy_buddy.zip"] },
+  { name: "Muddy Waters", a1: ["muddy waters", "waters, muddy"], zips: ["W/waters_muddy.zip"] },
+  { name: "John Lee Hooker", a1: ["john lee hooker", "hooker, john"], zips: ["H/hooker_john_lee.zip"] },
+  { name: "Howlin' Wolf", a1: ["howlin"], zips: ["H/howlin_wolf.zip"] },
+  { name: "Robert Johnson", a1: ["robert johnson", "johnson, robert"], zips: ["J/johnson_robert.zip"] },
+  { name: "Lonnie Johnson", a1: ["lonnie johnson", "johnson, lonnie"], zips: ["J/johnson_lonnie.zip"] },
+  { name: "Johnny Winter", a1: ["johnny winter", "winter, johnny"], zips: ["W/winter_johnny.zip"] },
+  { name: "Robert Cray", a1: ["robert cray", "cray, robert"], zips: ["C/cray_robert.zip"] },
+  { name: "Robben Ford", a1: ["robben ford", "ford, robben"], zips: ["F/ford_robben.zip"] },
+  { name: "Roy Buchanan", a1: ["roy buchanan", "buchanan, roy"], zips: ["R/roy_buchanan.zip"] },
+  { name: "Kenny Wayne Shepherd", a1: ["kenny wayne"], zips: ["K/kenny_wayne_shepard.zip"] },
+  { name: "Gary Moore", a1: ["gary moore", "moore, gary"], zips: ["M/moore_gary.zip"] },
+  { name: "Allman Brothers", a1: ["allman brothers", "allman"], zips: ["A/allman_brothers_band_the.zip"] },
+  { name: "Eric Clapton", a1: ["eric clapton", "clapton, eric", "clapton"], zips: ["C/clapton_eric.zip"] },
+  { name: "Jimi Hendrix", a1: ["jimi hendrix", "hendrix, jimi", "hendrix"], zips: ["H/hendrix_jimi.zip"] },
 ];
 
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-
-/** Title = filename minus the artist substring + extension, tidied. */
-function titleOf(fn, matched) {
-  let t = fn.replace(/\.(gp[345x]?|gtp)$/i, "");
-  for (const m of matched) t = t.replace(new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig"), "");
-  return t.replace(/^[\s\-,]+|[\s\-,]+$/g, "")        // strip leading/trailing separators
-          .replace(/\s*\(\d+\)\s*$/, "")              // drop "(2)" dupe markers
-          .replace(/\s+/g, " ").trim() || fn;
-}
+const TAB_RE = /\.(gp[345x]?|gtp)$/i;
+const cleanTitle = (s) => s.replace(TAB_RE, "").replace(/[_]+/g, " ")
+  .replace(/^[\s\-,]+|[\s\-,]+$/g, "").replace(/\s*\(\d+\)\s*$/, "").replace(/\s+/g, " ").trim();
+const dedupeKey = (t) => t.toLowerCase().replace(/[^a-z0-9]/g, "");
+const isGp45 = (ext) => /gp[45]/i.test(ext);
 
 export function build() {
-  if (!existsSync(SRC)) {
-    console.log("Blues: source not found. Download archive.org/details/GuitarProTabs,");
-    console.log("       extract GuitarPro_Tabs.rar to scripts/build-transcriptions/.cache/blues-src/tabs/");
+  if (!existsSync(SRC1) && !existsSync(GT)) {
+    console.log("Blues: no source archives in .cache. See header for download links.");
     return;
   }
-  // Start clean so re-runs don't leave a stale (unbalanced) set behind.
   if (existsSync(OUT)) for (const f of readdirSync(OUT)) if (/\.(gp[345x]?|gtp|json)$/i.test(f)) rmSync(join(OUT, f));
   mkdirSync(OUT, { recursive: true });
-  const all = readdirSync(SRC).filter(f => /\.(gp[345x]?|gtp)$/i.test(f));
+
+  const flat = existsSync(SRC1) ? readdirSync(SRC1).filter(f => TAB_RE.test(f)) : [];
   const index = [];
-  const seen = new Set();
+
   for (const a of ARTISTS) {
-    // Prefer .gp4/.gp5 over .gp3 (newer = cleaner bends), then alphabetical.
-    const matches = all
-      .filter(f => a.match.some(m => f.toLowerCase().includes(m)))
-      .sort((x, y) => (y.match(/gp[45]/i) ? 1 : 0) - (x.match(/gp[45]/i) ? 1 : 0) || x.localeCompare(y));
+    // Gather candidate { title, ext, bytes } from BOTH archives.
+    const cands = [];
+    for (const f of flat) {
+      if (!a.a1.some(m => f.toLowerCase().includes(m))) continue;
+      let title = f; for (const m of a.a1) title = title.replace(new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig"), "");
+      cands.push({ title: cleanTitle(title), ext: f.split(".").pop().toLowerCase(), bytes: readFileSync(join(SRC1, f)) });
+    }
+    for (const z of a.zips) {
+      const zp = join(GT, z);
+      if (!existsSync(zp)) continue;
+      try {
+        const entries = unzipSync(new Uint8Array(readFileSync(zp)));
+        for (const [k, bytes] of Object.entries(entries)) {
+          if (!TAB_RE.test(k)) continue;
+          const base = k.split("/").pop();
+          cands.push({ title: cleanTitle(base), ext: base.split(".").pop().toLowerCase(), bytes: Buffer.from(bytes) });
+        }
+      } catch { /* skip bad zip */ }
+    }
+    // Prefer newer formats, dedupe by title, cap.
+    cands.sort((x, y) => (isGp45(y.ext) ? 1 : 0) - (isGp45(x.ext) ? 1 : 0) || x.title.localeCompare(y.title));
+    const seen = new Set();
     let kept = 0;
-    for (const f of matches) {
-      if (kept >= PER_ARTIST) break;                  // cap → balanced representation
-      const title = titleOf(f, a.match);
-      const key = `${a.name}|${title}`.toLowerCase();
-      if (seen.has(key)) continue;                    // dedupe (2)/(3) variants
+    for (const c of cands) {
+      if (kept >= PER_ARTIST) break;
+      if (!c.title) continue;
+      const key = dedupeKey(c.title);
+      if (seen.has(key)) continue;
       seen.add(key);
-      const ext = f.split(".").pop().toLowerCase();
-      const dest = `${slug(a.name)}__${slug(title)}.${ext}`;
-      copyFileSync(join(SRC, f), join(OUT, dest));
+      const dest = `${slug(a.name)}__${slug(c.title)}.${c.ext}`;
+      writeFileSync(join(OUT, dest), c.bytes);
       index.push({
-        file: dest, title, artist: a.name,
-        youtube: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${a.name} ${title}`)}`,
+        file: dest, title: c.title, artist: a.name,
+        youtube: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${a.name} ${c.title}`)}`,
       });
       kept++;
     }
+    if (kept === 0) console.log(`  (none found for ${a.name})`);
   }
+
   index.sort((x, y) => x.artist.localeCompare(y.artist) || x.title.localeCompare(y.title));
   writeFileSync(join(OUT, "index.json"), JSON.stringify(index, null, 1));
-  console.log(`Blues: copied ${index.length} tabs → public/blues/`);
+  console.log(`Blues: wrote ${index.length} tabs across ${new Set(index.map(i => i.artist)).size} artists → public/blues/`);
 }
 
 build();
