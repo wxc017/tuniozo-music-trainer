@@ -116,30 +116,34 @@ async function ensureReverb(): Promise<void> {
 function getInstrument(name: string): Promise<SoundfontInst> {
   const cached = instCache.get(name);
   if (cached) return cached;
-  const p = loadInstrument(name);
+  // Evict on failure so a transient CDN error doesn't poison the cache (a
+  // rejected promise would otherwise break this instrument until reload).
+  const p = loadInstrument(name).catch(err => { instCache.delete(name); throw err; });
   instCache.set(name, p);
   return p;
 }
 
 /** Pick the best available timbre for a corpus instrument: dedicated sampled
  *  instruments first (piano/bass), then recorded tonejs samples (guitar/sax/
- *  flute), and the GM soundfont as a universal fallback — including if a
- *  recorded set fails to load, so playback is never left silent. */
+ *  flute), and the GM soundfont as a universal fallback.  CRITICAL: a single
+ *  preferred-instrument failure (a flaky sample CDN, a rejected `ready`) must
+ *  NOT break playback, so EVERY preferred path is guarded and falls through to
+ *  the GM soundfont, which loads from smplr's own CDN. */
 async function loadInstrument(name: string): Promise<SoundfontInst> {
   const ctx = audioEngine.getOutputContext();
   const dest = outputGain();
-  if (name === "acoustic_grand_piano") {
-    const i = SplendidGrandPiano(ctx, { destination: dest }); await i.ready; return i;
-  }
-  if (name === "acoustic_bass") {
-    const i = Smolken(ctx, { instrument: "Pizzicato", destination: dest }); await i.ready; return i;
-  }
-  const lib = TONE_LIB[name];
-  if (lib) {
-    try {
+  try {
+    if (name === "acoustic_grand_piano") {
+      const i = SplendidGrandPiano(ctx, { destination: dest }); await i.ready; return i;
+    }
+    if (name === "acoustic_bass") {
+      const i = Smolken(ctx, { instrument: "Pizzicato", destination: dest }); await i.ready; return i;
+    }
+    const lib = TONE_LIB[name];
+    if (lib) {
       const i = Sampler(ctx, { buffers: toneBuffers(lib), destination: dest }); await i.ready; return i;
-    } catch { /* recorded set unavailable → fall back to GM below */ }
-  }
+    }
+  } catch { /* preferred timbre unavailable → fall back to GM below */ }
   const i = Soundfont(ctx, { instrument: name, destination: dest }); await i.ready; return i;
 }
 
