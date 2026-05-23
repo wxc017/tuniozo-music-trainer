@@ -9,7 +9,7 @@ import { segmentByBar, decomposeDuration } from "./notation";
 import { beatsPerBar, type TxItem } from "./types";
 
 const DIR = join(process.cwd(), "public", "transcriptions");
-const SOURCES = ["thesession", "essen", "weimar", "cocopops"];
+const SOURCES = ["thesession", "essen", "weimar", "cocopops", "ewld"];
 
 function load(source: string): TxItem[] | null {
   const f = join(DIR, `${source}.json`);

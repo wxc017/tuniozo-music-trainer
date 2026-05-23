@@ -11,9 +11,10 @@ import { build as thesession } from "./thesession.mjs";
 import { build as essen } from "./essen.mjs";
 import { build as cocopops } from "./cocopops.mjs";
 import { build as weimar } from "./weimar.mjs";
+import { build as ewld } from "./ewld.mjs";
 import { rebuildIndex } from "./common.mjs";
 
-const BUILDERS = { thesession, essen, cocopops, weimar };
+const BUILDERS = { thesession, essen, cocopops, weimar, ewld };
 
 const requested = process.argv.slice(2).filter(a => a in BUILDERS);
 const sources = requested.length ? requested : Object.keys(BUILDERS);

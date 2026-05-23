@@ -14,7 +14,7 @@ import { SEED_ITEMS } from "./seed";
 import { harmonizeMelody } from "./accompaniment";
 import { quantizeMelody, melodyGridFor } from "./notation";
 
-const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops"];
+const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld"];
 
 function dataUrl(name: string): string {
   const base = import.meta.env.BASE_URL ?? "/";
