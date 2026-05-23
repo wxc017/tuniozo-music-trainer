@@ -223,20 +223,18 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
       built.push({ melody, chordV, bassV, contentW: Math.max(MIN_BAR_W, count * PER_TICKABLE), labels: chordLabelByBar[b] });
     }
 
-    // ── Phase 2: pack bars into rows by width ───────────────────────
+    // ── Phase 2: uniform bar width, pack into rows ──────────────────
+    // Every bar gets the SAME width (driven by the densest bar) so the page
+    // reads evenly — no "first bar wide, next bar cramped".
+    const uniformW = Math.max(MIN_BAR_W, ...built.map(b => b.contentW));
+    const perRow = Math.max(1, Math.floor((MAX_ROW_W - FIRST_BAR_EXTRA) / uniformW));
     const rows: number[][] = [];
-    let cur: number[] = [];
-    let curW = 0;
-    for (let b = 0; b < bars; b++) {
-      const w = built[b].contentW + (cur.length === 0 ? FIRST_BAR_EXTRA : 0);
-      if (cur.length && curW + w > MAX_ROW_W) { rows.push(cur); cur = []; curW = 0; }
-      cur.push(b);
-      curW += built[b].contentW + (cur.length === 1 ? FIRST_BAR_EXTRA : 0);
+    for (let b = 0; b < bars; b += perRow) {
+      rows.push(Array.from({ length: Math.min(perRow, bars - b) }, (_, i) => b + i));
     }
-    if (cur.length) rows.push(cur);
 
-    const rowWidths = rows.map(r => r.reduce((sum, b, i) => sum + built[b].contentW + (i === 0 ? FIRST_BAR_EXTRA : 0), 0));
-    const totalW = LEFT * 2 + Math.max(MIN_BAR_W + FIRST_BAR_EXTRA, ...rowWidths);
+    const rowWidths = rows.map(r => r.length * uniformW + FIRST_BAR_EXTRA);
+    const totalW = LEFT * 2 + Math.max(uniformW + FIRST_BAR_EXTRA, ...rowWidths);
     const totalH = TOP + rows.length * ROW_H + BOTTOM_PAD;
 
     const renderer = new Renderer(el, Renderer.Backends.SVG);
@@ -261,7 +259,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
         for (let mi = 0; mi < rowBars.length; mi++) {
           const b = rowBars[mi];
           const isFirst = mi === 0;
-          const w = built[b].contentW + (isFirst ? FIRST_BAR_EXTRA : 0);
+          const w = uniformW + (isFirst ? FIRST_BAR_EXTRA : 0);
           const treble = new Stave(x, trebleY, w);
           const bass = (showChordSymbols || showBassStaff) ? new Stave(x, bassY, w) : null;
           if (isFirst) {
@@ -326,11 +324,13 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           if (chordVoice && bass) chordVoice.draw(ctx, bass);
           if (bassVoice && bass) bassVoice.draw(ctx, bass);
           beams.forEach(beam => { try { beam.setStyle(NOTE_STYLE); } catch { /* */ } beam.setContext(ctx).draw(); });
-          const drawTie = (a: StaveNote, z: StaveNote) => {
+          const drawTie = (a: StaveNote | null, z: StaveNote | null) => {
             try {
               // firstIndexes/lastIndexes pin the tie to the actual noteheads,
-              // otherwise VexFlow floats it in the gap between notes.
-              const tie = new StaveTie({ firstNote: a, lastNote: z, firstIndexes: [0], lastIndexes: [0] });
+              // otherwise VexFlow floats it in the gap between notes.  A null
+              // first/last note makes a HANGING tie (curve to the system edge),
+              // used at row breaks instead of a diagonal across the page.
+              const tie = new StaveTie({ firstNote: a, lastNote: z, firstIndexes: [0], lastIndexes: [0] } as unknown as ConstructorParameters<typeof StaveTie>[0]);
               try { (tie as unknown as { setStyle(s: typeof NOTE_STYLE): void }).setStyle(NOTE_STYLE); } catch { /* */ }
               tie.setContext(ctx).draw();
             } catch { /* */ }
@@ -338,10 +338,17 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           for (const v of [mv, cv, bv]) {
             if (!v) continue;
             for (const [a, z] of v.ties) drawTie(a, z);
-            // Cross-bar carry tie: draw only WITHIN a row (not at a row's first
-            // bar) — across a row break its two notes sit on different systems
-            // and VexFlow renders a long diagonal line across the page.
-            if (v.carryTie && !isFirst) drawTie(v.carryTie[0], v.carryTie[1]);
+            if (v.carryTie) {
+              if (isFirst) {
+                // Row break: the held note's two halves are on different systems.
+                // Draw a hanging tie-out on the previous row's last note and a
+                // hanging tie-in on this row's first note (proper engraving).
+                drawTie(v.carryTie[0], null);
+                drawTie(null, v.carryTie[1]);
+              } else {
+                drawTie(v.carryTie[0], v.carryTie[1]);
+              }
+            }
           }
           x += w;
         }
