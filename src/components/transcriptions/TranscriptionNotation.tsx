@@ -93,6 +93,33 @@ function cellsToVoice<T>(
   return { tickables, beatStarts, ties, carryTie };
 }
 
+// Major key name for each position on the circle of fifths (−7…+7).
+const MAJOR_BY_FIFTHS: Record<number, string> = {
+  [-7]: "Cb", [-6]: "Gb", [-5]: "Db", [-4]: "Ab", [-3]: "Eb", [-2]: "Bb", [-1]: "F",
+  [0]: "C", [1]: "G", [2]: "D", [3]: "A", [4]: "E", [5]: "B", [6]: "F#", [7]: "C#",
+};
+
+/** Pick the key signature that best fits the actual notes (fewest out-of-key
+ *  pitches), so a mis-tagged mode — e.g. a D-Dorian tune labelled "D major" —
+ *  doesn't paint a natural on the majority of notes.  `tonicPc` lightly breaks
+ *  ties toward a signature whose tonic matches the stated key. */
+function bestFitKeySpec(pcs: number[], tonicPc: number): { spec: string; flat: boolean } {
+  const hist = new Array(12).fill(0);
+  for (const pc of pcs) hist[((pc % 12) + 12) % 12]++;
+  let best = 0, bestScore = -Infinity;
+  for (let f = -7; f <= 7; f++) {
+    const tonic = (((f * 7) % 12) + 12) % 12;
+    const inSet = new Set([0, 2, 4, 5, 7, 9, 11].map(s => (tonic + s) % 12));
+    let covered = 0;
+    for (let pc = 0; pc < 12; pc++) if (inSet.has(pc)) covered += hist[pc];
+    // Maximise covered notes; tie-break toward fewer accidentals, then toward
+    // the stated tonic being in-key.
+    const score = covered - Math.abs(f) * 0.02 + (inSet.has(((tonicPc % 12) + 12) % 12) ? 0.01 : 0);
+    if (score > bestScore) { bestScore = score; best = f; }
+  }
+  return { spec: MAJOR_BY_FIFTHS[best], flat: best < 0 };
+}
+
 const BEAMABLE = new Set(["8", "16", "32", "64"]);
 
 /** Beam a voice's flagged notes per FELT BEAT, grouped by each note's ABSOLUTE
@@ -144,8 +171,15 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     // Felt beat (quarter-beats): quarter in simple metres, dotted-quarter in
     // compound. Notes are split + tied at these so every beat stays visible.
     const beatUnit = ts[1] === 8 && ts[0] % 3 === 0 ? 1.5 : 1;
-    const keySpec = keySpecFor(excerpt.item.key.tonicPc, excerpt.item.key.mode);
-    const flat = keyIsFlat(keySpec);
+    // Key signature from the notes themselves (robust to mis-tagged modes in
+    // the source data), with the stated key as a tie-breaker / fallback.
+    const fitPcs = [
+      ...excerpt.melody.map(n => n.midi),
+      ...excerpt.chords.map(c => c.rootPc),
+    ];
+    const { spec: keySpec, flat } = fitPcs.length
+      ? bestFitKeySpec(fitPcs, excerpt.item.key.tonicPc)
+      : { spec: keySpecFor(excerpt.item.key.tonicPc, excerpt.item.key.mode), flat: keyIsFlat(keySpecFor(excerpt.item.key.tonicPc, excerpt.item.key.mode)) };
     const hasChordData = excerpt.chords.length > 0;
     const showChordSymbols = showChords && hasChordData;
     const showBassStaff = showBass && hasChordData;
