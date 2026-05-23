@@ -97,6 +97,7 @@ export async function pickItem(filter: TxFilter): Promise<TxItem | null> {
   const pool = index.items.filter(e =>
     filter.sources.includes(e.source) &&
     e.barCount >= filter.minBars &&
+    e.hasMelody &&                                  // this is a melody-transcription tool
     (!filter.requireChords || e.hasChords)
   );
   if (!pool.length) return null;
