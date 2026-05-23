@@ -243,6 +243,16 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
             try { tb.tickables[idx]?.addModifier(a, 0); } catch { /* */ }
           }
 
+          // Beam the melody BEFORE formatting/drawing.  The Beam constructor
+          // marks each grouped note so VexFlow suppresses its individual flag
+          // — generating beams *after* draw (the old bug) left stray tails on
+          // beamed notes.  Pass the FULL tickable list (incl. rests) with
+          // beamRests:false so beams break correctly at rests + beat groups.
+          let melodyBeams: Beam[] = [];
+          try {
+            melodyBeams = Beam.generateBeams(tb.tickables, { groups: beamGroups, beamRests: false, maintainStemDirections: true });
+          } catch { /* */ }
+
           const noteStartX = (treble as unknown as { getNoteStartX(): number }).getNoteStartX();
           const justify = Math.max(40, x + w - noteStartX - 16);
           const fmt = new Formatter();
@@ -253,13 +263,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
 
           trebleVoice.draw(ctx, treble);
           bassVoice.draw(ctx, bass);
-
-          // Beam only the melody (treble); block-chord bass isn't beamed.
-          try {
-            const melodyNotes = tb.tickables.filter(n => !(n as unknown as { isRest(): boolean }).isRest?.());
-            const beams = Beam.generateBeams(melodyNotes, { groups: beamGroups, beamRests: false, maintainStemDirections: true });
-            beams.forEach(beam => { try { beam.setStyle(NOTE_STYLE); } catch { /* */ } beam.setContext(ctx).draw(); });
-          } catch { /* */ }
+          melodyBeams.forEach(beam => { try { beam.setStyle(NOTE_STYLE); } catch { /* */ } beam.setContext(ctx).draw(); });
           for (const [a, z] of [...tb.ties, ...bb.ties]) {
             try { new StaveTie({ firstNote: a, lastNote: z }).setContext(ctx).draw(); } catch { /* */ }
           }

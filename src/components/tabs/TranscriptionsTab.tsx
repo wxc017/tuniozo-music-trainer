@@ -165,44 +165,6 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   // ── UI ────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4 text-white">
-      {/* Transport */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <button onClick={playNew} disabled={busy}
-          className="px-5 py-2 rounded-md text-sm font-semibold bg-[#7173e6] text-white hover:bg-[#5d5fd0] disabled:opacity-50 transition-colors">
-          ▶ Play
-        </button>
-        <button onClick={replay} disabled={busy || !excerpt}
-          className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] disabled:opacity-40 transition-colors">
-          ↻ Replay
-        </button>
-        <button onClick={playFull} disabled={busy || !item}
-          title="Play the whole tune from the top"
-          className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] disabled:opacity-40 transition-colors">
-          ♫ Full song
-        </button>
-        {/* Tempo — applies to Play, Replay and Full song */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#1a1a1a] border border-[#333]" title="Playback tempo for Play / Replay / Full song">
-          <span className="text-[10px] text-[#888]">BPM</span>
-          <input type="range" min={40} max={240} step={1} value={displayBpm}
-            onChange={e => setBpm(Number(e.target.value))} className="w-24 accent-[#7173e6]" />
-          <span className="text-xs text-[#bbb] w-8 text-right tabular-nums">{displayBpm}</span>
-          {bpm > 0 && (
-            <button onClick={() => setBpm(0)} title="Reset to the tune's original tempo"
-              className="text-[10px] text-[#7aa] hover:text-[#9cc]">orig</button>
-          )}
-        </div>
-        <button onClick={stop}
-          className="px-3 py-2 rounded-md text-sm bg-[#1a1a1a] border border-[#333] text-[#888] hover:border-[#555] transition-colors">
-          ■ Stop
-        </button>
-        <button onClick={() => setShowAnswer(s => !s)} disabled={!excerpt}
-          className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors disabled:opacity-40 ${
-            showAnswer ? "bg-[#2a2a1a] border-[#8a7] text-[#cd6]" : "bg-[#1a1a1a] border-[#333] text-[#bbb] hover:border-[#555]"
-          }`}>
-          {showAnswer ? "Hide Answer" : "Show Answer"}
-        </button>
-      </div>
-
       {status && <div className="text-xs text-[#9a9] min-h-[1em]">{status}</div>}
 
       {/* Now-playing chip (no spoilers until Show Answer) */}
@@ -328,6 +290,44 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           </div>
         </div>
       )}
+
+      {/* Transport — at the bottom */}
+      <div className="flex flex-wrap gap-2 items-center pt-1">
+        <button onClick={playNew} disabled={busy}
+          className="px-5 py-2 rounded-md text-sm font-semibold bg-[#7173e6] text-white hover:bg-[#5d5fd0] disabled:opacity-50 transition-colors">
+          ▶ Play
+        </button>
+        <button onClick={replay} disabled={busy || !excerpt}
+          className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] disabled:opacity-40 transition-colors">
+          ↻ Replay
+        </button>
+        <button onClick={playFull} disabled={busy || !item}
+          title="Play the whole tune from the top"
+          className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] disabled:opacity-40 transition-colors">
+          ♫ Full song
+        </button>
+        {/* Tempo — applies to Play, Replay and Full song */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#1a1a1a] border border-[#333]" title="Playback tempo for Play / Replay / Full song">
+          <span className="text-[10px] text-[#888]">BPM</span>
+          <input type="range" min={40} max={240} step={1} value={displayBpm}
+            onChange={e => setBpm(Number(e.target.value))} className="w-24 accent-[#7173e6]" />
+          <span className="text-xs text-[#bbb] w-8 text-right tabular-nums">{displayBpm}</span>
+          {bpm > 0 && (
+            <button onClick={() => setBpm(0)} title="Reset to the tune's original tempo"
+              className="text-[10px] text-[#7aa] hover:text-[#9cc]">orig</button>
+          )}
+        </div>
+        <button onClick={stop}
+          className="px-3 py-2 rounded-md text-sm bg-[#1a1a1a] border border-[#333] text-[#888] hover:border-[#555] transition-colors">
+          ■ Stop
+        </button>
+        <button onClick={() => setShowAnswer(s => !s)} disabled={!excerpt}
+          className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors disabled:opacity-40 ${
+            showAnswer ? "bg-[#2a2a1a] border-[#8a7] text-[#cd6]" : "bg-[#1a1a1a] border-[#333] text-[#bbb] hover:border-[#555]"
+          }`}>
+          {showAnswer ? "Hide Answer" : "Show Answer"}
+        </button>
+      </div>
     </div>
   );
 }
