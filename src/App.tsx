@@ -398,9 +398,11 @@ export default function App() {
   // user direction (2026-05-13) "remove scalar permuations and
   // intervals from show target in tonal audiation", restrict the tab
   // row to Chords (+ Drone if beta) when responseMode is Show Target.
+  // All tabs are available in both response modes.  (Per user request
+  // 2026-05-22, Intervals + Scalar Permutations are no longer hidden in
+  // "Show Target (Sing It)" mode.)
   const visibleTemperamentTabs: Tab[] = temperamentTabs
-    .filter(t => t !== "drone" || betaChordDrone)
-    .filter(t => responseMode !== "Show Target (Sing It)" || t === "chords" || t === "drone" || t === "transcriptions");
+    .filter(t => t !== "drone" || betaChordDrone);
   // Snap activeTab to a valid tab for the current temperament whenever
   // the user crosses a boundary, OR whenever the Chord Drone beta is
   // toggled off while the user is currently viewing the Drone tab.

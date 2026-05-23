@@ -142,12 +142,6 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   // ── UI ────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4 text-white">
-      <p className="text-xs text-[#777] leading-relaxed">
-        Hear a random passage and transcribe it. <span className="text-[#999]">Play</span> a new excerpt,
-        {" "}<span className="text-[#999]">Replay</span> to hear it again, then <span className="text-[#999]">Show Answer</span>{" "}
-        to check the notation and find the source on YouTube.
-      </p>
-
       {/* Transport */}
       <div className="flex flex-wrap gap-2 items-center">
         <button onClick={playNew} disabled={busy}
@@ -331,9 +325,23 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
             {" "}{item.timeSig[0]}/{item.timeSig[1]} · {item.tempoBpm} bpm original
           </div>
 
+          {/* Embedded YouTube — plays the first search match for the tune. */}
+          <div className="rounded-md overflow-hidden border border-[#242424] bg-black" style={{ maxWidth: 480 }}>
+            <div style={{ position: "relative", width: "100%", paddingBottom: "56.25%" }}>
+              <iframe
+                title={`YouTube: ${item.youtubeQuery}`}
+                src={`https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(item.youtubeQuery)}`}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
+                allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                loading="lazy"
+              />
+            </div>
+          </div>
+
           <a href={youtubeUrl(item.youtubeQuery)} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-[#2a1414] border border-[#a44] text-[#e88] hover:bg-[#3a1a1a] transition-colors">
-            ▶ Find “{item.youtubeQuery}” on YouTube
+            ▶ Open “{item.youtubeQuery}” on YouTube
           </a>
         </div>
       )}
