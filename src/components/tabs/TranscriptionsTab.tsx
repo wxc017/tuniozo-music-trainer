@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLS } from "@/lib/storage";
 import { SOURCE_LABEL, SOURCE_GENRE, type TxSource, type TxItem, type TxIndex } from "@/lib/transcriptions/types";
-import { pickItem, pickExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
+import { pickItem, pickExcerpt, fullExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
 import { playExcerpt, stopPlayback, ensureInstruments } from "@/lib/transcriptions/playback";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
 
@@ -132,6 +132,13 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     else await playNew();
   }, [item, excerpt, playGivenExcerpt, playNew]);
 
+  const playFull = useCallback(async () => {
+    if (!item) return;
+    cancelLoop();
+    stopPlayback();
+    await playGivenExcerpt(item, fullExcerpt(item));   // whole tune; leaves the excerpt target intact
+  }, [item, playGivenExcerpt]);
+
   const stop = () => { playToken.current++; cancelLoop(); stopPlayback(); setBusy(false); setStatus(""); };
 
   const toggleSource = (s: TxSource) =>
@@ -168,6 +175,11 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
         <button onClick={replay} disabled={busy || !excerpt}
           className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] disabled:opacity-40 transition-colors">
           ↻ Replay
+        </button>
+        <button onClick={playFull} disabled={busy || !item}
+          title="Play the whole tune from the top"
+          className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] disabled:opacity-40 transition-colors">
+          ♫ Full song
         </button>
         <button onClick={stop}
           className="px-3 py-2 rounded-md text-sm bg-[#1a1a1a] border border-[#333] text-[#888] hover:border-[#555] transition-colors">
