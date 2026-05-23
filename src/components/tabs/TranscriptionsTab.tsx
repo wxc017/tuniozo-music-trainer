@@ -11,6 +11,7 @@ import { useLS } from "@/lib/storage";
 import { SOURCE_LABEL, SOURCE_GENRE, type TxSource, type TxItem, type TxIndex } from "@/lib/transcriptions/types";
 import { pickItem, pickExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
 import { playExcerpt, stopPlayback, ensureInstruments } from "@/lib/transcriptions/playback";
+import { inferChords, buildAccompaniment } from "@/lib/transcriptions/harmonize";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
 
 const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops"];
@@ -33,10 +34,12 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const [withChords, setWithChords] = useLS<boolean>("lt_tx_chords", true);
   const [tempoMode, setTempoMode] = useLS<"original" | "fixed">("lt_tx_tempoMode", "original");
   const [fixedBpm, setFixedBpm] = useLS<number>("lt_tx_fixedBpm", 90);
-  const [countInBars, setCountInBars] = useLS<number>("lt_tx_countbars", 1);
+  const [countInBars, setCountInBars] = useLS<number>("lt_tx_countbars", 0);
   const [metronome, setMetronome] = useLS<boolean>("lt_tx_metro", false);
   const [loop, setLoop] = useLS<boolean>("lt_tx_loop", false);
-  const [showOptions, setShowOptions] = useState(false);
+  // Practice vs. Options shown as sub-tabs, matching the other Tonal
+  // Audiation modes.
+  const [view, setView] = useLS<"practice" | "options">("lt_tx_view", "practice");
 
   // Answer-reveal display toggles (which voices to show in the notation).
   const [revealMelody, setRevealMelody] = useLS<boolean>("lt_tx_reveal_mel", true);
@@ -79,13 +82,20 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     try {
       await ensureAudio();
       const countInBeats = countInBars * ex.beatsPerBar;
+      // Folk (melody-only) tunes get an arpeggio accompaniment from the
+      // chords inferred into the excerpt; jazz/pop keep block comping.
+      const isFolk = it.source === "thesession" || it.source === "essen";
+      const accompaniment = withChords && isFolk && ex.chords.length
+        ? buildAccompaniment(ex.chords, it.timeSig, it.id)
+        : undefined;
       const handle = await playExcerpt(ex, {
         bpm: effectiveBpm(it),
         withMelody: withMelody && (it.melody?.length ?? 0) > 0,
-        withChords: withChords && (it.chords?.length ?? 0) > 0,
+        withChords: withChords && ex.chords.length > 0,
         countInBeats,
         metronome,
         volume: playVol,
+        accompaniment,
       });
       if (myToken !== playToken.current) return;     // superseded
       setStatus(loopRef.current ? "Looping…" : "");
@@ -120,6 +130,11 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
       return;
     }
     const ex = pickExcerpt(picked, bars);
+    // Melody-only folk tunes: infer a diatonic chord per bar so the answer
+    // shows chord symbols on top and the tune can be played harmonized.
+    if (!ex.chords.length && (picked.source === "thesession" || picked.source === "essen")) {
+      ex.chords = inferChords(ex);
+    }
     setItem(picked);
     setExcerpt(ex);
     await playGivenExcerpt(picked, ex);
@@ -142,6 +157,23 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   // ── UI ────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4 text-white">
+      {/* Sub-tabs — Practice / Options (like other Tonal Audiation modes) */}
+      <div className="flex gap-1">
+        {(["practice", "options"] as const).map(v => (
+          <button key={v} onClick={() => setView(v)}
+            style={{
+              padding: "6px 16px", borderRadius: 6,
+              border: `1px solid ${v === view ? "#7173e6" : "#222"}`,
+              background: v === view ? "#1a1a2e" : "#111",
+              color: v === view ? "#9999ee" : "#666",
+              fontSize: 12, cursor: "pointer", transition: "all 0.15s",
+            }}>
+            {v === "practice" ? "Practice" : "Options"}
+          </button>
+        ))}
+      </div>
+
+      {view === "practice" && (<>
       {/* Transport */}
       <div className="flex flex-wrap gap-2 items-center">
         <button onClick={playNew} disabled={busy}
@@ -169,10 +201,6 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           }`}>
           {showAnswer ? "Hide Answer" : "Show Answer"}
         </button>
-        <button onClick={() => setShowOptions(o => !o)}
-          className="ml-auto px-3 py-2 rounded-md text-xs bg-[#1a1a1a] border border-[#333] text-[#888] hover:border-[#555] transition-colors">
-          ⚙ Options
-        </button>
       </div>
 
       {status && <div className="text-xs text-[#9a9] min-h-[1em]">{status}</div>}
@@ -184,9 +212,10 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           {" "}{excerpt.item.timeSig[0]}/{excerpt.item.timeSig[1]} · {Math.round(effectiveBpm(excerpt.item))} bpm
         </div>
       )}
+      </>)}
 
-      {/* Options panel */}
-      {showOptions && (
+      {/* Options panel (its own sub-tab) */}
+      {view === "options" && (
         <div className="bg-[#111] border border-[#222] rounded-lg p-4 space-y-4">
           {/* Bars */}
           <div className="flex items-center gap-3">
@@ -292,7 +321,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
       )}
 
       {/* Answer reveal */}
-      {showAnswer && item && excerpt && (
+      {view === "practice" && showAnswer && item && excerpt && (
         <div className="bg-[#0f0f0f] border border-[#242424] rounded-lg p-4 space-y-3">
           <div className="flex items-baseline justify-between gap-3 flex-wrap">
             <div>

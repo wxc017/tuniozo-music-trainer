@@ -14,6 +14,7 @@ import { Soundfont } from "smplr";
 import { audioEngine } from "@/lib/audioEngine";
 import type { TxExcerpt } from "./loader";
 import type { TxSource } from "./types";
+import type { AccNote } from "./harmonize";
 
 type SoundfontInst = ReturnType<typeof Soundfont>;
 
@@ -26,8 +27,10 @@ interface VoiceKit {
 }
 
 const SOURCE_KIT: Record<TxSource, VoiceKit> = {
-  thesession: { melody: "flute" },
-  essen: { melody: "flute" },
+  // Folk/trad melodies are auto-harmonized into a guitar + upright-bass
+  // arpeggio accompaniment (see harmonize.ts) under the flute lead.
+  thesession: { melody: "flute", chords: "acoustic_guitar_nylon", bass: "acoustic_bass" },
+  essen: { melody: "flute", chords: "acoustic_guitar_nylon", bass: "acoustic_bass" },
   weimar: { melody: "tenor_sax", chords: "acoustic_grand_piano", bass: "acoustic_bass" },
   cocopops: { melody: "acoustic_grand_piano", chords: "acoustic_guitar_steel", bass: "acoustic_bass" },
 };
@@ -91,6 +94,10 @@ export interface PlayOptions {
   metronome?: boolean;
   /** 0..~1.5 — multiplied into the shared output gain. */
   volume?: number;
+  /** Pre-built arpeggio accompaniment (folk auto-harmonization). When
+   *  present it replaces block-chord comping; low notes go to the bass
+   *  instrument, the rest to the chord instrument. */
+  accompaniment?: AccNote[];
 }
 
 export interface PlayHandle {
@@ -186,8 +193,22 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
     }
   }
 
-  // ── Chords + bass ─────────────────────────────────────────────────
-  if (opts.withChords && kit.chords) {
+  // ── Accompaniment / chords + bass ─────────────────────────────────
+  if (opts.withChords && kit.chords && opts.accompaniment?.length) {
+    // Arpeggio accompaniment (folk): route low notes to the bass voice.
+    const chordInst = loaded.get(kit.chords)!;
+    const bassInst = kit.bass ? loaded.get(kit.bass)! : null;
+    for (const a of opts.accompaniment) {
+      const inst = a.midi < 48 && bassInst ? bassInst : chordInst;
+      inst.start({
+        note: a.midi,
+        time: t0 + a.startBeat * secPerBeat,
+        duration: Math.max(0.08, a.durBeats * secPerBeat * 0.92),
+        velocity: a.velocity,
+      });
+    }
+  } else if (opts.withChords && kit.chords) {
+    // Block-chord comping (jazz / pop).
     const chordInst = loaded.get(kit.chords)!;
     const bassInst = kit.bass ? loaded.get(kit.bass)! : null;
     for (const c of ex.chords) {
