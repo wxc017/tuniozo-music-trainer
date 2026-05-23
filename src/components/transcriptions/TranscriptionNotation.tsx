@@ -15,6 +15,12 @@ import {
   Annotation, StaveConnector, StaveTie, Barline, type StaveNoteStruct,
 } from "vexflow";
 import type { TxExcerpt } from "@/lib/transcriptions/loader";
+import { compEvents, type CompGenre } from "@/lib/transcriptions/accompaniment";
+import type { TxSource } from "@/lib/transcriptions/types";
+
+const COMP_GENRE: Record<TxSource, CompGenre> = {
+  thesession: "folk", essen: "folk", weimar: "jazz", cocopops: "pop",
+};
 import {
   decomposeDuration, segmentByBar, layoutBarCells, keySpecFor, keyIsFlat, midiToVexKey,
   type TimedEvent, type BarCell,
@@ -79,19 +85,6 @@ function cellsToVoice<T>(
   return { tickables, beatStarts, ties };
 }
 
-/** Close-position bass-clef voicing for a chord (root + reduced tones). */
-function bassVoicing(rootPc: number, intervals: number[], bassPc?: number): number[] {
-  let rootMidi = 48 + rootPc;
-  if (rootMidi > 55) rootMidi -= 12;
-  const reduced = [...new Set(intervals.map(i => ((i % 12) + 12) % 12))].sort((a, b) => a - b);
-  const tones = reduced.map(i => rootMidi + i);
-  if (bassPc != null) {
-    const b = 36 + bassPc;
-    if (!tones.includes(b)) tones.unshift(b);
-  }
-  return tones.sort((a, b) => a - b);
-}
-
 export interface NotationProps {
   excerpt: TxExcerpt;
   showMelody?: boolean;
@@ -121,10 +114,14 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
       ? excerpt.melody.map(n => ({ startBeat: n.startBeat, durBeats: n.durBeats, data: n.midi }))
       : [];
     const melodyByBar = segmentByBar(melodyEvents, bars, bpb);
-    const chordEvents: TimedEvent<number[]>[] = hasChords
-      ? excerpt.chords.map(c => ({ startBeat: c.startBeat, durBeats: c.durBeats, data: bassVoicing(c.rootPc, c.intervals, c.bassPc) }))
-      : [];
-    const chordByBar = segmentByBar(chordEvents, bars, bpb);
+    // Bass staff = the actual played bass line (the comping bass), notated an
+    // octave up so it sits cleanly in the bass clef. This is what's heard,
+    // and the chord symbols above carry the full harmony.
+    const comp = hasChords
+      ? compEvents(excerpt.chords, COMP_GENRE[excerpt.item.source] ?? "folk", bpb, ts, bars * bpb)
+      : { chord: [], bass: [] };
+    const bassEvents: TimedEvent<number>[] = comp.bass.map(e => ({ startBeat: e.startBeat, durBeats: e.durBeats, data: e.midi + 12 }));
+    const chordByBar = segmentByBar(bassEvents, bars, bpb);
 
     // Chord symbols per bar (carry-over at downbeat + mid-bar changes).
     const chordLabelByBar: { beatInBar: number; sym: string }[][] = Array.from({ length: bars }, () => []);
@@ -146,9 +143,9 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const mids = excerpt.melody.map(n => n.midi).sort((a, b) => a - b);
     const median = mids.length ? mids[Math.floor(mids.length / 2)] : 71;
     const melodyOnBass = showMelody && mids.length > 0 && median < 56;
-    const chordOctave = melodyOnBass ? 12 : 0;     // lift chord voicing onto the treble staff
+    const bassOctave = melodyOnBass ? 12 : 0;     // lift the bass line if it has to share the treble staff
     const melodyRest = melodyOnBass ? ["d/3"] : ["b/4"];
-    const chordRest = melodyOnBass ? ["b/4"] : ["d/3"];
+    const bassRest = melodyOnBass ? ["b/4"] : ["d/3"];
 
     const carryMelody = { note: null as StaveNote | null };
     const carryChord = { note: null as StaveNote | null };
@@ -159,13 +156,13 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
         layoutBarCells(melodyByBar[b], bpb), (m: number) => [midiToVexKey(m, flat)], melodyRest, carryMelody,
         melodyOnBass ? "bass" : "treble",
       );
-      const chordVoice = cellsToVoice(
+      const bassVoice = cellsToVoice(
         hasChords ? layoutBarCells(chordByBar[b], bpb) : [],
-        (ms: number[]) => ms.map(m => midiToVexKey(m + chordOctave, flat)), chordRest, carryChord,
+        (m: number) => [midiToVexKey(m + bassOctave, flat)], bassRest, carryChord,
         melodyOnBass ? "treble" : "bass",
       );
-      const top = melodyOnBass ? chordVoice : melodyVoice;
-      const bottom = melodyOnBass ? melodyVoice : chordVoice;
+      const top = melodyOnBass ? bassVoice : melodyVoice;
+      const bottom = melodyOnBass ? melodyVoice : bassVoice;
       const count = Math.max(top.tickables.length, bottom.tickables.length);
       built.push({ treble: top, bass: bottom, contentW: Math.max(MIN_BAR_W, count * PER_TICKABLE), labels: chordLabelByBar[b] });
     }
