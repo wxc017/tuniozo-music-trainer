@@ -46,14 +46,12 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const [styleFilter, setStyleFilter] = useLS<string[]>("lt_tx_styles", []);
   const [withMelody, setWithMelody] = useLS<boolean>("lt_tx_melody", true);
   const [withChords, setWithChords] = useLS<boolean>("lt_tx_chords", true);
-  const [tempoMode, setTempoMode] = useLS<"original" | "fixed">("lt_tx_tempoMode", "original");
-  const [fixedBpm, setFixedBpm] = useLS<number>("lt_tx_fixedBpm", 90);
   const [countInBars, setCountInBars] = useLS<number>("lt_tx_countbars", 0);
   const [metronome, setMetronome] = useLS<boolean>("lt_tx_metro", false);
-  const [loop, setLoop] = useLS<boolean>("lt_tx_loop", false);
-  // Practice vs. Options shown as sub-tabs, matching the other Tonal
-  // Audiation modes.
-  const [view, setView] = useLS<"practice" | "options">("lt_tx_view", "practice");
+  // Playback tempo for Play / Replay / Full song. 0 = follow the tune's
+  // original tempo; otherwise an override set by the BPM control in the
+  // transport row (applies to all three).
+  const [bpm, setBpm] = useLS<number>("lt_tx_bpm", 0);
 
   // Answer-reveal display toggles (which voices to show in the notation).
   const [revealMelody, setRevealMelody] = useLS<boolean>("lt_tx_reveal_mel", true);
@@ -68,9 +66,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string>("");
   const playToken = useRef(0);
-  const loopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const loopRef = useRef(loop);
-  loopRef.current = loop;
+  const endTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { loadIndex().then(setIndex).catch(() => {}); }, []);
   // Warm up soundfonts + refresh the available style list when sources change.
@@ -82,15 +78,16 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
       setStyleFilter(prev => prev.filter(s => styles.includes(s)));
     }).catch(() => {});
   }, [sources]);
-  useEffect(() => () => { stopPlayback(); if (loopTimer.current) clearTimeout(loopTimer.current); }, []);
+  useEffect(() => () => { stopPlayback(); if (endTimer.current) clearTimeout(endTimer.current); }, []);
 
-  const effectiveBpm = (it: TxItem) => (tempoMode === "fixed" ? fixedBpm : it.tempoBpm);
+  // 0 = play at the tune's own tempo; any positive value overrides it.
+  const effectiveBpm = (it: TxItem) => (bpm > 0 ? bpm : it.tempoBpm);
 
-  const cancelLoop = () => { if (loopTimer.current) { clearTimeout(loopTimer.current); loopTimer.current = null; } };
+  const clearEndTimer = () => { if (endTimer.current) { clearTimeout(endTimer.current); endTimer.current = null; } };
 
   const playGivenExcerpt = useCallback(async (it: TxItem, ex: TxExcerpt) => {
     const myToken = ++playToken.current;
-    cancelLoop();
+    clearEndTimer();
     setBusy(true);
     setStatus("Loading instrument samples…");
     try {
@@ -107,21 +104,17 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
         volume: playVol,
       });
       if (myToken !== playToken.current) return;     // superseded
-      setStatus(loopRef.current ? "Looping…" : "");
+      setStatus("");
       const spb = 60 / effectiveBpm(it);
       const totalMs = (countInBeats * spb + handle.durationSec) * 1000 + 250;
-      loopTimer.current = setTimeout(() => {
-        if (myToken !== playToken.current) return;
-        if (loopRef.current) playGivenExcerpt(it, ex);   // replay for loop
-        else setBusy(false);
-      }, totalMs);
+      endTimer.current = setTimeout(() => { if (myToken === playToken.current) setBusy(false); }, totalMs);
     } catch (e) {
       if (myToken === playToken.current) { setStatus(`Playback error: ${String(e)}`); setBusy(false); }
     }
-  }, [ensureAudio, withMelody, withChords, countInBars, metronome, playVol, tempoMode, fixedBpm]);
+  }, [ensureAudio, withMelody, withChords, countInBars, metronome, playVol, bpm]);
 
   const playNew = useCallback(async () => {
-    cancelLoop();
+    clearEndTimer();
     stopPlayback();
     setShowAnswer(false);
     if (!sources.length) { setStatus("Select at least one database in Options."); return; }
@@ -145,7 +138,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   }, [sources, bars, withChords, withMelody, styleFilter, playGivenExcerpt]);
 
   const replay = useCallback(async () => {
-    cancelLoop();
+    clearEndTimer();
     stopPlayback();
     if (item && excerpt) await playGivenExcerpt(item, excerpt);
     else await playNew();
@@ -153,12 +146,16 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
 
   const playFull = useCallback(async () => {
     if (!item) return;
-    cancelLoop();
+    clearEndTimer();
     stopPlayback();
     await playGivenExcerpt(item, fullExcerpt(item));   // whole tune; leaves the excerpt target intact
   }, [item, playGivenExcerpt]);
 
-  const stop = () => { playToken.current++; cancelLoop(); stopPlayback(); setBusy(false); setStatus(""); };
+  const stop = () => { playToken.current++; clearEndTimer(); stopPlayback(); setBusy(false); setStatus(""); };
+
+  // BPM shown in the transport: the override if set, else the current tune's tempo.
+  const curTempo = excerpt?.item.tempoBpm ?? item?.tempoBpm ?? 100;
+  const displayBpm = bpm > 0 ? bpm : Math.round(curTempo);
 
   const toggleSource = (s: TxSource) =>
     setSources(prev => (prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]));
@@ -168,23 +165,6 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   // ── UI ────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4 text-white">
-      {/* Sub-tabs — Practice / Options (like other Tonal Audiation modes) */}
-      <div className="flex gap-1">
-        {(["practice", "options"] as const).map(v => (
-          <button key={v} onClick={() => setView(v)}
-            style={{
-              padding: "6px 16px", borderRadius: 6,
-              border: `1px solid ${v === view ? "#7173e6" : "#222"}`,
-              background: v === view ? "#1a1a2e" : "#111",
-              color: v === view ? "#9999ee" : "#666",
-              fontSize: 12, cursor: "pointer", transition: "all 0.15s",
-            }}>
-            {v === "practice" ? "Practice" : "Options"}
-          </button>
-        ))}
-      </div>
-
-      {view === "practice" && (<>
       {/* Transport */}
       <div className="flex flex-wrap gap-2 items-center">
         <button onClick={playNew} disabled={busy}
@@ -200,16 +180,20 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] disabled:opacity-40 transition-colors">
           ♫ Full song
         </button>
+        {/* Tempo — applies to Play, Replay and Full song */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#1a1a1a] border border-[#333]" title="Playback tempo for Play / Replay / Full song">
+          <span className="text-[10px] text-[#888]">BPM</span>
+          <input type="range" min={40} max={240} step={1} value={displayBpm}
+            onChange={e => setBpm(Number(e.target.value))} className="w-24 accent-[#7173e6]" />
+          <span className="text-xs text-[#bbb] w-8 text-right tabular-nums">{displayBpm}</span>
+          {bpm > 0 && (
+            <button onClick={() => setBpm(0)} title="Reset to the tune's original tempo"
+              className="text-[10px] text-[#7aa] hover:text-[#9cc]">orig</button>
+          )}
+        </div>
         <button onClick={stop}
           className="px-3 py-2 rounded-md text-sm bg-[#1a1a1a] border border-[#333] text-[#888] hover:border-[#555] transition-colors">
           ■ Stop
-        </button>
-        <button onClick={() => setLoop(l => !l)}
-          title="Repeat the excerpt continuously"
-          className={`px-3 py-2 rounded-md text-sm font-medium border transition-colors ${
-            loop ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#1a1a1a] border-[#333] text-[#888] hover:border-[#555]"
-          }`}>
-          ⟳ Loop
         </button>
         <button onClick={() => setShowAnswer(s => !s)} disabled={!excerpt}
           className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors disabled:opacity-40 ${
@@ -228,11 +212,9 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           {" "}{excerpt.item.timeSig[0]}/{excerpt.item.timeSig[1]} · {Math.round(effectiveBpm(excerpt.item))} bpm
         </div>
       )}
-      </>)}
 
-      {/* Options panel (its own sub-tab) — collapsible accent sections */}
-      {view === "options" && (
-        <div className="space-y-2">
+      {/* Options — always visible, collapsible accent sections */}
+      <div className="space-y-2">
           <OptSection title="EXCERPT" accent="#bf6cd0">
             <div className="flex items-center gap-3">
               <label className="text-xs text-[#888] w-28">Bars per excerpt</label>
@@ -295,22 +277,6 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
                 <input type="checkbox" checked={withChords} onChange={e => setWithChords(e.target.checked)} className="accent-[#7173e6]" /> Chords
               </label>
             </div>
-            <div className="flex items-center gap-3 flex-wrap mb-3">
-              <span className="text-xs text-[#888] w-28">Tempo</span>
-              <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
-                <input type="radio" name="txTempo" checked={tempoMode === "original"} onChange={() => setTempoMode("original")} className="accent-[#7173e6]" /> Original
-              </label>
-              <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
-                <input type="radio" name="txTempo" checked={tempoMode === "fixed"} onChange={() => setTempoMode("fixed")} className="accent-[#7173e6]" /> Fixed
-              </label>
-              {tempoMode === "fixed" && (
-                <>
-                  <input type="range" min={40} max={220} step={2} value={fixedBpm}
-                    onChange={e => setFixedBpm(Number(e.target.value))} className="w-32 accent-[#7173e6]" />
-                  <span className="text-xs text-[#bbb] w-12">{fixedBpm} bpm</span>
-                </>
-              )}
-            </div>
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-xs text-[#888] w-28">Count-in</span>
               {[0, 1, 2].map(n => (
@@ -325,11 +291,10 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
               </label>
             </div>
           </OptSection>
-        </div>
-      )}
+      </div>
 
       {/* Answer reveal */}
-      {view === "practice" && showAnswer && item && excerpt && (
+      {showAnswer && item && excerpt && (
         <div className="bg-[#0f0f0f] border border-[#242424] rounded-lg p-4 space-y-3">
           <div className="flex items-baseline justify-between gap-3 flex-wrap">
             <div>
