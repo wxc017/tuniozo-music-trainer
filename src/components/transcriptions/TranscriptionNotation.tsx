@@ -12,7 +12,7 @@
 import { useEffect, useRef } from "react";
 import {
   Renderer, Stave, StaveNote, Voice, Formatter, Beam, Dot, Accidental,
-  Annotation, StaveConnector, StaveTie, Barline, Fraction, type StaveNoteStruct,
+  Annotation, StaveConnector, StaveTie, Barline, type StaveNoteStruct,
 } from "vexflow";
 import type { TxExcerpt } from "@/lib/transcriptions/loader";
 import { compEvents, compGenreFor } from "@/lib/transcriptions/accompaniment";
@@ -93,6 +93,36 @@ function cellsToVoice<T>(
   return { tickables, beatStarts, ties, carryTie };
 }
 
+const BEAMABLE = new Set(["8", "16", "32", "64"]);
+
+/** Beam a voice's flagged notes per FELT BEAT, grouped by each note's ABSOLUTE
+ *  beat position (from beatStarts).  VexFlow's generateBeams instead accumulates
+ *  durations sequentially, so a dotted rest / odd duration earlier in the bar
+ *  drifts the group boundaries off the beat grid and a trailing pair of eighths
+ *  fails to beam.  Grouping by absolute beat avoids that entirely. */
+function beamByBeat(v: BuiltVoice, beatUnit: number): Beam[] {
+  const beams: Beam[] = [];
+  let group: StaveNote[] = [];
+  let groupBeat = -1;
+  const flush = () => {
+    if (group.length >= 2) {
+      try { const b = new Beam(group); b.setStyle(NOTE_STYLE); beams.push(b); } catch { /* */ }
+    }
+    group = [];
+  };
+  v.tickables.forEach((note, i) => {
+    let rest = false, dur = "";
+    try { rest = (note as unknown as { isRest(): boolean }).isRest(); } catch { /* */ }
+    try { dur = (note as unknown as { getDuration(): string }).getDuration(); } catch { /* */ }
+    const beat = Math.floor((v.beatStarts[i] ?? 0) / beatUnit + 1e-9);
+    if (rest || !BEAMABLE.has(dur)) { flush(); groupBeat = beat; return; }
+    if (beat !== groupBeat) { flush(); groupBeat = beat; }
+    group.push(note);
+  });
+  flush();
+  return beams;
+}
+
 export interface NotationProps {
   excerpt: TxExcerpt;
   showMelody?: boolean;
@@ -119,11 +149,6 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const hasChordData = excerpt.chords.length > 0;
     const showChordSymbols = showChords && hasChordData;
     const showBassStaff = showBass && hasChordData;
-    // Beam strictly per FELT BEAT (one beam = one beat), not VexFlow's default
-    // which groups two beats in 4/4 and blurs where each beat falls.  beatUnit
-    // is in quarter-beats (1 simple, 1.5 compound) → as a fraction of a whole
-    // note that's beatUnit/4 = (beatUnit*2)/8.
-    const beamGroups = [new Fraction(beatUnit * 2, 8)];
 
     // ── Per-bar cells ───────────────────────────────────────────────
     const melodyEvents: TimedEvent<number>[] = showMelody
@@ -278,13 +303,13 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           }
 
           // Beam melody + bass line per beat BEFORE drawing (beams after draw
-          // left stray tails).  Per-beat groups (beamGroups) mean each beam
-          // spans exactly one beat, so beaming clarifies the pulse instead of
-          // hiding it.
+          // left stray tails).  beamByBeat groups by absolute beat position so
+          // each beam spans exactly one beat — clarifying the pulse — and a
+          // trailing pair of eighths in a beat always beams.
           const beams: Beam[] = [];
           for (const v of [mv, bv]) {
             if (!v) continue;
-            try { beams.push(...Beam.generateBeams(v.tickables, { groups: beamGroups, beamRests: false, maintainStemDirections: true })); } catch { /* */ }
+            beams.push(...beamByBeat(v, beatUnit));
           }
 
           const noteStartX = (treble as unknown as { getNoteStartX(): number }).getNoteStartX();
