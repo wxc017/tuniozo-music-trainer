@@ -31,10 +31,19 @@ type SoundfontInst =
 // `notes` are the files that actually exist; the Sampler pitch-shifts between
 // them.  File names use "s" for sharp (As2 = A#2); the Sampler key needs the
 // real note name, so we swap s→# when building the buffer map.
+//
+// Every set here is from a RENOWNED public sample library:
+//   • guitar  → University of Iowa Musical Instrument Samples (the standard
+//               academic recordings).  Used for BOTH nylon and steel slots so
+//               we never depend on the lone one-off Freesound nylon upload.
+//   • sax     → Karoryfer Samples.
+//   • flute   → VSCO2 (Versilian Studios Community Edition).
+// (Piano = SplendidGrandPiano, bass = Smolken double bass — both sfzinstruments.)
 const TONE_BASE = "https://nbrosowsky.github.io/tonejs-instruments/samples";
+const IOWA_GUITAR = { dir: "guitar-acoustic", notes: ["A2","A3","A4","As2","As3","As4","B2","B3","B4","C3","C4","C5","Cs3","Cs4","Cs5","D2","D3","D4","D5","Ds2","Ds3","Ds4","E2","E3","E4","F2","F3","F4","Fs2","Fs3","Fs4","G2","G3","G4","Gs2","Gs3","Gs4"] };
 const TONE_LIB: Record<string, { dir: string; notes: string[] }> = {
-  acoustic_guitar_steel: { dir: "guitar-acoustic", notes: ["A2","A3","A4","As2","As3","As4","B2","B3","B4","C3","C4","C5","Cs3","Cs4","Cs5","D2","D3","D4","D5","Ds2","Ds3","Ds4","E2","E3","E4","F2","F3","F4","Fs2","Fs3","Fs4","G2","G3","G4","Gs2","Gs3","Gs4"] },
-  acoustic_guitar_nylon: { dir: "guitar-nylon", notes: ["A2","A3","A4","A5","As5","B1","B2","B3","B4","Cs3","Cs4","Cs5","D2","D3","D5","Ds4","E2","E3","E4","E5","Fs2","Fs3","Fs4","Fs5","G3","G5","Gs2","Gs4","Gs5"] },
+  acoustic_guitar_steel: IOWA_GUITAR,
+  acoustic_guitar_nylon: IOWA_GUITAR,
   tenor_sax: { dir: "saxophone", notes: ["A4","A5","As3","As4","B3","B4","C4","C5","Cs3","Cs4","Cs5","D3","D4","D5","Ds3","Ds4","Ds5","E3","E4","E5","F3","F4","F5","Fs3","Fs4","Fs5","G3","G4","G5","Gs3","Gs4","Gs5"] },
   flute: { dir: "flute", notes: ["A4","A5","A6","C4","C5","C6","C7","E4","E5","E6"] },
 };
