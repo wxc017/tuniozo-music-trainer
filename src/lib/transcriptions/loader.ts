@@ -11,6 +11,7 @@
 import type { TxIndex, TxIndexEntry, TxItem, TxSource } from "./types";
 import { beatsPerBar } from "./types";
 import { SEED_ITEMS } from "./seed";
+import { harmonizeMelody } from "./accompaniment";
 
 const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops"];
 
@@ -173,6 +174,14 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
       sym: c.sym, rootPc: c.rootPc, intervals: c.intervals, bassPc: c.bassPc,
       startBeat: s - winStart, durBeats: e - s,
     });
+  }
+
+  // Melody-only tunes (folk/trad): infer a fitting diatonic progression so
+  // the answer shows chord symbols and playback can comp the accompaniment.
+  if (!chords.length && melody.length) {
+    for (const c of harmonizeMelody(melody, item.key, bpb, usableBars)) {
+      chords.push({ sym: c.sym, rootPc: c.rootPc, intervals: c.intervals, bassPc: c.bassPc, startBeat: c.startBeat, durBeats: c.durBeats });
+    }
   }
 
   return { item, startBar, bars: usableBars, beatsPerBar: bpb, windowBeats, melody, chords };

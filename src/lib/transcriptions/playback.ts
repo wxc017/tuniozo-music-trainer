@@ -14,7 +14,7 @@ import { Soundfont } from "smplr";
 import { audioEngine } from "@/lib/audioEngine";
 import type { TxExcerpt } from "./loader";
 import type { TxSource } from "./types";
-import type { AccNote } from "./harmonize";
+import { compEvents, type CompGenre } from "./accompaniment";
 
 type SoundfontInst = ReturnType<typeof Soundfont>;
 
@@ -76,13 +76,9 @@ export async function ensureInstruments(sources: TxSource[]): Promise<void> {
   await Promise.all(instrumentsForSources(sources).map(getInstrument));
 }
 
-// ── Chord voicing ───────────────────────────────────────────────────
-// Voice a chord around the middle register: root near C3 (MIDI 48),
-// upper tones stacked above. Slash bass (bassPc) overrides the bass note.
-function voiceChordMidi(rootPc: number, intervals: number[]): number[] {
-  const base = 48 + rootPc;            // root in the octave above C3
-  return intervals.map(i => base + i);
-}
+const COMP_GENRE: Record<TxSource, CompGenre> = {
+  thesession: "folk", essen: "folk", weimar: "jazz", cocopops: "pop",
+};
 
 export interface PlayOptions {
   bpm: number;
@@ -94,10 +90,6 @@ export interface PlayOptions {
   metronome?: boolean;
   /** 0..~1.5 — multiplied into the shared output gain. */
   volume?: number;
-  /** Pre-built arpeggio accompaniment (folk auto-harmonization). When
-   *  present it replaces block-chord comping; low notes go to the bass
-   *  instrument, the rest to the chord instrument. */
-  accompaniment?: AccNote[];
 }
 
 export interface PlayHandle {
@@ -193,35 +185,27 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
     }
   }
 
-  // ── Accompaniment / chords + bass ─────────────────────────────────
-  if (opts.withChords && kit.chords && opts.accompaniment?.length) {
-    // Arpeggio accompaniment (folk): route low notes to the bass voice.
+  // ── Accompaniment (idiomatic comping + bass, per genre) ───────────
+  // compEvents turns the chord track into genre/metre-specific comping
+  // (jazz Charleston + walking bass, pop, folk boom-chick, waltz, 6/8)
+  // rather than a single block per chord.
+  if (opts.withChords && kit.chords && ex.chords.length) {
     const chordInst = loaded.get(kit.chords)!;
-    const bassInst = kit.bass ? loaded.get(kit.bass)! : null;
-    for (const a of opts.accompaniment) {
-      const inst = a.midi < 48 && bassInst ? bassInst : chordInst;
-      inst.start({
-        note: a.midi,
-        time: t0 + a.startBeat * secPerBeat,
-        duration: Math.max(0.08, a.durBeats * secPerBeat * 0.92),
-        velocity: a.velocity,
-      });
+    const bassInst = kit.bass ? loaded.get(kit.bass)! : chordInst;
+    const comp = compEvents(ex.chords, COMP_GENRE[ex.item.source], ex.beatsPerBar, ex.item.timeSig, ex.windowBeats);
+    for (const e of comp.chord) {
+      chordInst.start({ note: e.midi, time: t0 + e.startBeat * secPerBeat, duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: e.velocity });
     }
-  } else if (opts.withChords && kit.chords) {
-    // Block-chord comping (jazz / pop).
-    const chordInst = loaded.get(kit.chords)!;
-    const bassInst = kit.bass ? loaded.get(kit.bass)! : null;
-    for (const c of ex.chords) {
-      const time = t0 + c.startBeat * secPerBeat;
-      const dur = Math.max(0.1, c.durBeats * secPerBeat * 0.98);
-      for (const m of voiceChordMidi(c.rootPc, c.intervals)) {
-        chordInst.start({ note: m, time, duration: dur, velocity: 64 });
-      }
-      if (bassInst) {
-        const bassMidi = 36 + (c.bassPc ?? c.rootPc);   // octave below C3
-        bassInst.start({ note: bassMidi, time, duration: dur, velocity: 78 });
-      }
+    for (const e of comp.bass) {
+      bassInst.start({ note: e.midi, time: t0 + e.startBeat * secPerBeat, duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: e.velocity });
     }
+  }
+
+  // Hard-cut every voice just after the window ends so sample ring-out
+  // doesn't bleed well past the requested N bars ("2 bars" stays ≈ 2 bars).
+  const endTime = t0 + ex.windowBeats * secPerBeat;
+  for (const inst of loaded.values()) {
+    try { inst.stop({ time: endTime + 0.4 }); } catch { /* */ }
   }
 
   const durationSec = ex.windowBeats * secPerBeat;
