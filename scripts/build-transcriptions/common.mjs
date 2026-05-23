@@ -100,11 +100,14 @@ const ACC_DELTA = { sharp: 1, flat: -1, natural: 0, dblsharp: 2, dblflat: -2, qu
 const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
 
 /** Convert one parsed abcjs tune into a TxItem, or null if unusable. */
-function tuneToItem(tune, { source, idBase, idx, meterOverride, modeOverride, titleOverride, tempoBpm, style }) {
+function tuneToItem(tune, { source, idBase, idx, meterOverride, modeOverride, titleOverride, tempoBpm, style, requireMeter }) {
   const staffLines = tune.lines.filter(l => l.staff);
   if (!staffLines.length) return null;
 
   const meterEl = staffLines[0].staff[0].meter;
+  // Free-meter tunes (ABC "M:none" → undefined) are psalmodic/recitative
+  // and make poor transcription material; skip them when asked.
+  if (requireMeter && !meterOverride && !meterEl?.value?.[0]) return null;
   let timeSig = meterOverride ?? [4, 4];
   if (!meterOverride && meterEl?.value?.[0]) timeSig = [Number(meterEl.value[0].num), Number(meterEl.value[0].den)];
   const beatsPerBar = (timeSig[0] * 4) / timeSig[1];

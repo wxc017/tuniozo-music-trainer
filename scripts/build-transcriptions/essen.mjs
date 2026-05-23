@@ -40,6 +40,7 @@ export async function build() {
       // idx defaults to each tune's position in the file
       tempoBpm: 96,
       style: styleFor(file),
+      requireMeter: true,     // skip free-meter (M:none) psalmodic recitations
     });
     items.push(...built);
   }
