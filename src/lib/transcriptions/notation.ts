@@ -116,6 +116,34 @@ export function layoutBarCells<T>(
   return cells;
 }
 
+/** Notation/quantization grid (quarter-beats) per source. Jazz reads on an
+ *  eighth grid; everything else keeps sixteenth resolution. */
+export function melodyGridFor(source: string): number {
+  return source === "weimar" ? 0.5 : 0.25;
+}
+
+interface QNote { midi: number; startBeat: number; durBeats: number }
+
+/** Snap a melody to a notatable `grid`: align onsets, drop sub-grid
+ *  collisions (keep the earlier note), clamp each note to the next onset.
+ *  Run ONCE on an excerpt so playback and the rendered notation use the
+ *  exact same notes — what you hear is what you see. */
+export function quantizeMelody(notes: QNote[], grid: number, windowBeats: number): QNote[] {
+  const snap = (x: number) => Math.round(x / grid) * grid;
+  const kept: { midi: number; startBeat: number; dur0: number }[] = [];
+  for (const n of [...notes].sort((a, b) => a.startBeat - b.startBeat)) {
+    const s = snap(n.startBeat);
+    if (s >= windowBeats - 1e-9) continue;
+    const prev = kept[kept.length - 1];
+    if (prev && s <= prev.startBeat + 1e-9) continue;        // collision → drop
+    kept.push({ midi: n.midi, startBeat: s, dur0: Math.max(grid, snap(n.durBeats)) });
+  }
+  return kept.map((n, i) => {
+    const next = i + 1 < kept.length ? kept[i + 1].startBeat : windowBeats;
+    return { midi: n.midi, startBeat: n.startBeat, durBeats: Math.min(n.dur0, next - n.startBeat) };
+  });
+}
+
 // ── Key signatures + pitch spelling ─────────────────────────────────
 
 const MAJOR_KEY: Record<number, string> = {
