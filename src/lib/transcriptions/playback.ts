@@ -10,50 +10,21 @@
 // limiter (via audioEngine), so the global volume slider and dynamics
 // apply uniformly with the rest of the trainer.
 
-import { Soundfont, SplendidGrandPiano, Smolken, Sampler, Reverb } from "smplr";
+import { Soundfont, SplendidGrandPiano, Smolken, Reverb } from "smplr";
 import { audioEngine } from "@/lib/audioEngine";
 import type { TxExcerpt } from "./loader";
 import type { TxSource } from "./types";
 import { compEvents, compGenreFor } from "./accompaniment";
 
-// Replace the thin GM soundfonts with real recorded samples wherever possible:
-// a multi-velocity Steinway (SplendidGrandPiano), a sampled pizzicato upright
-// bass (Smolken), and recorded guitar / sax / flute (tonejs-instruments, loaded
-// via a generic Sampler).  All sound far less "MIDI" than General-MIDI.
+// Upgrade the two voices that have reliable, smplr-native sample sets — a
+// multi-velocity Steinway (SplendidGrandPiano) for piano and a sampled pizzicato
+// upright (Smolken) for bass.  Guitar / sax / flute use the GM soundfont: a
+// URL-based tonejs Sampler loaded but produced NO sound in-browser (melody went
+// silent), so reliability wins over timbre there until that's diagnosed live.
 type SoundfontInst =
   | ReturnType<typeof Soundfont>
   | ReturnType<typeof SplendidGrandPiano>
-  | ReturnType<typeof Smolken>
-  | ReturnType<typeof Sampler>;
-
-// ── Recorded sample sets (tonejs-instruments, CC-licensed, CORS-open) ──
-// Maps a corpus instrument name → { dir, notes } on the hosted sample CDN.
-// `notes` are the files that actually exist; the Sampler pitch-shifts between
-// them.  File names use "s" for sharp (As2 = A#2); the Sampler key needs the
-// real note name, so we swap s→# when building the buffer map.
-//
-// Every set here is from a RENOWNED public sample library:
-//   • guitar  → University of Iowa Musical Instrument Samples (the standard
-//               academic recordings).  Used for BOTH nylon and steel slots so
-//               we never depend on the lone one-off Freesound nylon upload.
-//   • sax     → Karoryfer Samples.
-//   • flute   → VSCO2 (Versilian Studios Community Edition).
-// (Piano = SplendidGrandPiano, bass = Smolken double bass — both sfzinstruments.)
-const TONE_BASE = "https://nbrosowsky.github.io/tonejs-instruments/samples";
-const IOWA_GUITAR = { dir: "guitar-acoustic", notes: ["A2","A3","A4","As2","As3","As4","B2","B3","B4","C3","C4","C5","Cs3","Cs4","Cs5","D2","D3","D4","D5","Ds2","Ds3","Ds4","E2","E3","E4","F2","F3","F4","Fs2","Fs3","Fs4","G2","G3","G4","Gs2","Gs3","Gs4"] };
-const TONE_LIB: Record<string, { dir: string; notes: string[] }> = {
-  acoustic_guitar_steel: IOWA_GUITAR,
-  acoustic_guitar_nylon: IOWA_GUITAR,
-  tenor_sax: { dir: "saxophone", notes: ["A4","A5","As3","As4","B3","B4","C4","C5","Cs3","Cs4","Cs5","D3","D4","D5","Ds3","Ds4","Ds5","E3","E4","E5","F3","F4","F5","Fs3","Fs4","Fs5","G3","G4","G5","Gs3","Gs4","Gs5"] },
-  flute: { dir: "flute", notes: ["A4","A5","A6","C4","C5","C6","C7","E4","E5","E6"] },
-};
-
-/** Build the Sampler buffer map { realNoteName → sampleUrl } for a tonejs lib. */
-function toneBuffers(lib: { dir: string; notes: string[] }): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const n of lib.notes) out[n.replace("s", "#")] = `${TONE_BASE}/${lib.dir}/${n}.mp3`;
-  return out;
-}
+  | ReturnType<typeof Smolken>;
 
 /** GM instrument assignment per corpus. `chords`/`bass` omitted ⇒ that
  *  voice isn't played (melody-only sources). */
@@ -138,10 +109,6 @@ async function loadInstrument(name: string): Promise<SoundfontInst> {
     }
     if (name === "acoustic_bass") {
       const i = Smolken(ctx, { instrument: "Pizzicato", destination: dest }); await i.ready; return i;
-    }
-    const lib = TONE_LIB[name];
-    if (lib) {
-      const i = Sampler(ctx, { buffers: toneBuffers(lib), destination: dest }); await i.ready; return i;
     }
   } catch { /* preferred timbre unavailable → fall back to GM below */ }
   const i = Soundfont(ctx, { instrument: name, destination: dest }); await i.ready; return i;
