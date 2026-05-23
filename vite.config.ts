@@ -31,6 +31,10 @@ export default defineConfig({
         { src: "node_modules/piper-wasm/build/worker/dist/**/*",               dest: "piper/dist", rename: { stripBase: 6 }, globOptions: { dot: true } },
         { src: "node_modules/piper-wasm/espeak-ng/espeak-ng-data/voices/**/*", dest: "piper/espeak-ng-data", rename: { stripBase: 4 }, globOptions: { dot: true } },
         { src: "node_modules/piper-wasm/espeak-ng/espeak-ng-data/lang/**/*",   dest: "piper/espeak-ng-data", rename: { stripBase: 4 }, globOptions: { dot: true } },
+        // alphaTab (Blues tab-player): the Bravura music font for notation
+        // glyphs + the sonivox soundfont for its built-in MIDI synth.
+        { src: "node_modules/@coderline/alphatab/dist/font/*",            dest: "alphatab/font", rename: { stripBase: true } },
+        { src: "node_modules/@coderline/alphatab/dist/soundfont/*.sf2",   dest: "alphatab/soundfont", rename: { stripBase: true } },
       ],
     }),
   ],
