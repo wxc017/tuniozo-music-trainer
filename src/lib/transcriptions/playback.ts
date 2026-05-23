@@ -201,13 +201,11 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
     }
   }
 
-  // Hard-cut every voice just after the window ends so sample ring-out
-  // doesn't bleed well past the requested N bars ("2 bars" stays ≈ 2 bars).
-  const endTime = t0 + ex.windowBeats * secPerBeat;
-  for (const inst of loaded.values()) {
-    try { inst.stop({ time: endTime + 0.4 }); } catch { /* */ }
-  }
-
+  // Note durations already bound the audible content to the window; we
+  // deliberately do NOT schedule a timed inst.stop() here — a shared
+  // instrument's timed stop would fire during a quick Replay and silence
+  // the freshly-scheduled notes (Replay = no audio).  The natural sample
+  // release tail past the window edge is negligible.
   const durationSec = ex.windowBeats * secPerBeat;
   return {
     durationSec,
