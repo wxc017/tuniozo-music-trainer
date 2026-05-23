@@ -11,7 +11,6 @@ import { useLS } from "@/lib/storage";
 import { SOURCE_LABEL, SOURCE_GENRE, type TxSource, type TxItem, type TxIndex } from "@/lib/transcriptions/types";
 import { pickItem, pickExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
 import { playExcerpt, stopPlayback, ensureInstruments } from "@/lib/transcriptions/playback";
-import { inferChords, buildAccompaniment } from "@/lib/transcriptions/harmonize";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
 
 const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops"];
@@ -82,12 +81,8 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     try {
       await ensureAudio();
       const countInBeats = countInBars * ex.beatsPerBar;
-      // Folk (melody-only) tunes get an arpeggio accompaniment from the
-      // chords inferred into the excerpt; jazz/pop keep block comping.
-      const isFolk = it.source === "thesession" || it.source === "essen";
-      const accompaniment = withChords && isFolk && ex.chords.length
-        ? buildAccompaniment(ex.chords, it.timeSig, it.id)
-        : undefined;
+      // Chords (real for jazz/pop, auto-inferred by the loader for folk) are
+      // realized into idiomatic comping inside playExcerpt per genre.
       const handle = await playExcerpt(ex, {
         bpm: effectiveBpm(it),
         withMelody: withMelody && (it.melody?.length ?? 0) > 0,
@@ -95,7 +90,6 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
         countInBeats,
         metronome,
         volume: playVol,
-        accompaniment,
       });
       if (myToken !== playToken.current) return;     // superseded
       setStatus(loopRef.current ? "Looping…" : "");
@@ -129,12 +123,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
       setStatus(`No tunes match (need ≥ ${bars} bars). Try fewer bars, more databases, or clearing the style filter.`);
       return;
     }
-    const ex = pickExcerpt(picked, bars);
-    // Melody-only folk tunes: infer a diatonic chord per bar so the answer
-    // shows chord symbols on top and the tune can be played harmonized.
-    if (!ex.chords.length && (picked.source === "thesession" || picked.source === "essen")) {
-      ex.chords = inferChords(ex);
-    }
+    const ex = pickExcerpt(picked, bars);   // loader auto-harmonizes melody-only tunes
     setItem(picked);
     setExcerpt(ex);
     await playGivenExcerpt(picked, ex);

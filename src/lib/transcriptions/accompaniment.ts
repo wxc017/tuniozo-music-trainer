@@ -1,0 +1,219 @@
+// ── Accompaniment engine ────────────────────────────────────────────
+//
+// Two jobs:
+//   1. harmonizeMelody() — when a tune has no chords (folk/trad), infer a
+//      diatonic progression from the melody. Diatonic chord vocabulary +
+//      chord tones come from `tonal` (the standard music-theory package);
+//      we score each candidate against the melody notes per harmonic span.
+//   2. compEvents() — turn a chord track into *idiomatic* accompaniment
+//      events (not one block on beat 1): genre/metre-specific comping and
+//      arpeggio patterns + a simple walking/root-fifth bass.
+//
+// Everything is 12-EDO; pitches are MIDI numbers (C4 = 60).
+
+import type { TxChord, TxKey } from "./types";
+import { spellPc } from "./chordSymbols";
+
+// ── Diatonic vocabulary (self-contained, 12-EDO) ────────────────────
+interface Cand { sym: string; rootPc: number; tones: number[]; intervals: number[]; degree: number }
+
+// Scale-degree semitone offsets per mode.
+const SCALE: Record<string, number[]> = {
+  major: [0, 2, 4, 5, 7, 9, 11], ionian: [0, 2, 4, 5, 7, 9, 11],
+  minor: [0, 2, 3, 5, 7, 8, 10], aeolian: [0, 2, 3, 5, 7, 8, 10],
+  dorian: [0, 2, 3, 5, 7, 9, 10], mixolydian: [0, 2, 4, 5, 7, 9, 10],
+  phrygian: [0, 1, 3, 5, 7, 8, 10], lydian: [0, 2, 4, 6, 7, 9, 11],
+  locrian: [0, 1, 3, 5, 6, 8, 10],
+};
+
+/** The seven diatonic triads of a key, as scored candidates. */
+function diatonicCandidates(key: TxKey): Cand[] {
+  const scale = SCALE[key.mode.toLowerCase()] ?? SCALE.major;
+  // Flat-preferring spelling for flat keys / minor modes.
+  const flat = /min|aeol|dor|phry|locr/.test(key.mode) || [1, 3, 5, 8, 10].includes(key.tonicPc);
+  const out: Cand[] = [];
+  for (let d = 0; d < 7; d++) {
+    const rootPc = (key.tonicPc + scale[d]) % 12;
+    const thirdPc = (key.tonicPc + scale[(d + 2) % 7]) % 12;
+    const fifthPc = (key.tonicPc + scale[(d + 4) % 7]) % 12;
+    const third = ((thirdPc - rootPc) % 12 + 12) % 12;
+    const fifth = ((fifthPc - rootPc) % 12 + 12) % 12;
+    const quality = third === 3 && fifth === 7 ? "m" : third === 4 && fifth === 7 ? ""
+      : third === 3 && fifth === 6 ? "dim" : third === 4 && fifth === 8 ? "aug" : "";
+    out.push({
+      sym: spellPc(rootPc, flat) + quality,
+      rootPc,
+      tones: [rootPc, thirdPc, fifthPc],
+      intervals: [0, third, fifth],
+      degree: d,
+    });
+  }
+  return out;
+}
+
+interface MelNote { midi: number; startBeat: number; durBeats: number }
+
+/** Infer a diatonic chord progression from a melody.  One chord per
+ *  harmonic span (half-bar in 4/4-ish metres, whole bar otherwise),
+ *  choosing the diatonic triad whose tones best cover the span's melody
+ *  (weighted by duration + downbeat emphasis), with light functional
+ *  bias toward I/IV/V and a cadential V/​I at the end. */
+export function harmonizeMelody(
+  melody: MelNote[], key: TxKey, beatsPerBar: number, bars: number,
+): TxChord[] {
+  if (!melody.length) return [];
+  const cands = diatonicCandidates(key);
+  if (!cands.length) return [];
+  const spanBeats = beatsPerBar >= 4 ? beatsPerBar / 2 : beatsPerBar;
+  const spans = Math.max(1, Math.round((bars * beatsPerBar) / spanBeats));
+  const FUNCTIONAL_BONUS: Record<number, number> = { 0: 1.4, 4: 1.25, 3: 1.15, 5: 1.0 };
+
+  const chords: TxChord[] = [];
+  let prevDeg = -1;
+  for (let s = 0; s < spans; s++) {
+    const start = s * spanBeats;
+    const end = start + spanBeats;
+    // Weight each melody pitch-class present in this span.
+    const weight = new Map<number, number>();
+    for (const n of melody) {
+      const ns = n.startBeat, ne = n.startBeat + n.durBeats;
+      if (ne <= start + 1e-6 || ns >= end - 1e-6) continue;
+      const overlap = Math.min(ne, end) - Math.max(ns, start);
+      const onDownbeat = Math.abs(ns - start) < 1e-6;
+      const pc = ((n.midi % 12) + 12) % 12;
+      weight.set(pc, (weight.get(pc) ?? 0) + overlap * (onDownbeat ? 2 : 1));
+    }
+    let best = cands[0], bestScore = -Infinity;
+    for (const c of cands) {
+      let score = 0;
+      for (const [pc, w] of weight) {
+        if (c.tones.includes(pc)) score += w * (pc === c.rootPc ? 1.3 : 1);
+      }
+      score *= FUNCTIONAL_BONUS[c.degree] ?? 0.9;
+      if (c.degree === prevDeg) score *= 0.85;            // gentle change-of-harmony nudge
+      if (s === spans - 1 && c.degree === 0) score *= 1.5; // cadence onto tonic
+      if (score > bestScore) { bestScore = score; best = c; }
+    }
+    prevDeg = best.degree;
+    // Merge with previous span if same chord (longer held chord).
+    const last = chords[chords.length - 1];
+    if (last && last.sym === best.sym && Math.abs(last.startBeat + last.durBeats - start) < 1e-6) {
+      last.durBeats += spanBeats;
+    } else {
+      chords.push({ sym: best.sym, rootPc: best.rootPc, intervals: best.intervals, startBeat: start, durBeats: spanBeats });
+    }
+  }
+  return chords;
+}
+
+// ── Comping / arpeggio realization ──────────────────────────────────
+export interface CompEvent { midi: number; startBeat: number; durBeats: number; velocity: number }
+export interface Accompaniment { chord: CompEvent[]; bass: CompEvent[] }
+
+export type CompGenre = "jazz" | "folk" | "pop";
+
+/** Compact mid-register voicing (root, 3rd, 5th, [7th]) around C4. */
+function voiceChord(rootPc: number, intervals: number[]): number[] {
+  let base = 52 + rootPc;                 // E3..D#4
+  if (base > 63) base -= 12;
+  const reduced = [...new Set(intervals.map(i => ((i % 12) + 12) % 12))].sort((a, b) => a - b);
+  return reduced.slice(0, 4).map(i => base + i);
+}
+const bassMidi = (pc: number) => 36 + (((pc % 12) + 12) % 12);   // C2..B2
+
+type Hit = { at: number; dur: number; role: "bass" | "chord"; tone?: number };
+
+/** One bar's rhythm template (positions in quarter-beats), by genre+metre. */
+function barPattern(genre: CompGenre, beatsPerBar: number, den: number, num: number): Hit[] {
+  const compound = den === 8 && num % 3 === 0;
+  if (compound) {
+    // oom-pah-pah per dotted-quarter group
+    const hits: Hit[] = [];
+    for (let g = 0; g < beatsPerBar; g += 1.5) {
+      hits.push({ at: g, dur: 0.45, role: "bass" });
+      hits.push({ at: g + 0.5, dur: 0.4, role: "chord" });
+      hits.push({ at: g + 1.0, dur: 0.4, role: "chord" });
+    }
+    return hits;
+  }
+  if (beatsPerBar <= 3.0 + 1e-6 && beatsPerBar > 2.0 + 1e-6) {
+    // 3/4 waltz: oom-pah-pah
+    return [
+      { at: 0, dur: 0.9, role: "bass" },
+      { at: 1, dur: 0.6, role: "chord" },
+      { at: 2, dur: 0.6, role: "chord" },
+    ];
+  }
+  // simple duple/quadruple
+  if (genre === "jazz") {
+    // Charleston comp + walking quarter-note bass
+    const hits: Hit[] = [{ at: 0, dur: 0.4, role: "chord" }, { at: 2.5, dur: 1.0, role: "chord" }];
+    for (let b = 0; b < beatsPerBar; b++) hits.push({ at: b, dur: 0.9, role: "bass", tone: b });
+    return hits;
+  }
+  if (genre === "pop") {
+    // Bass on 1 & 3, eighth-note broken-chord stabs elsewhere
+    const hits: Hit[] = [{ at: 0, dur: 0.9, role: "bass" }];
+    if (beatsPerBar >= 4) hits.push({ at: 2, dur: 0.9, role: "bass", tone: 2 });
+    for (let b = 0.5; b < beatsPerBar - 1e-6; b += 0.5) {
+      if (Math.abs(b % 2) < 1e-6) continue;     // skip where bass plays
+      hits.push({ at: b, dur: 0.45, role: "chord", tone: Math.round(b * 2) });
+    }
+    return hits;
+  }
+  // folk / trad: boom-chick
+  const hits: Hit[] = [];
+  for (let b = 0; b < beatsPerBar; b++) {
+    if (b % 2 === 0) hits.push({ at: b, dur: 0.9, role: "bass", tone: b / 2 });
+    else hits.push({ at: b, dur: 0.5, role: "chord" });
+  }
+  return hits;
+}
+
+/** Realize a chord track into idiomatic accompaniment events. */
+export function compEvents(
+  chords: TxChord[], genre: CompGenre, beatsPerBar: number, timeSig: [number, number], windowBeats: number,
+): Accompaniment {
+  const [num, den] = timeSig;
+  const out: Accompaniment = { chord: [], bass: [] };
+  if (!chords.length) return out;
+
+  const chordAt = (beat: number): TxChord | null => {
+    let found: TxChord | null = null;
+    for (const c of chords) if (c.startBeat <= beat + 1e-6) found = c; else break;
+    return found ?? chords[0];
+  };
+  const nextRootAfter = (beat: number): number => {
+    for (const c of chords) if (c.startBeat > beat + 1e-6) return c.rootPc;
+    return chords[0].rootPc;
+  };
+
+  const totalBars = Math.max(1, Math.round(windowBeats / beatsPerBar));
+  for (let bar = 0; bar < totalBars; bar++) {
+    const barStart = bar * beatsPerBar;
+    const pattern = barPattern(genre, beatsPerBar, den, num);
+    for (const h of pattern) {
+      const beat = barStart + h.at;
+      if (beat >= windowBeats - 1e-6) continue;
+      const ch = chordAt(beat);
+      if (!ch) continue;
+      const voiced = voiceChord(ch.rootPc, ch.intervals);
+      if (h.role === "chord") {
+        for (const m of voiced) out.chord.push({ midi: m, startBeat: beat, durBeats: h.dur, velocity: 58 });
+      } else {
+        // Bass: walking-ish in jazz (root/3rd/5th/approach), else root+fifth.
+        let pc = ch.rootPc;
+        const idx = h.tone ?? 0;
+        if (genre === "jazz") {
+          const next = nextRootAfter(beat);
+          const choices = [ch.rootPc, (ch.rootPc + 4) % 12, (ch.rootPc + 7) % 12, (next + 11) % 12];
+          pc = choices[idx % 4];
+        } else if (idx % 2 === 1) {
+          pc = (ch.rootPc + 7) % 12;        // alternate to the fifth
+        }
+        out.bass.push({ midi: bassMidi(pc), startBeat: beat, durBeats: h.dur, velocity: 74 });
+      }
+    }
+  }
+  return out;
+}
