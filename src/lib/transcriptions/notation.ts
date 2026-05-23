@@ -116,6 +116,34 @@ export function layoutBarCells<T>(
   return cells;
 }
 
+/** Split each cell at beat-unit boundaries, tying note pieces, so the
+ *  rendered rhythm always shows where each beat (1,2,3,4…) lands instead of
+ *  hiding inner beats inside a long note/rest.  `beatUnit` is the felt beat
+ *  in quarter-beats (1 in simple metres, 1.5 in compound). */
+export function splitCellsAtBeats<T>(cells: BarCell<T>[], beatUnit: number): BarCell<T>[] {
+  if (!(beatUnit > 0)) return cells;
+  const out: BarCell<T>[] = [];
+  for (const c of cells) {
+    const cellEnd = c.startInBar + c.durBeats;
+    let start = c.startInBar;
+    while (start < cellEnd - 1e-9) {
+      const boundary = (Math.floor(start / beatUnit + 1e-9) + 1) * beatUnit;
+      const end = Math.min(cellEnd, boundary);
+      const continues = end < cellEnd - 1e-9;
+      out.push({
+        durBeats: end - start,
+        data: c.data,
+        startInBar: start,
+        // Notes crossing a beat are tied to their continuation; the final
+        // piece keeps the cell's original (cross-bar) tie flag.
+        tieToNext: c.data === null ? false : (continues ? true : c.tieToNext),
+      });
+      start = end;
+    }
+  }
+  return out;
+}
+
 /** Notation/quantization grid (quarter-beats) per source. Jazz reads on an
  *  eighth grid; everything else keeps sixteenth resolution. */
 export function melodyGridFor(source: string): number {

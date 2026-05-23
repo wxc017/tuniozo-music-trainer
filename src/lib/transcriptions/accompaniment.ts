@@ -123,51 +123,56 @@ const bassMidi = (pc: number) => 36 + (((pc % 12) + 12) % 12);   // C2..B2
 
 type Hit = { at: number; dur: number; role: "bass" | "chord"; tone?: number };
 
-/** One bar's rhythm template (positions in quarter-beats), by genre+metre. */
-function barPattern(genre: CompGenre, beatsPerBar: number, den: number, num: number): Hit[] {
+// ── Comp rhythm vocabularies (chord-stab positions in quarter-beats) ──
+// A bar picks ONE of these per chord-comp so the feel varies bar-to-bar
+// instead of repeating a single canned rhythm.  Bass is generated
+// separately (buildBass), so these are chord hits only.
+type Stab = { at: number; dur: number };
+const JAZZ_COMP: Stab[][] = [
+  [{ at: 0, dur: 0.4 }, { at: 2.5, dur: 1.0 }],                       // Charleston
+  [{ at: 1.5, dur: 0.4 }, { at: 3.5, dur: 0.5 }],                     // "and of 2", "and of 4"
+  [{ at: 0.5, dur: 0.4 }, { at: 2, dur: 0.6 }],                       // "and of 1", beat 3
+  [{ at: 1, dur: 0.4 }, { at: 3, dur: 0.4 }],                         // backbeat 2 & 4
+  [{ at: 0, dur: 0.6 }, { at: 2.5, dur: 0.4 }, { at: 3.5, dur: 0.4 }],// 1, "and of 3", "and of 4"
+  [{ at: 2, dur: 0.8 }],                                             // sparse: lay out, one push on 3
+  [{ at: 0.5, dur: 0.4 }, { at: 1.5, dur: 0.4 }, { at: 3, dur: 0.4 }],// busier syncopation
+  [{ at: 3.5, dur: 0.5 }],                                           // anticipate the next bar only
+];
+const POP_COMP: Stab[][] = [
+  [{ at: 1, dur: 0.8 }, { at: 3, dur: 0.8 }],                         // backbeat
+  [{ at: 0.5, dur: 0.4 }, { at: 1.5, dur: 0.4 }, { at: 2.5, dur: 0.4 }, { at: 3.5, dur: 0.4 }], // off-beat 8ths
+  [{ at: 1, dur: 0.4 }, { at: 2, dur: 0.4 }, { at: 3, dur: 0.4 }],    // 2,3,4
+  [{ at: 0, dur: 1.9 }],                                             // sustained pad
+];
+const FOLK_COMP: Stab[][] = [
+  [{ at: 1, dur: 0.5 }, { at: 3, dur: 0.5 }],                         // off-beat chuck (bass on 1&3)
+  [{ at: 1.5, dur: 0.4 }, { at: 3.5, dur: 0.4 }],                     // pushed chucks
+  [{ at: 1, dur: 0.4 }, { at: 2, dur: 0.4 }, { at: 3, dur: 0.4 }],    // chord on 2,3,4
+];
+
+const pick = <T,>(pool: T[], r: number): T => pool[Math.min(pool.length - 1, Math.floor(r * pool.length))];
+
+/** One bar's chord-stab rhythm, varied per bar via `r` (0..1). */
+function barPattern(genre: CompGenre, beatsPerBar: number, den: number, num: number, r: number): Hit[] {
   const compound = den === 8 && num % 3 === 0;
   if (compound) {
-    // oom-pah-pah per dotted-quarter group
+    // 6/8, 9/8 — chord on the two offbeats of each dotted-quarter pulse.
     const hits: Hit[] = [];
     for (let g = 0; g < beatsPerBar; g += 1.5) {
-      hits.push({ at: g, dur: 0.45, role: "bass" });
       hits.push({ at: g + 0.5, dur: 0.4, role: "chord" });
       hits.push({ at: g + 1.0, dur: 0.4, role: "chord" });
     }
     return hits;
   }
   if (beatsPerBar <= 3.0 + 1e-6 && beatsPerBar > 2.0 + 1e-6) {
-    // 3/4 waltz: oom-pah-pah
-    return [
-      { at: 0, dur: 0.9, role: "bass" },
-      { at: 1, dur: 0.6, role: "chord" },
-      { at: 2, dur: 0.6, role: "chord" },
-    ];
+    // 3/4 — usually pah-pah on 2 & 3, occasionally all three offbeats.
+    return (r < 0.7 ? [{ at: 1, dur: 0.6 }, { at: 2, dur: 0.6 }]
+      : [{ at: 1, dur: 0.4 }, { at: 2, dur: 0.4 }]).map(s => ({ ...s, role: "chord" as const }));
   }
-  // simple duple/quadruple
-  if (genre === "jazz") {
-    // Charleston comp + walking quarter-note bass
-    const hits: Hit[] = [{ at: 0, dur: 0.4, role: "chord" }, { at: 2.5, dur: 1.0, role: "chord" }];
-    for (let b = 0; b < beatsPerBar; b++) hits.push({ at: b, dur: 0.9, role: "bass", tone: b });
-    return hits;
-  }
-  if (genre === "pop") {
-    // Bass on 1 & 3, eighth-note broken-chord stabs elsewhere
-    const hits: Hit[] = [{ at: 0, dur: 0.9, role: "bass" }];
-    if (beatsPerBar >= 4) hits.push({ at: 2, dur: 0.9, role: "bass", tone: 2 });
-    for (let b = 0.5; b < beatsPerBar - 1e-6; b += 0.5) {
-      if (Math.abs(b % 2) < 1e-6) continue;     // skip where bass plays
-      hits.push({ at: b, dur: 0.45, role: "chord", tone: Math.round(b * 2) });
-    }
-    return hits;
-  }
-  // folk / trad: boom-chick
-  const hits: Hit[] = [];
-  for (let b = 0; b < beatsPerBar; b++) {
-    if (b % 2 === 0) hits.push({ at: b, dur: 0.9, role: "bass", tone: b / 2 });
-    else hits.push({ at: b, dur: 0.5, role: "chord" });
-  }
-  return hits;
+  const pool = genre === "jazz" ? JAZZ_COMP : genre === "pop" ? POP_COMP : FOLK_COMP;
+  return pick(pool, r)
+    .filter(s => s.at < beatsPerBar - 1e-6)
+    .map(s => ({ at: s.at, dur: s.dur, role: "chord" as const }));
 }
 
 // Tiny deterministic RNG (mulberry32) so a tune's line varies bar-to-bar
@@ -280,11 +285,13 @@ export function compEvents(
   };
 
   // Chord comping (stabs/arpeggio) from the metre template; the bass line is
-  // generated separately as a continuous, voice-led line.
+  // generated separately as a continuous, voice-led line.  A per-tune seed
+  // gives each bar a different (but repeatable) comp rhythm.
   const totalBars = Math.max(1, Math.round(windowBeats / beatsPerBar));
+  const rand = makeRng(Math.round(chords.reduce((a, c) => a + c.rootPc * 17 + c.startBeat, windowBeats * 7 + num)));
   for (let bar = 0; bar < totalBars; bar++) {
     const barStart = bar * beatsPerBar;
-    for (const h of barPattern(genre, beatsPerBar, den, num)) {
+    for (const h of barPattern(genre, beatsPerBar, den, num, rand())) {
       if (h.role !== "chord") continue;
       const beat = barStart + h.at;
       if (beat >= windowBeats - 1e-6) continue;
