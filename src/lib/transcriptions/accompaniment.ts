@@ -27,7 +27,9 @@ function voicedChord(sym: string, rootPc: number, intervals: number[], prev: str
   if (genre === "jazz" || genre === "fusion") {
     const name = sym.split("/")[0];
     let v: string[] = [];
-    try { v = Voicing.get(name, ["F3", "A4"], VoicingDictionary.lefthand, VoiceLeading.topNoteDiff, prev) ?? []; } catch { v = []; }
+    // Keep left-hand voicings in the pianist's comping register (C3–E4) so
+    // they stay UNDER the melody rather than crowding it.
+    try { v = Voicing.get(name, ["C3", "E4"], VoicingDictionary.lefthand, VoiceLeading.topNoteDiff, prev) ?? []; } catch { v = []; }
     const midis = v.map(n => Note.midi(n)).filter((m): m is number => m != null);
     if (midis.length) return { midis, voicing: v };
   }
@@ -145,12 +147,18 @@ export function compGenreFor(source: string, style?: string): CompGenre {
   return "jazz";
 }
 
-/** Compact mid-register voicing (root, 3rd, 5th, [7th]) around C4. */
+/** Compact comp voicing (root, 3rd, 5th, [7th]) in a STABLE low-mid register
+ *  that always sits below a typical melody.  The old version anchored the root
+ *  at 52+rootPc, so high pitch-classes (A#, B) landed up in the treble and
+ *  collided with the tune; here we fold the whole stack down until its top note
+ *  is at or below Bb3 (MIDI 58), keeping comping firmly in the bass clef. */
 function voiceChord(rootPc: number, intervals: number[]): number[] {
-  let base = 52 + rootPc;                 // E3..D#4
-  if (base > 63) base -= 12;
-  const reduced = [...new Set(intervals.map(i => ((i % 12) + 12) % 12))].sort((a, b) => a - b);
-  return reduced.slice(0, 4).map(i => base + i);
+  const reduced = [...new Set(intervals.map(i => ((i % 12) + 12) % 12))].sort((a, b) => a - b).slice(0, 4);
+  const root = 48 + (((rootPc % 12) + 12) % 12);   // C3..B3
+  let chord = reduced.map(i => root + i);
+  let guard = 0;
+  while (Math.max(...chord) > 58 && guard++ < 4) chord = chord.map(n => n - 12);
+  return chord;
 }
 const bassMidi = (pc: number) => 36 + (((pc % 12) + 12) % 12);   // C2..B2
 

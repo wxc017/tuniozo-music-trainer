@@ -12,7 +12,7 @@
 import { useEffect, useRef } from "react";
 import {
   Renderer, Stave, StaveNote, Voice, Formatter, Beam, Dot, Accidental,
-  Annotation, StaveConnector, StaveTie, Barline, type StaveNoteStruct,
+  Annotation, StaveConnector, StaveTie, Barline, Fraction, type StaveNoteStruct,
 } from "vexflow";
 import type { TxExcerpt } from "@/lib/transcriptions/loader";
 import { compEvents, compGenreFor } from "@/lib/transcriptions/accompaniment";
@@ -119,9 +119,11 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const hasChordData = excerpt.chords.length > 0;
     const showChordSymbols = showChords && hasChordData;
     const showBassStaff = showBass && hasChordData;
-    // Beat-grouped beaming so dense lines beam per beat, not one span/bar.
-    let beamGroups: ReturnType<typeof Beam.getDefaultBeamGroups> | undefined;
-    try { beamGroups = Beam.getDefaultBeamGroups(`${ts[0]}/${ts[1]}`); } catch { beamGroups = undefined; }
+    // Beam strictly per FELT BEAT (one beam = one beat), not VexFlow's default
+    // which groups two beats in 4/4 and blurs where each beat falls.  beatUnit
+    // is in quarter-beats (1 simple, 1.5 compound) → as a fraction of a whole
+    // note that's beatUnit/4 = (beatUnit*2)/8.
+    const beamGroups = [new Fraction(beatUnit * 2, 8)];
 
     // ── Per-bar cells ───────────────────────────────────────────────
     const melodyEvents: TimedEvent<number>[] = showMelody
@@ -135,13 +137,14 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const comp = wantComp
       ? compEvents(excerpt.chords, compGenreFor(excerpt.item.source, excerpt.item.style), bpb, ts, bars * bpb)
       : { chord: [], bass: [] };
-    // Chord stabs grouped by onset → one stacked chord per hit, shifted down
-    // an octave so it sits in the bass clef.
+    // Chord stabs grouped by onset → one stacked chord per hit.  Voicings are
+    // already in the bass-clef comping register (see voiceChord), so we notate
+    // the EXACT pitches that play — what you see is what you hear.
     const chordByOnset = new Map<number, { dur: number; midis: number[] }>();
     for (const e of comp.chord) {
       const key = Math.round(e.startBeat / 0.0625) * 0.0625;
       const g = chordByOnset.get(key) ?? { dur: e.durBeats, midis: [] };
-      g.midis.push(e.midi - 12); g.dur = Math.max(g.dur, e.durBeats);
+      g.midis.push(e.midi); g.dur = Math.max(g.dur, e.durBeats);
       chordByOnset.set(key, g);
     }
     const chordVoicingByBar = segmentByBar<number[]>(
@@ -274,12 +277,12 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
             }
           }
 
-          // Beam ONLY the bass line BEFORE drawing (beams after draw left stray
-          // tails).  The melody is intentionally left un-beamed: with all the
-          // beat-split ties, beams blurred where each beat fell — individual
-          // flags read more clearly per the user's request.
+          // Beam melody + bass line per beat BEFORE drawing (beams after draw
+          // left stray tails).  Per-beat groups (beamGroups) mean each beam
+          // spans exactly one beat, so beaming clarifies the pulse instead of
+          // hiding it.
           const beams: Beam[] = [];
-          for (const v of [bv]) {
+          for (const v of [mv, bv]) {
             if (!v) continue;
             try { beams.push(...Beam.generateBeams(v.tickables, { groups: beamGroups, beamRests: false, maintainStemDirections: true })); } catch { /* */ }
           }

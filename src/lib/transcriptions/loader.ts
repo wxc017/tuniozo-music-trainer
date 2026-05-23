@@ -160,7 +160,17 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
   const bpb = beatsPerBar(item.timeSig);
   const usableBars = Math.min(bars, item.barCount);
   const maxStartBar = Math.max(0, item.barCount - usableBars);
-  const startBar = Math.floor(Math.random() * (maxStartBar + 1));
+  // Avoid landing on a silent stretch (intro rests, a held note, a gap): try a
+  // few random windows and keep the first that actually contains melody notes,
+  // so we never present/play an empty excerpt.  Falls back to the last try.
+  const hasMelodyIn = (sb: number) => {
+    const ws = sb * bpb, we = ws + usableBars * bpb;
+    return (item.melody ?? []).some(n => n.startBeat < we - 1e-6 && n.startBeat + n.durBeats > ws + 1e-6);
+  };
+  let startBar = Math.floor(Math.random() * (maxStartBar + 1));
+  for (let tries = 0; tries < 8 && !hasMelodyIn(startBar); tries++) {
+    startBar = Math.floor(Math.random() * (maxStartBar + 1));
+  }
   const winStart = startBar * bpb;
   const windowBeats = usableBars * bpb;
   const winEnd = winStart + windowBeats;
