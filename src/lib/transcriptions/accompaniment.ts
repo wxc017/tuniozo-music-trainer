@@ -365,6 +365,12 @@ export function compEvents(
     if (cb < windowBeats - 1e-6 && !out.chord.some(e => Math.abs(e.startBeat - cb) < 0.2)) stab(cb, 0.6, 52);
   }
 
+  // Comping rarely articulates a chord on the very next beat after the chord
+  // changed on a strong beat (the unusual "chord on 1 and 2").  Drop any stab
+  // exactly one beat after a chord change that isn't itself a change.
+  const isChangeAt = (b: number) => chords.some(c => Math.abs(c.startBeat - b) < 0.15);
+  out.chord = out.chord.filter(e => !(isChangeAt(e.startBeat - 1) && !isChangeAt(e.startBeat)));
+
   out.bass = buildBass(chords, genre, timeSig, windowBeats);
   return out;
 }
