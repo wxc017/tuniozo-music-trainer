@@ -178,15 +178,30 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
     }
   }
 
+  // ── Humanize ──────────────────────────────────────────────────────
+  // Quantized events sound robotic, so: swing the off-beat eighths for
+  // swing-jazz, and give every voice subtle micro-timing + velocity
+  // variation.  Seeded → a Replay sounds identical.  Velocities also set
+  // the mix: melody on top, comping softer, bass underneath.
+  const swing = compGenreFor(ex.item.source, ex.item.style) === "jazz" && !(den === 8 && num % 3 === 0);
+  let hseed = (Math.round(ex.windowBeats * 131 + (ex.item.tempoBpm || 100)) >>> 0) || 1;
+  const hrand = () => { hseed = (hseed * 1103515245 + 12345) & 0x7fffffff; return hseed / 0x7fffffff; };
+  const humanTime = (beat: number) => {
+    let t = t0 + beat * secPerBeat;
+    if (swing) { const frac = beat - Math.floor(beat); if (Math.abs(frac - 0.5) < 0.06) t += secPerBeat / 6; }
+    return t + (hrand() * 2 - 1) * 0.012;            // ±12 ms feel
+  };
+  const hvel = (v: number) => Math.max(1, Math.min(127, Math.round(v + (hrand() * 2 - 1) * 6)));
+
   // ── Melody ────────────────────────────────────────────────────────
   if (opts.withMelody) {
     const inst = loaded.get(kit.melody)!;
     for (const note of ex.melody) {
       activeStops.push(inst.start({
         note: note.midi,
-        time: t0 + note.startBeat * secPerBeat,
+        time: humanTime(note.startBeat),
         duration: Math.max(0.05, note.durBeats * secPerBeat * 0.96),
-        velocity: 96,
+        velocity: hvel(102),                          // lead sits on top of the mix
       }));
     }
   }
@@ -200,13 +215,13 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
     if (opts.withChords && kit.chords) {
       const chordInst = loaded.get(kit.chords)!;
       for (const e of comp.chord) {
-        activeStops.push(chordInst.start({ note: e.midi, time: t0 + e.startBeat * secPerBeat, duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: e.velocity }));
+        activeStops.push(chordInst.start({ note: e.midi, time: humanTime(e.startBeat), duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: hvel(e.velocity * 0.85) }));
       }
     }
     if (opts.withBass && kit.bass) {
       const bassInst = loaded.get(kit.bass)!;
       for (const e of comp.bass) {
-        activeStops.push(bassInst.start({ note: e.midi, time: t0 + e.startBeat * secPerBeat, duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: e.velocity }));
+        activeStops.push(bassInst.start({ note: e.midi, time: humanTime(e.startBeat), duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: hvel(e.velocity) }));
       }
     }
   }

@@ -110,16 +110,17 @@ export function harmonizeMelody(
 export interface CompEvent { midi: number; startBeat: number; durBeats: number; velocity: number }
 export interface Accompaniment { chord: CompEvent[]; bass: CompEvent[] }
 
-export type CompGenre = "jazz" | "folk" | "pop";
+export type CompGenre = "jazz" | "folk" | "pop" | "fusion";
 
-/** Comp feel for an item, by source + style.  Weimar isn't all swing —
- *  fusion/funk/latin/rock solos get a straight (pop) comp rather than a
- *  swing Charleston, which would be wrong over those grooves. */
+/** Comp feel for an item, by source + style.  Weimar isn't all swing:
+ *  funk/fusion/rock get a sparse, syncopated, space-leaving comp; latin a
+ *  straight (pop) feel; everything else swings. */
 export function compGenreFor(source: string, style?: string): CompGenre {
   if (source === "thesession" || source === "essen") return "folk";
   if (source === "cocopops") return "pop";
   // weimar
-  if (style && /fusion|funk|latin|rock|world|calypso|bossa|samba/i.test(style)) return "pop";
+  if (style && /fusion|funk|jazz.?rock|rock|groove/i.test(style)) return "fusion";
+  if (style && /latin|bossa|samba|calypso|afro|world/i.test(style)) return "pop";
   return "jazz";
 }
 
@@ -160,6 +161,15 @@ const FOLK_COMP: Stab[][] = [
   [{ at: 1.5, dur: 0.4 }, { at: 3.5, dur: 0.4 }],                     // pushed chucks
   [{ at: 1, dur: 0.4 }, { at: 2, dur: 0.4 }, { at: 3, dur: 0.4 }],    // chord on 2,3,4
 ];
+// Funk/fusion: sparse, syncopated, sustained — leaves space (incl. laying out).
+const FUSION_COMP: Stab[][] = [
+  [{ at: 0, dur: 1.4 }],                                              // pad held to "and of 2"
+  [{ at: 0.5, dur: 0.4 }, { at: 2.5, dur: 0.4 }],                     // pushed offbeats
+  [{ at: 1.5, dur: 0.4 }, { at: 3, dur: 0.9 }],                       // syncopation + held
+  [{ at: 0, dur: 0.3 }, { at: 1.5, dur: 0.3 }, { at: 3.5, dur: 0.3 }],// 16th-ish stabs
+  [{ at: 2, dur: 1.8 }],                                             // late entry, sustained
+  [],                                                                // lay out (space is part of the groove)
+];
 
 const pick = <T,>(pool: T[], r: number): T => pool[Math.min(pool.length - 1, Math.floor(r * pool.length))];
 
@@ -180,7 +190,7 @@ function barPattern(genre: CompGenre, beatsPerBar: number, den: number, num: num
     return (r < 0.7 ? [{ at: 1, dur: 0.6 }, { at: 2, dur: 0.6 }]
       : [{ at: 1, dur: 0.4 }, { at: 2, dur: 0.4 }]).map(s => ({ ...s, role: "chord" as const }));
   }
-  const pool = genre === "jazz" ? JAZZ_COMP : genre === "pop" ? POP_COMP : FOLK_COMP;
+  const pool = genre === "jazz" ? JAZZ_COMP : genre === "fusion" ? FUSION_COMP : genre === "pop" ? POP_COMP : FOLK_COMP;
   return pick(pool, r)
     .filter(s => s.at < beatsPerBar - 1e-6)
     .map(s => ({ at: s.at, dur: s.dur, role: "chord" as const }));
@@ -247,7 +257,7 @@ function buildBass(
     const changeNext = chordAt(beat + pulse) !== ch || beat + pulse >= windowBeats - 1e-6;
 
     let pc: number;
-    if (genre === "folk" || genre === "pop") {
+    if (genre !== "jazz") {     // folk / pop / fusion: root-led bass, not walking
       if (onChordStart) pc = ch.rootPc;
       else if (changeNext && rand() < 0.5) pc = (rootAfter(beat) + (rand() < 0.5 ? 2 : 10)) % 12; // step into next
       else pc = rand() < 0.6 ? (ch.rootPc + 7) % 12 : (tones[1] ?? ch.rootPc);                     // fifth or third
