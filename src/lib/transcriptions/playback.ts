@@ -10,15 +10,19 @@
 // limiter (via audioEngine), so the global volume slider and dynamics
 // apply uniformly with the rest of the trainer.
 
-import { Soundfont, SplendidGrandPiano, Reverb } from "smplr";
+import { Soundfont, SplendidGrandPiano, Smolken, Reverb } from "smplr";
 import { audioEngine } from "@/lib/audioEngine";
 import type { TxExcerpt } from "./loader";
 import type { TxSource } from "./types";
 import { compEvents, compGenreFor } from "./accompaniment";
 
-// A real multi-velocity Steinway sounds far less "MIDI" than the GM piano —
-// use it wherever a corpus calls for acoustic grand.
-type SoundfontInst = ReturnType<typeof Soundfont> | ReturnType<typeof SplendidGrandPiano>;
+// A real multi-velocity Steinway (SplendidGrandPiano) and a sampled pizzicato
+// upright bass (Smolken) sound far less "MIDI" than the GM soundfont versions —
+// use them wherever a corpus calls for acoustic grand / acoustic bass.
+type SoundfontInst =
+  | ReturnType<typeof Soundfont>
+  | ReturnType<typeof SplendidGrandPiano>
+  | ReturnType<typeof Smolken>;
 
 /** GM instrument assignment per corpus. `chords`/`bass` omitted ⇒ that
  *  voice isn't played (melody-only sources). */
@@ -34,7 +38,8 @@ const SOURCE_KIT: Record<TxSource, VoiceKit> = {
   thesession: { melody: "flute", chords: "acoustic_guitar_nylon", bass: "acoustic_bass" },
   essen: { melody: "flute", chords: "acoustic_guitar_nylon", bass: "acoustic_bass" },
   weimar: { melody: "tenor_sax", chords: "acoustic_grand_piano", bass: "acoustic_bass" },
-  cocopops: { melody: "acoustic_grand_piano", chords: "acoustic_guitar_steel", bass: "acoustic_bass" },
+  // Nylon comps warmer than the plinky GM steel; bass is the sampled upright.
+  cocopops: { melody: "acoustic_grand_piano", chords: "acoustic_guitar_nylon", bass: "acoustic_bass" },
 };
 
 // ── Instrument cache + shared output gain ───────────────────────────
@@ -80,8 +85,9 @@ function getInstrument(name: string): Promise<SoundfontInst> {
   if (cached) return cached;
   const ctx = audioEngine.getOutputContext();
   const dest = outputGain();
-  const inst: SoundfontInst = name === "acoustic_grand_piano"
-    ? SplendidGrandPiano(ctx, { destination: dest })
+  const inst: SoundfontInst =
+    name === "acoustic_grand_piano" ? SplendidGrandPiano(ctx, { destination: dest })
+    : name === "acoustic_bass" ? Smolken(ctx, { instrument: "Pizzicato", destination: dest })
     : Soundfont(ctx, { instrument: name, destination: dest });
   const p = inst.ready.then(() => inst);
   instCache.set(name, p);
@@ -301,15 +307,19 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
         const step = (guitar ? 0.011 : 0.004) + hrand() * 0.004;
         const base = humanTime(g[0].startBeat);
         const accent = metricAccent(g[0].startBeat);
+        const n = ordered.length;
         ordered.forEach((e, i) => {
           // Guitars ring a little past the stab (not staccato), pianos shorter,
           // but not so long that successive stabs overlap into mud.
           const dur = e.durBeats * secPerBeat * (guitar ? 1.2 : 0.95);
+          // Strum dynamics: a real pick sweep swells slightly across the strings
+          // rather than hitting them all at one flat velocity.
+          const ramp = n > 1 ? (i / (n - 1) - 0.5) * 4 : 0;   // -2 .. +2 across the sweep
           activeStops.push(chordInst.start({
             note: e.midi,
             time: base + i * step,
             duration: Math.max(guitar ? 0.25 : 0.12, dur),
-            velocity: hvel(e.velocity * 0.82 + accent + (i === ordered.length - 1 ? 3 : 0)),
+            velocity: hvel(e.velocity * 0.82 + accent + ramp),
           }));
         });
       }
