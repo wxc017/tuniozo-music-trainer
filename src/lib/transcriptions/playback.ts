@@ -44,6 +44,8 @@ const SOURCE_KIT: Record<TxSource, VoiceKit> = {
   cocopops: { melody: "acoustic_grand_piano", chords: "acoustic_guitar_nylon", bass: "acoustic_bass" },
   // Jazz-standard lead sheets: sax head over piano comp + upright (a combo).
   ewld: { melody: "tenor_sax", chords: "acoustic_grand_piano", bass: "acoustic_bass" },
+  // Blues solos: overdriven lead guitar over a clean comp guitar + upright bass.
+  blues: { melody: "overdriven_guitar", chords: "electric_guitar_clean", bass: "acoustic_bass" },
 };
 
 // ── Instrument cache + shared output gain ───────────────────────────

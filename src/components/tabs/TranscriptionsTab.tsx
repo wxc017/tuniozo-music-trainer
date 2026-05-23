@@ -13,7 +13,7 @@ import { pickItem, pickExcerpt, fullExcerpt, loadIndex, stylesForSources, type T
 import { playExcerpt, stopPlayback, ensureInstruments } from "@/lib/transcriptions/playback";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
 
-const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld"];
+const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "blues"];
 
 /** Add spaces to run-together titles from filename-derived data, e.g.
  *  "25Or6To4" → "25 Or 6 To 4", "HoneyHoney" → "Honey Honey". */
