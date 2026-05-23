@@ -124,7 +124,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     // is on) and the bass line (when Bass is on).
     const wantComp = (showChordSymbols || showBassStaff);
     const comp = wantComp
-      ? compEvents(excerpt.chords, compGenreFor(excerpt.item.source, excerpt.item.style), bpb, ts, bars * bpb)
+      ? compEvents(excerpt.chords, compGenreFor(excerpt.item.source, excerpt.item.style), bpb, ts, bars * bpb, showBassStaff)
       : { chord: [], bass: [] };
     // Chord stabs grouped by onset → one stacked chord per hit, shifted down
     // an octave so it sits in the bass clef.
@@ -280,6 +280,9 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           const fmt = new Formatter();
           if (allVoices.length) { fmt.joinVoices(allVoices); fmt.format(allVoices, justify); }
 
+          // Re-assert ink: stave.draw() leaves the context stroke dark, which
+          // made ledger lines render black (invisible on the dark canvas).
+          ctx.setStrokeStyle(INK); ctx.setFillStyle(INK);
           if (trebleVoice) trebleVoice.draw(ctx, treble);
           if (chordVoice && bass) chordVoice.draw(ctx, bass);
           if (bassVoice && bass) bassVoice.draw(ctx, bass);

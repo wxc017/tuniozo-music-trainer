@@ -168,7 +168,13 @@ export function quantizeMelody(notes: QNote[], grid: number, windowBeats: number
   }
   return kept.map((n, i) => {
     const next = i + 1 < kept.length ? kept[i + 1].startBeat : windowBeats;
-    return { midi: n.midi, startBeat: n.startBeat, durBeats: Math.min(n.dur0, next - n.startBeat) };
+    const toNext = next - n.startBeat;
+    // Hold each note to the next onset (legato) when the gap is small — real
+    // solos sustain through, they aren't staccato.  Keep an actual rest only
+    // for clear phrase breaks (recorded gap ≥ 1 beat).
+    const gap = toNext - n.dur0;
+    const durBeats = Math.min(toNext, gap < 1 ? toNext : n.dur0);
+    return { midi: n.midi, startBeat: n.startBeat, durBeats };
   });
 }
 

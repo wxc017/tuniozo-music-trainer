@@ -13,6 +13,22 @@
 
 import type { TxChord, TxKey } from "./types";
 import { spellPc } from "./chordSymbols";
+import { Voicing, VoicingDictionary, VoiceLeading, Note } from "tonal";
+
+/** Voice a chord with tonal's left-hand (rootless) jazz dictionary, voice-led
+ *  from the previous voicing (minimal top-note motion). Returns MIDI notes.
+ *  Falls back to a simple triad voicing for symbols tonal can't parse.
+ *  When no bassist is present, the root is added underneath so the harmony
+ *  is still grounded. */
+function voicedChord(sym: string, rootPc: number, intervals: number[], prev: string[] | undefined, rootless: boolean): { midis: number[]; voicing: string[] | undefined } {
+  const name = sym.split("/")[0];
+  let v: string[] = [];
+  try { v = Voicing.get(name, ["F3", "A4"], VoicingDictionary.lefthand, VoiceLeading.topNoteDiff, prev) ?? []; } catch { v = []; }
+  let midis = v.map(n => Note.midi(n)).filter((m): m is number => m != null);
+  if (!midis.length) { midis = voiceChord(rootPc, intervals); v = []; }
+  if (!rootless) midis = [36 + (((rootPc % 12) + 12) % 12), ...midis];
+  return { midis, voicing: v.length ? v : undefined };
+}
 
 // ── Diatonic vocabulary (self-contained, 12-EDO) ────────────────────
 interface Cand { sym: string; rootPc: number; tones: number[]; intervals: number[]; degree: number }
@@ -291,37 +307,49 @@ function buildBass(
   return out;
 }
 
-/** Realize a chord track into idiomatic accompaniment events. */
+/** Realize a chord track into idiomatic accompaniment events.
+ *  `rootless` = a bassist is present, so the chord voicing omits the root
+ *  (rootless left-hand voicings); otherwise the root is added underneath. */
 export function compEvents(
-  chords: TxChord[], genre: CompGenre, beatsPerBar: number, timeSig: [number, number], windowBeats: number,
+  chords: TxChord[], genre: CompGenre, beatsPerBar: number, timeSig: [number, number], windowBeats: number, rootless = false,
 ): Accompaniment {
   const [num, den] = timeSig;
   const out: Accompaniment = { chord: [], bass: [] };
   if (!chords.length) return out;
 
-  const chordAt = (beat: number): TxChord => {
-    let found = chords[0];
-    for (const c of chords) if (c.startBeat <= beat + 1e-6) found = c; else break;
-    return found;
+  // Voice every chord up front, voice-led (minimal motion) from the prior one.
+  let prevV: string[] | undefined;
+  const voicings = chords.map(c => {
+    const r = voicedChord(c.sym, c.rootPc, c.intervals, prevV, rootless);
+    if (r.voicing) prevV = r.voicing;
+    return r.midis;
+  });
+  const indexAt = (beat: number): number => {
+    let idx = 0;
+    for (let i = 0; i < chords.length; i++) { if (chords[i].startBeat <= beat + 1e-6) idx = i; else break; }
+    return idx;
+  };
+  const stab = (beat: number, dur: number, vel: number) => {
+    if (beat >= windowBeats - 1e-6) return;
+    for (const m of voicings[indexAt(beat)]) out.chord.push({ midi: m, startBeat: beat, durBeats: dur, velocity: vel });
   };
 
-  // Chord comping (stabs/arpeggio) from the metre template; the bass line is
-  // generated separately as a continuous, voice-led line.  A per-tune seed
-  // gives each bar a different (but repeatable) comp rhythm.
+  // Comp rhythm: a varied (seeded) stab pattern per bar.
   const totalBars = Math.max(1, Math.round(windowBeats / beatsPerBar));
   const rand = makeRng(Math.round(chords.reduce((a, c) => a + c.rootPc * 17 + c.startBeat, windowBeats * 7 + num)));
   for (let bar = 0; bar < totalBars; bar++) {
     const barStart = bar * beatsPerBar;
     for (const h of barPattern(genre, beatsPerBar, den, num, rand())) {
-      if (h.role !== "chord") continue;
-      const beat = barStart + h.at;
-      if (beat >= windowBeats - 1e-6) continue;
-      const ch = chordAt(beat);
-      for (const m of voiceChord(ch.rootPc, ch.intervals)) {
-        out.chord.push({ midi: m, startBeat: beat, durBeats: h.dur, velocity: 56 });
-      }
+      if (h.role === "chord") stab(barStart + h.at, h.dur, 56);
     }
   }
+  // Guarantee every chord is actually heard: a stab on each chord's onset that
+  // a sparse/lay-out pattern would otherwise leave silent.
+  for (let i = 0; i < chords.length; i++) {
+    const cb = chords[i].startBeat;
+    if (cb < windowBeats - 1e-6 && !out.chord.some(e => Math.abs(e.startBeat - cb) < 0.2)) stab(cb, 0.6, 52);
+  }
+
   out.bass = buildBass(chords, genre, timeSig, windowBeats);
   return out;
 }
