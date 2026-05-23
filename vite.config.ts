@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
-import { alphaTab } from "@coderline/alphatab-vite";
 import path from "path";
 
 const rawPort = process.env.PORT || "3000";
@@ -13,10 +12,6 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    // alphaTab (Blues tab): wires the audio worklet + web workers so playback
-    // actually produces sound.  Asset copying is disabled — we copy alphaTab's
-    // font + soundfont ourselves via viteStaticCopy below.
-    ...alphaTab({ assetOutputDir: false }),
     // Copy piper-wasm runtime files into the public output so the
     // browser can fetch them at runtime.  Required: the WASM binary,
     // its data file, the loader JS, the worker script, the ONNX
@@ -36,10 +31,6 @@ export default defineConfig({
         { src: "node_modules/piper-wasm/build/worker/dist/**/*",               dest: "piper/dist", rename: { stripBase: 6 }, globOptions: { dot: true } },
         { src: "node_modules/piper-wasm/espeak-ng/espeak-ng-data/voices/**/*", dest: "piper/espeak-ng-data", rename: { stripBase: 4 }, globOptions: { dot: true } },
         { src: "node_modules/piper-wasm/espeak-ng/espeak-ng-data/lang/**/*",   dest: "piper/espeak-ng-data", rename: { stripBase: 4 }, globOptions: { dot: true } },
-        // alphaTab (Blues tab-player): the Bravura music font for notation
-        // glyphs + the sonivox soundfont for its built-in MIDI synth.
-        { src: "node_modules/@coderline/alphatab/dist/font/*",            dest: "alphatab/font", rename: { stripBase: true } },
-        { src: "node_modules/@coderline/alphatab/dist/soundfont/*.sf2",   dest: "alphatab/soundfont", rename: { stripBase: true } },
       ],
     }),
   ],

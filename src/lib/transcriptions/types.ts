@@ -17,10 +17,10 @@
 // the half-open beat range [startBar*beatsPerBar, (startBar+N)*beatsPerBar).
 
 /** Which corpus an item came from. Doubles as the coarse genre key. */
-export type TxSource = "thesession" | "essen" | "weimar" | "cocopops" | "ewld";
+export type TxSource = "thesession" | "essen" | "weimar" | "cocopops" | "ewld" | "blues";
 
 /** Coarse genre shown in the UI and used for the genre filter. */
-export type TxGenre = "Irish Trad" | "Folk" | "Jazz" | "Pop/Rock";
+export type TxGenre = "Irish Trad" | "Folk" | "Jazz" | "Pop/Rock" | "Blues";
 
 export const SOURCE_GENRE: Record<TxSource, TxGenre> = {
   thesession: "Irish Trad",
@@ -28,6 +28,7 @@ export const SOURCE_GENRE: Record<TxSource, TxGenre> = {
   weimar: "Jazz",
   cocopops: "Pop/Rock",
   ewld: "Jazz",
+  blues: "Blues",
 };
 
 export const SOURCE_LABEL: Record<TxSource, string> = {
@@ -36,6 +37,7 @@ export const SOURCE_LABEL: Record<TxSource, string> = {
   weimar: "Weimar Jazz DB",
   cocopops: "CoCoPops / Billboard",
   ewld: "Jazz Standards (EWLD)",
+  blues: "Blues Guitar",
 };
 
 /** A single melody note. `midi` is a standard MIDI pitch (C4 = 60). */
@@ -89,6 +91,9 @@ export interface TxItem {
   chords?: TxChord[];
   /** Pre-built YouTube search query, e.g. "Danny Boy traditional". */
   youtubeQuery: string;
+  /** Specific YouTube video id of the actual recording (when known), so the
+   *  Transcriptions player can embed it and seek to the excerpt's spot. */
+  vid?: string;
 }
 
 /** Lightweight index entry — loaded up front so the UI can filter by

@@ -13,7 +13,6 @@ import DroneTab from "@/components/tabs/DroneTab";
 import DroneContinuumTab from "@/components/tabs/DroneContinuumTab";
 import ScalarTab from "@/components/tabs/ScalarTab";
 import TranscriptionsTab from "@/components/tabs/TranscriptionsTab";
-import BluesTab from "@/components/tabs/BluesTab";
 
 
 
@@ -87,7 +86,7 @@ const VIZ_LABELS: Record<VisualizerType, string> = {
 // selector — each round picks one enabled source (Pattern Sequences,
 // Melody Bank, Jazz Cells, or Scale Traversals) and dispatches to
 // that engine.
-type Tab = "intervals"|"chords"|"permutations"|"drone"|"transcriptions"|"blues";
+type Tab = "intervals"|"chords"|"permutations"|"drone"|"transcriptions";
 type ResponseMode = "Play Audio"|"Show Target (Sing It)";
 
 const TAB_LABELS: Record<Tab, string> = {
@@ -95,10 +94,9 @@ const TAB_LABELS: Record<Tab, string> = {
   permutations: "Scalar Permutations",
   drone: "Chord Drone",
   transcriptions: "Transcriptions",
-  blues: "Blues",
 };
 
-const VALID_TABS: Tab[] = ["intervals","chords","permutations","drone","transcriptions","blues"];
+const VALID_TABS: Tab[] = ["intervals","chords","permutations","drone","transcriptions"];
 
 // ── Temperament classification ──────────────────────────────────────────
 // Tonal Audiation groups the available EDOs by their underlying tuning
@@ -132,8 +130,7 @@ const TEMPERAMENT_EDOS: Record<Temperament, number[]> = {
 const TEMPERAMENT_TABS: Record<Temperament, Tab[]> = {
   // Transcriptions is 12-EDO repertoire (real tonal corpora); it's only
   // offered in meantone, which is the family containing standard 12-EDO.
-  // Blues is a 12-EDO tab-player (alphaTab), so it lives alongside Transcriptions.
-  meantone:    ["intervals", "chords", "permutations", "drone", "transcriptions", "blues"],
+  meantone:    ["intervals", "chords", "permutations", "drone", "transcriptions"],
   pythagorean: ["intervals", "chords", "permutations"],
   schismatic:  ["intervals", "chords", "permutations"],
 };
@@ -1849,12 +1846,6 @@ export default function App() {
             </div>
           )}
 
-          {activeTab === "blues" && (
-            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-              <h2 className="font-semibold mb-4">Blues — Tab Player</h2>
-              <BluesTab key={tabKey} />
-            </div>
-          )}
 
         </div>
       </div>
