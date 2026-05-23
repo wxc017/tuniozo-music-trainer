@@ -112,6 +112,17 @@ export interface Accompaniment { chord: CompEvent[]; bass: CompEvent[] }
 
 export type CompGenre = "jazz" | "folk" | "pop";
 
+/** Comp feel for an item, by source + style.  Weimar isn't all swing —
+ *  fusion/funk/latin/rock solos get a straight (pop) comp rather than a
+ *  swing Charleston, which would be wrong over those grooves. */
+export function compGenreFor(source: string, style?: string): CompGenre {
+  if (source === "thesession" || source === "essen") return "folk";
+  if (source === "cocopops") return "pop";
+  // weimar
+  if (style && /fusion|funk|latin|rock|world|calypso|bossa|samba/i.test(style)) return "pop";
+  return "jazz";
+}
+
 /** Compact mid-register voicing (root, 3rd, 5th, [7th]) around C4. */
 function voiceChord(rootPc: number, intervals: number[]): number[] {
   let base = 52 + rootPc;                 // E3..D#4
