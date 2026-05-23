@@ -12,6 +12,7 @@ import { SOURCE_LABEL, SOURCE_GENRE, type TxSource, type TxItem, type TxIndex } 
 import { pickItem, pickExcerpt, fullExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
 import { playExcerpt, stopPlayback, ensureInstruments } from "@/lib/transcriptions/playback";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
+import RealRecording from "../transcriptions/RealRecording";
 
 const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "blues"];
 
@@ -305,6 +306,13 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
             Bars {excerpt.startBar + 1}–{excerpt.startBar + excerpt.bars} of {item.barCount} ·
             {" "}{item.timeSig[0]}/{item.timeSig[1]} · {item.tempoBpm} bpm original
           </div>
+
+          {/* Hear the ACTUAL recording — MIDI can't capture real phrasing. */}
+          <RealRecording
+            vid={item.vid}
+            query={item.youtubeQuery}
+            startSec={(excerpt.startBar * excerpt.beatsPerBar * 60) / (item.tempoBpm || 100)}
+          />
         </div>
       )}
 
