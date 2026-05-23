@@ -14,7 +14,7 @@ import { Soundfont } from "smplr";
 import { audioEngine } from "@/lib/audioEngine";
 import type { TxExcerpt } from "./loader";
 import type { TxSource } from "./types";
-import { compEvents, type CompGenre } from "./accompaniment";
+import { compEvents, compGenreFor } from "./accompaniment";
 
 type SoundfontInst = ReturnType<typeof Soundfont>;
 
@@ -75,10 +75,6 @@ export function instrumentsForSources(sources: TxSource[]): string[] {
 export async function ensureInstruments(sources: TxSource[]): Promise<void> {
   await Promise.all(instrumentsForSources(sources).map(getInstrument));
 }
-
-const COMP_GENRE: Record<TxSource, CompGenre> = {
-  thesession: "folk", essen: "folk", weimar: "jazz", cocopops: "pop",
-};
 
 export interface PlayOptions {
   bpm: number;
@@ -192,7 +188,7 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
   // (jazz Charleston + walking bass, pop, folk boom-chick, waltz, 6/8)
   // rather than a single block per chord.
   if ((opts.withChords || opts.withBass) && ex.chords.length) {
-    const comp = compEvents(ex.chords, COMP_GENRE[ex.item.source], ex.beatsPerBar, ex.item.timeSig, ex.windowBeats);
+    const comp = compEvents(ex.chords, compGenreFor(ex.item.source, ex.item.style), ex.beatsPerBar, ex.item.timeSig, ex.windowBeats);
     if (opts.withChords && kit.chords) {
       const chordInst = loaded.get(kit.chords)!;
       for (const e of comp.chord) {

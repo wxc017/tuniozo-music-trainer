@@ -15,12 +15,7 @@ import {
   Annotation, StaveConnector, StaveTie, Barline, type StaveNoteStruct,
 } from "vexflow";
 import type { TxExcerpt } from "@/lib/transcriptions/loader";
-import { compEvents, type CompGenre } from "@/lib/transcriptions/accompaniment";
-import type { TxSource } from "@/lib/transcriptions/types";
-
-const COMP_GENRE: Record<TxSource, CompGenre> = {
-  thesession: "folk", essen: "folk", weimar: "jazz", cocopops: "pop",
-};
+import { compEvents, compGenreFor } from "@/lib/transcriptions/accompaniment";
 import {
   decomposeDuration, segmentByBar, layoutBarCells, splitCellsAtBeats, keySpecFor, keyIsFlat, midiToVexKey, melodyGridFor,
   type TimedEvent, type BarCell,
@@ -125,7 +120,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     // drawn — the chord symbols above carry the harmony, which keeps the
     // staff readable.  Octave-up so the line sits inside the bass clef.
     const comp = showBassStaff
-      ? compEvents(excerpt.chords, COMP_GENRE[excerpt.item.source] ?? "folk", bpb, ts, bars * bpb)
+      ? compEvents(excerpt.chords, compGenreFor(excerpt.item.source, excerpt.item.style), bpb, ts, bars * bpb)
       : { chord: [], bass: [] };
     const bassLineByBar = segmentByBar<number>(
       comp.bass.map(e => ({ startBeat: e.startBeat, durBeats: e.durBeats, data: e.midi + 12 })), bars, bpb);
