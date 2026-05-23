@@ -320,6 +320,22 @@ function shuffle(arr, seed = 42) {
   return a;
 }
 
+/** Clip an item's stored melody/chords to its first `maxBars` bars (keeps
+ *  the JSON bundle small — excerpts only ever need a short window). */
+export function clipBars(item, maxBars) {
+  const bpb = (item.timeSig[0] * 4) / item.timeSig[1];
+  if (item.barCount <= maxBars) return item;
+  const limit = maxBars * bpb;
+  item.melody = (item.melody || []).filter(n => n.startBeat < limit - 1e-6)
+    .map(n => ({ ...n, durBeats: Math.min(n.durBeats, limit - n.startBeat) }));
+  if (item.chords) {
+    item.chords = item.chords.filter(c => c.startBeat < limit - 1e-6)
+      .map(c => ({ ...c, durBeats: Math.min(c.durBeats, limit - c.startBeat) }));
+  }
+  item.barCount = maxBars;
+  return item;
+}
+
 /** Keep at most `max` items, requiring `minBars`, de-duplicating titles. */
 export function curate(items, { max = 400, minBars = 8 } = {}) {
   const seen = new Set();

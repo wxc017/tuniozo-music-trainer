@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, writeFileSync, statSync, mkdirSync, copyFileSync } from "node:fs";
-import { httpGet, makeChord, curate, writeSource, rebuildIndex, isMain } from "./common.mjs";
+import { httpGet, makeChord, curate, clipBars, writeSource, rebuildIndex, isMain } from "./common.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CACHE = join(__dirname, ".cache");
@@ -168,7 +168,8 @@ export async function build() {
   }
   db.close();
   console.log(`  built ${items.length} solos`);
-  writeSource("weimar", curate(items, { max: 250, minBars: 8 }));
+  const curated = curate(items, { max: 250, minBars: 8 }).map(it => clipBars(it, 48));
+  writeSource("weimar", curated);
 }
 
 if (isMain(import.meta.url)) {
