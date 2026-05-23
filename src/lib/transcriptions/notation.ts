@@ -68,6 +68,54 @@ export function segmentByBar<T>(
   return bars;
 }
 
+/** A laid-out notation cell: a note (data) or a rest (data === null),
+ *  with a duration in quarter-beats. `tieToNext` marks a note continuing
+ *  past the bar end. */
+export interface BarCell<T> { durBeats: number; data: T | null; tieToNext: boolean; startInBar: number }
+
+/** Turn one bar's note segments into a gap-free, non-overlapping cell list
+ *  whose durations sum EXACTLY to `beatsPerBar`.  This is what keeps VexFlow
+ *  from cramming: real corpora (esp. jazz) have overlapping, fractional, or
+ *  over-long notes; we quantize onsets/durations to `grid`, clamp each note
+ *  so it can't overrun the next onset or the barline, drop collisions, and
+ *  fill every gap (and the tail) with rests. */
+export function layoutBarCells<T>(
+  segments: BarSegment<T>[], beatsPerBar: number, grid = 0.25,
+): BarCell<T>[] {
+  const snap = (x: number) => Math.round(x / grid) * grid;
+  const segs = [...segments].sort((a, b) => a.startInBar - b.startInBar);
+  const cells: BarCell<T>[] = [];
+  let cursor = 0;
+  for (let i = 0; i < segs.length; i++) {
+    let start = snap(segs[i].startInBar);
+    if (start < cursor) start = cursor;                 // clamp behind cursor
+    if (start >= beatsPerBar - 1e-9) break;             // starts past the bar
+    if (start > cursor + 1e-9) {                        // gap → rest
+      cells.push({ durBeats: start - cursor, data: null, tieToNext: false, startInBar: cursor });
+    }
+    // Next onset (quantized, strictly after this one) bounds the duration.
+    let nextStart = beatsPerBar;
+    for (let j = i + 1; j < segs.length; j++) {
+      const ns = snap(segs[j].startInBar);
+      if (ns > start + 1e-9) { nextStart = Math.min(ns, beatsPerBar); break; }
+    }
+    const wanted = Math.max(snap(segs[i].dur), grid);
+    const end = Math.min(start + wanted, nextStart, beatsPerBar);
+    const dur = end - start;
+    if (dur < grid / 2) continue;                       // collision → drop note
+    cells.push({
+      durBeats: dur, data: segs[i].data,
+      tieToNext: segs[i].tieToNext && end >= beatsPerBar - 1e-9,
+      startInBar: start,
+    });
+    cursor = end;
+  }
+  if (cursor < beatsPerBar - 1e-9) {
+    cells.push({ durBeats: beatsPerBar - cursor, data: null, tieToNext: false, startInBar: cursor });
+  }
+  return cells;
+}
+
 // ── Key signatures + pitch spelling ─────────────────────────────────
 
 const MAJOR_KEY: Record<number, string> = {

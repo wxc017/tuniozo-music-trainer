@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { decomposeDuration, segmentByBar, keySpecFor, keyIsFlat, midiToVexKey } from "./notation";
+import { decomposeDuration, segmentByBar, layoutBarCells, keySpecFor, keyIsFlat, midiToVexKey } from "./notation";
+
+const sumDur = (cells: { durBeats: number }[]) => cells.reduce((s, c) => s + c.durBeats, 0);
 
 describe("decomposeDuration", () => {
   it("single notatable values", () => {
@@ -38,6 +40,47 @@ describe("segmentByBar", () => {
   it("places a note into the correct later bar", () => {
     const bars = segmentByBar([{ startBeat: 5, durBeats: 1, data: 64 }], 3, 4);
     expect(bars[1]).toEqual([{ startInBar: 1, dur: 1, data: 64, tieToNext: false }]);
+  });
+});
+
+describe("layoutBarCells", () => {
+  const seg = (startInBar: number, dur: number, data = 60, tieToNext = false) => ({ startInBar, dur, data, tieToNext });
+
+  it("fills gaps with rests and always sums to a full bar", () => {
+    const cells = layoutBarCells([seg(0, 1), seg(2, 1)], 4);
+    expect(sumDur(cells)).toBeCloseTo(4, 6);
+    expect(cells.filter(c => c.data === null).length).toBeGreaterThan(0);
+  });
+
+  it("clamps overlapping notes so they never exceed the bar (jazz case)", () => {
+    // Dense, overlapping, fractional, over-long notes — the broken case.
+    const segs = [seg(0, 3), seg(0.4, 2), seg(0.9, 0.3), seg(1.1, 5), seg(3.7, 2)];
+    const cells = layoutBarCells(segs, 4);
+    expect(sumDur(cells)).toBeCloseTo(4, 6);
+    // No cell starts before the previous one ends.
+    let cursor = 0;
+    for (const c of cells) { expect(c.startInBar).toBeGreaterThanOrEqual(cursor - 1e-9); cursor = c.startInBar + c.durBeats; }
+    expect(cursor).toBeCloseTo(4, 6);
+  });
+
+  it("empty bar → one full-bar rest", () => {
+    const cells = layoutBarCells([], 4);
+    expect(cells).toHaveLength(1);
+    expect(cells[0].data).toBeNull();
+    expect(cells[0].durBeats).toBeCloseTo(4, 6);
+  });
+
+  it("sums correctly for compound + odd meters", () => {
+    for (const bpb of [3, 2.5, 3.5, 6]) {
+      expect(sumDur(layoutBarCells([seg(0.5, 0.5), seg(1.7, 0.9)], bpb))).toBeCloseTo(bpb, 6);
+    }
+  });
+
+  it("preserves a cross-bar tie flag on the last note reaching the barline", () => {
+    const cells = layoutBarCells([seg(3, 2, 60, true)], 4);
+    const last = cells[cells.length - 1];
+    expect(last.data).toBe(60);
+    expect(last.tieToNext).toBe(true);
   });
 });
 
