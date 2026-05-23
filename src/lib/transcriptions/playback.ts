@@ -10,13 +10,15 @@
 // limiter (via audioEngine), so the global volume slider and dynamics
 // apply uniformly with the rest of the trainer.
 
-import { Soundfont } from "smplr";
+import { Soundfont, SplendidGrandPiano, Reverb } from "smplr";
 import { audioEngine } from "@/lib/audioEngine";
 import type { TxExcerpt } from "./loader";
 import type { TxSource } from "./types";
 import { compEvents, compGenreFor } from "./accompaniment";
 
-type SoundfontInst = ReturnType<typeof Soundfont>;
+// A real multi-velocity Steinway sounds far less "MIDI" than the GM piano —
+// use it wherever a corpus calls for acoustic grand.
+type SoundfontInst = ReturnType<typeof Soundfont> | ReturnType<typeof SplendidGrandPiano>;
 
 /** GM instrument assignment per corpus. `chords`/`bass` omitted ⇒ that
  *  voice isn't played (melody-only sources). */
@@ -38,6 +40,7 @@ const SOURCE_KIT: Record<TxSource, VoiceKit> = {
 // ── Instrument cache + shared output gain ───────────────────────────
 const instCache = new Map<string, Promise<SoundfontInst>>();
 let txGain: GainNode | null = null;
+let reverbCtx: BaseAudioContext | null = null;       // ctx the reverb send is wired for
 
 function outputGain(): GainNode {
   const ctx = audioEngine.getOutputContext();
@@ -45,15 +48,41 @@ function outputGain(): GainNode {
     txGain = ctx.createGain();
     txGain.gain.value = 1;
     txGain.connect(audioEngine.getPlayDestination());
+    reverbCtx = null;                                 // rebuild reverb for the new context
   }
   return txGain;
+}
+
+/** Wire a subtle algorithmic reverb as a parallel send off the dry bus.  A
+ *  little room is the cheapest way to stop sampled notes sounding bone-dry and
+ *  disconnected — it glues melody + comp + bass into one space.  Idempotent
+ *  per AudioContext; reverb is optional (failure is non-fatal). */
+async function ensureReverb(): Promise<void> {
+  const ctx = audioEngine.getOutputContext();
+  const bus = outputGain();
+  if (reverbCtx === ctx) return;
+  try {
+    const reverb = new Reverb(ctx as AudioContext);
+    await reverb.ready();
+    const send = ctx.createGain();
+    send.gain.value = 0.18;                           // subtle — space, not a cathedral
+    bus.connect(send);
+    send.connect(reverb.input);
+    reverb.connect(audioEngine.getPlayDestination());
+    try { reverb.getParam("dry")?.setValueAtTime(0, ctx.currentTime); } catch { /* */ }
+    try { reverb.getParam("wet")?.setValueAtTime(1, ctx.currentTime); } catch { /* */ }
+    reverbCtx = ctx;
+  } catch { /* reverb is a nice-to-have */ }
 }
 
 function getInstrument(name: string): Promise<SoundfontInst> {
   const cached = instCache.get(name);
   if (cached) return cached;
   const ctx = audioEngine.getOutputContext();
-  const inst = Soundfont(ctx, { instrument: name, destination: outputGain() });
+  const dest = outputGain();
+  const inst: SoundfontInst = name === "acoustic_grand_piano"
+    ? SplendidGrandPiano(ctx, { destination: dest })
+    : Soundfont(ctx, { instrument: name, destination: dest });
   const p = inst.ready.then(() => inst);
   instCache.set(name, p);
   return p;
@@ -138,6 +167,7 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
   const kit = SOURCE_KIT[ex.item.source];
   const ctx = audioEngine.getOutputContext();
   await audioEngine.resume();
+  await ensureReverb();
 
   // Apply volume to the shared output gain.
   outputGain().gain.value = opts.volume ?? 1;
