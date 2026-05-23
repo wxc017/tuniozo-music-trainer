@@ -84,6 +84,8 @@ export interface PlayOptions {
   bpm: number;
   withMelody: boolean;
   withChords: boolean;
+  /** Play the bass line. Independent of chords so "bass off" = silent bass. */
+  withBass: boolean;
   /** Beats of count-in clicks before the music starts (0 = none). */
   countInBeats?: number;
   /** Keep a metronome click going under the excerpt. */
@@ -144,7 +146,7 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
   const need: string[] = [];
   if (opts.withMelody) need.push(kit.melody);
   if (opts.withChords && kit.chords) need.push(kit.chords);
-  if (opts.withChords && kit.bass) need.push(kit.bass);
+  if (opts.withBass && kit.bass) need.push(kit.bass);
   const loaded = new Map<string, SoundfontInst>();
   await Promise.all([...new Set(need)].map(async name => { loaded.set(name, await getInstrument(name)); }));
 
@@ -189,15 +191,19 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
   // compEvents turns the chord track into genre/metre-specific comping
   // (jazz Charleston + walking bass, pop, folk boom-chick, waltz, 6/8)
   // rather than a single block per chord.
-  if (opts.withChords && kit.chords && ex.chords.length) {
-    const chordInst = loaded.get(kit.chords)!;
-    const bassInst = kit.bass ? loaded.get(kit.bass)! : chordInst;
+  if ((opts.withChords || opts.withBass) && ex.chords.length) {
     const comp = compEvents(ex.chords, COMP_GENRE[ex.item.source], ex.beatsPerBar, ex.item.timeSig, ex.windowBeats);
-    for (const e of comp.chord) {
-      chordInst.start({ note: e.midi, time: t0 + e.startBeat * secPerBeat, duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: e.velocity });
+    if (opts.withChords && kit.chords) {
+      const chordInst = loaded.get(kit.chords)!;
+      for (const e of comp.chord) {
+        chordInst.start({ note: e.midi, time: t0 + e.startBeat * secPerBeat, duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: e.velocity });
+      }
     }
-    for (const e of comp.bass) {
-      bassInst.start({ note: e.midi, time: t0 + e.startBeat * secPerBeat, duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: e.velocity });
+    if (opts.withBass && kit.bass) {
+      const bassInst = loaded.get(kit.bass)!;
+      for (const e of comp.bass) {
+        bassInst.start({ note: e.midi, time: t0 + e.startBeat * secPerBeat, duration: Math.max(0.08, e.durBeats * secPerBeat * 0.95), velocity: e.velocity });
+      }
     }
   }
 
