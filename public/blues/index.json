@@ -24,28 +24,10 @@
   "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20Bad%20Luck%20Soul%20(Solo)"
  },
  {
-  "file": "b-b-king__blues-licks-scale-and-examples.gp3",
-  "title": "Blues Licks - Scale And Examples",
-  "artist": "B.B. King",
-  "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20Blues%20Licks%20-%20Scale%20And%20Examples"
- },
- {
-  "file": "b-b-king__darling-you-know-i-love-you.gp3",
-  "title": "Darling You Know I Love You",
-  "artist": "B.B. King",
-  "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20Darling%20You%20Know%20I%20Love%20You"
- },
- {
   "file": "b-b-king__everything-i-do-is-wrong.gp4",
   "title": "Everything I Do Is Wrong",
   "artist": "B.B. King",
   "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20Everything%20I%20Do%20Is%20Wrong"
- },
- {
-  "file": "b-b-king__how-blue-can-you-get.gp3",
-  "title": "How blue can you get",
-  "artist": "B.B. King",
-  "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20How%20blue%20can%20you%20get"
  },
  {
   "file": "b-b-king__king-of-guitar.gp4",
@@ -54,46 +36,10 @@
   "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20King%20Of%20Guitar"
  },
  {
-  "file": "b-b-king__miss-martha-king.gp4",
-  "title": "Miss Martha King",
-  "artist": "B.B. King",
-  "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20Miss%20Martha%20King"
- },
- {
-  "file": "b-b-king__paying-the-cost-to-be-the-boss.gp4",
-  "title": "Paying The Cost To Be The Boss",
-  "artist": "B.B. King",
-  "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20Paying%20The%20Cost%20To%20Be%20The%20Boss"
- },
- {
-  "file": "b-b-king__rock-me-baby.gp4",
-  "title": "Rock Me Baby",
-  "artist": "B.B. King",
-  "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20Rock%20Me%20Baby"
- },
- {
-  "file": "b-b-king__ten-long-years.gp3",
-  "title": "Ten Long Years",
-  "artist": "B.B. King",
-  "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20Ten%20Long%20Years"
- },
- {
-  "file": "b-b-king__the-thrill-is-gone.gp3",
-  "title": "The Thrill Is Gone",
-  "artist": "B.B. King",
-  "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20The%20Thrill%20Is%20Gone"
- },
- {
-  "file": "b-b-king__the-thrill-is-gone-live.gp3",
-  "title": "The Thrill Is Gone (Live)",
-  "artist": "B.B. King",
-  "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20The%20Thrill%20Is%20Gone%20(Live)"
- },
- {
-  "file": "b-b-king__worried-life-blues.gp3",
-  "title": "Worried Life Blues",
-  "artist": "B.B. King",
-  "youtube": "https://www.youtube.com/results?search_query=B.B.%20King%20Worried%20Life%20Blues"
+  "file": "buddy-guy__everyday-i-have-the-blues.gp3",
+  "title": "Everyday (I have the blues)",
+  "artist": "Buddy Guy",
+  "youtube": "https://www.youtube.com/results?search_query=Buddy%20Guy%20Everyday%20(I%20have%20the%20blues)"
  },
  {
   "file": "buddy-guy__midnight-train.gp3",
@@ -108,34 +54,280 @@
   "youtube": "https://www.youtube.com/results?search_query=Buddy%20Guy%20Stone%20Crazy"
  },
  {
+  "file": "eric-clapton__alberta-alternate-version.gp4",
+  "title": "Alberta (Alternate Version)",
+  "artist": "Eric Clapton",
+  "youtube": "https://www.youtube.com/results?search_query=Eric%20Clapton%20Alberta%20(Alternate%20Version)"
+ },
+ {
+  "file": "eric-clapton__better-make-it-through-today.gp4",
+  "title": "Better Make It Through Today",
+  "artist": "Eric Clapton",
+  "youtube": "https://www.youtube.com/results?search_query=Eric%20Clapton%20Better%20Make%20It%20Through%20Today"
+ },
+ {
+  "file": "eric-clapton__blow-wind-blow.gp4",
+  "title": "Blow Wind Blow",
+  "artist": "Eric Clapton",
+  "youtube": "https://www.youtube.com/results?search_query=Eric%20Clapton%20Blow%20Wind%20Blow"
+ },
+ {
+  "file": "eric-clapton__come-back-baby.gp4",
+  "title": "Come Back Baby",
+  "artist": "Eric Clapton",
+  "youtube": "https://www.youtube.com/results?search_query=Eric%20Clapton%20Come%20Back%20Baby"
+ },
+ {
+  "file": "eric-clapton__come-rain-or-come-shine.gp4",
+  "title": "Come Rain Or Come Shine",
+  "artist": "Eric Clapton",
+  "youtube": "https://www.youtube.com/results?search_query=Eric%20Clapton%20Come%20Rain%20Or%20Come%20Shine"
+ },
+ {
+  "file": "eric-clapton__cross-roads-blues-crossroads-live.gp4",
+  "title": "Cross Roads Blues (Crossroads - Live)",
+  "artist": "Eric Clapton",
+  "youtube": "https://www.youtube.com/results?search_query=Eric%20Clapton%20Cross%20Roads%20Blues%20(Crossroads%20-%20Live)"
+ },
+ {
   "file": "freddie-king__guitar-player-licks-and-lessons-in-the-open-by-dave-rubin-may-1994.gp3",
   "title": "guitar player licks and lessons - In the open by Dave Rubin may 1994",
   "artist": "Freddie King",
   "youtube": "https://www.youtube.com/results?search_query=Freddie%20King%20guitar%20player%20licks%20and%20lessons%20-%20In%20the%20open%20by%20Dave%20Rubin%20may%201994"
  },
  {
-  "file": "gary-moore__nightwish-nightwish-over-the-hills-and-far-away-cover.gp3",
-  "title": "Nightwish - Nightwish Over The Hills And Far Away cover",
+  "file": "gary-moore__all-your-love.gp3",
+  "title": "All Your Love",
   "artist": "Gary Moore",
-  "youtube": "https://www.youtube.com/results?search_query=Gary%20Moore%20Nightwish%20-%20Nightwish%20Over%20The%20Hills%20And%20Far%20Away%20cover"
+  "youtube": "https://www.youtube.com/results?search_query=Gary%20Moore%20All%20Your%20Love"
  },
  {
-  "file": "gary-moore__rock-licks-some-licks-from.gp3",
-  "title": "Rock Licks - Some Licks From",
+  "file": "gary-moore__city-of-gold-licks.gp3",
+  "title": "City Of Gold licks",
   "artist": "Gary Moore",
-  "youtube": "https://www.youtube.com/results?search_query=Gary%20Moore%20Rock%20Licks%20-%20Some%20Licks%20From"
+  "youtube": "https://www.youtube.com/results?search_query=Gary%20Moore%20City%20Of%20Gold%20licks"
  },
  {
-  "file": "jimi-hendrix__guitar-player-li-es-sua-obra-pela-guitarra-r-tmica.gp3",
-  "title": "Guitar Player Lições - - Sua Obra Pela Guitarra Rìtmica",
-  "artist": "Jimi Hendrix",
-  "youtube": "https://www.youtube.com/results?search_query=Jimi%20Hendrix%20Guitar%20Player%20Li%C3%A7%C3%B5es%20-%20-%20Sua%20Obra%20Pela%20Guitarra%20R%C3%ACtmica"
+  "file": "gary-moore__cold-day-in-hell.gp3",
+  "title": "Cold Day In Hell",
+  "artist": "Gary Moore",
+  "youtube": "https://www.youtube.com/results?search_query=Gary%20Moore%20Cold%20Day%20In%20Hell"
  },
  {
-  "file": "jimi-hendrix__rock-licks-some-licks-from.gp3",
-  "title": "Rock Licks - Some Licks From",
+  "file": "gary-moore__don-t-believe-me.gp3",
+  "title": "Don 't Believe Me",
+  "artist": "Gary Moore",
+  "youtube": "https://www.youtube.com/results?search_query=Gary%20Moore%20Don%20't%20Believe%20Me"
+ },
+ {
+  "file": "gary-moore__empty-rooms.gp3",
+  "title": "Empty Rooms",
+  "artist": "Gary Moore",
+  "youtube": "https://www.youtube.com/results?search_query=Gary%20Moore%20Empty%20Rooms"
+ },
+ {
+  "file": "gary-moore__parisien-walkways.gp4",
+  "title": "Parisien Walkways",
+  "artist": "Gary Moore",
+  "youtube": "https://www.youtube.com/results?search_query=Gary%20Moore%20Parisien%20Walkways"
+ },
+ {
+  "file": "howlin-wolf__cradle-of-filth-beneath-the-g-stars.gp3",
+  "title": "Cradle Of Filth - Beneath The g Stars",
+  "artist": "Howlin' Wolf",
+  "youtube": "https://www.youtube.com/results?search_query=Howlin'%20Wolf%20Cradle%20Of%20Filth%20-%20Beneath%20The%20g%20Stars"
+ },
+ {
+  "file": "howlin-wolf__wolf-killing-floor.gp3",
+  "title": "Wolf, ' - Killing Floor",
+  "artist": "Howlin' Wolf",
+  "youtube": "https://www.youtube.com/results?search_query=Howlin'%20Wolf%20Wolf%2C%20'%20-%20Killing%20Floor"
+ },
+ {
+  "file": "jimi-hendrix__ain-t-no-telling.gp4",
+  "title": "Ain 't No Telling",
   "artist": "Jimi Hendrix",
-  "youtube": "https://www.youtube.com/results?search_query=Jimi%20Hendrix%20Rock%20Licks%20-%20Some%20Licks%20From"
+  "youtube": "https://www.youtube.com/results?search_query=Jimi%20Hendrix%20Ain%20't%20No%20Telling"
+ },
+ {
+  "file": "jimi-hendrix__all-along-the-watchtower.gp4",
+  "title": "All Along The Watchtower",
+  "artist": "Jimi Hendrix",
+  "youtube": "https://www.youtube.com/results?search_query=Jimi%20Hendrix%20All%20Along%20The%20Watchtower"
+ },
+ {
+  "file": "jimi-hendrix__guitar-player-licks-and-lessons-jimmy-rythm-guitarist.gp3",
+  "title": "guitar player licks and lessons - Jimmy Rythm Guitarist",
+  "artist": "Jimi Hendrix",
+  "youtube": "https://www.youtube.com/results?search_query=Jimi%20Hendrix%20guitar%20player%20licks%20and%20lessons%20-%20Jimmy%20Rythm%20Guitarist"
+ },
+ {
+  "file": "jimi-hendrix__hey-baby-land-of-the-new-rising-sun.gp4",
+  "title": "Hey Baby (Land Of The New Rising Sun)",
+  "artist": "Jimi Hendrix",
+  "youtube": "https://www.youtube.com/results?search_query=Jimi%20Hendrix%20Hey%20Baby%20(Land%20Of%20The%20New%20Rising%20Sun)"
+ },
+ {
+  "file": "jimi-hendrix__hey-joe.gp4",
+  "title": "Hey Joe",
+  "artist": "Jimi Hendrix",
+  "youtube": "https://www.youtube.com/results?search_query=Jimi%20Hendrix%20Hey%20Joe"
+ },
+ {
+  "file": "jimi-hendrix__radio-one.gp4",
+  "title": "Radio One",
+  "artist": "Jimi Hendrix",
+  "youtube": "https://www.youtube.com/results?search_query=Jimi%20Hendrix%20Radio%20One"
+ },
+ {
+  "file": "john-lee-hooker__boom-boom.gp3",
+  "title": "Boom Boom",
+  "artist": "John Lee Hooker",
+  "youtube": "https://www.youtube.com/results?search_query=John%20Lee%20Hooker%20Boom%20Boom"
+ },
+ {
+  "file": "john-lee-hooker__boom-boom-boom.gp3",
+  "title": "Boom Boom Boom",
+  "artist": "John Lee Hooker",
+  "youtube": "https://www.youtube.com/results?search_query=John%20Lee%20Hooker%20Boom%20Boom%20Boom"
+ },
+ {
+  "file": "johnny-winter__good-morning-little-schoolgirl.gp3",
+  "title": "Good Morning Little Schoolgirl",
+  "artist": "Johnny Winter",
+  "youtube": "https://www.youtube.com/results?search_query=Johnny%20Winter%20Good%20Morning%20Little%20Schoolgirl"
+ },
+ {
+  "file": "johnny-winter__highway-61-revisited.gp3",
+  "title": "Highway 61 Revisited",
+  "artist": "Johnny Winter",
+  "youtube": "https://www.youtube.com/results?search_query=Johnny%20Winter%20Highway%2061%20Revisited"
+ },
+ {
+  "file": "johnny-winter__parchman-farm.gp3",
+  "title": "Parchman Farm",
+  "artist": "Johnny Winter",
+  "youtube": "https://www.youtube.com/results?search_query=Johnny%20Winter%20Parchman%20Farm"
+ },
+ {
+  "file": "johnny-winter__rock-n-roll-hoochi-koo-intro.gp3",
+  "title": "Rock 'n Roll Hoochi Koo (Intro)",
+  "artist": "Johnny Winter",
+  "youtube": "https://www.youtube.com/results?search_query=Johnny%20Winter%20Rock%20'n%20Roll%20Hoochi%20Koo%20(Intro)"
+ },
+ {
+  "file": "johnny-winter__rock-and-roll-hoochie-koo.gp3",
+  "title": "Rock and Roll Hoochie Koo",
+  "artist": "Johnny Winter",
+  "youtube": "https://www.youtube.com/results?search_query=Johnny%20Winter%20Rock%20and%20Roll%20Hoochie%20Koo"
+ },
+ {
+  "file": "johnny-winter__rock-licks-style-solo.gp3",
+  "title": "Rock Licks - Style Solo",
+  "artist": "Johnny Winter",
+  "youtube": "https://www.youtube.com/results?search_query=Johnny%20Winter%20Rock%20Licks%20-%20Style%20Solo"
+ },
+ {
+  "file": "lightnin-hopkins__hendrix-jimi-midnight-g.gp3",
+  "title": "Hendrix, Jimi - Midnight g",
+  "artist": "Lightnin' Hopkins",
+  "youtube": "https://www.youtube.com/results?search_query=Lightnin'%20Hopkins%20Hendrix%2C%20Jimi%20-%20Midnight%20g"
+ },
+ {
+  "file": "lightnin-hopkins__iron-maiden-g-strike-twice.gp3",
+  "title": "Iron Maiden - g strike twice",
+  "artist": "Lightnin' Hopkins",
+  "youtube": "https://www.youtube.com/results?search_query=Lightnin'%20Hopkins%20Iron%20Maiden%20-%20g%20strike%20twice"
+ },
+ {
+  "file": "lightnin-hopkins__live-g-crashes.gp3",
+  "title": "Live - g Crashes",
+  "artist": "Lightnin' Hopkins",
+  "youtube": "https://www.youtube.com/results?search_query=Lightnin'%20Hopkins%20Live%20-%20g%20Crashes"
+ },
+ {
+  "file": "lightnin-hopkins__metal-warriors-g.gp3",
+  "title": "Metal Warriors - g",
+  "artist": "Lightnin' Hopkins",
+  "youtube": "https://www.youtube.com/results?search_query=Lightnin'%20Hopkins%20Metal%20Warriors%20-%20g"
+ },
+ {
+  "file": "lightnin-hopkins__metallica-ride-the-g.gp4",
+  "title": "Metallica - Ride The g",
+  "artist": "Lightnin' Hopkins",
+  "youtube": "https://www.youtube.com/results?search_query=Lightnin'%20Hopkins%20Metallica%20-%20Ride%20The%20g"
+ },
+ {
+  "file": "lightnin-hopkins__metallica-ride-the-g-including-solos.gp3",
+  "title": "Metallica - Ride The g (including solos)",
+  "artist": "Lightnin' Hopkins",
+  "youtube": "https://www.youtube.com/results?search_query=Lightnin'%20Hopkins%20Metallica%20-%20Ride%20The%20g%20(including%20solos)"
+ },
+ {
+  "file": "muddy-waters__honey-bee.gp3",
+  "title": "Honey Bee",
+  "artist": "Muddy Waters",
+  "youtube": "https://www.youtube.com/results?search_query=Muddy%20Waters%20Honey%20Bee"
+ },
+ {
+  "file": "muddy-waters__i-can-t-be-satisfied.gp3",
+  "title": "I Can 't Be Satisfied",
+  "artist": "Muddy Waters",
+  "youtube": "https://www.youtube.com/results?search_query=Muddy%20Waters%20I%20Can%20't%20Be%20Satisfied"
+ },
+ {
+  "file": "muddy-waters__mannish-boy.gp3",
+  "title": "Mannish Boy",
+  "artist": "Muddy Waters",
+  "youtube": "https://www.youtube.com/results?search_query=Muddy%20Waters%20Mannish%20Boy"
+ },
+ {
+  "file": "muddy-waters__mannish-boy-intro.gp3",
+  "title": "Mannish Boy (intro)",
+  "artist": "Muddy Waters",
+  "youtube": "https://www.youtube.com/results?search_query=Muddy%20Waters%20Mannish%20Boy%20(intro)"
+ },
+ {
+  "file": "muddy-waters__mighty-morphin-power-rangers-theme.gp3",
+  "title": "Mighty Morphin ' Power Rangers Theme",
+  "artist": "Muddy Waters",
+  "youtube": "https://www.youtube.com/results?search_query=Muddy%20Waters%20Mighty%20Morphin%20'%20Power%20Rangers%20Theme"
+ },
+ {
+  "file": "robert-johnson__32-20-blues.gp3",
+  "title": "32-20 blues",
+  "artist": "Robert Johnson",
+  "youtube": "https://www.youtube.com/results?search_query=Robert%20Johnson%2032-20%20blues"
+ },
+ {
+  "file": "robert-johnson__alman.gp3",
+  "title": "Alman",
+  "artist": "Robert Johnson",
+  "youtube": "https://www.youtube.com/results?search_query=Robert%20Johnson%20Alman"
+ },
+ {
+  "file": "robert-johnson__come-on-in-my-kitchen.gp3",
+  "title": "Come on in my kitchen",
+  "artist": "Robert Johnson",
+  "youtube": "https://www.youtube.com/results?search_query=Robert%20Johnson%20Come%20on%20in%20my%20kitchen"
+ },
+ {
+  "file": "robert-johnson__crossroad-blues.gp3",
+  "title": "Crossroad blues",
+  "artist": "Robert Johnson",
+  "youtube": "https://www.youtube.com/results?search_query=Robert%20Johnson%20Crossroad%20blues"
+ },
+ {
+  "file": "robert-johnson__dead-shirmp-blues.gp3",
+  "title": "Dead shirmp blues",
+  "artist": "Robert Johnson",
+  "youtube": "https://www.youtube.com/results?search_query=Robert%20Johnson%20Dead%20shirmp%20blues"
+ },
+ {
+  "file": "robert-johnson__hellhound-on-my-trail.gp4",
+  "title": "Hellhound On My Trail",
+  "artist": "Robert Johnson",
+  "youtube": "https://www.youtube.com/results?search_query=Robert%20Johnson%20Hellhound%20On%20My%20Trail"
  },
  {
   "file": "stevie-ray-vaughan__change-it-guitar-solos.gp3",
@@ -168,159 +360,9 @@
   "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Dirty%20Pool"
  },
  {
-  "file": "stevie-ray-vaughan__honey-bee.gp3",
-  "title": "Honey Bee",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Honey%20Bee"
- },
- {
-  "file": "stevie-ray-vaughan__i-wanna-testify.gp3",
-  "title": "I Wanna Testify",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20I%20Wanna%20Testify"
- },
- {
-  "file": "stevie-ray-vaughan__in-the-open.gp3",
-  "title": "In the Open",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20In%20the%20Open"
- },
- {
-  "file": "stevie-ray-vaughan__lenny.gp3",
-  "title": "Lenny",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Lenny"
- },
- {
-  "file": "stevie-ray-vaughan__let-me-love-you-baby-solo.gp3",
-  "title": "Let Me Love You Baby (Solo)",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Let%20Me%20Love%20You%20Baby%20(Solo)"
- },
- {
-  "file": "stevie-ray-vaughan__life-by-the-drop.gp3",
-  "title": "Life By The Drop",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Life%20By%20The%20Drop"
- },
- {
-  "file": "stevie-ray-vaughan__lile-by-the-drop.gp3",
-  "title": "Lile by the drop",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Lile%20by%20the%20drop"
- },
- {
-  "file": "stevie-ray-vaughan__little-wing.gp3",
-  "title": "Little Wing",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Little%20Wing"
- },
- {
-  "file": "stevie-ray-vaughan__look-at-little-sister-guitar-solo.gp3",
-  "title": "Look At Little Sister (Guitar Solo)",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Look%20At%20Little%20Sister%20(Guitar%20Solo)"
- },
- {
-  "file": "stevie-ray-vaughan__love-struck-baby.gp3",
-  "title": "Love Struck Baby",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Love%20Struck%20Baby"
- },
- {
-  "file": "stevie-ray-vaughan__mary-had-a-little-lamb.gp3",
-  "title": "Mary Had A Little Lamb",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Mary%20Had%20A%20Little%20Lamb"
- },
- {
-  "file": "stevie-ray-vaughan__pride-and-joy.gp3",
-  "title": "Pride And Joy",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Pride%20And%20Joy"
- },
- {
-  "file": "stevie-ray-vaughan__pride-and-joy-unplugged.gp3",
-  "title": "Pride And Joy (Unplugged)",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Pride%20And%20Joy%20(Unplugged)"
- },
- {
-  "file": "stevie-ray-vaughan__riviera-paradise.gp3",
-  "title": "Riviera Paradise",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Riviera%20Paradise"
- },
- {
-  "file": "stevie-ray-vaughan__rude-mood.gp3",
-  "title": "Rude Mood",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Rude%20Mood"
- },
- {
-  "file": "stevie-ray-vaughan__scuttle-buttin.gp3",
-  "title": "Scuttle Buttin",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Scuttle%20Buttin"
- },
- {
-  "file": "stevie-ray-vaughan__shuffle.gp3",
-  "title": "Shuffle",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Shuffle"
- },
- {
-  "file": "stevie-ray-vaughan__stangs-swang.gp3",
-  "title": "Stangs Swang",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Stangs%20Swang"
- },
- {
-  "file": "stevie-ray-vaughan__technika-flood.gp3",
-  "title": "Technika Flood",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Technika%20Flood"
- },
- {
   "file": "stevie-ray-vaughan__texas-flood.gp4",
   "title": "Texas Flood",
   "artist": "Stevie Ray Vaughan",
   "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Texas%20Flood"
- },
- {
-  "file": "stevie-ray-vaughan__the-house-is-rockin.gp3",
-  "title": "The House Is Rockin",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20The%20House%20Is%20Rockin"
- },
- {
-  "file": "stevie-ray-vaughan__the-sky-is-crying.gp3",
-  "title": "The Sky Is Crying",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20The%20Sky%20Is%20Crying"
- },
- {
-  "file": "stevie-ray-vaughan__tightrope.gp3",
-  "title": "Tightrope",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Tightrope"
- },
- {
-  "file": "stevie-ray-vaughan__voodoo-chile.gp3",
-  "title": "Voodoo Chile",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Voodoo%20Chile"
- },
- {
-  "file": "stevie-ray-vaughan__wall-of-denial.gp3",
-  "title": "Wall Of Denial",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Wall%20Of%20Denial"
- },
- {
-  "file": "stevie-ray-vaughan__wham.gp3",
-  "title": "Wham",
-  "artist": "Stevie Ray Vaughan",
-  "youtube": "https://www.youtube.com/results?search_query=Stevie%20Ray%20Vaughan%20Wham"
  }
 ]

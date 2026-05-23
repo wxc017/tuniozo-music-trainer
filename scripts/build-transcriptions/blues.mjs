@@ -11,7 +11,7 @@
 // (title / artist / file / youtube reference query).  The Blues tab fetches
 // that index, lists the tunes, and loads the selected .gp via alphaTab.
 
-import { readdirSync, copyFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readdirSync, copyFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,25 +19,28 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SRC = join(__dirname, ".cache", "blues-src", "tabs", "GuitarPro_Tabs");
 const OUT = join(__dirname, "..", "..", "public", "blues");
 
-// The great blues guitarists.  `match` = case-insensitive filename substrings;
-// `name` = the display/normalised artist.
+// Keep at most this many tunes per artist so the corpus is balanced (the source
+// archive is heavy on a few names) — EQUAL representation, not whoever has most.
+const PER_ARTIST = 6;
+
+// The great blues guitarists.  `match` = case-insensitive filename substrings
+// (BOTH "First Last" and "Last, First" orders the archive uses), specific
+// forms first so titles strip cleanly; `name` = the display/normalised artist.
 const ARTISTS = [
-  { name: "B.B. King", match: ["b.b. king", "bb king"] },
-  { name: "Albert King", match: ["albert king"] },
-  { name: "Freddie King", match: ["freddie king"] },
-  { name: "Stevie Ray Vaughan", match: ["stevie ray vaughan", "vaughan, stevie ray"] },
-  { name: "Buddy Guy", match: ["buddy guy"] },
-  { name: "Muddy Waters", match: ["muddy waters"] },
-  { name: "John Lee Hooker", match: ["john lee hooker"] },
-  { name: "T-Bone Walker", match: ["t-bone walker", "t-bone"] },
-  { name: "Robert Johnson", match: ["robert johnson"] },
-  { name: "Albert Collins", match: ["albert collins"] },
-  { name: "Otis Rush", match: ["otis rush"] },
-  { name: "Gary Moore", match: ["gary moore"] },
-  { name: "Joe Bonamassa", match: ["bonamassa"] },
-  { name: "Robben Ford", match: ["robben ford"] },
-  { name: "Eric Clapton", match: ["eric clapton"] },
-  { name: "Jimi Hendrix", match: ["jimi hendrix"] },
+  { name: "B.B. King", match: ["b.b. king", "bb king", "king, b.b", "king, bb"] },
+  { name: "Albert King", match: ["albert king", "king, albert"] },
+  { name: "Freddie King", match: ["freddie king", "king, freddie"] },
+  { name: "Stevie Ray Vaughan", match: ["stevie ray vaughan", "vaughan, stevie ray", "vaughan, stevie"] },
+  { name: "Buddy Guy", match: ["buddy guy", "guy, buddy"] },
+  { name: "Muddy Waters", match: ["muddy waters", "waters, muddy"] },
+  { name: "John Lee Hooker", match: ["john lee hooker", "hooker, john lee", "hooker, john"] },
+  { name: "Lightnin' Hopkins", match: ["lightnin' hopkins", "hopkins, lightnin", "lightnin"] },
+  { name: "Howlin' Wolf", match: ["howlin' wolf", "howlin"] },
+  { name: "Robert Johnson", match: ["robert johnson", "johnson, robert"] },
+  { name: "Johnny Winter", match: ["johnny winter", "winter, johnny"] },
+  { name: "Gary Moore", match: ["gary moore", "moore, gary"] },
+  { name: "Eric Clapton", match: ["eric clapton", "clapton, eric", "clapton"] },
+  { name: "Jimi Hendrix", match: ["jimi hendrix", "hendrix, jimi", "hendrix"] },
 ];
 
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -57,13 +60,20 @@ export function build() {
     console.log("       extract GuitarPro_Tabs.rar to scripts/build-transcriptions/.cache/blues-src/tabs/");
     return;
   }
+  // Start clean so re-runs don't leave a stale (unbalanced) set behind.
+  if (existsSync(OUT)) for (const f of readdirSync(OUT)) if (/\.(gp[345x]?|gtp|json)$/i.test(f)) rmSync(join(OUT, f));
   mkdirSync(OUT, { recursive: true });
   const all = readdirSync(SRC).filter(f => /\.(gp[345x]?|gtp)$/i.test(f));
   const index = [];
   const seen = new Set();
   for (const a of ARTISTS) {
-    const matches = all.filter(f => a.match.some(m => f.toLowerCase().includes(m)));
+    // Prefer .gp4/.gp5 over .gp3 (newer = cleaner bends), then alphabetical.
+    const matches = all
+      .filter(f => a.match.some(m => f.toLowerCase().includes(m)))
+      .sort((x, y) => (y.match(/gp[45]/i) ? 1 : 0) - (x.match(/gp[45]/i) ? 1 : 0) || x.localeCompare(y));
+    let kept = 0;
     for (const f of matches) {
+      if (kept >= PER_ARTIST) break;                  // cap → balanced representation
       const title = titleOf(f, a.match);
       const key = `${a.name}|${title}`.toLowerCase();
       if (seen.has(key)) continue;                    // dedupe (2)/(3) variants
@@ -75,6 +85,7 @@ export function build() {
         file: dest, title, artist: a.name,
         youtube: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${a.name} ${title}`)}`,
       });
+      kept++;
     }
   }
   index.sort((x, y) => x.artist.localeCompare(y.artist) || x.title.localeCompare(y.title));
