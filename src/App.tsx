@@ -12,6 +12,7 @@ import ScalarPermutationsTab from "@/components/tabs/ScalarPermutationsTab";
 import DroneTab from "@/components/tabs/DroneTab";
 import DroneContinuumTab from "@/components/tabs/DroneContinuumTab";
 import ScalarTab from "@/components/tabs/ScalarTab";
+import TranscriptionsTab from "@/components/tabs/TranscriptionsTab";
 
 
 
@@ -85,16 +86,17 @@ const VIZ_LABELS: Record<VisualizerType, string> = {
 // selector — each round picks one enabled source (Pattern Sequences,
 // Melody Bank, Jazz Cells, or Scale Traversals) and dispatches to
 // that engine.
-type Tab = "intervals"|"chords"|"permutations"|"drone";
+type Tab = "intervals"|"chords"|"permutations"|"drone"|"transcriptions";
 type ResponseMode = "Play Audio"|"Show Target (Sing It)";
 
 const TAB_LABELS: Record<Tab, string> = {
   intervals: "Intervals", chords: "Chords",
   permutations: "Scalar Permutations",
   drone: "Chord Drone",
+  transcriptions: "Transcriptions",
 };
 
-const VALID_TABS: Tab[] = ["intervals","chords","permutations","drone"];
+const VALID_TABS: Tab[] = ["intervals","chords","permutations","drone","transcriptions"];
 
 // ── Temperament classification ──────────────────────────────────────────
 // Tonal Audiation groups the available EDOs by their underlying tuning
@@ -126,7 +128,9 @@ const TEMPERAMENT_EDOS: Record<Temperament, number[]> = {
 // temperaments until the chord-progression infrastructure is rebuilt
 // around tuning lineages.
 const TEMPERAMENT_TABS: Record<Temperament, Tab[]> = {
-  meantone:    ["intervals", "chords", "permutations", "drone"],
+  // Transcriptions is 12-EDO repertoire (real tonal corpora); it's only
+  // offered in meantone, which is the family containing standard 12-EDO.
+  meantone:    ["intervals", "chords", "permutations", "drone", "transcriptions"],
   pythagorean: ["intervals", "chords", "permutations"],
   schismatic:  ["intervals", "chords", "permutations"],
 };
@@ -396,7 +400,7 @@ export default function App() {
   // row to Chords (+ Drone if beta) when responseMode is Show Target.
   const visibleTemperamentTabs: Tab[] = temperamentTabs
     .filter(t => t !== "drone" || betaChordDrone)
-    .filter(t => responseMode !== "Show Target (Sing It)" || t === "chords" || t === "drone");
+    .filter(t => responseMode !== "Show Target (Sing It)" || t === "chords" || t === "drone" || t === "transcriptions");
   // Snap activeTab to a valid tab for the current temperament whenever
   // the user crosses a boundary, OR whenever the Chord Drone beta is
   // toggled off while the user is currently viewing the Drone tab.
@@ -1830,6 +1834,13 @@ export default function App() {
                 edo={edo} onHighlight={handleHighlight} onResult={handleResult}
                 onPlay={handlePlay} onAnswer={trackAnswer} lastPlayed={lastPlayed} ensureAudio={ensureAudio}
                 onDroneStateChange={(active) => { if (!active) setDroneIsOn(false); }} />
+            </div>
+          )}
+
+          {activeTab === "transcriptions" && (
+            <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+              <h2 className="font-semibold mb-4">Transcriptions</h2>
+              <TranscriptionsTab key={tabKey} ensureAudio={ensureAudio} playVol={playVol} />
             </div>
           )}
 
