@@ -106,27 +106,27 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     setYtSeg(null);
     setBusy(true);
 
-    // Play defaults to the ACTUAL recording (MIDI can't reproduce real
-    // phrasing).  Resolve the tune's video, seek to the excerpt's estimated
-    // spot, and play that segment.  Synthesized MIDI is only a fallback.
-    setStatus("Finding the recording…");
-    const vid = it.vid || await lookupBestVideo(it.artist ?? "", it.title).catch(() => null);
-    if (myToken !== playToken.current) return;
-    if (vid) {
-      const spb = 60 / effectiveBpm(it);
-      // Seek = where the transcription begins in the recording (solostart, e.g.
-      // the Weimar solo onset) + this excerpt's offset within the transcription.
-      const start = (it.solostart ?? 0) + ex.startBar * ex.beatsPerBar * spb;
-      const end = start + ex.windowBeats * spb;       // stop at the excerpt's end
-      setYtSeg({ vid, start, end });
-      await playFrom("tx-yt-player", vid, start, end);   // IFrame API → autostart, stops at end
+    // BLUES plays the ACTUAL recording (MIDI can't reproduce the phrasing/bends);
+    // every other corpus plays synthesized MIDI.  Seek uses the transcription's
+    // own tempo-map bar times (barSec) when present, else a bar×tempo estimate.
+    if (it.source === "blues") {
+      setStatus("Finding the recording…");
+      const vid = it.vid || await lookupBestVideo(it.artist ?? "", it.title).catch(() => null);
       if (myToken !== playToken.current) return;
-      setStatus("");
-      setBusy(false);
-      return;
+      if (vid) {
+        const spb = 60 / effectiveBpm(it);
+        const start = (it.solostart ?? 0) + (it.barSec?.[ex.startBar] ?? ex.startBar * ex.beatsPerBar * spb);
+        const endBar = ex.startBar + ex.bars;
+        const end = (it.solostart ?? 0) + (it.barSec?.[endBar] ?? endBar * ex.beatsPerBar * spb);
+        setYtSeg({ vid, start, end });
+        await playFrom("tx-yt-player", vid, start, end);   // IFrame API → autostart, stops at end
+        if (myToken !== playToken.current) return;
+        setStatus(""); setBusy(false);
+        return;
+      }
     }
 
-    setStatus("No recording found — playing synthesized…");
+    setStatus(it.source === "blues" ? "No recording found — playing synthesized…" : "Loading instrument samples…");
     try {
       await ensureAudio();
       const countInBeats = countInBars * ex.beatsPerBar;
@@ -336,15 +336,16 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
             {" "}{item.timeSig[0]}/{item.timeSig[1]} · {item.tempoBpm} bpm original
           </div>
 
-          {/* Every transcription links to its recording (the exact video when
-              known, else a YouTube search for the tune). */}
-          <a
-            href={item.vid ? `https://www.youtube.com/watch?v=${item.vid}` : `https://www.youtube.com/results?search_query=${encodeURIComponent(item.youtubeQuery)}`}
-            target="_blank" rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-[#e57] hover:text-[#f7a] underline"
-          >
-            🎧 Recording on YouTube ↗
-          </a>
+          {/* Blues links to its recording (exact video when known). */}
+          {item.source === "blues" && (
+            <a
+              href={item.vid ? `https://www.youtube.com/watch?v=${item.vid}` : `https://www.youtube.com/results?search_query=${encodeURIComponent(item.youtubeQuery)}`}
+              target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-[#e57] hover:text-[#f7a] underline"
+            >
+              🎧 Recording on YouTube ↗
+            </a>
+          )}
         </div>
       )}
 

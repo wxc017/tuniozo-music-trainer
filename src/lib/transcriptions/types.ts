@@ -101,6 +101,10 @@ export interface TxItem {
   /** Seconds into the recording where the transcription's bar 0 begins (e.g.
    *  Weimar's solo start), so playback seeks to the real solo, not the top. */
   solostart?: number;
+  /** Per-bar start time in seconds, computed from the transcription's own
+   *  tempo map (handles tempo/metre changes) — used to seek the real recording
+   *  accurately to a given bar.  Index = bar number. */
+  barSec?: number[];
 }
 
 /** Lightweight index entry — loaded up front so the UI can filter by
