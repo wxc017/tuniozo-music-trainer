@@ -114,7 +114,9 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     if (myToken !== playToken.current) return;
     if (vid) {
       const spb = 60 / effectiveBpm(it);
-      const start = ex.startBar * ex.beatsPerBar * spb;
+      // Seek = where the transcription begins in the recording (solostart, e.g.
+      // the Weimar solo onset) + this excerpt's offset within the transcription.
+      const start = (it.solostart ?? 0) + ex.startBar * ex.beatsPerBar * spb;
       setYtSeg({ vid, start });
       await playFrom("tx-yt-player", vid, start);   // IFrame API → reliable autostart
       if (myToken !== playToken.current) return;
@@ -333,6 +335,15 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
             {" "}{item.timeSig[0]}/{item.timeSig[1]} · {item.tempoBpm} bpm original
           </div>
 
+          {/* Every transcription links to its recording (the exact video when
+              known, else a YouTube search for the tune). */}
+          <a
+            href={item.vid ? `https://www.youtube.com/watch?v=${item.vid}` : `https://www.youtube.com/results?search_query=${encodeURIComponent(item.youtubeQuery)}`}
+            target="_blank" rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-[#e57] hover:text-[#f7a] underline"
+          >
+            🎧 Recording on YouTube ↗
+          </a>
         </div>
       )}
 

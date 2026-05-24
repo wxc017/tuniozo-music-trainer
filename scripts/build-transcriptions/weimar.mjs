@@ -92,8 +92,11 @@ export async function build() {
   await ensureDb();
   const db = new DatabaseSync(DB_PATH, { readOnly: true });
 
+  // transcription_info.solostart_sec = the second the solo begins in the actual
+  // recording, so playback can seek to the real solo (not guess).
   const solos = db.prepare(
-    `SELECT melid, title, performer, key, signature, avgtempo, style, rhythmfeel FROM solo_info`
+    `SELECT s.melid, s.title, s.performer, s.key, s.signature, s.avgtempo, s.style, s.rhythmfeel, t.solostart_sec
+     FROM solo_info s LEFT JOIN transcription_info t ON s.melid = t.melid`
   ).all();
   console.log(`  ${solos.length} solos; building up to ${LIMIT}…`);
 
@@ -168,6 +171,8 @@ export async function build() {
       melody,
       chords: chords.length ? chords : undefined,
       youtubeQuery: `${performer} ${title}`.trim(),
+      // Seconds into the recording where the solo (transcription bar 0) begins.
+      ...(s.solostart_sec > 0 ? { solostart: Math.round(s.solostart_sec) } : {}),
     });
   }
   db.close();
