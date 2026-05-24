@@ -159,6 +159,19 @@ export interface TxExcerpt {
   chords: TxChordRebased[];
 }
 export type TxNoteRebased = { midi: number; startBeat: number; durBeats: number; artic?: string };
+
+/** Shift a melody by whole octaves so it sits centered on the treble staff
+ *  (low transcriptions otherwise pile ledger lines below the staff).  Octave is
+ *  perceptually equivalent for a by-ear melody exercise, and shifting the whole
+ *  line keeps notation == playback.  Targets a mean in C4..G#5. */
+function fitMelodyOctave(melody: TxNoteRebased[]): void {
+  if (!melody.length) return;
+  let mean = melody.reduce((s, n) => s + n.midi, 0) / melody.length;
+  let shift = 0;
+  while (mean < 60 && shift < 36) { mean += 12; shift += 12; }
+  while (mean > 80 && shift > -36) { mean -= 12; shift -= 12; }
+  if (shift) for (const n of melody) n.midi += shift;
+}
 export type TxChordRebased = {
   sym: string; rootPc: number; intervals: number[]; bassPc?: number;
   startBeat: number; durBeats: number;
@@ -203,6 +216,7 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
   // Quantize once so playback and the rendered notation use identical notes.
   const qMel = quantizeMelody(melody, melodyGridFor(item.source), windowBeats);
   melody.length = 0; melody.push(...qMel);
+  fitMelodyOctave(melody);   // center low transcriptions on the treble staff
 
   const chords: TxChordRebased[] = [];
   for (const c of item.chords ?? []) {
@@ -237,6 +251,7 @@ export function fullExcerpt(item: TxItem): TxExcerpt {
   const bpb = beatsPerBar(item.timeSig);
   const rawMelody: TxNoteRebased[] = (item.melody ?? []).map(n => ({ midi: n.midi, startBeat: n.startBeat, durBeats: n.durBeats, artic: n.artic }));
   const melody = quantizeMelody(rawMelody, melodyGridFor(item.source), item.barCount * bpb);
+  fitMelodyOctave(melody);   // center low transcriptions on the treble staff
   const chords: TxChordRebased[] = (item.chords ?? []).map(c => ({ ...c }));
   if (!chords.length && melody.length) {
     for (const c of harmonizeMelody(melody, item.key, bpb, item.barCount)) {

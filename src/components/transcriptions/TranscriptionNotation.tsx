@@ -207,35 +207,33 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const hasChordData = excerpt.chords.length > 0;
     const showChordSymbols = showChords && hasChordData;
     const showBassStaff = showBass && hasChordData;
-    // Single-staff (lead-sheet) rows are shorter — no bass staff below the melody.
-    const rowH = showBassStaff ? ROW_H : STAVE_GAP + ROW_GAP;
+    const hasLowerStaff = showChordSymbols || showBassStaff;
+    // Single-staff (melody-only) rows are shorter — no lower staff.
+    const rowH = hasLowerStaff ? ROW_H : STAVE_GAP + ROW_GAP;
 
     // ── Per-bar cells ───────────────────────────────────────────────
     const melodyEvents: TimedEvent<{ midi: number; artic?: string }>[] = showMelody
       ? excerpt.melody.map(n => ({ startBeat: n.startBeat, durBeats: n.durBeats, data: { midi: n.midi, artic: n.artic } }))
       : [];
     const melodyByBar = segmentByBar(melodyEvents, bars, bpb);
-    // Bass staff carries up to two voices, both built from the SAME comping
-    // the audio plays (so notation == sound): the chord voicing (when Chords
-    // is on) and the bass line (when Bass is on).
-    const wantComp = (showChordSymbols || showBassStaff);
-    const comp = wantComp
-      ? compEvents(excerpt.chords, compGenreFor(excerpt.item.source, excerpt.item.style), bpb, ts, bars * bpb)
-      : { chord: [], bass: [] };
-    // Chord stabs grouped by onset → one stacked chord per hit.  Voicings are
-    // already in the bass-clef comping register (see voiceChord), so we notate
-    // the EXACT pitches that play — what you see is what you hear.
-    const chordByOnset = new Map<number, { dur: number; midis: number[] }>();
-    for (const e of comp.chord) {
-      const key = Math.round(e.startBeat / 0.0625) * 0.0625;
-      const g = chordByOnset.get(key) ?? { dur: e.durBeats, midis: [] };
-      g.midis.push(e.midi); g.dur = Math.max(g.dur, e.durBeats);
-      chordByOnset.set(key, g);
-    }
+    // Lower staff (when Chords on): the harmony as CLEAN block chords — one
+    // sustained stack per chord change — so you SEE the chords you hear without
+    // the rests-everywhere clutter of notating the syncopated comp rhythm.
+    const voiceBlock = (rootPc: number, intervals: number[]): number[] => {
+      const reduced = [...new Set(intervals.map(i => ((i % 12) + 12) % 12))].sort((a, b) => a - b).slice(0, 4);
+      const root = 48 + (((rootPc % 12) + 12) % 12);     // C3..B3
+      let chord = reduced.map(i => root + i);
+      while (Math.max(...chord) > 60 && chord.length) chord = chord.map(n => n - 12);
+      return chord;
+    };
     const chordVoicingByBar = segmentByBar<number[]>(
       showChordSymbols
-        ? [...chordByOnset.entries()].map(([k, g]) => ({ startBeat: k, durBeats: g.dur, data: [...new Set(g.midis)].sort((a, b) => a - b) }))
+        ? excerpt.chords.map(c => ({ startBeat: c.startBeat, durBeats: c.durBeats, data: voiceBlock(c.rootPc, c.intervals) }))
         : [], bars, bpb);
+    // Bass line (when Bass on) still comes from the played walking/root comp.
+    const comp = showBassStaff
+      ? compEvents(excerpt.chords, compGenreFor(excerpt.item.source, excerpt.item.style), bpb, ts, bars * bpb)
+      : { chord: [], bass: [] };
     const bassLineByBar = segmentByBar<number>(
       showBassStaff ? comp.bass.map(e => ({ startBeat: e.startBeat, durBeats: e.durBeats, data: e.midi + 12 })) : [], bars, bpb);
 
@@ -267,11 +265,12 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
       const melody = showMelody
         ? cellsToVoice(splitCellsAtBeats(layoutBarCells(melodyByBar[b], bpb, melodyGridFor(excerpt.item.source)), splitUnit), (d: { midi: number; artic?: string }) => [midiToVexKey(d.midi, flat)], ["b/4"], carryMelody, "treble", 0, (d) => d.artic)
         : null;
-      // LEAD-SHEET: chords are shown as SYMBOLS above the treble (not notated as
-      // comp stabs on a lower staff — that produced rests-everywhere clutter and
-      // a beat-1 misalignment).  The comp is still HEARD in playback.
-      const chordV = null as BuiltVoice | null;
-      void carryChord;
+      // Block chords on the lower staff (Chords on): one sustained stack per
+      // chord — NOT split at beats, so each chord is a single notehead-stack
+      // (whole/half/dotted) rather than tied fragments.
+      const chordV = showChordSymbols && chordVoicingByBar[b].length
+        ? cellsToVoice(layoutBarCells(chordVoicingByBar[b], bpb, 0.5), (ms: number[]) => ms.map(m => midiToVexKey(m, flat)), ["d/3"], carryChord, "bass", 1)
+        : null;
       // Bass line (Bass on): single notes on the bass staff, stems down.
       const bassV = showBassStaff
         ? cellsToVoice(splitCellsAtBeats(layoutBarCells(bassLineByBar[b], bpb, 0.5), splitUnit), (m: number) => [midiToVexKey(m, flat)], ["d/3"], carryBass, "bass", -1)
@@ -322,7 +321,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           const isFirst = mi === 0;
           const w = uniformW + (isFirst ? FIRST_BAR_EXTRA : 0);
           const treble = new Stave(x, trebleY, w);
-          const bass = showBassStaff ? new Stave(x, bassY, w) : null;
+          const bass = hasLowerStaff ? new Stave(x, bassY, w) : null;
           if (isFirst) {
             treble.addClef("treble").addKeySignature(keySpec);
             bass?.addClef("bass").addKeySignature(keySpec);
