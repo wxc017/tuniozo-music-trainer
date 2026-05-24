@@ -115,11 +115,12 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
 
   const clearEndTimer = () => { if (endTimer.current) { clearTimeout(endTimer.current); endTimer.current = null; } };
 
-  const playGivenExcerpt = useCallback(async (it: TxItem, ex: TxExcerpt, full = false) => {
+  const playGivenExcerpt = useCallback(async (it: TxItem, ex: TxExcerpt, full = false, forceTempo?: number) => {
     const myToken = ++playToken.current;
     clearEndTimer();
     audioRef.current?.pause();
     setBusy(true);
+    const tempo = forceTempo ?? effectiveBpm(it);
 
     // BLUES is audio-only: play the ACTUAL recording from a LOCAL file (offline).
     // Play starts at the solo (solostart, from audio analysis) and runs for the
@@ -147,7 +148,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
       // Chords (real for jazz/pop, auto-inferred by the loader for folk) are
       // realized into idiomatic comping inside playExcerpt per genre.
       const handle = await playExcerpt(ex, {
-        bpm: effectiveBpm(it),
+        bpm: tempo,
         withMelody: withMelody && (it.melody?.length ?? 0) > 0,
         withChords: withChords && ex.chords.length > 0,
         withBass: withBass && ex.chords.length > 0,
@@ -157,7 +158,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
       });
       if (myToken !== playToken.current) return;     // superseded
       setStatus("");
-      const spb = 60 / effectiveBpm(it);
+      const spb = 60 / tempo;
       const totalMs = (countInBeats * spb + handle.durationSec) * 1000 + 250;
       endTimer.current = setTimeout(() => { if (myToken === playToken.current) setBusy(false); }, totalMs);
     } catch (e) {
@@ -186,7 +187,11 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     const ex = pickExcerpt(picked, bars);   // loader auto-harmonizes melody-only tunes
     setItem(picked);
     setExcerpt(ex);
-    await playGivenExcerpt(picked, ex);
+    // The tempo slider follows the new song: reset the override so it shows (and
+    // plays at) this tune's tempo.  forceTempo keeps the immediate play in sync
+    // before the state update lands.
+    setBpm(0);
+    await playGivenExcerpt(picked, ex, false, picked.tempoBpm);
   }, [sources, bars, withChords, withMelody, styleFilter, playGivenExcerpt]);
 
   const replay = useCallback(async () => {

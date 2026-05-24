@@ -374,22 +374,24 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
         const onBeat = Math.abs(((g[0].startBeat % pulse) + pulse) % pulse) < 1e-6;
         // Down-stroke (on the beat) sweeps low→high; up-stroke (offbeat) high→low.
         const ordered = [...g].sort((a, b) => onBeat ? a.midi - b.midi : b.midi - a.midi);
-        // Guitars spread ~10 ms/string, piano barely rolls; humans aren't tight.
-        const step = (guitar ? 0.011 : 0.004) + hrand() * 0.004;
+        // Guitar strum spreads ~18 ms/string (clearly strummed, not a block hit);
+        // piano barely rolls.  Humans aren't tight.
+        const step = (guitar ? 0.018 : 0.004) + hrand() * 0.006;
         const base = humanTime(g[0].startBeat);
         const accent = metricAccent(g[0].startBeat);
         const n = ordered.length;
         ordered.forEach((e, i) => {
-          // Guitars ring a little past the stab (not staccato), pianos shorter,
-          // but not so long that successive stabs overlap into mud.
-          const dur = e.durBeats * secPerBeat * (guitar ? 1.2 : 0.95);
+          // A strummed guitar RINGS — let the chord sustain well past the stab so
+          // it doesn't sound plucked-then-muted (the natural sample decay handles
+          // the tail).  Pianos stay shorter.
+          const dur = e.durBeats * secPerBeat * (guitar ? 3.0 : 0.95);
           // Strum dynamics: a real pick sweep swells slightly across the strings
           // rather than hitting them all at one flat velocity.
           const ramp = n > 1 ? (i / (n - 1) - 0.5) * 4 : 0;   // -2 .. +2 across the sweep
           activeStops.push(chordInst.start({
             note: e.midi,
             time: base + i * step,
-            duration: Math.max(guitar ? 0.25 : 0.12, dur),
+            duration: Math.max(guitar ? 0.9 : 0.12, dur),
             // Comp must sit clearly UNDER the lead but stay audible: lift the
             // (low, ~52) source velocity instead of attenuating it.
             velocity: hvel(e.velocity + 22 + accent + ramp),
