@@ -111,7 +111,9 @@ export async function stylesForSources(sources: TxSource[]): Promise<string[]> {
   const index = await loadIndex();
   const set = new Set<string>();
   for (const e of index.items) {
-    if (sources.includes(e.source) && e.hasMelody && e.style) set.add(e.style);
+    // Blues is audio-only (no melody) but its `style` is the PLAYER, so the
+    // Styles filter doubles as "organize blues by player" — include it.
+    if (sources.includes(e.source) && (e.hasMelody || e.source === "blues") && e.style) set.add(e.style);
   }
   return [...set].sort((a, b) => a.localeCompare(b));
 }
@@ -165,9 +167,10 @@ export type TxChordRebased = {
 /** Slice a random `bars`-bar window out of an item.  Notes/chords are
  *  clipped to the window edges and rebased so the window begins at beat 0. */
 export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
-  // Blues: audio-only, a single fixed clip — no bars/melody/chords to slice.
+  // Blues: audio-only — no notes to slice, but carry the requested bar count so
+  // the player can size the audio clip to it (see TranscriptionsTab).
   if (item.source === "blues") {
-    return { item, startBar: 0, bars: 1, beatsPerBar: 4, windowBeats: 4, melody: [], chords: [] };
+    return { item, startBar: 0, bars, beatsPerBar: 4, windowBeats: bars * 4, melody: [], chords: [] };
   }
   const bpb = beatsPerBar(item.timeSig);
   const usableBars = Math.min(bars, item.barCount);
