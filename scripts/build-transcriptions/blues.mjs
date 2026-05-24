@@ -13,7 +13,7 @@
 //
 //   node scripts/build-transcriptions/blues.mjs
 
-import { writeFileSync, existsSync, mkdirSync, statSync } from "node:fs";
+import { writeFileSync, existsSync, mkdirSync, statSync, readFileSync } from "node:fs";
 import { execFileSync, execSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -91,6 +91,27 @@ const SOLOS = [
     ["Five Long Years (live)", "Five Long Years live"], ["Nobody Knows You When You're Down and Out", "Nobody Knows You When You're Down and Out unplugged"],
     ["I'm So Glad (Cream, live)", "Cream I'm So Glad live"], ["Got to Get Better in a Little While (live)", "Derek and the Dominos Got to Get Better live"],
   ]),
+  // Cushion of further canonical solos so the corpus comfortably clears 100.
+  ...A("Albert King", [
+    ["I Get Evil", "I Get Evil"], ["You Sure Drive a Hard Bargain", "You Sure Drive a Hard Bargain"],
+    ["That's What the Blues Is All About", "That's What the Blues Is All About"], ["Answer to the Laundromat Blues", "Answer to the Laundromat Blues"],
+  ]),
+  ...A("Stevie Ray Vaughan", [
+    ["Life by the Drop", "Life by the Drop"], ["Texas Flood (studio)", "Texas Flood studio"],
+    ["Lookin' Out the Window", "Lookin Out the Window"], ["Travis Walk", "Travis Walk"],
+  ]),
+  ...A("B.B. King", [
+    ["The Thrill Is Gone (studio)", "The Thrill Is Gone studio completely well"], ["Caldonia (live)", "Caldonia live"],
+    ["Let the Good Times Roll", "Let the Good Times Roll BB King"], ["Never Make a Move Too Soon", "Never Make a Move Too Soon"],
+  ]),
+  ...A("Jimi Hendrix", [
+    ["All Along the Watchtower", "All Along the Watchtower"], ["Bold as Love", "Bold as Love"],
+    ["Castles Made of Sand", "Castles Made of Sand"], ["Pali Gap", "Pali Gap"],
+  ]),
+  ...A("Eric Clapton", [
+    ["Wonderful Tonight (live)", "Wonderful Tonight live"], ["I Shot the Sheriff (live)", "I Shot the Sheriff live"],
+    ["Tell the Truth (live)", "Derek and the Dominos Tell the Truth live"], ["Why Does Love Got to Be So Sad (live)", "Derek and the Dominos Why Does Love live"],
+  ]),
 ];
 
 // ── YouTube best-match via the allorigins proxy (bypasses the IP throttle) ──
@@ -153,21 +174,38 @@ function score(r, artist, title, wantLive) {
 }
 async function bestVideo(s) {
   const wantLive = /live/i.test(s.q);
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // The allorigins proxy is flaky under bulk load (returns empty HTML), which
+  // dropped many famous tracks as "no video" in one pass.  Retry several times
+  // with backoff and only give up when scraping genuinely yields nothing.
+  for (let attempt = 0; attempt < 5; attempt++) {
     const results = parseResults(await fetchSearchHtml(s.q));
     if (results.length) {
       let best = results[0], bestS = -Infinity;
       for (const r of results) { const sc = score(r, s.artist, s.title, wantLive); if (sc > bestS) { bestS = sc; best = r; } }
       return bestS >= 2 ? best.videoId : null;
     }
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 1200 + attempt * 800));
   }
   return null;
 }
 
 export async function build() {
   const items = [];
+  // Resume: reuse already-built solos whose audio file is still present, so a
+  // re-run only has to recover the ones that failed (flaky proxy) — no
+  // re-downloading or re-transcribing the whole corpus.
+  const prevPath = join(__dirname, "..", "..", "public", "transcriptions", "blues.json");
+  const prev = new Map();
+  try {
+    for (const it of JSON.parse(readFileSync(prevPath, "utf8"))) prev.set(`${it.artist}|||${it.title}`, it);
+  } catch { /* first run */ }
+
   for (const s of SOLOS) {
+    const cached = prev.get(`${s.artist}|||${s.title}`);
+    if (cached?.audio && existsSync(join(AUDIO_DIR, cached.audio.replace(/^audio\//, "")))) {
+      items.push({ ...cached, id: `blues-${items.length}` });
+      continue;
+    }
     const vid = await bestVideo(s);
     if (!vid) { console.log(`  no video: ${s.artist} - ${s.title}`); continue; }
     const mp3 = join(AUDIO_DIR, `${vid}.mp3`);
