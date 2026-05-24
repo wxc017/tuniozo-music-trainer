@@ -108,6 +108,9 @@ export interface TxItem {
   /** Path (under public/blues/) to a LOCAL audio file of the actual recording,
    *  so blues plays offline.  e.g. "audio/<videoId>.mp3". */
   audio?: string;
+  /** Seconds of audio to play from `solostart` — the solo clip length (blues is
+   *  audio-only: you transcribe it by ear, so there is no melody/notation). */
+  soloLen?: number;
 }
 
 /** Lightweight index entry — loaded up front so the UI can filter by

@@ -1,124 +1,100 @@
-// ── Blues corpus (a Transcriptions database, from Guitar Pro solos) ─
+// ── Blues corpus: curated canonical solos, real audio + AI transcription ──
 //
-// Converts essential-bluesman Guitar Pro transcriptions into the shared
-// TxItem schema so Blues is just another Transcriptions source (not a
-// separate tab).  Source = the two openly-downloadable Internet Archive
-// Guitar Pro collections, extracted into the gitignored .cache:
-//   • .cache/blues-src/tabs/GuitarPro_Tabs/      (archive.org/details/GuitarProTabs)
-//   • .cache/blues-src2/gt/<Letter>/<artist>.zip (archive.org/details/gtptabs)
+// Per direct user direction (2026-05): drop the fan-tab .gp approach.  Instead
+// curate well-renowned solos by the great blues guitarists (lots of LIVE; for
+// Hendrix his blues + live), pull the best recording off YouTube (bias to
+// official / Topic / live; reject AI uploads), download the audio LOCALLY so
+// the app plays offline, then run a lightweight AI transcription (transcribe.py)
+// which both (a) finds the solo section and (b) emits an approximate melody for
+// the Show-Answer notation ("doesn't have to be accurate — learn by ear").
 //
-// alphaTab (headless) parses each .gp; we take the LEAD guitar track as the
-// melody (the solo).  Chord symbols are usually absent in these files, so the
-// loader's harmonizeMelody fills the changes.  `vid` is the actual recording
-// (scraped YouTube id) for the Transcriptions "real recording" playback.
-// Fan transcriptions of copyrighted songs: personal/educational use only.
+// Audio → public/blues/audio/<vid>.mp3 (GITIGNORED; copyrighted, personal use).
+// Corpus → public/transcriptions/blues.json.  Needs yt-dlp + ffmpeg + python.
+//
+//   node scripts/build-transcriptions/blues.mjs
 
-import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { writeFileSync, existsSync, mkdirSync, statSync } from "node:fs";
+import { execFileSync, execSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { unzipSync } from "fflate";
 import https from "node:https";
-import * as at from "@coderline/alphatab";
-import { curate, clipBars, writeSource, rebuildIndex, isMain } from "./common.mjs";
+import { writeSource, rebuildIndex, isMain } from "./common.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SRC1 = join(__dirname, ".cache", "blues-src", "tabs", "GuitarPro_Tabs");
-const GT = join(__dirname, ".cache", "blues-src2", "gt");
-const PER_ARTIST = 20;
-const TPQ = 960;  // alphaTab ticks per quarter note
+const AUDIO_DIR = join(__dirname, "..", "..", "public", "blues", "audio");
+mkdirSync(AUDIO_DIR, { recursive: true });
+const YTDLP = process.env.YTDLP || "C:\\Users\\wilda\\AppData\\Local\\Programs\\Python\\Python315\\Scripts\\yt-dlp.exe";
+const PYTHON = process.env.PYTHON || "python";
+const TRANSCRIBE = join(__dirname, "transcribe.py");
+const WINDOW = 24;   // seconds of solo to capture per tune
 
-const ARTISTS = [
-  { name: "B.B. King", a1: ["b.b. king", "bb king", "king, b.b", "king, bb"], zips: ["B/bb_king.zip"] },
-  { name: "Albert King", a1: ["albert king", "king, albert"], zips: [] },
-  { name: "Jimi Hendrix", a1: ["jimi hendrix", "hendrix, jimi", "hendrix"], zips: ["H/hendrix_jimi.zip"] },
-  { name: "Stevie Ray Vaughan", a1: ["stevie ray vaughan", "vaughan, stevie"], zips: ["V/vaughan_stevie_ray.zip"] },
-  { name: "Eric Clapton", a1: ["eric clapton", "clapton, eric", "clapton"], zips: ["C/clapton_eric.zip"] },
+// Well-renowned solos.  `q` is the search query (live-biased where the canonical
+// version is live).  `live` just records intent.
+const A = (artist, list) => list.map(([title, q]) => ({ artist, title, q: `${artist} ${q}` }));
+const SOLOS = [
+  ...A("Albert King", [
+    ["Blues Power (live)", "Blues Power live wire"], ["Born Under a Bad Sign", "Born Under a Bad Sign"],
+    ["Crosscut Saw", "Crosscut Saw"], ["I'll Play the Blues for You", "I'll Play the Blues for You live"],
+    ["Stormy Monday (live)", "Stormy Monday live"], ["Blues at Sunrise (live)", "Blues at Sunrise live"],
+    ["As the Years Go Passing By", "As the Years Go Passing By"], ["The Hunter", "The Hunter"],
+    ["Oh Pretty Woman", "Oh Pretty Woman"], ["Laundromat Blues", "Laundromat Blues"],
+    ["Personal Manager", "Personal Manager"], ["Cold Feet", "Cold Feet"],
+    ["Don't Throw Your Love on Me So Strong", "Don't Throw Your Love on Me So Strong"], ["Angel of Mercy", "Angel of Mercy"],
+    ["Travelin' to California", "Travelin to California"], ["Killing Floor", "Killing Floor"],
+    ["Drowning on Dry Land", "Drowning on Dry Land"], ["Breaking Up Somebody's Home", "Breaking Up Somebody's Home"],
+    ["Down Don't Bother Me", "Down Don't Bother Me"], ["Wrapped Up in Love Again", "Wrapped Up in Love Again"],
+    ["Match Box Blues", "Match Box Blues"], ["Overall Junction", "Overall Junction"],
+  ]),
+  ...A("Stevie Ray Vaughan", [
+    ["Texas Flood (live)", "Texas Flood live el mocambo"], ["Lenny", "Lenny live"], ["Little Wing", "Little Wing"],
+    ["Tin Pan Alley (live)", "Tin Pan Alley live"], ["Cold Shot", "Cold Shot live"], ["Pride and Joy", "Pride and Joy live"],
+    ["Voodoo Child (Slight Return)", "Voodoo Child Slight Return live"], ["Couldn't Stand the Weather", "Couldn't Stand the Weather"],
+    ["Scuttle Buttin'", "Scuttle Buttin"], ["Riviera Paradise", "Riviera Paradise"], ["Crossfire", "Crossfire live"],
+    ["The Sky Is Crying", "The Sky Is Crying"], ["Mary Had a Little Lamb", "Mary Had a Little Lamb"],
+    ["Love Struck Baby", "Love Struck Baby"], ["Rude Mood", "Rude Mood"], ["Look at Little Sister", "Look at Little Sister"],
+    ["Honey Bee", "Honey Bee live"], ["Leave My Girl Alone", "Leave My Little Girl Alone live"],
+    ["Say What!", "Say What"], ["Empty Arms", "Empty Arms"], ["Wall of Denial", "Wall of Denial"],
+    ["Going Down (live)", "Going Down live jam"],
+  ]),
+  ...A("B.B. King", [
+    ["The Thrill Is Gone (live)", "The Thrill Is Gone live"], ["Sweet Little Angel (live)", "Sweet Little Angel live at the regal"],
+    ["How Blue Can You Get (live)", "How Blue Can You Get live"], ["Every Day I Have the Blues (live)", "Every Day I Have the Blues live regal"],
+    ["Why I Sing the Blues (live)", "Why I Sing the Blues live"], ["Rock Me Baby", "Rock Me Baby live"],
+    ["Three O'Clock Blues", "Three O'Clock Blues"], ["Paying the Cost to Be the Boss", "Paying the Cost to Be the Boss"],
+    ["Lucille", "Lucille"], ["Don't Answer the Door", "Don't Answer the Door live"], ["Worry, Worry (live)", "Worry Worry live regal"],
+    ["Gambler's Blues", "Gambler's Blues"], ["Chains and Things", "Chains and Things"], ["Hummingbird", "Hummingbird"],
+    ["Nobody Loves Me But My Mother", "Nobody Loves Me But My Mother"], ["Help the Poor", "Help the Poor"],
+    ["You Upset Me Baby", "You Upset Me Baby"], ["Sweet Sixteen", "Sweet Sixteen"], ["Please Love Me", "Please Love Me"],
+    ["It's My Own Fault", "It's My Own Fault live"], ["Woke Up This Morning", "Woke Up This Morning"], ["Ask Me No Questions", "Ask Me No Questions"],
+  ]),
+  ...A("Jimi Hendrix", [
+    ["Red House (live)", "Red House live"], ["Hear My Train A Comin' (live)", "Hear My Train A Comin live"],
+    ["Machine Gun (live)", "Machine Gun band of gypsys live"], ["Voodoo Child (Slight Return)", "Voodoo Child Slight Return live"],
+    ["Catfish Blues (live)", "Catfish Blues live"], ["Killing Floor (Monterey)", "Killing Floor live Monterey"],
+    ["Voodoo Chile", "Voodoo Chile blues long"], ["Bleeding Heart (live)", "Bleeding Heart live"],
+    ["Hey Joe (live)", "Hey Joe live"], ["Wild Thing (Monterey)", "Wild Thing live Monterey"],
+    ["Spanish Castle Magic (live)", "Spanish Castle Magic live"], ["Johnny B. Goode (live)", "Johnny B Goode live"],
+    ["Lover Man (live)", "Lover Man live"], ["Stone Free (live)", "Stone Free live"], ["Foxy Lady (live)", "Foxy Lady live"],
+    ["Purple Haze (live)", "Purple Haze live"], ["Izabella (live)", "Izabella live"], ["Power of Soul (live)", "Power of Soul band of gypsys"],
+    ["Who Knows (live)", "Who Knows band of gypsys live"], ["Star Spangled Banner (Woodstock)", "Star Spangled Banner Woodstock"],
+    ["Little Wing", "Little Wing"], ["Fire (live)", "Fire live"],
+  ]),
+  ...A("Eric Clapton", [
+    ["Crossroads (Cream, live)", "Crossroads Cream live wheels of fire"], ["Have You Ever Loved a Woman (live)", "Have You Ever Loved a Woman live"],
+    ["Further On Up the Road (live)", "Further On Up the Road live"], ["Old Love (live)", "Old Love live 24 nights"],
+    ["Layla", "Layla"], ["White Room (Cream)", "Cream White Room"], ["Sunshine of Your Love (live)", "Cream Sunshine of Your Love live"],
+    ["Spoonful (Cream, live)", "Cream Spoonful live"], ["Steppin' Out (Bluesbreakers)", "Bluesbreakers Steppin Out"],
+    ["Hideaway (Bluesbreakers)", "Bluesbreakers Hideaway"], ["All Your Love (Bluesbreakers)", "Bluesbreakers All Your Love"],
+    ["Ramblin' on My Mind", "Bluesbreakers Ramblin on My Mind"], ["Double Trouble (live)", "Double Trouble live"],
+    ["Key to the Highway", "Key to the Highway derek dominos"], ["Bell Bottom Blues", "Bell Bottom Blues"],
+    ["Cocaine (live)", "Cocaine live"], ["Badge", "Badge Cream"], ["Strange Brew (Cream)", "Cream Strange Brew"],
+    ["Five Long Years (live)", "Five Long Years live"], ["Nobody Knows You When You're Down and Out", "Nobody Knows You When You're Down and Out unplugged"],
+    ["I'm So Glad (Cream, live)", "Cream I'm So Glad live"], ["Got to Get Better in a Little While (live)", "Derek and the Dominos Got to Get Better live"],
+  ]),
 ];
 
-// Skip non-song files (scale studies, lick collections, lessons, exercises).
-const NON_SONG = /\b(scale|scales|example|lick|licks|lesson|exercise|etude|study|studies|warm[- ]?up|riff|riffs|technique|theory|practice|pattern)\b/i;
-
-const TAB_RE = /\.(gp[345x]?|gtp)$/i;
-const dedupeKey = (t) => t.toLowerCase().replace(/[^a-z0-9]/g, "");
-const SMALL = new Set(["a", "an", "the", "and", "or", "of", "to", "in", "on", "at", "for", "my", "me", "you"]);
-const titleCase = (s) => s.replace(TAB_RE, "").replace(/[_]+/g, " ").replace(/^[\s\-,]+|[\s\-,]+$/g, "")
-  .replace(/\s*\(\d+\)\s*$/, "").replace(/\s+/g, " ").trim()
-  .split(" ").map((w, i) => { const l = w.toLowerCase(); return i > 0 && SMALL.has(l) ? l : l.charAt(0).toUpperCase() + l.slice(1); }).join(" ");
-
-/** Lead-track melody + key/metre/tempo from a Guitar Pro byte buffer → partial TxItem. */
-function gpToItem(bytes) {
-  let score;
-  try { score = at.importer.ScoreLoader.loadScoreFromBytes(new Uint8Array(bytes)); } catch { return null; }
-  if (!score?.tracks?.length) return null;
-  // Lead = first track that isn't bass/drums and has the most notes.
-  const cand = score.tracks
-    .filter(t => !/bass|drum|perc/i.test(t.name || ""))
-    .map(t => {
-      let n = 0; for (const bar of t.staves[0].bars) for (const v of bar.voices) for (const b of v.beats) n += b.notes.length;
-      return { t, n };
-    }).sort((a, b) => b.n - a.n)[0];
-  if (!cand || cand.n < 20) return null;
-  const staff = cand.t.staves[0];
-
-  const melody = [];
-  let noteBeats = 0, chordBeats = 0;
-  for (const bar of staff.bars) for (const v of bar.voices) for (const b of v.beats) {
-    if (b.isRest || !b.notes.length) continue;
-    noteBeats++;
-    if (b.notes.length > 1) chordBeats++;                            // a chord, not a single lead note
-    const top = b.notes.reduce((a, c) => (c.realValue > a.realValue ? c : a), b.notes[0]);
-    const midi = top.realValue;                                      // top note = lead line
-    // Blues phrasing: carry the .gp inflection so the notation shows it.
-    let artic;
-    try {
-      if (top.bendType) artic = "bend";
-      else if (top.slideOutType || top.slideInType) artic = "slide";
-      else if (top.vibrato || b.vibrato) artic = "vibrato";
-    } catch { /* */ }
-    const startBeat = b.absolutePlaybackStart / TPQ;
-    const durBeats = Math.max(0.125, b.playbackDuration / TPQ);
-    if (Number.isFinite(midi) && Number.isFinite(startBeat)) melody.push({ midi, startBeat, durBeats, ...(artic ? { artic } : {}) });
-  }
-  if (melody.length < 16) return null;
-  // SOLOS ONLY: a lead solo is a mostly single-note line.  If the chosen track
-  // is heavily chordal (>30% of sounding beats are chords) it's a rhythm/comp
-  // part or a full arrangement, not a solo — skip it.
-  if (noteBeats > 0 && chordBeats / noteBeats > 0.30) return null;
-
-  // Octave-centre the solo so it sits in the treble staff (median ≈ B4=71)
-  // instead of crowding the ledger lines above or below.  Shift by whole
-  // octaves only (preserves the line); real-recording playback is primary.
-  const sorted = melody.map(n => n.midi).sort((a, b) => a - b);
-  const median = sorted[Math.floor(sorted.length / 2)];
-  const shift = Math.round((71 - median) / 12) * 12;
-  if (shift) for (const n of melody) n.midi += shift;
-
-  const mb0 = score.masterBars?.[0];
-  const num = mb0?.timeSignatureNumerator || 4, den = mb0?.timeSignatureDenominator || 4;
-  const fifths = mb0?.keySignature ?? 0;                            // -7..7
-  const tonicPc = ((((fifths * 7) % 12) + 12) % 12);
-  const tempo = Math.round(score.tempo) || 100;
-  const beatsPerBar = (num * 4) / den;
-  const totalBeats = Math.max(...melody.map(n => n.startBeat + n.durBeats));
-  const barCount = Math.max(1, Math.round(totalBeats / beatsPerBar));
-
-  // Per-bar start time (seconds) from the .gp's own tempo map, so the recording
-  // seek follows the transcription's actual timing (incl. tempo/metre changes).
-  const barSec = [];
-  let sec = 0, t = score.tempo || tempo;
-  for (const mb of (score.masterBars || [])) {
-    barSec.push(Math.round(sec * 100) / 100);
-    const autos = mb.tempoAutomations || (mb.tempoAutomation ? [mb.tempoAutomation] : []);
-    for (const a of autos) if (a && a.value > 0) t = a.value;
-    const q = (mb.timeSignatureNumerator * 4) / (mb.timeSignatureDenominator || 4);
-    sec += q * (60 / (t || 100));
-  }
-  return { key: { tonicPc, mode: "major" }, timeSig: [num, den], tempoBpm: tempo, barCount, melody, barSec };
-}
-
+// ── YouTube best-match via the allorigins proxy (bypasses the IP throttle) ──
 function fetchSearchHtml(query) {
-  // Route through the allorigins CORS proxy: it fetches YouTube from ITS server,
-  // bypassing the bulk-search throttle that blocks this machine's IP directly.
   const yt = "https://www.youtube.com/results?search_query=" + encodeURIComponent(query);
   const url = "https://api.allorigins.win/raw?url=" + encodeURIComponent(yt);
   return new Promise((resolve) => {
@@ -130,119 +106,102 @@ function fetchSearchHtml(query) {
     req.setTimeout(25000, () => { req.destroy(); resolve(""); });
   });
 }
-
-/** Parse up to 8 {videoId, title} results from a YouTube search page. */
+function parseDur(span) {
+  // lengthText in the search JSON, e.g. "lengthText":{...,"simpleText":"4:32"}.
+  const m = /"lengthText":\{[^}]*?"simpleText":"([\d:]+)"/.exec(span);
+  if (!m) return null;
+  const p = m[1].split(":").map(Number);
+  return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + (p[1] || 0);
+}
 function parseResults(html) {
-  const out = []; const seen = new Set();
-  // Each result is "videoId":"…","thumbnail":{…},…,"title":{"runs":[{"text":"…"
-  // (videoId then, within a bounded gap, its title).
-  const re = /"videoId":"([\w-]{11})"[\s\S]{0,2500}?"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*?)"/g;
+  const out = [], seen = new Set();
+  const re = /"videoId":"([\w-]{11})"([\s\S]{0,2500}?)"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*?)"/g;
   let m;
-  while ((m = re.exec(html)) && out.length < 8) {
-    if (seen.has(m[1])) continue;
-    seen.add(m[1]);
-    const title = m[2].replace(/\\u0026/g, "&").replace(/\\"/g, '"').replace(/\\\//g, "/");
-    out.push({ videoId: m[1], title });
+  while ((m = re.exec(html)) && out.length < 12) {
+    if (seen.has(m[1])) continue; seen.add(m[1]);
+    out.push({
+      videoId: m[1],
+      title: m[3].replace(/\\u0026/g, "&").replace(/\\"/g, '"').replace(/\\\//g, "/"),
+      durSec: parseDur(m[2]),
+    });
   }
   return out;
 }
-
-const BAD = /cover|lesson|tutorial|backing track|karaoke|how to play|reaction|remix|guitar pro|tab\b|instrumental version|8d audio/i;
-// AI-generated uploads are flooding YouTube — reject them hard.
-const AI = /\b(ai|a\.i\.|suno|udio|generated|ai[- ]?cover|ai music|deepfake|riffusion)\b/i;
-/** Score a result for being the genuine `artist` recording of `title`. */
-function scoreMatch(r, artist, title) {
+const AI = /\b(ai|a\.i\.|suno|udio|generated|ai[- ]?cover|deepfake|riffusion)\b/i;
+const BAD = /cover|lesson|tutorial|backing track|karaoke|how to play|reaction|remix|guitar pro|\btab\b|8d audio/i;
+function score(r, artist, title, wantLive) {
   const t = r.title.toLowerCase();
   const surname = artist.toLowerCase().split(" ").pop();
-  const titleWords = title.toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter(w => w.length > 2);
+  const words = title.toLowerCase().replace(/\(.*?\)/g, "").replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter(w => w.length > 2);
   let s = 0;
   if (t.includes(artist.toLowerCase())) s += 3; else if (t.includes(surname)) s += 2;
-  const hit = titleWords.filter(w => t.includes(w)).length;
-  s += titleWords.length ? (hit / titleWords.length) * 4 : 0;
-  if (AI.test(t)) s -= 50;                                   // never an AI upload
+  const hit = words.filter(w => t.includes(w)).length;
+  s += words.length ? (hit / words.length) * 4 : 0;
+  if (AI.test(t)) s -= 50;
   if (BAD.test(t)) s -= 6;
-  if (/ - topic$|vevo|official audio|official video|remaster/i.test(t)) s += 3;  // authentic-source signals
-  if (/official|full album/i.test(t)) s += 1;
+  if (/ - topic$|vevo|official audio|official video|remaster/i.test(t)) s += 3;   // official/auto-generated
+  if (wantLive && /\blive\b/.test(t)) s += 2;
+  // Prefer a single-song upload over album/compilation/full-concert dumps: those
+  // wreck the solo-finder (it just grabs the densest 24s of a 40-min file).
+  const d = r.durSec;
+  if (d == null) s -= 4;                              // unknown length (livestream, etc.)
+  else if (d > (wantLive ? 1200 : 900)) s -= 20;     // >20min live / >15min studio = album/comp
+  else if (d > (wantLive ? 900 : 600)) s -= 8;       // long-ish — penalize but allow
+  else if (d < 90) s -= 6;                            // snippet/clip
+  else if (d >= 150 && d <= 480) s += 3;              // 2.5–8 min = the sweet spot
   return s;
 }
-
-/** Best-matching video id for an artist + title (or null). */
-async function fetchBestVideo(artist, title) {
+async function bestVideo(s) {
+  const wantLive = /live/i.test(s.q);
   for (let attempt = 0; attempt < 2; attempt++) {
-    const results = parseResults(await fetchSearchHtml(`${artist} ${title}`));
+    const results = parseResults(await fetchSearchHtml(s.q));
     if (results.length) {
-      let best = results[0], bestScore = -Infinity;
-      for (const r of results) { const sc = scoreMatch(r, artist, title); if (sc > bestScore) { bestScore = sc; best = r; } }
-      // Require at least a weak title match, else treat as not found.
-      return bestScore >= 2 ? best.videoId : null;
+      let best = results[0], bestS = -Infinity;
+      for (const r of results) { const sc = score(r, s.artist, s.title, wantLive); if (sc > bestS) { bestS = sc; best = r; } }
+      return bestS >= 2 ? best.videoId : null;
     }
-    await new Promise(r => setTimeout(r, 800));   // throttled — back off and retry once
+    await new Promise(r => setTimeout(r, 800));
   }
   return null;
 }
 
-/** Resolve video ids sequentially, persisting to a disk cache so re-runs
- *  accumulate (YouTube throttles bulk server-side search, so a single run only
- *  resolves a handful — re-run a few times to fill the corpus). */
-async function lookupAll(tunes) {
-  const cacheFile = join(__dirname, ".cache", "blues-vids.json");
-  let cache = {};
-  try { cache = JSON.parse(readFileSync(cacheFile, "utf8")); } catch { /* no cache yet */ }
-  const out = [];
-  for (let i = 0; i < tunes.length; i++) {
-    const key = `${tunes[i].artist}|${tunes[i].title}`;
-    if (cache[key]) { out[i] = cache[key]; continue; }
-    const v = await fetchBestVideo(tunes[i].artist, tunes[i].title);
-    if (v) { cache[key] = v; try { writeFileSync(cacheFile, JSON.stringify(cache, null, 1)); } catch { /* */ } }
-    out[i] = v;
-    await new Promise(r => setTimeout(r, 350));
-  }
-  return out;
-}
-
 export async function build() {
-  if (!existsSync(SRC1) && !existsSync(GT)) { console.log("Blues: no source archives in .cache."); return; }
-  const flat = existsSync(SRC1) ? readdirSync(SRC1).filter(f => TAB_RE.test(f)) : [];
-  const raw = [];
-  for (const a of ARTISTS) {
-    const cands = [];
-    for (const f of flat) if (a.a1.some(m => f.toLowerCase().includes(m))) cands.push({ title: titleCase(f.split(" - ").slice(1).join(" - ") || f), bytes: readFileSync(join(SRC1, f)) });
-    for (const z of a.zips) { const zp = join(GT, z); if (!existsSync(zp)) continue;
-      try { for (const [k, b] of Object.entries(unzipSync(new Uint8Array(readFileSync(zp))))) if (TAB_RE.test(k)) cands.push({ title: titleCase(k.split("/").pop()), bytes: Buffer.from(b) }); } catch { /* */ } }
-    const seen = new Set(); let kept = 0;
-    for (const c of cands) {
-      if (kept >= PER_ARTIST) break;
-      if (!c.title || seen.has(dedupeKey(c.title))) continue;
-      if (NON_SONG.test(c.title)) continue;            // skip scale studies / lick collections / lessons
-      seen.add(dedupeKey(c.title));
-      raw.push({ artist: a.name, ...c });
-      kept++;
-    }
-    if (kept === 0) console.log(`  (none found for ${a.name})`);
-  }
-
-  console.log(`Blues: parsing ${raw.length} Guitar Pro solos…`);
   const items = [];
-  for (const r of raw) {
-    const parsed = gpToItem(r.bytes);
-    if (!parsed) continue;
-    items.push({ id: `blues-${items.length}`, source: "blues", genre: "Blues", style: r.artist, title: r.title, artist: r.artist, ...parsed, youtubeQuery: `${r.artist} ${r.title}` });
-  }
-  console.log(`  parsed ${items.length} solos; matching each to its recording on YouTube…`);
-  const vids = await lookupAll(items);
-  items.forEach((it, i) => { if (vids[i]) it.vid = vids[i]; });
+  for (const s of SOLOS) {
+    const vid = await bestVideo(s);
+    if (!vid) { console.log(`  no video: ${s.artist} - ${s.title}`); continue; }
+    const mp3 = join(AUDIO_DIR, `${vid}.mp3`);
+    if (!existsSync(mp3) || statSync(mp3).size < 10000) {
+      try {
+        execFileSync(YTDLP, ["-x", "--audio-format", "mp3", "--audio-quality", "5", "--no-playlist",
+          "-o", join(AUDIO_DIR, `${vid}.%(ext)s`), `https://www.youtube.com/watch?v=${vid}`], { stdio: "ignore" });
+      } catch { console.log(`  download failed: ${s.artist} - ${s.title}`); continue; }
+    }
+    if (!existsSync(mp3)) continue;
+    // Blues is AUDIO-ONLY: the answer is the real recording, transcribed by ear.
+    // We run the analyzer only to LOCATE the solo (its busiest/loudest stretch)
+    // so the clip starts on the playing, not the intro/vocals.  No melody is
+    // emitted — a monophonic tracker on a full band mix is noise, and showing
+    // wrong notes as an "answer" is worse than showing none.
+    let tr;
+    try { tr = JSON.parse(execSync(`"${PYTHON}" "${TRANSCRIBE}" "${mp3}" ${WINDOW}`, { encoding: "utf8", maxBuffer: 1 << 26 })); }
+    catch { console.log(`  solo-find failed: ${s.artist} - ${s.title}`); continue; }
+    if (tr.error) { console.log(`  ${tr.error}: ${s.artist} - ${s.title}`); continue; }
 
-  // Log (and write) the tunes still missing a video so they can be filled in.
-  const missing = items.filter(it => !it.vid);
-  console.log(`  matched ${items.length - missing.length}/${items.length} recordings`);
-  if (missing.length) {
-    console.log(`  NO VIDEO for ${missing.length}:`);
-    for (const it of missing) console.log(`    - ${it.artist} — ${it.title}`);
-    try { writeFileSync(join(__dirname, ".cache", "blues-missing-videos.txt"), missing.map(it => `${it.artist} — ${it.title}`).join("\n")); } catch { /* */ }
+    const solostart = tr.soloStart || 0;
+    const soloLen = Math.round(((tr.soloEnd ?? solostart + WINDOW) - solostart) * 100) / 100 || WINDOW;
+    items.push({
+      id: `blues-${items.length}`, source: "blues", genre: "Blues", style: s.artist,
+      title: s.title, artist: s.artist,
+      key: { tonicPc: 0, mode: "major" },
+      timeSig: [4, 4], tempoBpm: tr.bpm || 100, barCount: 1,
+      audio: `audio/${vid}.mp3`, solostart, soloLen, vid,
+      youtubeQuery: s.q,
+    });
+    console.log(`  ${s.artist} - ${s.title} -> ${vid} | solo @${solostart}s for ${soloLen}s`);
   }
-
-  const curated = curate(items, { max: 300, minBars: 8 }).map(it => clipBars(it, 64));
-  writeSource("blues", curated);
+  console.log(`Blues: built ${items.length}/${SOLOS.length} curated solos`);
+  writeSource("blues", items);
 }
 
 if (isMain(import.meta.url)) build().then(rebuildIndex).catch(e => { console.error(e); process.exit(1); });

@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useLS } from "@/lib/storage";
 import { SOURCE_LABEL, SOURCE_GENRE, type TxSource, type TxItem, type TxIndex } from "@/lib/transcriptions/types";
 import { pickItem, pickExcerpt, fullExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
-import { playExcerpt, stopPlayback, ensureInstruments } from "@/lib/transcriptions/playback";
+import { playExcerpt, stopPlayback, ensureInstruments, playTonicDrone } from "@/lib/transcriptions/playback";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
 
 const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "blues"];
@@ -110,22 +110,20 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
 
   const clearEndTimer = () => { if (endTimer.current) { clearTimeout(endTimer.current); endTimer.current = null; } };
 
-  const playGivenExcerpt = useCallback(async (it: TxItem, ex: TxExcerpt) => {
+  const playGivenExcerpt = useCallback(async (it: TxItem, ex: TxExcerpt, full = false) => {
     const myToken = ++playToken.current;
     clearEndTimer();
     audioRef.current?.pause();
     setBusy(true);
 
-    // BLUES plays the ACTUAL recording from a LOCAL audio file (offline) —
-    // seeking to the solo's first-note onset (solostart, from audio analysis)
-    // plus this excerpt's bar time (barSec, from the .gp tempo map), and
-    // stopping at the excerpt's end.  Every other corpus plays synthesized MIDI.
+    // BLUES is audio-only: play the ACTUAL recording from a LOCAL file (offline).
+    // Play starts at the solo (solostart, from audio analysis) and runs for the
+    // clip length; "Full song" plays the whole recording.  You transcribe it by
+    // ear — there is no synthesized melody/notation.  Every other corpus plays MIDI.
     if (it.source === "blues" && it.audio) {
-      const spb = 60 / effectiveBpm(it);
-      const start = (it.solostart ?? 0) + (it.barSec?.[ex.startBar] ?? ex.startBar * ex.beatsPerBar * spb);
-      const endBar = ex.startBar + ex.bars;
-      const end = (it.solostart ?? 0) + (it.barSec?.[endBar] ?? endBar * ex.beatsPerBar * spb);
       const src = `${BASE}blues/${it.audio}`;
+      const start = full ? 0 : (it.solostart ?? 0);
+      const end = full ? Infinity : (it.solostart ?? 0) + (it.soloLen ?? 24);
       setAudioSeg({ src, start, end });
       playAudioSeg(src, start, end);
       setStatus(""); setBusy(false);
@@ -195,10 +193,17 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     if (!item) return;
     clearEndTimer();
     stopPlayback();
-    await playGivenExcerpt(item, fullExcerpt(item));   // whole tune; leaves the excerpt target intact
+    await playGivenExcerpt(item, fullExcerpt(item), true);   // whole tune; leaves the excerpt target intact
   }, [item, playGivenExcerpt]);
 
   const stop = () => { playToken.current++; clearEndTimer(); stopPlayback(); audioRef.current?.pause(); setBusy(false); setStatus(""); };
+
+  // Momentary tonic drone (root+5th+octave) so the ear can orient to the key.
+  const drone = useCallback(async () => {
+    if (!item) return;
+    await ensureAudio();
+    await playTonicDrone(item.key.tonicPc);
+  }, [item, ensureAudio]);
 
   // BPM shown in the transport: the override if set, else the current tune's tempo.
   const curTempo = excerpt?.item.tempoBpm ?? item?.tempoBpm ?? 100;
@@ -217,8 +222,14 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
       {/* Now-playing chip */}
       {excerpt && (
         <div className="text-xs text-[#666]">
-          {SOURCE_GENRE[excerpt.item.source]} · {excerpt.bars} bar{excerpt.bars > 1 ? "s" : ""} ·
-          {" "}{excerpt.item.timeSig[0]}/{excerpt.item.timeSig[1]} · {Math.round(effectiveBpm(excerpt.item))} bpm
+          {excerpt.item.source === "blues" ? (
+            <>Blues · real recording · transcribe the solo by ear</>
+          ) : (
+            <>
+              {SOURCE_GENRE[excerpt.item.source]} · {excerpt.bars} bar{excerpt.bars > 1 ? "s" : ""} ·
+              {" "}{excerpt.item.timeSig[0]}/{excerpt.item.timeSig[1]} · {Math.round(effectiveBpm(excerpt.item))} bpm
+            </>
+          )}
         </div>
       )}
 
@@ -293,18 +304,26 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-[#888] w-28">Count-in</span>
-              {[0, 1, 2].map(n => (
-                <label key={n} className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
-                  <input type="radio" name="txCountIn" checked={countInBars === n} onChange={() => setCountInBars(n)} className="accent-[#7173e6]" />
-                  {n === 0 ? "None" : `${n} bar${n > 1 ? "s" : ""}`}
-                </label>
-              ))}
-              <span className="w-px h-4 bg-[#2a2a2a]" />
-              <label className="flex items-center gap-1.5 text-xs text-[#bbb] cursor-pointer">
-                <input type="checkbox" checked={metronome} onChange={e => setMetronome(e.target.checked)} className="accent-[#7173e6]" /> Metronome
-              </label>
+              {[0, 1, 2].map(n => {
+                const on = countInBars === n;
+                return (
+                  <button key={n} onClick={() => setCountInBars(n)}
+                    className={`px-3 py-1.5 rounded-md text-xs border transition-colors ${
+                      on ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#141414] border-[#2a2a2a] text-[#666]"
+                    }`}>
+                    {n === 0 ? "None" : `${n} bar${n > 1 ? "s" : ""}`}
+                  </button>
+                );
+              })}
+              <span className="w-px h-4 bg-[#2a2a2a] mx-1" />
+              <button onClick={() => setMetronome(m => !m)}
+                className={`px-3 py-1.5 rounded-md text-xs border transition-colors ${
+                  metronome ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#141414] border-[#2a2a2a] text-[#666]"
+                }`}>
+                Metronome
+              </button>
             </div>
           </OptSection>
       </div>
@@ -334,14 +353,25 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
             </div>
           </div>
 
-          <div className="bg-[#161616] rounded-md p-2 overflow-x-auto">
-            <TranscriptionNotation excerpt={excerpt} showMelody={withMelody} showChords={withChords} showBass={withBass} />
-          </div>
-
-          <div className="text-xs text-[#777]">
-            Bars {excerpt.startBar + 1}–{excerpt.startBar + excerpt.bars} of {item.barCount} ·
-            {" "}{item.timeSig[0]}/{item.timeSig[1]} · {item.tempoBpm} bpm original
-          </div>
+          {/* Blues is audio-only — no notation (an auto-transcription of a full
+              band mix would just be noise).  The "answer" is what the recording
+              is, so you can verify your by-ear transcription against the source. */}
+          {item.source === "blues" ? (
+            <div className="text-xs text-[#999] bg-[#161616] rounded-md p-3 leading-relaxed">
+              This is the real recording — transcribe the solo by ear, then check
+              yourself against the source below.
+            </div>
+          ) : (
+            <>
+              <div className="bg-[#161616] rounded-md p-2 overflow-x-auto">
+                <TranscriptionNotation excerpt={excerpt} showMelody={withMelody} showChords={withChords} showBass={withBass} />
+              </div>
+              <div className="text-xs text-[#777]">
+                Bars {excerpt.startBar + 1}–{excerpt.startBar + excerpt.bars} of {item.barCount} ·
+                {" "}{item.timeSig[0]}/{item.timeSig[1]} · {item.tempoBpm} bpm original
+              </div>
+            </>
+          )}
 
           {/* Blues links to its recording (exact video when known). */}
           {item.source === "blues" && (
@@ -371,6 +401,15 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] disabled:opacity-40 transition-colors">
           ♫ Full song
         </button>
+        {/* Momentary tonic drone — orient the ear to the key (notated corpora;
+            blues has no established key, you take it from the recording). */}
+        {item && item.source !== "blues" && (
+          <button onClick={drone}
+            title="Briefly sound the tonic (root + 5th) to orient your ear to the key"
+            className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] transition-colors">
+            ◉ Drone
+          </button>
+        )}
         {/* Tempo — applies to Play, Replay and Full song */}
         <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#1a1a1a] border border-[#333]" title="Playback tempo for Play / Replay / Full song">
           <span className="text-[10px] text-[#888]">BPM</span>

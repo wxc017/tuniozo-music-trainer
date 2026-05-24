@@ -187,6 +187,52 @@ export function stopPlayback() {
     try { c.gain.gain.cancelScheduledValues(0); c.gain.gain.value = 0; c.osc.stop(); } catch { /* already stopped */ }
   }
   activeClicks = [];
+  stopDrone();
+}
+
+// ── Tonic drone ─────────────────────────────────────────────────────
+// A momentary tonic + fifth + octave pad so the ear can orient to the key
+// before transcribing.  Synthesised (triangle oscillators) so it's instant —
+// no sample load — and routed through the shared bus like everything else.
+let droneNodes: { osc: OscillatorNode; gain: GainNode }[] = [];
+
+export function stopDrone(): void {
+  const now = (() => { try { return audioEngine.getOutputContext().currentTime; } catch { return 0; } })();
+  for (const { osc, gain } of droneNodes) {
+    try {
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+      osc.stop(now + 0.15);
+    } catch { /* already stopped */ }
+  }
+  droneNodes = [];
+}
+
+/** Sound the tonic (root + fifth + octave) for `seconds`, to orient the ear. */
+export async function playTonicDrone(tonicPc: number, seconds = 3, volume = 1): Promise<void> {
+  const ctx = audioEngine.getOutputContext();
+  await audioEngine.resume();
+  stopDrone();
+  const dest = outputGain();
+  const t = ctx.currentTime;
+  const base = 48 + (((tonicPc % 12) + 12) % 12);     // tonic in C3..B3
+  const peak = 0.16 * volume;
+  for (const [m, lvl] of [[base, peak], [base + 7, peak * 0.7], [base + 12, peak * 0.5]] as const) {
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.value = 440 * Math.pow(2, (m - 69) / 12);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(lvl, t + 0.05);
+    g.gain.setValueAtTime(lvl, t + Math.max(0.1, seconds - 0.5));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + seconds);
+    osc.connect(g); g.connect(dest);
+    osc.start(t); osc.stop(t + seconds + 0.05);
+    const entry = { osc, gain: g };
+    droneNodes.push(entry);
+    osc.onended = () => { droneNodes = droneNodes.filter(e => e !== entry); };
+  }
 }
 
 /** Schedule and start an excerpt. Resolves once instruments are loaded
@@ -290,9 +336,12 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
     }
     const lo = Math.min(...mel.map(n => n.midi)), hi = Math.max(...mel.map(n => n.midi));
     const mid = (lo + hi) / 2, span = Math.max(6, hi - lo);
+    // Pop/Billboard leads on piano, which is naturally loud and buries the comp —
+    // start its melody a touch softer so the chords come through.
+    const melBase = ex.item.source === "cocopops" ? 80 : 88;
     mel.forEach((note, i) => {
       const contour = ((note.midi - mid) / (span / 2)) * 5;     // ±5 by register
-      const base = 88 + metricAccent(note.startBeat) + contour + swell[i] * 10;
+      const base = melBase + metricAccent(note.startBeat) + contour + swell[i] * 10;
       // Slightly detached on long notes that precede a rest, legato otherwise.
       const next = i + 1 < mel.length ? mel[i + 1].startBeat : Infinity;
       const rest = next - (note.startBeat + note.durBeats) > pulse * 0.5;
@@ -341,7 +390,9 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
             note: e.midi,
             time: base + i * step,
             duration: Math.max(guitar ? 0.25 : 0.12, dur),
-            velocity: hvel(e.velocity * 0.82 + accent + ramp),
+            // Comp must sit clearly UNDER the lead but stay audible: lift the
+            // (low, ~52) source velocity instead of attenuating it.
+            velocity: hvel(e.velocity + 22 + accent + ramp),
           }));
         });
       }
