@@ -101,7 +101,19 @@ function gpToItem(bytes) {
   const beatsPerBar = (num * 4) / den;
   const totalBeats = Math.max(...melody.map(n => n.startBeat + n.durBeats));
   const barCount = Math.max(1, Math.round(totalBeats / beatsPerBar));
-  return { key: { tonicPc, mode: "major" }, timeSig: [num, den], tempoBpm: tempo, barCount, melody };
+
+  // Per-bar start time (seconds) from the .gp's own tempo map, so the recording
+  // seek follows the transcription's actual timing (incl. tempo/metre changes).
+  const barSec = [];
+  let sec = 0, t = score.tempo || tempo;
+  for (const mb of (score.masterBars || [])) {
+    barSec.push(Math.round(sec * 100) / 100);
+    const autos = mb.tempoAutomations || (mb.tempoAutomation ? [mb.tempoAutomation] : []);
+    for (const a of autos) if (a && a.value > 0) t = a.value;
+    const q = (mb.timeSignatureNumerator * 4) / (mb.timeSignatureDenominator || 4);
+    sec += q * (60 / (t || 100));
+  }
+  return { key: { tonicPc, mode: "major" }, timeSig: [num, den], tempoBpm: tempo, barCount, melody, barSec };
 }
 
 function fetchSearchHtml(query) {
