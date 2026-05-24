@@ -40,6 +40,19 @@ function parseKern(tok) {
   return { midi, durBeats, tieStart: tok.includes("["), tieEnd: tok.includes("]") || tok.includes("_") };
 }
 
+/** Humdrum **recip duration token → beats (quarter=1). Handles dots. Returns
+ *  null for non-rhythmic tokens (".", interpretations, barlines). */
+function parseRecip(tok) {
+  if (!tok || tok === "." || /^[*!=]/.test(tok)) return null;
+  const m = /^(\d+)(\.*)/.exec(tok);
+  if (!m) return null;
+  const recip = Number(m[1]);
+  if (!recip) return null;
+  let dur = 4 / recip, add = dur / 2, d = m[2].length;
+  while (d-- > 0) { dur += add; add /= 2; }
+  return dur;
+}
+
 // Harte quality → chord-symbol suffix understood by makeChord/parseChordSymbol.
 const HARTE_Q = {
   maj: "", min: "m", dim: "dim", aug: "aug",
@@ -78,14 +91,21 @@ function deCamel(s) {
 
 function parseHum(text, fileBase) {
   const lines = text.split(/\r?\n/);
-  let colKern = -1, colHarte = -1, colTime = -1;
+  let colHarm = -1, colKern = -1, colHarte = -1, colTime = -1;
   let timeSig = [4, 4];
   const melody = [];
   const chords = [];
-  let beat = 0;
+  // The melody (**kern) and chords (**harm/**harte) have INDEPENDENT rhythms —
+  // a bar can have a whole-rest melody while the harmony changes twice.  So we
+  // track two clocks and resync both at every barline (the shared ground truth),
+  // advancing chords by the **harm recip and melody by the **kern recip.  (The
+  // old code advanced one clock by the melody only, which collapsed chord onsets
+  // onto the same beat whenever the melody rested through a chord change.)
+  let barStart = 0, chordBeat = 0, melodyBeat = 0;
   let lastChordSym = null;
   let key = { tonicPc: 0, mode: "major" };
   const tsPairs = [];        // [beat, seconds] for tempo estimation
+  const bpbNow = () => (timeSig[0] * 4) / timeSig[1];
 
   for (const line of lines) {
     if (!line) continue;
@@ -94,6 +114,7 @@ function parseHum(text, fileBase) {
       cells.forEach((c, i) => {
         if (c === "**kern") colKern = i;
         else if (c === "**harte") colHarte = i;
+        else if (c === "**harm") colHarm = i;
         else if (c === "**timestamp") colTime = i;
       });
       continue;
@@ -104,30 +125,39 @@ function parseHum(text, fileBase) {
       for (const c of cells) { const k = parseKeyCell(c); if (k) { key = k; break; } }
       continue;
     }
-    if (line.startsWith("=")) continue;           // barline
-    if (line.startsWith("!")) continue;           // comment
+    if (line.startsWith("=")) {                    // barline → next bar, resync clocks
+      barStart += bpbNow();
+      chordBeat = barStart; melodyBeat = barStart;
+      continue;
+    }
+    if (line.startsWith("!")) continue;            // comment
 
+    const hmTok = colHarm >= 0 ? cells[colHarm] : ".";    // **harm carries the chord rhythm
     const kTok = colKern >= 0 ? cells[colKern] : ".";
     const hTok = colHarte >= 0 ? cells[colHarte] : ".";
     const tTok = colTime >= 0 ? cells[colTime] : ".";
 
-    // Chord change.
+    // Chord onset at the current chord clock; advance it by the **harm recip.
     const sym = harteToSymbol(hTok);
     if (sym && sym !== lastChordSym) {
-      const c = makeChord(sym, beat, 0);
+      const c = makeChord(sym, chordBeat, 0);
       if (c) { chords.push(c); lastChordSym = sym; }
+    } else if (hTok === "N") {
+      lastChordSym = null;                          // explicit no-chord
     }
-    // Timestamp for tempo.
-    if (tTok && tTok !== "." && !isNaN(Number(tTok))) tsPairs.push([beat, Number(tTok)]);
+    if (tTok && tTok !== "." && !isNaN(Number(tTok))) tsPairs.push([chordBeat, Number(tTok)]);
+    const hmDur = parseRecip(hmTok);
+    if (hmDur != null) chordBeat += hmDur;
 
-    // Melody / time advance.
+    // Melody at its own clock.
     const k = parseKern(kTok);
     if (k) {
-      if (k.midi != null && !k.tieEnd) melody.push({ midi: k.midi, startBeat: beat, durBeats: k.durBeats });
+      if (k.midi != null && !k.tieEnd) melody.push({ midi: k.midi, startBeat: melodyBeat, durBeats: k.durBeats });
       else if (k.midi != null && k.tieEnd && melody.length) melody[melody.length - 1].durBeats += k.durBeats;
-      beat += k.durBeats;
+      melodyBeat += k.durBeats;
     }
   }
+  const beat = Math.max(barStart, chordBeat, melodyBeat);   // total length for duration-close + tempo
 
   // Close chord durations (each holds until the next change / end).
   for (let i = 0; i < chords.length; i++) {

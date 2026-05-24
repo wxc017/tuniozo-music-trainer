@@ -35,6 +35,18 @@ function normalizeItem(item: TxItem): TxItem {
   const [num, den] = item.timeSig;
   if (num === 3 && den === 2) item.timeSig = [6, 4];
   else if (num === 2 && den === 2) item.timeSig = [4, 4];
+  // Drop chords sharing an onset (always a source/ETL artifact — two chords
+  // can't sound at the same beat); keep the longer one.
+  if (item.chords?.length) {
+    const sorted = [...item.chords].sort((a, b) => a.startBeat - b.startBeat || b.durBeats - a.durBeats);
+    const out: typeof item.chords = [];
+    for (const c of sorted) {
+      const prev = out[out.length - 1];
+      if (prev && Math.abs(c.startBeat - prev.startBeat) < 1e-3) continue;
+      out.push(c);
+    }
+    item.chords = out;
+  }
   return item;
 }
 
