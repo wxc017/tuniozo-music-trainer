@@ -123,9 +123,14 @@ export async function pickItem(filter: TxFilter): Promise<TxItem | null> {
   const styleSet = filter.styles?.length ? new Set(filter.styles) : null;
   const pool = index.items.filter(e =>
     filter.sources.includes(e.source) &&
-    e.barCount >= filter.minBars &&
-    e.hasMelody &&                                  // this is a melody-transcription tool
-    (!filter.requireChords || e.hasChords) &&
+    // Blues is an audio-only "transcribe the real solo by ear" corpus: it has no
+    // melody/notation and is a single fixed clip, so it's exempt from the
+    // melody/bar-count/chord requirements that gate the notated corpora.
+    (e.source === "blues"
+      ? true
+      : (e.barCount >= filter.minBars &&
+         e.hasMelody &&
+         (!filter.requireChords || e.hasChords))) &&
     (!styleSet || (e.style != null && styleSet.has(e.style)))
   );
   if (!pool.length) return null;
@@ -160,6 +165,10 @@ export type TxChordRebased = {
 /** Slice a random `bars`-bar window out of an item.  Notes/chords are
  *  clipped to the window edges and rebased so the window begins at beat 0. */
 export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
+  // Blues: audio-only, a single fixed clip — no bars/melody/chords to slice.
+  if (item.source === "blues") {
+    return { item, startBar: 0, bars: 1, beatsPerBar: 4, windowBeats: 4, melody: [], chords: [] };
+  }
   const bpb = beatsPerBar(item.timeSig);
   const usableBars = Math.min(bars, item.barCount);
   const maxStartBar = Math.max(0, item.barCount - usableBars);
@@ -206,7 +215,8 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
 
   // Melody-only tunes (folk/trad): infer a fitting diatonic progression so
   // the answer shows chord symbols and playback can comp the accompaniment.
-  if (!chords.length && melody.length && item.source !== "blues") {
+  // (Blues returned early above — it's audio-only, never harmonized.)
+  if (!chords.length && melody.length) {
     for (const c of harmonizeMelody(melody, item.key, bpb, usableBars)) {
       chords.push({ sym: c.sym, rootPc: c.rootPc, intervals: c.intervals, bassPc: c.bassPc, startBeat: c.startBeat, durBeats: c.durBeats });
     }
@@ -218,11 +228,14 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
 /** A whole-item excerpt (the full tune from bar 1), for "play the full
  *  song".  Same shape as pickExcerpt, with melody-only tunes harmonized. */
 export function fullExcerpt(item: TxItem): TxExcerpt {
+  if (item.source === "blues") {
+    return { item, startBar: 0, bars: 1, beatsPerBar: 4, windowBeats: 4, melody: [], chords: [] };
+  }
   const bpb = beatsPerBar(item.timeSig);
   const rawMelody: TxNoteRebased[] = (item.melody ?? []).map(n => ({ midi: n.midi, startBeat: n.startBeat, durBeats: n.durBeats, artic: n.artic }));
   const melody = quantizeMelody(rawMelody, melodyGridFor(item.source), item.barCount * bpb);
   const chords: TxChordRebased[] = (item.chords ?? []).map(c => ({ ...c }));
-  if (!chords.length && melody.length && item.source !== "blues") {
+  if (!chords.length && melody.length) {
     for (const c of harmonizeMelody(melody, item.key, bpb, item.barCount)) {
       chords.push({ sym: c.sym, rootPc: c.rootPc, intervals: c.intervals, bassPc: c.bassPc, startBeat: c.startBeat, durBeats: c.durBeats });
     }

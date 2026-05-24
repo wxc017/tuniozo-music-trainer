@@ -188,6 +188,13 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     // Felt beat (quarter-beats): quarter in simple metres, dotted-quarter in
     // compound. Notes are split + tied at these so every beat stays visible.
     const beatUnit = ts[1] === 8 && ts[0] % 3 === 0 ? 1.5 : 1;
+    // Tie-split granularity: notes are split (and tied) at these boundaries.
+    // Splitting at EVERY beat over-tied longer notes (a 2.5-beat note became
+    // quarter-quarter-eighth instead of half-tied-eighth), so split only at the
+    // bar's strong MIDPOINT for even simple metres, and not internally at all
+    // for compound/odd metres (decomposeDuration then picks the longest value,
+    // e.g. a dotted-half fills a 3/4 bar as one note).  Beaming still uses beatUnit.
+    const splitUnit = beatUnit === 1 && bars >= 0 && Math.abs(bpb / 2 - Math.round(bpb / 2)) < 1e-9 && bpb >= 4 ? bpb / 2 : 0;
     // Key signature from the notes themselves (robust to mis-tagged modes in
     // the source data), with the stated key as a tie-breaker / fallback.
     const fitPcs = [
@@ -200,6 +207,8 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const hasChordData = excerpt.chords.length > 0;
     const showChordSymbols = showChords && hasChordData;
     const showBassStaff = showBass && hasChordData;
+    // Single-staff (lead-sheet) rows are shorter — no bass staff below the melody.
+    const rowH = showBassStaff ? ROW_H : STAVE_GAP + ROW_GAP;
 
     // ── Per-bar cells ───────────────────────────────────────────────
     const melodyEvents: TimedEvent<{ midi: number; artic?: string }>[] = showMelody
@@ -256,15 +265,16 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const built: BuiltBar[] = [];
     for (let b = 0; b < bars; b++) {
       const melody = showMelody
-        ? cellsToVoice(splitCellsAtBeats(layoutBarCells(melodyByBar[b], bpb, melodyGridFor(excerpt.item.source)), beatUnit), (d: { midi: number; artic?: string }) => [midiToVexKey(d.midi, flat)], ["b/4"], carryMelody, "treble", 0, (d) => d.artic)
+        ? cellsToVoice(splitCellsAtBeats(layoutBarCells(melodyByBar[b], bpb, melodyGridFor(excerpt.item.source)), splitUnit), (d: { midi: number; artic?: string }) => [midiToVexKey(d.midi, flat)], ["b/4"], carryMelody, "treble", 0, (d) => d.artic)
         : null;
-      // Chord voicing (Chords on): stacked stabs on the bass staff, stems up.
-      const chordV = showChordSymbols && chordVoicingByBar[b].length
-        ? cellsToVoice(splitCellsAtBeats(layoutBarCells(chordVoicingByBar[b], bpb, 0.5), beatUnit), (ms: number[]) => ms.map(m => midiToVexKey(m, flat)), ["d/3"], carryChord, "bass", 1)
-        : null;
+      // LEAD-SHEET: chords are shown as SYMBOLS above the treble (not notated as
+      // comp stabs on a lower staff — that produced rests-everywhere clutter and
+      // a beat-1 misalignment).  The comp is still HEARD in playback.
+      const chordV = null as BuiltVoice | null;
+      void carryChord;
       // Bass line (Bass on): single notes on the bass staff, stems down.
       const bassV = showBassStaff
-        ? cellsToVoice(splitCellsAtBeats(layoutBarCells(bassLineByBar[b], bpb, 0.5), beatUnit), (m: number) => [midiToVexKey(m, flat)], ["d/3"], carryBass, "bass", -1)
+        ? cellsToVoice(splitCellsAtBeats(layoutBarCells(bassLineByBar[b], bpb, 0.5), splitUnit), (m: number) => [midiToVexKey(m, flat)], ["d/3"], carryBass, "bass", -1)
         : null;
       // Width is driven by the number of DISTINCT onsets across all voices,
       // because the formatter creates one column per shared tick position —
@@ -286,7 +296,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
 
     const rowWidths = rows.map(r => r.length * uniformW + FIRST_BAR_EXTRA);
     const totalW = LEFT * 2 + Math.max(uniformW + FIRST_BAR_EXTRA, ...rowWidths);
-    const totalH = TOP + rows.length * ROW_H + BOTTOM_PAD;
+    const totalH = TOP + rows.length * rowH + BOTTOM_PAD;
 
     const renderer = new Renderer(el, Renderer.Backends.SVG);
     renderer.resize(totalW, totalH);
@@ -301,7 +311,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     try {
       for (let r = 0; r < rows.length; r++) {
         const rowBars = rows[r];
-        const trebleY = TOP + r * ROW_H;
+        const trebleY = TOP + r * rowH;
         const bassY = trebleY + STAVE_GAP;
         let x = LEFT;
         let firstTreble: Stave | null = null, firstBass: Stave | null = null;
@@ -312,7 +322,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           const isFirst = mi === 0;
           const w = uniformW + (isFirst ? FIRST_BAR_EXTRA : 0);
           const treble = new Stave(x, trebleY, w);
-          const bass = (showChordSymbols || showBassStaff) ? new Stave(x, bassY, w) : null;
+          const bass = showBassStaff ? new Stave(x, bassY, w) : null;
           if (isFirst) {
             treble.addClef("treble").addKeySignature(keySpec);
             bass?.addClef("bass").addKeySignature(keySpec);
@@ -337,17 +347,17 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           const allVoices = [trebleVoice, chordVoice, bassVoice].filter(Boolean) as Voice[];
           for (const v of allVoices) { try { Accidental.applyAccidentals([v], keySpec); } catch { /* */ } }
 
-          // Chord symbols above the melody (treble), else the chord/bass voice.
+          // Chord symbols: collected here, DRAWN after formatting (below) as free
+          // text at a fixed height ABOVE the treble stave — lead-sheet style.
+          // (Attaching them to noteheads with VerticalJustify.TOP dragged the
+          // symbol down onto low notes, e.g. an "F" sitting on the staff.)
           const labelHost = mv ?? cv ?? bv;
+          const labelDraws: { idx: number; sym: string }[] = [];
           if (labelHost) {
             for (const lbl of built[b].labels) {
               let idx = labelHost.beatStarts.findIndex(bs => bs >= lbl.beatInBar - 1e-6);
               if (idx < 0) idx = labelHost.tickables.length - 1;
-              const a = new Annotation(lbl.sym);
-              a.setVerticalJustification(Annotation.VerticalJustify.TOP);
-              a.setJustification(Annotation.HorizontalJustify.LEFT);
-              a.setFont("Arial", 11, "bold");
-              try { labelHost.tickables[idx]?.addModifier(a, 0); } catch { /* */ }
+              labelDraws.push({ idx, sym: lbl.sym });
             }
           }
 
@@ -377,6 +387,24 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           if (chordVoice && bass) chordVoice.draw(ctx, bass);
           if (bassVoice && bass) bassVoice.draw(ctx, bass);
           beams.forEach(beam => { try { beam.setStyle(NOTE_STYLE); } catch { /* */ } beam.setContext(ctx).draw(); });
+
+          // Chord symbols: free text ABOVE the treble stave at each chord's onset
+          // x (lead-sheet style) — never colliding with low noteheads.
+          if (labelHost && labelDraws.length) {
+            const symY = (treble as unknown as { getYForLine(n: number): number }).getYForLine(0) - 12;
+            ctx.save();
+            (ctx as unknown as { setFont(f: string, s: number, w?: string): void }).setFont("Arial", 12, "bold");
+            ctx.setFillStyle("#cdd6ff");
+            for (const d of labelDraws) {
+              const tk = labelHost.tickables[d.idx];
+              let lx = noteStartX;
+              try { lx = (tk as unknown as { getAbsoluteX(): number }).getAbsoluteX(); } catch { /* */ }
+              try { ctx.fillText(d.sym, lx, symY); } catch { /* */ }
+            }
+            ctx.restore();
+            ctx.setStrokeStyle(INK); ctx.setFillStyle(INK);
+          }
+
           const drawTie = (a: StaveNote | null, z: StaveNote | null) => {
             try {
               // firstIndexes/lastIndexes pin the tie to the actual noteheads,
