@@ -388,7 +388,9 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
               tie.setContext(ctx).draw();
             } catch { /* */ }
           };
-          for (const v of [mv, cv, bv]) {
+          // Only the MELODY shows ties.  Comp/bass are accompaniment stabs; the
+          // beat-split ties on them were just confusing clutter.
+          for (const v of [mv]) {
             if (!v) continue;
             for (const [a, z] of v.ties) drawTie(a, z);
             if (v.carryTie) {

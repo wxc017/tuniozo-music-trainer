@@ -13,7 +13,7 @@ import { pickItem, pickExcerpt, fullExcerpt, loadIndex, stylesForSources, type T
 import { playExcerpt, stopPlayback, ensureInstruments } from "@/lib/transcriptions/playback";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
 import { lookupBestVideo } from "@/lib/transcriptions/youtube";
-import { playFrom, seekAndPlay, pause as ytPause } from "@/lib/transcriptions/ytPlayer";
+import { playFrom, pause as ytPause } from "@/lib/transcriptions/ytPlayer";
 
 const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "blues"];
 
@@ -79,7 +79,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const [status, setStatus] = useState<string>("");
   // The real recording for the current excerpt (Play defaults to the actual
   // recording, not MIDI).  `start` lets Replay re-seek to the excerpt's spot.
-  const [ytSeg, setYtSeg] = useState<{ vid: string; start: number } | null>(null);
+  const [ytSeg, setYtSeg] = useState<{ vid: string; start: number; end: number } | null>(null);
   const playToken = useRef(0);
   const endTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -117,8 +117,9 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
       // Seek = where the transcription begins in the recording (solostart, e.g.
       // the Weimar solo onset) + this excerpt's offset within the transcription.
       const start = (it.solostart ?? 0) + ex.startBar * ex.beatsPerBar * spb;
-      setYtSeg({ vid, start });
-      await playFrom("tx-yt-player", vid, start);   // IFrame API → reliable autostart
+      const end = start + ex.windowBeats * spb;       // stop at the excerpt's end
+      setYtSeg({ vid, start, end });
+      await playFrom("tx-yt-player", vid, start, end);   // IFrame API → autostart, stops at end
       if (myToken !== playToken.current) return;
       setStatus("");
       setBusy(false);
@@ -176,8 +177,8 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
 
   const replay = useCallback(async () => {
     clearEndTimer();
-    // Real recording: just re-seek to this excerpt's spot (no re-lookup).
-    if (ytSeg) { seekAndPlay(ytSeg.start); return; }
+    // Real recording: replay the same excerpt segment (re-seek + stop at end).
+    if (ytSeg) { await playFrom("tx-yt-player", ytSeg.vid, ytSeg.start, ytSeg.end); return; }
     stopPlayback();
     if (item && excerpt) await playGivenExcerpt(item, excerpt);
     else await playNew();

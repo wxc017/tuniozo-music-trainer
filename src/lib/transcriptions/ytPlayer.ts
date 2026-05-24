@@ -41,15 +41,13 @@ async function ensurePlayer(elementId: string): Promise<any> {
   return player;
 }
 
-/** Load `vid` and start playing from `startSec` (autoplays via the API). */
-export async function playFrom(elementId: string, vid: string, startSec: number): Promise<void> {
+/** Load `vid` and play the [startSec, endSec] segment (autoplays, stops at end). */
+export async function playFrom(elementId: string, vid: string, startSec: number, endSec?: number): Promise<void> {
   const p = await ensurePlayer(elementId);
-  try { p.loadVideoById({ videoId: vid, startSeconds: Math.max(0, Math.round(startSec)) }); } catch { /* */ }
-}
-
-/** Re-seek the current video to `startSec` and play (for Replay). */
-export function seekAndPlay(startSec: number): void {
-  try { player?.seekTo(Math.max(0, Math.round(startSec)), true); player?.playVideo(); } catch { /* */ }
+  const start = Math.max(0, Math.round(startSec));
+  const opts: { videoId: string; startSeconds: number; endSeconds?: number } = { videoId: vid, startSeconds: start };
+  if (endSec != null && endSec > start) opts.endSeconds = Math.round(endSec);
+  try { p.loadVideoById(opts); } catch { /* */ }
 }
 
 export function pause(): void {

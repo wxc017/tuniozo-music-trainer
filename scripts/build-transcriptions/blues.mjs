@@ -66,10 +66,18 @@ function gpToItem(bytes) {
     if (b.isRest || !b.notes.length) continue;
     noteBeats++;
     if (b.notes.length > 1) chordBeats++;                            // a chord, not a single lead note
-    const midi = Math.max(...b.notes.map(n => n.realValue));         // top note = lead line
+    const top = b.notes.reduce((a, c) => (c.realValue > a.realValue ? c : a), b.notes[0]);
+    const midi = top.realValue;                                      // top note = lead line
+    // Blues phrasing: carry the .gp inflection so the notation shows it.
+    let artic;
+    try {
+      if (top.bendType) artic = "bend";
+      else if (top.slideOutType || top.slideInType) artic = "slide";
+      else if (top.vibrato || b.vibrato) artic = "vibrato";
+    } catch { /* */ }
     const startBeat = b.absolutePlaybackStart / TPQ;
     const durBeats = Math.max(0.125, b.playbackDuration / TPQ);
-    if (Number.isFinite(midi) && Number.isFinite(startBeat)) melody.push({ midi, startBeat, durBeats });
+    if (Number.isFinite(midi) && Number.isFinite(startBeat)) melody.push({ midi, startBeat, durBeats, ...(artic ? { artic } : {}) });
   }
   if (melody.length < 16) return null;
   // SOLOS ONLY: a lead solo is a mostly single-note line.  If the chosen track
