@@ -12,7 +12,8 @@ import { SOURCE_LABEL, SOURCE_GENRE, type TxSource, type TxItem, type TxIndex } 
 import { pickItem, pickExcerpt, fullExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
 import { playExcerpt, stopPlayback, ensureInstruments } from "@/lib/transcriptions/playback";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
-import { lookupVideoId, embedUrl } from "@/lib/transcriptions/youtube";
+import { lookupVideoId } from "@/lib/transcriptions/youtube";
+import { playFrom, seekAndPlay, pause as ytPause } from "@/lib/transcriptions/ytPlayer";
 
 const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "blues"];
 
@@ -76,9 +77,9 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const [showAnswer, setShowAnswer] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string>("");
-  // The real recording being played (Play defaults to the actual recording, not
-  // MIDI).  `key` forces the iframe to remount (restart) on Replay.
-  const [ytSeg, setYtSeg] = useState<{ vid: string; start: number; end: number; key: number } | null>(null);
+  // The real recording for the current excerpt (Play defaults to the actual
+  // recording, not MIDI).  `start` lets Replay re-seek to the excerpt's spot.
+  const [ytSeg, setYtSeg] = useState<{ vid: string; start: number } | null>(null);
   const playToken = useRef(0);
   const endTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -114,8 +115,9 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     if (vid) {
       const spb = 60 / effectiveBpm(it);
       const start = ex.startBar * ex.beatsPerBar * spb;
-      const end = start + ex.windowBeats * spb;
-      setYtSeg({ vid, start, end, key: myToken });
+      setYtSeg({ vid, start });
+      await playFrom("tx-yt-player", vid, start);   // IFrame API → reliable autostart
+      if (myToken !== playToken.current) return;
       setStatus("");
       setBusy(false);
       return;
@@ -172,10 +174,12 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
 
   const replay = useCallback(async () => {
     clearEndTimer();
+    // Real recording: just re-seek to this excerpt's spot (no re-lookup).
+    if (ytSeg) { seekAndPlay(ytSeg.start); return; }
     stopPlayback();
     if (item && excerpt) await playGivenExcerpt(item, excerpt);
     else await playNew();
-  }, [item, excerpt, playGivenExcerpt, playNew]);
+  }, [ytSeg, item, excerpt, playGivenExcerpt, playNew]);
 
   const playFull = useCallback(async () => {
     if (!item) return;
@@ -184,7 +188,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     await playGivenExcerpt(item, fullExcerpt(item));   // whole tune; leaves the excerpt target intact
   }, [item, playGivenExcerpt]);
 
-  const stop = () => { playToken.current++; clearEndTimer(); stopPlayback(); setYtSeg(null); setBusy(false); setStatus(""); };
+  const stop = () => { playToken.current++; clearEndTimer(); stopPlayback(); ytPause(); setBusy(false); setStatus(""); };
 
   // BPM shown in the transport: the override if set, else the current tune's tempo.
   const curTempo = excerpt?.item.tempoBpm ?? item?.tempoBpm ?? 100;
@@ -208,22 +212,6 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
         </div>
       )}
 
-      {/* The real recording, seeked to ≈ the excerpt's spot (Play uses this). */}
-      {ytSeg && (
-        <div>
-          <iframe
-            key={ytSeg.key}
-            className="aspect-video w-full max-w-lg rounded"
-            src={embedUrl(ytSeg.vid, ytSeg.start, ytSeg.end)}
-            title="Real recording"
-            allow="autoplay; encrypted-media; picture-in-picture"
-            allowFullScreen
-          />
-          <div className="text-[10px] text-[#666] mt-0.5">
-            Actual recording, seeked to ≈ this excerpt — scrub if it has an intro or extra choruses.
-          </div>
-        </div>
-      )}
 
       {/* Options — always visible, collapsible accent sections */}
       <div className="space-y-2">
@@ -382,6 +370,16 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           className="px-4 py-2 rounded-md text-sm font-medium border border-[#333] bg-[#1a1a1a] text-[#bbb] hover:border-[#555] transition-colors disabled:opacity-40">
           Show Answer
         </button>
+      </div>
+
+      {/* The actual recording — BELOW the transport.  The inner #tx-yt-player
+          stays mounted so the YouTube IFrame API can bind to it; the wrapper
+          just toggles visibility once a recording is playing. */}
+      <div className={ytSeg ? "max-w-xl" : "hidden"}>
+        <div id="tx-yt-player" />
+        <div className="text-[10px] text-[#666] mt-0.5">
+          Actual recording, seeked to ≈ this excerpt — scrub if it has an intro or extra choruses.
+        </div>
       </div>
     </div>
   );
