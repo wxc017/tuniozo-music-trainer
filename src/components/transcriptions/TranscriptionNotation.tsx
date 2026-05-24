@@ -15,7 +15,7 @@ import {
   Annotation, StaveConnector, StaveTie, Barline, type StaveNoteStruct,
 } from "vexflow";
 import type { TxExcerpt } from "@/lib/transcriptions/loader";
-import { compEvents, compGenreFor } from "@/lib/transcriptions/accompaniment";
+import { compEvents, compGenreFor, chordVoicings } from "@/lib/transcriptions/accompaniment";
 import {
   decomposeDuration, segmentByBar, layoutBarCells, splitCellsAtBeats, keySpecFor, keyIsFlat, midiToVexKey, melodyGridFor,
   type TimedEvent, type BarCell,
@@ -217,22 +217,18 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
       : [];
     const melodyByBar = segmentByBar(melodyEvents, bars, bpb);
     // Lower staff (when Chords on): the harmony as CLEAN block chords — one
-    // sustained stack per chord change — so you SEE the chords you hear without
-    // the rests-everywhere clutter of notating the syncopated comp rhythm.
-    const voiceBlock = (rootPc: number, intervals: number[]): number[] => {
-      const reduced = [...new Set(intervals.map(i => ((i % 12) + 12) % 12))].sort((a, b) => a - b).slice(0, 4);
-      const root = 48 + (((rootPc % 12) + 12) % 12);     // C3..B3
-      let chord = reduced.map(i => root + i);
-      while (Math.max(...chord) > 60 && chord.length) chord = chord.map(n => n - 12);
-      return chord;
-    };
+    // sustained stack per chord change.  Voiced with the SAME voice-led function
+    // the comp plays (chordVoicings), so the notated pitches match what's heard.
+    const compGenre = compGenreFor(excerpt.item.source, excerpt.item.style);
+    const voicings = showChordSymbols ? chordVoicings(excerpt.chords, compGenre) : [];
     const chordVoicingByBar = segmentByBar<number[]>(
       showChordSymbols
-        ? excerpt.chords.map(c => ({ startBeat: c.startBeat, durBeats: c.durBeats, data: voiceBlock(c.rootPc, c.intervals) }))
+        ? excerpt.chords.map((c, i) => ({ startBeat: c.startBeat, durBeats: c.durBeats, data: voicings[i] ?? [] }))
+            .filter(e => e.data.length)
         : [], bars, bpb);
     // Bass line (when Bass on) still comes from the played walking/root comp.
     const comp = showBassStaff
-      ? compEvents(excerpt.chords, compGenreFor(excerpt.item.source, excerpt.item.style), bpb, ts, bars * bpb)
+      ? compEvents(excerpt.chords, compGenre, bpb, ts, bars * bpb)
       : { chord: [], bass: [] };
     const bassLineByBar = segmentByBar<number>(
       showBassStaff ? comp.bass.map(e => ({ startBeat: e.startBeat, durBeats: e.durBeats, data: e.midi + 12 })) : [], bars, bpb);

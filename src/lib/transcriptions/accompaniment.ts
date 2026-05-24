@@ -37,6 +37,17 @@ function voicedChord(sym: string, rootPc: number, intervals: number[], prev: str
   return { midis: voiceChord(rootPc, intervals), voicing: undefined };
 }
 
+/** The voiced pitches (MIDI) of each chord, voice-led exactly as compEvents
+ *  plays them — so the notated chord voicing matches what's heard. */
+export function chordVoicings(chords: { sym: string; rootPc: number; intervals: number[] }[], genre: CompGenre): number[][] {
+  let prevV: string[] | undefined;
+  return chords.map(c => {
+    const r = voicedChord(c.sym, c.rootPc, c.intervals, prevV, genre);
+    if (r.voicing) prevV = r.voicing;
+    return r.midis;
+  });
+}
+
 // ── Diatonic vocabulary (self-contained, 12-EDO) ────────────────────
 interface Cand { sym: string; rootPc: number; tones: number[]; intervals: number[]; degree: number }
 
