@@ -200,27 +200,35 @@ export async function build() {
     for (const it of JSON.parse(readFileSync(prevPath, "utf8"))) prev.set(`${it.artist}|||${it.title}`, it);
   } catch { /* first run */ }
 
+  // FORCE_TRANSCRIBE=1 re-runs the analyzer on already-downloaded files (reuses
+  // the resolved video + mp3, recomputes the clip location) — used when the
+  // clip-selection logic changes, without re-scraping/re-downloading.
+  const force = !!process.env.FORCE_TRANSCRIBE;
+
   for (const s of SOLOS) {
     const cached = prev.get(`${s.artist}|||${s.title}`);
-    if (cached?.audio && existsSync(join(AUDIO_DIR, cached.audio.replace(/^audio\//, "")))) {
-      items.push({ ...cached, id: `blues-${items.length}` });
-      continue;
+    const cachedMp3 = cached?.audio ? join(AUDIO_DIR, cached.audio.replace(/^audio\//, "")) : null;
+    let vid;
+    if (cachedMp3 && existsSync(cachedMp3)) {
+      if (!force) { items.push({ ...cached, id: `blues-${items.length}` }); continue; }
+      vid = cached.vid;                          // reuse download; re-transcribe below
+    } else {
+      vid = await bestVideo(s);
+      if (!vid) { console.log(`  no video: ${s.artist} - ${s.title}`); continue; }
+      const dl = join(AUDIO_DIR, `${vid}.mp3`);
+      if (!existsSync(dl) || statSync(dl).size < 10000) {
+        try {
+          execFileSync(YTDLP, ["-x", "--audio-format", "mp3", "--audio-quality", "5", "--no-playlist",
+            "-o", join(AUDIO_DIR, `${vid}.%(ext)s`), `https://www.youtube.com/watch?v=${vid}`], { stdio: "ignore" });
+        } catch { console.log(`  download failed: ${s.artist} - ${s.title}`); continue; }
+      }
     }
-    const vid = await bestVideo(s);
-    if (!vid) { console.log(`  no video: ${s.artist} - ${s.title}`); continue; }
     const mp3 = join(AUDIO_DIR, `${vid}.mp3`);
-    if (!existsSync(mp3) || statSync(mp3).size < 10000) {
-      try {
-        execFileSync(YTDLP, ["-x", "--audio-format", "mp3", "--audio-quality", "5", "--no-playlist",
-          "-o", join(AUDIO_DIR, `${vid}.%(ext)s`), `https://www.youtube.com/watch?v=${vid}`], { stdio: "ignore" });
-      } catch { console.log(`  download failed: ${s.artist} - ${s.title}`); continue; }
-    }
     if (!existsSync(mp3)) continue;
     // Blues is AUDIO-ONLY: the answer is the real recording, transcribed by ear.
-    // We run the analyzer only to LOCATE the solo (its busiest/loudest stretch)
-    // so the clip starts on the playing, not the intro/vocals.  No melody is
-    // emitted — a monophonic tracker on a full band mix is noise, and showing
-    // wrong notes as an "answer" is worse than showing none.
+    // The analyzer only LOCATES a guitar-active section for the clip start (not
+    // restricted to the climactic solo).  No melody is emitted — a monophonic
+    // tracker on a full band mix is noise, and showing wrong notes is worse.
     let tr;
     try { tr = JSON.parse(execSync(`"${PYTHON}" "${TRANSCRIBE}" "${mp3}" ${WINDOW}`, { encoding: "utf8", maxBuffer: 1 << 26 })); }
     catch { console.log(`  solo-find failed: ${s.artist} - ${s.title}`); continue; }
@@ -236,7 +244,7 @@ export async function build() {
       audio: `audio/${vid}.mp3`, solostart, soloLen, vid,
       youtubeQuery: s.q,
     });
-    console.log(`  ${s.artist} - ${s.title} -> ${vid} | solo @${solostart}s for ${soloLen}s`);
+    console.log(`  ${s.artist} - ${s.title} -> ${vid} | clip @${solostart}s for ${soloLen}s`);
   }
   console.log(`Blues: built ${items.length}/${SOLOS.length} curated solos`);
   writeSource("blues", items);

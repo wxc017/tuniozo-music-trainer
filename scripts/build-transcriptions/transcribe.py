@@ -50,11 +50,22 @@ def main():
     f0, rms = analyze(x)
     t = np.arange(len(f0)) * HOP / SR
 
-    # Solo = the `window`-sec stretch with the most pitched, energetic activity.
+    # Pick a `window`-sec stretch where the guitar is actually PLAYING — but NOT
+    # restricted to the single busiest "solo" peak.  We require modest activity
+    # (~>=2 notes/measure, approximated by the fraction of pitched+energetic
+    # frames) and take the EARLIEST window that clears that bar, so clips come
+    # from representative playing sections, not only the climactic solo.  Falls
+    # back to the most-active window if nothing clears the bar.
     voiced = (f0 > 0) & (rms > rms.max() * 0.15)
     fpw = max(1, int(window * SR / HOP))
     score = np.convolve(voiced.astype(np.float32), np.ones(fpw), "valid")
-    start_i = int(np.argmax(score)) if len(score) else 0
+    if len(score):
+        intro = int(0.08 * len(score))                  # skip a short intro
+        gate = 0.22 * fpw                                # ~>=2 notes/measure of activity
+        qualifying = np.where(score[intro:] >= gate)[0]
+        start_i = intro + int(qualifying[0]) if len(qualifying) else int(np.argmax(score))
+    else:
+        start_i = 0
     solo_start = round(float(t[start_i]), 2)
     solo_end = round(float(solo_start + window), 2)
 
