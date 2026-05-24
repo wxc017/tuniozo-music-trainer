@@ -45,6 +45,10 @@ export interface TxNote {
   midi: number;
   startBeat: number;
   durBeats: number;
+  /** Played inflection, when the source annotates it (e.g. Weimar Jazz DB
+   *  f0_mod): "bend" | "slide" | "vibrato" | "fall".  Shown as a small mark
+   *  above the note in the notation. */
+  artic?: string;
 }
 
 /** A chord change. Held until the next chord's `startBeat` (or item end).

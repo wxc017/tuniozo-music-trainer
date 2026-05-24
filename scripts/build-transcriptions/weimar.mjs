@@ -98,8 +98,11 @@ export async function build() {
   console.log(`  ${solos.length} solos; building up to ${LIMIT}…`);
 
   const melStmt = db.prepare(
-    `SELECT pitch, bar, beat, tatum, division, duration, beatdur FROM melody WHERE melid = ? ORDER BY eventid`
+    `SELECT pitch, bar, beat, tatum, division, duration, beatdur, f0_mod FROM melody WHERE melid = ? ORDER BY eventid`
   );
+  // WJazzD f0_mod annotates the played inflection per note.
+  const articOf = (m) => { m = String(m || "").toLowerCase();
+    return /bend/.test(m) ? "bend" : /slide/.test(m) ? "slide" : /vibrato/.test(m) ? "vibrato" : /fall/.test(m) ? "fall" : undefined; };
   const beatStmt = db.prepare(`SELECT bar, beat, chord FROM beats WHERE melid = ? ORDER BY beatid`);
 
   const items = [];
@@ -119,7 +122,8 @@ export async function build() {
       const frac = r.tatum != null && div > 1 ? (r.tatum - 1) / div : 0;
       const startBeat = (r.bar * num + (r.beat - 1) + frac) * q;
       const durBeats = r.beatdur > 0 ? Math.max(0.125, (r.duration / r.beatdur) * q) : 0.5;
-      rawMel.push({ midi: r.pitch, startBeat, durBeats });
+      const artic = articOf(r.f0_mod);
+      rawMel.push({ midi: r.pitch, startBeat, durBeats, ...(artic ? { artic } : {}) });
     }
     if (rawMel.length < 8) continue;
 
