@@ -27,8 +27,8 @@ const STAVE_GAP = 90;          // treble-top → bass-top within a row
 // descending notes are never clipped.
 const ROW_H = STAVE_GAP + ROW_GAP + 72;
 const FIRST_BAR_EXTRA = 90;    // clef + key + time-sig overhead on a row's first bar
-const PER_TICKABLE = 42;       // horizontal px budget per distinct onset
-const MIN_BAR_W = 130;
+const PER_TICKABLE = 52;       // horizontal px budget per distinct onset
+const MIN_BAR_W = 220;         // keep bars from squishing together when sparse
 const MAX_ROW_W = 1180;
 const LEFT = 10;
 const TOP = 70;                // room above the first row for chord symbols + high notes/ledger lines
