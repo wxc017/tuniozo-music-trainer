@@ -12,7 +12,7 @@ import { SOURCE_LABEL, SOURCE_GENRE, type TxSource, type TxItem, type TxIndex } 
 import { pickItem, pickExcerpt, fullExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
 import { playExcerpt, stopPlayback, ensureInstruments } from "@/lib/transcriptions/playback";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
-import RealRecording from "../transcriptions/RealRecording";
+import { lookupVideoId, embedUrl } from "@/lib/transcriptions/youtube";
 
 const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "blues"];
 
@@ -76,6 +76,9 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const [showAnswer, setShowAnswer] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string>("");
+  // The real recording being played (Play defaults to the actual recording, not
+  // MIDI).  `key` forces the iframe to remount (restart) on Replay.
+  const [ytSeg, setYtSeg] = useState<{ vid: string; start: number; end: number; key: number } | null>(null);
   const playToken = useRef(0);
   const endTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -99,8 +102,26 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const playGivenExcerpt = useCallback(async (it: TxItem, ex: TxExcerpt) => {
     const myToken = ++playToken.current;
     clearEndTimer();
+    setYtSeg(null);
     setBusy(true);
-    setStatus("Loading instrument samples…");
+
+    // Play defaults to the ACTUAL recording (MIDI can't reproduce real
+    // phrasing).  Resolve the tune's video, seek to the excerpt's estimated
+    // spot, and play that segment.  Synthesized MIDI is only a fallback.
+    setStatus("Finding the recording…");
+    const vid = it.vid || await lookupVideoId(it.youtubeQuery || `${it.artist ?? ""} ${it.title}`).catch(() => null);
+    if (myToken !== playToken.current) return;
+    if (vid) {
+      const spb = 60 / effectiveBpm(it);
+      const start = ex.startBar * ex.beatsPerBar * spb;
+      const end = start + ex.windowBeats * spb;
+      setYtSeg({ vid, start, end, key: myToken });
+      setStatus("");
+      setBusy(false);
+      return;
+    }
+
+    setStatus("No recording found — playing synthesized…");
     try {
       await ensureAudio();
       const countInBeats = countInBars * ex.beatsPerBar;
@@ -163,7 +184,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     await playGivenExcerpt(item, fullExcerpt(item));   // whole tune; leaves the excerpt target intact
   }, [item, playGivenExcerpt]);
 
-  const stop = () => { playToken.current++; clearEndTimer(); stopPlayback(); setBusy(false); setStatus(""); };
+  const stop = () => { playToken.current++; clearEndTimer(); stopPlayback(); setYtSeg(null); setBusy(false); setStatus(""); };
 
   // BPM shown in the transport: the override if set, else the current tune's tempo.
   const curTempo = excerpt?.item.tempoBpm ?? item?.tempoBpm ?? 100;
@@ -179,11 +200,28 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     <div className="space-y-4 text-white">
       {status && <div className="text-xs text-[#9a9] min-h-[1em]">{status}</div>}
 
-      {/* Now-playing chip (no spoilers until Show Answer) */}
+      {/* Now-playing chip */}
       {excerpt && (
         <div className="text-xs text-[#666]">
           {SOURCE_GENRE[excerpt.item.source]} · {excerpt.bars} bar{excerpt.bars > 1 ? "s" : ""} ·
           {" "}{excerpt.item.timeSig[0]}/{excerpt.item.timeSig[1]} · {Math.round(effectiveBpm(excerpt.item))} bpm
+        </div>
+      )}
+
+      {/* The real recording, seeked to ≈ the excerpt's spot (Play uses this). */}
+      {ytSeg && (
+        <div>
+          <iframe
+            key={ytSeg.key}
+            className="aspect-video w-full max-w-lg rounded"
+            src={embedUrl(ytSeg.vid, ytSeg.start, ytSeg.end)}
+            title="Real recording"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+          />
+          <div className="text-[10px] text-[#666] mt-0.5">
+            Actual recording, seeked to ≈ this excerpt — scrub if it has an intro or extra choruses.
+          </div>
         </div>
       )}
 
@@ -307,12 +345,6 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
             {" "}{item.timeSig[0]}/{item.timeSig[1]} · {item.tempoBpm} bpm original
           </div>
 
-          {/* Hear the ACTUAL recording — MIDI can't capture real phrasing. */}
-          <RealRecording
-            vid={item.vid}
-            query={item.youtubeQuery}
-            startSec={(excerpt.startBar * excerpt.beatsPerBar * 60) / (item.tempoBpm || 100)}
-          />
         </div>
       )}
 
