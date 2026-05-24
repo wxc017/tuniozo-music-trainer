@@ -356,7 +356,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
           // each beam spans exactly one beat — clarifying the pulse — and a
           // trailing pair of eighths in a beat always beams.
           const beams: Beam[] = [];
-          for (const v of [mv, bv]) {
+          for (const v of [mv, cv, bv]) {
             if (!v) continue;
             beams.push(...beamByBeat(v, beatUnit));
           }
