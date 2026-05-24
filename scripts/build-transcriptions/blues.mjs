@@ -148,6 +148,8 @@ function parseResults(html) {
 }
 
 const BAD = /cover|lesson|tutorial|backing track|karaoke|how to play|reaction|remix|guitar pro|tab\b|instrumental version|8d audio/i;
+// AI-generated uploads are flooding YouTube — reject them hard.
+const AI = /\b(ai|a\.i\.|suno|udio|generated|ai[- ]?cover|ai music|deepfake|riffusion)\b/i;
 /** Score a result for being the genuine `artist` recording of `title`. */
 function scoreMatch(r, artist, title) {
   const t = r.title.toLowerCase();
@@ -157,8 +159,10 @@ function scoreMatch(r, artist, title) {
   if (t.includes(artist.toLowerCase())) s += 3; else if (t.includes(surname)) s += 2;
   const hit = titleWords.filter(w => t.includes(w)).length;
   s += titleWords.length ? (hit / titleWords.length) * 4 : 0;
+  if (AI.test(t)) s -= 50;                                   // never an AI upload
   if (BAD.test(t)) s -= 6;
-  if (/official|topic|full album|remaster/i.test(t)) s += 1;
+  if (/ - topic$|vevo|official audio|official video|remaster/i.test(t)) s += 3;  // authentic-source signals
+  if (/official|full album/i.test(t)) s += 1;
   return s;
 }
 
