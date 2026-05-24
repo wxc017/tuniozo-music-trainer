@@ -105,6 +105,9 @@ export interface TxItem {
    *  tempo map (handles tempo/metre changes) — used to seek the real recording
    *  accurately to a given bar.  Index = bar number. */
   barSec?: number[];
+  /** Path (under public/blues/) to a LOCAL audio file of the actual recording,
+   *  so blues plays offline.  e.g. "audio/<videoId>.mp3". */
+  audio?: string;
 }
 
 /** Lightweight index entry — loaded up front so the UI can filter by

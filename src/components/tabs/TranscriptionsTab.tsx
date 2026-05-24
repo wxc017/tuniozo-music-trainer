@@ -12,10 +12,9 @@ import { SOURCE_LABEL, SOURCE_GENRE, type TxSource, type TxItem, type TxIndex } 
 import { pickItem, pickExcerpt, fullExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
 import { playExcerpt, stopPlayback, ensureInstruments } from "@/lib/transcriptions/playback";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
-import { lookupBestVideo } from "@/lib/transcriptions/youtube";
-import { playFrom, pause as ytPause } from "@/lib/transcriptions/ytPlayer";
 
 const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "blues"];
+const BASE = import.meta.env.BASE_URL ?? "/";
 
 /** Add spaces to run-together titles from filename-derived data, e.g.
  *  "25Or6To4" → "25 Or 6 To 4", "HoneyHoney" → "Honey Honey". */
@@ -77,9 +76,20 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const [showAnswer, setShowAnswer] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string>("");
-  // The real recording for the current excerpt (Play defaults to the actual
-  // recording, not MIDI).  `start` lets Replay re-seek to the excerpt's spot.
-  const [ytSeg, setYtSeg] = useState<{ vid: string; start: number; end: number } | null>(null);
+  // Blues plays the actual recording from a LOCAL audio file (offline).
+  const [audioSeg, setAudioSeg] = useState<{ src: string; start: number; end: number } | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const segEndRef = useRef<number>(Infinity);
+
+  /** Play a local-audio segment [start,end]; seeks once the file is ready. */
+  const playAudioSeg = (src: string, start: number, end: number) => {
+    const a = audioRef.current; if (!a) return;
+    segEndRef.current = end;
+    const go = () => { try { a.currentTime = start; } catch { /* */ } a.play().catch(() => {}); };
+    const full = new URL(src, location.href).href;
+    if (a.src === full) { go(); }
+    else { a.src = src; a.oncanplay = () => { a.oncanplay = null; go(); }; a.load(); }
+  };
   const playToken = useRef(0);
   const endTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -103,30 +113,27 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const playGivenExcerpt = useCallback(async (it: TxItem, ex: TxExcerpt) => {
     const myToken = ++playToken.current;
     clearEndTimer();
-    setYtSeg(null);
+    audioRef.current?.pause();
     setBusy(true);
 
-    // BLUES plays the ACTUAL recording (MIDI can't reproduce the phrasing/bends);
-    // every other corpus plays synthesized MIDI.  Seek uses the transcription's
-    // own tempo-map bar times (barSec) when present, else a bar×tempo estimate.
-    if (it.source === "blues") {
-      setStatus("Finding the recording…");
-      const vid = it.vid || await lookupBestVideo(it.artist ?? "", it.title).catch(() => null);
-      if (myToken !== playToken.current) return;
-      if (vid) {
-        const spb = 60 / effectiveBpm(it);
-        const start = (it.solostart ?? 0) + (it.barSec?.[ex.startBar] ?? ex.startBar * ex.beatsPerBar * spb);
-        const endBar = ex.startBar + ex.bars;
-        const end = (it.solostart ?? 0) + (it.barSec?.[endBar] ?? endBar * ex.beatsPerBar * spb);
-        setYtSeg({ vid, start, end });
-        await playFrom("tx-yt-player", vid, start, end);   // IFrame API → autostart, stops at end
-        if (myToken !== playToken.current) return;
-        setStatus(""); setBusy(false);
-        return;
-      }
+    // BLUES plays the ACTUAL recording from a LOCAL audio file (offline) —
+    // seeking to the solo's first-note onset (solostart, from audio analysis)
+    // plus this excerpt's bar time (barSec, from the .gp tempo map), and
+    // stopping at the excerpt's end.  Every other corpus plays synthesized MIDI.
+    if (it.source === "blues" && it.audio) {
+      const spb = 60 / effectiveBpm(it);
+      const start = (it.solostart ?? 0) + (it.barSec?.[ex.startBar] ?? ex.startBar * ex.beatsPerBar * spb);
+      const endBar = ex.startBar + ex.bars;
+      const end = (it.solostart ?? 0) + (it.barSec?.[endBar] ?? endBar * ex.beatsPerBar * spb);
+      const src = `${BASE}blues/${it.audio}`;
+      setAudioSeg({ src, start, end });
+      playAudioSeg(src, start, end);
+      setStatus(""); setBusy(false);
+      return;
     }
+    setAudioSeg(null);
 
-    setStatus(it.source === "blues" ? "No recording found — playing synthesized…" : "Loading instrument samples…");
+    setStatus("Loading instrument samples…");
     try {
       await ensureAudio();
       const countInBeats = countInBars * ex.beatsPerBar;
@@ -177,12 +184,12 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
 
   const replay = useCallback(async () => {
     clearEndTimer();
-    // Real recording: replay the same excerpt segment (re-seek + stop at end).
-    if (ytSeg) { await playFrom("tx-yt-player", ytSeg.vid, ytSeg.start, ytSeg.end); return; }
+    // Blues: replay the same local-audio segment (re-seek + stop at end).
+    if (audioSeg) { playAudioSeg(audioSeg.src, audioSeg.start, audioSeg.end); return; }
     stopPlayback();
     if (item && excerpt) await playGivenExcerpt(item, excerpt);
     else await playNew();
-  }, [ytSeg, item, excerpt, playGivenExcerpt, playNew]);
+  }, [audioSeg, item, excerpt, playGivenExcerpt, playNew]);
 
   const playFull = useCallback(async () => {
     if (!item) return;
@@ -191,7 +198,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     await playGivenExcerpt(item, fullExcerpt(item));   // whole tune; leaves the excerpt target intact
   }, [item, playGivenExcerpt]);
 
-  const stop = () => { playToken.current++; clearEndTimer(); stopPlayback(); ytPause(); setBusy(false); setStatus(""); };
+  const stop = () => { playToken.current++; clearEndTimer(); stopPlayback(); audioRef.current?.pause(); setBusy(false); setStatus(""); };
 
   // BPM shown in the transport: the override if set, else the current tune's tempo.
   const curTempo = excerpt?.item.tempoBpm ?? item?.tempoBpm ?? 100;
@@ -385,13 +392,18 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
         </button>
       </div>
 
-      {/* The actual recording — BELOW the transport.  The inner #tx-yt-player
-          stays mounted so the YouTube IFrame API can bind to it; the wrapper
-          just toggles visibility once a recording is playing. */}
-      <div className={ytSeg ? "max-w-xl" : "hidden"}>
-        <div id="tx-yt-player" />
+      {/* Blues: the actual recording from a LOCAL file — below the transport.
+          The element stays mounted so seeks are instant; it's hidden until a
+          blues solo is loaded.  onTimeUpdate stops it at the excerpt's end. */}
+      <div className={audioSeg ? "max-w-xl" : "hidden"}>
+        <audio
+          ref={audioRef}
+          controls
+          className="w-full"
+          onTimeUpdate={() => { const a = audioRef.current; if (a && a.currentTime >= segEndRef.current) a.pause(); }}
+        />
         <div className="text-[10px] text-[#666] mt-0.5">
-          Actual recording, seeked to ≈ this excerpt — scrub if it has an intro or extra choruses.
+          Actual recording, from the solo's first note — scrub if needed.
         </div>
       </div>
     </div>

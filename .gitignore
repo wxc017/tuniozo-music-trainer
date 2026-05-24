@@ -21,3 +21,4 @@ src/components/SimpleDoc.tsx
 src/components/reading/
 src/lib/readingWorkflowData.ts
 src/lib/fileStorage.ts
+/public/blues/audio/
