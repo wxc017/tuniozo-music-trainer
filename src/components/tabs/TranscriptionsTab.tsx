@@ -85,10 +85,15 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const playAudioSeg = (src: string, start: number, end: number) => {
     const a = audioRef.current; if (!a) return;
     segEndRef.current = end;
-    const go = () => { try { a.currentTime = start; } catch { /* */ } a.play().catch(() => {}); };
-    const full = new URL(src, location.href).href;
-    if (a.src === full) { go(); }
-    else { a.src = src; a.oncanplay = () => { a.oncanplay = null; go(); }; a.load(); }
+    const seekPlay = () => {
+      const doSeek = () => { try { a.currentTime = start; } catch { /* */ } a.play().catch(() => {}); };
+      // currentTime can only be set once metadata (duration/seekable) is known.
+      if (a.readyState >= 1) doSeek();
+      else { a.addEventListener("loadedmetadata", doSeek, { once: true }); }
+    };
+    const abs = new URL(src, location.href).href;
+    if (a.src !== abs) { a.src = src; a.load(); }
+    seekPlay();
   };
   const playToken = useRef(0);
   const endTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -361,7 +366,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
               here so you can check your by-ear transcription against the source. */}
           {item.source === "blues" ? (
             item.vid ? (
-              <div className="relative w-full rounded-md overflow-hidden bg-black" style={{ aspectRatio: "16 / 9" }}>
+              <div className="relative rounded-md overflow-hidden bg-black" style={{ width: 240, aspectRatio: "16 / 9" }}>
                 <iframe
                   className="absolute inset-0 w-full h-full"
                   src={`https://www.youtube.com/embed/${item.vid}?start=${Math.floor(item.solostart ?? 0)}`}
@@ -414,7 +419,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           <button onClick={drone}
             title="Briefly sound the tonic (root + 5th) to orient your ear to the key"
             className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] transition-colors">
-            ◉ Drone
+            ◉ Key
           </button>
         )}
         {/* Tempo — applies to Play, Replay and Full song */}
