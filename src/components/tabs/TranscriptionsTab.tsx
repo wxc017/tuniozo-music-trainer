@@ -12,7 +12,7 @@ import { SOURCE_LABEL, SOURCE_GENRE, type TxSource, type TxItem, type TxIndex } 
 import { pickItem, pickExcerpt, fullExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
 import { playExcerpt, stopPlayback, ensureInstruments } from "@/lib/transcriptions/playback";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
-import { lookupVideoId } from "@/lib/transcriptions/youtube";
+import { lookupBestVideo } from "@/lib/transcriptions/youtube";
 import { playFrom, seekAndPlay, pause as ytPause } from "@/lib/transcriptions/ytPlayer";
 
 const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "blues"];
@@ -110,7 +110,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     // phrasing).  Resolve the tune's video, seek to the excerpt's estimated
     // spot, and play that segment.  Synthesized MIDI is only a fallback.
     setStatus("Finding the recording…");
-    const vid = it.vid || await lookupVideoId(it.youtubeQuery || `${it.artist ?? ""} ${it.title}`).catch(() => null);
+    const vid = it.vid || await lookupBestVideo(it.artist ?? "", it.title).catch(() => null);
     if (myToken !== playToken.current) return;
     if (vid) {
       const spb = 60 / effectiveBpm(it);
