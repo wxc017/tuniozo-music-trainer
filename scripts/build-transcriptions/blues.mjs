@@ -89,17 +89,78 @@ function gpToItem(bytes) {
   return { key: { tonicPc, mode: "major" }, timeSig: [num, den], tempoBpm: tempo, barCount, melody };
 }
 
-function fetchVideoId(query) {
+function fetchSearchHtml(query) {
   return new Promise((resolve) => {
-    https.get("https://www.youtube.com/results?search_query=" + encodeURIComponent(query), { headers: { "User-Agent": "Mozilla/5.0" } }, (res) => {
-      let d = ""; res.on("data", (c) => { d += c; if (d.length > 2e6) res.destroy(); });
-      res.on("end", () => { const m = d.match(/"videoId":"([\w-]{11})"/); resolve(m ? m[1] : null); });
-    }).on("error", () => resolve(null));
+    https.get("https://www.youtube.com/results?search_query=" + encodeURIComponent(query),
+      { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept-Language": "en-US,en;q=0.9" } }, (res) => {
+        let d = ""; res.on("data", (c) => { d += c; if (d.length > 3e6) res.destroy(); });
+        res.on("end", () => resolve(d));
+      }).on("error", () => resolve(""));
   });
 }
-async function mapLimit(items, limit, fn) {
-  const out = []; let i = 0;
-  await Promise.all(Array.from({ length: limit }, async () => { while (i < items.length) { const k = i++; out[k] = await fn(items[k]); } }));
+
+/** Parse up to 8 {videoId, title} results from a YouTube search page. */
+function parseResults(html) {
+  const out = []; const seen = new Set();
+  // Each result is "videoId":"…","thumbnail":{…},…,"title":{"runs":[{"text":"…"
+  // (videoId then, within a bounded gap, its title).
+  const re = /"videoId":"([\w-]{11})"[\s\S]{0,2500}?"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*?)"/g;
+  let m;
+  while ((m = re.exec(html)) && out.length < 8) {
+    if (seen.has(m[1])) continue;
+    seen.add(m[1]);
+    const title = m[2].replace(/\\u0026/g, "&").replace(/\\"/g, '"').replace(/\\\//g, "/");
+    out.push({ videoId: m[1], title });
+  }
+  return out;
+}
+
+const BAD = /cover|lesson|tutorial|backing track|karaoke|how to play|reaction|remix|guitar pro|tab\b|instrumental version|8d audio/i;
+/** Score a result for being the genuine `artist` recording of `title`. */
+function scoreMatch(r, artist, title) {
+  const t = r.title.toLowerCase();
+  const surname = artist.toLowerCase().split(" ").pop();
+  const titleWords = title.toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter(w => w.length > 2);
+  let s = 0;
+  if (t.includes(artist.toLowerCase())) s += 3; else if (t.includes(surname)) s += 2;
+  const hit = titleWords.filter(w => t.includes(w)).length;
+  s += titleWords.length ? (hit / titleWords.length) * 4 : 0;
+  if (BAD.test(t)) s -= 6;
+  if (/official|topic|full album|remaster/i.test(t)) s += 1;
+  return s;
+}
+
+/** Best-matching video id for an artist + title (or null). */
+async function fetchBestVideo(artist, title) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const results = parseResults(await fetchSearchHtml(`${artist} ${title}`));
+    if (results.length) {
+      let best = results[0], bestScore = -Infinity;
+      for (const r of results) { const sc = scoreMatch(r, artist, title); if (sc > bestScore) { bestScore = sc; best = r; } }
+      // Require at least a weak title match, else treat as not found.
+      return bestScore >= 2 ? best.videoId : null;
+    }
+    await new Promise(r => setTimeout(r, 800));   // throttled — back off and retry once
+  }
+  return null;
+}
+
+/** Resolve video ids sequentially, persisting to a disk cache so re-runs
+ *  accumulate (YouTube throttles bulk server-side search, so a single run only
+ *  resolves a handful — re-run a few times to fill the corpus). */
+async function lookupAll(tunes) {
+  const cacheFile = join(__dirname, ".cache", "blues-vids.json");
+  let cache = {};
+  try { cache = JSON.parse(readFileSync(cacheFile, "utf8")); } catch { /* no cache yet */ }
+  const out = [];
+  for (let i = 0; i < tunes.length; i++) {
+    const key = `${tunes[i].artist}|${tunes[i].title}`;
+    if (cache[key]) { out[i] = cache[key]; continue; }
+    const v = await fetchBestVideo(tunes[i].artist, tunes[i].title);
+    if (v) { cache[key] = v; try { writeFileSync(cacheFile, JSON.stringify(cache, null, 1)); } catch { /* */ } }
+    out[i] = v;
+    await new Promise(r => setTimeout(r, 350));
+  }
   return out;
 }
 
@@ -130,9 +191,10 @@ export async function build() {
     if (!parsed) continue;
     items.push({ id: `blues-${items.length}`, source: "blues", genre: "Blues", style: r.artist, title: r.title, artist: r.artist, ...parsed, youtubeQuery: `${r.artist} ${r.title}` });
   }
-  console.log(`  parsed ${items.length}; looking up recordings…`);
-  const vids = await mapLimit(items, 5, it => fetchVideoId(`${it.artist} ${it.title}`));
+  console.log(`  parsed ${items.length}; matching each to its recording on YouTube…`);
+  const vids = await lookupAll(items);
   items.forEach((it, i) => { if (vids[i]) it.vid = vids[i]; });
+  console.log(`  matched ${vids.filter(Boolean).length}/${items.length} recordings`);
 
   const curated = curate(items, { max: 300, minBars: 8 }).map(it => clipBars(it, 64));
   writeSource("blues", curated);
