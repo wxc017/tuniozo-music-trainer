@@ -157,7 +157,7 @@ export function melodyGridFor(source: string): number {
   return source === "weimar" ? 0.5 : 0.25;
 }
 
-interface QNote { midi: number; startBeat: number; durBeats: number }
+interface QNote { midi: number; startBeat: number; durBeats: number; artic?: string }
 
 /** Snap a melody to a notatable `grid`: align onsets, drop sub-grid
  *  collisions (keep the earlier note), clamp each note to the next onset.
@@ -165,13 +165,13 @@ interface QNote { midi: number; startBeat: number; durBeats: number }
  *  exact same notes — what you hear is what you see. */
 export function quantizeMelody(notes: QNote[], grid: number, windowBeats: number): QNote[] {
   const snap = (x: number) => Math.round(x / grid) * grid;
-  const kept: { midi: number; startBeat: number; dur0: number }[] = [];
+  const kept: { midi: number; startBeat: number; dur0: number; artic?: string }[] = [];
   for (const n of [...notes].sort((a, b) => a.startBeat - b.startBeat)) {
     const s = snap(n.startBeat);
     if (s >= windowBeats - 1e-9) continue;
     const prev = kept[kept.length - 1];
     if (prev && s <= prev.startBeat + 1e-9) continue;        // collision → drop
-    kept.push({ midi: n.midi, startBeat: s, dur0: Math.max(grid, snap(n.durBeats)) });
+    kept.push({ midi: n.midi, startBeat: s, dur0: Math.max(grid, snap(n.durBeats)), artic: n.artic });
   }
   return kept.map((n, i) => {
     const next = i + 1 < kept.length ? kept[i + 1].startBeat : windowBeats;
@@ -181,7 +181,7 @@ export function quantizeMelody(notes: QNote[], grid: number, windowBeats: number
     // for clear phrase breaks (recorded gap ≥ 1 beat).
     const gap = toNext - n.dur0;
     const durBeats = Math.min(toNext, gap < 1 ? toNext : n.dur0);
-    return { midi: n.midi, startBeat: n.startBeat, durBeats };
+    return { midi: n.midi, startBeat: n.startBeat, durBeats, artic: n.artic };
   });
 }
 

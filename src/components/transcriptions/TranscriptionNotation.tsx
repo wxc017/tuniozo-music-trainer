@@ -57,9 +57,13 @@ interface BuiltVoice {
 /** Turn one bar's laid-out cells into VexFlow tickables, splitting each
  *  cell's duration into notatable pieces and tying split pieces / cross-bar
  *  continuations.  `keyFn` maps a cell's payload to VexFlow key strings. */
+// Inflection marks (e.g. Weimar Jazz DB f0_mod) drawn below the note.
+const ARTIC_GLYPH: Record<string, string> = { bend: "↗", slide: "⁄", vibrato: "∿", fall: "↘" };
+
 function cellsToVoice<T>(
   cells: BarCell<T>[], keyFn: (d: T) => string[], restKeys: string[],
   carryTieFrom: { note: StaveNote | null }, clef: "treble" | "bass" = "treble", stemDir = 0,
+  articFn?: (d: T) => string | undefined,
 ): BuiltVoice {
   const tickables: StaveNote[] = [];
   const beatStarts: number[] = [];
@@ -76,6 +80,19 @@ function cellsToVoice<T>(
       if (stemDir && !isRest) { try { (note as unknown as { setStemDirection(d: number): void }).setStemDirection(stemDir); } catch { /* */ } }
       styleNote(note);
       if (p.dots) { try { Dot.buildAndAttach([note], { all: true }); } catch { /* */ } }
+      // Inflection mark on the note's first piece (bend/slide/vibrato/fall).
+      if (!isRest && i === 0 && articFn) {
+        const g = articFn(cell.data as T);
+        const glyph = g && ARTIC_GLYPH[g];
+        if (glyph) {
+          try {
+            const an = new Annotation(glyph);
+            (an as unknown as { setVerticalJustification(v: number): void }).setVerticalJustification(Annotation.VerticalJustify.BOTTOM);
+            an.setFont("Arial", 12);
+            (note as unknown as { addModifier(m: Annotation, i: number): void }).addModifier(an, 0);
+          } catch { /* */ }
+        }
+      }
       tickables.push(note);
       beatStarts.push(cell.startInBar);
       // First note of this bar continuing a tie from the previous bar: keep it
@@ -185,8 +202,8 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const showBassStaff = showBass && hasChordData;
 
     // ── Per-bar cells ───────────────────────────────────────────────
-    const melodyEvents: TimedEvent<number>[] = showMelody
-      ? excerpt.melody.map(n => ({ startBeat: n.startBeat, durBeats: n.durBeats, data: n.midi }))
+    const melodyEvents: TimedEvent<{ midi: number; artic?: string }>[] = showMelody
+      ? excerpt.melody.map(n => ({ startBeat: n.startBeat, durBeats: n.durBeats, data: { midi: n.midi, artic: n.artic } }))
       : [];
     const melodyByBar = segmentByBar(melodyEvents, bars, bpb);
     // Bass staff carries up to two voices, both built from the SAME comping
@@ -239,7 +256,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     const built: BuiltBar[] = [];
     for (let b = 0; b < bars; b++) {
       const melody = showMelody
-        ? cellsToVoice(splitCellsAtBeats(layoutBarCells(melodyByBar[b], bpb, melodyGridFor(excerpt.item.source)), beatUnit), (m: number) => [midiToVexKey(m, flat)], ["b/4"], carryMelody, "treble")
+        ? cellsToVoice(splitCellsAtBeats(layoutBarCells(melodyByBar[b], bpb, melodyGridFor(excerpt.item.source)), beatUnit), (d: { midi: number; artic?: string }) => [midiToVexKey(d.midi, flat)], ["b/4"], carryMelody, "treble", 0, (d) => d.artic)
         : null;
       // Chord voicing (Chords on): stacked stabs on the bass staff, stems up.
       const chordV = showChordSymbols && chordVoicingByBar[b].length

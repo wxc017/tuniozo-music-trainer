@@ -151,7 +151,7 @@ export interface TxExcerpt {
    *  rebased to 0 and clipped to the window. */
   chords: TxChordRebased[];
 }
-export type TxNoteRebased = { midi: number; startBeat: number; durBeats: number };
+export type TxNoteRebased = { midi: number; startBeat: number; durBeats: number; artic?: string };
 export type TxChordRebased = {
   sym: string; rootPc: number; intervals: number[]; bassPc?: number;
   startBeat: number; durBeats: number;
@@ -186,7 +186,7 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
     if (end <= winStart || n.startBeat >= winEnd) continue;       // outside
     const s = Math.max(n.startBeat, winStart);
     const e = Math.min(end, winEnd);
-    melody.push({ midi: n.midi, startBeat: s - winStart, durBeats: e - s });
+    melody.push({ midi: n.midi, startBeat: s - winStart, durBeats: e - s, artic: n.artic });
   }
   // Quantize once so playback and the rendered notation use identical notes.
   const qMel = quantizeMelody(melody, melodyGridFor(item.source), windowBeats);
@@ -219,7 +219,7 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
  *  song".  Same shape as pickExcerpt, with melody-only tunes harmonized. */
 export function fullExcerpt(item: TxItem): TxExcerpt {
   const bpb = beatsPerBar(item.timeSig);
-  const rawMelody: TxNoteRebased[] = (item.melody ?? []).map(n => ({ midi: n.midi, startBeat: n.startBeat, durBeats: n.durBeats }));
+  const rawMelody: TxNoteRebased[] = (item.melody ?? []).map(n => ({ midi: n.midi, startBeat: n.startBeat, durBeats: n.durBeats, artic: n.artic }));
   const melody = quantizeMelody(rawMelody, melodyGridFor(item.source), item.barCount * bpb);
   const chords: TxChordRebased[] = (item.chords ?? []).map(c => ({ ...c }));
   if (!chords.length && melody.length) {
