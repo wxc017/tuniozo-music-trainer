@@ -123,7 +123,11 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     if (it.source === "blues" && it.audio) {
       const src = `${BASE}blues/${it.audio}`;
       const start = full ? 0 : (it.solostart ?? 0);
-      const end = full ? Infinity : (it.solostart ?? 0) + (it.soloLen ?? 24);
+      // Clip length follows the "bars" setting, sized by the (rough) detected
+      // tempo, clamped to the analysed solo window so a bad bpm can't run wild.
+      const bpmForClip = Math.min(160, Math.max(60, it.tempoBpm || 100));
+      const clipLen = Math.min(it.soloLen ?? 24, Math.max(4, ex.bars * ex.beatsPerBar * (60 / bpmForClip)));
+      const end = full ? Infinity : start + clipLen;
       setAudioSeg({ src, start, end });
       playAudioSeg(src, start, end);
       setStatus(""); setBusy(false);
@@ -353,14 +357,28 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
             </div>
           </div>
 
-          {/* Blues is audio-only — no notation (an auto-transcription of a full
-              band mix would just be noise).  The "answer" is what the recording
-              is, so you can verify your by-ear transcription against the source. */}
+          {/* Blues is audio-only: the answer is the recording itself, embedded
+              here so you can check your by-ear transcription against the source. */}
           {item.source === "blues" ? (
-            <div className="text-xs text-[#999] bg-[#161616] rounded-md p-3 leading-relaxed">
-              This is the real recording — transcribe the solo by ear, then check
-              yourself against the source below.
-            </div>
+            item.vid ? (
+              <div className="relative w-full rounded-md overflow-hidden bg-black" style={{ aspectRatio: "16 / 9" }}>
+                <iframe
+                  className="absolute inset-0 w-full h-full"
+                  src={`https://www.youtube.com/embed/${item.vid}?start=${Math.floor(item.solostart ?? 0)}`}
+                  title={prettyTitle(item.title)}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            ) : (
+              <a
+                href={`https://www.youtube.com/results?search_query=${encodeURIComponent(item.youtubeQuery)}`}
+                target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-[#e57] hover:text-[#f7a] underline"
+              >
+                🎧 Find the recording on YouTube ↗
+              </a>
+            )
           ) : (
             <>
               <div className="bg-[#161616] rounded-md p-2 overflow-x-auto">
@@ -371,17 +389,6 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
                 {" "}{item.timeSig[0]}/{item.timeSig[1]} · {item.tempoBpm} bpm original
               </div>
             </>
-          )}
-
-          {/* Blues links to its recording (exact video when known). */}
-          {item.source === "blues" && (
-            <a
-              href={item.vid ? `https://www.youtube.com/watch?v=${item.vid}` : `https://www.youtube.com/results?search_query=${encodeURIComponent(item.youtubeQuery)}`}
-              target="_blank" rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-[#e57] hover:text-[#f7a] underline"
-            >
-              🎧 Recording on YouTube ↗
-            </a>
           )}
         </div>
       )}
@@ -431,20 +438,14 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
         </button>
       </div>
 
-      {/* Blues: the actual recording from a LOCAL file — below the transport.
-          The element stays mounted so seeks are instant; it's hidden until a
-          blues solo is loaded.  onTimeUpdate stops it at the excerpt's end. */}
-      <div className={audioSeg ? "max-w-xl" : "hidden"}>
-        <audio
-          ref={audioRef}
-          controls
-          className="w-full"
-          onTimeUpdate={() => { const a = audioRef.current; if (a && a.currentTime >= segEndRef.current) a.pause(); }}
-        />
-        <div className="text-[10px] text-[#666] mt-0.5">
-          Actual recording, from the solo's first note — scrub if needed.
-        </div>
-      </div>
+      {/* Blues clip playback uses a LOCAL file, driven by the transport buttons
+          (Play / Replay / Full song / Stop) — the element is always hidden (no
+          native scrubber bar).  onTimeUpdate stops it at the clip's end. */}
+      <audio
+        ref={audioRef}
+        className="hidden"
+        onTimeUpdate={() => { const a = audioRef.current; if (a && a.currentTime >= segEndRef.current) a.pause(); }}
+      />
     </div>
   );
 }
