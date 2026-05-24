@@ -188,18 +188,25 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
   const bpb = beatsPerBar(item.timeSig);
   const usableBars = Math.min(bars, item.barCount);
   const maxStartBar = Math.max(0, item.barCount - usableBars);
-  // Avoid a thin/empty stretch (intro rests, a single held note, a gap): try a
-  // few random windows and keep the first with MORE THAN 4 melody notes, so an
-  // excerpt always has enough to hear/read.  Falls back to the last try.
-  const melodyCountIn = (sb: number) => {
-    const ws = sb * bpb, we = ws + usableBars * bpb;
-    let n = 0;
-    for (const m of item.melody ?? []) if (m.startBeat < we - 1e-6 && m.startBeat + m.durBeats > ws + 1e-6) n++;
-    return n;
+  // Avoid thin/empty bars (intro rests, a single held note, a gap): score a
+  // window by the FEWEST melody-note onsets in any of its bars and keep the
+  // first window where every bar has at least 2 notes.  Falls back to the
+  // best-scoring window tried (some sparse tunes can't do 2 in every bar).
+  const minNotesPerBar = (sb: number) => {
+    const counts = new Array(usableBars).fill(0);
+    const ws = sb * bpb;
+    for (const m of item.melody ?? []) {
+      const bar = Math.floor((m.startBeat - ws) / bpb + 1e-6);
+      if (bar >= 0 && bar < usableBars) counts[bar]++;
+    }
+    return Math.min(...counts);
   };
   let startBar = Math.floor(Math.random() * (maxStartBar + 1));
-  for (let tries = 0; tries < 12 && melodyCountIn(startBar) <= 4; tries++) {
-    startBar = Math.floor(Math.random() * (maxStartBar + 1));
+  let bestMin = minNotesPerBar(startBar);
+  for (let tries = 0; tries < 24 && bestMin < 2; tries++) {
+    const cand = Math.floor(Math.random() * (maxStartBar + 1));
+    const mn = minNotesPerBar(cand);
+    if (mn > bestMin) { bestMin = mn; startBar = cand; }
   }
   const winStart = startBar * bpb;
   const windowBeats = usableBars * bpb;
