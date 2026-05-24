@@ -23,7 +23,7 @@ import { Voicing, VoicingDictionary, VoiceLeading, Note } from "tonal";
  *     no separate sub-bass note.
  *  No octave-low root is ever added: that produced an inaudible "super bassy"
  *  note and piled deep ledger lines under the staff. */
-function voicedChord(sym: string, rootPc: number, intervals: number[], prev: string[] | undefined, genre: CompGenre): { midis: number[]; voicing: string[] | undefined } {
+function voicedChord(sym: string, rootPc: number, intervals: number[], prev: string[] | undefined, genre: CompGenre, withRoot: boolean): { midis: number[]; voicing: string[] | undefined } {
   if (genre === "jazz" || genre === "fusion") {
     const name = sym.split("/")[0];
     let v: string[] = [];
@@ -31,18 +31,30 @@ function voicedChord(sym: string, rootPc: number, intervals: number[], prev: str
     // they stay UNDER the melody rather than crowding it.
     try { v = Voicing.get(name, ["C3", "E4"], VoicingDictionary.lefthand, VoiceLeading.topNoteDiff, prev) ?? []; } catch { v = []; }
     const midis = v.map(n => Note.midi(n)).filter((m): m is number => m != null);
-    if (midis.length) return { midis, voicing: v };
+    if (midis.length) {
+      // Rootless voicings assume a bass supplies the root.  With NO bass line,
+      // add the root just below the voicing so the harmony is grounded.
+      if (withRoot) {
+        let rootMidi = Math.min(...midis) - 1;
+        const pc = ((rootPc % 12) + 12) % 12;
+        while ((((rootMidi % 12) + 12) % 12) !== pc) rootMidi--;
+        if (rootMidi < 33) rootMidi += 12;
+        return { midis: [rootMidi, ...midis], voicing: v };
+      }
+      return { midis, voicing: v };
+    }
   }
-  // Folk / pop (and any jazz symbol tonal can't parse): simple triad.
+  // Folk / pop (and any jazz symbol tonal can't parse): simple triad (has root).
   return { midis: voiceChord(rootPc, intervals), voicing: undefined };
 }
 
 /** The voiced pitches (MIDI) of each chord, voice-led exactly as compEvents
- *  plays them — so the notated chord voicing matches what's heard. */
-export function chordVoicings(chords: { sym: string; rootPc: number; intervals: number[] }[], genre: CompGenre): number[][] {
+ *  plays them — so the notated chord voicing matches what's heard.  `withRoot`
+ *  adds the root to jazz voicings (when there's no bass line to supply it). */
+export function chordVoicings(chords: { sym: string; rootPc: number; intervals: number[] }[], genre: CompGenre, withRoot: boolean): number[][] {
   let prevV: string[] | undefined;
   return chords.map(c => {
-    const r = voicedChord(c.sym, c.rootPc, c.intervals, prevV, genre);
+    const r = voicedChord(c.sym, c.rootPc, c.intervals, prevV, genre, withRoot);
     if (r.voicing) prevV = r.voicing;
     return r.midis;
   });
@@ -338,15 +350,17 @@ function buildBass(
  *  no octave-low root is added — the bass line (when present) grounds it. */
 export function compEvents(
   chords: TxChord[], genre: CompGenre, beatsPerBar: number, timeSig: [number, number], windowBeats: number,
+  withRoot = true,
 ): Accompaniment {
   const [num, den] = timeSig;
   const out: Accompaniment = { chord: [], bass: [] };
   if (!chords.length) return out;
 
   // Voice every chord up front, voice-led (minimal motion) from the prior one.
+  // `withRoot` adds the root to jazz voicings when no bass line will supply it.
   let prevV: string[] | undefined;
   const voicings = chords.map(c => {
-    const r = voicedChord(c.sym, c.rootPc, c.intervals, prevV, genre);
+    const r = voicedChord(c.sym, c.rootPc, c.intervals, prevV, genre, withRoot);
     if (r.voicing) prevV = r.voicing;
     return r.midis;
   });
