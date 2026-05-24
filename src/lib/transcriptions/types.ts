@@ -98,6 +98,9 @@ export interface TxItem {
   /** Specific YouTube video id of the actual recording (when known), so the
    *  Transcriptions player can embed it and seek to the excerpt's spot. */
   vid?: string;
+  /** Seconds into the recording where the transcription's bar 0 begins (e.g.
+   *  Weimar's solo start), so playback seeks to the real solo, not the top. */
+  solostart?: number;
 }
 
 /** Lightweight index entry — loaded up front so the UI can filter by

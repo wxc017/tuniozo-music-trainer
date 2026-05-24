@@ -30,18 +30,13 @@ const TPQ = 960;  // alphaTab ticks per quarter note
 const ARTISTS = [
   { name: "B.B. King", a1: ["b.b. king", "bb king", "king, b.b", "king, bb"], zips: ["B/bb_king.zip"] },
   { name: "Albert King", a1: ["albert king", "king, albert"], zips: [] },
-  { name: "Freddie King", a1: ["freddie king", "king, freddie"], zips: ["F/freddie_king.zip"] },
-  { name: "T-Bone Walker", a1: ["t-bone"], zips: ["T/t_bone_walker.zip"] },
-  { name: "Otis Rush", a1: ["otis rush", "rush, otis"], zips: [] },
-  { name: "Albert Collins", a1: ["albert collins", "collins, albert"], zips: [] },
-  { name: "Elmore James", a1: ["elmore james", "james, elmore"], zips: ["J/james_elmore.zip"] },
-  { name: "Muddy Waters", a1: ["muddy waters", "waters, muddy"], zips: ["W/waters_muddy.zip"] },
-  { name: "Howlin' Wolf", a1: ["howlin"], zips: ["H/howlin_wolf.zip"] },
-  { name: "John Lee Hooker", a1: ["john lee hooker", "hooker, john"], zips: ["H/hooker_john_lee.zip"] },
-  { name: "Robert Johnson", a1: ["robert johnson", "johnson, robert"], zips: ["J/johnson_robert.zip"] },
-  { name: "Buddy Guy", a1: ["buddy guy", "guy, buddy"], zips: ["B/buddy_guy.zip", "G/guy_buddy.zip"] },
+  { name: "Jimi Hendrix", a1: ["jimi hendrix", "hendrix, jimi", "hendrix"], zips: ["H/hendrix_jimi.zip"] },
   { name: "Stevie Ray Vaughan", a1: ["stevie ray vaughan", "vaughan, stevie"], zips: ["V/vaughan_stevie_ray.zip"] },
+  { name: "Eric Clapton", a1: ["eric clapton", "clapton, eric", "clapton"], zips: ["C/clapton_eric.zip"] },
 ];
+
+// Skip non-song files (scale studies, lick collections, lessons, exercises).
+const NON_SONG = /\b(scale|scales|example|lick|licks|lesson|exercise|etude|study|studies|warm[- ]?up|riff|riffs|technique|theory|practice|pattern)\b/i;
 
 const TAB_RE = /\.(gp[345x]?|gtp)$/i;
 const dedupeKey = (t) => t.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -66,17 +61,29 @@ function gpToItem(bytes) {
   const staff = cand.t.staves[0];
 
   const melody = [];
+  let noteBeats = 0, chordBeats = 0;
   for (const bar of staff.bars) for (const v of bar.voices) for (const b of v.beats) {
     if (b.isRest || !b.notes.length) continue;
-    // Guitar is written an octave above its sounding pitch; without the +12 the
-    // lead sits far below the treble staff and the notation is a ledger-line
-    // mess.  (Real-recording playback is primary, so the octave is cosmetic.)
-    const midi = Math.max(...b.notes.map(n => n.realValue)) + 12;   // top note = lead line
+    noteBeats++;
+    if (b.notes.length > 1) chordBeats++;                            // a chord, not a single lead note
+    const midi = Math.max(...b.notes.map(n => n.realValue));         // top note = lead line
     const startBeat = b.absolutePlaybackStart / TPQ;
     const durBeats = Math.max(0.125, b.playbackDuration / TPQ);
     if (Number.isFinite(midi) && Number.isFinite(startBeat)) melody.push({ midi, startBeat, durBeats });
   }
   if (melody.length < 16) return null;
+  // SOLOS ONLY: a lead solo is a mostly single-note line.  If the chosen track
+  // is heavily chordal (>30% of sounding beats are chords) it's a rhythm/comp
+  // part or a full arrangement, not a solo — skip it.
+  if (noteBeats > 0 && chordBeats / noteBeats > 0.30) return null;
+
+  // Octave-centre the solo so it sits in the treble staff (median ≈ B4=71)
+  // instead of crowding the ledger lines above or below.  Shift by whole
+  // octaves only (preserves the line); real-recording playback is primary.
+  const sorted = melody.map(n => n.midi).sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const shift = Math.round((71 - median) / 12) * 12;
+  if (shift) for (const n of melody) n.midi += shift;
 
   const mb0 = score.masterBars?.[0];
   const num = mb0?.timeSignatureNumerator || 4, den = mb0?.timeSignatureDenominator || 4;
@@ -90,12 +97,17 @@ function gpToItem(bytes) {
 }
 
 function fetchSearchHtml(query) {
+  // Route through the allorigins CORS proxy: it fetches YouTube from ITS server,
+  // bypassing the bulk-search throttle that blocks this machine's IP directly.
+  const yt = "https://www.youtube.com/results?search_query=" + encodeURIComponent(query);
+  const url = "https://api.allorigins.win/raw?url=" + encodeURIComponent(yt);
   return new Promise((resolve) => {
-    https.get("https://www.youtube.com/results?search_query=" + encodeURIComponent(query),
-      { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept-Language": "en-US,en;q=0.9" } }, (res) => {
-        let d = ""; res.on("data", (c) => { d += c; if (d.length > 3e6) res.destroy(); });
-        res.on("end", () => resolve(d));
-      }).on("error", () => resolve(""));
+    const req = https.get(url, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" } }, (res) => {
+      let d = ""; res.on("data", (c) => { d += c; if (d.length > 4e6) res.destroy(); });
+      res.on("end", () => resolve(d));
+    });
+    req.on("error", () => resolve(""));
+    req.setTimeout(25000, () => { req.destroy(); resolve(""); });
   });
 }
 
@@ -177,6 +189,7 @@ export async function build() {
     for (const c of cands) {
       if (kept >= PER_ARTIST) break;
       if (!c.title || seen.has(dedupeKey(c.title))) continue;
+      if (NON_SONG.test(c.title)) continue;            // skip scale studies / lick collections / lessons
       seen.add(dedupeKey(c.title));
       raw.push({ artist: a.name, ...c });
       kept++;
@@ -191,10 +204,18 @@ export async function build() {
     if (!parsed) continue;
     items.push({ id: `blues-${items.length}`, source: "blues", genre: "Blues", style: r.artist, title: r.title, artist: r.artist, ...parsed, youtubeQuery: `${r.artist} ${r.title}` });
   }
-  console.log(`  parsed ${items.length}; matching each to its recording on YouTube…`);
+  console.log(`  parsed ${items.length} solos; matching each to its recording on YouTube…`);
   const vids = await lookupAll(items);
   items.forEach((it, i) => { if (vids[i]) it.vid = vids[i]; });
-  console.log(`  matched ${vids.filter(Boolean).length}/${items.length} recordings`);
+
+  // Log (and write) the tunes still missing a video so they can be filled in.
+  const missing = items.filter(it => !it.vid);
+  console.log(`  matched ${items.length - missing.length}/${items.length} recordings`);
+  if (missing.length) {
+    console.log(`  NO VIDEO for ${missing.length}:`);
+    for (const it of missing) console.log(`    - ${it.artist} — ${it.title}`);
+    try { writeFileSync(join(__dirname, ".cache", "blues-missing-videos.txt"), missing.map(it => `${it.artist} — ${it.title}`).join("\n")); } catch { /* */ }
+  }
 
   const curated = curate(items, { max: 300, minBars: 8 }).map(it => clipBars(it, 64));
   writeSource("blues", curated);
