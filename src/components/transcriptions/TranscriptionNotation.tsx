@@ -220,7 +220,9 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     // sustained stack per chord change.  Voiced with the SAME voice-led function
     // the comp plays (chordVoicings), so the notated pitches match what's heard.
     const compGenre = compGenreFor(excerpt.item.source, excerpt.item.style);
-    const voicings = showChordSymbols ? chordVoicings(excerpt.chords, compGenre) : [];
+    // Match playback: rootless jazz voicings only when the bass staff (root)
+    // is shown; otherwise include the root in the block chords.
+    const voicings = showChordSymbols ? chordVoicings(excerpt.chords, compGenre, !showBassStaff) : [];
     const chordVoicingByBar = segmentByBar<number[]>(
       showChordSymbols
         ? excerpt.chords.map((c, i) => ({ startBeat: c.startBeat, durBeats: c.durBeats, data: voicings[i] ?? [] }))
