@@ -68,7 +68,10 @@ function gpToItem(bytes) {
   const melody = [];
   for (const bar of staff.bars) for (const v of bar.voices) for (const b of v.beats) {
     if (b.isRest || !b.notes.length) continue;
-    const midi = Math.max(...b.notes.map(n => n.realValue));        // top note = lead line
+    // Guitar is written an octave above its sounding pitch; without the +12 the
+    // lead sits far below the treble staff and the notation is a ledger-line
+    // mess.  (Real-recording playback is primary, so the octave is cosmetic.)
+    const midi = Math.max(...b.notes.map(n => n.realValue)) + 12;   // top note = lead line
     const startBeat = b.absolutePlaybackStart / TPQ;
     const durBeats = Math.max(0.125, b.playbackDuration / TPQ);
     if (Number.isFinite(midi) && Number.isFinite(startBeat)) melody.push({ midi, startBeat, durBeats });
