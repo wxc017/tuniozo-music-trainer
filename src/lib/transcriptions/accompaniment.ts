@@ -349,12 +349,18 @@ export function compEvents(
     for (const m of voicings[indexAt(beat)]) out.chord.push({ midi: m, startBeat: beat, durBeats: dur, velocity: vel });
   };
 
-  // Comp rhythm: a varied (seeded) stab pattern per bar.
+  // Comp rhythm: a real comper holds ONE feel across the phrase, not a fresh
+  // random rhythm every bar.  Pick a single pattern for the whole excerpt
+  // (coherent groove), and only the final bar of a longer excerpt may vary as a
+  // light turnaround.  Variation across the excerpt comes from the chord changes
+  // (the guaranteed onset stabs below) + voice-led voicings + the walking bass.
   const totalBars = Math.max(1, Math.round(windowBeats / beatsPerBar));
   const rand = makeRng(Math.round(chords.reduce((a, c) => a + c.rootPc * 17 + c.startBeat, windowBeats * 7 + num)));
+  const feel = rand();                         // one comp feel for the excerpt
   for (let bar = 0; bar < totalBars; bar++) {
     const barStart = bar * beatsPerBar;
-    for (const h of barPattern(genre, beatsPerBar, den, num, rand())) {
+    const r = (bar === totalBars - 1 && totalBars >= 4) ? rand() : feel;
+    for (const h of barPattern(genre, beatsPerBar, den, num, r)) {
       if (h.role === "chord") stab(barStart + h.at, h.dur, 56);
     }
   }
