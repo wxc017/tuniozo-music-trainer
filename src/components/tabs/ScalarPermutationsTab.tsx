@@ -221,6 +221,14 @@ export default function ScalarPermutationsTab({
   // intuitive.  Lives in the OPTIONS collapsible per direct user
   // direction "and it should be in options".
   const [noteGap, setNoteGap] = useLS<number>("lt_perm_note_gap_ms", DEFAULT_GAP_MS);
+  // Number of simultaneous voices to transcribe.  1 = single line
+  // (original behaviour); 2 = two independent lines played at once —
+  // per direct user direction "in scalar permutations add option for 2
+  // voices so i have to transcribe two instead of just one line".  The
+  // two voices live in separate registers (voice 1 upper half of the
+  // range, voice 2 lower half) so they stay distinguishable by ear, and
+  // each picks its own length, so their onsets need not line up.
+  const [numVoices, setNumVoices] = useLS<number>("lt_perm_num_voices", 1);
 
   const [checked, setChecked] = useLS<Set<string>>(
     "lt_perm_checked",
@@ -258,9 +266,17 @@ export default function ScalarPermutationsTab({
   const [hasPendingInfo, setHasPendingInfo] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
   const [contourNotes, setContourNotes] = useState<number[] | null>(null);
-  const [contourDegrees, setContourDegrees] = useState<string[] | null>(null);
   const [contourVisible, setContourVisible] = useState(false);
-  const [lastChordContext, setLastChordContext] = useState<string>("");
+  // Answer-panel rows — one per voice.  Single-voice mode produces one
+  // unlabelled row (identical to the old display); 2-voice mode produces
+  // an "Upper voice" row and a "Lower voice" row, each with its own
+  // degrees / notes / chord context.
+  type AnswerRow = { label: string; degrees: string[]; notes: number[]; chordContext: string };
+  const [answerRows, setAnswerRows] = useState<AnswerRow[]>([]);
+  // Per-voice playback frames + gap, kept for Replay / Show Answer when
+  // more than one voice is sounding (each voice spans the same total
+  // time but may have a different note count, hence a different gap).
+  const lastVoices = useRef<{ frames: number[][]; gap: number }[] | null>(null);
 
   useEffect(() => {
     unregisterKnownOptionsForPrefix("perm:");
@@ -402,7 +418,7 @@ export default function ScalarPermutationsTab({
   // chosen" — play() picks one tonality from the multi-select pool
   // per call and passes it through so the build doesn't read stale
   // closure state after setScaleFam/setModeName.
-  function buildMelodicPhrase(family: string, sFam: string, sMode: string): Built | null {
+  function buildMelodicPhrase(family: string, sFam: string, sMode: string, loBound = lowestPitch, hiBound = highestPitch): Built | null {
     let pool = MELODY_BANK_31.filter(m => m.family === family);
     if (lengthFilter !== "Any") {
       const len = parseInt(lengthFilter);
@@ -411,8 +427,8 @@ export default function ScalarPermutationsTab({
     if (!pool.length) return null;
     const phrase = randomChoice(pool);
     const isGen = MELODY_GENERATIVE_FAMILIES.has(family);
-    const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
-    const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
+    const [low, high] = strictWindowBounds(loBound, hiBound);
+    const midPitch = Math.floor((loBound + hiBound) / 2);
     const base = midPitch - (((midPitch - tonicPc) % edo + edo) % edo);
     const rawSteps = resolveMelodyDegrees(phrase, base - tonicPc, sFam, sMode, isGen, edo);
     const absNotes = fitLineIntoWindow(rawSteps.map(s => tonicPc + s), edo, low, high);
@@ -429,11 +445,11 @@ export default function ScalarPermutationsTab({
   // Build a cadence as a chord progression — each chord in the
   // progression is stacked (root, 3rd, 5th, 7th of the diatonic chord
   // at that scale degree) and played as a single multi-note frame.
-  function buildCadenceChords(progId: string, sFam: string, sMode: string): Built | null {
+  function buildCadenceChords(progId: string, sFam: string, sMode: string, loBound = lowestPitch, hiBound = highestPitch): Built | null {
     const chords = CADENCE_PROGRESSIONS[progId];
     if (!chords || !chords.length) return null;
     const modeMap = getModeDegreeMap(edo, sFam, sMode);
-    const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
+    const midPitch = Math.floor((loBound + hiBound) / 2);
     const tonicAbs = midPitch - (((midPitch - tonicPc) % edo + edo) % edo);
     const frames: number[][] = [];
     const displayDegrees: string[] = [];
@@ -465,7 +481,7 @@ export default function ScalarPermutationsTab({
     };
   }
 
-  function buildMelody(family: string, sFam: string, sMode: string): Built | null {
+  function buildMelody(family: string, sFam: string, sMode: string, loBound = lowestPitch, hiBound = highestPitch): Built | null {
     if (family === "Cadences") {
       // If any variant is enabled, pick one; otherwise default to
       // "phrase" (the curated melodic bank).
@@ -473,22 +489,22 @@ export default function ScalarPermutationsTab({
       const allIds = (MELODY_VARIANTS["Cadences"] ?? []).map(v => v.id);
       const active = (enabled && enabled.length) ? enabled : allIds;
       const picked = active.length ? randomChoice(active) : "phrase";
-      if (picked === "phrase") return buildMelodicPhrase(family, sFam, sMode);
-      const chord = buildCadenceChords(picked, sFam, sMode);
+      if (picked === "phrase") return buildMelodicPhrase(family, sFam, sMode, loBound, hiBound);
+      const chord = buildCadenceChords(picked, sFam, sMode, loBound, hiBound);
       if (chord) return chord;
       // Fall back to melodic phrase if chord build failed.
-      return buildMelodicPhrase(family, sFam, sMode);
+      return buildMelodicPhrase(family, sFam, sMode, loBound, hiBound);
     }
-    return buildMelodicPhrase(family, sFam, sMode);
+    return buildMelodicPhrase(family, sFam, sMode, loBound, hiBound);
   }
 
-  function buildJazz(family: string, sFam: string, sMode: string): Built | null {
+  function buildJazz(family: string, sFam: string, sMode: string, loBound = lowestPitch, hiBound = highestPitch): Built | null {
     const len = lengthFilter !== "Any" ? parseInt(lengthFilter) : 3 + Math.floor(Math.random() * 5);
     const enabledList = jazzVariants[family];
     const enabledSet = enabledList && enabledList.length > 0 ? new Set(enabledList) : undefined;
     const phrase = generateJazzCell(family, len, enabledSet, sFam, sMode);
-    const [low, high] = strictWindowBounds(lowestPitch, highestPitch);
-    const midPitch = Math.floor((lowestPitch + highestPitch) / 2);
+    const [low, high] = strictWindowBounds(loBound, hiBound);
+    const midPitch = Math.floor((loBound + hiBound) / 2);
     const base = midPitch - (((midPitch - tonicPc) % edo + edo) % edo);
     const rawSteps = jazzPhraseToStepsEdo(phrase.degrees, base - tonicPc, sFam, sMode, edo);
     const absNotes = fitLineIntoWindow(rawSteps.map(s => tonicPc + s), edo, low, high);
@@ -539,29 +555,85 @@ export default function ScalarPermutationsTab({
     setScaleFam(pickedFam);
     setModeName(pickedMode);
 
-    const family = weightedRandomChoice(active, f => `perm:${FAMILY_KIND[f]}:${f}`);
-    const kind = FAMILY_KIND[family];
-    const built = kind === "jazz" ? buildJazz(family, pickedFam, pickedMode) : buildMelody(family, pickedFam, pickedMode);
-    if (!built) { onResult("Could not build a phrase. Try wider range or another family."); return; }
+    // Build one voice: pick a family from the active set (own weighted
+    // draw per voice, so the two lines can come from different families)
+    // and render it within the given pitch window.
+    const buildVoice = (lo: number, hi: number): Built | null => {
+      const fam = weightedRandomChoice(active, f => `perm:${FAMILY_KIND[f]}:${f}`);
+      const kind = FAMILY_KIND[fam];
+      return kind === "jazz"
+        ? buildJazz(fam, pickedFam, pickedMode, lo, hi)
+        : buildMelody(fam, pickedFam, pickedMode, lo, hi);
+    };
 
-    const info = built.degrees.join(" → ");
+    let voices: { frames: number[][]; gap: number }[];
+    let rows: AnswerRow[];
+    let label: string;
+    let optKey: string;
+
+    if (numVoices >= 2) {
+      // Split the range so voice 1 sits in the upper register and voice
+      // 2 in the lower, keeping at least an octave of room for each (the
+      // halves overlap slightly when the global range is tight, but the
+      // anchor pitches still separate the two lines by ear).
+      const mid = Math.floor((lowestPitch + highestPitch) / 2);
+      const upperLo = Math.min(mid, highestPitch - edo);
+      const lowerHi = Math.max(mid, lowestPitch + edo);
+      const v1 = buildVoice(upperLo, highestPitch);
+      const v2 = buildVoice(lowestPitch, lowerHi);
+      if (!v1 || !v2) { onResult("Could not build two voices. Try a wider range or another family."); return; }
+      // Both voices span the same total time; the denser one keeps the
+      // user's chosen note spacing, the sparser one is stretched to match
+      // so their onsets don't line up (independent lengths).
+      const span = Math.max(v1.frames.length, v2.frames.length) * noteGap;
+      voices = [
+        { frames: v1.frames, gap: v1.frames.length ? span / v1.frames.length : noteGap },
+        { frames: v2.frames, gap: v2.frames.length ? span / v2.frames.length : noteGap },
+      ];
+      rows = [
+        { label: "Upper voice", degrees: v1.degrees, notes: v1.absNotes, chordContext: v1.chordContext ?? "" },
+        { label: "Lower voice", degrees: v2.degrees, notes: v2.absNotes, chordContext: v2.chordContext ?? "" },
+      ];
+      label = `2 voices: ${v1.label.replace(/^(Jazz|Melody|Cadence): /, "")} / ${v2.label.replace(/^(Jazz|Melody|Cadence): /, "")}`;
+      optKey = "perm:voices2";
+    } else {
+      const built = buildVoice(lowestPitch, highestPitch);
+      if (!built) { onResult("Could not build a phrase. Try wider range or another family."); return; }
+      voices = [{ frames: built.frames, gap: noteGap }];
+      rows = [{ label: "", degrees: built.degrees, notes: built.absNotes, chordContext: built.chordContext ?? "" }];
+      label = built.label;
+      optKey = built.optKey;
+    }
+
+    const info = rows.map(r => r.degrees.join(" → ")).join("  |  ");
     setShowTarget(null);
     setInfoText("");
     setHasPendingInfo(false);
-    setContourNotes(built.absNotes);
-    setContourDegrees(built.degrees);
+    setAnswerRows(rows);
+    // Contour visual only tracks a single line; enable it for 1 voice.
+    setContourNotes(numVoices >= 2 ? null : rows[0].notes);
     setContourVisible(false);
-    setLastChordContext(built.chordContext ?? "");
     pendingInfo.current = { text: info, isTarget: responseMode !== "Play Audio" };
     setHasPendingInfo(true);
-    onResult(built.label);
-    onPlay(built.optKey, built.label);
-    lastPlayed.current = { frames: built.frames, info };
+    onResult(label);
+    onPlay(optKey, label);
+    lastVoices.current = voices;
+    lastPlayed.current = { frames: voices.flatMap(v => v.frames), info };
     setHasPlayed(true);
 
+    startVoices(voices);
+  };
+
+  // Play one or more voices simultaneously (each its own frames + gap),
+  // and clear the playing flag once the longest voice has finished.
+  const startVoices = (voices: { frames: number[][]; gap: number }[]) => {
     setIsPlaying(true);
-    audioEngine.playSequence(built.frames, edo, noteGap, 0.8);
-    setTimeout(() => setIsPlaying(false), built.frames.length * noteGap + 500);
+    let maxMs = 0;
+    voices.forEach(v => {
+      audioEngine.playSequence(v.frames, edo, v.gap, 0.8);
+      maxMs = Math.max(maxMs, v.frames.length * v.gap);
+    });
+    setTimeout(() => setIsPlaying(false), maxMs + 500);
   };
 
   const highlightFrames = useCallback((frames: number[][]) => {
@@ -579,13 +651,12 @@ export default function ScalarPermutationsTab({
   );
 
   const replay = () => {
-    const lp = lastPlayed.current;
-    if (!lp) return;
-    setIsPlaying(true);
-    if (contourVisible) contourReplay.startReplay();
-    audioEngine.playSequence(lp.frames, edo, noteGap, 0.8);
-    if (showTarget || infoText) highlightFrames(lp.frames);
-    setTimeout(() => setIsPlaying(false), lp.frames.length * noteGap + 500);
+    const voices = lastVoices.current;
+    if (!voices || !voices.length) return;
+    // Contour replay + keyboard highlight only apply to a single line.
+    if (voices.length === 1 && contourVisible) contourReplay.startReplay();
+    if (voices.length === 1 && (showTarget || infoText)) highlightFrames(voices[0].frames);
+    startVoices(voices);
   };
 
   const handleShowInfo = () => {
@@ -597,14 +668,10 @@ export default function ScalarPermutationsTab({
     // Show Answer re-plays the phrase so the user hears it again while
     // the degree labels reveal — per direct user direction (2026-05-12)
     // "when i click show answer it should play it".
-    const lp = lastPlayed.current;
-    if (lp && !isPlaying) {
-      setIsPlaying(true);
-      audioEngine.playSequence(lp.frames, edo, noteGap, 0.8);
-      highlightFrames(lp.frames);
-      setTimeout(() => setIsPlaying(false), lp.frames.length * noteGap + 500);
-    } else if (lp) {
-      highlightFrames(lp.frames);
+    const voices = lastVoices.current;
+    if (voices && voices.length) {
+      if (!isPlaying) startVoices(voices);
+      if (voices.length === 1) highlightFrames(voices[0].frames);
     }
   };
 
@@ -852,6 +919,14 @@ export default function ScalarPermutationsTab({
             className="w-16 bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white text-center focus:outline-none"
           />
         </div>
+        <div>
+          <label className="text-xs text-[#888] block mb-1">Voices</label>
+          <select value={numVoices} onChange={e => setNumVoices(parseInt(e.target.value))}
+            className="bg-[#1e1e1e] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:outline-none">
+            <option value={1}>1 (single line)</option>
+            <option value={2}>2 (transcribe both)</option>
+          </select>
+        </div>
         <div className="text-xs text-[#555]">
           {FAMILY_NAMES.filter(f => checked.has(f)).length} families selected
         </div>
@@ -882,58 +957,67 @@ export default function ScalarPermutationsTab({
           </button>
         </div>
       )}
-      {(showTarget || infoText) && contourDegrees && (() => {
+      {(showTarget || infoText) && answerRows.length > 0 && (() => {
         // Per direct user direction (2026-05-12) "random permuations
         // should show a box of the scale degrees played with the
         // solfege as well in similar card style" — each played degree
         // becomes a card with the degree number on top and the
-        // Heathwaite solfege below.
+        // Heathwaite solfege below.  With 2 voices each line gets its
+        // own labelled row.
         const heathwaiteTable = getHeathwaiteSolfege(edo);
+        const multi = answerRows.length > 1;
         return (
-        <div className={`rounded p-3 border space-y-2 ${
+        <div className={`rounded p-3 border space-y-3 ${
           showTarget ? "bg-[#1a2a1a] border-[#3a5a3a]" : "bg-[#141414] border-[#2a2a2a]"
         }`}>
-          {lastChordContext && (
-            <div className="flex gap-1 items-center flex-wrap">
-              <span className="text-[#666] text-xs mr-1">Chord:</span>
-              <span className={`px-2 py-0.5 rounded text-xs font-mono font-semibold border ${
-                showTarget
-                  ? "bg-[#1a2a1a] text-[#8fc88f] border-[#3a5a3a]"
-                  : "bg-[#1a1a2a] text-[#bbbbee] border-[#3a3a5a]"
-              }`}>
-                {lastChordContext}
-              </span>
+          {answerRows.map((row, ri) => (
+            <div key={ri} className="space-y-1">
+              {row.label && (
+                <div className="text-[10px] tracking-wider font-semibold text-[#888]">{row.label.toUpperCase()}</div>
+              )}
+              {row.chordContext && (
+                <div className="flex gap-1 items-center flex-wrap">
+                  <span className="text-[#666] text-xs mr-1">Chord:</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-mono font-semibold border ${
+                    showTarget
+                      ? "bg-[#1a2a1a] text-[#8fc88f] border-[#3a5a3a]"
+                      : "bg-[#1a1a2a] text-[#bbbbee] border-[#3a3a5a]"
+                  }`}>
+                    {row.chordContext}
+                  </span>
+                </div>
+              )}
+              <div className="space-y-1">
+                {!multi && <span className="text-[#666] text-xs">Degrees played:</span>}
+                <div className="flex gap-1 items-stretch flex-wrap">
+                  {row.degrees.map((deg, i) => {
+                    const isAltered = /[b#]/.test(deg);
+                    const absPitch = row.notes[i] ?? 0;
+                    const pcFromTonic = ((absPitch - tonicPc) % edo + edo) % edo;
+                    const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
+                    const degColor = isAltered ? "#bb88ee" : showTarget ? "#8fc88f" : "#9999ee";
+                    const bg = isAltered
+                      ? "bg-[#2a1a3a]"
+                      : showTarget ? "bg-[#1a2a1a]" : "bg-[#1a1a2a]";
+                    const border = isAltered
+                      ? "border-[#6644aa]"
+                      : showTarget ? "border-[#3a5a3a]" : "border-[#333]";
+                    return (
+                      <div key={i} className={`flex flex-col items-center px-2 py-1 rounded border ${bg} ${border}`}
+                           style={{ minWidth: 36 }}>
+                        <span className="text-[11px] font-mono font-bold leading-tight" style={{ color: degColor }}>
+                          {deg}
+                        </span>
+                        <span className="text-[9px] leading-tight mt-0.5" style={{ color: degColor + "cc" }}>
+                          {solfege}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          )}
-          <div className="space-y-1">
-            <span className="text-[#666] text-xs">Degrees played:</span>
-            <div className="flex gap-1 items-stretch flex-wrap">
-              {contourDegrees.map((deg, i) => {
-                const isAltered = /[b#]/.test(deg);
-                const absPitch = contourNotes?.[i] ?? 0;
-                const pcFromTonic = ((absPitch - tonicPc) % edo + edo) % edo;
-                const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
-                const degColor = isAltered ? "#bb88ee" : showTarget ? "#8fc88f" : "#9999ee";
-                const bg = isAltered
-                  ? "bg-[#2a1a3a]"
-                  : showTarget ? "bg-[#1a2a1a]" : "bg-[#1a1a2a]";
-                const border = isAltered
-                  ? "border-[#6644aa]"
-                  : showTarget ? "border-[#3a5a3a]" : "border-[#333]";
-                return (
-                  <div key={i} className={`flex flex-col items-center px-2 py-1 rounded border ${bg} ${border}`}
-                       style={{ minWidth: 36 }}>
-                    <span className="text-[11px] font-mono font-bold leading-tight" style={{ color: degColor }}>
-                      {deg}
-                    </span>
-                    <span className="text-[9px] leading-tight mt-0.5" style={{ color: degColor + "cc" }}>
-                      {solfege}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          ))}
         </div>
         );
       })()}
