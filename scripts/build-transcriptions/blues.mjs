@@ -14,7 +14,7 @@
 //   node scripts/build-transcriptions/blues.mjs
 
 import { writeFileSync, existsSync, mkdirSync, statSync, readFileSync, readdirSync } from "node:fs";
-import { execFileSync, execSync } from "node:child_process";
+import { execFileSync, execSync, execFile } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import https from "node:https";
@@ -409,13 +409,37 @@ function resolveArtist(tagArtist, path) {
   return null;
 }
 
+const ONSETS = join(__dirname, "onsets.py");
+
 function ffTags(file) {
-  try {
-    const out = execSync(`ffprobe -v quiet -show_entries "format=duration:format_tags=artist,album_artist,title" -of json "${file}"`, { encoding: "utf8", maxBuffer: 1 << 24 });
-    const fmt = (JSON.parse(out).format) || {};
-    const t = fmt.tags || {};
-    return { dur: parseFloat(fmt.duration) || 0, artist: t.album_artist || t.artist || "", title: t.title || "" };
-  } catch { return { dur: 0, artist: "", title: "" }; }
+  return new Promise((resolve) => {
+    execFile("ffprobe", ["-v", "quiet", "-show_entries", "format=duration:format_tags=artist,album_artist,title", "-of", "json", file],
+      { encoding: "utf8", maxBuffer: 1 << 24 }, (err, out) => {
+        if (err) return resolve({ dur: 0, artist: "", title: "" });
+        try { const fmt = JSON.parse(out).format || {}; const t = fmt.tags || {}; resolve({ dur: parseFloat(fmt.duration) || 0, artist: t.album_artist || t.artist || "", title: t.title || "" }); }
+        catch { resolve({ dur: 0, artist: "", title: "" }); }
+      });
+  });
+}
+
+/** Run async fns over items with a concurrency cap (the onset analysis is the
+ *  slow part — parallelising it keeps the whole-library pass to minutes). */
+async function pool(items, limit, fn) {
+  const results = new Array(items.length);
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (i < items.length) { const k = i++; results[k] = await fn(items[k], k); }
+  }));
+  return results;
+}
+
+function analyzeOnsets(file) {
+  return new Promise((resolve) => {
+    execFile(PYTHON, [ONSETS, file], { encoding: "utf8", maxBuffer: 1 << 26 }, (err, stdout) => {
+      if (err) return resolve(null);
+      try { resolve(JSON.parse(stdout)); } catch { resolve(null); }
+    });
+  });
 }
 
 function walkAudio(dir, base = dir) {
@@ -432,33 +456,38 @@ function walkAudio(dir, base = dir) {
 export async function buildFromLibrary() {
   if (!existsSync(LIB_DIR)) { console.error(`no library at ${LIB_DIR}`); return; }
   const files = walkAudio(LIB_DIR);
-  console.log(`Blues: scanning ${files.length} audio files…`);
-  const items = [];
-  let skipped = 0;
-  for (const abs of files) {
-    // Path relative to public/blues/ (so it includes the `lib/` segment the app
-    // serves from): public/blues/lib/<...> → "lib/<...>".
+  console.log(`Blues: analysing ${files.length} audio files…`);
+  let done = 0;
+  // Parallel pass: tags (artist/title) + onset detection per file.  The onsets
+  // let the app pick a RANDOM window at play time that actually contains notes
+  // (>=2), instead of a fixed precomputed clip.
+  const raw = await pool(files, 8, async (abs) => {
+    const tags = await ffTags(abs);
+    if (++done % 200 === 0) console.log(`  …${done}/${files.length}`);
+    if (tags.dur < 45) return null;                        // intros/skits/interludes
     const rel = "lib/" + abs.slice(LIB_DIR.length + 1).replace(/\\/g, "/");
-    const { dur, artist: tagArtist, title: tagTitle } = ffTags(abs);
-    if (dur < 45) { skipped++; continue; }                 // intros/skits/interludes
-    const c = resolveArtist(tagArtist, rel);
-    if (!c) { skipped++; continue; }                       // can't attribute → skip
-    const title = (tagTitle || rel.split("/").pop().replace(AUDIO_EXT, "")).trim();
-    // Clip heuristic: start ~30% in (skip intro/first verse), clamped so the
-    // window fits; the bars slider re-sizes the clip at play time.
-    const solostart = Math.round(Math.min(Math.max(dur * 0.3, 10), Math.max(10, dur - 26)));
+    const c = resolveArtist(tags.artist, rel);
+    if (!c) return null;                                   // can't attribute → skip
+    const an = await analyzeOnsets(abs);
+    if (!an || (an.onsets?.length ?? 0) < 4) return null;  // too sparse / silent
+    const title = (tags.title || rel.split("/").pop().replace(AUDIO_EXT, "")).trim();
+    return { c, title, rel, onsets: an.onsets, bpm: an.bpm || 100 };
+  });
+
+  const items = [];
+  for (const r of raw) {
+    if (!r) continue;
     items.push({
       id: `blues-${items.length}`, source: "blues", genre: "Blues",
-      style: `${c.display} (${c.role})`, title, artist: c.display,
+      style: `${r.c.display} (${r.c.role})`, title: r.title, artist: r.c.display,
       key: { tonicPc: 0, mode: "major" },
-      timeSig: [4, 4], tempoBpm: 100, barCount: 1,
-      audio: encPath(rel), solostart, soloLen: WINDOW,
-      youtubeQuery: `${c.display} ${title}`,
+      timeSig: [4, 4], tempoBpm: r.bpm, barCount: 1,
+      audio: encPath(r.rel), onsets: r.onsets,
+      youtubeQuery: `${r.c.display} ${r.title}`,
     });
-    if (items.length % 200 === 0) console.log(`  …${items.length} tracks`);
   }
   const byRole = items.reduce((m, i) => (m[i.style.includes("(Vocals)") ? "Vocals" : "Guitar"]++, m), { Guitar: 0, Vocals: 0 });
-  console.log(`Blues: built ${items.length} tracks (${byRole.Guitar} guitar, ${byRole.Vocals} vocals); skipped ${skipped}`);
+  console.log(`Blues: built ${items.length} tracks (${byRole.Guitar} guitar, ${byRole.Vocals} vocals)`);
   writeSource("blues", items);
 }
 

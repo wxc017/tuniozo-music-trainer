@@ -128,12 +128,10 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     // ear — there is no synthesized melody/notation.  Every other corpus plays MIDI.
     if (it.source === "blues" && it.audio) {
       const src = `${BASE}blues/${it.audio}`;
-      const start = full ? 0 : (it.solostart ?? 0);
-      // Clip length follows the "bars" setting, sized by the (rough) detected
-      // tempo, clamped to the analysed solo window so a bad bpm can't run wild.
-      const bpmForClip = Math.min(160, Math.max(60, it.tempoBpm || 100));
-      const clipLen = Math.min(it.soloLen ?? 24, Math.max(4, ex.bars * ex.beatsPerBar * (60 / bpmForClip)));
-      const end = full ? Infinity : start + clipLen;
+      // pickExcerpt chose a random window of the recording that contains notes;
+      // play that.  "Full song" plays the whole track from the top.
+      const start = full ? 0 : (ex.audioStart ?? it.solostart ?? 0);
+      const end = full ? Infinity : start + (ex.audioLen ?? it.soloLen ?? 24);
       setAudioSeg({ src, start, end });
       playAudioSeg(src, start, end);
       setStatus(""); setBusy(false);
