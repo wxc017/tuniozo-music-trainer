@@ -169,6 +169,10 @@ export interface TxExcerpt {
   /** Chords inside the window (plus the one carrying over at the start),
    *  rebased to 0 and clipped to the window. */
   chords: TxChordRebased[];
+  /** Blues only: absolute start/length (seconds) of the random audio clip the
+   *  player should play (a window of the recording containing >=2 onsets). */
+  audioStart?: number;
+  audioLen?: number;
 }
 export type TxNoteRebased = { midi: number; startBeat: number; durBeats: number; artic?: string };
 
@@ -192,10 +196,26 @@ export type TxChordRebased = {
 /** Slice a random `bars`-bar window out of an item.  Notes/chords are
  *  clipped to the window edges and rebased so the window begins at beat 0. */
 export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
-  // Blues: audio-only — no notes to slice, but carry the requested bar count so
-  // the player can size the audio clip to it (see TranscriptionsTab).
+  // Blues: audio-only.  Pick a RANDOM window of the recording that actually
+  // contains notes (>=2 onsets), sized to the requested bar count via the
+  // detected tempo.  Each Play therefore hears a different real passage.
   if (item.source === "blues") {
-    return { item, startBar: 0, bars, beatsPerBar: 4, windowBeats: bars * 4, melody: [], chords: [] };
+    const secPerBar = (60 / (item.tempoBpm || 100)) * 4;
+    const winLen = Math.max(4, bars * secPerBar);
+    const onsets = item.onsets ?? [];
+    const lastOnset = onsets.length ? onsets[onsets.length - 1] : (item.soloLen ?? 180);
+    const span = Math.max(0, lastOnset - winLen);
+    const countIn = (s: number) => {
+      let n = 0; for (const o of onsets) { if (o >= s && o < s + winLen) n++; if (n >= 2) break; } return n;
+    };
+    let start = 0, bestN = -1;
+    for (let t = 0; t < 20; t++) {
+      const s = Math.round(Math.random() * span * 100) / 100;
+      const n = countIn(s);
+      if (n >= 2) { start = s; bestN = n; break; }
+      if (n > bestN) { bestN = n; start = s; }
+    }
+    return { item, startBar: 0, bars, beatsPerBar: 4, windowBeats: bars * 4, melody: [], chords: [], audioStart: start, audioLen: Math.round(winLen * 100) / 100 };
   }
   const bpb = beatsPerBar(item.timeSig);
   const usableBars = Math.min(bars, item.barCount);

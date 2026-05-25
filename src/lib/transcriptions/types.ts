@@ -111,6 +111,9 @@ export interface TxItem {
   /** Seconds of audio to play from `solostart` — the solo clip length (blues is
    *  audio-only: you transcribe it by ear, so there is no melody/notation). */
   soloLen?: number;
+  /** Note-attack times (seconds) detected in the recording (blues).  The player
+   *  picks a random window containing >=2 of these so a clip always has notes. */
+  onsets?: number[];
 }
 
 /** Lightweight index entry — loaded up front so the UI can filter by
