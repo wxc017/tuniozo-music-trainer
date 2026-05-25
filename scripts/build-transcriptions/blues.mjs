@@ -375,69 +375,90 @@ export async function build() {
 }
 
 // ── Soulseek library → corpus ───────────────────────────────────────
-// The albums are downloaded by sldl into public/blues/lib/<artist>/<album>/
-// <title>.<ext> (artist = the CSV's source artist, so role mapping is exact).
-// This builds the audio-only corpus from those files: locate a clip in each
-// track (transcribe.py) and tag it `Artist (Guitar|Vocals)`.
+// The albums are downloaded by sldl into public/blues/lib/.  sldl doesn't always
+// populate the artist FOLDER (some tracks land in junk dirs), but the mp3 TAGS
+// are reliable — so we resolve artist/title from the file's tags (ffprobe), map
+// the tag artist to a roster artist (+ role), and locate the clip by a simple
+// heuristic (start ~30% in) since per-track transcription of thousands of files
+// is impractical.
 const LIB_DIR = join(__dirname, "..", "..", "public", "blues", "lib");
-const VOCALISTS = new Set([
-  "Bessie Smith", "Ma Rainey", "Etta James", "Big Mama Thornton", "Koko Taylor",
-  "Bobby Blue Bland", "Big Joe Turner", "Howlin' Wolf", "Robert Johnson",
-]);
-const AUDIO_EXT = /\.(flac|mp3|m4a|ogg|opus|wav)$/i;
-const encPath = (p) => p.split("/").map(encodeURIComponent).join("/");
+const AUDIO_EXT = /\.(flac|mp3|m4a|ogg|opus|wav|aac)$/i;
+const encPath = (p) => p.split(/[\\/]/).map(encodeURIComponent).join("/");
 
-function ffprobeSec(file) {
+// Roster: [display, role, ...alias-substrings].  A tag artist matches if any
+// alias (normalized) is contained in the normalized tag artist — so bands and
+// "feat." credits fold into the right artist (Cream→Clapton, Double Trouble→SRV).
+const CANON = [
+  ["Albert King", "Guitar"], ["Stevie Ray Vaughan", "Guitar", "stevie ray vaughan", "double trouble"],
+  ["B.B. King", "Guitar", "bb king"], ["Jimi Hendrix", "Guitar", "jimi hendrix", "band of gypsys"],
+  ["Eric Clapton", "Guitar", "eric clapton", "cream", "derek and the dominos", "john mayall", "bluesbreakers"],
+  ["Muddy Waters", "Guitar"], ["Buddy Guy", "Guitar"], ["Freddie King", "Guitar"],
+  ["T-Bone Walker", "Guitar", "tbone walker"], ["Otis Rush", "Guitar"], ["Magic Sam", "Guitar"],
+  ["Elmore James", "Guitar"], ["John Lee Hooker", "Guitar"], ["Lightnin' Hopkins", "Guitar", "lightnin hopkins"],
+  ["Gary Moore", "Guitar"], ["Peter Green", "Guitar", "peter green", "fleetwood mac"],
+  ["Robben Ford", "Guitar"], ["Joe Bonamassa", "Guitar"], ["Bonnie Raitt", "Guitar"],
+  ["Bessie Smith", "Vocals"], ["Ma Rainey", "Vocals"], ["Etta James", "Vocals"],
+  ["Big Mama Thornton", "Vocals"], ["Koko Taylor", "Vocals"],
+  ["Bobby Blue Bland", "Vocals", "bobby bland", "bobby blue bland"], ["Big Joe Turner", "Vocals", "joe turner"],
+  ["Howlin' Wolf", "Vocals", "howlin wolf"], ["Robert Johnson", "Vocals"],
+].map(([display, role, ...aliases]) => ({ display, role, aliases: (aliases.length ? aliases : [display]).map(a => a.toLowerCase().replace(/[^a-z0-9]/g, "")) }));
+
+function resolveArtist(tagArtist, path) {
+  const hay = (`${tagArtist || ""} ${path}`).toLowerCase().replace(/[^a-z0-9]/g, "");
+  for (const c of CANON) if (c.aliases.some(a => hay.includes(a))) return c;
+  return null;
+}
+
+function ffTags(file) {
   try {
-    const out = execSync(`ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${file}"`, { encoding: "utf8" });
-    const d = parseFloat(out.trim());
-    return Number.isFinite(d) ? d : 0;
-  } catch { return 0; }
+    const out = execSync(`ffprobe -v quiet -show_entries "format=duration:format_tags=artist,album_artist,title" -of json "${file}"`, { encoding: "utf8", maxBuffer: 1 << 24 });
+    const fmt = (JSON.parse(out).format) || {};
+    const t = fmt.tags || {};
+    return { dur: parseFloat(fmt.duration) || 0, artist: t.album_artist || t.artist || "", title: t.title || "" };
+  } catch { return { dur: 0, artist: "", title: "" }; }
+}
+
+function walkAudio(dir, base = dir) {
+  const out = [];
+  let entries; try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+  for (const e of entries) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) out.push(...walkAudio(p, base));
+    else if (e.isFile() && AUDIO_EXT.test(e.name) && !/\.incomplete$/i.test(e.name)) out.push(p);
+  }
+  return out;
 }
 
 export async function buildFromLibrary() {
   if (!existsSync(LIB_DIR)) { console.error(`no library at ${LIB_DIR}`); return; }
-  const force = !!process.env.FORCE_TRANSCRIBE;
-  const prevPath = join(__dirname, "..", "..", "public", "transcriptions", "blues.json");
-  const prev = new Map();
-  try { for (const it of JSON.parse(readFileSync(prevPath, "utf8"))) if (it.audio) prev.set(it.audio, it); } catch { /* */ }
-
-  const dirs = (p) => { try { return readdirSync(p, { withFileTypes: true }); } catch { return []; } };
+  const files = walkAudio(LIB_DIR);
+  console.log(`Blues: scanning ${files.length} audio files…`);
   const items = [];
-  for (const artistDir of dirs(LIB_DIR).filter(d => d.isDirectory())) {
-    const artist = artistDir.name;
-    const role = VOCALISTS.has(artist) ? "Vocals" : "Guitar";
-    const style = `${artist} (${role})`;
-    const artistPath = join(LIB_DIR, artist);
-    for (const albumDir of dirs(artistPath).filter(d => d.isDirectory())) {
-      const albumPath = join(artistPath, albumDir.name);
-      for (const f of dirs(albumPath).filter(d => d.isFile() && AUDIO_EXT.test(d.name))) {
-        const abs = join(albumPath, f.name);
-        const rel = `lib/${artist}/${albumDir.name}/${f.name}`;
-        const audio = encPath(rel);
-        const title = f.name.replace(AUDIO_EXT, "");
-        const cached = prev.get(audio);
-        if (cached && !force) { items.push({ ...cached, id: `blues-${items.length}`, style }); continue; }
-        if (ffprobeSec(abs) < 45) continue;                 // skip intros/skits/interludes
-        let tr;
-        try { tr = JSON.parse(execSync(`"${PYTHON}" "${TRANSCRIBE}" "${abs}" ${WINDOW}`, { encoding: "utf8", maxBuffer: 1 << 26 })); }
-        catch { console.log(`  clip-find failed: ${artist} - ${title}`); continue; }
-        if (tr.error) continue;
-        const solostart = tr.soloStart || 0;
-        const soloLen = Math.round(((tr.soloEnd ?? solostart + WINDOW) - solostart) * 100) / 100 || WINDOW;
-        items.push({
-          id: `blues-${items.length}`, source: "blues", genre: "Blues", style,
-          title, artist,
-          key: { tonicPc: 0, mode: "major" },
-          timeSig: [4, 4], tempoBpm: tr.bpm || 100, barCount: 1,
-          audio, solostart, soloLen,
-          youtubeQuery: `${artist} ${title}`,
-        });
-        if (items.length % 25 === 0) console.log(`  …${items.length} tracks`);
-      }
-    }
+  let skipped = 0;
+  for (const abs of files) {
+    // Path relative to public/blues/ (so it includes the `lib/` segment the app
+    // serves from): public/blues/lib/<...> → "lib/<...>".
+    const rel = "lib/" + abs.slice(LIB_DIR.length + 1).replace(/\\/g, "/");
+    const { dur, artist: tagArtist, title: tagTitle } = ffTags(abs);
+    if (dur < 45) { skipped++; continue; }                 // intros/skits/interludes
+    const c = resolveArtist(tagArtist, rel);
+    if (!c) { skipped++; continue; }                       // can't attribute → skip
+    const title = (tagTitle || rel.split("/").pop().replace(AUDIO_EXT, "")).trim();
+    // Clip heuristic: start ~30% in (skip intro/first verse), clamped so the
+    // window fits; the bars slider re-sizes the clip at play time.
+    const solostart = Math.round(Math.min(Math.max(dur * 0.3, 10), Math.max(10, dur - 26)));
+    items.push({
+      id: `blues-${items.length}`, source: "blues", genre: "Blues",
+      style: `${c.display} (${c.role})`, title, artist: c.display,
+      key: { tonicPc: 0, mode: "major" },
+      timeSig: [4, 4], tempoBpm: 100, barCount: 1,
+      audio: encPath(rel), solostart, soloLen: WINDOW,
+      youtubeQuery: `${c.display} ${title}`,
+    });
+    if (items.length % 200 === 0) console.log(`  …${items.length} tracks`);
   }
-  console.log(`Blues: built ${items.length} tracks from the Soulseek library`);
+  const byRole = items.reduce((m, i) => (m[i.style.includes("(Vocals)") ? "Vocals" : "Guitar"]++, m), { Guitar: 0, Vocals: 0 });
+  console.log(`Blues: built ${items.length} tracks (${byRole.Guitar} guitar, ${byRole.Vocals} vocals); skipped ${skipped}`);
   writeSource("blues", items);
 }
 
