@@ -13,7 +13,7 @@
 //
 //   node scripts/build-transcriptions/blues.mjs
 
-import { writeFileSync, existsSync, mkdirSync, statSync, readFileSync } from "node:fs";
+import { writeFileSync, existsSync, mkdirSync, statSync, readFileSync, readdirSync } from "node:fs";
 import { execFileSync, execSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,11 +28,15 @@ const PYTHON = process.env.PYTHON || "python";
 const TRANSCRIBE = join(__dirname, "transcribe.py");
 const WINDOW = 24;   // seconds of solo to capture per tune
 
-// Well-renowned solos.  `q` is the search query (live-biased where the canonical
-// version is live).  `live` just records intent.
-const A = (artist, list) => list.map(([title, q]) => ({ artist, title, q: `${artist} ${q}` }));
-const SOLOS = [
-  ...A("Albert King", [
+// Roster of essential blues artists, each tagged (Guitar) or (Vocals).  `q` is
+// the search query (live-biased where the canonical version is live).  Sourced
+// from each artist's essential studio + live albums; the proven per-track
+// resolver downloads the full song (album-playlist auto-download isn't reliable
+// through YouTube, so we curate the essential repertoire per artist instead).
+const A = (artist, role, list) => list.map(([title, q]) => ({ artist, role, title, q: `${artist} ${q}` }));
+const ROSTER = [
+  // ───────────────────────── GUITAR ─────────────────────────
+  ...A("Albert King", "Guitar", [
     ["Blues Power (live)", "Blues Power live wire"], ["Born Under a Bad Sign", "Born Under a Bad Sign"],
     ["Crosscut Saw", "Crosscut Saw"], ["I'll Play the Blues for You", "I'll Play the Blues for You live"],
     ["Stormy Monday (live)", "Stormy Monday live"], ["Blues at Sunrise (live)", "Blues at Sunrise live"],
@@ -45,7 +49,7 @@ const SOLOS = [
     ["Down Don't Bother Me", "Down Don't Bother Me"], ["Wrapped Up in Love Again", "Wrapped Up in Love Again"],
     ["Match Box Blues", "Match Box Blues"], ["Overall Junction", "Overall Junction"],
   ]),
-  ...A("Stevie Ray Vaughan", [
+  ...A("Stevie Ray Vaughan", "Guitar", [
     ["Texas Flood (live)", "Texas Flood live el mocambo"], ["Lenny", "Lenny live"], ["Little Wing", "Little Wing"],
     ["Tin Pan Alley (live)", "Tin Pan Alley live"], ["Cold Shot", "Cold Shot live"], ["Pride and Joy", "Pride and Joy live"],
     ["Voodoo Child (Slight Return)", "Voodoo Child Slight Return live"], ["Couldn't Stand the Weather", "Couldn't Stand the Weather"],
@@ -56,7 +60,7 @@ const SOLOS = [
     ["Say What!", "Say What"], ["Empty Arms", "Empty Arms"], ["Wall of Denial", "Wall of Denial"],
     ["Going Down (live)", "Going Down live jam"],
   ]),
-  ...A("B.B. King", [
+  ...A("B.B. King", "Guitar", [
     ["The Thrill Is Gone (live)", "The Thrill Is Gone live"], ["Sweet Little Angel (live)", "Sweet Little Angel live at the regal"],
     ["How Blue Can You Get (live)", "How Blue Can You Get live"], ["Every Day I Have the Blues (live)", "Every Day I Have the Blues live regal"],
     ["Why I Sing the Blues (live)", "Why I Sing the Blues live"], ["Rock Me Baby", "Rock Me Baby live"],
@@ -67,7 +71,7 @@ const SOLOS = [
     ["You Upset Me Baby", "You Upset Me Baby"], ["Sweet Sixteen", "Sweet Sixteen"], ["Please Love Me", "Please Love Me"],
     ["It's My Own Fault", "It's My Own Fault live"], ["Woke Up This Morning", "Woke Up This Morning"], ["Ask Me No Questions", "Ask Me No Questions"],
   ]),
-  ...A("Jimi Hendrix", [
+  ...A("Jimi Hendrix", "Guitar", [
     ["Red House (live)", "Red House live"], ["Hear My Train A Comin' (live)", "Hear My Train A Comin live"],
     ["Machine Gun (live)", "Machine Gun band of gypsys live"], ["Voodoo Child (Slight Return)", "Voodoo Child Slight Return live"],
     ["Catfish Blues (live)", "Catfish Blues live"], ["Killing Floor (Monterey)", "Killing Floor live Monterey"],
@@ -79,7 +83,7 @@ const SOLOS = [
     ["Who Knows (live)", "Who Knows band of gypsys live"], ["Star Spangled Banner (Woodstock)", "Star Spangled Banner Woodstock"],
     ["Little Wing", "Little Wing"], ["Fire (live)", "Fire live"],
   ]),
-  ...A("Eric Clapton", [
+  ...A("Eric Clapton", "Guitar", [
     ["Crossroads (Cream, live)", "Crossroads Cream live wheels of fire"], ["Have You Ever Loved a Woman (live)", "Have You Ever Loved a Woman live"],
     ["Further On Up the Road (live)", "Further On Up the Road live"], ["Old Love (live)", "Old Love live 24 nights"],
     ["Layla", "Layla"], ["White Room (Cream)", "Cream White Room"], ["Sunshine of Your Love (live)", "Cream Sunshine of Your Love live"],
@@ -92,25 +96,144 @@ const SOLOS = [
     ["I'm So Glad (Cream, live)", "Cream I'm So Glad live"], ["Got to Get Better in a Little While (live)", "Derek and the Dominos Got to Get Better live"],
   ]),
   // Cushion of further canonical solos so the corpus comfortably clears 100.
-  ...A("Albert King", [
+  ...A("Albert King", "Guitar", [
     ["I Get Evil", "I Get Evil"], ["You Sure Drive a Hard Bargain", "You Sure Drive a Hard Bargain"],
     ["That's What the Blues Is All About", "That's What the Blues Is All About"], ["Answer to the Laundromat Blues", "Answer to the Laundromat Blues"],
   ]),
-  ...A("Stevie Ray Vaughan", [
+  ...A("Stevie Ray Vaughan", "Guitar", [
     ["Life by the Drop", "Life by the Drop"], ["Texas Flood (studio)", "Texas Flood studio"],
     ["Lookin' Out the Window", "Lookin Out the Window"], ["Travis Walk", "Travis Walk"],
   ]),
-  ...A("B.B. King", [
+  ...A("B.B. King", "Guitar", [
     ["The Thrill Is Gone (studio)", "The Thrill Is Gone studio completely well"], ["Caldonia (live)", "Caldonia live"],
     ["Let the Good Times Roll", "Let the Good Times Roll BB King"], ["Never Make a Move Too Soon", "Never Make a Move Too Soon"],
   ]),
-  ...A("Jimi Hendrix", [
+  ...A("Jimi Hendrix", "Guitar", [
     ["All Along the Watchtower", "All Along the Watchtower"], ["Bold as Love", "Bold as Love"],
     ["Castles Made of Sand", "Castles Made of Sand"], ["Pali Gap", "Pali Gap"],
   ]),
-  ...A("Eric Clapton", [
+  ...A("Eric Clapton", "Guitar", [
     ["Wonderful Tonight (live)", "Wonderful Tonight live"], ["I Shot the Sheriff (live)", "I Shot the Sheriff live"],
     ["Tell the Truth (live)", "Derek and the Dominos Tell the Truth live"], ["Why Does Love Got to Be So Sad (live)", "Derek and the Dominos Why Does Love live"],
+  ]),
+  ...A("Muddy Waters", "Guitar", [
+    ["Hoochie Coochie Man", "Hoochie Coochie Man"], ["Mannish Boy", "Mannish Boy"], ["Got My Mojo Working", "Got My Mojo Working"],
+    ["Rollin' Stone", "Rollin Stone"], ["I Just Want to Make Love to You", "I Just Want to Make Love to You"], ["Baby Please Don't Go", "Baby Please Don't Go"],
+    ["Long Distance Call", "Long Distance Call"], ["I Can't Be Satisfied", "I Can't Be Satisfied"], ["Trouble No More", "Trouble No More"],
+    ["Forty Days and Forty Nights", "Forty Days and Forty Nights"], ["You Shook Me", "You Shook Me"], ["Champagne and Reefer", "Champagne and Reefer"],
+    ["She's Nineteen Years Old", "She's Nineteen Years Old"], ["Blow Wind Blow", "Blow Wind Blow"], ["Standing Around Crying", "Standing Around Crying"],
+  ]),
+  ...A("Buddy Guy", "Guitar", [
+    ["Damn Right I've Got the Blues", "Damn Right I've Got the Blues"], ["Stone Crazy", "Stone Crazy"], ["First Time I Met the Blues", "First Time I Met the Blues"],
+    ["Mary Had a Little Lamb", "Mary Had a Little Lamb"], ["Five Long Years", "Five Long Years"], ["Feels Like Rain", "Feels Like Rain"],
+    ["A Man and the Blues", "A Man and the Blues"], ["Let Me Love You Baby", "Let Me Love You Baby"], ["My Time After Awhile", "My Time After Awhile"],
+    ["Sweet Little Angel (live)", "Sweet Little Angel live"], ["Skin Deep", "Skin Deep"], ["Stormy Monday (live)", "Stormy Monday live"],
+  ]),
+  ...A("Freddie King", "Guitar", [
+    ["Hide Away", "Hide Away"], ["The Stumble", "The Stumble"], ["San-Ho-Zay", "San-Ho-Zay"], ["Have You Ever Loved a Woman", "Have You Ever Loved a Woman"],
+    ["Going Down", "Going Down"], ["I'm Tore Down", "I'm Tore Down"], ["Lonesome Whistle Blues", "Lonesome Whistle Blues"], ["Sen-Sa-Shun", "Sen-Sa-Shun"],
+    ["Just Pickin'", "Just Pickin"], ["Palace of the King", "Palace of the King"], ["Big Legged Woman", "Big Legged Woman"], ["Hideaway (live)", "Freddie King Hideaway live"],
+  ]),
+  ...A("T-Bone Walker", "Guitar", [
+    ["Call It Stormy Monday", "Call It Stormy Monday"], ["T-Bone Shuffle", "T-Bone Shuffle"], ["Mean Old World", "Mean Old World"],
+    ["Cold Cold Feeling", "Cold Cold Feeling"], ["West Side Baby", "West Side Baby"], ["Bobby Sox Blues", "Bobby Sox Blues"],
+    ["T-Bone Blues", "T-Bone Blues"], ["Strollin' with Bones", "Strollin with Bones"], ["Papa Ain't Salty", "Papa Ain't Salty"],
+  ]),
+  ...A("Otis Rush", "Guitar", [
+    ["I Can't Quit You Baby", "I Can't Quit You Baby"], ["All Your Love (I Miss Loving)", "All Your Love I Miss Loving"], ["Double Trouble", "Double Trouble"],
+    ["So Many Roads So Many Trains", "So Many Roads So Many Trains"], ["Homework", "Homework"], ["Checking on My Baby", "Checking on My Baby"],
+    ["Right Place Wrong Time", "Right Place Wrong Time"], ["It Takes Time", "It Takes Time"],
+  ]),
+  ...A("Magic Sam", "Guitar", [
+    ["All Your Love", "Magic Sam All Your Love"], ["Easy Baby", "Easy Baby"], ["Sweet Home Chicago", "Magic Sam Sweet Home Chicago"],
+    ["I Need You So Bad", "I Need You So Bad"], ["Looking Good", "Magic Sam Looking Good"], ["That's All I Need", "That's All I Need"],
+    ["I Feel So Good", "Magic Sam I Feel So Good"], ["Mama Talk to Your Daughter", "Mama Talk to Your Daughter"],
+  ]),
+  ...A("Elmore James", "Guitar", [
+    ["Dust My Broom", "Dust My Broom"], ["The Sky Is Crying", "Elmore James The Sky Is Crying"], ["It Hurts Me Too", "Elmore James It Hurts Me Too"],
+    ["Shake Your Moneymaker", "Shake Your Moneymaker"], ["Done Somebody Wrong", "Done Somebody Wrong"], ["Standing at the Crossroads", "Standing at the Crossroads Elmore James"],
+    ["Bleeding Heart", "Elmore James Bleeding Heart"], ["Stranger Blues", "Stranger Blues"],
+  ]),
+  ...A("John Lee Hooker", "Guitar", [
+    ["Boom Boom", "Boom Boom"], ["Boogie Chillen", "Boogie Chillen"], ["I'm in the Mood", "I'm in the Mood"],
+    ["One Bourbon One Scotch One Beer", "One Bourbon One Scotch One Beer"], ["Crawling King Snake", "Crawling King Snake"], ["Dimples", "Dimples"],
+    ["Tupelo", "Tupelo John Lee Hooker"], ["Hobo Blues", "Hobo Blues"], ["It Serves Me Right to Suffer", "It Serves Me Right to Suffer"],
+  ]),
+  ...A("Lightnin' Hopkins", "Guitar", [
+    ["Mojo Hand", "Mojo Hand"], ["Baby Please Don't Go", "Lightnin Hopkins Baby Please Don't Go"], ["Bring Me My Shotgun", "Bring Me My Shotgun"],
+    ["Coffee Blues", "Lightnin Hopkins Coffee Blues"], ["Katie Mae", "Katie Mae"], ["Mr. Charlie", "Lightnin Hopkins Mr Charlie"],
+    ["Trouble in Mind", "Lightnin Hopkins Trouble in Mind"], ["Short Haired Woman", "Short Haired Woman"],
+  ]),
+  ...A("Gary Moore", "Guitar", [
+    ["Still Got the Blues", "Still Got the Blues"], ["Parisienne Walkways", "Parisienne Walkways"], ["The Loner", "Gary Moore The Loner"],
+    ["Walking by Myself", "Gary Moore Walking by Myself"], ["Cold Day in Hell", "Cold Day in Hell"], ["Story of the Blues", "Story of the Blues"],
+    ["Empty Rooms", "Gary Moore Empty Rooms"], ["Texas Strut", "Texas Strut"], ["Oh Pretty Woman (live)", "Gary Moore Oh Pretty Woman live"],
+  ]),
+  ...A("Peter Green", "Guitar", [
+    ["Albatross", "Fleetwood Mac Albatross"], ["Black Magic Woman", "Fleetwood Mac Black Magic Woman"], ["Need Your Love So Bad", "Fleetwood Mac Need Your Love So Bad"],
+    ["Oh Well", "Fleetwood Mac Oh Well"], ["The Green Manalishi", "Green Manalishi"], ["Man of the World", "Fleetwood Mac Man of the World"],
+    ["I Loved Another Woman", "I Loved Another Woman Fleetwood Mac"], ["Love That Burns", "Love That Burns Fleetwood Mac"],
+  ]),
+  ...A("Robben Ford", "Guitar", [
+    ["Help the Poor", "Robben Ford Help the Poor"], ["Talk to Your Daughter", "Robben Ford Talk to Your Daughter"], ["Revelation", "Robben Ford Revelation"],
+    ["Chevrolet", "Robben Ford Chevrolet"], ["Indianola", "Robben Ford Indianola"], ["Rugantino", "Robben Ford Rugantino"], ["Mystic Mile", "Robben Ford Mystic Mile"],
+  ]),
+  ...A("Joe Bonamassa", "Guitar", [
+    ["Sloe Gin", "Bonamassa Sloe Gin"], ["Blues Deluxe", "Bonamassa Blues Deluxe"], ["The Ballad of John Henry", "Ballad of John Henry Bonamassa"],
+    ["Django", "Bonamassa Django"], ["Just Got Paid", "Bonamassa Just Got Paid"], ["Mountain Time", "Bonamassa Mountain Time"],
+    ["Dust Bowl", "Bonamassa Dust Bowl"], ["Woke Up Dreaming", "Bonamassa Woke Up Dreaming"],
+  ]),
+  ...A("Bonnie Raitt", "Guitar", [
+    ["Love Me Like a Man", "Bonnie Raitt Love Me Like a Man"], ["Angel from Montgomery", "Bonnie Raitt Angel from Montgomery"], ["Thing Called Love", "Bonnie Raitt Thing Called Love"],
+    ["I Can't Make You Love Me", "Bonnie Raitt I Can't Make You Love Me"], ["Something to Talk About", "Bonnie Raitt Something to Talk About"], ["Runaway", "Bonnie Raitt Runaway"],
+    ["Women Be Wise", "Bonnie Raitt Women Be Wise"],
+  ]),
+  // ───────────────────────── VOCALS ─────────────────────────
+  ...A("Bessie Smith", "Vocals", [
+    ["Down Hearted Blues", "Bessie Smith Down Hearted Blues"], ["St. Louis Blues", "Bessie Smith St Louis Blues"], ["Nobody Knows You When You're Down and Out", "Bessie Smith Nobody Knows You"],
+    ["Empty Bed Blues", "Bessie Smith Empty Bed Blues"], ["Gimme a Pigfoot", "Bessie Smith Gimme a Pigfoot"], ["Backwater Blues", "Bessie Smith Backwater Blues"],
+    ["Careless Love Blues", "Bessie Smith Careless Love Blues"], ["A Good Man Is Hard to Find", "Bessie Smith A Good Man Is Hard to Find"], ["Tain't Nobody's Bizness", "Bessie Smith Tain't Nobody's Bizness"],
+  ]),
+  ...A("Ma Rainey", "Vocals", [
+    ["See See Rider", "Ma Rainey See See Rider"], ["Black Bottom", "Ma Rainey Black Bottom"], ["Bo-Weavil Blues", "Ma Rainey Bo Weavil Blues"],
+    ["Prove It on Me Blues", "Ma Rainey Prove It on Me Blues"], ["Moonshine Blues", "Ma Rainey Moonshine Blues"], ["Trust No Man", "Ma Rainey Trust No Man"],
+    ["Deep Moaning Blues", "Ma Rainey Deep Moaning Blues"],
+  ]),
+  ...A("Etta James", "Vocals", [
+    ["At Last", "Etta James At Last"], ["I'd Rather Go Blind", "Etta James I'd Rather Go Blind"], ["Tell Mama", "Etta James Tell Mama"],
+    ["Something's Got a Hold on Me", "Etta James Something's Got a Hold on Me"], ["A Sunday Kind of Love", "Etta James A Sunday Kind of Love"], ["Damn Your Eyes", "Etta James Damn Your Eyes"],
+    ["Trust in Me", "Etta James Trust in Me"], ["All I Could Do Was Cry", "Etta James All I Could Do Was Cry"], ["W-O-M-A-N", "Etta James W-O-M-A-N"],
+  ]),
+  ...A("Big Mama Thornton", "Vocals", [
+    ["Hound Dog", "Big Mama Thornton Hound Dog"], ["Ball and Chain", "Big Mama Thornton Ball and Chain"], ["Sweet Little Angel", "Big Mama Thornton Sweet Little Angel"],
+    ["They Call Me Big Mama", "Big Mama Thornton They Call Me Big Mama"], ["Wade in the Water", "Big Mama Thornton Wade in the Water"], ["Little Red Rooster", "Big Mama Thornton Little Red Rooster"],
+    ["Ball and Chain (live)", "Big Mama Thornton Ball and Chain live"],
+  ]),
+  ...A("Koko Taylor", "Vocals", [
+    ["Wang Dang Doodle", "Koko Taylor Wang Dang Doodle"], ["I'm a Woman", "Koko Taylor I'm a Woman"], ["Voodoo Woman", "Koko Taylor Voodoo Woman"],
+    ["Let the Good Times Roll", "Koko Taylor Let the Good Times Roll"], ["I Got What It Takes", "Koko Taylor I Got What It Takes"], ["Insane Asylum", "Koko Taylor Insane Asylum"],
+  ]),
+  ...A("Bobby \"Blue\" Bland", "Vocals", [
+    ["Stormy Monday Blues", "Bobby Bland Stormy Monday Blues"], ["Turn On Your Love Light", "Bobby Bland Turn On Your Love Light"], ["I Pity the Fool", "Bobby Bland I Pity the Fool"],
+    ["Cry Cry Cry", "Bobby Bland Cry Cry Cry"], ["Two Steps from the Blues", "Bobby Bland Two Steps from the Blues"], ["That's the Way Love Is", "Bobby Bland That's the Way Love Is"],
+    ["Ain't Nothing You Can Do", "Bobby Bland Ain't Nothing You Can Do"], ["Lead Me On", "Bobby Bland Lead Me On"], ["St. James Infirmary", "Bobby Bland St James Infirmary"],
+  ]),
+  ...A("Big Joe Turner", "Vocals", [
+    ["Shake Rattle and Roll", "Big Joe Turner Shake Rattle and Roll"], ["Flip Flop and Fly", "Big Joe Turner Flip Flop and Fly"], ["Chains of Love", "Big Joe Turner Chains of Love"],
+    ["Honey Hush", "Big Joe Turner Honey Hush"], ["Corrine Corrina", "Big Joe Turner Corrine Corrina"], ["Roll 'Em Pete", "Big Joe Turner Roll Em Pete"],
+    ["Sweet Sixteen", "Big Joe Turner Sweet Sixteen"],
+  ]),
+  ...A("Howlin' Wolf", "Vocals", [
+    ["Smokestack Lightnin'", "Smokestack Lightnin"], ["Spoonful", "Howlin Wolf Spoonful"], ["Killing Floor", "Howlin Wolf Killing Floor"],
+    ["Back Door Man", "Howlin Wolf Back Door Man"], ["Little Red Rooster", "Howlin Wolf Little Red Rooster"], ["How Many More Years", "How Many More Years"],
+    ["Evil", "Howlin Wolf Evil"], ["I Ain't Superstitious", "I Ain't Superstitious"], ["Sitting on Top of the World", "Howlin Wolf Sitting on Top of the World"],
+    ["Moanin' at Midnight", "Moanin at Midnight"],
+  ]),
+  ...A("Robert Johnson", "Vocals", [
+    ["Cross Road Blues", "Robert Johnson Cross Road Blues"], ["Sweet Home Chicago", "Robert Johnson Sweet Home Chicago"], ["Hellhound on My Trail", "Robert Johnson Hellhound on My Trail"],
+    ["Love in Vain", "Robert Johnson Love in Vain"], ["Come On in My Kitchen", "Robert Johnson Come On in My Kitchen"], ["Kind Hearted Woman Blues", "Robert Johnson Kind Hearted Woman"],
+    ["Me and the Devil Blues", "Robert Johnson Me and the Devil Blues"], ["Terraplane Blues", "Robert Johnson Terraplane Blues"], ["Walkin' Blues", "Robert Johnson Walkin Blues"],
+    ["32-20 Blues", "Robert Johnson 32-20 Blues"],
   ]),
 ];
 
@@ -205,12 +328,13 @@ export async function build() {
   // clip-selection logic changes, without re-scraping/re-downloading.
   const force = !!process.env.FORCE_TRANSCRIBE;
 
-  for (const s of SOLOS) {
+  const styleOf = (s) => `${s.artist} (${s.role})`;
+  for (const s of ROSTER) {
     const cached = prev.get(`${s.artist}|||${s.title}`);
     const cachedMp3 = cached?.audio ? join(AUDIO_DIR, cached.audio.replace(/^audio\//, "")) : null;
     let vid;
     if (cachedMp3 && existsSync(cachedMp3)) {
-      if (!force) { items.push({ ...cached, id: `blues-${items.length}` }); continue; }
+      if (!force) { items.push({ ...cached, id: `blues-${items.length}`, style: styleOf(s) }); continue; }
       vid = cached.vid;                          // reuse download; re-transcribe below
     } else {
       vid = await bestVideo(s);
@@ -237,17 +361,84 @@ export async function build() {
     const solostart = tr.soloStart || 0;
     const soloLen = Math.round(((tr.soloEnd ?? solostart + WINDOW) - solostart) * 100) / 100 || WINDOW;
     items.push({
-      id: `blues-${items.length}`, source: "blues", genre: "Blues", style: s.artist,
+      id: `blues-${items.length}`, source: "blues", genre: "Blues", style: styleOf(s),
       title: s.title, artist: s.artist,
       key: { tonicPc: 0, mode: "major" },
       timeSig: [4, 4], tempoBpm: tr.bpm || 100, barCount: 1,
       audio: `audio/${vid}.mp3`, solostart, soloLen, vid,
       youtubeQuery: s.q,
     });
-    console.log(`  ${s.artist} - ${s.title} -> ${vid} | clip @${solostart}s for ${soloLen}s`);
+    console.log(`  ${s.artist} (${s.role}) - ${s.title} -> ${vid} | clip @${solostart}s for ${soloLen}s`);
   }
-  console.log(`Blues: built ${items.length}/${SOLOS.length} curated solos`);
+  console.log(`Blues: built ${items.length}/${ROSTER.length} tracks`);
   writeSource("blues", items);
 }
 
-if (isMain(import.meta.url)) build().then(rebuildIndex).catch(e => { console.error(e); process.exit(1); });
+// ── Soulseek library → corpus ───────────────────────────────────────
+// The albums are downloaded by sldl into public/blues/lib/<artist>/<album>/
+// <title>.<ext> (artist = the CSV's source artist, so role mapping is exact).
+// This builds the audio-only corpus from those files: locate a clip in each
+// track (transcribe.py) and tag it `Artist (Guitar|Vocals)`.
+const LIB_DIR = join(__dirname, "..", "..", "public", "blues", "lib");
+const VOCALISTS = new Set([
+  "Bessie Smith", "Ma Rainey", "Etta James", "Big Mama Thornton", "Koko Taylor",
+  "Bobby Blue Bland", "Big Joe Turner", "Howlin' Wolf", "Robert Johnson",
+]);
+const AUDIO_EXT = /\.(flac|mp3|m4a|ogg|opus|wav)$/i;
+const encPath = (p) => p.split("/").map(encodeURIComponent).join("/");
+
+function ffprobeSec(file) {
+  try {
+    const out = execSync(`ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${file}"`, { encoding: "utf8" });
+    const d = parseFloat(out.trim());
+    return Number.isFinite(d) ? d : 0;
+  } catch { return 0; }
+}
+
+export async function buildFromLibrary() {
+  if (!existsSync(LIB_DIR)) { console.error(`no library at ${LIB_DIR}`); return; }
+  const force = !!process.env.FORCE_TRANSCRIBE;
+  const prevPath = join(__dirname, "..", "..", "public", "transcriptions", "blues.json");
+  const prev = new Map();
+  try { for (const it of JSON.parse(readFileSync(prevPath, "utf8"))) if (it.audio) prev.set(it.audio, it); } catch { /* */ }
+
+  const dirs = (p) => { try { return readdirSync(p, { withFileTypes: true }); } catch { return []; } };
+  const items = [];
+  for (const artistDir of dirs(LIB_DIR).filter(d => d.isDirectory())) {
+    const artist = artistDir.name;
+    const role = VOCALISTS.has(artist) ? "Vocals" : "Guitar";
+    const style = `${artist} (${role})`;
+    const artistPath = join(LIB_DIR, artist);
+    for (const albumDir of dirs(artistPath).filter(d => d.isDirectory())) {
+      const albumPath = join(artistPath, albumDir.name);
+      for (const f of dirs(albumPath).filter(d => d.isFile() && AUDIO_EXT.test(d.name))) {
+        const abs = join(albumPath, f.name);
+        const rel = `lib/${artist}/${albumDir.name}/${f.name}`;
+        const audio = encPath(rel);
+        const title = f.name.replace(AUDIO_EXT, "");
+        const cached = prev.get(audio);
+        if (cached && !force) { items.push({ ...cached, id: `blues-${items.length}`, style }); continue; }
+        if (ffprobeSec(abs) < 45) continue;                 // skip intros/skits/interludes
+        let tr;
+        try { tr = JSON.parse(execSync(`"${PYTHON}" "${TRANSCRIBE}" "${abs}" ${WINDOW}`, { encoding: "utf8", maxBuffer: 1 << 26 })); }
+        catch { console.log(`  clip-find failed: ${artist} - ${title}`); continue; }
+        if (tr.error) continue;
+        const solostart = tr.soloStart || 0;
+        const soloLen = Math.round(((tr.soloEnd ?? solostart + WINDOW) - solostart) * 100) / 100 || WINDOW;
+        items.push({
+          id: `blues-${items.length}`, source: "blues", genre: "Blues", style,
+          title, artist,
+          key: { tonicPc: 0, mode: "major" },
+          timeSig: [4, 4], tempoBpm: tr.bpm || 100, barCount: 1,
+          audio, solostart, soloLen,
+          youtubeQuery: `${artist} ${title}`,
+        });
+        if (items.length % 25 === 0) console.log(`  …${items.length} tracks`);
+      }
+    }
+  }
+  console.log(`Blues: built ${items.length} tracks from the Soulseek library`);
+  writeSource("blues", items);
+}
+
+if (isMain(import.meta.url)) buildFromLibrary().then(rebuildIndex).catch(e => { console.error(e); process.exit(1); });
