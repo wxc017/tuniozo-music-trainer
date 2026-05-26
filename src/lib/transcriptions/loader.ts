@@ -208,14 +208,17 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
     const onsets = item.onsets ?? [];
     const lastOnset = onsets.length ? onsets[onsets.length - 1] : (item.soloLen ?? 180);
     const span = Math.max(0, lastOnset - winLen);
-    // Need several onsets in the window (not just 2) so a sparse moment — e.g. a
-    // couple of crowd shouts in a quiet gap — doesn't qualify as "playing".
-    const NEED = 3;
+    // The window must contain enough note onsets so a sparse moment (a couple of
+    // crowd shouts in a gap) doesn't qualify as "playing".  For BLUES GUITAR we
+    // demand a DENSER window (~1.5 onsets/sec): guitar licks/solos fire far more
+    // attacks than a sung verse, so this biases toward guitar-active passages.
+    // (True guitar-vs-vocal isolation would need source separation / a GPU.)
+    const NEED = item.source === "bluesguitar" ? Math.max(5, Math.round(winLen * 1.5)) : 3;
     const countIn = (s: number) => {
       let n = 0; for (const o of onsets) { if (o >= s && o < s + winLen) n++; if (n >= NEED) break; } return n;
     };
     let start = 0, bestN = -1;
-    for (let t = 0; t < 24; t++) {
+    for (let t = 0; t < 40; t++) {
       const s = Math.round(Math.random() * span * 100) / 100;
       const n = countIn(s);
       if (n >= NEED) { start = s; break; }
