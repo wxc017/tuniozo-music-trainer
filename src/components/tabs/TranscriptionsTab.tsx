@@ -387,29 +387,9 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
             </div>
           </div>
 
-          {/* Blues is audio-only: the answer is the recording itself, embedded
-              here so you can check your by-ear transcription against the source. */}
-          {isBluesSource(item.source) ? (
-            item.vid ? (
-              <div className="relative rounded-md overflow-hidden bg-black" style={{ width: 240, aspectRatio: "16 / 9" }}>
-                <iframe
-                  className="absolute inset-0 w-full h-full"
-                  src={`https://www.youtube.com/embed/${item.vid}?start=${Math.floor(item.solostart ?? 0)}`}
-                  title={prettyTitle(item.title)}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            ) : (
-              <a
-                href={`https://www.youtube.com/results?search_query=${encodeURIComponent(item.youtubeQuery)}`}
-                target="_blank" rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-[#e57] hover:text-[#f7a] underline"
-              >
-                🎧 Find the recording on YouTube ↗
-              </a>
-            )
-          ) : (
+          {/* Blues is audio-only — the answer is just the title/artist above (you
+              already heard the real recording).  Notated corpora show notation. */}
+          {!isBluesSource(item.source) && (
             <>
               <div className="bg-[#161616] rounded-md p-2 overflow-x-auto">
                 <TranscriptionNotation excerpt={excerpt} showMelody={withMelody} showChords={withChords} showBass={withBass} />

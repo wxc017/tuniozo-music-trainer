@@ -125,7 +125,10 @@ export async function stylesForSources(sources: TxSource[]): Promise<string[]> {
   for (const e of index.items) {
     // Blues is audio-only (no melody) but its `style` is the PLAYER, so the
     // Styles filter doubles as "organize blues by player" — include it.
-    if (sources.includes(e.source) && (e.hasMelody || isBluesSource(e.source)) && e.style) set.add(e.style);
+    // ewld ("Standard") and cocopops ("Billboard") have a single uninformative
+    // style tag that doesn't subdivide anything, so they're excluded.
+    if (sources.includes(e.source) && e.source !== "ewld" && e.source !== "cocopops"
+        && (e.hasMelody || isBluesSource(e.source)) && e.style) set.add(e.style);
   }
   return [...set].sort((a, b) => a.localeCompare(b));
 }
