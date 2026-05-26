@@ -31,25 +31,38 @@ def main():
 
     n = 1 + (len(x) - FRAME) // HOP
     win = np.hanning(FRAME).astype(np.float32)
-    # Spectral-flux novelty curve (sum of positive bin-to-bin magnitude change).
+    # Spectral-flux novelty curve + per-frame RMS energy.
     prev = None
     flux = np.zeros(n, dtype=np.float32)
+    rms = np.zeros(n, dtype=np.float32)
     for i in range(n):
-        fr = x[i * HOP: i * HOP + FRAME] * win
-        mag = np.abs(np.fft.rfft(fr))
+        seg = x[i * HOP: i * HOP + FRAME]
+        rms[i] = np.sqrt(np.mean(seg * seg) + 1e-9)
+        mag = np.abs(np.fft.rfft(seg * win))
         if prev is not None:
             flux[i] = np.maximum(0.0, mag - prev).sum()
         prev = mag
     if flux.max() > 0:
         flux /= flux.max()
 
-    # Peak-pick: local maximum above an adaptive (local-mean) threshold.
+    # Sustained-loudness gate: a real "band playing" stretch is loud for ~1s, not
+    # a lone transient (a crowd shout in a quiet gap).  Keep onsets only where the
+    # LOCAL-MEAN energy is a decent fraction of the track's loudest sustained level.
+    esmooth = max(3, int(1.0 * SR / HOP))                # ~1 s energy window
+    ekernel = np.ones(esmooth, dtype=np.float32) / esmooth
+    energy = np.convolve(rms, ekernel, "same")
+    egate = 0.33 * float(energy.max()) if energy.max() > 0 else 0.0
+
+    # Peak-pick: local maximum above an adaptive (local-mean) threshold, AND in a
+    # sustained-loud region.
     win_f = max(3, int(0.15 * SR / HOP))                 # ~150 ms smoothing window
     kernel = np.ones(win_f, dtype=np.float32) / win_f
     local = np.convolve(flux, kernel, "same")
     onsets = []
     last = -1.0
     for i in range(1, n - 1):
+        if energy[i] < egate:                            # quiet gap → skip (e.g. crowd-only)
+            continue
         if flux[i] > local[i] + 0.04 and flux[i] >= flux[i - 1] and flux[i] > flux[i + 1]:
             t = i * HOP / SR
             if t - last > 0.07:                          # min 70 ms between onsets
