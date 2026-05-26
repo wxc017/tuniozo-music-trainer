@@ -336,7 +336,8 @@ const INSTRUMENT_SOURCES: Record<DroneInstrument, SourceConfig> = {
   // pumped reeds with constant timbre, ideal for tonic+5th holds.
   harmonium: {
     url: n => `${TONEJS_BASE}harmonium/${n}.mp3`,
-    notes: ["C2", "Ds2", "Fs2", "A2", "C3", "Ds3", "Fs3", "A3", "C4", "Ds4", "Fs4", "A4"],
+    // Fs4 404s on the host (the rest exist); drop it to avoid a console error.
+    notes: ["C2", "Ds2", "Fs2", "A2", "C3", "Ds3", "Fs3", "A3", "C4", "Ds4", "A4", "C5"],
   },
   // tonejs-instruments organ: A/C/Ds/Fs across octaves 1-5 — denser
   // than MusyngKite's 3-point map and warmer than Philharmonia organ
