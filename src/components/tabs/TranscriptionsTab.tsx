@@ -80,6 +80,10 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const [audioSeg, setAudioSeg] = useState<{ src: string; start: number; end: number } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const segEndRef = useRef<number>(Infinity);
+  // Extra bars of recording to play before/after the clip (the "hear more"
+  // buttons) — a ref so playback reads the current value without a re-render;
+  // reset on each new Play.
+  const clipPadRef = useRef({ before: 0, after: 0 });
 
   /** Play a local-audio segment [start,end].  Seeking into a large/VBR mp3 is
    *  unreliable if you play() before the seek lands, so: wait for metadata, set
@@ -140,10 +144,14 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     // ear — there is no synthesized melody/notation.  Every other corpus plays MIDI.
     if (isBluesSource(it.source) && it.audio) {
       const src = `${BASE}blues/${it.audio}`;
-      // pickExcerpt chose a random window of the recording that contains notes;
-      // play that.  "Full song" plays the whole track from the top.
-      const start = full ? 0 : (ex.audioStart ?? it.solostart ?? 0);
-      const end = full ? Infinity : start + (ex.audioLen ?? it.soloLen ?? 24);
+      // pickExcerpt chose a random window of the recording that contains notes.
+      // The "hear more" buttons extend it by whole bars before/after (clipPad).
+      // "Full song" plays the whole track from the top (and does NOT change the
+      // clip, so Replay still replays the clip).
+      const secPerBar = (60 / (it.tempoBpm || 100)) * 4;
+      const clipStart = ex.audioStart ?? it.solostart ?? 0;
+      const start = full ? 0 : Math.max(0, clipStart - clipPadRef.current.before * secPerBar);
+      const end = full ? Infinity : clipStart + (ex.audioLen ?? it.soloLen ?? 24) + clipPadRef.current.after * secPerBar;
       setAudioSeg({ src, start, end });
       playAudioSeg(src, start, end);
       setStatus(""); setBusy(false);
@@ -210,6 +218,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     }
     setItem(picked);
     setExcerpt(ex);
+    clipPadRef.current = { before: 0, after: 0 };   // fresh clip → no extra bars
     // The tempo slider follows the new song: reset the override so it shows (and
     // plays at) this tune's tempo.  forceTempo keeps the immediate play in sync
     // before the state update lands.
@@ -219,12 +228,22 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
 
   const replay = useCallback(async () => {
     clearEndTimer();
-    // Blues: replay the same local-audio segment (re-seek + stop at end).
-    if (audioSeg) { playAudioSeg(audioSeg.src, audioSeg.start, audioSeg.end); return; }
+    // Replay always re-plays the CLIP/excerpt (full=false), so it works even
+    // right after "Full song".
     stopPlayback();
-    if (item && excerpt) await playGivenExcerpt(item, excerpt);
+    if (item && excerpt) await playGivenExcerpt(item, excerpt, false);
     else await playNew();
-  }, [audioSeg, item, excerpt, playGivenExcerpt, playNew]);
+  }, [item, excerpt, playGivenExcerpt, playNew]);
+
+  // "Hear more": extend the blues clip by a whole bar before/after, then replay.
+  const hearMore = (dBefore: number, dAfter: number) => {
+    if (!item || !excerpt || !isBluesSource(item.source)) return;
+    const p = clipPadRef.current;
+    clipPadRef.current = { before: Math.max(0, p.before + dBefore), after: Math.max(0, p.after + dAfter) };
+    clearEndTimer();
+    stopPlayback();
+    void playGivenExcerpt(item, excerpt, false);
+  };
 
   const playFull = useCallback(async () => {
     if (!item) return;
@@ -426,6 +445,19 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] disabled:opacity-40 transition-colors">
           ↻ Replay
         </button>
+        {/* Hear more — extend the blues clip by a bar before/after, then replay. */}
+        {item && excerpt && isBluesSource(item.source) && (
+          <div className="flex items-center gap-1">
+            <button onClick={() => hearMore(1, 0)} title="Add a bar before the clip"
+              className="px-2 py-2 rounded-md text-xs bg-[#1a1a1a] border border-[#333] text-[#9a9] hover:border-[#555] transition-colors">
+              +1◀
+            </button>
+            <button onClick={() => hearMore(0, 1)} title="Add a bar after the clip"
+              className="px-2 py-2 rounded-md text-xs bg-[#1a1a1a] border border-[#333] text-[#9a9] hover:border-[#555] transition-colors">
+              ▶+1
+            </button>
+          </div>
+        )}
         <button onClick={playFull} disabled={busy || !item}
           title="Play the whole tune from the top"
           className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] disabled:opacity-40 transition-colors">
