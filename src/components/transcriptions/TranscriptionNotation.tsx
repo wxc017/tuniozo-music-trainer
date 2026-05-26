@@ -15,7 +15,7 @@ import {
   Annotation, StaveConnector, StaveTie, Barline, type StaveNoteStruct,
 } from "vexflow";
 import type { TxExcerpt } from "@/lib/transcriptions/loader";
-import { compEvents, compGenreFor, chordVoicings } from "@/lib/transcriptions/accompaniment";
+import { compEvents, compGenreFor } from "@/lib/transcriptions/accompaniment";
 import {
   decomposeDuration, segmentByBar, layoutBarCells, splitCellsAtBeats, keySpecFor, keyIsFlat, midiToVexKey, melodyGridFor,
   type TimedEvent, type BarCell,
@@ -217,15 +217,21 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
       : [];
     const melodyByBar = segmentByBar(melodyEvents, bars, bpb);
     // Lower staff (when Chords on): the harmony as CLEAN block chords — one
-    // sustained stack per chord change.  Voiced with the SAME voice-led function
-    // the comp plays (chordVoicings), so the notated pitches match what's heard.
+    // sustained stack per chord change.  Voiced COMPACTLY in the bass-clef
+    // register (root position, folded onto/around the staff) so it reads as a
+    // clear chord — the rootless comping voicing renders as a wide, ledger-line
+    // cluster up high.  The chord SYMBOL above conveys the exact harmony.
     const compGenre = compGenreFor(excerpt.item.source, excerpt.item.style);
-    // Match playback: rootless jazz voicings only when the bass staff (root)
-    // is shown; otherwise include the root in the block chords.
-    const voicings = showChordSymbols ? chordVoicings(excerpt.chords, compGenre, !showBassStaff) : [];
+    const voiceBlock = (rootPc: number, intervals: number[]): number[] => {
+      const reduced = [...new Set(intervals.map(i => ((i % 12) + 12) % 12))].sort((a, b) => a - b).slice(0, 4);
+      const root = 48 + (((rootPc % 12) + 12) % 12);     // C3..B3
+      let chord = reduced.map(i => root + i);
+      while (chord.length && Math.max(...chord) > 60) chord = chord.map(n => n - 12);  // keep on the bass staff
+      return chord;
+    };
     const chordVoicingByBar = segmentByBar<number[]>(
       showChordSymbols
-        ? excerpt.chords.map((c, i) => ({ startBeat: c.startBeat, durBeats: c.durBeats, data: voicings[i] ?? [] }))
+        ? excerpt.chords.map(c => ({ startBeat: c.startBeat, durBeats: c.durBeats, data: voiceBlock(c.rootPc, c.intervals) }))
             .filter(e => e.data.length)
         : [], bars, bpb);
     // Bass line (when Bass on) still comes from the played walking/root comp.
