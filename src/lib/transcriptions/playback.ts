@@ -289,7 +289,11 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
   // swing-jazz, and give every voice subtle micro-timing + velocity
   // variation.  Seeded → a Replay sounds identical.  Velocities also set
   // the mix: melody on top, comping softer, bass underneath.
-  const swing = compGenreFor(ex.item.source, ex.item.style) === "jazz" && !(den === 8 && num % 3 === 0);
+  const genre = compGenreFor(ex.item.source, ex.item.style);
+  const swing = genre === "jazz" && !(den === 8 && num % 3 === 0);
+  // Comp loudness vs the lead: in jazz the SOLO is the star, so comp sits well
+  // under it; in folk/pop the accompaniment should be clearly audible.
+  const compBoost = (genre === "jazz" || genre === "fusion") ? 2 : 20;
   let hseed = (Math.round(ex.windowBeats * 131 + (ex.item.tempoBpm || 100)) >>> 0) || 1;
   const hrand = () => { hseed = (hseed * 1103515245 + 12345) & 0x7fffffff; return hseed / 0x7fffffff; };
   const humanTime = (beat: number) => {
@@ -396,9 +400,9 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
             note: e.midi,
             time: base + i * step,
             duration: Math.max(guitar ? 0.9 : 0.12, dur),
-            // Comp must sit clearly UNDER the lead but stay audible: lift the
-            // (low, ~52) source velocity instead of attenuating it.
-            velocity: hvel(e.velocity + 22 + accent + ramp),
+            // Comp velocity is lifted from the low (~52) source value, by a
+            // genre-dependent amount (jazz: stay under the solo; folk/pop: audible).
+            velocity: hvel(e.velocity + compBoost + accent + ramp),
           }));
         });
       }
