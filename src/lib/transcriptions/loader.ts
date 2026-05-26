@@ -12,7 +12,6 @@ import type { TxIndex, TxIndexEntry, TxItem, TxSource } from "./types";
 import { beatsPerBar, isBluesSource } from "./types";
 import { SEED_ITEMS } from "./seed";
 import { harmonizeMelody } from "./accompaniment";
-import { quantizeMelody, melodyGridFor } from "./notation";
 
 const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "bluesguitar", "bluesvocal"];
 
@@ -261,9 +260,15 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
     const e = Math.min(end, winEnd);
     melody.push({ midi: n.midi, startBeat: s - winStart, durBeats: e - s, artic: n.artic });
   }
-  // Quantize once so playback and the rendered notation use identical notes.
-  const qMel = quantizeMelody(melody, melodyGridFor(item.source), windowBeats);
-  melody.length = 0; melody.push(...qMel);
+  // Keep the REAL transcribed onsets/durations so playback preserves the solo's
+  // natural rhythm + phrasing (quantizing to a grid made it robotic).  The
+  // notation snaps to a grid on its own (layoutBarCells).  Here we only sort and
+  // trim monophonic overlaps so notes don't pile up.
+  melody.sort((a, b) => a.startBeat - b.startBeat);
+  for (let i = 0; i < melody.length; i++) {
+    const next = i + 1 < melody.length ? melody[i + 1].startBeat : windowBeats;
+    if (melody[i].startBeat + melody[i].durBeats > next) melody[i].durBeats = Math.max(0.05, next - melody[i].startBeat);
+  }
   fitMelodyOctave(melody);   // center low transcriptions on the treble staff
 
   const chords: TxChordRebased[] = [];
@@ -297,8 +302,13 @@ export function fullExcerpt(item: TxItem): TxExcerpt {
     return { item, startBar: 0, bars: 1, beatsPerBar: 4, windowBeats: 4, melody: [], chords: [] };
   }
   const bpb = beatsPerBar(item.timeSig);
-  const rawMelody: TxNoteRebased[] = (item.melody ?? []).map(n => ({ midi: n.midi, startBeat: n.startBeat, durBeats: n.durBeats, artic: n.artic }));
-  const melody = quantizeMelody(rawMelody, melodyGridFor(item.source), item.barCount * bpb);
+  // Real onsets/durations (natural phrasing); notation snaps on its own.
+  const melody: TxNoteRebased[] = (item.melody ?? []).map(n => ({ midi: n.midi, startBeat: n.startBeat, durBeats: n.durBeats, artic: n.artic }))
+    .sort((a, b) => a.startBeat - b.startBeat);
+  for (let i = 0; i < melody.length; i++) {
+    const next = i + 1 < melody.length ? melody[i + 1].startBeat : item.barCount * bpb;
+    if (melody[i].startBeat + melody[i].durBeats > next) melody[i].durBeats = Math.max(0.05, next - melody[i].startBeat);
+  }
   fitMelodyOctave(melody);   // center low transcriptions on the treble staff
   const chords: TxChordRebased[] = (item.chords ?? []).map(c => ({ ...c }));
   if (!chords.length && melody.length) {
