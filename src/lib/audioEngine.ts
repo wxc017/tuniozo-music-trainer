@@ -379,6 +379,10 @@ const INSTRUMENT_SOURCES: Record<DroneInstrument, SourceConfig> = {
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private sampleBuffer: AudioBuffer | null = null;
+  // In-flight C4.wav load, so the fetch+decode runs at most once per
+  // AudioContext regardless of which path triggered it (init() or a lazy
+  // getCtx() rebuild).
+  private sampleLoadPromise: Promise<void> | null = null;
   private instrumentSamples: Map<string, InstrumentSample[]> = new Map();
   private instrumentLoadPromises: Map<string, Promise<void>> = new Map();
   private currentInstrument: DroneInstrument = "cello";
@@ -440,7 +444,21 @@ export class AudioEngine {
   private reverbWetGain: GainNode | null = null;
 
   async init(edo: number = 31) {
-    if (this.ctx) return;
+    // If a ctx already exists (e.g. a lazy getCtx() built it for the
+    // Transcriptions / drone paths before the first ensureAudio()), the
+    // graph is already set up — but the things that used to live only in
+    // this method's tail never ran: C4.wav was never fetched (note
+    // playback stuck on the sawtooth synth) and the drone instruments
+    // were never pre-loaded.  Run both now, and resume the ctx — it may
+    // be suspended, and callers like LatticeView only resume in their
+    // "already ready" branch, so a first click on a pre-existing-but-
+    // suspended ctx would otherwise be silent.
+    if (this.ctx) {
+      await this.loadPlaybackSample();
+      for (const inst of DRONE_INSTRUMENTS) this.loadInstrumentSamples(inst.id);
+      void this.ctx.resume();
+      return;
+    }
     this.ctx = new AudioContext();
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 0.85;
@@ -476,14 +494,7 @@ export class AudioEngine {
     this.reverbConvolver.connect(this.reverbWetGain);
     this.reverbWetGain.connect(this.masterGain);
 
-    try {
-      const base = import.meta.env.BASE_URL ?? "/";
-      const resp = await fetch(`${base}C4.wav`);
-      const arr = await resp.arrayBuffer();
-      this.sampleBuffer = await this.ctx.decodeAudioData(arr);
-    } catch (e) {
-      console.warn("C4.wav not loaded, using synth fallback", e);
-    }
+    await this.loadPlaybackSample();
 
     // Pre-load EVERY drone instrument's samples at init — the user
     // reported "for all the instruments its takes too long for it to
@@ -496,6 +507,37 @@ export class AudioEngine {
     for (const inst of DRONE_INSTRUMENTS) {
       this.loadInstrumentSamples(inst.id);
     }
+
+    // Browsers create AudioContexts suspended; resume on the user
+    // gesture that triggered init() so the first sound isn't swallowed.
+    // Callers (App, LatticeView, TemperamentExplorer) shouldn't each
+    // have to remember to resume after init().
+    void this.ctx.resume();
+  }
+
+  /** Fetch + decode the C4.wav playback sample into sampleBuffer.  Idempotent:
+   *  no-op once loaded, and de-dupes concurrent calls via sampleLoadPromise so
+   *  whichever path first creates the AudioContext (init or a lazy getCtx
+   *  rebuild) triggers exactly one fetch.  Without this, a getCtx() that ran
+   *  before init() (e.g. the Transcriptions playback path) left sampleBuffer
+   *  null for the whole session and every note fell back to the synth. */
+  private loadPlaybackSample(): Promise<void> {
+    if (this.sampleBuffer || !this.ctx) return Promise.resolve();
+    if (this.sampleLoadPromise) return this.sampleLoadPromise;
+    const ctx = this.ctx;
+    this.sampleLoadPromise = (async () => {
+      try {
+        const base = import.meta.env.BASE_URL ?? "/";
+        const resp = await fetch(`${base}C4.wav`);
+        const arr = await resp.arrayBuffer();
+        this.sampleBuffer = await ctx.decodeAudioData(arr);
+      } catch (e) {
+        console.warn("C4.wav not loaded, using synth fallback", e);
+      } finally {
+        this.sampleLoadPromise = null;
+      }
+    })();
+    return this.sampleLoadPromise;
   }
 
   /** Switch the active drone instrument.  Triggers lazy sample loading
@@ -634,6 +676,10 @@ export class AudioEngine {
       this.playLimiter.connect(this.reverbConvolver);
       this.reverbConvolver.connect(this.reverbWetGain);
       this.reverbWetGain.connect(this.masterGain);
+      // A fresh ctx means a fresh sampleBuffer is needed — kick off the
+      // C4.wav load now (fire-and-forget) so note playback uses the
+      // sample even when this lazy path (not init()) created the ctx.
+      void this.loadPlaybackSample();
     }
     if (this.ctx.state === "suspended") void this.ctx.resume();
     return this.ctx;
@@ -1200,6 +1246,7 @@ export class AudioEngine {
       this.playLimiter = null;
       this.playGainNode = null;
       this.sampleBuffer = null;
+      this.sampleLoadPromise = null;
     }
   }
 
