@@ -183,18 +183,31 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     if (!sources.length) { setStatus("Select at least one database in Options."); return; }
     setBusy(true);
     setStatus("Finding an excerpt…");
-    const picked = await pickItem({
-      sources,
-      minBars: bars,
-      requireChords: withChords && !withMelody,
-      styles: styleFilter,
-    });
-    if (!picked) {
+    const filter = { sources, minBars: bars, requireChords: withChords && !withMelody, styles: styleFilter };
+    // Enforce "at least 2 melody notes per bar": try a few items and keep the
+    // first whose excerpt has >=2 notes in EVERY bar (blues is audio-only, so
+    // it's accepted as-is — its own onset rule governs the clip).
+    const minNotesPerBar = (e: TxExcerpt) => {
+      if (!e.bars) return 0;
+      const counts = new Array(e.bars).fill(0);
+      for (const n of e.melody) { const b = Math.floor(n.startBeat / e.beatsPerBar + 1e-6); if (b >= 0 && b < e.bars) counts[b]++; }
+      return Math.min(...counts);
+    };
+    let picked: TxItem | null = null, ex: TxExcerpt | null = null, best = -1;
+    for (let t = 0; t < 8; t++) {
+      const p = await pickItem(filter);
+      if (!p) break;
+      const e = pickExcerpt(p, bars);
+      if (isBluesSource(p.source)) { picked = p; ex = e; break; }
+      const mn = minNotesPerBar(e);
+      if (mn >= 2) { picked = p; ex = e; break; }
+      if (mn > best) { best = mn; picked = p; ex = e; }
+    }
+    if (!picked || !ex) {
       setBusy(false);
       setStatus(`No tunes match (need ≥ ${bars} bars). Try fewer bars, more databases, or clearing the style filter.`);
       return;
     }
-    const ex = pickExcerpt(picked, bars);   // loader auto-harmonizes melody-only tunes
     setItem(picked);
     setExcerpt(ex);
     // The tempo slider follows the new song: reset the override so it shows (and

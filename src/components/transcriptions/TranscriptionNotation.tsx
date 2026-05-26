@@ -223,21 +223,42 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     // cluster up high.  The chord SYMBOL above conveys the exact harmony.
     const compGenre = compGenreFor(excerpt.item.source, excerpt.item.style);
     const voiceBlock = (rootPc: number, intervals: number[]): number[] => {
-      const reduced = [...new Set(intervals.map(i => ((i % 12) + 12) % 12))].sort((a, b) => a - b).slice(0, 4);
+      // Pick a clean root-position shell: root, 3rd, 5th, 7th(/6th) — skipping
+      // 9/11/13 tensions so the stack has NO seconds (clusters make the stem
+      // cut through the noteheads).  The chord symbol carries the full quality.
+      const set = new Set(intervals.map(i => ((i % 12) + 12) % 12));
+      const pick = (cands: number[]) => cands.find(c => set.has(c));
+      const tones = [0, pick([4, 3]), pick([7, 6, 8]), pick([10, 11])].filter((t): t is number => t != null);
       const root = 48 + (((rootPc % 12) + 12) % 12);     // C3..B3
-      let chord = reduced.map(i => root + i);
+      let chord = [...new Set(tones)].map(i => root + i);
       while (chord.length && Math.max(...chord) > 60) chord = chord.map(n => n - 12);  // keep on the bass staff
       return chord;
     };
-    const chordVoicingByBar = segmentByBar<number[]>(
-      showChordSymbols
-        ? excerpt.chords.map(c => ({ startBeat: c.startBeat, durBeats: c.durBeats, data: voiceBlock(c.rootPc, c.intervals) }))
-            .filter(e => e.data.length)
-        : [], bars, bpb);
-    // Bass line (when Bass on) still comes from the played walking/root comp.
-    const comp = showBassStaff
+    // Comp + bass come from the SAME engine the audio plays, so the notation
+    // shows the actual comped RHYTHM (not one block chord per bar).
+    const comp = (showChordSymbols || showBassStaff)
       ? compEvents(excerpt.chords, compGenre, bpb, ts, bars * bpb)
       : { chord: [], bass: [] };
+    // Which chord is sounding at a given beat (for a clean, readable voicing).
+    const chordAt = (beat: number) => {
+      let c = excerpt.chords[0];
+      for (const x of excerpt.chords) { if (x.startBeat <= beat + 1e-6) c = x; else break; }
+      return c;
+    };
+    // One stacked chord per comp HIT, at the stab's onset/duration, voiced
+    // compactly (root position) so it reads cleanly and shows the rhythm played.
+    const stabByOnset = new Map<number, number>();   // onset → duration
+    for (const e of comp.chord) {
+      const k = Math.round(e.startBeat / 0.0625) * 0.0625;
+      stabByOnset.set(k, Math.max(stabByOnset.get(k) ?? 0, e.durBeats));
+    }
+    const chordVoicingByBar = segmentByBar<number[]>(
+      showChordSymbols
+        ? [...stabByOnset.entries()].map(([k, dur]) => {
+            const c = chordAt(k);
+            return { startBeat: k, durBeats: dur, data: c ? voiceBlock(c.rootPc, c.intervals) : [] };
+          }).filter(e => e.data.length)
+        : [], bars, bpb);
     const bassLineByBar = segmentByBar<number>(
       showBassStaff ? comp.bass.map(e => ({ startBeat: e.startBeat, durBeats: e.durBeats, data: e.midi + 12 })) : [], bars, bpb);
 
@@ -273,7 +294,7 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
       // chord — NOT split at beats, so each chord is a single notehead-stack
       // (whole/half/dotted) rather than tied fragments.
       const chordV = showChordSymbols && chordVoicingByBar[b].length
-        ? cellsToVoice(layoutBarCells(chordVoicingByBar[b], bpb, 0.5), (ms: number[]) => ms.map(m => midiToVexKey(m, flat)), ["d/3"], carryChord, "bass", 1)
+        ? cellsToVoice(splitCellsAtBeats(layoutBarCells(chordVoicingByBar[b], bpb, 0.5), splitUnit), (ms: number[]) => ms.map(m => midiToVexKey(m, flat)), ["d/3"], carryChord, "bass", 1)
         : null;
       // Bass line (Bass on): single notes on the bass staff, stems down.
       const bassV = showBassStaff
