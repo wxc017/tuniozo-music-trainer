@@ -248,7 +248,17 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
     const mn = minNotesPerBar(cand);
     if (mn > bestMin) { bestMin = mn; startBar = cand; }
   }
-  const winStart = startBar * bpb;
+  return sliceExcerpt(item, startBar, usableBars);
+}
+
+/** Slice a SPECIFIC bar window [startBar, startBar+bars) of a (non-blues) item
+ *  into an excerpt.  Used both by pickExcerpt (after choosing a window) and by
+ *  the "hear more" feature (to replay an extended window). */
+export function sliceExcerpt(item: TxItem, startBar: number, bars: number): TxExcerpt {
+  const bpb = beatsPerBar(item.timeSig);
+  const sb = Math.max(0, Math.min(startBar, item.barCount - 1));
+  const usableBars = Math.max(1, Math.min(bars, item.barCount - sb));
+  const winStart = sb * bpb;
   const windowBeats = usableBars * bpb;
   const winEnd = winStart + windowBeats;
 
@@ -260,16 +270,14 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
     const e = Math.min(end, winEnd);
     melody.push({ midi: n.midi, startBeat: s - winStart, durBeats: e - s, artic: n.artic });
   }
-  // Keep the REAL transcribed onsets/durations so playback preserves the solo's
-  // natural rhythm + phrasing (quantizing to a grid made it robotic).  The
-  // notation snaps to a grid on its own (layoutBarCells).  Here we only sort and
-  // trim monophonic overlaps so notes don't pile up.
+  // Keep the REAL transcribed onsets/durations (natural phrasing); the notation
+  // snaps to a grid on its own.  Only sort + trim monophonic overlaps.
   melody.sort((a, b) => a.startBeat - b.startBeat);
   for (let i = 0; i < melody.length; i++) {
     const next = i + 1 < melody.length ? melody[i + 1].startBeat : windowBeats;
     if (melody[i].startBeat + melody[i].durBeats > next) melody[i].durBeats = Math.max(0.05, next - melody[i].startBeat);
   }
-  fitMelodyOctave(melody);   // center low transcriptions on the treble staff
+  fitMelodyOctave(melody);
 
   const chords: TxChordRebased[] = [];
   for (const c of item.chords ?? []) {
@@ -277,22 +285,15 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
     if (end <= winStart || c.startBeat >= winEnd) continue;
     const s = Math.max(c.startBeat, winStart);
     const e = Math.min(end, winEnd);
-    chords.push({
-      sym: c.sym, rootPc: c.rootPc, intervals: c.intervals, bassPc: c.bassPc,
-      startBeat: s - winStart, durBeats: e - s,
-    });
+    chords.push({ sym: c.sym, rootPc: c.rootPc, intervals: c.intervals, bassPc: c.bassPc, startBeat: s - winStart, durBeats: e - s });
   }
-
-  // Melody-only tunes (folk/trad): infer a fitting diatonic progression so
-  // the answer shows chord symbols and playback can comp the accompaniment.
-  // (Blues returned early above — it's audio-only, never harmonized.)
+  // Melody-only tunes (folk/trad): infer a fitting diatonic progression.
   if (!chords.length && melody.length) {
     for (const c of harmonizeMelody(melody, item.key, bpb, usableBars)) {
       chords.push({ sym: c.sym, rootPc: c.rootPc, intervals: c.intervals, bassPc: c.bassPc, startBeat: c.startBeat, durBeats: c.durBeats });
     }
   }
-
-  return { item, startBar, bars: usableBars, beatsPerBar: bpb, windowBeats, melody, chords };
+  return { item, startBar: sb, bars: usableBars, beatsPerBar: bpb, windowBeats, melody, chords };
 }
 
 /** A whole-item excerpt (the full tune from bar 1), for "play the full

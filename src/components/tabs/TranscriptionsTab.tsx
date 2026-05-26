@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLS } from "@/lib/storage";
 import { SOURCE_LABEL, SOURCE_GENRE, isBluesSource, type TxSource, type TxItem, type TxIndex } from "@/lib/transcriptions/types";
-import { pickItem, pickExcerpt, fullExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
+import { pickItem, pickExcerpt, fullExcerpt, sliceExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
 import { playExcerpt, stopPlayback, ensureInstruments, playTonicDrone } from "@/lib/transcriptions/playback";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
 
@@ -80,10 +80,11 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const [audioSeg, setAudioSeg] = useState<{ src: string; start: number; end: number } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const segEndRef = useRef<number>(Infinity);
-  // Extra bars of recording to play before/after the clip (the "hear more"
-  // buttons) — a ref so playback reads the current value without a re-render;
-  // reset on each new Play.
+  // Extra bars to play before/after the excerpt (the "hear more" buttons).  The
+  // ref is what playback reads (always current); the state drives the on-screen
+  // indicator.  Both reset on each new Play.
   const clipPadRef = useRef({ before: 0, after: 0 });
+  const [clipPad, setClipPad] = useState({ before: 0, after: 0 });
 
   /** Play a local-audio segment [start,end].  Seeking into a large/VBR mp3 is
    *  unreliable if you play() before the seek lands, so: wait for metadata, set
@@ -219,6 +220,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     setItem(picked);
     setExcerpt(ex);
     clipPadRef.current = { before: 0, after: 0 };   // fresh clip → no extra bars
+    setClipPad({ before: 0, after: 0 });
     // The tempo slider follows the new song: reset the override so it shows (and
     // plays at) this tune's tempo.  forceTempo keeps the immediate play in sync
     // before the state update lands.
@@ -229,20 +231,25 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const replay = useCallback(async () => {
     clearEndTimer();
     // Replay always re-plays the CLIP/excerpt (full=false), so it works even
-    // right after "Full song".
+    // right after "Full song".  The "hear more" bars are applied here: blues
+    // extends the audio segment (inside playGivenExcerpt, via clipPadRef); a
+    // notated tune replays an EXTENDED bar window.
     stopPlayback();
-    if (item && excerpt) await playGivenExcerpt(item, excerpt, false);
-    else await playNew();
+    if (!item || !excerpt) { await playNew(); return; }
+    const { before, after } = clipPadRef.current;
+    const playEx = (!isBluesSource(item.source) && (before || after))
+      ? sliceExcerpt(item, excerpt.startBar - before, excerpt.bars + before + after)
+      : excerpt;
+    await playGivenExcerpt(item, playEx, false);
   }, [item, excerpt, playGivenExcerpt, playNew]);
 
-  // "Hear more": extend the blues clip by a whole bar before/after, then replay.
-  const hearMore = (dBefore: number, dAfter: number) => {
-    if (!item || !excerpt || !isBluesSource(item.source)) return;
+  // "Hear more": bump the extra-bars count (with on-screen indicator).  It does
+  // NOT play — the next Replay applies it.
+  const addBar = (which: "before" | "after") => {
     const p = clipPadRef.current;
-    clipPadRef.current = { before: Math.max(0, p.before + dBefore), after: Math.max(0, p.after + dAfter) };
-    clearEndTimer();
-    stopPlayback();
-    void playGivenExcerpt(item, excerpt, false);
+    const next = { ...p, [which]: p[which] + 1 };
+    clipPadRef.current = next;
+    setClipPad(next);
   };
 
   const playFull = useCallback(async () => {
@@ -445,16 +452,17 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] disabled:opacity-40 transition-colors">
           ↻ Replay
         </button>
-        {/* Hear more — extend the blues clip by a bar before/after, then replay. */}
-        {item && excerpt && isBluesSource(item.source) && (
-          <div className="flex items-center gap-1">
-            <button onClick={() => hearMore(1, 0)} title="Add a bar before the clip"
-              className="px-2 py-2 rounded-md text-xs bg-[#1a1a1a] border border-[#333] text-[#9a9] hover:border-[#555] transition-colors">
-              +1◀
+        {/* Hear more — add bars of context before/after; applied on the next
+            Replay.  The count on each button is the indicator (reset on Play). */}
+        {item && excerpt && (
+          <div className="flex items-center gap-1" title="Add bars of context, then Replay to hear them">
+            <button onClick={() => addBar("before")}
+              className={`px-2 py-2 rounded-md text-xs border transition-colors ${clipPad.before ? "bg-[#1a2a1a] border-[#6a8] text-[#9d9]" : "bg-[#1a1a1a] border-[#333] text-[#9a9] hover:border-[#555]"}`}>
+              ◀ +{clipPad.before}
             </button>
-            <button onClick={() => hearMore(0, 1)} title="Add a bar after the clip"
-              className="px-2 py-2 rounded-md text-xs bg-[#1a1a1a] border border-[#333] text-[#9a9] hover:border-[#555] transition-colors">
-              ▶+1
+            <button onClick={() => addBar("after")}
+              className={`px-2 py-2 rounded-md text-xs border transition-colors ${clipPad.after ? "bg-[#1a2a1a] border-[#6a8] text-[#9d9]" : "bg-[#1a1a1a] border-[#333] text-[#9a9] hover:border-[#555]"}`}>
+              +{clipPad.after} ▶
             </button>
           </div>
         )}
