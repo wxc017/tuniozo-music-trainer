@@ -11,9 +11,11 @@
 
 import { useEffect, useRef } from "react";
 import {
-  Renderer, Stave, StaveNote, Voice, Formatter, Beam, Dot, Accidental,
+  Renderer, Stave, StaveNote, GhostNote, Voice, Formatter, Beam, Dot, Accidental,
   Annotation, StaveConnector, StaveTie, Barline, type StaveNoteStruct,
 } from "vexflow";
+
+type Tickable = StaveNote | GhostNote;
 import type { TxExcerpt } from "@/lib/transcriptions/loader";
 import { compEvents, compGenreFor } from "@/lib/transcriptions/accompaniment";
 import {
@@ -45,7 +47,7 @@ function styleNote(note: StaveNote) {
 }
 
 interface BuiltVoice {
-  tickables: StaveNote[];
+  tickables: Tickable[];
   beatStarts: number[];        // bar-relative start beat of each tickable
   ties: [StaveNote, StaveNote][];
   // A tie INTO this bar from the previous bar's last note (cross-bar carry),
@@ -65,14 +67,25 @@ function cellsToVoice<T>(
   carryTieFrom: { note: StaveNote | null }, clef: "treble" | "bass" = "treble", stemDir = 0,
   articFn?: (d: T) => string | undefined,
 ): BuiltVoice {
-  const tickables: StaveNote[] = [];
+  const tickables: Tickable[] = [];
   const beatStarts: number[] = [];
   const ties: [StaveNote, StaveNote][] = [];
   let carryTie: [StaveNote, StaveNote] | null = null;
 
   for (const cell of cells) {
     const isRest = cell.data === null;
-    const keys = isRest ? restKeys : keyFn(cell.data as T);
+    // Rests are filled with INVISIBLE ghost notes (uniform 8th/16th/32nd) rather
+    // than rest glyphs, so the formatter lays everything on an even grid (no
+    // "weird rest" clutter) — the ghost-note idea from the note-entry grid.
+    if (isRest) {
+      let slots = Math.max(1, Math.round(cell.durBeats * 8));   // 32nd-note slots
+      const ghost = (dur: string) => { tickables.push(new GhostNote({ duration: dur })); beatStarts.push(cell.startInBar); };
+      while (slots >= 4) { ghost("8"); slots -= 4; }
+      while (slots >= 2) { ghost("16"); slots -= 2; }
+      while (slots >= 1) { ghost("32"); slots -= 1; }
+      continue;
+    }
+    const keys = keyFn(cell.data as T);
     const pieces = decomposeDuration(cell.durBeats);
     let prev: StaveNote | null = null;
     pieces.forEach((p, i) => {
@@ -155,13 +168,15 @@ function beamByBeat(v: BuiltVoice, beatUnit: number): Beam[] {
     group = [];
   };
   v.tickables.forEach((note, i) => {
+    // Ghost-note fills (invisible rests) break beam groups, never join them.
+    if (note instanceof GhostNote) { flush(); groupBeat = -1; return; }
     let rest = false, dur = "";
     try { rest = (note as unknown as { isRest(): boolean }).isRest(); } catch { /* */ }
     try { dur = (note as unknown as { getDuration(): string }).getDuration(); } catch { /* */ }
     const beat = Math.floor((v.beatStarts[i] ?? 0) / beatUnit + 1e-9);
     if (rest || !BEAMABLE.has(dur)) { flush(); groupBeat = beat; return; }
     if (beat !== groupBeat) { flush(); groupBeat = beat; }
-    group.push(note);
+    group.push(note as StaveNote);
   });
   flush();
   return beams;
