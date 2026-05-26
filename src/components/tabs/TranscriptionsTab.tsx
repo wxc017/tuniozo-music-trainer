@@ -8,12 +8,12 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLS } from "@/lib/storage";
-import { SOURCE_LABEL, SOURCE_GENRE, type TxSource, type TxItem, type TxIndex } from "@/lib/transcriptions/types";
+import { SOURCE_LABEL, SOURCE_GENRE, isBluesSource, type TxSource, type TxItem, type TxIndex } from "@/lib/transcriptions/types";
 import { pickItem, pickExcerpt, fullExcerpt, loadIndex, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
 import { playExcerpt, stopPlayback, ensureInstruments, playTonicDrone } from "@/lib/transcriptions/playback";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
 
-const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "blues"];
+const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "bluesguitar", "bluesvocal"];
 const BASE = import.meta.env.BASE_URL ?? "/";
 
 /** Add spaces to run-together titles from filename-derived data, e.g.
@@ -81,19 +81,31 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const segEndRef = useRef<number>(Infinity);
 
-  /** Play a local-audio segment [start,end]; seeks once the file is ready. */
+  /** Play a local-audio segment [start,end].  Seeking into a large/VBR mp3 is
+   *  unreliable if you play() before the seek lands, so: wait for metadata, set
+   *  currentTime, then play on the 'seeked' event (with a fallback). */
   const playAudioSeg = (src: string, start: number, end: number) => {
     const a = audioRef.current; if (!a) return;
     segEndRef.current = end;
-    const seekPlay = () => {
-      const doSeek = () => { try { a.currentTime = start; } catch { /* */ } a.play().catch(() => {}); };
-      // currentTime can only be set once metadata (duration/seekable) is known.
-      if (a.readyState >= 1) doSeek();
-      else { a.addEventListener("loadedmetadata", doSeek, { once: true }); }
+    const begin = () => {
+      if (Math.abs(a.currentTime - start) < 0.3) { a.play().catch(() => {}); return; }
+      const onSeeked = () => { clearTimeout(fb); a.play().catch(() => {}); };
+      a.addEventListener("seeked", onSeeked, { once: true });
+      // Fallback: some files don't fire 'seeked' promptly — play anyway.
+      const fb = setTimeout(() => { a.removeEventListener("seeked", onSeeked); a.play().catch(() => {}); }, 600);
+      try { a.currentTime = start; } catch { clearTimeout(fb); a.play().catch(() => {}); }
     };
     const abs = new URL(src, location.href).href;
-    if (a.src !== abs) { a.src = src; a.load(); }
-    seekPlay();
+    if (a.src !== abs) {
+      a.src = src;
+      a.onerror = () => setStatus("Couldn't load the recording.");
+      a.addEventListener("loadedmetadata", begin, { once: true });
+      a.load();
+    } else if (a.readyState >= 1) {
+      begin();
+    } else {
+      a.addEventListener("loadedmetadata", begin, { once: true });
+    }
   };
   const playToken = useRef(0);
   const endTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -126,7 +138,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
     // Play starts at the solo (solostart, from audio analysis) and runs for the
     // clip length; "Full song" plays the whole recording.  You transcribe it by
     // ear — there is no synthesized melody/notation.  Every other corpus plays MIDI.
-    if (it.source === "blues" && it.audio) {
+    if (isBluesSource(it.source) && it.audio) {
       const src = `${BASE}blues/${it.audio}`;
       // pickExcerpt chose a random window of the recording that contains notes;
       // play that.  "Full song" plays the whole track from the top.
@@ -221,6 +233,12 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
   const curTempo = excerpt?.item.tempoBpm ?? item?.tempoBpm ?? 100;
   const displayBpm = bpm > 0 ? bpm : Math.round(curTempo);
 
+  // Voices (Melody/Chords/Bass) only apply to the SYNTHESISED corpora — blues
+  // plays a real recording.  Disable them when only blues is selected; note the
+  // scope when blues is mixed with notated corpora.
+  const onlyBlues = sources.length > 0 && sources.every(isBluesSource);
+  const mixedBlues = sources.some(isBluesSource) && sources.some(s => !isBluesSource(s));
+
   const toggleSource = (s: TxSource) =>
     setSources(prev => (prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]));
   const toggleStyle = (s: string) =>
@@ -234,7 +252,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
       {/* Now-playing chip */}
       {excerpt && (
         <div className="text-xs text-[#666]">
-          {excerpt.item.source === "blues" ? (
+          {isBluesSource(excerpt.item.source) ? (
             <>Blues · real recording · transcribe the solo by ear</>
           ) : (
             <>
@@ -301,20 +319,24 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
           )}
 
           <OptSection title="PLAYBACK" accent="#e0a040">
-            <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-xs text-[#888] w-28">Voices</span>
               {([
                 ["Melody", withMelody, setWithMelody],
                 ["Chords", withChords, setWithChords],
                 ["Bass", withBass, setWithBass],
               ] as const).map(([label, on, set]) => (
-                <button key={label} onClick={() => set(v => !v)}
-                  className={`px-3 py-1.5 rounded-md text-xs border transition-colors ${
+                <button key={label} onClick={() => set(v => !v)} disabled={onlyBlues}
+                  className={`px-3 py-1.5 rounded-md text-xs border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                     on ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#141414] border-[#2a2a2a] text-[#666]"
                   }`}>
                   {label}
                 </button>
               ))}
+            </div>
+            <div className="mb-3 ml-28 text-[10px] text-[#666] min-h-[1em]">
+              {onlyBlues ? "Blues plays the real recording — voices don't apply."
+                : mixedBlues ? "Applies to everything but blues (blues plays the recording)." : ""}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-[#888] w-28">Count-in</span>
@@ -367,7 +389,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
 
           {/* Blues is audio-only: the answer is the recording itself, embedded
               here so you can check your by-ear transcription against the source. */}
-          {item.source === "blues" ? (
+          {isBluesSource(item.source) ? (
             item.vid ? (
               <div className="relative rounded-md overflow-hidden bg-black" style={{ width: 240, aspectRatio: "16 / 9" }}>
                 <iframe
@@ -418,7 +440,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
         </button>
         {/* Momentary tonic drone — orient the ear to the key (notated corpora;
             blues has no established key, you take it from the recording). */}
-        {item && item.source !== "blues" && (
+        {item && !isBluesSource(item.source) && (
           <button onClick={drone}
             title="Briefly sound the tonic (root + 5th) to orient your ear to the key"
             className="px-4 py-2 rounded-md text-sm font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#555] transition-colors">

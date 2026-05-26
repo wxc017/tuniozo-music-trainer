@@ -9,12 +9,12 @@
 // falls back to the bundled SEED_ITEMS so the mode is always usable.
 
 import type { TxIndex, TxIndexEntry, TxItem, TxSource } from "./types";
-import { beatsPerBar } from "./types";
+import { beatsPerBar, isBluesSource } from "./types";
 import { SEED_ITEMS } from "./seed";
 import { harmonizeMelody } from "./accompaniment";
 import { quantizeMelody, melodyGridFor } from "./notation";
 
-const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "blues"];
+const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "bluesguitar", "bluesvocal"];
 
 function dataUrl(name: string): string {
   const base = import.meta.env.BASE_URL ?? "/";
@@ -125,7 +125,7 @@ export async function stylesForSources(sources: TxSource[]): Promise<string[]> {
   for (const e of index.items) {
     // Blues is audio-only (no melody) but its `style` is the PLAYER, so the
     // Styles filter doubles as "organize blues by player" — include it.
-    if (sources.includes(e.source) && (e.hasMelody || e.source === "blues") && e.style) set.add(e.style);
+    if (sources.includes(e.source) && (e.hasMelody || isBluesSource(e.source)) && e.style) set.add(e.style);
   }
   return [...set].sort((a, b) => a.localeCompare(b));
 }
@@ -140,7 +140,7 @@ export async function pickItem(filter: TxFilter): Promise<TxItem | null> {
     // Blues is an audio-only "transcribe the real solo by ear" corpus: it has no
     // melody/notation and is a single fixed clip, so it's exempt from the
     // melody/bar-count/chord requirements that gate the notated corpora.
-    (e.source === "blues"
+    (isBluesSource(e.source)
       ? true
       : (e.barCount >= filter.minBars &&
          e.hasMelody &&
@@ -199,20 +199,23 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
   // Blues: audio-only.  Pick a RANDOM window of the recording that actually
   // contains notes (>=2 onsets), sized to the requested bar count via the
   // detected tempo.  Each Play therefore hears a different real passage.
-  if (item.source === "blues") {
+  if (isBluesSource(item.source)) {
     const secPerBar = (60 / (item.tempoBpm || 100)) * 4;
     const winLen = Math.max(4, bars * secPerBar);
     const onsets = item.onsets ?? [];
     const lastOnset = onsets.length ? onsets[onsets.length - 1] : (item.soloLen ?? 180);
     const span = Math.max(0, lastOnset - winLen);
+    // Need several onsets in the window (not just 2) so a sparse moment — e.g. a
+    // couple of crowd shouts in a quiet gap — doesn't qualify as "playing".
+    const NEED = 3;
     const countIn = (s: number) => {
-      let n = 0; for (const o of onsets) { if (o >= s && o < s + winLen) n++; if (n >= 2) break; } return n;
+      let n = 0; for (const o of onsets) { if (o >= s && o < s + winLen) n++; if (n >= NEED) break; } return n;
     };
     let start = 0, bestN = -1;
-    for (let t = 0; t < 20; t++) {
+    for (let t = 0; t < 24; t++) {
       const s = Math.round(Math.random() * span * 100) / 100;
       const n = countIn(s);
-      if (n >= 2) { start = s; bestN = n; break; }
+      if (n >= NEED) { start = s; break; }
       if (n > bestN) { bestN = n; start = s; }
     }
     return { item, startBar: 0, bars, beatsPerBar: 4, windowBeats: bars * 4, melody: [], chords: [], audioStart: start, audioLen: Math.round(winLen * 100) / 100 };
@@ -284,7 +287,7 @@ export function pickExcerpt(item: TxItem, bars: number): TxExcerpt {
 /** A whole-item excerpt (the full tune from bar 1), for "play the full
  *  song".  Same shape as pickExcerpt, with melody-only tunes harmonized. */
 export function fullExcerpt(item: TxItem): TxExcerpt {
-  if (item.source === "blues") {
+  if (isBluesSource(item.source)) {
     return { item, startBar: 0, bars: 1, beatsPerBar: 4, windowBeats: 4, melody: [], chords: [] };
   }
   const bpb = beatsPerBar(item.timeSig);

@@ -17,7 +17,7 @@
 // the half-open beat range [startBar*beatsPerBar, (startBar+N)*beatsPerBar).
 
 /** Which corpus an item came from. Doubles as the coarse genre key. */
-export type TxSource = "thesession" | "essen" | "weimar" | "cocopops" | "ewld" | "blues";
+export type TxSource = "thesession" | "essen" | "weimar" | "cocopops" | "ewld" | "bluesguitar" | "bluesvocal";
 
 /** Coarse genre shown in the UI and used for the genre filter. */
 export type TxGenre = "Irish Trad" | "Folk" | "Jazz" | "Pop/Rock" | "Blues";
@@ -28,7 +28,8 @@ export const SOURCE_GENRE: Record<TxSource, TxGenre> = {
   weimar: "Jazz",
   cocopops: "Pop/Rock",
   ewld: "Jazz",
-  blues: "Blues",
+  bluesguitar: "Blues",
+  bluesvocal: "Blues",
 };
 
 export const SOURCE_LABEL: Record<TxSource, string> = {
@@ -37,8 +38,15 @@ export const SOURCE_LABEL: Record<TxSource, string> = {
   weimar: "Weimar Jazz DB",
   cocopops: "CoCoPops / Billboard",
   ewld: "Jazz Standards (EWLD)",
-  blues: "Blues Guitar",
+  bluesguitar: "Blues Guitar",
+  bluesvocal: "Blues Vocal",
 };
+
+/** Blues (audio-only) corpora — guitar and vocal.  Helper so the many
+ *  blues-specific branches don't have to list both keys. */
+export function isBluesSource(s: TxSource): boolean {
+  return s === "bluesguitar" || s === "bluesvocal";
+}
 
 /** A single melody note. `midi` is a standard MIDI pitch (C4 = 60). */
 export interface TxNote {

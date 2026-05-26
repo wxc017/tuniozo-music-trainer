@@ -474,21 +474,25 @@ export async function buildFromLibrary() {
     return { c, title, rel, onsets: an.onsets, bpm: an.bpm || 100 };
   });
 
-  const items = [];
+  // Two separate sources: Blues Guitar and Blues Vocal (the role IS the source,
+  // so style is just the player — the Styles filter then organises by artist).
+  const guitar = [], vocal = [];
   for (const r of raw) {
     if (!r) continue;
-    items.push({
-      id: `blues-${items.length}`, source: "blues", genre: "Blues",
-      style: `${r.c.display} (${r.c.role})`, title: r.title, artist: r.c.display,
+    const source = r.c.role === "Vocals" ? "bluesvocal" : "bluesguitar";
+    const bucket = source === "bluesvocal" ? vocal : guitar;
+    bucket.push({
+      id: `${source}-${bucket.length}`, source, genre: "Blues",
+      style: r.c.display, title: r.title, artist: r.c.display,
       key: { tonicPc: 0, mode: "major" },
       timeSig: [4, 4], tempoBpm: r.bpm, barCount: 1,
       audio: encPath(r.rel), onsets: r.onsets,
       youtubeQuery: `${r.c.display} ${r.title}`,
     });
   }
-  const byRole = items.reduce((m, i) => (m[i.style.includes("(Vocals)") ? "Vocals" : "Guitar"]++, m), { Guitar: 0, Vocals: 0 });
-  console.log(`Blues: built ${items.length} tracks (${byRole.Guitar} guitar, ${byRole.Vocals} vocals)`);
-  writeSource("blues", items);
+  console.log(`Blues: built ${guitar.length} guitar + ${vocal.length} vocal tracks`);
+  writeSource("bluesguitar", guitar);
+  writeSource("bluesvocal", vocal);
 }
 
 if (isMain(import.meta.url)) buildFromLibrary().then(rebuildIndex).catch(e => { console.error(e); process.exit(1); });
