@@ -8,7 +8,6 @@
 
 import { DrumMachine } from "smplr";
 import { audioEngine } from "./audioEngine";
-import { GRID_SUBDIVS, type GridType } from "./drumData";
 import type { Groove } from "./drumGroove";
 
 // LinnDrum: sampled acoustic-ish drums, the most "kit"-like of smplr's five
@@ -53,18 +52,12 @@ export async function ensureDrumKit(): Promise<void> {
   await kitReady;
 }
 
-/** Slots per beat for a grid (16th → 4, 8th → 2, triplet → 3). */
-function slotsPerBeat(grid: GridType): number {
-  return grid === "16th" ? 4 : grid === "triplet" ? 3 : grid === "32nd" ? 8
-    : grid === "quintuplet" ? 5 : grid === "septuplet" ? 7 : 2;
-}
-
 const VEL: Record<Voice, number> = { kick: 118, snare: 104, ghost: 34, hihat: 74, hihatOpen: 88 };
 
 export interface PlayGrooveOpts {
-  bpm: number;
+  bpm: number;            // quarter-note tempo
   bars?: number;          // how many times to loop the bar (default 2)
-  countInBeats?: number;  // metronome count-in before the groove (default 0)
+  countInBeats?: number;  // count-in clicks (one per beat) before the groove
   metronome?: boolean;    // click on every beat under the groove
   onDone?: () => void;
 }
@@ -86,11 +79,13 @@ export async function playGroove(groove: Groove, opts: PlayGrooveOpts): Promise<
   const ctx = audioEngine.getOutputContext();
   if (ctx.state === "suspended") { try { await ctx.resume(); } catch { /* ignore */ } }
 
-  const secPerBeat = 60 / opts.bpm;
-  const spb = slotsPerBeat(groove.grid);
-  const slotDur = secPerBeat / spb;
-  const subdivs = GRID_SUBDIVS[groove.grid];
-  const beatsPerBar = subdivs / spb;
+  // Timing comes straight off the groove: one slot is `slotQuarters` quarter
+  // notes, and tempo is quarter-note bpm — so this works for x/4 and compound
+  // x/8 alike.  The count-in/metronome beat is the notated beat.
+  const slotDur = (60 / opts.bpm) * groove.slotQuarters;
+  const secPerBeat = slotDur * groove.slotsPerBeat;
+  const subdivs = groove.subdivs;
+  const beatsPerBar = groove.beats;
   const barDur = subdivs * slotDur;
   const bars = Math.max(1, opts.bars ?? 2);
 
