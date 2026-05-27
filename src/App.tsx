@@ -13,6 +13,7 @@ import DroneTab from "@/components/tabs/DroneTab";
 import DroneContinuumTab from "@/components/tabs/DroneContinuumTab";
 import ScalarTab from "@/components/tabs/ScalarTab";
 import TranscriptionsTab from "@/components/tabs/TranscriptionsTab";
+import RhythmicAudiationTab from "@/components/tabs/RhythmicAudiationTab";
 
 
 
@@ -854,6 +855,7 @@ export default function App() {
                   { id: "scalar-exploration",   label: "Scalar Explorations" },
                   { id: "lattice",              label: "Harmonic Lattice" },
                   { id: "drum-patterns",        label: "Drum Patterns" },
+                  { id: "rhythm-audiation",     label: "Rhythmic Audiation" },
                   { id: "melodic-patterns",     label: "Melodic Patterns",     beta: true },
                   { id: "chord-chart",          label: "Chord Chart" },
                   { id: "temperament-explorer", label: "Temperament Explorer" },
@@ -1262,6 +1264,16 @@ export default function App() {
             betaTransform={betaTransform}
             restoreTrigger={drumRestoreTrigger}
           />
+        </div>
+      )}
+
+      {/* ── Rhythmic Audiation ── */}
+      {section === "rhythm-audiation" && (
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-sm font-semibold text-[#888] uppercase tracking-widest mb-4">Rhythmic Audiation</h2>
+            <RhythmicAudiationTab />
+          </div>
         </div>
       )}
 
