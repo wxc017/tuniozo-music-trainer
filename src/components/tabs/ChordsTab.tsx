@@ -196,7 +196,9 @@ export default function ChordsTab({
   // picks which tones the left hand takes.  Default "one" leaves the
   // single-cluster behaviour untouched.
   const [hands, setHands] = useLS<"one" | "two">("lt_crd_hands", "one");
-  const [twoHandStyle, setTwoHandStyle] = useLS<TwoHandStyle>("lt_crd_2hStyle", "rootBass");
+  const [twoHandStyleRaw, setTwoHandStyle] = useLS<TwoHandStyle>("lt_crd_2hStyle", "shell");
+  // Coerce a stale persisted id (the option set was generalised) to a valid one.
+  const twoHandStyle: TwoHandStyle = TWO_HAND_STYLES.some(s => s.id === twoHandStyleRaw) ? twoHandStyleRaw : "shell";
   const [checkedPatterns, setCheckedPatterns] = useLS<Set<string>>("lt_crd_vpatterns", new Set(["t-135"]));
   // Per-tonality, per-numeral xenharmonic chord-type opt-ins.  Each entry is
   // a list of xen 3rd-quality IDs (e.g. "neu3","sub3","sup3") that the user
@@ -2085,9 +2087,6 @@ export default function ChordsTab({
                           );
                         })}
                       </div>
-                      <p className="text-[10px] text-[#666] mt-1.5 leading-snug">
-                        {TWO_HAND_STYLES.find(s => s.id === twoHandStyle)?.desc}
-                      </p>
                     </div>
                   )}
                 </div>
