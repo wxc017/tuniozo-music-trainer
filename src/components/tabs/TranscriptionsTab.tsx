@@ -30,6 +30,10 @@ function prettyTitle(t: string): string {
 interface Props {
   ensureAudio: () => Promise<void>;
   playVol?: number;
+  /** When set, the tab is locked to these sources (the DATABASES picker is
+   *  hidden) — used to embed a single-corpus view, e.g. the drums-only
+   *  Transcriptions sub-tab under Rhythmic Audiation. */
+  lockSources?: TxSource[];
 }
 
 /** Collapsible options section, styled to match the other modes
@@ -51,10 +55,15 @@ function OptSection({ title, accent, defaultOpen = true, children }: {
   );
 }
 
-export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props) {
+export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSources }: Props) {
   // ── Options (persisted) ───────────────────────────────────────────
   const [bars, setBars] = useLS<number>("lt_tx_bars", 2);
-  const [sources, setSources] = useLS<TxSource[]>("lt_tx_sources", [...ALL_SOURCES]);
+  // When locked to a fixed corpus, use isolated local state so we don't
+  // clobber the main Transcriptions tab's persisted database selection.
+  const [sourcesLS, setSourcesLS] = useLS<TxSource[]>("lt_tx_sources", [...ALL_SOURCES]);
+  const [sourcesLocal, setSourcesLocal] = useState<TxSource[]>(lockSources ?? []);
+  const sources = lockSources ? sourcesLocal : sourcesLS;
+  const setSources = lockSources ? setSourcesLocal : setSourcesLS;
   const [styleFilter, setStyleFilter] = useLS<string[]>("lt_tx_styles", []);
   const [withMelody, setWithMelody] = useLS<boolean>("lt_tx_melody", true);
   const [withChords, setWithChords] = useLS<boolean>("lt_tx_chords", true);
@@ -314,7 +323,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
             </div>
           </OptSection>
 
-          <OptSection title="DATABASES" accent="#7173e6">
+          {!lockSources && <OptSection title="DATABASES" accent="#7173e6">
             <div className="flex flex-wrap gap-2">
               {ALL_SOURCES.map(s => {
                 const on = sources.includes(s);
@@ -330,7 +339,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8 }: Props)
                 );
               })}
             </div>
-          </OptSection>
+          </OptSection>}
 
           {availableStyles.length > 0 && (
             <OptSection title="STYLES" accent="#5cbf8a">

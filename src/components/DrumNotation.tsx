@@ -33,6 +33,12 @@ const nx = (i: number, cw: number) => i * cw + cw / 2;
 
 interface DrumNotationProps {
   grid: GridType;
+  /** Override the bar's total slot count (default: GRID_SUBDIVS[grid]).
+   *  Lets a single grid render meters other than the default bar length,
+   *  e.g. 3/4 = 12 sixteenths, 6/8 = 6 eighths. */
+  subdivs?: number;
+  /** Override slots-per-beat-group used for beaming (default: grid-derived). */
+  beatSize?: number;
   hhHits?: number[];
   hhOpen?: number[];
   snareHits?: number[];
@@ -52,6 +58,8 @@ interface DrumNotationProps {
 
 export default function DrumNotation({
   grid = "16th",
+  subdivs: subdivsProp,
+  beatSize: beatSizeProp,
   hhHits = [],
   hhOpen = [],
   snareHits = [],
@@ -66,8 +74,8 @@ export default function DrumNotation({
   onToggleSnare,
   onToggleBass,
 }: DrumNotationProps) {
-  const subdivs  = GRID_SUBDIVS[grid];
-  const beatSize = grid === "16th" ? 4 : grid === "triplet" ? 3 : grid === "quintuplet" ? 5 : grid === "septuplet" ? 7 : grid === "32nd" ? 8 : 2;
+  const subdivs  = subdivsProp ?? GRID_SUBDIVS[grid];
+  const beatSize = beatSizeProp ?? (grid === "16th" ? 4 : grid === "triplet" ? 3 : grid === "quintuplet" ? 5 : grid === "septuplet" ? 7 : grid === "32nd" ? 8 : 2);
   const numBeats = subdivs / beatSize;
   const W = subdivs * cellWidth;
 

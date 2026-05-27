@@ -1272,7 +1272,7 @@ export default function App() {
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <div className="max-w-3xl mx-auto">
             <h2 className="text-sm font-semibold text-[#888] uppercase tracking-widest mb-4">Rhythmic Audiation</h2>
-            <RhythmicAudiationTab />
+            <RhythmicAudiationTab ensureAudio={ensureAudio} playVol={playVol} />
           </div>
         </div>
       )}
