@@ -10,7 +10,7 @@
 // simple meters (x/4) run on a 16th grid, compound meters (x/8, numerator
 // divisible by 3) on a triplet grid.
 
-import { getPerms, type GridType, type Permutation } from "./drumData";
+import { type GridType } from "./drumData";
 
 export type TimeSig = [number, number];
 
@@ -85,60 +85,33 @@ function makeRng(seed: number) {
 const pick = <T,>(arr: T[], rng: () => number): T => arr[Math.floor(rng() * arr.length)];
 const uniq = (a: number[]) => [...new Set(a)].sort((x, y) => x - y);
 
-/** Tile a per-beat permutation across `beats` beats (slot = beat*spb + s). */
-function tilePerm(p: Permutation, beats: number, spb: number): number[] {
-  const out: number[] = [];
-  for (let b = 0; b < beats; b++) for (const s of p.beatSlots) out.push(b * spb + s);
-  return out;
-}
-
 export function generateGroove(timeSig: TimeSig = [4, 4], seed?: number): Groove {
   const m = meterSpecFor(timeSig);
   const rng = makeRng(seed ?? ((Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0));
   const { beats, slotsPerBeat: spb, subdivs } = m;
-  const perms = getPerms(m.grid);                       // per-beat vocabulary, beatSlots in 0..spb-1
-  const byFamily = (f: number) => perms.filter(p => p.family === f);
-
-  // ── Hi-hat: a real ostinato perm (≥2 hits/beat so it keeps time) ──
-  const hhFamilies = perms.length ? [...new Set(perms.map(p => p.family))].filter(f => f >= 2) : [];
-  const hhFam = hhFamilies.length ? pick(hhFamilies, rng) : Math.max(2, spb);
-  const hhPerm = pick(byFamily(hhFam).length ? byFamily(hhFam) : perms, rng);
-  let hhHits = hhPerm ? tilePerm(hhPerm, beats, spb) : Array.from({ length: subdivs }, (_, i) => i);
-
-  // Occasional open hat on a late upbeat.
-  const hhOpen: number[] = [];
-  if (rng() < 0.35 && hhHits.length) {
-    const openSlot = hhHits[hhHits.length - 1];
-    hhHits = hhHits.filter(h => h !== openSlot);
-    hhOpen.push(openSlot);
-  }
-
-  // ── Snare: meter backbeat, plus an occasional syncopated push ──
-  const snareHits = [...m.backbeat];
   const beatStarts = Array.from({ length: beats }, (_, b) => b * spb);
-  const innerOff = Array.from({ length: subdivs }, (_, i) => i).filter(i => i % spb !== 0);
-  if (rng() < 0.4) {
-    const cands = innerOff.filter(s => !snareHits.includes(s));
-    if (cands.length) snareHits.push(pick(cands, rng));
-  }
 
-  // ── Ghost notes (sometimes) ──
+  // ── Hi-hat: a steady eighth-note ostinato (the bedrock of most grooves) ──
+  // 16th grid → every other slot; 8th/triplet grids → every slot (each slot
+  // is already an eighth).
+  const eighthStep = spb % 2 === 0 ? spb / 2 : 1;
+  const hhHits: number[] = [];
+  for (let s = 0; s < subdivs; s += eighthStep) hhHits.push(s);
+  const hhOpen: number[] = [];
+
+  // ── Snare: meter backbeat (clean — no random clutter) ──
+  const snareHits = [...m.backbeat];
   const ghostHits: number[] = [];
-  if (rng() < 0.5) {
-    const cands = innerOff.filter(s => !snareHits.includes(s) && !beatStarts.includes(s));
-    const n = 1 + Math.floor(rng() * 2);
-    for (let i = 0; i < n && cands.length; i++) ghostHits.push(cands.splice(Math.floor(rng() * cands.length), 1)[0]);
-  }
 
-  // ── Kick: beat 1 + a sparse bass perm tiled (from the same vocabulary) ──
+  // ── Kick: beat 1, the bar's midpoint downbeat, and an occasional "and" ──
+  const half = spb / 2;
   const bassHits = [0];
-  const sparse = byFamily(1).concat(byFamily(2));
-  if (sparse.length) {
-    const bassPerm = pick(sparse, rng);
-    for (const s of tilePerm(bassPerm, beats, spb)) {
-      // keep the kick from cluttering every backbeat; allow on beat starts + the "and"
-      if (s % spb === 0 || s % spb === Math.floor(spb / 2)) bassHits.push(s);
-    }
+  const mid = Math.floor(beats / 2) * spb;          // beat 3 in 4/4, beat 2 in 3/4, etc.
+  if (mid > 0) bassHits.push(mid);
+  if (Number.isInteger(half) && rng() < 0.5) {
+    // a syncopated "and of a beat" that isn't already a backbeat
+    const ands = beatStarts.map(b => b + half).filter(s => s < subdivs && !bassHits.includes(s) && !snareHits.includes(s));
+    if (ands.length) bassHits.push(pick(ands, rng));
   }
 
   return {
