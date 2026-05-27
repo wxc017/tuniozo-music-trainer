@@ -1068,7 +1068,7 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
         // Leave a small tail margin so the last notehead + any tie/flag
         // fits cleanly inside the end barline.
         const noteAreaW = stave.getNoteEndX() - stave.getNoteStartX();
-        const fmtW = Math.max(40, noteAreaW - 10);
+        const fmtW = Math.max(40, noteAreaW - Math.max(14, noteAreaW * 0.07));
 
         try {
           // Low softmax → near-uniform per-slot spacing, so every bar with the

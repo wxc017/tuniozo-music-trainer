@@ -22,19 +22,22 @@ let kitFailed = false;
 let voiceSample: Partial<Record<Voice, string>> = {};
 
 /** Resolve our abstract voices to whatever sample names the loaded kit
- *  exposes (names differ per machine), by substring priority. */
+ *  exposes.  LM-2 (the kit we use) names them e.g. "kick", "snare-m",
+ *  "hhclosed", "hhopen" — note "hhclosed" has no word boundary and no "hat"
+ *  substring, so we match by explicit name first, then loose regex. */
 function resolveVoices(names: string[]): Partial<Record<Voice, string>> {
+  const has = (...cands: string[]): string | undefined => cands.find(c => names.includes(c));
   const find = (...res: RegExp[]): string | undefined => {
     for (const re of res) { const m = names.find(n => re.test(n)); if (m) return m; }
     return undefined;
   };
-  const closed = find(/closed.*hat|hat.*closed|\bclosed\b/i, /\bhh\b|hi.?hat|hat/i);
+  const closed = has("hhclosed", "hhclosed-short", "hhclosed-long") ?? find(/closed/i, /\bhh\b|hi.?hat|hat/i);
   return {
-    kick:      find(/kick|bass.?drum|\bbd\b/i) ?? names[0],
-    snare:     find(/snare|\bsd\b|\bsn\b/i) ?? names[1],
-    ghost:     find(/snare|\bsd\b|\bsn\b/i) ?? names[1],
+    kick:      has("kick") ?? find(/kick|bass.?drum|\bbd\b/i) ?? names[0],
+    snare:     has("snare-m", "snare", "snare-h", "snare-l") ?? find(/snare|\bsd\b|\bsn\b/i) ?? names[1],
+    ghost:     has("snare-l", "snare-m", "snare") ?? find(/snare/i) ?? names[1],
     hihat:     closed,
-    hihatOpen: find(/open.*hat|hat.*open|\boh\b|open/i) ?? closed,
+    hihatOpen: has("hhopen") ?? find(/open/i, /ride/i) ?? closed,
   };
 }
 
