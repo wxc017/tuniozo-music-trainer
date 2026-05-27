@@ -110,19 +110,17 @@ function TimeSigPicker({ value, onChange }: { value: TimeSig; onChange: (ts: Tim
   );
 }
 
-// ── Shared transport ──────────────────────────────────────────────────────
-function Transport({ playing, hasItem, showAnswer, onPlay, onStop, onReplay, onToggleAnswer, onNext }: {
-  playing: boolean; hasItem: boolean; showAnswer: boolean;
-  onPlay: () => void; onStop: () => void; onReplay: () => void; onToggleAnswer: () => void;
+// ── Shared transport: Play · Replay · Show Answer (+ Next after reveal) ────
+function Transport({ hasItem, showAnswer, onPlay, onReplay, onToggleAnswer, onNext }: {
+  hasItem: boolean; showAnswer: boolean;
+  onPlay: () => void; onReplay: () => void; onToggleAnswer: () => void;
   onNext: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <button onClick={playing ? onStop : onPlay}
-        className={`px-4 py-2 rounded-md text-sm font-semibold border transition-colors ${
-          playing ? "bg-[#2a1a1a] border-[#a55] text-[#e99]" : "bg-[#1a2a1a] border-[#5cbf8a] text-[#9d9]"
-        }`}>
-        {playing ? "Stop" : "Play"}
+      <button onClick={onPlay} disabled={!hasItem}
+        className="px-4 py-2 rounded-md text-sm font-semibold border transition-colors bg-[#1a2a1a] border-[#5cbf8a] text-[#9d9] disabled:opacity-40">
+        Play
       </button>
       <button onClick={onReplay} disabled={!hasItem}
         className="px-3 py-2 rounded-md text-sm border bg-[#141414] border-[#2a2a2a] text-[#bbb] hover:border-[#444] disabled:opacity-40">
@@ -206,7 +204,6 @@ export default function RhythmicAudiationTab({ ensureAudio, playVol = 0.8 }: { e
       await playGroove(g, { bpm, bars: repeats, countInBeats: countIn ? g.beats : 0, metronome, onDone: () => setPlaying(false) });
     } catch { setPlaying(false); setStatus("Playback failed."); }
   }
-  function stop() { stopGroove(); setPlaying(false); }
 
   const m = meterSpecFor(timeSig);
   const cell = m.subdivs > 16 ? 22 : 30;
@@ -233,12 +230,6 @@ export default function RhythmicAudiationTab({ ensureAudio, playVol = 0.8 }: { e
         <TranscriptionsTab ensureAudio={ensureAudio} playVol={playVol} lockSources={["drums"]} />
       ) : (
         <>
-          <Transport
-            playing={playing} hasItem={tab === "grooves" ? !!groove : !!sticking} showAnswer={showAnswer}
-            onPlay={play} onStop={stop} onReplay={play} onToggleAnswer={() => setShowAnswer(s => !s)}
-            onNext={tab === "grooves" ? makeGroove : makeSticking}
-          />
-
           <div className="space-y-2">
             <TimeSigPicker value={timeSig} onChange={setTimeSig} />
 
@@ -291,6 +282,13 @@ export default function RhythmicAudiationTab({ ensureAudio, playVol = 0.8 }: { e
               <div className="text-xs text-[#777]">{m.label} · {bpm} bpm</div>
             </div>
           )}
+
+          {/* Transport sits below everything. */}
+          <Transport
+            hasItem={tab === "grooves" ? !!groove : !!sticking} showAnswer={showAnswer}
+            onPlay={play} onReplay={play} onToggleAnswer={() => setShowAnswer(s => !s)}
+            onNext={tab === "grooves" ? makeGroove : makeSticking}
+          />
         </>
       )}
     </div>
