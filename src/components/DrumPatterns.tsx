@@ -4378,6 +4378,7 @@ export default function DrumPatterns({
             id: "ostinato",
             label: "Ostinato Measures",
             defaultTitle: "Fine Ostinatos",
+            engrave: "verovio",
             getElement: () => ostinatoStripRef.current,
             generateMusicXml: () => generateDrumOstinatoXML("Fine Ostinatos", measures, grid),
           },
@@ -4385,6 +4386,7 @@ export default function DrumPatterns({
             id: "accent",
             label: "Accent Study Measures",
             defaultTitle: "Accent Study",
+            engrave: "verovio",
             getElement: () => accentStripRef.current,
             generateMusicXml: () => {
               const beatSlots = ACCENT_SUBDIV_BEAT_SLOTS[accentGrid];

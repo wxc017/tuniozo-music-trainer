@@ -10,6 +10,8 @@
 import { useState, useCallback } from "react";
 import { exportToPdf, downloadMusicXml } from "@/lib/exportPdf";
 import type { PdfSection } from "@/lib/exportPdf";
+import { exportToPdfViaVerovio } from "@/lib/exportPdfVerovio";
+import type { VerovioPdfSection } from "@/lib/exportPdfVerovio";
 
 export interface ExportSection {
   id: string;
@@ -19,6 +21,12 @@ export interface ExportSection {
   getElement: () => HTMLElement | null;
   /** Generate MusicXML string for this section */
   generateMusicXml: () => string;
+  /** When "verovio", the PDF is engraved from MusicXML via Verovio
+   *  (pure SVG paths) instead of screenshotting the live render.  Drum
+   *  sections set this because VexFlow 5 draws glyphs as Bravura-font
+   *  <text>, which svg2pdf can't embed — the screenshot path produced
+   *  unreadable noteheads/beams in the PDF. */
+  engrave?: "verovio";
 }
 
 interface Props {
@@ -74,18 +82,42 @@ export default function ExportDialog({ open, onClose, sections, fileName }: Prop
 
     setExporting(true);
     try {
+      const resolved = ordered
+        .map(ss => ({ ss, sec: sections.find(s => s.id === ss.id) }))
+        .filter((x): x is { ss: SectionState; sec: ExportSection } => !!x.sec);
+
+      const wantTitles = showTitles && multiSection;
+
+      // When every enabled section opts into Verovio engraving (drums),
+      // route the whole export through Verovio so glyphs render as vector
+      // paths.  Falls back to the screenshot path if Verovio's WASM
+      // fails to load.  Mixed selections (some verovio, some not) use the
+      // screenshot path for all — Verovio + svg2pdf can't share one doc
+      // here, and homogeneous selections are the normal case.
+      const allVerovio = resolved.length > 0 && resolved.every(r => r.sec.engrave === "verovio");
+      if (allVerovio) {
+        try {
+          const vSections: VerovioPdfSection[] = resolved.map(r => ({
+            title: wantTitles ? r.ss.title : undefined,
+            musicXml: r.sec.generateMusicXml(),
+          }));
+          await exportToPdfViaVerovio(vSections, fileName, { showTitles: wantTitles });
+          return;
+        } catch (err) {
+          console.warn("Verovio PDF export failed, falling back to screenshot:", err);
+        }
+      }
+
       const pdfSections: PdfSection[] = [];
-      for (const ss of ordered) {
-        const sec = sections.find(s => s.id === ss.id);
-        if (!sec) continue;
+      for (const { ss, sec } of resolved) {
         const el = sec.getElement();
         if (!el) continue;
         pdfSections.push({
-          title: showTitles && multiSection ? ss.title : undefined,
+          title: wantTitles ? ss.title : undefined,
           element: el,
         });
       }
-      await exportToPdf(pdfSections, fileName, { showTitles: showTitles && multiSection, splitSections });
+      await exportToPdf(pdfSections, fileName, { showTitles: wantTitles, splitSections });
     } finally {
       setExporting(false);
     }
