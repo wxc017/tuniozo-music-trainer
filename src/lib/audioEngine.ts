@@ -1426,9 +1426,16 @@ export class AudioEngine {
   async startRatioDroneVoice(key: string, ratio: number, gain: number, baseFreq: number): Promise<void> {
     this.stopRatioDroneVoice(key);
     const ctx = this.getCtx();
-    await this.waitForSamples(5000);
     this.ensureDroneBus();
 
+    // Register the voice SYNCHRONOUSLY — before awaiting sample load —
+    // so getActiveDroneVoiceKeys() reflects it immediately.  Otherwise a
+    // caller that diffs active-vs-desired keys (DroneContinuum) sees the
+    // voice as still-missing during the await window and re-spawns it,
+    // restarting every loop on each click while samples are still
+    // fetching (per direct user report: clicking a node "completely
+    // resets all the loops").  The generation check after the await
+    // bails if the voice was stopped or replaced meanwhile.
     const generation = ++this.voiceGenerationCounter;
     const noteGain = ctx.createGain();
     noteGain.gain.value = gain * DRONE_PATH_GAIN;
@@ -1436,6 +1443,11 @@ export class AudioEngine {
 
     const voice = { noteGain, samples: [] as AudioBufferSourceNode[], nodes: [] as AudioNode[], timers: [] as ReturnType<typeof setTimeout>[], generation };
     this.droneVoices.set(key, voice);
+
+    await this.waitForSamples(5000);
+    // Stopped (stopRatioDroneVoice sets generation = -1 and deletes) or
+    // replaced by a newer voice at the same key during the await? Bail.
+    if (voice.generation !== generation || this.droneVoices.get(key) !== voice) return;
 
     const targetFreq = baseFreq * ratio;
     const useSamples = this.hasLoadedSamples();
