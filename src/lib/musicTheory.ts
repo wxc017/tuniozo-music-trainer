@@ -329,6 +329,96 @@ export function applyVoicingPattern(chord: number[], edo: number, pattern: Voici
   return result;
 }
 
+// ── Two-handed (open) voicing split ──────────────────────────────────
+// Which chord tones the LEFT HAND takes as the bass.  The right hand
+// keeps everything else (the upper structure + melody on top).
+//   "root"     — lone root in the bass (the solo-piano default; matches
+//                the "bass note way down, cluster up top" look).
+//   "root5"    — root + 5th (open bass, fuller low end).
+//   "shell"    — root + a guide tone (7th, else 3rd) — bebop LH shell.
+//   "rootless" — 3/5/7 cluster in the LH, no bass root (Bill Evans).
+export type TwoHandBass = "root" | "root5" | "shell" | "rootless";
+
+/**
+ * Re-voice a realized single-cluster chord as a two-handed OPEN voicing:
+ * pull the chosen tones down into a left-hand bass that sits a register
+ * below the rest, leaving a gap, with the upper structure + melody in the
+ * right hand.  Tones are REDISTRIBUTED from the input voicing (no pitch
+ * classes invented), so it stays correct across qualities / EDOs; the
+ * roles are identified by interval class above the chord root.
+ *
+ * @param voicing  realized chord pitches (any order)
+ * @param rootPc   pitch class (0..edo-1) of the chord root, same frame as `voicing`
+ * @param edo
+ * @param bass     which LH layout to build
+ * @param floor    lowest allowed absolute pitch (keyboard floor)
+ * @returns combined ascending note set (LH bass below, RH above), or the
+ *          input unchanged when it's too small to split.
+ */
+export function splitTwoHanded(
+  voicing: number[], rootPc: number, edo: number, bass: TwoHandBass, floor: number,
+): number[] {
+  if (voicing.length < 2) return [...voicing].sort((a, b) => a - b);
+  const sorted = [...voicing].sort((a, b) => a - b);
+  const relRoot = (n: number) => ((((n % edo) + edo) % edo) - rootPc + edo) % edo;
+
+  // Interval-class zones above the root (proportional to the EDO so the
+  // same logic works microtonally) — mirrors the 3rd/7th heuristic the
+  // ChordsTab extension placer already uses.
+  const third = [Math.round(edo * 3 / 12), Math.round(edo * 5 / 12)];
+  const fifth = [Math.round(edo * 6 / 12), Math.round(edo * 8 / 12)];
+  const seventh = [Math.round(edo * 9 / 12), Math.round(edo * 11 / 12)];
+  const inZone = (rel: number, z: number[]) => rel >= z[0] && rel <= z[1];
+
+  const takesToLh = (rel: number): boolean => {
+    switch (bass) {
+      case "root":     return rel === 0;
+      case "root5":    return rel === 0 || inZone(rel, fifth);
+      case "shell":    return rel === 0 || inZone(rel, seventh) || inZone(rel, third);
+      case "rootless": return inZone(rel, third) || inZone(rel, fifth) || inZone(rel, seventh);
+    }
+  };
+
+  // Split by pitch class — first occurrence of each LH pc goes to the LH,
+  // duplicates and all other tones stay in the RH (so an extension that
+  // shares a pc with a LH tone, e.g. a 9 over a root, isn't stolen).
+  const lhPcs: number[] = [];
+  const rh: number[] = [];
+  const lhSeen = new Set<number>();
+  for (const n of sorted) {
+    const pc = ((n % edo) + edo) % edo;
+    if (takesToLh(relRoot(n)) && !lhSeen.has(pc)) { lhPcs.push(pc); lhSeen.add(pc); }
+    else rh.push(n);
+  }
+  // Non-rootless layouts must have a bass root even if the source voicing
+  // was rootless (inversion/rootless pattern with the root omitted).
+  if (bass !== "rootless" && !lhSeen.has(rootPc)) { lhPcs.push(rootPc); lhSeen.add(rootPc); }
+  if (rh.length === 0 || lhPcs.length === 0) return sorted;  // nothing to split
+
+  // Order LH pcs root→3→5→7 so the bass reads bottom-up.
+  lhPcs.sort((a, b) => ((a - rootPc + edo) % edo) - ((b - rootPc + edo) % edo));
+
+  // Anchor the LOWEST LH tone at least a perfect 5th below the RH bottom
+  // (an audible gap), at or above the keyboard floor; stack the rest of
+  // the LH ascending from there.
+  const rhBottom = Math.min(...rh);
+  const ceil = rhBottom - Math.round(edo * 7 / 12);
+  const lh: number[] = [];
+  let base = ((lhPcs[0] % edo) + edo) % edo;
+  base += Math.floor((ceil - base) / edo) * edo;   // highest of this pc ≤ ceil
+  while (base < floor) base += edo;
+  lh.push(base);
+  for (let i = 1; i < lhPcs.length; i++) {
+    let n = ((lhPcs[i] % edo) + edo) % edo;
+    n += Math.floor((lh[lh.length - 1] - n) / edo) * edo;
+    while (n <= lh[lh.length - 1]) n += edo;
+    lh.push(n);
+  }
+
+  const all = [...lh, ...rh].sort((a, b) => a - b);
+  return all.filter((n, i) => i === 0 || n !== all[i - 1]);
+}
+
 export function closedPosition(chord: number[], edo: number): number[] {
   if (!chord.length) return [];
   const bass = Math.min(...chord);
