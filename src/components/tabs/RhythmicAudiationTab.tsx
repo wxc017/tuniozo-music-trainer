@@ -111,10 +111,10 @@ function TimeSigPicker({ value, onChange }: { value: TimeSig; onChange: (ts: Tim
 }
 
 // ── Shared transport ──────────────────────────────────────────────────────
-function Transport({ playing, hasItem, showAnswer, onPlay, onStop, onReplay, onToggleAnswer, onNext, nextLabel }: {
+function Transport({ playing, hasItem, showAnswer, onPlay, onStop, onReplay, onToggleAnswer, onNext }: {
   playing: boolean; hasItem: boolean; showAnswer: boolean;
   onPlay: () => void; onStop: () => void; onReplay: () => void; onToggleAnswer: () => void;
-  onNext: () => void; nextLabel: string;
+  onNext: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -134,11 +134,16 @@ function Transport({ playing, hasItem, showAnswer, onPlay, onStop, onReplay, onT
         }`}>
         {showAnswer ? "Hide Answer" : "Show Answer"}
       </button>
-      <span className="w-px h-5 bg-[#2a2a2a] mx-1" />
-      <button onClick={onNext}
-        className="px-3 py-2 rounded-md text-sm border bg-[#141414] border-[#2a2a2a] text-[#bbb] hover:border-[#bf6cd0] hover:text-[#d9a]">
-        {nextLabel}
-      </button>
+      {/* "Next" appears once you've checked the answer — no standing New button. */}
+      {showAnswer && (
+        <>
+          <span className="w-px h-5 bg-[#2a2a2a] mx-1" />
+          <button onClick={onNext}
+            className="px-3 py-2 rounded-md text-sm border bg-[#141414] border-[#2a2a2a] text-[#bbb] hover:border-[#bf6cd0] hover:text-[#d9a]">
+            Next →
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -232,7 +237,6 @@ export default function RhythmicAudiationTab({ ensureAudio, playVol = 0.8 }: { e
             playing={playing} hasItem={tab === "grooves" ? !!groove : !!sticking} showAnswer={showAnswer}
             onPlay={play} onStop={stop} onReplay={play} onToggleAnswer={() => setShowAnswer(s => !s)}
             onNext={tab === "grooves" ? makeGroove : makeSticking}
-            nextLabel={tab === "grooves" ? "New groove" : "New stickings"}
           />
 
           <div className="space-y-2">
