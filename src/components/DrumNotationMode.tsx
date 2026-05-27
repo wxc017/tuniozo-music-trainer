@@ -1472,10 +1472,11 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   // Editor state
   const [notes, setNotes] = useState<NoteData[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  // Collapse the editing toolbar to view just the measures/score.  Per
-  // direct user request ("add a button called hide to the edit measure
-  // so I can just see the measures").  Transient (resets per mount).
-  const [editorHidden, setEditorHidden] = useState(false);
+  // Collapse the bottom note-placement edit pane to view just the
+  // measures/score.  Per direct user request ("add a button called hide
+  // to the edit[ing] measure ... the one where i put notes ... so I can
+  // just see the measures").  Transient (resets per mount).
+  const [editPaneHidden, setEditPaneHidden] = useState(false);
   // Active editing bar (Aered-style "current measure").  Bar selection
   // happens in the preview; click placement still works on whatever
   // bar the cursor is over, but bar-management commands (insert /
@@ -2855,21 +2856,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
 
   return (
     <div className="flex flex-col h-full w-full" onKeyDown={() => {}}>
-      {/* Hide / Show editor toggle — collapses the whole editing
-          toolbar so the user can view just the measures.  Always
-          visible so the editor can be brought back. */}
-      <div className="py-1">
-        <button
-          onClick={() => setEditorHidden(h => !h)}
-          className={toolBtn(editorHidden)}
-          title={editorHidden ? "Show the editing toolbar" : "Hide the editing toolbar to focus on the measures"}
-        >
-          {editorHidden ? "✎ Show Editor" : "🙈 Hide"}
-        </button>
-      </div>
-
       {/* ── Toolbar rows ── */}
-      {!editorHidden && (
       <div className="flex flex-wrap items-center gap-2 py-2">
         {/* Projects + Duration + Rest + Accidentals */}
         <div className="flex items-center gap-2 bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2">
@@ -2991,7 +2978,6 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
           <button onClick={() => setShowYT(v => !v)} className={toolBtn(showYT)}>▶ YouTube</button>
         </div>
       </div>
-      )}
 
       {/* ── YouTube Sync panel — above the score ── */}
       {showYT && (
@@ -3028,7 +3014,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
         <div
           ref={scoreAreaRef}
           className="flex-1 overflow-auto py-2 border-b border-[#1a1a1a] flex items-start gap-3 px-3 w-full"
-          style={{ paddingBottom: EDIT_STAVE_AREA_H * EDIT_PANE_SCALE + 50 + 24 + 32 }}
+          style={{ paddingBottom: editPaneHidden ? 56 : EDIT_STAVE_AREA_H * EDIT_PANE_SCALE + 50 + 24 + 32 }}
         >
           <div style={{ position: "relative", display: "inline-block" }}>
             {/* VexFlow rendering target — lineHeight:0 prevents baseline gap under the SVG */}
@@ -3682,7 +3668,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                left: 0,
                right: 0,
                zIndex: 20,
-               height: EDIT_STAVE_AREA_H * EDIT_PANE_SCALE + 50 + 24,
+               height: editPaneHidden ? undefined : EDIT_STAVE_AREA_H * EDIT_PANE_SCALE + 50 + 24,
              }}>
           <div className="flex items-center gap-2 mb-1 px-3 text-[10px] text-[#666] uppercase tracking-wider">
             <span>Editing bar</span>
@@ -3808,13 +3794,25 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
             >
               ↵ Break
             </button>
+
+            {/* Hide / show the note-placement staff so the user can view
+                just the measures (the read-only score above).  Per direct
+                user request.  Pushed to the right of the header row. */}
+            <button
+              onClick={() => setEditPaneHidden(h => !h)}
+              className="ml-auto px-2 py-0.5 text-[10px] rounded border border-[#2a2a2a] bg-[#1a1a1a] text-[#aaa] hover:text-white hover:border-[#3a3a3a]"
+              title={editPaneHidden ? "Show the note-placement editor" : "Hide the note-placement editor to see just the measures"}
+            >
+              {editPaneHidden ? "Show" : "Hide"}
+            </button>
           </div>
           <div
             style={{
               position: "relative",
               display: "block",
               width: "100%",
-              height: EDIT_STAVE_AREA_H * EDIT_PANE_SCALE,
+              height: editPaneHidden ? 0 : EDIT_STAVE_AREA_H * EDIT_PANE_SCALE,
+              overflow: "hidden",
               userSelect: "none",
               WebkitUserSelect: "none",
             }}
