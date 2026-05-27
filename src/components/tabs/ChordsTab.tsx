@@ -2063,31 +2063,25 @@ export default function ChordsTab({
                   extPlacement={extPlacement} setExtPlacement={setExtPlacement}
                 />
                 <VoicingPatternControls checkedPatterns={checkedPatterns} setCheckedPatterns={setCheckedPatterns} toggleSet={toggleSet} betaMode={betaMode} />
-                {/* HANDS — two-handed voicing.  On/off toggle; when on, two
-                    families of options: "Bass + voicing" keeps the chosen RH
-                    voicing and adds a small LH bass, while "Full two-hand
-                    voicings" rebuild both hands as one integrated voicing. */}
+                {/* HANDS — single on/off toggle.  When on, two families of
+                    options: "Bass + voicing" keeps the chosen RH voicing and
+                    adds a small LH bass, while "Full two-hand voicings"
+                    rebuild both hands as one integrated voicing.  Each option
+                    shows its scale-degree formula, like the voicing patterns. */}
                 <div>
-                  <p className="text-xs text-[#888] mb-1.5 font-medium">HANDS</p>
-                  <div className="flex flex-wrap gap-1">
-                    {([
-                      { value: "one", label: "One hand", color: "#9999ee", desc: "Single-cluster voicing (default)" },
-                      { value: "two", label: "Two hands", color: "#e0b060", desc: "Spread the chord across both hands" },
-                    ] as const).map(o => {
-                      const on = hands === o.value;
-                      return (
-                        <button key={o.value} onClick={() => setHands(o.value)} title={o.desc}
-                          className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-                            on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                          }`}
-                          style={on ? { backgroundColor: o.color + "30", borderColor: o.color, color: o.color } : {}}>
-                          {o.label}
-                        </button>
-                      );
-                    })}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <p className="text-xs text-[#888] font-medium">TWO HANDS</p>
+                    <button
+                      onClick={() => setHands(hands === "two" ? "one" : "two")}
+                      title="Spread each chord across both hands"
+                      className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                        hands === "two" ? "bg-[#e0b06030] border-[#e0b060] text-[#e0b060]" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                      }`}>
+                      {hands === "two" ? "On" : "Off"}
+                    </button>
                   </div>
                   {hands === "two" && (
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-1 space-y-2">
                       <div>
                         <p className="text-[10px] text-[#666] mb-1">BASS + YOUR VOICING</p>
                         <div className="flex flex-wrap gap-1">
@@ -2095,10 +2089,11 @@ export default function ChordsTab({
                             const on = twoHandMode === o.id;
                             return (
                               <button key={o.id} onClick={() => setTwoHandMode(o.id)} title={o.desc}
-                                className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-                                  on ? "bg-[#e0b06030] border-[#e0b060] text-[#e0b060]" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                                className={`flex flex-col items-start px-2 py-1 rounded border transition-colors ${
+                                  on ? "bg-[#e0b06030] border-[#e0b060]" : "bg-[#111] border-[#2a2a2a] hover:border-[#3a3a3a]"
                                 }`}>
-                                {o.label}
+                                <span className={`text-[10px] ${on ? "text-[#e0b060]" : "text-[#888]"}`}>{o.label}</span>
+                                <span className={`text-[9px] font-mono ${on ? "text-[#e0b060]/80" : "text-[#555]"}`}>{o.degrees}</span>
                               </button>
                             );
                           })}
@@ -2111,10 +2106,11 @@ export default function ChordsTab({
                             const on = twoHandMode === o.id;
                             return (
                               <button key={o.id} onClick={() => setTwoHandMode(o.id)} title={o.desc}
-                                className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-                                  on ? "bg-[#e0b06030] border-[#e0b060] text-[#e0b060]" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                                className={`flex flex-col items-start px-2 py-1 rounded border transition-colors ${
+                                  on ? "bg-[#e0b06030] border-[#e0b060]" : "bg-[#111] border-[#2a2a2a] hover:border-[#3a3a3a]"
                                 }`}>
-                                {o.label}
+                                <span className={`text-[10px] ${on ? "text-[#e0b060]" : "text-[#888]"}`}>{o.label}</span>
+                                <span className={`text-[9px] font-mono ${on ? "text-[#e0b060]/80" : "text-[#555]"}`}>{o.degrees}</span>
                               </button>
                             );
                           })}
