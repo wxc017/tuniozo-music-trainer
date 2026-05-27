@@ -111,9 +111,9 @@ function TimeSigPicker({ value, onChange }: { value: TimeSig; onChange: (ts: Tim
 }
 
 // ── Shared transport: Play · Replay · Show Answer (+ Next after reveal) ────
-function Transport({ hasItem, showAnswer, onPlay, onReplay, onToggleAnswer, onNext }: {
+function Transport({ hasItem, showAnswer, onPlay, onReplay, onShowAnswer, onNext }: {
   hasItem: boolean; showAnswer: boolean;
-  onPlay: () => void; onReplay: () => void; onToggleAnswer: () => void;
+  onPlay: () => void; onReplay: () => void; onShowAnswer: () => void;
   onNext: () => void;
 }) {
   return (
@@ -126,11 +126,11 @@ function Transport({ hasItem, showAnswer, onPlay, onReplay, onToggleAnswer, onNe
         className="px-3 py-2 rounded-md text-sm border bg-[#141414] border-[#2a2a2a] text-[#bbb] hover:border-[#444] disabled:opacity-40">
         Replay
       </button>
-      <button onClick={onToggleAnswer} disabled={!hasItem}
+      <button onClick={onShowAnswer} disabled={!hasItem || showAnswer}
         className={`px-3 py-2 rounded-md text-sm border transition-colors disabled:opacity-40 ${
           showAnswer ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#141414] border-[#2a2a2a] text-[#bbb] hover:border-[#444]"
         }`}>
-        {showAnswer ? "Hide Answer" : "Show Answer"}
+        Show Answer
       </button>
       {/* "Next" appears once you've checked the answer — no standing New button. */}
       {showAnswer && (
@@ -286,7 +286,7 @@ export default function RhythmicAudiationTab({ ensureAudio, playVol = 0.8 }: { e
           {/* Transport sits below everything. */}
           <Transport
             hasItem={tab === "grooves" ? !!groove : !!sticking} showAnswer={showAnswer}
-            onPlay={play} onReplay={play} onToggleAnswer={() => setShowAnswer(s => !s)}
+            onPlay={play} onReplay={play} onShowAnswer={() => setShowAnswer(true)}
             onNext={tab === "grooves" ? makeGroove : makeSticking}
           />
         </>
