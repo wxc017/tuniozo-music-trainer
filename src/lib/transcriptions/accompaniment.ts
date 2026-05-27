@@ -164,7 +164,7 @@ export type CompGenre = "jazz" | "folk" | "pop" | "fusion";
 export function compGenreFor(source: string, style?: string): CompGenre {
   if (source === "thesession" || source === "essen") return "folk";
   if (source === "cocopops") return "pop";
-  if (source.startsWith("blues")) return "jazz";   // (audio-only; comp unused)
+  if (source.startsWith("blues") || source === "drums") return "jazz";   // (audio-only; comp unused)
 
   // weimar
   if (style && /fusion|funk|jazz.?rock|rock|groove/i.test(style)) return "fusion";

@@ -48,6 +48,8 @@ const SOURCE_KIT: Record<TxSource, VoiceKit> = {
   // TxSource needs an entry.
   bluesguitar: { melody: "overdriven_guitar", chords: "electric_guitar_clean", bass: "acoustic_bass" },
   bluesvocal: { melody: "overdriven_guitar", chords: "electric_guitar_clean", bass: "acoustic_bass" },
+  // Drums is audio-only (real recordings) — kit unused, entry required.
+  drums: { melody: "overdriven_guitar", chords: "electric_guitar_clean", bass: "acoustic_bass" },
 };
 
 // ── Instrument cache + shared output gain ───────────────────────────

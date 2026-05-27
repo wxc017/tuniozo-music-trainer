@@ -17,10 +17,10 @@
 // the half-open beat range [startBar*beatsPerBar, (startBar+N)*beatsPerBar).
 
 /** Which corpus an item came from. Doubles as the coarse genre key. */
-export type TxSource = "thesession" | "essen" | "weimar" | "cocopops" | "ewld" | "bluesguitar" | "bluesvocal";
+export type TxSource = "thesession" | "essen" | "weimar" | "cocopops" | "ewld" | "bluesguitar" | "bluesvocal" | "drums";
 
 /** Coarse genre shown in the UI and used for the genre filter. */
-export type TxGenre = "Irish Trad" | "Folk" | "Jazz" | "Pop/Rock" | "Blues";
+export type TxGenre = "Irish Trad" | "Folk" | "Jazz" | "Pop/Rock" | "Blues" | "Drums";
 
 export const SOURCE_GENRE: Record<TxSource, TxGenre> = {
   thesession: "Irish Trad",
@@ -30,6 +30,7 @@ export const SOURCE_GENRE: Record<TxSource, TxGenre> = {
   ewld: "Jazz",
   bluesguitar: "Blues",
   bluesvocal: "Blues",
+  drums: "Drums",
 };
 
 export const SOURCE_LABEL: Record<TxSource, string> = {
@@ -40,12 +41,14 @@ export const SOURCE_LABEL: Record<TxSource, string> = {
   ewld: "Jazz Standards (EWLD)",
   bluesguitar: "Blues Guitar",
   bluesvocal: "Blues Vocal",
+  drums: "Drums",
 };
 
-/** Blues (audio-only) corpora — guitar and vocal.  Helper so the many
- *  blues-specific branches don't have to list both keys. */
-export function isBluesSource(s: TxSource): boolean {
-  return s === "bluesguitar" || s === "bluesvocal";
+/** Audio-only corpora — real recordings transcribed by ear (no notation):
+ *  blues (guitar/vocal) and drums.  Helper so the many audio-only branches
+ *  don't have to list every key. */
+export function isAudioSource(s: TxSource): boolean {
+  return s === "bluesguitar" || s === "bluesvocal" || s === "drums";
 }
 
 /** A single melody note. `midi` is a standard MIDI pitch (C4 = 60). */

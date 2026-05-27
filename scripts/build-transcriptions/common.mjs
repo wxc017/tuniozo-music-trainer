@@ -20,7 +20,7 @@ mkdirSync(OUT_DIR, { recursive: true });
 
 export const SOURCE_GENRE = {
   thesession: "Irish Trad", essen: "Folk", weimar: "Jazz", cocopops: "Pop/Rock", ewld: "Jazz",
-  bluesguitar: "Blues", bluesvocal: "Blues",
+  bluesguitar: "Blues", bluesvocal: "Blues", drums: "Drums",
 };
 
 // ── HTTP (follows redirects, handles gzip) ──────────────────────────
@@ -361,7 +361,7 @@ export function writeSource(source, items) {
 
 /** Rebuild index.json from whatever per-source files exist. */
 export function rebuildIndex() {
-  const counts = { thesession: 0, essen: 0, weimar: 0, cocopops: 0, ewld: 0, bluesguitar: 0, bluesvocal: 0 };
+  const counts = { thesession: 0, essen: 0, weimar: 0, cocopops: 0, ewld: 0, bluesguitar: 0, bluesvocal: 0, drums: 0 };
   const indexItems = [];
   for (const source of Object.keys(counts)) {
     const file = join(OUT_DIR, `${source}.json`);
