@@ -345,13 +345,16 @@ export function applyVoicingPattern(chord: number[], edo: number, pattern: Voici
 //   "quartal"  — voicing built by stacking 4ths through the chord's tones.
 export type TwoHandStyle = "shell" | "rootless" | "ust" | "block" | "drop2" | "quartal";
 
-export const TWO_HAND_STYLES: { id: TwoHandStyle; label: string; desc: string }[] = [
-  { id: "shell",    label: "Shell",          desc: "Root + a guide tone (7th or 3rd) low, the rest of the chord above." },
-  { id: "rootless", label: "Rootless",       desc: "Rootless 3-5-7-9 lower structure; colour tones / top note above. No bass root." },
-  { id: "ust",      label: "Upper structure", desc: "Guide-tone shell (root, 3rd, 7th) low; a triad of upper tensions above." },
-  { id: "block",    label: "Block chords",   desc: "Close 4-note chord with the top note doubled an octave below." },
-  { id: "drop2",    label: "Drop 2",         desc: "Close 4-note chord with the 2nd-from-top note dropped an octave." },
-  { id: "quartal",  label: "Quartal",        desc: "Voicing built by stacking 4ths through the chord's tones." },
+// `degrees` is a scale-degree formula (low→high; "·" separates the lower
+// left-hand group from the upper right-hand group) shown on the button,
+// the same numeric style the one-hand voicing patterns use.
+export const TWO_HAND_STYLES: { id: TwoHandStyle; label: string; degrees: string; desc: string }[] = [
+  { id: "shell",    label: "Shell",           degrees: "1 7 · 3 5 9",     desc: "Root + a guide tone (7th or 3rd) low, the rest of the chord above." },
+  { id: "rootless", label: "Rootless",        degrees: "3 5 7 9",         desc: "Rootless 3-5-7-9 lower structure; colour tones / top note above. No bass root." },
+  { id: "ust",      label: "Upper structure", degrees: "1 3 7 · 9 11 13", desc: "Guide-tone shell (root, 3rd, 7th) low; a triad of upper tensions above." },
+  { id: "block",    label: "Block chords",    degrees: "7 · 1 3 5 7",     desc: "Close 4-note chord with the top note doubled an octave below." },
+  { id: "drop2",    label: "Drop 2",          degrees: "5 · 1 3 7",       desc: "Close 4-note chord with the 2nd-from-top note dropped an octave." },
+  { id: "quartal",  label: "Quartal",         degrees: "1 4 7 3",         desc: "Voicing built by stacking 4ths through the chord's tones." },
 ];
 
 /**
@@ -499,10 +502,10 @@ export function buildTwoHandedVoicing(
 // extensions the user already selected.
 export type BassVoicing = "bass-root" | "bass-octave" | "bass-root5";
 
-export const BASS_VOICINGS: { id: BassVoicing; label: string; desc: string }[] = [
-  { id: "bass-root",   label: "Root",       desc: "Left hand adds the root in the bass under your chosen voicing." },
-  { id: "bass-octave", label: "Octave",     desc: "Left hand adds the root in octaves under your chosen voicing." },
-  { id: "bass-root5",  label: "Root + 5th", desc: "Left hand adds root + 5th (open bass) under your chosen voicing." },
+export const BASS_VOICINGS: { id: BassVoicing; label: string; degrees: string; desc: string }[] = [
+  { id: "bass-root",   label: "Root",       degrees: "1 · voicing",   desc: "Left hand adds the root in the bass under your chosen voicing." },
+  { id: "bass-octave", label: "Octave",     degrees: "1 1 · voicing", desc: "Left hand adds the root in octaves under your chosen voicing." },
+  { id: "bass-root5",  label: "Root + 5th", degrees: "1 5 · voicing", desc: "Left hand adds root + 5th (open bass) under your chosen voicing." },
 ];
 
 /**
