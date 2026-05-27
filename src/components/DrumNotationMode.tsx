@@ -1472,6 +1472,10 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   // Editor state
   const [notes, setNotes] = useState<NoteData[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Collapse the editing toolbar to view just the measures/score.  Per
+  // direct user request ("add a button called hide to the edit measure
+  // so I can just see the measures").  Transient (resets per mount).
+  const [editorHidden, setEditorHidden] = useState(false);
   // Active editing bar (Aered-style "current measure").  Bar selection
   // happens in the preview; click placement still works on whatever
   // bar the cursor is over, but bar-management commands (insert /
@@ -2851,7 +2855,21 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
 
   return (
     <div className="flex flex-col h-full w-full" onKeyDown={() => {}}>
+      {/* Hide / Show editor toggle — collapses the whole editing
+          toolbar so the user can view just the measures.  Always
+          visible so the editor can be brought back. */}
+      <div className="py-1">
+        <button
+          onClick={() => setEditorHidden(h => !h)}
+          className={toolBtn(editorHidden)}
+          title={editorHidden ? "Show the editing toolbar" : "Hide the editing toolbar to focus on the measures"}
+        >
+          {editorHidden ? "✎ Show Editor" : "🙈 Hide"}
+        </button>
+      </div>
+
       {/* ── Toolbar rows ── */}
+      {!editorHidden && (
       <div className="flex flex-wrap items-center gap-2 py-2">
         {/* Projects + Duration + Rest + Accidentals */}
         <div className="flex items-center gap-2 bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2">
@@ -2973,6 +2991,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
           <button onClick={() => setShowYT(v => !v)} className={toolBtn(showYT)}>▶ YouTube</button>
         </div>
       </div>
+      )}
 
       {/* ── YouTube Sync panel — above the score ── */}
       {showYT && (
