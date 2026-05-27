@@ -330,55 +330,55 @@ export function applyVoicingPattern(chord: number[], edo: number, pattern: Voici
 }
 
 // ── Two-handed (open) voicing styles ─────────────────────────────────
-// A two-handed voicing is TWO independent layers — a left-hand structure
-// in a low/mid register and a right-hand structure above it — not a
-// single cluster with a note carved off.  Each named style defines what
-// BOTH hands play (as interval offsets from the chord root), so the
-// result is a real solo-piano voicing spread across the keyboard.
+// A two-handed voicing spreads the chord across the keyboard as a single
+// open structure (low tones down, colour + top note up) rather than one
+// close cluster.  The styles are the GENERIC voicing types from standard
+// jazz-piano harmony pedagogy (Levine, DeGreg, etc.) — named by technique,
+// not by player or tune:
 //
-//   "rootBass" — LH lone root; RH the full chord + colour on top.
-//   "octaves"  — LH root octave; RH the chord (fuller low end).
-//   "shell"    — LH root + 7th (bebop guide-tone shell); RH 3rd, 5th,
-//                extensions + colour on top.
-//   "root10"   — LH root + 10th (the 3rd up high — ballad sound); RH
-//                5th, 7th, extensions.
-//   "rootless" — LH rootless 3-5-7(-9) (Bill Evans); RH upper colour
-//                tones / melody, no bass root.
-//   "ust"      — upper-structure triad: LH root + 3rd + 7th guide-tone
-//                shell; RH a bright triad of extensions (9 / 11 / 13).
-export type TwoHandStyle = "rootBass" | "octaves" | "shell" | "root10" | "rootless" | "ust";
+//   "shell"    — root + a guide tone (7th, else 3rd) low; 3rd/5th + colour above.
+//   "rootless" — rootless 3-5-7-9 lower structure (no bass root); colour/top above.
+//   "ust"      — upper structure: root+3rd+7th guide-tone shell low; a triad
+//                of upper tensions (9/11/13) above.
+//   "block"    — close 4-note chord with the top note doubled an octave below.
+//   "drop2"    — close 4-note chord with the 2nd-from-top note dropped an octave.
+//   "quartal"  — voicing built by stacking 4ths through the chord's tones.
+export type TwoHandStyle = "shell" | "rootless" | "ust" | "block" | "drop2" | "quartal";
 
 export const TWO_HAND_STYLES: { id: TwoHandStyle; label: string; desc: string }[] = [
-  { id: "rootBass", label: "Root + chord",        desc: "Left hand plays the bass root; right hand plays the full chord with colour tones on top. The simplest two-handed sound." },
-  { id: "octaves",  label: "Octave bass + chord", desc: "Left hand doubles the root in octaves; right hand plays the chord. Fuller, pop/gospel low end." },
-  { id: "shell",    label: "Bebop shell",         desc: "Left hand plays root + 7th (the guide-tone shell); right hand plays the 3rd, 5th and extensions. Classic comping." },
-  { id: "root10",   label: "Root + 10th",         desc: "Left hand plays the root with the 3rd up a 10th; right hand plays the rest. The warm ballad / stride sound." },
-  { id: "rootless", label: "Rootless (Bill Evans)", desc: "Left hand plays a rootless 3-5-7-9 shell; right hand plays the upper colour tones. No bass root — modern jazz." },
-  { id: "ust",      label: "Upper-structure triad", desc: "Left hand plays a root+3rd+7th shell; right hand plays a bright triad built from the extensions (9/11/13)." },
+  { id: "shell",    label: "Shell",          desc: "Root + a guide tone (7th or 3rd) low, the rest of the chord above." },
+  { id: "rootless", label: "Rootless",       desc: "Rootless 3-5-7-9 lower structure; colour tones / top note above. No bass root." },
+  { id: "ust",      label: "Upper structure", desc: "Guide-tone shell (root, 3rd, 7th) low; a triad of upper tensions above." },
+  { id: "block",    label: "Block chords",   desc: "Close 4-note chord with the top note doubled an octave below." },
+  { id: "drop2",    label: "Drop 2",         desc: "Close 4-note chord with the 2nd-from-top note dropped an octave." },
+  { id: "quartal",  label: "Quartal",        desc: "Voicing built by stacking 4ths through the chord's tones." },
 ];
 
 /**
  * Build a two-handed OPEN voicing from a chord's pitch-class content.
- * Returns the combined ascending note set (LH layer below, RH layer
- * above, separated by a register gap).  Roles are derived by interval
- * class above the root, so it works across qualities and EDOs; nothing
- * is invented — a role the chord lacks (e.g. a 7th on a triad, or absent
- * extensions) is simply skipped and the style degrades gracefully.
+ * Returns the combined ascending note set.  Each style produces one
+ * ordered list of interval offsets from the root (the complete voicing,
+ * its spread baked into the offsets), which is then placed in register
+ * and octave-shifted to fit the keyboard.  Roles are derived by interval
+ * class above the root, so it works across qualities and EDOs; a role the
+ * chord lacks (a 7th on a triad, absent extensions) is skipped and the
+ * style degrades gracefully.
  *
  * @param chordTonePcs  chord-tone pitch classes incl. root (root, 3, 5, [7])
  * @param extPcs        extension pitch classes (9 / 11 / 13), may be empty
  * @param rootPc        pitch class of the chord root
  * @param edo
  * @param style         which named two-handed style to build
- * @param rhAnchor      target register: roughly where the RH should sit (e.g. the original voicing's lowest note)
- * @param floor         keyboard floor (LH won't go below this)
- * @param ceil          keyboard ceiling (whole voicing octave-shifted down to fit if it overruns)
+ * @param anchorLow     target register for the voicing's LOWEST note (e.g. the original voicing's lowest pitch)
+ * @param floor         keyboard floor
+ * @param ceil          keyboard ceiling (voicing octave-shifted to fit)
  */
 export function buildTwoHandedVoicing(
   chordTonePcs: number[], extPcs: number[], rootPc: number, edo: number,
-  style: TwoHandStyle, rhAnchor: number, floor: number, ceil: number,
+  style: TwoHandStyle, anchorLow: number, floor: number, ceil: number,
 ): number[] {
   const relRoot = (pc: number) => (((pc % edo) + edo) % edo - rootPc + edo) % edo;
+  const O = edo;
 
   // Classify chord tones into 3rd / 5th / 7th by interval zone, and
   // extensions into 9 / 11 / 13 (each lifted an octave so it reads as a
@@ -398,82 +398,96 @@ export function buildTwoHandedVoicing(
     else if (r <= Math.round(edo * 7 / 12)) elevenI = elevenI ?? (edo + r);
     else thirteenI = thirteenI ?? (edo + r);
   }
-  // Role → interval-from-root (null when the chord lacks it).
-  const R = 0;
   const compact = (xs: (number | null)[]) => xs.filter((x): x is number => x !== null);
 
-  // Each style as { lh, rh } interval-offset lists (from the root).  RH
-  // lists are placed ascending, so the largest offset lands on top as the
-  // "melody".  Roles missing from the chord drop out via compact().
-  let lhOff: number[];
-  let rhOff: number[];
+  // Each style → a single ordered list of interval offsets from the root
+  // (low→high; offsets may be negative, e.g. a melody doubled below).  The
+  // spread between hands is encoded directly in the offsets, so compact
+  // styles (block / drop 2) and wide styles (shell / rootless) both render
+  // through the same placement code below.
+  let offs: number[];
   switch (style) {
-    case "octaves":
-      lhOff = [R, R + edo];
-      rhOff = compact([thirdI, fifthI, seventhI, nineI, elevenI, thirteenI]);
-      break;
-    case "shell":
-      lhOff = compact([R, seventhI ?? thirdI]);
-      rhOff = compact([seventhI ? thirdI : fifthI, fifthI, nineI, elevenI, thirteenI]);
-      break;
-    case "root10":
-      lhOff = compact([R, thirdI !== null ? edo + thirdI : null]);
-      rhOff = compact([fifthI, seventhI, nineI, elevenI, thirteenI]);
-      break;
     case "rootless":
-      lhOff = compact([thirdI, fifthI, seventhI, nineI]);
-      // RH = whatever colour is left, else the root up high as a melody.
-      rhOff = compact([elevenI, thirteenI]);
-      if (rhOff.length === 0) rhOff = compact([R + 2 * edo, (fifthI ?? 0) + 2 * edo]);
+      // 3-5-7-9 lower structure (no root), with a colour tone / top note above.
+      offs = compact([
+        thirdI, fifthI, seventhI, nineI,
+        thirteenI !== null ? thirteenI : (elevenI !== null ? elevenI : (thirdI !== null ? O + thirdI : null)),
+      ]);
       break;
-    case "ust":
-      lhOff = compact([R, thirdI, seventhI]);
-      rhOff = compact([nineI, elevenI, thirteenI]);
-      // Fall back to a plain triad up high when there aren't ≥2 extensions.
-      if (rhOff.length < 2) rhOff = compact([thirdI, fifthI, seventhI]).map(o => o + edo);
+    case "ust": {
+      const tensions = compact([nineI, elevenI, thirteenI]);
+      const rh = tensions.length >= 2 ? tensions : compact([thirdI, fifthI, seventhI]).map(o => O + o);
+      offs = [...compact([0, thirdI, seventhI]), ...rh];
       break;
-    case "rootBass":
+    }
+    case "block": {
+      // Four-way close (root,3,5,7) with the top note doubled an octave below.
+      const closed = compact([0, thirdI, fifthI, seventhI]);
+      const top = closed[closed.length - 1];
+      offs = [top - O, ...closed];
+      break;
+    }
+    case "drop2": {
+      // Four-way close with the 2nd-from-top note dropped an octave.
+      const closed = compact([0, thirdI, fifthI, seventhI]).sort((a, b) => a - b);
+      if (closed.length >= 2) {
+        const idx = closed.length - 2;
+        offs = [closed[idx] - O, ...closed.filter((_, i) => i !== idx)];
+      } else offs = closed;
+      break;
+    }
+    case "quartal": {
+      // Stack ~4ths upward, snapping each voice to the nearest available
+      // chord/extension pitch class above the previous — keeps the quartal
+      // stack inside the chord's harmony rather than blind perfect-4ths.
+      const P4 = Math.round(edo * 5 / 12);
+      const avail = [...new Set([rootPc, ...chordTonePcs, ...extPcs].map(p => ((p - rootPc) % edo + edo) % edo))];
+      offs = [0];
+      let prev = 0;
+      for (let v = 0; v < 4; v++) {
+        const target = prev + P4;
+        let best: number | null = null, bestD = Infinity;
+        for (const base of avail) {
+          let n = base;
+          while (n <= prev) n += O;
+          const d = Math.abs(n - target);
+          if (d < bestD) { bestD = d; best = n; }
+        }
+        if (best === null) break;
+        offs.push(best);
+        prev = best;
+      }
+      break;
+    }
+    case "shell":
     default:
-      lhOff = [R];
-      rhOff = compact([thirdI, fifthI, seventhI, nineI, elevenI, thirteenI]);
+      // Root + guide tone (7th, else 3rd) low; the rest of the chord an
+      // octave up with colour on top.  nineI / thirteenI are already
+      // compound (octave + tension), so they land in the upper structure.
+      offs = compact([
+        0, seventhI ?? thirdI,
+        thirdI !== null ? O + thirdI : null,
+        fifthI !== null ? O + fifthI : null,
+        nineI, thirteenI,
+      ]);
       break;
   }
-  if (rhOff.length === 0) rhOff = compact([thirdI, fifthI]).map(o => o + edo);
-  if (lhOff.length === 0) lhOff = [R];
+  offs = [...new Set(offs)].sort((a, b) => a - b);
+  if (offs.length === 0) offs = compact([0, thirdI, fifthI]);
+  if (offs.length === 0) offs = [0];
 
-  // Place the LH: anchor its lowest tone about an octave below rhAnchor
-  // (at/above the floor), then add the rest as offsets from that root.
-  const placePcAtOrBelow = (pc: number, ceilAbs: number) => {
-    let n = ((pc % edo) + edo) % edo;
-    n += Math.floor((ceilAbs - n) / edo) * edo;
-    return n;
-  };
-  let bassRoot = placePcAtOrBelow(rootPc, rhAnchor - 1);
-  if (rhAnchor - bassRoot < Math.round(edo * 5 / 12)) bassRoot -= edo;  // ensure a gap
-  while (bassRoot < floor) bassRoot += edo;
-  const lh = lhOff.map(o => bassRoot + o).sort((a, b) => a - b);
+  // Place the voicing so its lowest note sits near anchorLow: pick the
+  // root pitch nearest (anchorLow − lowestOffset), then add the offsets.
+  const minOff = Math.min(...offs);
+  const target = anchorLow - minOff;
+  let rootAbs = ((rootPc % edo) + edo) % edo;
+  rootAbs += Math.round((target - rootAbs) / edo) * edo;
+  let all = offs.map(o => rootAbs + o).sort((a, b) => a - b);
 
-  // Place the RH above the LH, preserving its internal interval structure:
-  // find the lowest root-octave such that the RH's lowest tone clears the
-  // LH top by at least a minor 3rd.
-  const minRh = Math.min(...rhOff);
-  const rhStart = Math.max(...lh) + Math.round(edo * 3 / 12);
-  let rhRoot = bassRoot;
-  while (rhRoot + minRh < rhStart) rhRoot += edo;
-  const rh = rhOff.map(o => rhRoot + o).sort((a, b) => a - b);
-
-  let all = [...lh, ...rh].sort((a, b) => a - b);
-  all = all.filter((n, i) => i === 0 || n !== all[i - 1]);
-
-  // Octave-shift the whole voicing (gap preserved) so it fits the
-  // keyboard: lower it while the top overruns the ceiling, raise it while
-  // the bottom dips below the floor.
-  while (all.length && all[all.length - 1] > ceil && all[0] - edo >= floor) {
-    all = all.map(n => n - edo);
-  }
-  while (all.length && all[0] < floor && all[all.length - 1] + edo <= ceil) {
-    all = all.map(n => n + edo);
-  }
+  // Octave-shift the whole voicing (internal spread preserved) so it fits
+  // the keyboard.
+  while (all.length && all[all.length - 1] > ceil && all[0] - edo >= floor) all = all.map(n => n - edo);
+  while (all.length && all[0] < floor && all[all.length - 1] + edo <= ceil) all = all.map(n => n + edo);
   return all;
 }
 
