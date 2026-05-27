@@ -153,7 +153,10 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
     // clip length; "Full song" plays the whole recording.  You transcribe it by
     // ear — there is no synthesized melody/notation.  Every other corpus plays MIDI.
     if (isAudioSource(it.source) && it.audio) {
-      const src = `${BASE}blues/${it.audio}`;
+      // Audio-only corpora live under different public folders: blues clips in
+      // public/blues/, drum clips in public/drums/.
+      const folder = it.source === "drums" ? "drums" : "blues";
+      const src = `${BASE}${folder}/${it.audio}`;
       // pickExcerpt chose a random window of the recording that contains notes.
       // The "hear more" buttons extend it by whole bars before/after (clipPad).
       // "Full song" plays the whole track from the top (and does NOT change the
