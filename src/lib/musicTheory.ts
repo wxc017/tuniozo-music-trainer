@@ -329,94 +329,152 @@ export function applyVoicingPattern(chord: number[], edo: number, pattern: Voici
   return result;
 }
 
-// ── Two-handed (open) voicing split ──────────────────────────────────
-// Which chord tones the LEFT HAND takes as the bass.  The right hand
-// keeps everything else (the upper structure + melody on top).
-//   "root"     — lone root in the bass (the solo-piano default; matches
-//                the "bass note way down, cluster up top" look).
-//   "root5"    — root + 5th (open bass, fuller low end).
-//   "shell"    — root + a guide tone (7th, else 3rd) — bebop LH shell.
-//   "rootless" — 3/5/7 cluster in the LH, no bass root (Bill Evans).
-export type TwoHandBass = "root" | "root5" | "shell" | "rootless";
+// ── Two-handed (open) voicing styles ─────────────────────────────────
+// A two-handed voicing is TWO independent layers — a left-hand structure
+// in a low/mid register and a right-hand structure above it — not a
+// single cluster with a note carved off.  Each named style defines what
+// BOTH hands play (as interval offsets from the chord root), so the
+// result is a real solo-piano voicing spread across the keyboard.
+//
+//   "rootBass" — LH lone root; RH the full chord + colour on top.
+//   "octaves"  — LH root octave; RH the chord (fuller low end).
+//   "shell"    — LH root + 7th (bebop guide-tone shell); RH 3rd, 5th,
+//                extensions + colour on top.
+//   "root10"   — LH root + 10th (the 3rd up high — ballad sound); RH
+//                5th, 7th, extensions.
+//   "rootless" — LH rootless 3-5-7(-9) (Bill Evans); RH upper colour
+//                tones / melody, no bass root.
+//   "ust"      — upper-structure triad: LH root + 3rd + 7th guide-tone
+//                shell; RH a bright triad of extensions (9 / 11 / 13).
+export type TwoHandStyle = "rootBass" | "octaves" | "shell" | "root10" | "rootless" | "ust";
+
+export const TWO_HAND_STYLES: { id: TwoHandStyle; label: string; desc: string }[] = [
+  { id: "rootBass", label: "Root + chord",        desc: "Left hand plays the bass root; right hand plays the full chord with colour tones on top. The simplest two-handed sound." },
+  { id: "octaves",  label: "Octave bass + chord", desc: "Left hand doubles the root in octaves; right hand plays the chord. Fuller, pop/gospel low end." },
+  { id: "shell",    label: "Bebop shell",         desc: "Left hand plays root + 7th (the guide-tone shell); right hand plays the 3rd, 5th and extensions. Classic comping." },
+  { id: "root10",   label: "Root + 10th",         desc: "Left hand plays the root with the 3rd up a 10th; right hand plays the rest. The warm ballad / stride sound." },
+  { id: "rootless", label: "Rootless (Bill Evans)", desc: "Left hand plays a rootless 3-5-7-9 shell; right hand plays the upper colour tones. No bass root — modern jazz." },
+  { id: "ust",      label: "Upper-structure triad", desc: "Left hand plays a root+3rd+7th shell; right hand plays a bright triad built from the extensions (9/11/13)." },
+];
 
 /**
- * Re-voice a realized single-cluster chord as a two-handed OPEN voicing:
- * pull the chosen tones down into a left-hand bass that sits a register
- * below the rest, leaving a gap, with the upper structure + melody in the
- * right hand.  Tones are REDISTRIBUTED from the input voicing (no pitch
- * classes invented), so it stays correct across qualities / EDOs; the
- * roles are identified by interval class above the chord root.
+ * Build a two-handed OPEN voicing from a chord's pitch-class content.
+ * Returns the combined ascending note set (LH layer below, RH layer
+ * above, separated by a register gap).  Roles are derived by interval
+ * class above the root, so it works across qualities and EDOs; nothing
+ * is invented — a role the chord lacks (e.g. a 7th on a triad, or absent
+ * extensions) is simply skipped and the style degrades gracefully.
  *
- * @param voicing  realized chord pitches (any order)
- * @param rootPc   pitch class (0..edo-1) of the chord root, same frame as `voicing`
+ * @param chordTonePcs  chord-tone pitch classes incl. root (root, 3, 5, [7])
+ * @param extPcs        extension pitch classes (9 / 11 / 13), may be empty
+ * @param rootPc        pitch class of the chord root
  * @param edo
- * @param bass     which LH layout to build
- * @param floor    lowest allowed absolute pitch (keyboard floor)
- * @returns combined ascending note set (LH bass below, RH above), or the
- *          input unchanged when it's too small to split.
+ * @param style         which named two-handed style to build
+ * @param rhAnchor      target register: roughly where the RH should sit (e.g. the original voicing's lowest note)
+ * @param floor         keyboard floor (LH won't go below this)
+ * @param ceil          keyboard ceiling (whole voicing octave-shifted down to fit if it overruns)
  */
-export function splitTwoHanded(
-  voicing: number[], rootPc: number, edo: number, bass: TwoHandBass, floor: number,
+export function buildTwoHandedVoicing(
+  chordTonePcs: number[], extPcs: number[], rootPc: number, edo: number,
+  style: TwoHandStyle, rhAnchor: number, floor: number, ceil: number,
 ): number[] {
-  if (voicing.length < 2) return [...voicing].sort((a, b) => a - b);
-  const sorted = [...voicing].sort((a, b) => a - b);
-  const relRoot = (n: number) => ((((n % edo) + edo) % edo) - rootPc + edo) % edo;
+  const relRoot = (pc: number) => (((pc % edo) + edo) % edo - rootPc + edo) % edo;
 
-  // Interval-class zones above the root (proportional to the EDO so the
-  // same logic works microtonally) — mirrors the 3rd/7th heuristic the
-  // ChordsTab extension placer already uses.
-  const third = [Math.round(edo * 3 / 12), Math.round(edo * 5 / 12)];
-  const fifth = [Math.round(edo * 6 / 12), Math.round(edo * 8 / 12)];
-  const seventh = [Math.round(edo * 9 / 12), Math.round(edo * 11 / 12)];
-  const inZone = (rel: number, z: number[]) => rel >= z[0] && rel <= z[1];
+  // Classify chord tones into 3rd / 5th / 7th by interval zone, and
+  // extensions into 9 / 11 / 13 (each lifted an octave so it reads as a
+  // compound interval).  Intervals are step counts above the root.
+  let thirdI: number | null = null, fifthI: number | null = null, seventhI: number | null = null;
+  for (const pc of chordTonePcs) {
+    const r = relRoot(pc);
+    if (r === 0) continue;
+    if (r <= Math.round(edo * 5 / 12)) thirdI = thirdI ?? r;
+    else if (r <= Math.round(edo * 8 / 12)) fifthI = fifthI ?? r;
+    else seventhI = seventhI ?? r;
+  }
+  let nineI: number | null = null, elevenI: number | null = null, thirteenI: number | null = null;
+  for (const pc of extPcs) {
+    const r = relRoot(pc);
+    if (r <= Math.round(edo * 3 / 12)) nineI = nineI ?? (edo + r);
+    else if (r <= Math.round(edo * 7 / 12)) elevenI = elevenI ?? (edo + r);
+    else thirteenI = thirteenI ?? (edo + r);
+  }
+  // Role → interval-from-root (null when the chord lacks it).
+  const R = 0;
+  const compact = (xs: (number | null)[]) => xs.filter((x): x is number => x !== null);
 
-  const takesToLh = (rel: number): boolean => {
-    switch (bass) {
-      case "root":     return rel === 0;
-      case "root5":    return rel === 0 || inZone(rel, fifth);
-      case "shell":    return rel === 0 || inZone(rel, seventh) || inZone(rel, third);
-      case "rootless": return inZone(rel, third) || inZone(rel, fifth) || inZone(rel, seventh);
-    }
+  // Each style as { lh, rh } interval-offset lists (from the root).  RH
+  // lists are placed ascending, so the largest offset lands on top as the
+  // "melody".  Roles missing from the chord drop out via compact().
+  let lhOff: number[];
+  let rhOff: number[];
+  switch (style) {
+    case "octaves":
+      lhOff = [R, R + edo];
+      rhOff = compact([thirdI, fifthI, seventhI, nineI, elevenI, thirteenI]);
+      break;
+    case "shell":
+      lhOff = compact([R, seventhI ?? thirdI]);
+      rhOff = compact([seventhI ? thirdI : fifthI, fifthI, nineI, elevenI, thirteenI]);
+      break;
+    case "root10":
+      lhOff = compact([R, thirdI !== null ? edo + thirdI : null]);
+      rhOff = compact([fifthI, seventhI, nineI, elevenI, thirteenI]);
+      break;
+    case "rootless":
+      lhOff = compact([thirdI, fifthI, seventhI, nineI]);
+      // RH = whatever colour is left, else the root up high as a melody.
+      rhOff = compact([elevenI, thirteenI]);
+      if (rhOff.length === 0) rhOff = compact([R + 2 * edo, (fifthI ?? 0) + 2 * edo]);
+      break;
+    case "ust":
+      lhOff = compact([R, thirdI, seventhI]);
+      rhOff = compact([nineI, elevenI, thirteenI]);
+      // Fall back to a plain triad up high when there aren't ≥2 extensions.
+      if (rhOff.length < 2) rhOff = compact([thirdI, fifthI, seventhI]).map(o => o + edo);
+      break;
+    case "rootBass":
+    default:
+      lhOff = [R];
+      rhOff = compact([thirdI, fifthI, seventhI, nineI, elevenI, thirteenI]);
+      break;
+  }
+  if (rhOff.length === 0) rhOff = compact([thirdI, fifthI]).map(o => o + edo);
+  if (lhOff.length === 0) lhOff = [R];
+
+  // Place the LH: anchor its lowest tone about an octave below rhAnchor
+  // (at/above the floor), then add the rest as offsets from that root.
+  const placePcAtOrBelow = (pc: number, ceilAbs: number) => {
+    let n = ((pc % edo) + edo) % edo;
+    n += Math.floor((ceilAbs - n) / edo) * edo;
+    return n;
   };
+  let bassRoot = placePcAtOrBelow(rootPc, rhAnchor - 1);
+  if (rhAnchor - bassRoot < Math.round(edo * 5 / 12)) bassRoot -= edo;  // ensure a gap
+  while (bassRoot < floor) bassRoot += edo;
+  const lh = lhOff.map(o => bassRoot + o).sort((a, b) => a - b);
 
-  // Split by pitch class — first occurrence of each LH pc goes to the LH,
-  // duplicates and all other tones stay in the RH (so an extension that
-  // shares a pc with a LH tone, e.g. a 9 over a root, isn't stolen).
-  const lhPcs: number[] = [];
-  const rh: number[] = [];
-  const lhSeen = new Set<number>();
-  for (const n of sorted) {
-    const pc = ((n % edo) + edo) % edo;
-    if (takesToLh(relRoot(n)) && !lhSeen.has(pc)) { lhPcs.push(pc); lhSeen.add(pc); }
-    else rh.push(n);
+  // Place the RH above the LH, preserving its internal interval structure:
+  // find the lowest root-octave such that the RH's lowest tone clears the
+  // LH top by at least a minor 3rd.
+  const minRh = Math.min(...rhOff);
+  const rhStart = Math.max(...lh) + Math.round(edo * 3 / 12);
+  let rhRoot = bassRoot;
+  while (rhRoot + minRh < rhStart) rhRoot += edo;
+  const rh = rhOff.map(o => rhRoot + o).sort((a, b) => a - b);
+
+  let all = [...lh, ...rh].sort((a, b) => a - b);
+  all = all.filter((n, i) => i === 0 || n !== all[i - 1]);
+
+  // Octave-shift the whole voicing (gap preserved) so it fits the
+  // keyboard: lower it while the top overruns the ceiling, raise it while
+  // the bottom dips below the floor.
+  while (all.length && all[all.length - 1] > ceil && all[0] - edo >= floor) {
+    all = all.map(n => n - edo);
   }
-  // Non-rootless layouts must have a bass root even if the source voicing
-  // was rootless (inversion/rootless pattern with the root omitted).
-  if (bass !== "rootless" && !lhSeen.has(rootPc)) { lhPcs.push(rootPc); lhSeen.add(rootPc); }
-  if (rh.length === 0 || lhPcs.length === 0) return sorted;  // nothing to split
-
-  // Order LH pcs root→3→5→7 so the bass reads bottom-up.
-  lhPcs.sort((a, b) => ((a - rootPc + edo) % edo) - ((b - rootPc + edo) % edo));
-
-  // Anchor the LOWEST LH tone at least a perfect 5th below the RH bottom
-  // (an audible gap), at or above the keyboard floor; stack the rest of
-  // the LH ascending from there.
-  const rhBottom = Math.min(...rh);
-  const ceil = rhBottom - Math.round(edo * 7 / 12);
-  const lh: number[] = [];
-  let base = ((lhPcs[0] % edo) + edo) % edo;
-  base += Math.floor((ceil - base) / edo) * edo;   // highest of this pc ≤ ceil
-  while (base < floor) base += edo;
-  lh.push(base);
-  for (let i = 1; i < lhPcs.length; i++) {
-    let n = ((lhPcs[i] % edo) + edo) % edo;
-    n += Math.floor((lh[lh.length - 1] - n) / edo) * edo;
-    while (n <= lh[lh.length - 1]) n += edo;
-    lh.push(n);
+  while (all.length && all[0] < floor && all[all.length - 1] + edo <= ceil) {
+    all = all.map(n => n + edo);
   }
-
-  const all = [...lh, ...rh].sort((a, b) => a - b);
-  return all.filter((n, i) => i === 0 || n !== all[i - 1]);
+  return all;
 }
 
 export function closedPosition(chord: number[], edo: number): number[] {

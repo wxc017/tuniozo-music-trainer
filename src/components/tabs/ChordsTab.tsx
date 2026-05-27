@@ -10,7 +10,7 @@ import {
   ALL_VOICING_PATTERNS, VOICING_PATTERN_GROUPS, applyVoicingPattern,
   generateBassLine, generateMelodyLine,
   checkLowIntervalLimits, formatLilWarnings,
-  splitTwoHanded, type TwoHandBass,
+  buildTwoHandedVoicing, TWO_HAND_STYLES, type TwoHandStyle,
   type LilWarning,
 } from "@/lib/musicTheory";
 import {
@@ -196,7 +196,7 @@ export default function ChordsTab({
   // picks which tones the left hand takes.  Default "one" leaves the
   // single-cluster behaviour untouched.
   const [hands, setHands] = useLS<"one" | "two">("lt_crd_hands", "one");
-  const [lhBass, setLhBass] = useLS<TwoHandBass>("lt_crd_lhBass", "root");
+  const [twoHandStyle, setTwoHandStyle] = useLS<TwoHandStyle>("lt_crd_2hStyle", "rootBass");
   const [checkedPatterns, setCheckedPatterns] = useLS<Set<string>>("lt_crd_vpatterns", new Set(["t-135"]));
   // Per-tonality, per-numeral xenharmonic chord-type opt-ins.  Each entry is
   // a list of xen 3rd-quality IDs (e.g. "neu3","sub3","sup3") that the user
@@ -1258,16 +1258,23 @@ export default function ChordsTab({
           if (shapeForRecord) shapeForRecord = shapeForRecord.map(p => p - offsetSteps);
         }
       }
-      // Two-handed (open) voicing: re-voice the realized cluster into a
-      // LH bass + RH upper structure with a register gap.  Done AFTER
-      // voice-leading selection so the next chord still voice-leads
+      // Two-handed (open) voicing: rebuild the chord as two independent
+      // layers (LH structure + RH structure per the chosen style).  Done
+      // AFTER voice-leading selection so the next chord still voice-leads
       // against the compact single-cluster voicing (prevVoicing) rather
-      // than chasing the dropped bass.
+      // than chasing the dropped bass.  Chord tones come from the applied
+      // shape; everything else in the realized voicing is treated as an
+      // extension (9/11/13) available to the right hand.
       let playChordAbs = chordAbs;
       if (hands === "two" && chordAbs.length > 1 && shapeForRecord && shapeForRecord.length > 0) {
-        const rootPc = ((shapeForRecord[0] % edo) + edo) % edo;
+        const chordTonePcs = shapeForRecord.map(s => ((s % edo) + edo) % edo);
+        const tonePcSet = new Set(chordTonePcs);
+        const extPcs = [...new Set(chordAbs.map(n => ((n % edo) + edo) % edo))].filter(pc => !tonePcSet.has(pc));
+        const rootPc = chordTonePcs[0];
         const floor = layoutPitchRange?.min ?? (lowestPitch - 2 * edo);
-        playChordAbs = splitTwoHanded(chordAbs, rootPc, edo, lhBass, floor);
+        const ceil = layoutPitchRange?.max ?? (highestPitch + 2 * edo);
+        const built = buildTwoHandedVoicing(chordTonePcs, extPcs, rootPc, edo, twoHandStyle, Math.min(...chordAbs), floor, ceil);
+        if (built.length > 0) playChordAbs = built;
       }
       chords.push(playChordAbs);
       appliedShapes.push(shapeForRecord);
@@ -1343,7 +1350,7 @@ export default function ChordsTab({
     }
 
     return { chords, bass, melody, appliedShapes };
-  }, [voiceChord, chordMap, bassLineMode, melodyMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, layoutPitchRange, passingTones, jiMode, hands, lhBass]);
+  }, [voiceChord, chordMap, bassLineMode, melodyMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, layoutPitchRange, passingTones, jiMode, hands, twoHandStyle]);
 
   /** Play all active texture voices using the multi-voice scheduler.
    *  CHORD_BOOST compensates for the playMultiVoice 1/sqrt(noteCount)
@@ -1570,8 +1577,8 @@ export default function ChordsTab({
     // Build detailed info for "Show Answer"
     const detailLines: string[] = [`Loop: ${progression.join(" → ")}`, ""];
     if (hands === "two") {
-      const lhLabel = { root: "root", root5: "root + 5th", shell: "root + guide tone", rootless: "rootless (3/5/7)" }[lhBass];
-      detailLines.push(`Two-handed voicing — LH: ${lhLabel}, RH: upper structure + melody on top`, "");
+      const styleLabel = TWO_HAND_STYLES.find(s => s.id === twoHandStyle)?.label ?? twoHandStyle;
+      detailLines.push(`Two-handed voicing — ${styleLabel}`, "");
     }
     for (let idx = 0; idx < progression.length; idx++) {
       const rn = progression[idx];
@@ -1714,7 +1721,7 @@ export default function ChordsTab({
     playVoices(voices, gapMs, noteDur, playVol * 0.7);
     const d = setTimeout(() => { setIsLooping(false); }, voices.chords.length * gapMs + 500);
     frameTimers.current.push(d);
-  }, [ensureAudio, stopLoop, tonalitySet, buildEffectiveCheckedForTonality, buildChordMapForTonality, buildApproachEntriesForTonality, buildDiatonicScaleRootsForTonality, lastPlayed, loopLength, loopGap, chordDur, buildLoopFrames, playVoices, onHighlight, onPlay, onResult, edo, tonicPc, playVol, responseMode, textureLayers, xenByTonality, hands, lhBass]);
+  }, [ensureAudio, stopLoop, tonalitySet, buildEffectiveCheckedForTonality, buildChordMapForTonality, buildApproachEntriesForTonality, buildDiatonicScaleRootsForTonality, lastPlayed, loopLength, loopGap, chordDur, buildLoopFrames, playVoices, onHighlight, onPlay, onResult, edo, tonicPc, playVol, responseMode, textureLayers, xenByTonality, hands, twoHandStyle]);
 
   const replayFunctionalLoop = useCallback(() => {
     const voices = fhVoicesRef.current;
@@ -2039,16 +2046,16 @@ export default function ChordsTab({
                   extPlacement={extPlacement} setExtPlacement={setExtPlacement}
                 />
                 <VoicingPatternControls checkedPatterns={checkedPatterns} setCheckedPatterns={setCheckedPatterns} toggleSet={toggleSet} betaMode={betaMode} />
-                {/* HANDS — two-handed (open) voicing.  Re-voices each chord
-                    into a left-hand bass + right-hand upper structure with
-                    a register gap (solo-piano sound).  The LH layout row
-                    only shows when Two hands is on. */}
+                {/* HANDS — two-handed (open) voicing.  Each named style
+                    shapes BOTH hands (a left-hand structure low + a
+                    right-hand structure above), not a split cluster.  The
+                    style picker only shows when Two hands is on. */}
                 <div>
                   <p className="text-xs text-[#888] mb-1.5 font-medium">HANDS</p>
                   <div className="flex flex-wrap gap-1">
                     {([
                       { value: "one", label: "One hand", color: "#9999ee", desc: "Single-cluster voicing (default)" },
-                      { value: "two", label: "Two hands", color: "#e0b060", desc: "Open voicing: left-hand bass + right-hand upper structure with a gap, melody on top" },
+                      { value: "two", label: "Two hands", color: "#e0b060", desc: "Open voicing spread across both hands — left-hand structure low, right-hand chord + melody above" },
                     ] as const).map(o => {
                       const on = hands === o.value;
                       return (
@@ -2064,17 +2071,12 @@ export default function ChordsTab({
                   </div>
                   {hands === "two" && (
                     <div className="mt-2">
-                      <p className="text-[10px] text-[#666] mb-1">LEFT HAND</p>
+                      <p className="text-[10px] text-[#666] mb-1">VOICING STYLE</p>
                       <div className="flex flex-wrap gap-1">
-                        {([
-                          { value: "root",     label: "Root",      desc: "Lone root in the bass — the solo-piano default" },
-                          { value: "root5",    label: "Root + 5th", desc: "Open bass: root and 5th below the upper structure" },
-                          { value: "shell",    label: "Shell",     desc: "Root + a guide tone (7th, else 3rd) — bebop left-hand shell" },
-                          { value: "rootless", label: "Rootless",  desc: "3/5/7 cluster in the left hand, no bass root (Bill Evans)" },
-                        ] as const).map(o => {
-                          const on = lhBass === o.value;
+                        {TWO_HAND_STYLES.map(o => {
+                          const on = twoHandStyle === o.id;
                           return (
-                            <button key={o.value} onClick={() => setLhBass(o.value)} title={o.desc}
+                            <button key={o.id} onClick={() => setTwoHandStyle(o.id)} title={o.desc}
                               className={`px-2 py-1 text-[10px] rounded border transition-colors ${
                                 on ? "bg-[#e0b06030] border-[#e0b060] text-[#e0b060]" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
                               }`}>
@@ -2083,6 +2085,9 @@ export default function ChordsTab({
                           );
                         })}
                       </div>
+                      <p className="text-[10px] text-[#666] mt-1.5 leading-snug">
+                        {TWO_HAND_STYLES.find(s => s.id === twoHandStyle)?.desc}
+                      </p>
                     </div>
                   )}
                 </div>
