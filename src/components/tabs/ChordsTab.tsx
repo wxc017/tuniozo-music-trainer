@@ -11,6 +11,7 @@ import {
   generateBassLine, generateMelodyLine,
   checkLowIntervalLimits, formatLilWarnings,
   buildTwoHandedVoicing, TWO_HAND_STYLES, type TwoHandStyle,
+  addBassUnder, BASS_VOICINGS, type BassVoicing,
   type LilWarning,
 } from "@/lib/musicTheory";
 import {
@@ -196,9 +197,15 @@ export default function ChordsTab({
   // picks which tones the left hand takes.  Default "one" leaves the
   // single-cluster behaviour untouched.
   const [hands, setHands] = useLS<"one" | "two">("lt_crd_hands", "one");
-  const [twoHandStyleRaw, setTwoHandStyle] = useLS<TwoHandStyle>("lt_crd_2hStyle", "shell");
-  // Coerce a stale persisted id (the option set was generalised) to a valid one.
-  const twoHandStyle: TwoHandStyle = TWO_HAND_STYLES.some(s => s.id === twoHandStyleRaw) ? twoHandStyleRaw : "shell";
+  // Two-handed voicing mode.  Two families share one picker:
+  //   family 1 ("bass-*") — keep the chosen RH voicing, add a small LH bass.
+  //   family 2 (TwoHandStyle) — a full integrated two-hand voicing.
+  type TwoHandMode = BassVoicing | TwoHandStyle;
+  const isBassVoicing = (m: TwoHandMode): m is BassVoicing => typeof m === "string" && m.startsWith("bass-");
+  const validModes = new Set<string>([...BASS_VOICINGS.map(b => b.id), ...TWO_HAND_STYLES.map(s => s.id)]);
+  const [twoHandModeRaw, setTwoHandMode] = useLS<TwoHandMode>("lt_crd_2hMode", "bass-root");
+  // Coerce a stale persisted id (the option set has changed over time).
+  const twoHandMode: TwoHandMode = validModes.has(twoHandModeRaw) ? twoHandModeRaw : "bass-root";
   const [checkedPatterns, setCheckedPatterns] = useLS<Set<string>>("lt_crd_vpatterns", new Set(["t-135"]));
   // Per-tonality, per-numeral xenharmonic chord-type opt-ins.  Each entry is
   // a list of xen 3rd-quality IDs (e.g. "neu3","sub3","sup3") that the user
@@ -1270,13 +1277,19 @@ export default function ChordsTab({
       let playChordAbs = chordAbs;
       if (hands === "two" && chordAbs.length > 1 && shapeForRecord && shapeForRecord.length > 0) {
         const chordTonePcs = shapeForRecord.map(s => ((s % edo) + edo) % edo);
-        const tonePcSet = new Set(chordTonePcs);
-        const extPcs = [...new Set(chordAbs.map(n => ((n % edo) + edo) % edo))].filter(pc => !tonePcSet.has(pc));
         const rootPc = chordTonePcs[0];
         const floor = layoutPitchRange?.min ?? (lowestPitch - 2 * edo);
-        const ceil = layoutPitchRange?.max ?? (highestPitch + 2 * edo);
-        const built = buildTwoHandedVoicing(chordTonePcs, extPcs, rootPc, edo, twoHandStyle, Math.min(...chordAbs), floor, ceil);
-        if (built.length > 0) playChordAbs = built;
+        if (isBassVoicing(twoHandMode)) {
+          // Family 1: keep the realized RH voicing as-is, add a LH bass.
+          playChordAbs = addBassUnder(chordAbs, rootPc, edo, twoHandMode, floor);
+        } else {
+          // Family 2: rebuild both hands as a full two-hand voicing.
+          const tonePcSet = new Set(chordTonePcs);
+          const extPcs = [...new Set(chordAbs.map(n => ((n % edo) + edo) % edo))].filter(pc => !tonePcSet.has(pc));
+          const ceil = layoutPitchRange?.max ?? (highestPitch + 2 * edo);
+          const built = buildTwoHandedVoicing(chordTonePcs, extPcs, rootPc, edo, twoHandMode, Math.min(...chordAbs), floor, ceil);
+          if (built.length > 0) playChordAbs = built;
+        }
       }
       chords.push(playChordAbs);
       appliedShapes.push(shapeForRecord);
@@ -1352,7 +1365,7 @@ export default function ChordsTab({
     }
 
     return { chords, bass, melody, appliedShapes };
-  }, [voiceChord, chordMap, bassLineMode, melodyMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, layoutPitchRange, passingTones, jiMode, hands, twoHandStyle]);
+  }, [voiceChord, chordMap, bassLineMode, melodyMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, layoutPitchRange, passingTones, jiMode, hands, twoHandMode]);
 
   /** Play all active texture voices using the multi-voice scheduler.
    *  CHORD_BOOST compensates for the playMultiVoice 1/sqrt(noteCount)
@@ -1579,8 +1592,10 @@ export default function ChordsTab({
     // Build detailed info for "Show Answer"
     const detailLines: string[] = [`Loop: ${progression.join(" → ")}`, ""];
     if (hands === "two") {
-      const styleLabel = TWO_HAND_STYLES.find(s => s.id === twoHandStyle)?.label ?? twoHandStyle;
-      detailLines.push(`Two-handed voicing — ${styleLabel}`, "");
+      const modeLabel = isBassVoicing(twoHandMode)
+        ? `${BASS_VOICINGS.find(b => b.id === twoHandMode)?.label ?? twoHandMode} bass + voicing`
+        : (TWO_HAND_STYLES.find(s => s.id === twoHandMode)?.label ?? twoHandMode);
+      detailLines.push(`Two-handed voicing — ${modeLabel}`, "");
     }
     for (let idx = 0; idx < progression.length; idx++) {
       const rn = progression[idx];
@@ -1723,7 +1738,7 @@ export default function ChordsTab({
     playVoices(voices, gapMs, noteDur, playVol * 0.7);
     const d = setTimeout(() => { setIsLooping(false); }, voices.chords.length * gapMs + 500);
     frameTimers.current.push(d);
-  }, [ensureAudio, stopLoop, tonalitySet, buildEffectiveCheckedForTonality, buildChordMapForTonality, buildApproachEntriesForTonality, buildDiatonicScaleRootsForTonality, lastPlayed, loopLength, loopGap, chordDur, buildLoopFrames, playVoices, onHighlight, onPlay, onResult, edo, tonicPc, playVol, responseMode, textureLayers, xenByTonality, hands, twoHandStyle]);
+  }, [ensureAudio, stopLoop, tonalitySet, buildEffectiveCheckedForTonality, buildChordMapForTonality, buildApproachEntriesForTonality, buildDiatonicScaleRootsForTonality, lastPlayed, loopLength, loopGap, chordDur, buildLoopFrames, playVoices, onHighlight, onPlay, onResult, edo, tonicPc, playVol, responseMode, textureLayers, xenByTonality, hands, twoHandMode]);
 
   const replayFunctionalLoop = useCallback(() => {
     const voices = fhVoicesRef.current;
@@ -2048,16 +2063,16 @@ export default function ChordsTab({
                   extPlacement={extPlacement} setExtPlacement={setExtPlacement}
                 />
                 <VoicingPatternControls checkedPatterns={checkedPatterns} setCheckedPatterns={setCheckedPatterns} toggleSet={toggleSet} betaMode={betaMode} />
-                {/* HANDS — two-handed (open) voicing.  Each named style
-                    shapes BOTH hands (a left-hand structure low + a
-                    right-hand structure above), not a split cluster.  The
-                    style picker only shows when Two hands is on. */}
+                {/* HANDS — two-handed voicing.  On/off toggle; when on, two
+                    families of options: "Bass + voicing" keeps the chosen RH
+                    voicing and adds a small LH bass, while "Full two-hand
+                    voicings" rebuild both hands as one integrated voicing. */}
                 <div>
                   <p className="text-xs text-[#888] mb-1.5 font-medium">HANDS</p>
                   <div className="flex flex-wrap gap-1">
                     {([
                       { value: "one", label: "One hand", color: "#9999ee", desc: "Single-cluster voicing (default)" },
-                      { value: "two", label: "Two hands", color: "#e0b060", desc: "Open voicing spread across both hands — left-hand structure low, right-hand chord + melody above" },
+                      { value: "two", label: "Two hands", color: "#e0b060", desc: "Spread the chord across both hands" },
                     ] as const).map(o => {
                       const on = hands === o.value;
                       return (
@@ -2072,20 +2087,38 @@ export default function ChordsTab({
                     })}
                   </div>
                   {hands === "two" && (
-                    <div className="mt-2">
-                      <p className="text-[10px] text-[#666] mb-1">VOICING STYLE</p>
-                      <div className="flex flex-wrap gap-1">
-                        {TWO_HAND_STYLES.map(o => {
-                          const on = twoHandStyle === o.id;
-                          return (
-                            <button key={o.id} onClick={() => setTwoHandStyle(o.id)} title={o.desc}
-                              className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-                                on ? "bg-[#e0b06030] border-[#e0b060] text-[#e0b060]" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                              }`}>
-                              {o.label}
-                            </button>
-                          );
-                        })}
+                    <div className="mt-2 space-y-2">
+                      <div>
+                        <p className="text-[10px] text-[#666] mb-1">BASS + YOUR VOICING</p>
+                        <div className="flex flex-wrap gap-1">
+                          {BASS_VOICINGS.map(o => {
+                            const on = twoHandMode === o.id;
+                            return (
+                              <button key={o.id} onClick={() => setTwoHandMode(o.id)} title={o.desc}
+                                className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                                  on ? "bg-[#e0b06030] border-[#e0b060] text-[#e0b060]" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                                }`}>
+                                {o.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-[#666] mb-1">FULL TWO-HAND VOICINGS</p>
+                        <div className="flex flex-wrap gap-1">
+                          {TWO_HAND_STYLES.map(o => {
+                            const on = twoHandMode === o.id;
+                            return (
+                              <button key={o.id} onClick={() => setTwoHandMode(o.id)} title={o.desc}
+                                className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+                                  on ? "bg-[#e0b06030] border-[#e0b060] text-[#e0b060]" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+                                }`}>
+                                {o.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   )}

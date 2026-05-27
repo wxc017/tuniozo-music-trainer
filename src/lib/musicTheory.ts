@@ -491,6 +491,45 @@ export function buildTwoHandedVoicing(
   return all;
 }
 
+// ── Bass-under-voicing (the "family 1" two-handed approach) ──────────
+// The most common two-handed sound: keep the right hand's chosen voicing
+// EXACTLY as-is and just add a small left-hand bass underneath it (root,
+// root octave, or root + 5th).  Unlike buildTwoHandedVoicing this does not
+// rebuild the right hand — it respects whatever voicing pattern /
+// extensions the user already selected.
+export type BassVoicing = "bass-root" | "bass-octave" | "bass-root5";
+
+export const BASS_VOICINGS: { id: BassVoicing; label: string; desc: string }[] = [
+  { id: "bass-root",   label: "Root",       desc: "Left hand adds the root in the bass under your chosen voicing." },
+  { id: "bass-octave", label: "Octave",     desc: "Left hand adds the root in octaves under your chosen voicing." },
+  { id: "bass-root5",  label: "Root + 5th", desc: "Left hand adds root + 5th (open bass) under your chosen voicing." },
+];
+
+/**
+ * Add a left-hand bass beneath an existing right-hand voicing, leaving the
+ * RH untouched.  The bass root is placed at least a perfect 5th below the
+ * RH's lowest note (and at/above the floor) so there's an audible gap.
+ */
+export function addBassUnder(
+  rh: number[], rootPc: number, edo: number, bass: BassVoicing, floor: number,
+): number[] {
+  if (rh.length === 0) return rh;
+  const rhBottom = Math.min(...rh);
+  let bassRoot = ((rootPc % edo) + edo) % edo;
+  bassRoot += Math.floor((rhBottom - Math.round(edo * 5 / 12) - bassRoot) / edo) * edo;
+  while (bassRoot < floor) bassRoot += edo;
+  const lh = [bassRoot];
+  if (bass === "bass-octave") {
+    const oct = bassRoot + edo;
+    if (oct < rhBottom) lh.push(oct);
+  } else if (bass === "bass-root5") {
+    const fifth = bassRoot + Math.round(edo * 7 / 12);
+    if (fifth < rhBottom) lh.push(fifth);
+  }
+  const all = [...lh, ...rh].sort((a, b) => a - b);
+  return all.filter((n, i) => i === 0 || n !== all[i - 1]);
+}
+
 export function closedPosition(chord: number[], edo: number): number[] {
   if (!chord.length) return [];
   const bass = Math.min(...chord);
