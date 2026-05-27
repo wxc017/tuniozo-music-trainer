@@ -19,6 +19,7 @@ import {
   loadProjects, saveProject, deleteProject, newProject, generateMusicXML,
 } from "@/lib/noteEntryData";
 import { exportToPdf } from "@/lib/exportPdf";
+import { exportToPdfViaVerovio } from "@/lib/exportPdfVerovio";
 import PracticeLogSaveBar from "./PracticeLogSaveBar";
 
 // ── YouTube API global ──────────────────────────────────────────────────────
@@ -2364,12 +2365,33 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   }
 
   async function handleExportPdf() {
-    if (!activeProject || !scoreRef.current) return;
-    await exportToPdf(
-      [{ title: activeProject.title, element: scoreRef.current }],
-      activeProject.title.replace(/\s+/g, "_"),
-      { showTitles: true, splitSections: false },
-    );
+    if (!activeProject) return;
+    const fname = activeProject.title.replace(/\s+/g, "_");
+    // Engrave via Verovio (MusicXML → SVG paths → PDF) rather than
+    // screenshotting the live VexFlow render.  VexFlow 5 draws every
+    // notehead/glyph as a <text> element in the Bravura web font, which
+    // svg2pdf can't embed — so the screenshot path produced garbage
+    // noteheads/beams in the PDF (per direct user report: drum score
+    // export "unreadable").  Verovio emits pure vector paths, so the
+    // glyphs survive the PDF conversion.  Falls back to the old
+    // screenshot path only if Verovio's WASM fails to load (e.g. offline).
+    const xml = generateMusicXML({ ...activeProject, notes, syncPoints, youtubeUrl });
+    try {
+      await exportToPdfViaVerovio(
+        [{ title: activeProject.title, musicXml: xml }],
+        fname,
+        { showTitles: true },
+      );
+    } catch (err) {
+      console.warn("Verovio PDF export failed, falling back to screenshot:", err);
+      if (scoreRef.current) {
+        await exportToPdf(
+          [{ title: activeProject.title, element: scoreRef.current }],
+          fname,
+          { showTitles: true, splitSections: false },
+        );
+      }
+    }
   }
 
   // ── Drum playback (Web Audio synthesis) ──────────────────────────
