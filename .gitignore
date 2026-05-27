@@ -26,3 +26,4 @@ src/lib/fileStorage.ts
 # sldl binary + Soulseek creds (local only)
 /tools/
 scripts/build-transcriptions/sldl.conf
+/public/drums/
