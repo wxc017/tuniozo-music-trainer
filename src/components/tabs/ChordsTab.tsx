@@ -204,8 +204,12 @@ export default function ChordsTab({
   const isBassVoicing = (m: TwoHandMode): m is BassVoicing => typeof m === "string" && m.startsWith("bass-");
   const validModes = new Set<string>([...BASS_VOICINGS.map(b => b.id), ...TWO_HAND_STYLES.map(s => s.id)]);
   const [twoHandModeRaw, setTwoHandMode] = useLS<TwoHandMode>("lt_crd_2hMode", "bass-root");
-  // Coerce a stale persisted id (the option set has changed over time).
-  const twoHandMode: TwoHandMode = validModes.has(twoHandModeRaw) ? twoHandModeRaw : "bass-root";
+  // Coerce a stale persisted id (the option set has been expanded — old
+  // single "shell" / "rootless" map to their default sub-variant).
+  const legacyMap: Record<string, TwoHandMode> = { shell: "shell-b", rootless: "rootless-a" };
+  const twoHandMode: TwoHandMode = validModes.has(twoHandModeRaw)
+    ? twoHandModeRaw
+    : (legacyMap[twoHandModeRaw as string] ?? "bass-root");
   const [checkedPatterns, setCheckedPatterns] = useLS<Set<string>>("lt_crd_vpatterns", new Set(["t-135"]));
   // Per-tonality, per-numeral xenharmonic chord-type opt-ins.  Each entry is
   // a list of xen 3rd-quality IDs (e.g. "neu3","sub3","sup3") that the user
@@ -1281,7 +1285,7 @@ export default function ChordsTab({
         const floor = layoutPitchRange?.min ?? (lowestPitch - 2 * edo);
         if (isBassVoicing(twoHandMode)) {
           // Family 1: keep the realized RH voicing as-is, add a LH bass.
-          playChordAbs = addBassUnder(chordAbs, rootPc, edo, twoHandMode, floor);
+          playChordAbs = addBassUnder(chordAbs, chordTonePcs, rootPc, edo, twoHandMode, floor);
         } else {
           // Family 2: rebuild both hands as a full two-hand voicing.
           const tonePcSet = new Set(chordTonePcs);
