@@ -662,9 +662,13 @@ export function addBassUnder(
   bassRoot += Math.floor((rhBottom - gap - maxOff - bassRoot) / edo) * edo;
   while (bassRoot < floor) bassRoot += edo;
 
-  // Keep only LH notes that still clear the RH bottom (safety for tight ranges).
-  const lh = lhOff.map(o => bassRoot + o).filter(n => n < rhBottom);
-  if (lh.length === 0) lh.push(bassRoot);
+  // SAFETY: if there's no room below the RH bottom for a clean bass that
+  // ends up below every RH note, bail and return the RH untouched.  Adding
+  // bass tones that end up beside or above the chord produces the "wrong
+  // root" effect the user reported (a non-root chord tone becomes the
+  // lowest pitch and the LH "bass" sits inside the chord cluster).
+  const lh = lhOff.map(o => bassRoot + o);
+  if (Math.max(...lh) >= rhBottom) return [...rh].sort((a, b) => a - b);
 
   const all = [...lh, ...rh].sort((a, b) => a - b);
   return all.filter((n, i) => i === 0 || n !== all[i - 1]);
