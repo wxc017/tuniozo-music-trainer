@@ -85,6 +85,16 @@ export function loadIndex(): Promise<TxIndex> {
   return indexPromise;
 }
 
+/** Look up a single TxItem by its id, loading the corpus for `source` if it
+ *  isn't cached yet.  Returns null when the id isn't present (e.g. the saved
+ *  reference is stale because the corpus was rebuilt without that track). */
+export async function loadItemById(id: string, source: TxSource): Promise<TxItem | null> {
+  const cached = itemById.get(id);
+  if (cached) return cached;
+  const corpus = await loadSource(source);
+  return corpus.find(i => i.id === id) ?? itemById.get(id) ?? null;
+}
+
 /** Load (and cache) the full corpus for one source. Seed fallback on failure. */
 export function loadSource(source: TxSource): Promise<TxItem[]> {
   const cached = sourceCache.get(source);
