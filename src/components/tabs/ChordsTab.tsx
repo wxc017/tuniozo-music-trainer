@@ -376,6 +376,13 @@ export default function ChordsTab({
     progression: string[];
     chords: FhAnswerChord[];
     scaleTonality: string | null;   // first selected tonality (for the lattice box)
+    // Tonic + EDO at PLAY time.  The Show Answer cards label each pitch
+    // relative to this snapshot, not the live tonicPc — otherwise
+    // changing the tonic AFTER playing (but before viewing the answer)
+    // mis-labels every absolute pitch (e.g. C in a chord played in C-
+    // key becomes "b5" once the tonic moves to F#).  Per user report
+    // 2026-05-28: "its when i chagne the root note that things mess up".
+    tonicPcAtPlay: number;
   }
   const [fhAnswer, setFhAnswer] = useState<FhAnswer | null>(null);
   const fhFramesRef = useRef<number[][] | null>(null);
@@ -1678,6 +1685,7 @@ export default function ChordsTab({
       progression,
       chords: structuredChords,
       scaleTonality: pickedTonality ?? null,
+      tonicPcAtPlay: tonicPc,
     });
     setFhShowAnswer(false);
     fhFramesRef.current = voices.chords;
@@ -2686,14 +2694,21 @@ export default function ChordsTab({
                 const pc = ((n % edo) + edo) % edo;
                 if (!seenPcs.has(pc)) { seenPcs.add(pc); uniqueNotes.push(n); }
               }
+              // Use the tonic snapshotted at PLAY time for all interval
+              // math here.  If the user changed the tonic after playing,
+              // the saved chord.notes are absolute pitches from the OLD
+              // tonic frame; labeling them against the live tonic mis-
+              // identifies which note is the chord bass and produces
+              // bogus slash inversions.
+              const tonicForLabel = fhAnswer.tonicPcAtPlay;
               // Chord-tone offsets above the chord root, sorted ascending —
               // used for inversion detection + +N superscript on rotated tones.
               const chordToneOffsets = [...new Set(uniqueNotes.map(n =>
-                (((n - tonicPc) % edo + edo) % edo - chord.chordRootPc + edo) % edo
+                (((n - tonicForLabel) % edo + edo) % edo - chord.chordRootPc + edo) % edo
               ))].sort((a, b) => a - b);
               // Slash-form inversion label (V/3 means V with 3rd in bass).
               const lowestPc = uniqueNotes.length > 0
-                ? ((uniqueNotes[0] - tonicPc) % edo + edo) % edo
+                ? ((uniqueNotes[0] - tonicForLabel) % edo + edo) % edo
                 : 0;
               const bassOff = ((lowestPc - chord.chordRootPc) % edo + edo) % edo;
               const bassIdx = chordToneOffsets.indexOf(bassOff);
@@ -2735,7 +2750,11 @@ export default function ChordsTab({
                     don't read as cramped. */}
                 <div className="flex gap-1">
                   {uniqueNotes.map((pitch, j) => {
-                    const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
+                    // Label relative to the tonic at PLAY time, not the
+                    // current tonic — otherwise changing the tonic after
+                    // playing mis-labels every saved absolute pitch.
+                    const tonicForLabel = fhAnswer.tonicPcAtPlay;
+                    const pcFromTonic = ((pitch - tonicForLabel) % edo + edo) % edo;
                     const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
                     const degree = pythDegree(pcFromTonic);
                     const oct = ctOctMap.get(pcFromTonic) ?? 0;
