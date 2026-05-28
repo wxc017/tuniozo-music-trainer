@@ -505,9 +505,15 @@ export function buildTwoHandedVoicing(
       break;
     case "sixway": {
       // 6 · 1 3 5 6 — like block but with the 6th in place of the 7th.
-      // Use the chord's 13th (= 6 + octave) when present; otherwise fall
-      // back to a generic major 6 (≈ 9 semitones).
-      const sixthI = thirteenI !== null ? (thirteenI - O) : Math.round(edo * 9 / 12);
+      // Use the chord's own 13th (= 6 + octave) when present; otherwise
+      // pick a 6th matched to the chord's third (M3 chord → M6, m3
+      // chord → m6) so a minor sixway voicing doesn't crash a major 6
+      // on top of a minor chord.
+      // Strict `<` so a M3 chord (thirdI ≈ edo*4/12) picks M6, not m6.
+      let sixthI: number;
+      if (thirteenI !== null) sixthI = thirteenI - O;
+      else if (thirdI !== null && thirdI < Math.round(edo * 4 / 12)) sixthI = Math.round(edo * 8 / 12);
+      else sixthI = Math.round(edo * 9 / 12);
       const closed6 = compact([0, thirdI, fifthI, sixthI]);
       offs = closed6.length > 0 ? [closed6[closed6.length - 1] - O, ...closed6] : [0];
       break;
@@ -541,9 +547,11 @@ export function buildTwoHandedVoicing(
       } else offs = closed;
       break;
     case "spread":
-      // 1 5 · 3 7 9 — open root+5 bass; 3rd/7th/9th spread above.  Use a
-      // literal P5 so dim chords don't collapse the bass interval to a b5.
-      offs = compact([0, Math.round(edo * 7 / 12), thirdI !== null ? O + thirdI : null, seventhI !== null ? O + seventhI : null, nineI]);
+      // 1 5 · 3 7 9 — open root+5 bass; 3rd/7th/9th spread above.  Use
+      // the chord's actual 5th (b5 for dim, #5 for aug) so every tone
+      // stays in-chord; only fall back to a literal P5 when the chord
+      // genuinely has no 5th at all.
+      offs = compact([0, fifthI ?? Math.round(edo * 7 / 12), thirdI !== null ? O + thirdI : null, seventhI !== null ? O + seventhI : null, nineI]);
       break;
     case "cluster":
       // 7 1 9 · 3 5 — close 2nd-based voicing.  7-1-9 form three notes
@@ -633,44 +641,54 @@ export function addBassUnder(
     else if (r <= Math.round(edo * 8 / 12)) fifthI = fifthI ?? r;
     else seventhI = seventhI ?? r;
   }
-  const third = thirdI ?? Math.round(edo * 4 / 12);
-  const seventh = seventhI ?? Math.round(edo * 10 / 12);
-  // For "Root + 5th" always use a literal P5 in the bass — even on a
-  // diminished chord whose chord-tone 5th is b5.  An open-fifth bass is
-  // by convention a perfect 5th; collapsing it to b5 sounds wrong (and
-  // was reported as a bug — "a diminished fifth for a fifth?").  The
-  // chord's actual 5th still sounds in the right hand.
+  // LH offsets above the bass root for the requested shape.  Each shape
+  // uses the chord's ACTUAL 5th / 3rd / 7th when present (so a dim
+  // chord's "Root + 5th" correctly plays root + b5, an aug chord plays
+  // root + #5) and degrades gracefully when the chord lacks the role
+  // (no synthetic m7 on a plain triad, no synthetic M3 on a sus chord).
+  // P5 fallback is only used for "Root + 5th" when the chord has no 5th
+  // at all (extremely rare — most chord types have a 5th of some kind).
   const P5 = Math.round(edo * 7 / 12);
-
-  // LH offsets above the bass root for the requested shape.
   let lhOff: number[];
   switch (bass) {
     case "bass-octave":    lhOff = [0, edo]; break;
-    case "bass-root5":     lhOff = [0, P5]; break;
-    case "bass-root10":    lhOff = [0, edo + third]; break;
-    case "bass-shell7":    lhOff = [0, seventh]; break;
-    case "bass-shellfull": lhOff = [0, third, seventh]; break;
+    case "bass-root5":     lhOff = [0, fifthI ?? P5]; break;
+    case "bass-root10":    lhOff = thirdI !== null ? [0, edo + thirdI] : [0]; break;
+    case "bass-shell7":    lhOff = seventhI !== null ? [0, seventhI] : (thirdI !== null ? [0, thirdI] : [0]); break;
+    case "bass-shellfull":
+      lhOff = (thirdI !== null && seventhI !== null) ? [0, thirdI, seventhI]
+            : seventhI !== null ? [0, seventhI]
+            : thirdI !== null ? [0, thirdI]
+            : [0];
+      break;
     case "bass-root":
     default:               lhOff = [0]; break;
   }
 
-  // Place the LH so its TOP note sits at least a P5 below the RH bottom.
-  const rhBottom = Math.min(...rh);
+  // Always place the LH bass below the RH.  If the RH sits too low to
+  // accept the bass beneath it (small range / inverted voicing), SHIFT
+  // THE WHOLE RH UP by octaves until the bass clears — better to lift the
+  // chord one octave than to bail and leave a non-root chord tone as the
+  // lowest pitch.  Fixes the user-reported "two-handed playing the wrong
+  // chord / I/5 instead of I" symptom that happened when a 5 1 3 voicing
+  // forced the safety-bail path.
   const maxOff = Math.max(...lhOff);
   const gap = Math.round(edo * 5 / 12);
-  let bassRoot = ((rootPc % edo) + edo) % edo;
-  bassRoot += Math.floor((rhBottom - gap - maxOff - bassRoot) / edo) * edo;
-  while (bassRoot < floor) bassRoot += edo;
+  const rootPcMod = ((rootPc % edo) + edo) % edo;
+  let rhAdj = [...rh];
+  let bassRoot = rootPcMod;
+  for (let guard = 0; guard < 6; guard++) {
+    const rhBottom = Math.min(...rhAdj);
+    bassRoot = rootPcMod;
+    bassRoot += Math.floor((rhBottom - gap - maxOff - rootPcMod) / edo) * edo;
+    while (bassRoot < floor) bassRoot += edo;
+    if (bassRoot + maxOff < rhBottom) break;  // bass fits below RH
+    // Bass top still hits the RH bottom — lift the chord an octave and retry.
+    rhAdj = rhAdj.map(n => n + edo);
+  }
 
-  // SAFETY: if there's no room below the RH bottom for a clean bass that
-  // ends up below every RH note, bail and return the RH untouched.  Adding
-  // bass tones that end up beside or above the chord produces the "wrong
-  // root" effect the user reported (a non-root chord tone becomes the
-  // lowest pitch and the LH "bass" sits inside the chord cluster).
   const lh = lhOff.map(o => bassRoot + o);
-  if (Math.max(...lh) >= rhBottom) return [...rh].sort((a, b) => a - b);
-
-  const all = [...lh, ...rh].sort((a, b) => a - b);
+  const all = [...lh, ...rhAdj].sort((a, b) => a - b);
   return all.filter((n, i) => i === 0 || n !== all[i - 1]);
 }
 
