@@ -29,6 +29,7 @@ import {
   BASS_VOICINGS, TWO_HAND_STYLES,
   type BassVoicing, type TwoHandStyle,
 } from "./musicTheory";
+import { getTonalityBanks } from "./tonalityBanks";
 
 // ── Chord catalogue (interval-class steps from root) ───────────────
 // Per EDO, with the conventional intervals.  Triads (no 7) drive the
@@ -222,6 +223,54 @@ describe("buildTwoHandedVoicing — family 2 (full two-hand styles)", () => {
           });
         }
       }
+    }
+  }
+});
+
+// ── Integration: real tonality bank chord shapes ──────────────────
+// User reported (2026-05-28) that in 31-EDO C harmonic minor with bass-
+// root mode, the iv chord cards include a spurious "b1" tone.  Verify
+// that the iv and i chords in the actual tonality bank are plain triads
+// and that addBassUnder produces only chord-tone pcs on them.
+describe("Integration — real Harmonic Minor chord shapes in 31-EDO", () => {
+  const edo = 31;
+  const banks = getTonalityBanks(edo);
+  const hm = banks.find(b => b.name === "Harmonic Minor");
+  if (!hm) throw new Error("Harmonic Minor tonality bank not found");
+  const primary = hm.levels.find(l => l.name === "Primary");
+  if (!primary) throw new Error("Primary level not found");
+
+  for (const ce of primary.chords) {
+    it(`${ce.label} shape is a triad with only chord-tone pcs (no leading-tone, no b1)`, () => {
+      // A primary-tier chord in Harmonic Minor (i / iv / V) must be a
+      // plain triad — exactly 3 steps, no auto-added 7th.
+      expect(ce.steps.length, `${ce.label}: expected triad (3 steps), got ${ce.steps.length}`).toBe(3);
+    });
+
+    for (const bass of BASS_VOICINGS.map(b => b.id) as BassVoicing[]) {
+      it(`${ce.label} · ${bass} produces only chord-tone pcs (no spurious b1/b5)`, () => {
+        const chordTonePcs = ce.steps.map(s => ((s % edo) + edo) % edo);
+        const rootPc = chordTonePcs[0];
+        const expected = new Set(chordTonePcs);
+        // Build a simple RH voicing in a comfortable register (C4-ish).
+        const anchor = edo * 4 + ce.steps[0];
+        const rh: number[] = [anchor];
+        for (let i = 1; i < ce.steps.length; i++) {
+          let n = anchor + (ce.steps[i] - ce.steps[0]);
+          while (n <= rh[rh.length - 1]) n += edo;
+          rh.push(n);
+        }
+        const out = addBassUnder(rh, chordTonePcs, rootPc, edo, bass, -100);
+        const outPcs = new Set(out.map(n => ((n % edo) + edo) % edo));
+        for (const pc of outPcs) {
+          expect(expected, `${ce.label} ${bass}: pc ${pc} not in chord {${[...expected].join(",")}}`)
+            .toContain(pc);
+        }
+        // Lowest pitch must be the chord root.
+        const lowest = Math.min(...out);
+        expect(((lowest % edo) + edo) % edo, `${ce.label} ${bass}: lowest is not root`)
+          .toBe(rootPc);
+      });
     }
   }
 });
