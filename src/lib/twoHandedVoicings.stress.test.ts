@@ -227,6 +227,59 @@ describe("buildTwoHandedVoicing — family 2 (full two-hand styles)", () => {
   }
 });
 
+// ── Integration: non-C tonics (the user's bug) ─────────────────────
+// User reported (2026-05-28): "doesnt work for any other root note
+// besides C".  Root cause: chord-shape values from the tonality bank
+// are TONIC-RELATIVE (e.g. iv = [P4, P4+m3, P4+P5] — interval steps
+// from tonic), but addBassUnder places pitches in the ABSOLUTE pc frame.
+// The call site must add tonicPc to derive the actual chord-root pc.
+// This test simulates that conversion and verifies the bass lands on
+// the chord's true root for every tonic.
+describe("Non-C tonics — bass lands on the chord's absolute root", () => {
+  const edo = 31;
+  const banks = getTonalityBanks(edo);
+  const hm = banks.find(b => b.name === "Harmonic Minor")!;
+  const primary = hm.levels.find(l => l.name === "Primary")!;
+  // Every tonic from a representative spread (chromatic in 31-EDO would
+  // be 31 cases per chord; this covers the diatonic + a couple of
+  // microtonal-ish tonics for confidence).
+  const TONICS = [0, 5, 8, 13, 18, 21, 26];
+
+  for (const tonicPc of TONICS) {
+    for (const ce of primary.chords) {
+      it(`tonic=${tonicPc}, ${ce.label}: bass at absolute chord root, all tones in-chord`, () => {
+        // Convert tonic-relative shape steps to ABSOLUTE pcs (the fix the
+        // ChordsTab call site now does).
+        const chordTonePcs = ce.steps.map(s => (((s + tonicPc) % edo) + edo) % edo);
+        const rootPc = chordTonePcs[0];
+
+        // Build a synthetic RH voicing for the chord.
+        const anchor = edo * 4 + ((tonicPc + ce.steps[0]) % edo);
+        const rh: number[] = [anchor];
+        for (let i = 1; i < ce.steps.length; i++) {
+          let n = anchor + (ce.steps[i] - ce.steps[0]);
+          while (n <= rh[rh.length - 1]) n += edo;
+          rh.push(n);
+        }
+
+        for (const bass of BASS_VOICINGS.map(b => b.id) as BassVoicing[]) {
+          const out = addBassUnder(rh, chordTonePcs, rootPc, edo, bass, -200);
+          const allowed = new Set(chordTonePcs);
+          const outPcs = new Set(out.map(n => ((n % edo) + edo) % edo));
+          for (const pc of outPcs) {
+            expect(allowed, `tonic=${tonicPc} ${ce.label} ${bass}: pc ${pc} not in chord {${[...allowed].join(",")}}`)
+              .toContain(pc);
+          }
+          // Lowest pc must be the chord's actual absolute root.
+          const lowest = Math.min(...out);
+          expect(((lowest % edo) + edo) % edo, `tonic=${tonicPc} ${ce.label} ${bass}: lowest != root`)
+            .toBe(rootPc);
+        }
+      });
+    }
+  }
+});
+
 // ── Integration: real tonality bank chord shapes ──────────────────
 // User reported (2026-05-28) that in 31-EDO C harmonic minor with bass-
 // root mode, the iv chord cards include a spurious "b1" tone.  Verify

@@ -1287,7 +1287,14 @@ export default function ChordsTab({
       // extension (9/11/13) available to the right hand.
       let playChordAbs = chordAbs;
       if (hands === "two" && chordAbs.length > 1 && shapeForRecord && shapeForRecord.length > 0) {
-        const chordTonePcs = shapeForRecord.map(s => ((s % edo) + edo) % edo);
+        // shapeForRecord values are TONIC-RELATIVE steps (e.g. [0,3,7] for
+        // i regardless of tonic).  addBassUnder / buildTwoHandedVoicing
+        // place pitches in the ABSOLUTE frame (rootPc + offset == actual
+        // pitch class), so we must shift by tonicPc to get the chord's
+        // real absolute pitch classes — otherwise everything sounds and
+        // labels correctly only when tonic == C.  Per user report
+        // 2026-05-28 "doesnt work for any other root note besides C".
+        const chordTonePcs = shapeForRecord.map(s => (((s + tonicPc) % edo) + edo) % edo);
         const rootPc = chordTonePcs[0];
         const floor = layoutPitchRange?.min ?? (lowestPitch - 2 * edo);
         if (isBassVoicing(twoHandMode)) {
