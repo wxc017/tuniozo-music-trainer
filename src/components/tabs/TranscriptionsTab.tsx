@@ -275,13 +275,16 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
   }, [item, excerpt, playGivenExcerpt, playNew]);
 
   // "Hear more": bump the extra-bars count (with on-screen indicator).  It does
-  // NOT play — the next Replay applies it.
-  const addBar = (which: "before" | "after") => {
+  // NOT play — the next Replay applies it.  `delta` lets the UI's "−" button
+  // undo a bar that was added by mistake (clamped to 0).
+  const adjustBar = (which: "before" | "after", delta: number) => {
     const p = clipPadRef.current;
-    const next = { ...p, [which]: p[which] + 1 };
+    const next = { ...p, [which]: Math.max(0, p[which] + delta) };
     clipPadRef.current = next;
     setClipPad(next);
   };
+  const addBar = (which: "before" | "after") => adjustBar(which, +1);
+  const removeBar = (which: "before" | "after") => adjustBar(which, -1);
 
   const playFull = useCallback(async () => {
     if (!item) return;
@@ -528,15 +531,34 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
         {/* Hear more — add bars of context before/after; applied on the next
             Replay.  The count on each button is the indicator (reset on Play). */}
         {item && excerpt && (
-          <div className="flex items-center gap-1" title="Add bars of context, then Replay to hear them">
-            <button onClick={() => addBar("before")}
-              className={`px-2 py-2 rounded-md text-xs border transition-colors ${clipPad.before ? "bg-[#1a2a1a] border-[#6a8] text-[#9d9]" : "bg-[#1a1a1a] border-[#333] text-[#9a9] hover:border-[#555]"}`}>
-              ◀ +{clipPad.before}
-            </button>
-            <button onClick={() => addBar("after")}
-              className={`px-2 py-2 rounded-md text-xs border transition-colors ${clipPad.after ? "bg-[#1a2a1a] border-[#6a8] text-[#9d9]" : "bg-[#1a1a1a] border-[#333] text-[#9a9] hover:border-[#555]"}`}>
-              +{clipPad.after} ▶
-            </button>
+          <div className="flex items-center gap-1" title="Add bars of context, then Replay to hear them. − undoes one bar.">
+            {/* Before group: add (◀ +N) and undo (−) sit together so the
+                relationship is obvious; − only shows when there's something
+                to undo. */}
+            <div className="flex items-center gap-0.5">
+              <button onClick={() => addBar("before")}
+                className={`px-2 py-2 rounded-md text-xs border transition-colors ${clipPad.before ? "bg-[#1a2a1a] border-[#6a8] text-[#9d9]" : "bg-[#1a1a1a] border-[#333] text-[#9a9] hover:border-[#555]"}`}>
+                ◀ +{clipPad.before}
+              </button>
+              {clipPad.before > 0 && (
+                <button onClick={() => removeBar("before")} title="Remove one extra bar from the start"
+                  className="px-1.5 py-2 rounded-md text-xs border bg-[#1a1a1a] border-[#333] text-[#9a9] hover:border-[#aa6] hover:text-[#ca6] transition-colors">
+                  −
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-0.5">
+              {clipPad.after > 0 && (
+                <button onClick={() => removeBar("after")} title="Remove one extra bar from the end"
+                  className="px-1.5 py-2 rounded-md text-xs border bg-[#1a1a1a] border-[#333] text-[#9a9] hover:border-[#aa6] hover:text-[#ca6] transition-colors">
+                  −
+                </button>
+              )}
+              <button onClick={() => addBar("after")}
+                className={`px-2 py-2 rounded-md text-xs border transition-colors ${clipPad.after ? "bg-[#1a2a1a] border-[#6a8] text-[#9d9]" : "bg-[#1a1a1a] border-[#333] text-[#9a9] hover:border-[#555]"}`}>
+                +{clipPad.after} ▶
+              </button>
+            </div>
           </div>
         )}
         <button onClick={playFull} disabled={busy || !item}
