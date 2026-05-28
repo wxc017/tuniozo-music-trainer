@@ -2648,32 +2648,71 @@ export default function ChordsTab({
                   }
                 }
               }
+              // Literal copy of the Show Target (Sing It) card structure per
+              // user direction "just have the show answer look exact same but
+              // no permutations".  Same wide wrapper (minWidth 220), centered
+              // mauve Roman header (with slash-form inversion notation), and
+              // full-width cells with degree + Heathwaite — deduped to one
+              // cell per unique pitch class; no singing-permutations block.
+              // Local helpers (pythDegree, derived chordToneOffsets,
+              // ctOctMap, slash inversion label) mirror Show Target's logic.
+              const FIFTHS_PER_EDO: Record<number, number> = { 12: 7, 17: 10, 19: 11, 31: 18, 41: 24, 53: 31 };
+              const fifthStep = FIFTHS_PER_EDO[edo] ?? Math.round(edo * Math.log2(3 / 2));
+              const degreeAtFifth = [1, 5, 2, 6, 3, 7, 4];
+              const pythDegree = (step: number): string => {
+                const s = ((step % edo) + edo) % edo;
+                let bestN: number | null = null;
+                for (let d = 0; d <= edo * 2; d++) {
+                  for (const n of [d, -d]) {
+                    if (((n * fifthStep) % edo + edo) % edo === s) { bestN = n; break; }
+                  }
+                  if (bestN !== null) break;
+                }
+                if (bestN === null) return String(s);
+                const naturalIdx = ((bestN % 7) + 7) % 7;
+                const naturalDeg = degreeAtFifth[naturalIdx];
+                const layer = Math.floor((bestN + 1) / 7);
+                const acc = layer > 0 ? "#".repeat(layer) : layer < 0 ? "b".repeat(-layer) : "";
+                return `${acc}${naturalDeg}`;
+              };
+              const renderOctSup = (oct: number) =>
+                oct !== 0 ? <sup className="text-[7px] ml-0.5 opacity-70">{oct > 0 ? `+${oct}` : `${oct}`}</sup> : null;
+              const CHORD_TONE_NUM_LOCAL = [1, 3, 5, 7];
+              // Dedupe notes by pitch class (lowest occurrence wins).
+              const sortedNotes = [...chord.notes].sort((a, b) => a - b);
+              const seenPcs = new Set<number>();
+              const uniqueNotes: number[] = [];
+              for (const n of sortedNotes) {
+                const pc = ((n % edo) + edo) % edo;
+                if (!seenPcs.has(pc)) { seenPcs.add(pc); uniqueNotes.push(n); }
+              }
+              // Chord-tone offsets above the chord root, sorted ascending —
+              // used for inversion detection + +N superscript on rotated tones.
+              const chordToneOffsets = [...new Set(uniqueNotes.map(n =>
+                (((n - tonicPc) % edo + edo) % edo - chord.chordRootPc + edo) % edo
+              ))].sort((a, b) => a - b);
+              // Slash-form inversion label (V/3 means V with 3rd in bass).
+              const lowestPc = uniqueNotes.length > 0
+                ? ((uniqueNotes[0] - tonicPc) % edo + edo) % edo
+                : 0;
+              const bassOff = ((lowestPc - chord.chordRootPc) % edo + edo) % edo;
+              const bassIdx = chordToneOffsets.indexOf(bassOff);
+              const bassNum = bassIdx >= 0 && bassIdx < CHORD_TONE_NUM_LOCAL.length
+                ? CHORD_TONE_NUM_LOCAL[bassIdx] : null;
+              const inversionLabel = bassNum && bassNum !== 1 ? `${chord.numeral}/${bassNum}` : null;
+              const headerLabel = inversionLabel ?? chord.numeral;
+              // ctOctMap: chord tones whose stacked-thirds index sits below
+              // the bass index are rotated UP an octave by the inversion.
+              const ctOctMap = new Map<number, number>();
+              for (let i = 0; i < chordToneOffsets.length; i++) {
+                const pc = ((chord.chordRootPc + chordToneOffsets[i]) % edo + edo) % edo;
+                const oct = (bassIdx >= 0 && i < bassIdx) ? 1 : 0;
+                ctOctMap.set(pc, oct);
+              }
               return (
-              <div key={chord.index} className="space-y-1 flex-shrink-0 rounded border border-[#1a1a14] bg-[#0c0a08] p-2">
-                <p className="text-[10px] text-[#c8a850] font-medium flex items-baseline gap-2 flex-wrap">
-                  <span>[{chord.index}] <span className="font-mono text-[12px]">{(() => {
-                    const prefix = (edo === 41 || edo === 53) && fhAnswer.scaleTonality
-                      ? familyAbbreviationForTonality(fhAnswer.scaleTonality)
-                      : null;
-                    return formatRomanNumeralWithFamily(chord.numeral, prefix);
-                  })()}</span></span>
-                  <span className="text-[#888]">({chord.quality})</span>
-                  {ana && (
-                    <span className="text-[9px] flex items-baseline gap-1 ml-2 px-1.5 py-0.5 rounded border border-[#222] bg-[#0a0a0a]">
-                      <span className="text-[#555]">3rd</span>
-                      <span className="font-mono" style={{ color: tagColor(ana.third.kind) }}>{ana.third.ratio}</span>
-                      <span className="text-[#333]">·</span>
-                      <span className="text-[#555]">5th</span>
-                      <span className="font-mono" style={{ color: tagColor(ana.fifth.kind) }}>{ana.fifth.ratio}</span>
-                      <span className="text-[#333]">·</span>
-                      <span style={{ color: ana.pure ? "#5cca5c" : "#cc6a8a", fontWeight: 600 }}>
-                        {ana.pure ? "✓" : "✗ Wolf"}
-                      </span>
-                    </span>
-                  )}
-                </p>
+              <div key={chord.index} className="rounded-lg border bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#5a5a8a] transition-colors p-3" style={{ minWidth: 220 }}>
                 {commaNote && (
-                  <p className="text-[10px] text-[#cc6a8a] flex items-baseline gap-1.5 px-1.5 py-0.5 rounded border border-[#3a1a2a] bg-[#1a0a14]">
+                  <p className="text-[10px] text-[#cc6a8a] flex items-baseline gap-1.5 px-1.5 py-0.5 rounded border border-[#3a1a2a] bg-[#1a0a14] mb-2 flex-wrap">
                     <span className="font-semibold tracking-wider">COMMA FIX</span>
                     <span className="text-[#aaa]">root</span>
                     <span className="font-mono text-[#e0c860]">{commaNote.from}</span>
@@ -2682,60 +2721,32 @@ export default function ChordsTab({
                     <span className="text-[#888]">
                       ({commaNote.steps > 0 ? "+" : ""}{commaNote.steps} step{Math.abs(commaNote.steps) !== 1 ? "s" : ""}, {commaNote.cents > 0 ? "+" : ""}{commaNote.cents.toFixed(1)}¢)
                     </span>
-                    <span className="text-[#666] italic">— bent to keep the tonic anchored, otherwise this chord's root would drift away from {pcToNoteNameWithEnharmonic(tonicPc, edo) ?? "the tonic"}</span>
                   </p>
                 )}
-                {/* Voicing notes — copied from the Show Target (Sing It)
-                    voicing-cell style per user direction ("i want the show
-                    answer card to look like the ones from sing it, ... take
-                    out the permutations"), deduped to one cell per unique
-                    pitch class.  Each cell shows the Pythagorean scale
-                    degree on top and the Heathwaite solfege below. */}
-                {(() => {
-                  // Local copy of pythagoreanDegree (the original lives inside
-                  // the Show Target render closure and isn't in scope here).
-                  const FIFTHS_PER_EDO: Record<number, number> = { 12: 7, 17: 10, 19: 11, 31: 18, 41: 24, 53: 31 };
-                  const fifthStep = FIFTHS_PER_EDO[edo] ?? Math.round(edo * Math.log2(3 / 2));
-                  const degreeAtFifth = [1, 5, 2, 6, 3, 7, 4];
-                  const pythDegree = (step: number): string => {
-                    const s = ((step % edo) + edo) % edo;
-                    let bestN: number | null = null;
-                    for (let d = 0; d <= edo * 2; d++) {
-                      for (const n of [d, -d]) {
-                        if (((n * fifthStep) % edo + edo) % edo === s) { bestN = n; break; }
-                      }
-                      if (bestN !== null) break;
-                    }
-                    if (bestN === null) return String(s);
-                    const naturalIdx = ((bestN % 7) + 7) % 7;
-                    const naturalDeg = degreeAtFifth[naturalIdx];
-                    const layer = Math.floor((bestN + 1) / 7);
-                    const acc = layer > 0 ? "#".repeat(layer) : layer < 0 ? "b".repeat(-layer) : "";
-                    return `${acc}${naturalDeg}`;
-                  };
-                  const sortedNotes = [...chord.notes].sort((a, b) => a - b);
-                  const seenPcs = new Set<number>();
-                  const uniqueNotes: number[] = [];
-                  for (const n of sortedNotes) {
-                    const pc = ((n % edo) + edo) % edo;
-                    if (!seenPcs.has(pc)) { seenPcs.add(pc); uniqueNotes.push(n); }
-                  }
-                  return (
-                    <div className="flex gap-1">
-                      {uniqueNotes.map((pitch, j) => {
-                        const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
-                        const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
-                        const degree = pythDegree(pcFromTonic);
-                        return (
-                          <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#1a1a2a] border-[#2a2a3a] px-1 py-0.5">
-                            <span className="text-[10px] font-mono font-bold leading-tight text-[#9999ee]">{degree}</span>
-                            <span className="text-[9px] leading-tight text-[#aaa]">{solfege}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+                {/* Header — centered mauve Roman (literal copy of Show Target's
+                    header).  Slash-form for inversions ("V/3" = 1st inv etc.). */}
+                <div className="text-center mb-3">
+                  <div className="text-[16px] font-bold leading-tight font-mono" style={{ color: "#c8a0e0" }}>
+                    {headerLabel}
+                  </div>
+                </div>
+                {/* Voicing notes — exact copy of Show Target's cell layout.
+                    Cells use flex-1 to fill the wider 220px card so they
+                    don't read as cramped. */}
+                <div className="flex gap-1">
+                  {uniqueNotes.map((pitch, j) => {
+                    const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
+                    const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
+                    const degree = pythDegree(pcFromTonic);
+                    const oct = ctOctMap.get(pcFromTonic) ?? 0;
+                    return (
+                      <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#1a1a2a] border-[#2a2a3a] px-1 py-0.5">
+                        <span className="text-[10px] font-mono font-bold leading-tight text-[#9999ee]">{degree}{renderOctSup(oct)}</span>
+                        <span className="text-[9px] leading-tight text-[#aaa]">{solfege}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
               );
             })}
