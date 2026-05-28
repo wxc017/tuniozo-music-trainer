@@ -338,24 +338,28 @@ export function applyVoicingPattern(chord: number[], edo: number, pattern: Voici
 //
 //   "shell-a"  — root + 3rd low; 5th, 7th, 9th above.       (Bud Powell A)
 //   "shell-b"  — root + 7th low; 3rd, 5th, 9th above.       (Bud Powell B)
-//   "rootless-a" — 3-5-7-9 close cluster, no bass root.     (Bill Evans A)
-//   "rootless-b" — 7-9-3-5 rotation (7th on bottom).        (Bill Evans B)
+//   "rootless-a" — TWO-HAND rootless A: LH guide tones (3-7),
+//                  RH upper structure (5-9-13).
+//   "rootless-b" — TWO-HAND rootless B: LH guide tones inverted (7-3),
+//                  RH upper structure (5-9-13).
 //   "ust"      — upper structure: root+3rd+7th guide-tone shell;
 //                triad of upper tensions (9/11/13) above.
 //   "block"    — close 4-note chord with the top note doubled an octave below.
+//   "sixway"   — block voicing using the 6th instead of the 7th.
 //   "drop2"    — close 4-note chord, 2nd-from-top dropped an octave.
 //   "drop3"    — close 4-note chord, 3rd-from-top dropped an octave.
 //   "drop24"   — close 4-note chord, 2nd AND 4th from top dropped.
 //   "spread"   — root + 5th low; 3rd, 7th, 9th spread above.
+//   "cluster"  — close-2nd cluster low (7-1-9), 3rd / 5th above.
 //   "quartal"  — stacked 4ths through the chord's tones (4-note).
-//   "quartal5" — stacked 4ths, 5-note stack (the modal "So What" shape).
+//   "quartal5" — stacked 4ths, 5-note stack (the modal open sound).
 //   "quintal"  — stacked 5ths (4-note).
 export type TwoHandStyle =
   | "shell-a" | "shell-b"
   | "rootless-a" | "rootless-b"
   | "ust"
-  | "block" | "drop2" | "drop3" | "drop24"
-  | "spread"
+  | "block" | "sixway" | "drop2" | "drop3" | "drop24"
+  | "spread" | "cluster"
   | "quartal" | "quartal5" | "quintal";
 
 // `degrees` is a scale-degree formula (low→high; "·" separates the lower
@@ -364,14 +368,16 @@ export type TwoHandStyle =
 export const TWO_HAND_STYLES: { id: TwoHandStyle; label: string; degrees: string; desc: string }[] = [
   { id: "shell-a",    label: "Shell A",         degrees: "1 3 · 5 7 9",     desc: "Root + 3rd low (Bud Powell A); 5th, 7th, 9th above." },
   { id: "shell-b",    label: "Shell B",         degrees: "1 7 · 3 5 9",     desc: "Root + 7th low (Bud Powell B); 3rd, 5th, 9th above." },
-  { id: "rootless-a", label: "Rootless A",      degrees: "3 5 7 9",         desc: "Rootless 3-5-7-9 cluster (3rd on bottom). No bass root." },
-  { id: "rootless-b", label: "Rootless B",      degrees: "7 9 3 5",         desc: "Rootless rotation with the 7th on the bottom (7-9-3-5). No bass root." },
+  { id: "rootless-a", label: "Rootless A",      degrees: "3 7 · 5 9 13",    desc: "Two-hand rootless A: LH guide tones (3-7), RH upper structure (5, 9, 13) above. No bass root." },
+  { id: "rootless-b", label: "Rootless B",      degrees: "7 3 · 5 9 13",    desc: "Two-hand rootless B: LH inverted guide tones (7-3), RH upper structure above. No bass root." },
   { id: "ust",        label: "Upper structure", degrees: "1 3 7 · 9 11 13", desc: "Guide-tone shell (root, 3rd, 7th) low; a triad of upper tensions above." },
   { id: "block",      label: "Block chords",    degrees: "7 · 1 3 5 7",     desc: "Close 4-note chord with the top note doubled an octave below." },
+  { id: "sixway",     label: "Six-way close",   degrees: "6 · 1 3 5 6",     desc: "Block-style voicing using the 6th instead of the 7th, top doubled an octave below." },
   { id: "drop2",      label: "Drop 2",          degrees: "5 · 1 3 7",       desc: "Close 4-note chord, 2nd-from-top dropped an octave." },
   { id: "drop3",      label: "Drop 3",          degrees: "3 · 1 5 7",       desc: "Close 4-note chord, 3rd-from-top dropped an octave." },
   { id: "drop24",     label: "Drop 2+4",        degrees: "5 1 · 3 7",       desc: "Close 4-note chord with the 2nd AND 4th from top dropped." },
   { id: "spread",     label: "Spread",          degrees: "1 5 · 3 7 9",     desc: "Open root+5th bass; 3rd, 7th, 9th spread above." },
+  { id: "cluster",    label: "Cluster",         degrees: "7 1 9 · 3 5",     desc: "Close 2nd-based voicing — 7-1-9 cluster low (Herbie-style), 3rd and 5th above." },
   { id: "quartal",    label: "Quartal",         degrees: "1 4 7 3",         desc: "4-note stack of perfect 4ths through the chord's tones." },
   { id: "quartal5",   label: "Quartal (5)",     degrees: "1 4 7 3 6",       desc: "5-note quartal stack (the modal open sound)." },
   { id: "quintal",    label: "Quintal",         degrees: "1 5 2 6",         desc: "4-note stack of perfect 5ths through the chord's tones." },
@@ -468,12 +474,23 @@ export function buildTwoHandedVoicing(
       offs = compact([0, seventhI ?? thirdI, thirdI !== null ? O + thirdI : null, fifthI !== null ? O + fifthI : null, nineI]);
       break;
     case "rootless-a":
-      // 3 5 7 9 — close cluster, no root.
-      offs = compact([thirdI, fifthI, seventhI, nineI]);
+      // 3 7 · 5 9 13 — TWO-HAND rootless A: LH guide tones (3-7),
+      // RH upper structure (5-9-13) above.
+      offs = compact([
+        thirdI, seventhI,
+        fifthI !== null ? O + fifthI : null,
+        nineI, thirteenI,
+      ]);
       break;
     case "rootless-b":
-      // 7 9 3 5 — 7 on the bottom, 3rd/5th an octave up.
-      offs = compact([seventhI, nineI, thirdI !== null ? O + thirdI : null, fifthI !== null ? O + fifthI : null]);
+      // 7 3 · 5 9 13 — TWO-HAND rootless B: LH inverted (7 then 3 an
+      // octave up), RH upper structure.
+      offs = compact([
+        seventhI,
+        thirdI !== null ? O + thirdI : null,
+        fifthI !== null ? O + fifthI : null,
+        nineI, thirteenI,
+      ]);
       break;
     case "ust": {
       // 1 3 7 · 9 11 13 — guide-tone shell low; upper-tension triad above.
@@ -486,6 +503,15 @@ export function buildTwoHandedVoicing(
       // 7 · 1 3 5 7 — close 4-way with the top note doubled an octave below.
       offs = closed.length > 0 ? [closed[closed.length - 1] - O, ...closed] : [0];
       break;
+    case "sixway": {
+      // 6 · 1 3 5 6 — like block but with the 6th in place of the 7th.
+      // Use the chord's 13th (= 6 + octave) when present; otherwise fall
+      // back to a generic major 6 (≈ 9 semitones).
+      const sixthI = thirteenI !== null ? (thirteenI - O) : Math.round(edo * 9 / 12);
+      const closed6 = compact([0, thirdI, fifthI, sixthI]);
+      offs = closed6.length > 0 ? [closed6[closed6.length - 1] - O, ...closed6] : [0];
+      break;
+    }
     case "drop2":
       // 5 · 1 3 7 — close 4-way, 2nd-from-top dropped an octave.
       if (closed.length >= 2) {
@@ -515,8 +541,21 @@ export function buildTwoHandedVoicing(
       } else offs = closed;
       break;
     case "spread":
-      // 1 5 · 3 7 9 — open root+5 bass; 3rd/7th/9th spread above.
-      offs = compact([0, fifthI, thirdI !== null ? O + thirdI : null, seventhI !== null ? O + seventhI : null, nineI]);
+      // 1 5 · 3 7 9 — open root+5 bass; 3rd/7th/9th spread above.  Use a
+      // literal P5 so dim chords don't collapse the bass interval to a b5.
+      offs = compact([0, Math.round(edo * 7 / 12), thirdI !== null ? O + thirdI : null, seventhI !== null ? O + seventhI : null, nineI]);
+      break;
+    case "cluster":
+      // 7 1 9 · 3 5 — close 2nd-based voicing.  7-1-9 form three notes
+      // a 2nd apart low (Herbie-style cluster); 3rd / 5th land an octave
+      // up above the cluster's top.
+      offs = compact([
+        seventhI,
+        O,
+        nineI,
+        thirdI !== null ? O + thirdI : null,
+        fifthI !== null ? O + fifthI : null,
+      ]);
       break;
     case "quartal":   offs = intervalStack(5, 4); break;   // 4-note P4 stack
     case "quartal5":  offs = intervalStack(5, 5); break;   // 5-note P4 stack
@@ -595,14 +634,19 @@ export function addBassUnder(
     else seventhI = seventhI ?? r;
   }
   const third = thirdI ?? Math.round(edo * 4 / 12);
-  const fifth = fifthI ?? Math.round(edo * 7 / 12);
   const seventh = seventhI ?? Math.round(edo * 10 / 12);
+  // For "Root + 5th" always use a literal P5 in the bass — even on a
+  // diminished chord whose chord-tone 5th is b5.  An open-fifth bass is
+  // by convention a perfect 5th; collapsing it to b5 sounds wrong (and
+  // was reported as a bug — "a diminished fifth for a fifth?").  The
+  // chord's actual 5th still sounds in the right hand.
+  const P5 = Math.round(edo * 7 / 12);
 
   // LH offsets above the bass root for the requested shape.
   let lhOff: number[];
   switch (bass) {
     case "bass-octave":    lhOff = [0, edo]; break;
-    case "bass-root5":     lhOff = [0, fifth]; break;
+    case "bass-root5":     lhOff = [0, P5]; break;
     case "bass-root10":    lhOff = [0, edo + third]; break;
     case "bass-shell7":    lhOff = [0, seventh]; break;
     case "bass-shellfull": lhOff = [0, third, seventh]; break;
