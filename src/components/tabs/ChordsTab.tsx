@@ -2685,75 +2685,57 @@ export default function ChordsTab({
                     <span className="text-[#666] italic">— bent to keep the tonic anchored, otherwise this chord's root would drift away from {pcToNoteNameWithEnharmonic(tonicPc, edo) ?? "the tonic"}</span>
                   </p>
                 )}
-                <div className="flex flex-wrap gap-1.5">
-                  {(() => {
-                    // Dedupe by pitch class — one card per unique pc, using
-                    // the LOWEST occurrence as the playable pitch.  Removes
-                    // the octave-duplicate "permutation" cards (was per user
-                    // request: "just like how it is in show answer, without
-                    // the permutations").  No "+N" octave annotation since
-                    // every kept note is at its natural lowest position.
-                    const sortedNotes = [...chord.notes].sort((a, b) => a - b);
-                    const seenPcs = new Set<number>();
-                    const uniqueNotes: number[] = [];
-                    for (const n of sortedNotes) {
-                      const pc = ((n % edo) + edo) % edo;
-                      if (!seenPcs.has(pc)) { seenPcs.add(pc); uniqueNotes.push(n); }
+                {/* Voicing notes — copied from the Show Target (Sing It)
+                    voicing-cell style per user direction ("i want the show
+                    answer card to look like the ones from sing it, ... take
+                    out the permutations"), deduped to one cell per unique
+                    pitch class.  Each cell shows the Pythagorean scale
+                    degree on top and the Heathwaite solfege below. */}
+                {(() => {
+                  // Local copy of pythagoreanDegree (the original lives inside
+                  // the Show Target render closure and isn't in scope here).
+                  const FIFTHS_PER_EDO: Record<number, number> = { 12: 7, 17: 10, 19: 11, 31: 18, 41: 24, 53: 31 };
+                  const fifthStep = FIFTHS_PER_EDO[edo] ?? Math.round(edo * Math.log2(3 / 2));
+                  const degreeAtFifth = [1, 5, 2, 6, 3, 7, 4];
+                  const pythDegree = (step: number): string => {
+                    const s = ((step % edo) + edo) % edo;
+                    let bestN: number | null = null;
+                    for (let d = 0; d <= edo * 2; d++) {
+                      for (const n of [d, -d]) {
+                        if (((n * fifthStep) % edo + edo) % edo === s) { bestN = n; break; }
+                      }
+                      if (bestN !== null) break;
                     }
-                    return uniqueNotes.map((pitch, i) => {
-                    // Two reference frames per tone:
-                    //   "scale" — pitch class relative to tonic (Do = 1)
-                    //   "chord" — pitch class relative to chord root
-                    const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
-                    const pcFromChord = ((pcFromTonic - chord.chordRootPc) % edo + edo) % edo;
-
-                    const intervalScale = intervalLabel(pcFromTonic, edo);
-                    const heathwaiteScale = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
-                    const microScale = syllableForEdoStep(pcFromTonic, edo);
-
-                    const intervalChord = intervalLabel(pcFromChord, edo);
-                    const heathwaiteChord = heathwaiteTable ? heathwaiteTable[pcFromChord] ?? "—" : "—";
-                    const microChord = syllableForEdoStep(pcFromChord, edo);
-
-                    return (
-                      <button key={i}
-                        onClick={async () => {
-                          await ensureAudio();
-                          audioEngine.playNote(pitch, edo, 0.7, 0.6);
-                        }}
-                        title={
-                          `▶ click main button to play pitch\n` +
-                          `Click any syllable to hear it spoken.\n` +
-                          `chord-relative: ${intervalChord} · ${heathwaiteChord} · ${microChord.label} /${microChord.ipa}/\n` +
-                          `scale-relative: ${intervalScale} · ${heathwaiteScale} · ${microScale.label} /${microScale.ipa}/`
-                        }
-                        className="flex flex-col items-center px-2 py-1 rounded border border-[#3a3a1a] bg-[#2a1a0a] hover:bg-[#3a2a1a] hover:border-[#c8a850] transition-colors min-w-[64px]">
-                        {/* Chord-relative block (gold) */}
-                        <span className="text-[10px] text-[#e0c860] font-bold leading-tight">
-                          {intervalChord}
-                        </span>
-                        <SaySpan text={heathwaiteChord} ipa={heathwaiteIpa(heathwaiteChord)}
-                          className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
-                          title={`Hear "${heathwaiteChord}" spoken`} />
-                        <SaySpan text={microChord.label} ipa={microChord.ipa}
-                          className="text-[8px] text-[#777] font-mono leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
-                          title={`Hear "${microChord.label}" /${microChord.ipa}/ spoken`} />
-                        <span className="block w-full border-t border-[#3a3a1a] my-1"></span>
-                        {/* Scale-relative block (mauve) */}
-                        <span className="text-[10px] text-[#c896c8] font-bold leading-tight">
-                          {intervalScale}
-                        </span>
-                        <SaySpan text={heathwaiteScale} ipa={heathwaiteIpa(heathwaiteScale)}
-                          className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
-                          title={`Hear "${heathwaiteScale}" spoken`} />
-                        <SaySpan text={microScale.label} ipa={microScale.ipa}
-                          className="text-[8px] text-[#777] font-mono leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
-                          title={`Hear "${microScale.label}" /${microScale.ipa}/ spoken`} />
-                      </button>
-                    );
-                    });
-                  })()}
-                </div>
+                    if (bestN === null) return String(s);
+                    const naturalIdx = ((bestN % 7) + 7) % 7;
+                    const naturalDeg = degreeAtFifth[naturalIdx];
+                    const layer = Math.floor((bestN + 1) / 7);
+                    const acc = layer > 0 ? "#".repeat(layer) : layer < 0 ? "b".repeat(-layer) : "";
+                    return `${acc}${naturalDeg}`;
+                  };
+                  const sortedNotes = [...chord.notes].sort((a, b) => a - b);
+                  const seenPcs = new Set<number>();
+                  const uniqueNotes: number[] = [];
+                  for (const n of sortedNotes) {
+                    const pc = ((n % edo) + edo) % edo;
+                    if (!seenPcs.has(pc)) { seenPcs.add(pc); uniqueNotes.push(n); }
+                  }
+                  return (
+                    <div className="flex gap-1">
+                      {uniqueNotes.map((pitch, j) => {
+                        const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
+                        const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
+                        const degree = pythDegree(pcFromTonic);
+                        return (
+                          <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#1a1a2a] border-[#2a2a3a] px-1 py-0.5">
+                            <span className="text-[10px] font-mono font-bold leading-tight text-[#9999ee]">{degree}</span>
+                            <span className="text-[9px] leading-tight text-[#aaa]">{solfege}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
               );
             })}
