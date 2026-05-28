@@ -2687,22 +2687,20 @@ export default function ChordsTab({
                 )}
                 <div className="flex flex-wrap gap-1.5">
                   {(() => {
-                    // Pre-compute each note's NATURAL ascending position
-                    // (closed-position stack from the bass).  Any note
-                    // sitting above its natural position has a positive
-                    // octave offset that we render as a <sup>+N</sup> per
-                    // direct user direction "make the +1 in the voicings
-                    // superscript" — clarified to mean the chord-voicing
-                    // octave annotation in Spatial Audiation (Chords tab).
-                    const sortedNotes = [...chord.notes];
-                    const natural: number[] = sortedNotes.length > 0 ? [sortedNotes[0]] : [];
-                    for (let i = 1; i < sortedNotes.length; i++) {
-                      const pc = ((sortedNotes[i] % edo) + edo) % edo;
-                      let nat = pc + Math.floor(natural[i - 1] / edo) * edo;
-                      while (nat <= natural[i - 1]) nat += edo;
-                      natural.push(nat);
+                    // Dedupe by pitch class — one card per unique pc, using
+                    // the LOWEST occurrence as the playable pitch.  Removes
+                    // the octave-duplicate "permutation" cards (was per user
+                    // request: "just like how it is in show answer, without
+                    // the permutations").  No "+N" octave annotation since
+                    // every kept note is at its natural lowest position.
+                    const sortedNotes = [...chord.notes].sort((a, b) => a - b);
+                    const seenPcs = new Set<number>();
+                    const uniqueNotes: number[] = [];
+                    for (const n of sortedNotes) {
+                      const pc = ((n % edo) + edo) % edo;
+                      if (!seenPcs.has(pc)) { seenPcs.add(pc); uniqueNotes.push(n); }
                     }
-                    return sortedNotes.map((pitch, i) => {
+                    return uniqueNotes.map((pitch, i) => {
                     // Two reference frames per tone:
                     //   "scale" — pitch class relative to tonic (Do = 1)
                     //   "chord" — pitch class relative to chord root
@@ -2717,9 +2715,6 @@ export default function ChordsTab({
                     const heathwaiteChord = heathwaiteTable ? heathwaiteTable[pcFromChord] ?? "—" : "—";
                     const microChord = syllableForEdoStep(pcFromChord, edo);
 
-                    const oct = Math.floor((pitch - natural[i]) / edo);
-                    const octSup = oct !== 0 ? (oct > 0 ? `+${oct}` : `${oct}`) : null;
-
                     return (
                       <button key={i}
                         onClick={async () => {
@@ -2730,16 +2725,12 @@ export default function ChordsTab({
                           `▶ click main button to play pitch\n` +
                           `Click any syllable to hear it spoken.\n` +
                           `chord-relative: ${intervalChord} · ${heathwaiteChord} · ${microChord.label} /${microChord.ipa}/\n` +
-                          `scale-relative: ${intervalScale} · ${heathwaiteScale} · ${microScale.label} /${microScale.ipa}/` +
-                          (octSup ? `\noctave offset: ${octSup}` : "")
+                          `scale-relative: ${intervalScale} · ${heathwaiteScale} · ${microScale.label} /${microScale.ipa}/`
                         }
                         className="flex flex-col items-center px-2 py-1 rounded border border-[#3a3a1a] bg-[#2a1a0a] hover:bg-[#3a2a1a] hover:border-[#c8a850] transition-colors min-w-[64px]">
-                        {/* Chord-relative block (gold) + superscript
-                            octave offset when the note sits above its
-                            natural close-position location. */}
+                        {/* Chord-relative block (gold) */}
                         <span className="text-[10px] text-[#e0c860] font-bold leading-tight">
                           {intervalChord}
-                          {octSup && <sup className="text-[7px] ml-0.5 opacity-70">{octSup}</sup>}
                         </span>
                         <SaySpan text={heathwaiteChord} ipa={heathwaiteIpa(heathwaiteChord)}
                           className="text-[9px] text-[#aaa] leading-tight px-1 rounded hover:bg-[#3a3a1a] cursor-pointer"
