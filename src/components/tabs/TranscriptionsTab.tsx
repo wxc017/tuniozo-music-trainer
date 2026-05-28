@@ -478,7 +478,29 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
       </div>
 
       {/* Answer reveal */}
-      {showAnswer && item && excerpt && (
+      {showAnswer && item && excerpt && (() => {
+        // Base excerpt timestamps — what the BASE Replay is on, independent
+        // of the "hear more" padding (per user direction: "it shouldnt
+        // change with what measures i add").  For audio corpora this is the
+        // actual recording timecode of the clip; for notated corpora it's
+        // the synth playback time at the tune's own tempo.
+        const mmss = (s: number) => {
+          const t = Math.max(0, Math.floor(s));
+          return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+        };
+        let segStart: number, segEnd: number;
+        if (isAudioSource(item.source)) {
+          segStart = excerpt.audioStart ?? item.solostart ?? 0;
+          segEnd = segStart + (excerpt.audioLen ?? item.soloLen ?? 24);
+        } else {
+          const secPerBeat = 60 / (item.tempoBpm || 100);
+          segStart = excerpt.startBar * excerpt.beatsPerBar * secPerBeat;
+          segEnd = segStart + excerpt.bars * excerpt.beatsPerBar * secPerBeat;
+        }
+        const dur = Math.max(0, segEnd - segStart);
+        const stampLabel = isAudioSource(item.source) ? "Recording" : "At tempo";
+        const stamp = `${stampLabel}: ${mmss(segStart)}–${mmss(segEnd)} (${dur.toFixed(1)}s)`;
+        return (
         <div className="bg-[#0f0f0f] border border-[#242424] rounded-lg p-4 space-y-3">
           <div className="flex items-baseline justify-between gap-3 flex-wrap">
             <div>
@@ -515,8 +537,12 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
               </div>
             </>
           )}
+          {/* Timestamps of the BASE excerpt — does NOT include any extra
+              bars added via the "hear more" buttons. */}
+          <div className="text-xs text-[#888] font-mono">{stamp}</div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Transport — at the bottom */}
       <div className="flex flex-wrap gap-2 items-center pt-1">
