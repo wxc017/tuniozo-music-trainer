@@ -146,20 +146,25 @@ function siblingStemsBase(audioUrl: string): string | null {
   return audioUrl.replace(/\.[^/.]+$/, ".stems");
 }
 
-/** Check whether a stems folder exists by HEAD-ing each stem.  Returns
- *  a map of the stems that are present so the player can render mute
- *  buttons only for the available ones.  Verifies Content-Type so the
- *  Vite dev server's SPA index.html fallback (200 OK + text/html for
- *  unknown routes) doesn't get misread as audio. */
+/** Check whether a stems folder exists by GETting the first 4 bytes
+ *  of each stem and verifying the WAV magic ("RIFF").  HEAD + Content-
+ *  Type proved unreliable — the Vite dev server's SPA fallback returns
+ *  200 OK for any URL, and some setups even report a binary Content-
+ *  Type, which used to make every track look like it had four stems
+ *  (and silence the main audio because stems-mode was incorrectly
+ *  activated).  Reading the magic bytes is bulletproof. */
 async function probeStems(stemsBase: string): Promise<Partial<Record<StemName, string>>> {
   const result: Partial<Record<StemName, string>> = {};
   await Promise.all(STEM_NAMES.map(async name => {
     const url = `${stemsBase}/${name}.wav`;
     try {
-      const r = await fetch(url, { method: "HEAD" });
-      if (!r.ok) return;
-      const ct = r.headers.get("content-type") ?? "";
-      if (!/audio|application\/octet-stream|wav/i.test(ct)) return;
+      const r = await fetch(url, { headers: { Range: "bytes=0-3" } });
+      if (!r.ok && r.status !== 206) return;
+      const buf = await r.arrayBuffer();
+      if (buf.byteLength < 4) return;
+      const v = new DataView(buf);
+      const magic = String.fromCharCode(v.getUint8(0), v.getUint8(1), v.getUint8(2), v.getUint8(3));
+      if (magic !== "RIFF") return;
       result[name] = url;
     } catch { /* not present */ }
   }));
@@ -530,12 +535,12 @@ export default function TranscriptionMode() {
     }
     // Anytune-style colors: cool blue stems with a brighter blue
     // progress fill, a thin amber cursor, and stereo-mirrored bars.
-    // Locked-in zoom from frame zero — show ~2.5s of audio in the
-    // visible width.  Setting `minPxPerSec` at create time is more
-    // reliable than calling `zoom()` afterwards: it survives the
-    // initial layout pass without racing with autoCenter / autoScroll.
-    const measuredWidth = containerRef.current.clientWidth || 800;
-    const lockedMinPxPerSec = Math.max(200, measuredWidth / 2.5);
+    // ~2.5s visible at typical container widths.  Fixed px/s instead
+    // of computing from container width because the container's
+    // clientWidth at create time is not always its final width — the
+    // earlier "compute from width" + rAF-zoom dance was fighting
+    // WaveSurfer's own layout pass and oscillating the zoom level.
+    const FIXED_MIN_PX_PER_SEC = 350;
     const ws = WaveSurfer.create({
       container: containerRef.current,
       media: audio,
@@ -548,14 +553,14 @@ export default function TranscriptionMode() {
       barGap: 0,
       barRadius: 1,
       normalize: true,
-      minPxPerSec: lockedMinPxPerSec,
+      minPxPerSec: FIXED_MIN_PX_PER_SEC,
       fillParent: false,
-      // Auto-scroll + auto-center keep the playhead in view so the
-      // zoomed view slides under the cursor like Anytune's content
-      // view.  (The min-w-0 / overflow-hidden on the parent section
-      // prevents the earlier layout-feedback loop these used to cause.)
+      // autoScroll slides the view as the playhead crosses the visible
+      // edge.  autoCenter would actively re-center on every redraw and
+      // was the source of an earlier feedback loop; autoScroll alone
+      // is enough for "moves with the track".
       autoScroll: true,
-      autoCenter: true,
+      autoCenter: false,
       plugins,
     });
     wsRef.current = ws;
@@ -851,6 +856,29 @@ export default function TranscriptionMode() {
     return pool;
   }, [playableCorpus, corpusSource, corpusQuery, hiddenCorpus, showHiddenCorpus]);
 
+  // Group corpus tracks by artist, with each artist as a collapsible
+  // folder.  Artists are sorted alphabetically; tracks inside each
+  // artist sort by title.  Per-artist collapsed state persists.
+  const corpusByArtist = useMemo(() => {
+    const buckets = new Map<string, TxIndexEntry[]>();
+    for (const e of filteredCorpus) {
+      const key = (e.artist?.trim() || "(Unknown Artist)");
+      const arr = buckets.get(key) ?? [];
+      arr.push(e);
+      buckets.set(key, arr);
+    }
+    const list = [...buckets.entries()].map(([artist, tracks]) => ({
+      artist,
+      tracks: tracks.sort((a, b) => a.title.localeCompare(b.title)),
+    }));
+    list.sort((a, b) => a.artist.localeCompare(b.artist));
+    return list;
+  }, [filteredCorpus]);
+  const [collapsedArtists, setCollapsedArtists] = useLS<Record<string, boolean>>("lt_trx_collapsedArtists", {});
+  const toggleArtistCollapsed = (artist: string) => {
+    setCollapsedArtists(prev => ({ ...prev, [artist]: !prev[artist] }));
+  };
+
   // Search across both dropped files and folder entries for the merged Files tab.
   const filteredDropped = useMemo(() => {
     const q = filesQuery.trim().toLowerCase();
@@ -909,37 +937,51 @@ export default function TranscriptionMode() {
               </label>
               <div className="flex-1 overflow-y-auto -mx-2 px-2">
                 {!corpusReady ? <p className="text-[11px] text-[#666]">Loading corpus…</p>
-                  : filteredCorpus.length === 0 ? <p className="text-[11px] text-[#666]">No matching tracks.</p>
+                  : corpusByArtist.length === 0 ? <p className="text-[11px] text-[#666]">No matching tracks.</p>
                   : (
-                    <ul className="space-y-0.5">
-                      {filteredCorpus.slice(0, 500).map(it => {
-                        const isHidden = !!hiddenCorpus[it.id];
+                    <div className="space-y-1">
+                      {corpusByArtist.map(group => {
+                        const collapsed = collapsedArtists[group.artist];
                         return (
-                          <li key={it.id} className="flex items-stretch gap-1">
-                            <button onClick={() => void selectCorpus(it)}
-                              className={`flex-1 text-left px-2 py-1 rounded text-[11px] transition-colors min-w-0 ${
-                                track?.id === `corpus:${it.id}` ? "bg-[#1a1408] text-[#d4a050]"
-                                  : isHidden ? "text-[#555] hover:bg-[#141414] italic"
-                                  : "text-[#bbb] hover:bg-[#161616]"
-                              }`}>
-                              <div className="truncate">{it.title}</div>
-                              <div className="text-[10px] text-[#666] truncate">{it.artist ?? ""}{it.artist ? " · " : ""}{SOURCE_LABEL[it.source]}</div>
+                          <div key={group.artist} className="border border-[#1a1a1a] rounded">
+                            <button onClick={() => toggleArtistCollapsed(group.artist)}
+                              className="w-full flex items-center gap-1 px-1.5 py-1 bg-[#0a0a0a] hover:bg-[#111] text-left">
+                              <span className="text-[10px] text-[#666] w-4 text-center shrink-0">{collapsed ? "▸" : "▾"}</span>
+                              <span className="text-[10px] font-semibold tracking-wider text-[#d4a050] uppercase truncate flex-1" title={group.artist}>{group.artist}</span>
+                              <span className="text-[9px] text-[#666] shrink-0">{group.tracks.length}</span>
                             </button>
-                            <button onClick={() => toggleHiddenCorpus(it.id)}
-                              title={isHidden ? "Unhide this track" : "Hide this track from the list"}
-                              className={`px-1.5 text-[12px] rounded shrink-0 ${
-                                isHidden ? "text-[#5acc7a] hover:bg-[#0a1a0e]" : "text-[#666] hover:text-[#a66] hover:bg-[#1a0a0a]"
-                              }`}>
-                              {isHidden ? "+" : "×"}
-                            </button>
-                          </li>
+                            {!collapsed && (
+                              <ul className="space-y-0.5 p-1">
+                                {group.tracks.map(it => {
+                                  const isHidden = !!hiddenCorpus[it.id];
+                                  return (
+                                    <li key={it.id} className="flex items-stretch gap-1">
+                                      <button onClick={() => void selectCorpus(it)}
+                                        className={`flex-1 text-left px-2 py-1 rounded text-[11px] transition-colors min-w-0 ${
+                                          track?.id === `corpus:${it.id}` ? "bg-[#1a1408] text-[#d4a050]"
+                                            : isHidden ? "text-[#555] hover:bg-[#141414] italic"
+                                            : "text-[#bbb] hover:bg-[#161616]"
+                                        }`}>
+                                        <div className="truncate">{it.title}</div>
+                                        <div className="text-[10px] text-[#666] truncate">{SOURCE_LABEL[it.source]}</div>
+                                      </button>
+                                      <button onClick={() => toggleHiddenCorpus(it.id)}
+                                        title={isHidden ? "Unhide this track" : "Hide this track from the list"}
+                                        className={`px-1.5 text-[12px] rounded shrink-0 ${
+                                          isHidden ? "text-[#5acc7a] hover:bg-[#0a1a0e]" : "text-[#666] hover:text-[#a66] hover:bg-[#1a0a0a]"
+                                        }`}>
+                                        {isHidden ? "+" : "×"}
+                                      </button>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                          </div>
                         );
                       })}
-                    </ul>
+                    </div>
                   )}
-                {corpusReady && filteredCorpus.length > 500 && (
-                  <p className="text-[10px] text-[#555] mt-2">… {filteredCorpus.length - 500} more — refine the search.</p>
-                )}
               </div>
             </div>
           )}
