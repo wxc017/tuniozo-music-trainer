@@ -115,14 +115,28 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
   // indicator.  Both reset on each new Play.
   const clipPadRef = useRef({ before: 0, after: 0 });
   const [clipPad, setClipPad] = useState({ before: 0, after: 0 });
-  // Click-to-drop checkpoint markers on the audio scrubber.  Selecting two
-  // checkpoints defines a loop region (playback wraps between them); zero or
-  // one selected is non-restricting.  Both reset when the audio segment src
-  // changes — checkpoints are per-clip.
-  const [checkpoints, setCheckpoints] = useState<number[]>([]);
-  const [selectedCps, setSelectedCps] = useState<number[]>([]);
+  // Audio-player annotations, persisted PER AUDIO SRC so they survive every
+  // Play / Replay / Full song and re-mounts: checkpoints are just memory
+  // markers (places you want to remember), labelled A, B, C…  Looping is a
+  // separate concept: pick two checkpoints (by letter) as the loop start/end
+  // and toggle it on.
+  const [allCheckpoints, setAllCheckpoints] = useLS<Record<string, number[]>>("lt_tx_checkpoints", {});
+  const [allLoops, setAllLoops] = useLS<Record<string, { startIdx: number; endIdx: number; on: boolean }>>("lt_tx_loops", {});
+  const srcKey = audioSeg?.src ?? "";
+  const checkpoints = (srcKey ? allCheckpoints[srcKey] : undefined) ?? [];
+  const loop = srcKey ? allLoops[srcKey] : undefined;
+  const setCheckpointsForSrc = useCallback((updater: (prev: number[]) => number[]) => {
+    if (!srcKey) return;
+    setAllCheckpoints(prev => ({ ...prev, [srcKey]: updater(prev[srcKey] ?? []) }));
+  }, [srcKey, setAllCheckpoints]);
+  const setLoopForSrc = useCallback((next: { startIdx: number; endIdx: number; on: boolean } | null) => {
+    if (!srcKey) return;
+    setAllLoops(prev => {
+      if (next === null) { const { [srcKey]: _drop, ...rest } = prev; return rest; }
+      return { ...prev, [srcKey]: next };
+    });
+  }, [srcKey, setAllLoops]);
   const [nowSec, setNowSec] = useState(0);
-  useEffect(() => { setCheckpoints([]); setSelectedCps([]); }, [audioSeg?.src]);
   // Live playhead via rAF whenever an audio segment is loaded.
   useEffect(() => {
     if (!audioSeg) return;
@@ -130,6 +144,20 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
     const tick = () => { const a = audioRef.current; if (a) setNowSec(a.currentTime); raf = requestAnimationFrame(tick); };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
+  }, [audioSeg]);
+  // Space toggles play/pause globally for the audio player (unless a text
+  // input is focused — Space in a field should still type a space).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space") return;
+      const el = document.activeElement;
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable) return;
+      const a = audioRef.current; if (!a || !audioSeg) return;
+      e.preventDefault();
+      if (a.paused) a.play().catch(() => {}); else a.pause();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [audioSeg]);
 
   // Saved-phrases bookmarking lives in the Transcription player now
@@ -606,18 +634,27 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
             not bookmarking — keep the two surfaces focused. */}
       </div>
 
-      {/* Audio scrubber for the local-file player.  Click on the bar to drop
-          a checkpoint line; click a checkpoint to (de)select it.  Two selected
-          checkpoints define a loop region — playback wraps between them.  A
-          single selection (or zero) doesn't restrict playback. */}
+      {/* Audio scrubber — checkpoints are just memory markers (A, B, C…) you
+          can use to remember spots in the song.  They persist per audio src,
+          so Play / Replay / Full song never wipe them.  Looping is a separate
+          control below the bar. */}
       {audioSeg && (() => {
         const fullDur = (Number.isFinite(audioSeg.end) ? audioSeg.end : (audioRef.current?.duration ?? 0)) - audioSeg.start;
         const span = Math.max(0.01, fullDur);
         const xPct = (t: number) => ((t - audioSeg.start) / span) * 100;
-        const loopRange = selectedCps.length === 2
-          ? [Math.min(checkpoints[selectedCps[0]], checkpoints[selectedCps[1]]),
-             Math.max(checkpoints[selectedCps[0]], checkpoints[selectedCps[1]])] as const
-          : null;
+        // Alphabet label: 0→A, 1→B, … 25→Z, 26→AA, …
+        const letterFor = (i: number) => {
+          let n = i, s = "";
+          do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0);
+          return s;
+        };
+        const seek = (t: number) => {
+          const a = audioRef.current; if (!a) return;
+          try { a.currentTime = t; } catch { /* */ }
+        };
+        const loopStart = loop ? checkpoints[loop.startIdx] : undefined;
+        const loopEnd   = loop ? checkpoints[loop.endIdx]   : undefined;
+        const loopReady = loop && loopStart !== undefined && loopEnd !== undefined && loopStart !== loopEnd;
         return (
           <div className="mt-2 pt-4">
             <div
@@ -626,51 +663,38 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
                 const rect = e.currentTarget.getBoundingClientRect();
                 const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
                 const t = audioSeg.start + frac * span;
-                // Hit-test existing checkpoints (~1.5% tolerance).
+                // Hit-test existing checkpoints (~1.5% tolerance) → seek to it.
                 const hitIdx = checkpoints.findIndex(c => Math.abs(xPct(c) / 100 - frac) < 0.015);
                 if (hitIdx >= 0) {
-                  setSelectedCps(prev => {
-                    if (prev.includes(hitIdx)) return prev.filter(i => i !== hitIdx);
-                    if (prev.length >= 2) return [prev[1], hitIdx];   // cycle: drop oldest
-                    return [...prev, hitIdx];
-                  });
+                  seek(checkpoints[hitIdx]);
                 } else {
-                  // If a loop is active and the click lands outside its range,
-                  // release the loop so the manual seek isn't immediately
-                  // snapped back by the onTimeUpdate wrap-around.
-                  if (loopRange && (t < loopRange[0] || t > loopRange[1])) {
-                    setSelectedCps([]);
-                  }
-                  setCheckpoints(prev => [...prev, t]);
-                  const a = audioRef.current; if (a) { try { a.currentTime = t; } catch { /* */ } }
+                  // Drop a new checkpoint at the click time AND seek there.
+                  setCheckpointsForSrc(prev => [...prev, t]);
+                  seek(t);
                 }
               }}
             >
-              {loopRange && (
-                <div style={{ position: "absolute", left: `${xPct(loopRange[0])}%`, top: 0, height: "100%",
-                              width: `${xPct(loopRange[1]) - xPct(loopRange[0])}%`, background: "#7173e644" }} />
-              )}
+              {/* Loop region shade (only when loop is set + on) */}
+              {loopReady && loop?.on && (() => {
+                const lo = Math.min(loopStart!, loopEnd!);
+                const hi = Math.max(loopStart!, loopEnd!);
+                return (
+                  <div style={{ position: "absolute", left: `${xPct(lo)}%`, top: 0, height: "100%",
+                                width: `${xPct(hi) - xPct(lo)}%`, background: "#7173e644" }} />
+                );
+              })()}
               {checkpoints.map((c, i) => {
                 const p = xPct(c);
                 if (p < -0.5 || p > 100.5) return null;
-                const sel = selectedCps.includes(i);
-                // A, B, C, ... AA, AB, ... once we exhaust the alphabet.
-                const label = (() => {
-                  let n = i, s = "";
-                  do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0);
-                  return s;
-                })();
                 return (
                   <div key={i} style={{ position: "absolute", left: `${p}%`, top: 0, width: 2, height: "100%",
-                                        background: sel ? "#9999ee" : "#cd6", marginLeft: -1 }}>
+                                        background: "#cd6", marginLeft: -1 }}>
                     <span style={{
                       position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)",
                       fontSize: 9, fontWeight: 700, letterSpacing: 0.4,
                       padding: "1px 4px", borderRadius: 3, lineHeight: 1,
-                      background: sel ? "#9999ee" : "#cd6",
-                      color: "#000",
-                      whiteSpace: "nowrap",
-                    }}>{label}</span>
+                      background: "#cd6", color: "#000", whiteSpace: "nowrap",
+                    }}>{letterFor(i)}</span>
                   </div>
                 );
               })}
@@ -680,16 +704,50 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
                 return <div style={{ position: "absolute", left: `${p}%`, top: 0, width: 1, height: "100%", background: "#fff" }} />;
               })()}
             </div>
-            <div className="flex items-center justify-between mt-1 text-[10px] text-[#666]">
-              <span>
-                {checkpoints.length === 0 ? "Click the bar to drop a checkpoint"
-                  : loopRange ? "Loop active — click a selected line to release"
-                  : selectedCps.length === 1 ? "Click a second checkpoint to loop between them"
-                  : "Click a checkpoint to select"}
-              </span>
+
+            {/* Loop control — separate from checkpoints. Pick two checkpoint
+                letters as the loop boundaries, then toggle Loop on/off. */}
+            <div className="flex items-center gap-2 mt-2 flex-wrap text-[11px]">
+              <span className="text-[#888]">Loop:</span>
+              <select
+                value={loop?.startIdx ?? ""}
+                disabled={checkpoints.length < 2}
+                onChange={(e) => {
+                  const startIdx = Number(e.target.value);
+                  const endIdx = loop?.endIdx ?? (startIdx === 0 ? 1 : 0);
+                  setLoopForSrc({ startIdx, endIdx, on: loop?.on ?? false });
+                }}
+                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-0.5 text-[#ccc] disabled:opacity-40">
+                {checkpoints.map((_, i) => <option key={i} value={i}>{letterFor(i)}</option>)}
+                {checkpoints.length === 0 && <option value="">—</option>}
+              </select>
+              <span className="text-[#555]">→</span>
+              <select
+                value={loop?.endIdx ?? ""}
+                disabled={checkpoints.length < 2}
+                onChange={(e) => {
+                  const endIdx = Number(e.target.value);
+                  const startIdx = loop?.startIdx ?? (endIdx === 0 ? 1 : 0);
+                  setLoopForSrc({ startIdx, endIdx, on: loop?.on ?? false });
+                }}
+                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-0.5 text-[#ccc] disabled:opacity-40">
+                {checkpoints.map((_, i) => <option key={i} value={i}>{letterFor(i)}</option>)}
+                {checkpoints.length === 0 && <option value="">—</option>}
+              </select>
+              <button
+                disabled={!loopReady}
+                onClick={() => {
+                  if (!loop) return;
+                  setLoopForSrc({ ...loop, on: !loop.on });
+                }}
+                className={`px-2 py-0.5 rounded border text-[11px] transition-colors disabled:opacity-40 ${
+                  loop?.on ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#141414] border-[#2a2a2a] text-[#888]"
+                }`}>
+                {loop?.on ? "Loop ON" : "Loop OFF"}
+              </button>
               {checkpoints.length > 0 && (
-                <button onClick={() => { setCheckpoints([]); setSelectedCps([]); }}
-                  className="text-[10px] text-[#888] hover:text-[#bbb] underline">clear</button>
+                <button onClick={() => { setCheckpointsForSrc(() => []); setLoopForSrc(null); }}
+                  className="ml-auto text-[10px] text-[#888] hover:text-[#bbb] underline">clear checkpoints</button>
               )}
             </div>
           </div>
@@ -705,10 +763,16 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
         className="hidden"
         onTimeUpdate={() => {
           const a = audioRef.current; if (!a) return;
-          if (selectedCps.length === 2) {
-            const lo = Math.min(checkpoints[selectedCps[0]], checkpoints[selectedCps[1]]);
-            const hi = Math.max(checkpoints[selectedCps[0]], checkpoints[selectedCps[1]]);
-            if (a.currentTime >= hi) { try { a.currentTime = lo; } catch { /* */ } return; }
+          // Loop only when the user explicitly turned it on AND both
+          // boundary checkpoints still exist.
+          if (loop?.on) {
+            const ls = checkpoints[loop.startIdx];
+            const le = checkpoints[loop.endIdx];
+            if (ls !== undefined && le !== undefined && ls !== le) {
+              const lo = Math.min(ls, le);
+              const hi = Math.max(ls, le);
+              if (a.currentTime >= hi) { try { a.currentTime = lo; } catch { /* */ } return; }
+            }
           }
           if (a.currentTime >= segEndRef.current) a.pause();
         }}

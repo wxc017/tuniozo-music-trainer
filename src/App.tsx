@@ -1425,7 +1425,7 @@ export default function App() {
           root would never scroll, the inner would, and `top-0` would
           have nothing to anchor against. */}
       {section === "ear-trainer" && (
-      <div className="px-4 pt-3 flex-1 flex flex-col">
+      <div className="px-4 pt-3 flex-1 flex flex-col overflow-x-hidden">
       <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
         {/* TEMPERAMENT selector removed 2026-05-12 per direct user
             direction "remove this" — the family-grouped EDO buttons
