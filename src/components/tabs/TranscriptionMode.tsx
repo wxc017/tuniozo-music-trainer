@@ -171,6 +171,15 @@ async function probeStems(stemsBase: string): Promise<Partial<Record<StemName, s
   return result;
 }
 
+// ── Ordinal letter (0→A, 1→B, …, 25→Z, 26→AA, 27→AB, …) ───────────
+function ordinalLetter(n: number): string {
+  if (n < 0) return "A";
+  let s = "";
+  do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; }
+  while (n >= 0);
+  return s;
+}
+
 // ── mm:ss formatter ───────────────────────────────────────────────
 function mmss(t: number): string {
   if (!isFinite(t) || t < 0) return "0:00";
@@ -570,20 +579,49 @@ export default function TranscriptionMode() {
     });
     wsRef.current = ws;
 
-    const onReady = () => setDuration(ws.getDuration());
+    // WaveSurfer v7 renders into a Shadow DOM whose `.scroll` element
+    // shows a horizontal scrollbar (CSS targeting it from the outer
+    // document fails because of the shadow boundary, and styles
+    // injected into the shadow root weren't reliably applied either).
+    // Brute-force: set overflowX="hidden" on the scroll element via
+    // JS after every layout pass.  Programmatic scrollLeft (which is
+    // what autoScroll uses) still works without a visible bar.
+    const hideInnerScrollbar = () => {
+      const root = containerRef.current; if (!root) return;
+      const candidates: (Element | null)[] = [
+        root.shadowRoot?.querySelector(".scroll") ?? null,
+        root.shadowRoot?.querySelector('[part="scroll"]') ?? null,
+        root.querySelector(".scroll"),
+        root.querySelector('[part="scroll"]'),
+      ];
+      for (const el of candidates) {
+        if (el instanceof HTMLElement) el.style.overflowX = "hidden";
+      }
+    };
+    // Run now, again on next frame (in case the renderer hasn't
+    // attached the scroll container yet), and on every WS redraw
+    // (the renderer occasionally re-creates the scroll element when
+    // the canvas re-tiles during play).
+    hideInnerScrollbar();
+    requestAnimationFrame(hideInnerScrollbar);
+
+    const onReady = () => { setDuration(ws.getDuration()); hideInnerScrollbar(); };
     const onTime = (t: number) => setCurrentTime(t);
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
+    const onRedraw = () => hideInnerScrollbar();
     ws.on("ready", onReady);
     ws.on("timeupdate", onTime);
     ws.on("play", onPlay);
     ws.on("pause", onPause);
+    ws.on("redrawcomplete", onRedraw);
 
     return () => {
       ws.un("ready", onReady);
       ws.un("timeupdate", onTime);
       ws.un("play", onPlay);
       ws.un("pause", onPause);
+      ws.un("redrawcomplete", onRedraw);
       ws.destroy();
       wsRef.current = null;
       audio.pause();
@@ -694,14 +732,22 @@ export default function TranscriptionMode() {
     }
   }, [stemMuted, stemSolo]);
 
-  // ── A/B loop enforcement ──────────────────────────────────────
+  // ── L₀ / L₁ loop enforcement ───────────────────────────────────
+  // Wrap to L₀ only when playback NATURALLY crosses L₁ going forward
+  // (small forward delta).  A click anywhere else on the waveform
+  // does a big jump in currentTime, which we explicitly do NOT snap
+  // back — the user can seek out of the loop window whenever they
+  // want, and the loop re-arms the next time playback rolls past L₁.
   useEffect(() => {
     if (!loop || !audioRef.current) return;
     const audio = audioRef.current;
     const [a, b] = loop;
     const onTime = () => {
-      if (audio.currentTime >= b) audio.currentTime = a;
-      else if (audio.currentTime < a) audio.currentTime = a;
+      if (audio.paused) return;
+      const dt = audio.currentTime - b;
+      // dt in (0, 1) means we just crossed L₁ in normal playback.
+      // Bigger dt = the user seeked past L₁; leave them alone.
+      if (dt > 0 && dt < 1) audio.currentTime = a;
     };
     audio.addEventListener("timeupdate", onTime);
     return () => audio.removeEventListener("timeupdate", onTime);
@@ -728,39 +774,54 @@ export default function TranscriptionMode() {
     };
     regions.on("region-clicked", onRegionClick);
 
-    // Wipe and re-add — cheap for the ~dozen markers a user typically has.
-    regions.clearRegions();
-    // A/B loop region: amber-tinted band sitting under the waveform
-    // (matches Anytune's selection highlight).  Add this FIRST so the
-    // checkpoint markers paint on top of it.  The overlay itself is
-    // click-through so users can still click inside the loop window
-    // to seek; only the small A/B flags swallow their own clicks.
-    if (loop) {
-      const loopBand = regions.addRegion({
-        id: "loop:ab", start: loop[0], end: loop[1],
-        color: "rgba(232,170,80,0.28)", drag: false, resize: false,
-      });
-      if (loopBand.element) loopBand.element.style.pointerEvents = "none";
-      const aFlag = document.createElement("div");
-      aFlag.textContent = "A";
-      aFlag.style.cssText = "font-size:11px;color:#0a0a08;background:#d4a050;padding:2px 8px;border-radius:0 3px 3px 0;font-weight:700;font-family:monospace;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.4);pointer-events:auto;";
-      regions.addRegion({ id: "loop:a", start: loop[0], color: "rgba(212,160,80,0)", drag: false, resize: false, content: aFlag });
-      const bFlag = document.createElement("div");
-      bFlag.textContent = "B";
-      bFlag.style.cssText = "font-size:11px;color:#0a0a08;background:#d4a050;padding:2px 8px;border-radius:0 3px 3px 0;font-weight:700;font-family:monospace;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.4);pointer-events:auto;";
-      regions.addRegion({ id: "loop:b", start: loop[1], color: "rgba(212,160,80,0)", drag: false, resize: false, content: bFlag });
-    }
-    for (const cp of checkpoints) {
-      const label = document.createElement("div");
-      label.textContent = cp.label;
-      label.style.cssText = "font-size:11px;color:#0a0a08;background:#e8aa50;padding:2px 6px;border-radius:0 4px 4px 0;font-weight:700;font-family:monospace;white-space:nowrap;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.5);";
-      regions.addRegion({
-        id: `cp:${cp.id}`, start: cp.time, color: "rgba(232,170,80,0.95)",
-        drag: false, resize: false, content: label,
-      });
-    }
+    // Build the regions list.  Encapsulated so we can re-run it after
+    // WaveSurfer's `redrawcomplete` (which can wipe the region DOM
+    // when autoScroll re-tiles the canvas while playing).
+    const renderRegions = () => {
+      regions.clearRegions();
+      // Loop window: orange band between L_0 and L_1, click-through so
+      // the user can still seek inside the loop.  Only the small
+      // flag labels at each end capture clicks.
+      if (loop) {
+        const loopBand = regions.addRegion({
+          id: "loop:ab", start: loop[0], end: loop[1],
+          color: "rgba(232,170,80,0.28)", drag: false, resize: false,
+        });
+        if (loopBand.element) loopBand.element.style.pointerEvents = "none";
+        const l0 = document.createElement("div");
+        l0.textContent = "L₀"; // L with subscript 0
+        l0.style.cssText = "font-size:10px;color:#0a0a08;background:#d4a050;padding:2px 6px;border-radius:0 3px 3px 0;font-weight:700;font-family:monospace;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.4);pointer-events:auto;";
+        regions.addRegion({ id: "loop:a", start: loop[0], color: "rgba(212,160,80,0)", drag: false, resize: false, content: l0 });
+        const l1 = document.createElement("div");
+        l1.textContent = "L₁"; // L with subscript 1
+        l1.style.cssText = "font-size:10px;color:#0a0a08;background:#d4a050;padding:2px 6px;border-radius:0 3px 3px 0;font-weight:700;font-family:monospace;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.4);pointer-events:auto;";
+        regions.addRegion({ id: "loop:b", start: loop[1], color: "rgba(212,160,80,0)", drag: false, resize: false, content: l1 });
+      }
+      // Checkpoints: lettered points (no band — checkpoints are just
+      // marks, not ranges; the loop window is what gets a highlight).
+      // The user can edit the printed note below in the checkpoints
+      // list, but the on-waveform flag always shows its A/B/C ordinal
+      // so they read like "checkpoint C" on the wave.
+      for (let i = 0; i < checkpoints.length; i++) {
+        const cp = checkpoints[i];
+        const flag = document.createElement("div");
+        flag.textContent = ordinalLetter(i);
+        flag.style.cssText = "font-size:10px;color:#0a0a08;background:#e8aa50;padding:2px 6px;border-radius:0 4px 4px 0;font-weight:700;font-family:monospace;white-space:nowrap;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.5);";
+        regions.addRegion({
+          id: `cp:${cp.id}`, start: cp.time, color: "rgba(232,170,80,0.95)",
+          drag: false, resize: false, content: flag,
+        });
+      }
+    };
+    renderRegions();
+    // Re-attach regions after WaveSurfer re-tiles its canvas (which
+    // can happen during autoScroll while playing).  Without this the
+    // checkpoint flags and loop overlay vanish a few seconds in.
+    const onRedraw = () => renderRegions();
+    ws.on("redrawcomplete", onRedraw);
     return () => {
       regions.un("region-clicked", onRegionClick);
+      ws.un("redrawcomplete", onRedraw);
     };
   }, [checkpoints, loop, duration, track?.id]);
 
@@ -831,6 +892,21 @@ export default function TranscriptionMode() {
       return { ...prev, [track.id]: next };
     });
   };
+
+  // Use a checkpoint's time as the L₀ or L₁ loop endpoint.  Same
+  // arithmetic as setLoopEnd but driven by the checkpoint instead of
+  // the playhead — gives the user a one-click way to anchor a loop
+  // between two marks they already placed.
+  const setLoopFromCheckpoint = (cp: Checkpoint, which: "A" | "B") => {
+    if (!track) return;
+    setLoopsAll(prev => {
+      const cur = prev[track.id] ?? [0, duration || cp.time + 0.5];
+      const next: [number, number] = which === "A"
+        ? [cp.time, Math.max(cp.time + 0.5, cur[1])]
+        : [Math.min(cur[0], cp.time - 0.5), cp.time];
+      return { ...prev, [track.id]: next };
+    });
+  };
   const clearLoop = () => {
     if (!track) return;
     setLoopsAll(prev => { const n = { ...prev }; delete n[track.id]; return n; });
@@ -839,7 +915,10 @@ export default function TranscriptionMode() {
   const addCheckpoint = () => {
     if (!track || !audioRef.current) return;
     const t = audioRef.current.currentTime;
-    const cp: Checkpoint = { id: crypto.randomUUID(), label: mmss(t), time: t };
+    // `label` is the user's editable note — starts empty so the
+    // placeholder shows.  The on-waveform flag uses an A/B/C ordinal
+    // based on the checkpoint's sorted index, not this label.
+    const cp: Checkpoint = { id: crypto.randomUUID(), label: "", time: t };
     setCheckpointsAll(prev => ({ ...prev, [track.id]: [...(prev[track.id] ?? []), cp].sort((a, b) => a.time - b.time) }));
   };
   const renameCheckpoint = (cpId: string, label: string) => {
@@ -1230,10 +1309,10 @@ export default function TranscriptionMode() {
                   </span>
                 </div>
                 <div className="flex items-center gap-1 ml-auto">
-                  <button onClick={() => setLoopEnd("A")} title="Set loop start to current time"
-                    className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider border border-[#3a3a3a] text-[#aaa] hover:border-[#5a5a5a] hover:text-white rounded">A</button>
-                  <button onClick={() => setLoopEnd("B")} title="Set loop end to current time"
-                    className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider border border-[#3a3a3a] text-[#aaa] hover:border-[#5a5a5a] hover:text-white rounded">B</button>
+                  <button onClick={() => setLoopEnd("A")} title="Set L₀ (loop start) to the current playhead"
+                    className="px-2 py-1.5 text-[10px] font-mono tracking-wider border border-[#3a3a3a] text-[#aaa] hover:border-[#5a5a5a] hover:text-white rounded">L₀</button>
+                  <button onClick={() => setLoopEnd("B")} title="Set L₁ (loop end) to the current playhead"
+                    className="px-2 py-1.5 text-[10px] font-mono tracking-wider border border-[#3a3a3a] text-[#aaa] hover:border-[#5a5a5a] hover:text-white rounded">L₁</button>
                   {loop && (
                     <>
                       <span className="text-[10px] font-mono text-[#d4a050] px-2">{mmss(loop[0])}–{mmss(loop[1])}</span>
@@ -1292,28 +1371,39 @@ export default function TranscriptionMode() {
                     + Add at {mmss(currentTime)}
                   </button>
                 </div>
-                {checkpoints.length === 0 ? (
-                  <p className="text-[11px] text-[#666]">No checkpoints yet — add markers at musically interesting spots and jump back to them.</p>
-                ) : (
+                {checkpoints.length === 0 ? null : (
                   <>
-                    <p className="text-[10px] text-[#666] mb-1">
-                      Click the timestamp to seek.  <kbd className="text-[#aaa]">Ctrl</kbd>+click two timestamps to loop between them.
-                      {pendingLoopMarks.length === 1 && <span className="text-[#d4a050]"> · One mark selected — Ctrl+click another to set the loop.</span>}
-                    </p>
+                    {pendingLoopMarks.length === 1 && (
+                      <p className="text-[10px] text-[#d4a050] mb-1">
+                        One mark selected — Ctrl+click another timestamp to loop between them.
+                      </p>
+                    )}
                     <ul className="space-y-1">
-                      {checkpoints.map(cp => {
+                      {checkpoints.map((cp, i) => {
                         const isPending = pendingLoopMarks.includes(cp.id);
+                        const letter = ordinalLetter(i);
                         return (
                           <li key={cp.id} className={`flex items-center gap-2 px-2 py-1 rounded border ${isPending ? "border-[#d4a050] bg-[#1a1408]" : "border-[#1a1a1a] bg-[#0a0a0a]"}`}>
+                            <span className="px-1.5 py-0.5 text-[10px] font-bold font-mono text-[#0a0a08] bg-[#e8aa50] rounded shrink-0 min-w-[1.4rem] text-center" title={`Checkpoint ${letter}`}>
+                              {letter}
+                            </span>
                             <button onClick={(e) => onCheckpointTimeClick(cp, e)}
                               title="Click to seek · Ctrl+click two marks to loop"
-                              className={`px-2 py-0.5 text-[10px] font-mono rounded ${isPending ? "border border-[#d4a050] text-[#d4a050] bg-[#2a2010]" : "border border-[#3a2e1a] text-[#d4a050] hover:bg-[#1a1408]"}`}>
+                              className={`px-2 py-0.5 text-[10px] font-mono rounded shrink-0 ${isPending ? "border border-[#d4a050] text-[#d4a050] bg-[#2a2010]" : "border border-[#3a2e1a] text-[#d4a050] hover:bg-[#1a1408]"}`}>
                               {mmss(cp.time)}
                             </button>
                             <input
                               type="text" value={cp.label} onChange={e => renameCheckpoint(cp.id, e.target.value)}
-                              className="flex-1 px-1.5 py-0.5 text-[11px] bg-transparent border border-transparent text-[#ddd] outline-none focus:border-[#2a2a2a] rounded"
+                              placeholder="add a note…"
+                              className="flex-1 px-1.5 py-0.5 text-[11px] bg-transparent border border-transparent text-[#ddd] placeholder-[#555] outline-none focus:border-[#2a2a2a] rounded"
                             />
+                            {/* Anchor the L₀ / L₁ loop endpoints to this checkpoint. */}
+                            <button onClick={() => setLoopFromCheckpoint(cp, "A")}
+                              title="Set this checkpoint as L₀ (loop start)"
+                              className="px-1.5 py-0.5 text-[10px] font-mono rounded shrink-0 border border-[#3a2e1a] text-[#d4a050] hover:bg-[#1a1408]">L₀</button>
+                            <button onClick={() => setLoopFromCheckpoint(cp, "B")}
+                              title="Set this checkpoint as L₁ (loop end)"
+                              className="px-1.5 py-0.5 text-[10px] font-mono rounded shrink-0 border border-[#3a2e1a] text-[#d4a050] hover:bg-[#1a1408]">L₁</button>
                             <button onClick={() => removeCheckpoint(cp.id)} title="Remove"
                               className="px-1 text-[#a66] hover:text-[#d88] text-[12px]">×</button>
                           </li>
