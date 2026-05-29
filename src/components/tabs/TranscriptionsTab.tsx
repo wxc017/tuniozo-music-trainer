@@ -159,6 +159,33 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [audioSeg]);
+  // WaveSurfer.js renders the real waveform as the scrubber's background; our
+  // own overlay (markers + playhead) draws on top.  We share the existing
+  // <audio> via `media:` so seek / play / pause stay routed through audioRef.
+  const wsContainerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!audioSeg || !wsContainerRef.current || !audioRef.current) return;
+    let cancelled = false;
+    let ws: { destroy?: () => void } | null = null;
+    (async () => {
+      try {
+        const mod = await import("wavesurfer.js");
+        if (cancelled || !wsContainerRef.current || !audioRef.current) return;
+        ws = mod.default.create({
+          container: wsContainerRef.current,
+          media: audioRef.current,
+          waveColor: "#3a3a4a",
+          progressColor: "#7a7cd5",
+          cursorColor: "transparent",  // overlay draws its own playhead
+          height: 48,
+          normalize: true,
+          interact: false,             // overlay handles clicks
+          barWidth: 2, barGap: 1, barRadius: 1,
+        });
+      } catch (e) { /* wavesurfer load failed — overlay still works without the waveform */ console.warn(e); }
+    })();
+    return () => { cancelled = true; try { ws?.destroy?.(); } catch { /* */ } };
+  }, [audioSeg?.src]);
 
   // Saved-phrases bookmarking lives in the Transcription player now
   // (see TranscriptionMode.tsx).  Tonal Audiation focuses on the
@@ -658,7 +685,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
         return (
           <div className="mt-2 pt-4">
             <div
-              className="relative h-7 rounded bg-[#161616] border border-[#2a2a2a] cursor-crosshair select-none"
+              className="relative h-12 rounded bg-[#0c0c0c] border border-[#2a2a2a] cursor-crosshair select-none overflow-hidden"
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
@@ -674,6 +701,10 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
                 }
               }}
             >
+              {/* WaveSurfer-rendered waveform sits behind the markers; its
+                  click handling is disabled so all clicks bubble up to the
+                  parent and our own logic runs. */}
+              <div ref={wsContainerRef} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
               {/* Loop region shade (only when loop is set + on) */}
               {loopReady && loop?.on && (() => {
                 const lo = Math.min(loopStart!, loopEnd!);
