@@ -509,7 +509,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
               already heard the real recording).  Notated corpora show notation. */}
           {!isAudioSource(item.source) && (
             <>
-              <div className="bg-[#161616] rounded-md p-2 overflow-x-auto no-scrollbar">
+              <div className="bg-[#161616] rounded-md p-2 overflow-x-hidden">
                 <TranscriptionNotation excerpt={excerpt} showMelody={withMelody} showChords={withChords} showBass={withBass} />
               </div>
               <div className="text-xs text-[#777]">
@@ -619,7 +619,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
              Math.max(checkpoints[selectedCps[0]], checkpoints[selectedCps[1]])] as const
           : null;
         return (
-          <div className="mt-2">
+          <div className="mt-2 pt-4">
             <div
               className="relative h-7 rounded bg-[#161616] border border-[#2a2a2a] cursor-crosshair select-none"
               onClick={(e) => {
@@ -635,6 +635,12 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
                     return [...prev, hitIdx];
                   });
                 } else {
+                  // If a loop is active and the click lands outside its range,
+                  // release the loop so the manual seek isn't immediately
+                  // snapped back by the onTimeUpdate wrap-around.
+                  if (loopRange && (t < loopRange[0] || t > loopRange[1])) {
+                    setSelectedCps([]);
+                  }
                   setCheckpoints(prev => [...prev, t]);
                   const a = audioRef.current; if (a) { try { a.currentTime = t; } catch { /* */ } }
                 }
@@ -648,9 +654,24 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
                 const p = xPct(c);
                 if (p < -0.5 || p > 100.5) return null;
                 const sel = selectedCps.includes(i);
+                // A, B, C, ... AA, AB, ... once we exhaust the alphabet.
+                const label = (() => {
+                  let n = i, s = "";
+                  do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0);
+                  return s;
+                })();
                 return (
                   <div key={i} style={{ position: "absolute", left: `${p}%`, top: 0, width: 2, height: "100%",
-                                        background: sel ? "#9999ee" : "#cd6", marginLeft: -1 }} />
+                                        background: sel ? "#9999ee" : "#cd6", marginLeft: -1 }}>
+                    <span style={{
+                      position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)",
+                      fontSize: 9, fontWeight: 700, letterSpacing: 0.4,
+                      padding: "1px 4px", borderRadius: 3, lineHeight: 1,
+                      background: sel ? "#9999ee" : "#cd6",
+                      color: "#000",
+                      whiteSpace: "nowrap",
+                    }}>{label}</span>
+                  </div>
                 );
               })}
               {(() => {
