@@ -107,9 +107,56 @@ const GROUPING_WEIGHTS_MUSICAL: Record<string, number> = {
   sizeRange: -50,      // smaller range
   hasOnes: -150,       // avoid singles
   isFramed: 60,        // reward symmetry
-  isLopsided: -30,     // penalize asymmetry
+  // Lopsided is no longer a penalty.  Bulgarian, Macedonian, Hindustani,
+  // and jazz odd-meter traditions are built on "lopsided" additive cells
+  // — 4+4+5, 5+5+3, 3+3+5+5 are the *most* musical groupings for those
+  // repertoires, not the least.  Slight positive weight so practising
+  // asymmetric grooves bubbles them up.  Per direct user direction
+  // 2026-05-29 "the whole point for me is to practice musical groupings
+  // for improvising and fill ideas".
+  isLopsided: 20,
   hasEdgeOne: -40,     // avoid edge 1s
 };
+
+// ── Canonical additive cells (world-music rhythm theory) ──────────
+// Sorted-multiset keys → bonus added to the musical score whenever a
+// grouping matches one of these named additive rhythms.  The bonus
+// surfaces these world-canonical cells above generic asymmetric two-
+// size groupings regardless of tier, since they're the actually-
+// repertoire-relevant patterns for improvising / fills.  Keys are
+// sorted ascending so any rotation of the same necklace matches.
+const CANONICAL_CELLS: Record<string, string> = {
+  "2,3":             "jazz odd 5",         // 5/4 (Take Five etc.)
+  "2,2,3":           "rachenitsa / rupak", // 7/8 Bulgarian + 7-beat Hindustani
+  "2,3,3":           "tresillo",           // 8/8 Afro-Cuban (son clave half)
+  "2,2,2,3":         "daichovo",           // 9/8 Bulgarian
+  "2,2,3,3":         "jhaptal",            // 10-beat Hindustani
+  "2,2,2,2,3":       "kopanitsa",          // 11/8 Bulgarian / Macedonian
+  "2,3,3,3":         "sevdalinka 11",      // 11/8 South-Slavic
+  "3,3,3,4":         "aksak 13",           // Turkish / Macedonian
+  "4,4,5":           "aksak 13b",          // shorter aksak 13
+  "3,3,4,4":         "Hindustani 14",
+  "3,4,4,4":         "Macedonian 15",
+  "3,3,5,5":         "aksak 16",           // (user's reference example)
+  "3,3,3,3,4":       "Bulgarian 16",
+  "3,3,3,4,4":       "aksak 17",
+  "4,4,5,5":         "aksak 18",
+};
+
+/** Bonus added to scoreGrouping in "musical" mode when g is a rotation
+ *  of one of CANONICAL_CELLS — additive rhythm theory says these named
+ *  cells are *the* musical patterns for asymmetric repertoires. */
+function canonicalCellBonus(g: number[]): number {
+  const key = [...g].sort((a, b) => a - b).join(",");
+  return CANONICAL_CELLS[key] ? 600 : 0;
+}
+
+/** Look up the world-music name of a grouping's canonical cell, if it
+ *  matches one.  Exported so the UI can label canonical entries. */
+export function canonicalCellName(g: number[]): string | null {
+  const key = [...g].sort((a, b) => a - b).join(",");
+  return CANONICAL_CELLS[key] ?? null;
+}
 
 const GROUPING_WEIGHTS_AWKWARD: Record<string, number> = {
   groupCount: 50,      // more groups
@@ -124,7 +171,12 @@ const GROUPING_WEIGHTS_AWKWARD: Record<string, number> = {
 export function scoreGrouping(g: number[], mode: "musical" | "awkward"): number {
   const features = extractGroupingFeatures(g);
   const weights = mode === "musical" ? GROUPING_WEIGHTS_MUSICAL : GROUPING_WEIGHTS_AWKWARD;
-  return weightedScore(features as unknown as Record<string, number>, weights);
+  const base = weightedScore(features as unknown as Record<string, number>, weights);
+  // Canonical additive cells (tresillo, daichovo, etc.) get a sizeable
+  // bonus in MUSICAL mode so they consistently outrank generic two-size
+  // asymmetric groupings — those named cells are the actually-musical
+  // patterns from world rhythm theory.
+  return mode === "musical" ? base + canonicalCellBonus(g) : base;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
