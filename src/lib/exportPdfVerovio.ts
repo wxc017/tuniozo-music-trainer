@@ -30,6 +30,33 @@ interface ToolkitLike {
 
 let toolkitPromise: Promise<ToolkitLike> | null = null;
 
+/** Insert <print new-system="yes"/> at every Nth measure of each <part> so
+ *  Verovio (with breaks:"encoded") lays the score out N bars per line.
+ *  Falls back to the original XML if parsing fails. */
+function injectSystemBreaks(xml: string, barsPerLine: number): string {
+  if (barsPerLine <= 0) return xml;
+  try {
+    const doc = new DOMParser().parseFromString(xml, "application/xml");
+    if (doc.getElementsByTagName("parsererror").length) return xml;
+    const parts = Array.from(doc.getElementsByTagName("part"));
+    const partsList = parts.length ? parts : [doc.documentElement];
+    for (const part of partsList) {
+      const measures = Array.from(part.children).filter(c => c.tagName === "measure");
+      for (let i = barsPerLine; i < measures.length; i += barsPerLine) {
+        const m = measures[i];
+        const has = Array.from(m.children).some(c => c.tagName === "print" && c.getAttribute("new-system") === "yes");
+        if (has) continue;
+        const print = doc.createElement("print");
+        print.setAttribute("new-system", "yes");
+        m.insertBefore(print, m.firstChild);
+      }
+    }
+    return new XMLSerializer().serializeToString(doc);
+  } catch {
+    return xml;
+  }
+}
+
 async function getToolkit(): Promise<ToolkitLike> {
   if (!toolkitPromise) {
     toolkitPromise = (async () => {
@@ -53,34 +80,44 @@ export async function exportToPdfViaVerovio(
 
   const toolkit = await getToolkit();
 
-  // A4 landscape, in PDF points (1/72 in).
-  const PAGE_W = 842;
-  const PAGE_H = 595;
+  // A4 portrait (per user direction): 595 × 842 pt.  Engraved scores read
+  // naturally as portrait pages, like a printed lead sheet.
+  const PAGE_W = 595;
+  const PAGE_H = 842;
   const MARGIN = 36;
 
-  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   let firstPage = true;
 
   for (const section of sections) {
-    // Verovio page units are 1/10 mm.  A4 landscape = 297 × 210 mm.
+    // Force exactly N bars per line by injecting <print new-system="yes"/>
+    // into the MusicXML at every Nth measure, then telling Verovio to
+    // respect those encoded system breaks.
+    const xml = injectSystemBreaks(section.musicXml, 4);
+
+    // Verovio page units are 1/10 mm.  A4 portrait = 210 × 297 mm.
     // Generous margins inside the engraving so notation breathes; the
     // outer PDF margin is applied separately when we place the SVG.
+    // `header: "none"` suppresses Verovio's engraved title block — we
+    // draw a single document title via doc.text below, so we don't want
+    // a second title baked into the score.
     toolkit.setOptions({
       inputFrom: "musicxml",
       font: "Leipzig",
-      pageWidth: 2970,
-      pageHeight: 2100,
+      pageWidth: 2100,
+      pageHeight: 2970,
       pageMarginLeft: 100,
       pageMarginRight: 100,
       pageMarginTop: 100,
       pageMarginBottom: 100,
       scale: 40,
       adjustPageHeight: true,
-      breaks: "auto",
+      breaks: "encoded",
+      header: "none",
       svgViewBox: true,
     });
 
-    if (!toolkit.loadData(section.musicXml)) {
+    if (!toolkit.loadData(xml)) {
       console.warn("[Verovio] Failed to load MusicXML for section:", section.title);
       continue;
     }
