@@ -851,13 +851,13 @@ export default function App() {
                 const SECTION_BUTTONS: { id: string; label: string; beta?: boolean }[] = [
                   // Always-visible
                   { id: "ear-trainer",          label: "Tonal Audiation" },
-                  { id: "drone-continuum",      label: "Drone Continuum" },
-                  { id: "scalar-exploration",   label: "Scalar Explorations" },
+                  { id: "drone-continuum",      label: "Drone Continuum",      beta: true },
+                  { id: "scalar-exploration",   label: "Scalar Explorations",  beta: true },
                   { id: "lattice",              label: "Harmonic Lattice" },
                   { id: "drum-patterns",        label: "Drum Patterns" },
                   { id: "rhythm-audiation",     label: "Rhythmic Audiation" },
                   { id: "melodic-patterns",     label: "Melodic Patterns",     beta: true },
-                  { id: "chord-chart",          label: "Chord Chart" },
+                  { id: "chord-chart",          label: "Chord Chart",          beta: true },
                   { id: "temperament-explorer", label: "Temperament Explorer" },
                   { id: "note-entry",           label: "Scoring" },
                   // Beta-gated
@@ -1854,7 +1854,8 @@ export default function App() {
           {activeTab === "transcriptions" && (
             <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
               <h2 className="font-semibold mb-4">Transcriptions</h2>
-              <TranscriptionsTab key={tabKey} ensureAudio={ensureAudio} playVol={playVol} />
+              {/* Tonal Audiation: drums are non-tonal, hide them from the DATABASES picker here. */}
+              <TranscriptionsTab key={tabKey} ensureAudio={ensureAudio} playVol={playVol} excludeSources={["drums"]} />
             </div>
           )}
 
