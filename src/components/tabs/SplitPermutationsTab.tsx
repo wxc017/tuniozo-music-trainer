@@ -6,10 +6,10 @@
 // persists session-to-session per permutation string and starts as red
 // (haven't got it yet) by default.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLS } from "@/lib/storage";
 import { allMusicalGroupings } from "@/lib/groupingSelector";
-import { canonicalCellName } from "@/lib/musicalScoring";
+import { canonicalCellName, CANONICAL_CELL_INFO } from "@/lib/musicalScoring";
 
 // Default for every permutation that hasn't been touched yet is "red"
 // ("haven't got it") per direct user direction "have everything
@@ -34,6 +34,8 @@ export default function SplitPermutationsTab() {
     "lt_sp_visible",
     { red: true, yellow: true, green: true },
   );
+  // Which canonical-cell popup is open (null = none).
+  const [popupCell, setPopupCell] = useState<string | null>(null);
 
   const cycleStatus = (key: string) => {
     setStatus(prev => {
@@ -139,9 +141,12 @@ export default function SplitPermutationsTab() {
                   <span className="flex items-baseline gap-2 min-w-0">
                     <span className="font-mono text-sm text-[#ddd] tracking-wide">{key}</span>
                     {cell && (
-                      <span className="text-[10px] italic text-[#888] truncate" title={`Canonical additive cell: ${cell}`}>
+                      <button
+                        onClick={() => setPopupCell(cell)}
+                        title="Click for description"
+                        className="text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded border border-[#3a2e1a] bg-[#1a1408] text-[#d4a050] hover:bg-[#2a2010] hover:border-[#5a4a20] transition-colors cursor-pointer">
                         {cell}
-                      </span>
+                      </button>
                     )}
                   </span>
                   <button
@@ -157,6 +162,39 @@ export default function SplitPermutationsTab() {
           </div>
         )}
       </section>
+
+      {/* ── Canonical-cell popup ─────────────────────────────────── */}
+      {popupCell && (() => {
+        const info = CANONICAL_CELL_INFO[popupCell];
+        if (!info) return null;
+        return (
+          <div
+            onClick={() => setPopupCell(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              className="max-w-md w-full bg-[#0e0e0e] border border-[#3a2e1a] rounded-lg p-5 shadow-xl"
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <h4 className="text-base font-semibold text-[#d4a050]">{popupCell}</h4>
+                  <p className="text-[11px] text-[#888] font-mono mt-0.5">
+                    {info.multiset} · {info.pulses} pulses
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPopupCell(null)}
+                  className="text-[#888] hover:text-white text-lg leading-none px-1"
+                  title="Close">
+                  ✕
+                </button>
+              </div>
+              <p className="text-sm text-[#ccc] leading-relaxed">{info.desc}</p>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

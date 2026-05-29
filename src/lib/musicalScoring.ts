@@ -126,21 +126,42 @@ const GROUPING_WEIGHTS_MUSICAL: Record<string, number> = {
 // repertoire-relevant patterns for improvising / fills.  Keys are
 // sorted ascending so any rotation of the same necklace matches.
 const CANONICAL_CELLS: Record<string, string> = {
-  "2,3":             "jazz odd 5",         // 5/4 (Take Five etc.)
-  "2,2,3":           "rachenitsa / rupak", // 7/8 Bulgarian + 7-beat Hindustani
-  "2,3,3":           "tresillo",           // 8/8 Afro-Cuban (son clave half)
-  "2,2,2,3":         "daichovo",           // 9/8 Bulgarian
-  "2,2,3,3":         "jhaptal",            // 10-beat Hindustani
-  "2,2,2,2,3":       "kopanitsa",          // 11/8 Bulgarian / Macedonian
-  "2,3,3,3":         "sevdalinka 11",      // 11/8 South-Slavic
-  "3,3,3,4":         "aksak 13",           // Turkish / Macedonian
-  "4,4,5":           "aksak 13b",          // shorter aksak 13
+  "2,3":             "Jazz odd 5",
+  "2,2,3":           "Rachenitsa / Rupak",
+  "2,3,3":           "Tresillo",
+  "2,2,2,3":         "Daichovo",
+  "2,2,3,3":         "Jhaptal",
+  "2,2,2,2,3":       "Kopanitsa",
+  "2,3,3,3":         "Sevdalinka 11",
+  "3,3,3,4":         "Aksak 13",
+  "4,4,5":           "Aksak 13b",
   "3,3,4,4":         "Hindustani 14",
   "3,4,4,4":         "Macedonian 15",
-  "3,3,5,5":         "aksak 16",           // (user's reference example)
+  "3,3,5,5":         "Aksak 16",
   "3,3,3,3,4":       "Bulgarian 16",
-  "3,3,3,4,4":       "aksak 17",
-  "4,4,5,5":         "aksak 18",
+  "3,3,3,4,4":       "Aksak 17",
+  "4,4,5,5":         "Aksak 18",
+};
+
+// Short descriptions surfaced in the Split Permutations popup so the
+// user can learn what each named additive cell is.  Tradition, typical
+// grouping, and one-sentence cultural / musical context.
+export const CANONICAL_CELL_INFO: Record<string, { multiset: string; pulses: number; desc: string }> = {
+  "Jazz odd 5":          { multiset: "2+3 or 3+2",       pulses: 5,  desc: "5-pulse asymmetric grouping. The 5/4 of Dave Brubeck's 'Take Five' and the foundation of most modern jazz 5-meter. Also common in Balkan and Greek music." },
+  "Rachenitsa / Rupak":  { multiset: "2+2+3 (and rotations)", pulses: 7,  desc: "The Bulgarian rachenitsa dance (2+2+3 / 2+3+2 / 3+2+2) and the Hindustani rupak tal (3+2+2). One of the most universal 7-beat patterns across the Balkans and South Asia — fast and lifting." },
+  "Tresillo":            { multiset: "3+3+2 (and rotations)", pulses: 8,  desc: "The 'three-stroke pattern' — half of the Afro-Cuban son clave, the rhythmic DNA of habanera, tango, bossa nova, and half of swing's triplet feel. Universally present across the African diaspora." },
+  "Daichovo":            { multiset: "2+2+2+3 (and rotations)", pulses: 9,  desc: "Bulgarian 9/8 — the most common 9-pulse aksak. Three 2-pulse cells with a 3-pulse 'limp' at the end. Defines an entire family of Bulgarian dance music." },
+  "Jhaptal":             { multiset: "2+3+2+3 (and rotations)", pulses: 10, desc: "Hindustani 10-beat tal — one of the foundational classical Indian rhythm cycles, used in khyal and instrumental music. The 2+3 alternation gives it a wave-like asymmetric pulse." },
+  "Kopanitsa":           { multiset: "2+2+3+2+2 (and rotations)", pulses: 11, desc: "Bulgarian 11/8 — a classic Bulgarian wedding-band dance meter, sometimes called gankino. The single 3 in the middle is the 'limp' that defines the groove." },
+  "Sevdalinka 11":       { multiset: "2+3+3+3 (and rotations)", pulses: 11, desc: "South-Slavic 11/8 — the meter of much Bosnian sevdalinka song. A different feel from kopanitsa: the single 2 at the start gives it an upbeat lift before three long 3-pulse cells." },
+  "Aksak 13":            { multiset: "3+3+3+4 (and rotations)", pulses: 13, desc: "Turkish/Macedonian 13-pulse aksak. A long limp; the trailing 4 creates a built-in cadence point. Found in some Turkish usul and Macedonian krivo dances." },
+  "Aksak 13b":           { multiset: "4+4+5 (and rotations)",   pulses: 13, desc: "A shorter, three-group reading of the same 13-pulse cycle. More compact but heavier-footed than 3+3+3+4. The 5 at the end is the asymmetry-bearing cell." },
+  "Hindustani 14":       { multiset: "3+3+4+4 (and rotations)", pulses: 14, desc: "14-beat tal used in classical North Indian music. Close cousins include jhampa tal and dhamar; the 3+3 / 4+4 pairing gives it a strong two-phrase architecture." },
+  "Macedonian 15":       { multiset: "3+4+4+4 (and rotations)", pulses: 15, desc: "15-pulse Macedonian aksak — close to the bucimis dance pattern. The single 3 at the start creates an off-balance lift before three steady 4-pulse cells." },
+  "Aksak 16":            { multiset: "3+3+5+5 (and rotations)", pulses: 16, desc: "Broad aksak — 16 pulses split into 3-pulse and 5-pulse cells. Common in Macedonian and wider Balkan music; the 5-pulse cells give it a long-line asymmetric feel that's hard to capture in Western notation." },
+  "Bulgarian 16":        { multiset: "3+3+3+3+4 (and rotations)", pulses: 16, desc: "16-pulse aksak — four 3-pulse cells with a 4-pulse cadence. Found in Bulgarian and Macedonian dance music; the trailing 4 is the resolution." },
+  "Aksak 17":            { multiset: "3+3+3+4+4 (and rotations)", pulses: 17, desc: "17-pulse aksak — two cadential 4-pulse cells following a 3+3+3 setup. A longer, breathier limp than the shorter aksaks." },
+  "Aksak 18":            { multiset: "4+4+5+5 (and rotations)", pulses: 18, desc: "Broad aksak — 18 pulses split into 4s and 5s. A wider, slower aksak feel than the 16-pulse version; the doubled 5s carry the asymmetry." },
 };
 
 /** Bonus added to scoreGrouping in "musical" mode when g is a rotation
