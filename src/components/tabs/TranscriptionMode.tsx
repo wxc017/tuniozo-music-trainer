@@ -1293,7 +1293,7 @@ export default function TranscriptionMode() {
                   </button>
                 </div>
                 {checkpoints.length === 0 ? (
-                  <p className="text-[11px] text-[#666]"></p>
+                  <p className="text-[11px] text-[#666]">No checkpoints yet — add markers at musically interesting spots and jump back to them.</p>
                 ) : (
                   <>
                     <p className="text-[10px] text-[#666] mb-1">
