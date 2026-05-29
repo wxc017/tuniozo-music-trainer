@@ -148,14 +148,19 @@ function siblingStemsBase(audioUrl: string): string | null {
 
 /** Check whether a stems folder exists by HEAD-ing each stem.  Returns
  *  a map of the stems that are present so the player can render mute
- *  buttons only for the available ones. */
+ *  buttons only for the available ones.  Verifies Content-Type so the
+ *  Vite dev server's SPA index.html fallback (200 OK + text/html for
+ *  unknown routes) doesn't get misread as audio. */
 async function probeStems(stemsBase: string): Promise<Partial<Record<StemName, string>>> {
   const result: Partial<Record<StemName, string>> = {};
   await Promise.all(STEM_NAMES.map(async name => {
     const url = `${stemsBase}/${name}.wav`;
     try {
       const r = await fetch(url, { method: "HEAD" });
-      if (r.ok) result[name] = url;
+      if (!r.ok) return;
+      const ct = r.headers.get("content-type") ?? "";
+      if (!/audio|application\/octet-stream|wav/i.test(ct)) return;
+      result[name] = url;
     } catch { /* not present */ }
   }));
   return result;
@@ -530,8 +535,11 @@ export default function TranscriptionMode() {
       barGap: 0,
       barRadius: 1,
       normalize: true,
+      // autoScroll keeps the playhead in view while playing; autoCenter
+      // is the aggressive one that re-centers on every redraw and can
+      // feedback-loop with zoom changes.  Leave it off.
       autoScroll: true,
-      autoCenter: true,
+      autoCenter: false,
       plugins,
     });
     wsRef.current = ws;
@@ -569,14 +577,20 @@ export default function TranscriptionMode() {
   }, [speed]);
 
   // Apply a fixed zoom (px/s) to the main waveform as soon as it
-  // knows its duration.  ~12s visible feels right for transcription.
+  // knows its duration.  ~30s visible gives enough detail to read
+  // phrasing without making a 6-minute song unmanageably wide.  We
+  // run this once per track-load, deferred to the next frame so the
+  // container has its final width after the layout settles.
   useEffect(() => {
     const ws = wsRef.current;
     if (!ws || duration <= 0) return;
-    const containerWidth = containerRef.current?.clientWidth ?? 800;
-    const visibleSeconds = 12;
-    const pxPerSec = containerWidth / visibleSeconds;
-    try { ws.zoom(pxPerSec); } catch { /* ignore */ }
+    const raf = requestAnimationFrame(() => {
+      const containerWidth = containerRef.current?.clientWidth ?? 800;
+      const visibleSeconds = 30;
+      const pxPerSec = Math.max(20, containerWidth / visibleSeconds);
+      try { ws.zoom(pxPerSec); } catch { /* ignore */ }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [duration, track?.id]);
 
   // ── Stem playback wiring ─────────────────────────────────────
@@ -850,7 +864,7 @@ export default function TranscriptionMode() {
   // ── Render ────────────────────────────────────────────────────
   return (
     <div className="space-y-3" onDragOver={onDragOver} onDrop={onDrop}>
-      <div className="grid grid-cols-[320px_1fr] gap-4">
+      <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-4">
         {/* ── LEFT: source picker ───────────────────────────────── */}
         <aside className="bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg overflow-hidden flex flex-col" style={{ minHeight: 520 }}>
           <div className="flex border-b border-[#1a1a1a]">
@@ -1055,7 +1069,7 @@ export default function TranscriptionMode() {
         </aside>
 
         {/* ── RIGHT: player ───────────────────────────────────── */}
-        <section className="bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg p-4 flex flex-col gap-4 min-h-[520px]">
+        <section className="bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg p-4 flex flex-col gap-4 min-h-[520px] min-w-0 overflow-hidden">
           {!track ? (
             <div className="flex-1 flex items-center justify-center text-center text-[#666] text-xs leading-relaxed">
               <div className="max-w-sm">
