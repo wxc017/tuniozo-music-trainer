@@ -19,6 +19,7 @@ import RhythmicAudiationTab from "@/components/tabs/RhythmicAudiationTab";
 
 import PresetBar from "@/components/PresetBar";
 import DrumPatterns from "@/components/DrumPatterns";
+import SplitPermutationsTab from "@/components/tabs/SplitPermutationsTab";
 import ChordChart from "@/components/ChordChart";
 import Konnakol from "@/components/Konnakol";
 import VocalPercussion from "@/components/VocalPercussion";
@@ -852,10 +853,11 @@ export default function App() {
                   // Always-visible
                   { id: "ear-trainer",          label: "Tonal Audiation" },
                   { id: "drone-continuum",      label: "Drone Continuum",      beta: true },
-                  { id: "scalar-exploration",   label: "Scalar Explorations",  beta: true },
+                  { id: "scalar-exploration",   label: "Scalar Explorations" },
                   { id: "lattice",              label: "Harmonic Lattice" },
                   { id: "drum-patterns",        label: "Drum Patterns" },
-                  { id: "rhythm-audiation",     label: "Rhythmic Audiation" },
+                  { id: "split-permutations",   label: "Split Permutations" },
+                  { id: "rhythm-audiation",     label: "Rhythmic Audiation",   beta: true },
                   { id: "melodic-patterns",     label: "Melodic Patterns",     beta: true },
                   { id: "chord-chart",          label: "Chord Chart",          beta: true },
                   { id: "temperament-explorer", label: "Temperament Explorer" },
@@ -1262,6 +1264,7 @@ export default function App() {
             startMetronome={metronome.start}
             betaPlayRotation={betaPlayRotation}
             betaTransform={betaTransform}
+            betaMode={betaMode}
             restoreTrigger={drumRestoreTrigger}
           />
         </div>
@@ -1273,6 +1276,16 @@ export default function App() {
           <div className="max-w-3xl mx-auto">
             <h2 className="text-sm font-semibold text-[#888] uppercase tracking-widest mb-4">Rhythmic Audiation</h2>
             <RhythmicAudiationTab ensureAudio={ensureAudio} playVol={playVol} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Split Permutations ── */}
+      {section === "split-permutations" && (
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="max-w-3xl mx-auto bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+            <h2 className="font-semibold mb-4">Split Permutations</h2>
+            <SplitPermutationsTab />
           </div>
         </div>
       )}
