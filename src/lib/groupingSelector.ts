@@ -238,6 +238,21 @@ export function generateAndSelectGrouping(
   return selectGrouping(candidates, mode, previousGroupings);
 }
 
+/**
+ * Enumerate every "musical" grouping of n pulses (tiers 1-3, never
+ * class D / awkward leftovers).  Used by the Split Permutations mode to
+ * show the full list of pedagogically useful subdivisions for a given
+ * pulse count.  Sorted by tier ascending then lexicographically.
+ */
+export function allMusicalGroupings(n: number, maxPart: number = Math.min(n, 8)): { grouping: number[]; tier: Tier }[] {
+  const candidates = allCompositions(n, maxPart);
+  const classified = classifyCandidates(candidates);
+  const musical = classified.filter(c => c.tier <= 3);
+  // Stable sort: tier first, then by joined string for deterministic order.
+  musical.sort((a, b) => a.tier - b.tier || groupingKey(a.grouping).localeCompare(groupingKey(b.grouping)));
+  return musical.map(c => ({ grouping: c.grouping, tier: c.tier }));
+}
+
 /** Generate all ordered integer compositions of n with parts in 1..maxPart */
 function allCompositions(n: number, maxPart: number): number[][] {
   const results: number[][] = [];
