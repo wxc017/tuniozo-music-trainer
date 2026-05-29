@@ -16,18 +16,6 @@ import { allMusicalGroupings } from "@/lib/groupingSelector";
 type SplitStatus = "red" | "yellow" | "green";
 const DEFAULT_STATUS: SplitStatus = "red";
 
-const TIER_LABEL: Record<number, string> = {
-  1: "Most musical · same-size groups",
-  2: "Very musical · repeated / framed shapes",
-  3: "Musical · two sizes",
-};
-
-const TIER_ACCENT: Record<number, string> = {
-  1: "#5acc7a",
-  2: "#c8aa50",
-  3: "#9999ee",
-};
-
 const STATUS_PALETTE: Record<SplitStatus, { bg: string; border: string; color: string; label: string; name: string }> = {
   red:    { bg: "#1a0a0a", border: "#5a2a2a", color: "#cc5a5a", label: "✕", name: "Haven't got it" },
   yellow: { bg: "#1a1a08", border: "#5a5a2a", color: "#c8c050", label: "■", name: "Working on it" },
@@ -60,22 +48,19 @@ export default function SplitPermutationsTab() {
     return allMusicalGroupings(pulses, cap);
   }, [pulses, maxPart]);
 
-  // Bucket the already-sorted groupings by tier so they read as grouped
-  // sections — "most musical" first, then "very musical", etc.  Apply
-  // the status-visibility filter at the same time.
-  const byTier = useMemo(() => {
-    const map = new Map<number, string[]>();
+  // Flat list (no tier grouping) — `allMusicalGroupings` already sorts
+  // by musical score, so we just apply the status-visibility filter.
+  const shownKeys = useMemo(() => {
+    const out: string[] = [];
     for (const g of groupings) {
       const key = g.grouping.join("+");
       const st = status[key] ?? DEFAULT_STATUS;
-      if (!visible[st]) continue;
-      if (!map.has(g.tier)) map.set(g.tier, []);
-      map.get(g.tier)!.push(key);
+      if (visible[st]) out.push(key);
     }
-    return [...map.entries()].sort((a, b) => a[0] - b[0]);
+    return out;
   }, [groupings, status, visible]);
 
-  const totalShown = byTier.reduce((sum, [, keys]) => sum + keys.length, 0);
+  const totalShown = shownKeys.length;
 
   return (
     <div className="space-y-6">
@@ -113,7 +98,7 @@ export default function SplitPermutationsTab() {
           </span>
         </div>
 
-        {/* Status filter toggles. */}
+        {/* Status filter toggles — colour swatches only, no name labels. */}
         <div className="flex items-center gap-2 mt-3">
           <span className="text-[10px] text-[#888] tracking-wider">Show</span>
           {(["red", "yellow", "green"] as SplitStatus[]).map(s => {
@@ -123,20 +108,19 @@ export default function SplitPermutationsTab() {
               <button key={s}
                 onClick={() => setVisible(prev => ({ ...prev, [s]: !prev[s] }))}
                 title={`Toggle ${p.name}`}
-                className="flex items-center gap-1.5 px-2 py-1 rounded border text-xs transition-opacity"
+                className="w-8 h-7 rounded border inline-flex items-center justify-center text-sm font-bold leading-none transition-opacity"
                 style={{
                   background: p.bg, borderColor: p.border, color: p.color,
                   opacity: on ? 1 : 0.3,
                 }}>
-                <span className="font-bold">{p.label}</span>
-                <span className="text-[10px]">{p.name}</span>
+                {p.label}
               </button>
             );
           })}
         </div>
       </section>
 
-      {/* ── Section 2: Permutations (grouped by musicality tier) ─── */}
+      {/* ── Section 2: Permutations (flat list, sorted by musicality) ── */}
       <section>
         <h3 className="text-xs font-semibold tracking-widest text-[#d4a050] uppercase mb-3">Permutations</h3>
         {groupings.length === 0 ? (
@@ -144,36 +128,23 @@ export default function SplitPermutationsTab() {
         ) : totalShown === 0 ? (
           <p className="text-xs text-[#666]">No permutations match the current status filter.</p>
         ) : (
-          <div className="space-y-4">
-            {byTier.map(([tier, keys]) => (
-              <div key={tier}>
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: TIER_ACCENT[tier] }}>
-                    Tier {tier}
-                  </span>
-                  <span className="text-[10px] text-[#666]">{TIER_LABEL[tier]}</span>
-                  <span className="text-[10px] text-[#444] ml-auto">{keys.length}</span>
+          <div className="flex flex-col gap-1">
+            {shownKeys.map(key => {
+              const s = status[key] ?? DEFAULT_STATUS;
+              const p = STATUS_PALETTE[s];
+              return (
+                <div key={key} className="flex items-center justify-between px-3 py-1.5 rounded border border-[#1a1a1a] bg-[#0e0e0e]">
+                  <span className="font-mono text-sm text-[#ddd] tracking-wide">{key}</span>
+                  <button
+                    onClick={() => cycleStatus(key)}
+                    title={`Status: ${p.name} — click to cycle (red ✕ → yellow ■ → green ✓)`}
+                    className="w-8 h-7 rounded inline-flex items-center justify-center text-sm font-bold leading-none cursor-pointer"
+                    style={{ background: p.bg, border: `1px solid ${p.border}`, color: p.color }}>
+                    {p.label}
+                  </button>
                 </div>
-                <div className="flex flex-col gap-1">
-                  {keys.map(key => {
-                    const s = status[key] ?? DEFAULT_STATUS;
-                    const p = STATUS_PALETTE[s];
-                    return (
-                      <div key={key} className="flex items-center justify-between px-3 py-1.5 rounded border border-[#1a1a1a] bg-[#0e0e0e]">
-                        <span className="font-mono text-sm text-[#ddd] tracking-wide">{key}</span>
-                        <button
-                          onClick={() => cycleStatus(key)}
-                          title={`Status: ${p.name} — click to cycle (red ✕ → yellow ■ → green ✓)`}
-                          className="w-8 h-7 rounded inline-flex items-center justify-center text-sm font-bold leading-none cursor-pointer"
-                          style={{ background: p.bg, border: `1px solid ${p.border}`, color: p.color }}>
-                          {p.label}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

@@ -239,17 +239,27 @@ export function generateAndSelectGrouping(
 }
 
 /**
- * Enumerate every "musical" grouping of n pulses (tiers 1-3, never
- * class D / awkward leftovers).  Used by the Split Permutations mode to
- * show the full list of pedagogically useful subdivisions for a given
- * pulse count.  Sorted by tier ascending then lexicographically.
+ * Enumerate every "musical" grouping of n pulses.  Excludes same-size
+ * groupings (class A / tier 1) entirely — per user direction "these are
+ * not musical, its boring" pointing at 8+8, 4+4+4+4, 2+2…  Keeps the
+ * asymmetric tiers (2 = strong-shape Class B like 3+3+5+5; 3 = generic
+ * two-size Class B like 5+3).  Sorted by musical score within the kept
+ * tiers so the most idiomatic shapes come first.
  */
 export function allMusicalGroupings(n: number, maxPart: number = Math.min(n, 8)): { grouping: number[]; tier: Tier }[] {
   const candidates = allCompositions(n, maxPart);
   const classified = classifyCandidates(candidates);
-  const musical = classified.filter(c => c.tier <= 3);
-  // Stable sort: tier first, then by joined string for deterministic order.
-  musical.sort((a, b) => a.tier - b.tier || groupingKey(a.grouping).localeCompare(groupingKey(b.grouping)));
+  // Drop tier 1 (boring same-size — user explicitly rejected 8+8, 4+4+4+4,
+  // 2+2…) and tier 4+/D (genuinely awkward).  Keep tier 2 (strong-shape
+  // Class B like 3+3+5+5) and tier 3 (generic two-size Class B).
+  const musical = classified.filter(c => c.tier === 2 || c.tier === 3);
+  // Tier 2 first (strong-shape — most idiomatic).  Within each tier, fewer
+  // groups first (simpler / clearer pulse), then lex for stability.
+  musical.sort((a, b) =>
+    a.tier - b.tier ||
+    a.grouping.length - b.grouping.length ||
+    groupingKey(a.grouping).localeCompare(groupingKey(b.grouping)),
+  );
   return musical.map(c => ({ grouping: c.grouping, tier: c.tier }));
 }
 
