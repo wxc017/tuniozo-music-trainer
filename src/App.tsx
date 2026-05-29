@@ -20,6 +20,7 @@ import RhythmicAudiationTab from "@/components/tabs/RhythmicAudiationTab";
 import PresetBar from "@/components/PresetBar";
 import DrumPatterns from "@/components/DrumPatterns";
 import SplitPermutationsTab from "@/components/tabs/SplitPermutationsTab";
+import TranscriptionMode from "@/components/tabs/TranscriptionMode";
 import ChordChart from "@/components/ChordChart";
 import Konnakol from "@/components/Konnakol";
 import VocalPercussion from "@/components/VocalPercussion";
@@ -852,6 +853,7 @@ export default function App() {
                 const SECTION_BUTTONS: { id: string; label: string; beta?: boolean }[] = [
                   // Always-visible
                   { id: "ear-trainer",          label: "Tonal Audiation" },
+                  { id: "transcription",        label: "Transcription" },
                   { id: "drone-continuum",      label: "Drone Continuum",      beta: true },
                   { id: "scalar-exploration",   label: "Scalar Explorations" },
                   { id: "lattice",              label: "Harmonic Lattice" },
@@ -1286,6 +1288,16 @@ export default function App() {
           <div className="max-w-3xl mx-auto bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
             <h2 className="font-semibold mb-4">Split Permutations</h2>
             <SplitPermutationsTab />
+          </div>
+        </div>
+      )}
+
+      {/* ── Transcription ── */}
+      {section === "transcription" && (
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-sm font-semibold text-[#888] uppercase tracking-widest mb-4">Transcription</h2>
+            <TranscriptionMode />
           </div>
         </div>
       )}

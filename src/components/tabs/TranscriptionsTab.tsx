@@ -116,24 +116,9 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
   const clipPadRef = useRef({ before: 0, after: 0 });
   const [clipPad, setClipPad] = useState({ before: 0, after: 0 });
 
-  // ── Saved phrases ─────────────────────────────────────────────────
-  // Bookmark the current excerpt to come back to later.  Stored in LS as
-  // identifiers only (id + source + startBar + bars); the TxItem is
-  // re-fetched on demand via loadItemById, so saves survive page reloads
-  // and corpus rebuilds (a stale saved entry whose id no longer exists
-  // surfaces an error on play instead of crashing).
-  interface SavedPhrase {
-    sid: string;          // unique local id for list keys / remove
-    itemId: string;
-    source: TxSource;
-    startBar: number;
-    bars: number;
-    title: string;        // snapshot of TxItem.title (for the list label)
-    artist?: string;
-    label: string;        // optional user note ("" until edited)
-    savedAt: number;
-  }
-  const [savedPhrases, setSavedPhrases] = useLS<SavedPhrase[]>("lt_tx_saved", []);
+  // Saved-phrases bookmarking lives in the Transcription player now
+  // (see TranscriptionMode.tsx).  Tonal Audiation focuses on the
+  // ear-training drill cycle; no per-excerpt bookmarks here.
 
   /** Play a local-audio segment [start,end].  Seeking into a large/VBR mp3 is
    *  unreliable if you play() before the seek lands, so: wait for metadata, set
@@ -317,47 +302,6 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
   const stop = () => { playToken.current++; clearEndTimer(); stopPlayback(); audioRef.current?.pause(); setBusy(false); setStatus(""); };
 
   // ── Saved phrases: save / play / rename / remove ──────────────────
-  const saveCurrent = useCallback(() => {
-    if (!item || !excerpt) return;
-    const itemId = excerpt.item.id;
-    const startBar = excerpt.startBar;
-    const bars = excerpt.bars;
-    // Dedupe: same id + window already saved → no-op.
-    if (savedPhrases.some(p => p.itemId === itemId && p.startBar === startBar && p.bars === bars)) return;
-    const entry: SavedPhrase = {
-      sid: `${itemId}|${startBar}|${bars}|${Date.now()}`,
-      itemId, source: excerpt.item.source, startBar, bars,
-      title: excerpt.item.title, artist: excerpt.item.artist,
-      label: "", savedAt: Date.now(),
-    };
-    setSavedPhrases(prev => [entry, ...prev]);
-  }, [item, excerpt, savedPhrases, setSavedPhrases]);
-
-  const playSaved = useCallback(async (p: SavedPhrase) => {
-    setStatus("Loading saved phrase…");
-    const it = await loadItemById(p.itemId, p.source);
-    if (!it) { setStatus("Saved phrase not found in the current corpus."); return; }
-    const ex = isAudioSource(it.source) ? fullExcerpt(it) : sliceExcerpt(it, p.startBar, p.bars);
-    setItem(it);
-    setExcerpt(ex);
-    setShowAnswer(false);
-    clipPadRef.current = { before: 0, after: 0 }; setClipPad({ before: 0, after: 0 });
-    await playGivenExcerpt(it, ex, false);
-  }, [playGivenExcerpt]);
-
-  const removeSaved = useCallback((sid: string) => {
-    setSavedPhrases(prev => prev.filter(p => p.sid !== sid));
-  }, [setSavedPhrases]);
-
-  const renameSaved = useCallback((sid: string, label: string) => {
-    setSavedPhrases(prev => prev.map(p => p.sid === sid ? { ...p, label } : p));
-  }, [setSavedPhrases]);
-
-  // True when the current excerpt is already in the saved list (drives Save button affordance).
-  const currentIsSaved = !!(item && excerpt && savedPhrases.some(p =>
-    p.itemId === excerpt.item.id && p.startBar === excerpt.startBar && p.bars === excerpt.bars
-  ));
-
   // Momentary tonic drone (root+5th+octave) so the ear can orient to the key.
   const drone = useCallback(async () => {
     if (!item) return;
@@ -641,50 +585,10 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
           className="px-4 py-2 rounded-md text-sm font-medium border border-[#333] bg-[#1a1a1a] text-[#bbb] hover:border-[#555] transition-colors disabled:opacity-40">
           Show Answer
         </button>
-        {/* Bookmark the current excerpt to the Saved Phrases list below.  Disabled
-            when there's no excerpt to save, or when this exact window is already saved. */}
-        <button onClick={saveCurrent} disabled={!excerpt || currentIsSaved}
-          title={currentIsSaved ? "This excerpt is already in your Saved Phrases" : "Save this excerpt to review later"}
-          className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors disabled:opacity-40 ${
-            currentIsSaved
-              ? "border-[#aa8] bg-[#2a2614] text-[#dca]"
-              : "border-[#333] bg-[#1a1a1a] text-[#bbb] hover:border-[#aa8]"
-          }`}>
-          {currentIsSaved ? "★ Saved" : "★ Save"}
-        </button>
+        {/* Save lives in the Transcription player now ("☆" in the
+            player header).  Tonal Audiation is for ear-training drills,
+            not bookmarking — keep the two surfaces focused. */}
       </div>
-
-      {/* ── Saved phrases ───────────────────────────────────────────── */}
-      {savedPhrases.length > 0 && (
-        <OptSection title={`SAVED PHRASES (${savedPhrases.length})`} accent="#d4b15a" defaultOpen={false}>
-          <div className="space-y-1.5">
-            {savedPhrases.map(p => (
-              <div key={p.sid} className="flex items-center gap-2 px-2 py-1.5 rounded border border-[#222] bg-[#0e0e0e] hover:border-[#333]">
-                <button onClick={() => playSaved(p)} disabled={busy}
-                  className="px-3 py-1 rounded text-xs font-medium bg-[#1a1a1a] border border-[#333] text-[#bbb] hover:border-[#7173e6] hover:text-white disabled:opacity-40 transition-colors">
-                  ▶
-                </button>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-[#ddd] truncate" title={`${prettyTitle(p.title)}${p.artist ? " — " + p.artist : ""}`}>
-                    {prettyTitle(p.title)}{p.artist ? <span className="text-[#888]"> — {p.artist}</span> : null}
-                  </div>
-                  <div className="text-[10px] text-[#777]">
-                    {SOURCE_LABEL[p.source]} · bars {p.startBar + 1}–{p.startBar + p.bars}
-                  </div>
-                </div>
-                <input type="text" value={p.label} onChange={e => renameSaved(p.sid, e.target.value)}
-                  placeholder="add a note…"
-                  className="w-40 px-2 py-1 text-[11px] rounded bg-[#0a0a0a] border border-[#222] text-[#bbb] placeholder-[#555] focus:outline-none focus:border-[#555]"
-                />
-                <button onClick={() => removeSaved(p.sid)} title="Remove from Saved Phrases"
-                  className="px-2 py-1 rounded text-xs text-[#a66] hover:text-[#d88] hover:bg-[#2a1414] transition-colors">
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        </OptSection>
-      )}
 
       {/* Blues clip playback uses a LOCAL file, driven by the transport buttons
           (Play / Replay / Full song / Stop) — the element is always hidden (no
