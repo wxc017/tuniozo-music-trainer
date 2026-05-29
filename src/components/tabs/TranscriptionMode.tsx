@@ -555,6 +555,11 @@ export default function TranscriptionMode() {
       normalize: true,
       minPxPerSec: FIXED_MIN_PX_PER_SEC,
       fillParent: false,
+      // Click anywhere on the waveform to seek; drag the cursor to
+      // scrub.  (interact defaults to true but we set it explicitly so
+      // it's obvious in the diff this is a contract.)
+      interact: true,
+      dragToSeek: true,
       // autoScroll slides the view as the playhead crosses the visible
       // edge.  autoCenter would actively re-center on every redraw and
       // was the source of an earlier feedback loop; autoScroll alone
@@ -710,10 +715,13 @@ export default function TranscriptionMode() {
     const regions = regionsRef.current; const ws = wsRef.current;
     if (!regions || !ws || duration <= 0) return;
 
-    const clickHandlers = new Map<Region, (e: MouseEvent) => void>();
-    const onRegionClick = (region: Region, e: MouseEvent) => {
-      e.stopPropagation();
-      // Loop region (id starts with "loop:") shouldn't seek — only checkpoints do.
+    const onRegionClick = (region: Region) => {
+      // ONLY checkpoint markers consume the click and seek to their
+      // own time.  Loop overlays are click-through (pointer-events:
+      // none on their DOM element below), so we shouldn't see their
+      // events here at all — and crucially we no longer stop
+      // propagation on every region click, so WaveSurfer's own
+      // click-to-seek keeps working on the rest of the waveform.
       if (region.id.startsWith("cp:") && audioRef.current) {
         audioRef.current.currentTime = region.start;
       }
@@ -724,19 +732,22 @@ export default function TranscriptionMode() {
     regions.clearRegions();
     // A/B loop region: amber-tinted band sitting under the waveform
     // (matches Anytune's selection highlight).  Add this FIRST so the
-    // checkpoint markers paint on top of it.
+    // checkpoint markers paint on top of it.  The overlay itself is
+    // click-through so users can still click inside the loop window
+    // to seek; only the small A/B flags swallow their own clicks.
     if (loop) {
-      regions.addRegion({
+      const loopBand = regions.addRegion({
         id: "loop:ab", start: loop[0], end: loop[1],
         color: "rgba(232,170,80,0.28)", drag: false, resize: false,
       });
+      if (loopBand.element) loopBand.element.style.pointerEvents = "none";
       const aFlag = document.createElement("div");
       aFlag.textContent = "A";
-      aFlag.style.cssText = "font-size:11px;color:#0a0a08;background:#d4a050;padding:2px 8px;border-radius:0 3px 3px 0;font-weight:700;font-family:monospace;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.4);";
+      aFlag.style.cssText = "font-size:11px;color:#0a0a08;background:#d4a050;padding:2px 8px;border-radius:0 3px 3px 0;font-weight:700;font-family:monospace;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.4);pointer-events:auto;";
       regions.addRegion({ id: "loop:a", start: loop[0], color: "rgba(212,160,80,0)", drag: false, resize: false, content: aFlag });
       const bFlag = document.createElement("div");
       bFlag.textContent = "B";
-      bFlag.style.cssText = "font-size:11px;color:#0a0a08;background:#d4a050;padding:2px 8px;border-radius:0 3px 3px 0;font-weight:700;font-family:monospace;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.4);";
+      bFlag.style.cssText = "font-size:11px;color:#0a0a08;background:#d4a050;padding:2px 8px;border-radius:0 3px 3px 0;font-weight:700;font-family:monospace;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.4);pointer-events:auto;";
       regions.addRegion({ id: "loop:b", start: loop[1], color: "rgba(212,160,80,0)", drag: false, resize: false, content: bFlag });
     }
     for (const cp of checkpoints) {
@@ -750,7 +761,6 @@ export default function TranscriptionMode() {
     }
     return () => {
       regions.un("region-clicked", onRegionClick);
-      clickHandlers.clear();
     };
   }, [checkpoints, loop, duration, track?.id]);
 
@@ -859,18 +869,32 @@ export default function TranscriptionMode() {
   // Group corpus tracks by artist, with each artist as a collapsible
   // folder.  Artists are sorted alphabetically; tracks inside each
   // artist sort by title.  Per-artist collapsed state persists.
+  // Duplicate titles within an artist (e.g. "Machine Gun" appearing
+  // on both Band of Gypsys and Fillmore East) get a "(2)", "(3)"
+  // suffix so they're at least distinguishable in the picker.
   const corpusByArtist = useMemo(() => {
-    const buckets = new Map<string, TxIndexEntry[]>();
+    const buckets = new Map<string, (TxIndexEntry & { displayTitle: string })[]>();
     for (const e of filteredCorpus) {
       const key = (e.artist?.trim() || "(Unknown Artist)");
       const arr = buckets.get(key) ?? [];
-      arr.push(e);
+      arr.push({ ...e, displayTitle: e.title });
       buckets.set(key, arr);
     }
-    const list = [...buckets.entries()].map(([artist, tracks]) => ({
-      artist,
-      tracks: tracks.sort((a, b) => a.title.localeCompare(b.title)),
-    }));
+    const list = [...buckets.entries()].map(([artist, tracks]) => {
+      tracks.sort((a, b) => a.title.localeCompare(b.title));
+      // Within this artist, suffix duplicate titles "(2)", "(3)"…
+      const titleCounts = new Map<string, number>();
+      for (const t of tracks) titleCounts.set(t.title, (titleCounts.get(t.title) ?? 0) + 1);
+      const titleSeen = new Map<string, number>();
+      for (const t of tracks) {
+        if ((titleCounts.get(t.title) ?? 0) > 1) {
+          const n = (titleSeen.get(t.title) ?? 0) + 1;
+          titleSeen.set(t.title, n);
+          t.displayTitle = `${t.title} (${n})`;
+        }
+      }
+      return { artist, tracks };
+    });
     list.sort((a, b) => a.artist.localeCompare(b.artist));
     return list;
   }, [filteredCorpus]);
@@ -905,6 +929,11 @@ export default function TranscriptionMode() {
   // ── Render ────────────────────────────────────────────────────
   return (
     <div className="space-y-3" onDragOver={onDragOver} onDrop={onDrop}>
+      <style>{`
+        .ws-noscroll, .ws-noscroll * { scrollbar-width: none; }
+        .ws-noscroll::-webkit-scrollbar,
+        .ws-noscroll *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+      `}</style>
       <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-4">
         {/* ── LEFT: source picker ───────────────────────────────── */}
         <aside className="bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg overflow-hidden flex flex-col" style={{ minHeight: 520 }}>
@@ -962,7 +991,7 @@ export default function TranscriptionMode() {
                                             : isHidden ? "text-[#555] hover:bg-[#141414] italic"
                                             : "text-[#bbb] hover:bg-[#161616]"
                                         }`}>
-                                        <div className="truncate">{it.title}</div>
+                                        <div className="truncate">{it.displayTitle}</div>
                                         <div className="text-[10px] text-[#666] truncate">{SOURCE_LABEL[it.source]}</div>
                                       </button>
                                       <button onClick={() => toggleHiddenCorpus(it.id)}
@@ -1155,8 +1184,11 @@ export default function TranscriptionMode() {
                 <p className="text-xs font-mono text-[#888]">{mmss(currentTime)} / {mmss(duration)}</p>
               </div>
 
-              {/* Main zoomed waveform with timeline + checkpoint flags. */}
-              <div ref={containerRef} className="bg-[#080808] rounded-t border border-[#1a1a1a] px-1 py-2 overflow-x-auto" />
+              {/* Main zoomed waveform with timeline + checkpoint flags.
+                  WaveSurfer manages its own internal scroll for the wide
+                  canvas; we hide the visible scrollbars and the inline
+                  style block at the bottom of this section. */}
+              <div ref={containerRef} className="ws-noscroll bg-[#080808] rounded-t border border-[#1a1a1a] px-1 py-2" />
               {/* Full-song minimap — click/drag to navigate, like Anytune's overview strip.
                   Time displays flank it: current on the left, time remaining on the right. */}
               <div className="flex items-center gap-3 bg-[#080808] rounded-b border border-t-0 border-[#1a1a1a] px-3 py-1.5">
