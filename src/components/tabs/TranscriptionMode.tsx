@@ -510,15 +510,22 @@ export default function TranscriptionMode() {
       style: { fontSize: "10px", color: "#888" },
     }) as unknown as ReturnType<typeof RegionsPlugin.create>);
     // Minimap = full-song overview rendered below the main waveform.
-    // Click/drag inside it to navigate, just like Anytune's bottom strip.
+    // Click/drag inside it to navigate, just like Anytune's bottom
+    // strip.  Mirrors the main waveform's blue gradient + bar shape so
+    // it reads as the same waveform, just zoomed out.
     if (minimapContainerRef.current) {
       plugins.push(MinimapPlugin.create({
         container: minimapContainerRef.current,
-        height: 36,
-        waveColor: "#2a2a2a",
-        progressColor: "#7173e6",
-        cursorColor: "#7173e6",
-        overlayColor: "rgba(212,160,80,0.18)",
+        height: 44,
+        waveColor: ["#5a8fc8", "#3a6fa8", "#1f4f88"],
+        progressColor: ["#a3c6ec", "#7aabd6", "#5a8fc8"],
+        cursorColor: "#ff5a3a",
+        cursorWidth: 1,
+        barWidth: 1,
+        barGap: 0,
+        barRadius: 1,
+        normalize: true,
+        overlayColor: "rgba(212,160,80,0.22)",
       }) as unknown as ReturnType<typeof RegionsPlugin.create>);
     }
     // Anytune-style colors: cool blue stems with a brighter blue
@@ -535,11 +542,12 @@ export default function TranscriptionMode() {
       barGap: 0,
       barRadius: 1,
       normalize: true,
-      // autoScroll keeps the playhead in view while playing; autoCenter
-      // is the aggressive one that re-centers on every redraw and can
-      // feedback-loop with zoom changes.  Leave it off.
+      // Auto-scroll + auto-center keep the playhead in view so the
+      // zoomed view slides under the cursor like Anytune's content
+      // view.  (The min-w-0 / overflow-hidden on the parent section
+      // prevents the earlier layout-feedback loop these used to cause.)
       autoScroll: true,
-      autoCenter: false,
+      autoCenter: true,
       plugins,
     });
     wsRef.current = ws;
@@ -577,17 +585,17 @@ export default function TranscriptionMode() {
   }, [speed]);
 
   // Apply a fixed zoom (px/s) to the main waveform as soon as it
-  // knows its duration.  ~30s visible gives enough detail to read
-  // phrasing without making a 6-minute song unmanageably wide.  We
-  // run this once per track-load, deferred to the next frame so the
-  // container has its final width after the layout settles.
+  // knows its duration.  ~2.5s visible — tight enough to see
+  // individual note attacks (like Anytune's "content view").  The
+  // minimap below provides the full-song overview.  Deferred to rAF
+  // so the container has its final width when we measure it.
   useEffect(() => {
     const ws = wsRef.current;
     if (!ws || duration <= 0) return;
     const raf = requestAnimationFrame(() => {
       const containerWidth = containerRef.current?.clientWidth ?? 800;
-      const visibleSeconds = 30;
-      const pxPerSec = Math.max(20, containerWidth / visibleSeconds);
+      const visibleSeconds = 2.5;
+      const pxPerSec = containerWidth / visibleSeconds;
       try { ws.zoom(pxPerSec); } catch { /* ignore */ }
     });
     return () => cancelAnimationFrame(raf);
