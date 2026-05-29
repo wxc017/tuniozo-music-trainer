@@ -1811,8 +1811,10 @@ function MonzoNodeMesh({ node, pos, isActive, activeColors, isHovered, isFocused
     // overlay paths (pinnedChordOverlays / activeClassIds) which
     // continue to drive activeColor above.  classColorMap is still
     // built (for those overlay consumers) but no longer affects the
-    // node's resting colour.
-    return "#6a6a7a";
+    // node's resting colour.  Lifted from #6a6a7a → #a8a8c0 because the
+    // darker resting tone read as black against the section's near-black
+    // background (per user feedback).
+    return "#a8a8c0";
   }, [isActive, activeColor, isUnison, isFocused, isOnPath, isPathEndpoint, isHighlighted, node.monzo.isComma, edo]);
 
   const emissive = useMemo(() => {
@@ -5900,7 +5902,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
           const nd = tonnetzData.nodeMap.get(k);
           return nd ? nd.n / nd.d : 1;
         });
-        audioEngine.startRatioDrone(ratios, 0.1, rootPcToFreq(latticeDroneRoot));
+        audioEngine.startRatioDrone(ratios, 0.5, rootPcToFreq(latticeDroneRoot));
       }
       return next;
     });
@@ -5923,7 +5925,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               const nd = tonnetzData.nodeMap.get(k);
               return nd ? nd.n / nd.d : 1;
             });
-            audioEngine.startRatioDrone(ratios, 0.1, rootPcToFreq(latticeDroneRoot));
+            audioEngine.startRatioDrone(ratios, 0.5, rootPcToFreq(latticeDroneRoot));
           }
           return next;
         });
@@ -5936,7 +5938,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
             const nd = tonnetzData.nodeMap.get(k);
             return nd ? nd.n / nd.d : 1;
           });
-          audioEngine.startRatioDrone(ratios, 0.1, rootPcToFreq(latticeDroneRoot));
+          audioEngine.startRatioDrone(ratios, 0.5, rootPcToFreq(latticeDroneRoot));
           return next;
         });
       }
@@ -5960,7 +5962,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
           const nd = tonnetzData.nodeMap.get(k);
           return nd ? nd.n / nd.d : 1;
         });
-        audioEngine.startRatioDrone(ratios, 0.1, rootPcToFreq(latticeDroneRoot));
+        audioEngine.startRatioDrone(ratios, 0.5, rootPcToFreq(latticeDroneRoot));
         return next;
       });
     }
@@ -5990,7 +5992,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
           const nd = edoTonnetzData.nodeMap.get(k);
           return nd ? nd.pc : 0;
         });
-        audioEngine.startDrone(absNotes, edo, 0.1);
+        audioEngine.startDrone(absNotes, edo, 0.5);
       }
       return next;
     });
@@ -6013,7 +6015,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               const nd = edoTonnetzData.nodeMap.get(k);
               return nd ? nd.pc : 0;
             });
-            audioEngine.startDrone(absNotes, edo, 0.1);
+            audioEngine.startDrone(absNotes, edo, 0.5);
           }
           return next;
         });
@@ -6025,7 +6027,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
             const nd = edoTonnetzData.nodeMap.get(k);
             return nd ? nd.pc : 0;
           });
-          audioEngine.startDrone(absNotes, edo, 0.1);
+          audioEngine.startDrone(absNotes, edo, 0.5);
           return next;
         });
       }
@@ -6049,7 +6051,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
           const nd = edoTonnetzData.nodeMap.get(k);
           return nd ? nd.pc : 0;
         });
-        audioEngine.startDrone(absNotes, edo, 0.1);
+        audioEngine.startDrone(absNotes, edo, 0.5);
         return next;
       });
     }
@@ -6125,14 +6127,14 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
         const nd = tonnetzData.nodeMap.get(k);
         return nd ? nd.n / nd.d : 1;
       });
-      audioEngine.startRatioDrone(ratios, 0.1, rootPcToFreq(latticeDroneRoot));
+      audioEngine.startRatioDrone(ratios, 0.5, rootPcToFreq(latticeDroneRoot));
     } else {
       const edo = edoTonnetzData.config.edo;
       const absNotes = move.resultKeys.map(k => {
         const nd = edoTonnetzData.nodeMap.get(k);
         return nd ? nd.pc : 0;
       });
-      audioEngine.startDrone(absNotes, edo, 0.1);
+      audioEngine.startDrone(absNotes, edo, 0.5);
     }
   }, [ensureAudio, tonnetzSubMode, tonnetzData, edoTonnetzData, latticeDroneRoot]);
 
@@ -6146,14 +6148,14 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
         const nd = tonnetzData.nodeMap.get(k);
         return nd ? nd.n / nd.d : 1;
       });
-      audioEngine.startRatioDrone(ratios, 0.1, rootPcToFreq(latticeDroneRoot));
+      audioEngine.startRatioDrone(ratios, 0.5, rootPcToFreq(latticeDroneRoot));
     } else {
       const edo = edoTonnetzData.config.edo;
       const absNotes = move.resultKeys.map(k => {
         const nd = edoTonnetzData.nodeMap.get(k);
         return nd ? nd.pc : 0;
       });
-      audioEngine.startDrone(absNotes, edo, 0.1);
+      audioEngine.startDrone(absNotes, edo, 0.5);
     }
   }, [ensureAudio, tonnetzSubMode, tonnetzData, edoTonnetzData, latticeDroneRoot]);
 

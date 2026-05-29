@@ -702,8 +702,8 @@ function Scene({
         const MOD_SPOKES: Array<{ label: string; color: string; dir: [number, number, number]; semis: number }> = [
           { label: "+P5", color: "#9966ff", dir: [ 1,  0,  0],     semis: 7 },
           { label: "+P4", color: "#9966ff", dir: [-1,  0,  0],     semis: 5 },
-          { label: "+M3", color: "#22ddaa", dir: [ 0,  1,  0],     semis: 4 },
-          { label: "−M3", color: "#22ddaa", dir: [ 0, -1,  0],     semis: 8 },
+          { label: "+M3", color: "#22ddaa", dir: [-0.7, 0,  0.7],  semis: 4 },
+          { label: "−M3", color: "#22ddaa", dir: [ 0.7, 0, -0.7],  semis: 8 },
           { label: "+m3", color: "#3aafff", dir: [ 0.7, 0,  0.7],  semis: 3 },
           { label: "−m3", color: "#3aafff", dir: [-0.7, 0, -0.7],  semis: 9 },
           { label: "+M2", color: "#ff5588", dir: [ 0,  0,  1],     semis: 2 },
@@ -1047,15 +1047,12 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
       setCameraFocusId(node.id);
       return;
     }
-    // Plain click: re-anchor the lattice on this node (so it becomes
-    // the "main scale" and arcs reorient by alt distance from here),
-    // then toggle the drone.  The reset useEffect on anchorRootPc
-    // clears expandedRoots / pcExpansionInfo / showRays automatically.
-    setLatticeAnchor({
-      tonicPc: node.rootPc,
-      familyName: node.family.familyName,
-      modeName: node.mode.name,
-    });
+    // Plain click: just toggle the drone — DON'T re-anchor the lattice.
+    // The previous version called setLatticeAnchor on every click which
+    // triggered the alt-distance arcs to reorient and reset expansions,
+    // visibly jumping the layout (per user feedback: "clicking a scale
+    // shouldn't reorient").  Shift-click still focuses the camera and a
+    // dedicated re-anchor flow can be wired up later if needed.
     if (activeId === node.id) {
       audioEngine.stopDrone();
       setActiveId(null);
@@ -1207,7 +1204,14 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
       <div className="px-3 py-2 flex items-center gap-2 flex-wrap border-b border-[#1a1a1a]">
         <div className="flex items-center gap-1 mr-2">
           <button
-            onClick={() => { setLatticeView("alteration"); setCameraResetKey(k => k + 1); }}
+            onClick={() => {
+              // Switching lattices: stop any drone + clear the active node so
+              // sound doesn't leak across views (per user feedback).
+              audioEngine.stopDrone();
+              setActiveId(null); setActiveNode(null); setPerNoteGains([]);
+              onActiveModeChange?.(null);
+              setLatticeView("alteration"); setCameraResetKey(k => k + 1);
+            }}
             className={`text-[9px] px-2 py-0.5 rounded border ${
               latticeView === "alteration"
                 ? "border-[#88bbff] bg-[#1a2230] text-[#cfe6ff]"
@@ -1216,7 +1220,12 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
             Alteration
           </button>
           <button
-            onClick={() => { setLatticeView("family"); setCameraResetKey(k => k + 1); }}
+            onClick={() => {
+              audioEngine.stopDrone();
+              setActiveId(null); setActiveNode(null); setPerNoteGains([]);
+              onActiveModeChange?.(null);
+              setLatticeView("family"); setCameraResetKey(k => k + 1);
+            }}
             className={`text-[9px] px-2 py-0.5 rounded border ${
               latticeView === "family"
                 ? "border-[#88bbff] bg-[#1a2230] text-[#cfe6ff]"
