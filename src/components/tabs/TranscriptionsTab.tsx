@@ -6,7 +6,7 @@
 // it), then Show Answer to reveal the title, notation (grand staff w/
 // chords above each bar), and a YouTube link.
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLS } from "@/lib/storage";
 import { SOURCE_LABEL, SOURCE_GENRE, isAudioSource, type TxSource, type TxItem, type TxIndex } from "@/lib/transcriptions/types";
 import { pickItem, pickExcerpt, fullExcerpt, sliceExcerpt, loadIndex, loadItemById, stylesForSources, type TxExcerpt } from "@/lib/transcriptions/loader";
@@ -61,17 +61,27 @@ function OptSection({ title, accent, defaultOpen = true, children }: {
 
 export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSources, excludeSources }: Props) {
   // Visible source pool: everything minus any explicitly excluded source.
-  const excludeSet = new Set(excludeSources ?? []);
-  const VISIBLE_SOURCES = ALL_SOURCES.filter(s => !excludeSet.has(s));
+  // Both are memoised on the joined key of the excludeSources array so they
+  // keep referential identity across renders — otherwise the derived
+  // `sources` array below changes reference every render and the
+  // useEffect([sources]) below blows up in an infinite loop (which crashed
+  // the Tonal-Audiation Transcriptions embed as soon as the user clicked
+  // any source button).
+  const excludeKey = (excludeSources ?? []).join(",");
+  const excludeSet = useMemo(() => new Set(excludeSources ?? []), [excludeKey]);
+  const VISIBLE_SOURCES = useMemo(() => ALL_SOURCES.filter(s => !excludeSet.has(s)), [excludeSet]);
 
   // ── Options (persisted) ───────────────────────────────────────────
   const [bars, setBars] = useLS<number>("lt_tx_bars", 2);
   // When locked to a fixed corpus, use isolated local state so we don't
   // clobber the main Transcriptions tab's persisted database selection.
   const [sourcesLS, setSourcesLS] = useLS<TxSource[]>("lt_tx_sources", [...ALL_SOURCES]);
-  // Strip any excluded source from the persisted set on every render so
-  // a stale "drums" entry from before the exclusion was added gets dropped.
-  const sourcesFiltered = sourcesLS.filter(s => !excludeSet.has(s));
+  // Derived filtered list — memoised so the reference is stable when
+  // neither the persisted state nor the exclusion set actually changed.
+  const sourcesFiltered = useMemo(
+    () => sourcesLS.filter(s => !excludeSet.has(s)),
+    [sourcesLS, excludeSet],
+  );
   const [sourcesLocal, setSourcesLocal] = useState<TxSource[]>(lockSources ?? []);
   const sources = lockSources ? sourcesLocal : sourcesFiltered;
   const setSources = lockSources ? setSourcesLocal : setSourcesLS;
