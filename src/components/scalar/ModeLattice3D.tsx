@@ -1019,7 +1019,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
     const offset = ((node.rootPc - tonicPc) % edo + edo) % edo;
     const base = rootPitch + offset;
     const notes = node.mode.scale.map(s => base + s);
-    audioEngine.startDrone(notes, edo, 0.06 * playVol * 4, gains);
+    audioEngine.startDrone(notes, edo, 0.5 * playVol, gains);
   }, [rootPitch, tonicPc, edo, playVol]);
 
   const handleClick = useCallback((node: LatticeNode, ev: ThreeEvent<MouseEvent>) => {
@@ -1171,12 +1171,15 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   }, [pendingFocusPc, cameraFocusId, activeId, selectedId, anchorId, lattice]);
 
   const updateGain = useCallback((index: number, value: number) => {
+    // Smooth per-voice gain update — the previous version stop+restarted
+    // the whole drone on every slider drag, which reset the sound mid-tone
+    // (and crackled).  setDroneNoteGain ramps the per-voice gain in place.
+    audioEngine.setDroneNoteGain(index, value);
     if (!activeNode) return;
     const next = [...perNoteGains];
     next[index] = value;
     setPerNoteGains(next);
-    startDroneFor(activeNode, next);
-  }, [activeNode, perNoteGains, startDroneFor]);
+  }, [activeNode, perNoteGains]);
 
   const resetGains = useCallback(() => {
     if (!activeNode) return;

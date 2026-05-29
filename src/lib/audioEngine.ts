@@ -1384,9 +1384,14 @@ export class AudioEngine {
     }
   }
 
+  /** Smoothly update one drone voice's gain (no stop/restart).  Matches
+   *  startDrone's gain semantics: caller passes the LOGICAL per-voice gain
+   *  (the same 0..2 value `perNoteGains[i]` would carry) and we apply the
+   *  DRONE_PATH_GAIN scaling internally — keeps the slider linear without
+   *  forcing the caller to know the path-gain constant. */
   setDroneNoteGain(index: number, gain: number) {
     if (index >= 0 && index < this.droneNoteGains.length) {
-      this.droneNoteGains[index].gain.setTargetAtTime(gain, this.getCtx().currentTime, 0.05);
+      this.droneNoteGains[index].gain.setTargetAtTime(gain * DRONE_PATH_GAIN, this.getCtx().currentTime, 0.05);
     }
   }
 
