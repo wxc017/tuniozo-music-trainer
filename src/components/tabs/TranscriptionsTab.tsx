@@ -34,6 +34,10 @@ interface Props {
    *  hidden) — used to embed a single-corpus view, e.g. the drums-only
    *  Transcriptions sub-tab under Rhythmic Audiation. */
   lockSources?: TxSource[];
+  /** Hide these sources from the DATABASES picker and from the persisted
+   *  selection, but otherwise leave the picker active.  Used to exclude
+   *  non-tonal corpora (e.g. drums) from the Tonal Audiation embed. */
+  excludeSources?: TxSource[];
 }
 
 /** Collapsible options section, styled to match the other modes
@@ -55,14 +59,21 @@ function OptSection({ title, accent, defaultOpen = true, children }: {
   );
 }
 
-export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSources }: Props) {
+export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSources, excludeSources }: Props) {
+  // Visible source pool: everything minus any explicitly excluded source.
+  const excludeSet = new Set(excludeSources ?? []);
+  const VISIBLE_SOURCES = ALL_SOURCES.filter(s => !excludeSet.has(s));
+
   // ── Options (persisted) ───────────────────────────────────────────
   const [bars, setBars] = useLS<number>("lt_tx_bars", 2);
   // When locked to a fixed corpus, use isolated local state so we don't
   // clobber the main Transcriptions tab's persisted database selection.
   const [sourcesLS, setSourcesLS] = useLS<TxSource[]>("lt_tx_sources", [...ALL_SOURCES]);
+  // Strip any excluded source from the persisted set on every render so
+  // a stale "drums" entry from before the exclusion was added gets dropped.
+  const sourcesFiltered = sourcesLS.filter(s => !excludeSet.has(s));
   const [sourcesLocal, setSourcesLocal] = useState<TxSource[]>(lockSources ?? []);
-  const sources = lockSources ? sourcesLocal : sourcesLS;
+  const sources = lockSources ? sourcesLocal : sourcesFiltered;
   const setSources = lockSources ? setSourcesLocal : setSourcesLS;
   const [styleFilter, setStyleFilter] = useLS<string[]>("lt_tx_styles", []);
   const [withMelody, setWithMelody] = useLS<boolean>("lt_tx_melody", true);
@@ -392,7 +403,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
 
           {!lockSources && <OptSection title="DATABASES" accent="#7173e6">
             <div className="flex flex-wrap gap-2">
-              {ALL_SOURCES.map(s => {
+              {VISIBLE_SOURCES.map(s => {
                 const on = sources.includes(s);
                 const count = index?.counts[s] ?? 0;
                 return (
