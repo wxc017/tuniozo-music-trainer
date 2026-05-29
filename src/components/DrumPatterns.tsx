@@ -1588,6 +1588,7 @@ export default function DrumPatterns({
   startMetronome,
   betaPlayRotation = false,
   betaTransform = false,
+  betaMode = false,
   restoreTrigger = 0,
 }: {
   metronomeBpm?: number;
@@ -1595,6 +1596,7 @@ export default function DrumPatterns({
   startMetronome?: () => Promise<void>;
   betaPlayRotation?: boolean;
   betaTransform?: boolean;
+  betaMode?: boolean;
   restoreTrigger?: number;
 }) {
   const [mode, setMode] = useState<"ostinato" | "accent" | "stickings" | "independence" | "transform" | "interplay">("ostinato");
@@ -3082,6 +3084,7 @@ export default function DrumPatterns({
           }}>
           Stickings
         </button>
+        {betaMode && (
         <button onClick={() => setMode("independence")}
           style={{
             padding: "8px 16px", fontSize: 10, fontWeight: 700, letterSpacing: 3,
@@ -3092,6 +3095,7 @@ export default function DrumPatterns({
           }}>
           Independence
         </button>
+        )}
         {betaTransform && (
         <button onClick={() => setMode("transform")}
           style={{
