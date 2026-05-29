@@ -2693,29 +2693,30 @@ export default function ChordsTab({
               const renderOctSup = (oct: number) =>
                 oct !== 0 ? <sup className="text-[7px] ml-0.5 opacity-70">{oct > 0 ? `+${oct}` : `${oct}`}</sup> : null;
               const CHORD_TONE_NUM_LOCAL = [1, 3, 5, 7];
-              // Dedupe notes by pitch class (lowest occurrence wins).
-              const sortedNotes = [...chord.notes].sort((a, b) => a - b);
-              const seenPcs = new Set<number>();
-              const uniqueNotes: number[] = [];
-              for (const n of sortedNotes) {
-                const pc = ((n % edo) + edo) % edo;
-                if (!seenPcs.has(pc)) { seenPcs.add(pc); uniqueNotes.push(n); }
-              }
               // Use the tonic snapshotted at PLAY time for all interval
-              // math here.  If the user changed the tonic after playing,
-              // the saved chord.notes are absolute pitches from the OLD
-              // tonic frame; labeling them against the live tonic mis-
-              // identifies which note is the chord bass and produces
-              // bogus slash inversions.
+              // math here so changing the tonic after a play doesn't
+              // mis-label the saved chord pitches.
               const tonicForLabel = fhAnswer.tonicPcAtPlay;
-              // Chord-tone offsets above the chord root, sorted ascending —
-              // used for inversion detection + +N superscript on rotated tones.
-              const chordToneOffsets = [...new Set(uniqueNotes.map(n =>
+              // Show EVERY pitch in the realised voicing (no pitch-class
+              // dedupe) — per direct user request "this is show answer i
+              // need to see all" (2026-05-28).  The LH bass is visible as
+              // its own card even when it doubles a chord-tone pc; any
+              // RH copy of the same pc shows with a "+N" octave superscript
+              // computed from the lowest occurrence of that pc.
+              const allNotes = [...chord.notes].sort((a, b) => a - b);
+              const lowestPerPc = new Map<number, number>();
+              for (const n of allNotes) {
+                const pc = ((n % edo) + edo) % edo;
+                if (!lowestPerPc.has(pc)) lowestPerPc.set(pc, n);
+              }
+              // Chord-tone offsets (deduped by pc) sorted ascending — used
+              // only for the slash-form inversion label.
+              const chordToneOffsets = [...new Set(allNotes.map(n =>
                 (((n - tonicForLabel) % edo + edo) % edo - chord.chordRootPc + edo) % edo
               ))].sort((a, b) => a - b);
-              // Slash-form inversion label (V/3 means V with 3rd in bass).
-              const lowestPc = uniqueNotes.length > 0
-                ? ((uniqueNotes[0] - tonicForLabel) % edo + edo) % edo
+              // Slash-form inversion label (V/3 = V with 3rd in bass).
+              const lowestPc = allNotes.length > 0
+                ? ((allNotes[0] - tonicForLabel) % edo + edo) % edo
                 : 0;
               const bassOff = ((lowestPc - chord.chordRootPc) % edo + edo) % edo;
               const bassIdx = chordToneOffsets.indexOf(bassOff);
@@ -2723,14 +2724,6 @@ export default function ChordsTab({
                 ? CHORD_TONE_NUM_LOCAL[bassIdx] : null;
               const inversionLabel = bassNum && bassNum !== 1 ? `${chord.numeral}/${bassNum}` : null;
               const headerLabel = inversionLabel ?? chord.numeral;
-              // ctOctMap: chord tones whose stacked-thirds index sits below
-              // the bass index are rotated UP an octave by the inversion.
-              const ctOctMap = new Map<number, number>();
-              for (let i = 0; i < chordToneOffsets.length; i++) {
-                const pc = ((chord.chordRootPc + chordToneOffsets[i]) % edo + edo) % edo;
-                const oct = (bassIdx >= 0 && i < bassIdx) ? 1 : 0;
-                ctOctMap.set(pc, oct);
-              }
               return (
               <div key={chord.index} className="rounded-lg border bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#5a5a8a] transition-colors p-3" style={{ minWidth: 220 }}>
                 {commaNote && (
@@ -2756,15 +2749,17 @@ export default function ChordsTab({
                     Cells use flex-1 to fill the wider 220px card so they
                     don't read as cramped. */}
                 <div className="flex gap-1">
-                  {uniqueNotes.map((pitch, j) => {
-                    // Label relative to the tonic at PLAY time, not the
-                    // current tonic — otherwise changing the tonic after
-                    // playing mis-labels every saved absolute pitch.
-                    const tonicForLabel = fhAnswer.tonicPcAtPlay;
+                  {allNotes.map((pitch, j) => {
+                    const pc = ((pitch % edo) + edo) % edo;
                     const pcFromTonic = ((pitch - tonicForLabel) % edo + edo) % edo;
                     const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
                     const degree = pythDegree(pcFromTonic);
-                    const oct = ctOctMap.get(pcFromTonic) ?? 0;
+                    // +N is the number of full octaves this pitch sits above
+                    // the LOWEST occurrence of its pitch class.  The first
+                    // occurrence (typically the LH bass) shows with no +N;
+                    // any RH double of the same pc shows +1 / +2 / etc.
+                    const low = lowestPerPc.get(pc) ?? pitch;
+                    const oct = Math.floor((pitch - low) / edo);
                     return (
                       <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#1a1a2a] border-[#2a2a3a] px-1 py-0.5">
                         <span className="text-[10px] font-mono font-bold leading-tight text-[#9999ee]">{degree}{renderOctSup(oct)}</span>
