@@ -530,6 +530,12 @@ export default function TranscriptionMode() {
     }
     // Anytune-style colors: cool blue stems with a brighter blue
     // progress fill, a thin amber cursor, and stereo-mirrored bars.
+    // Locked-in zoom from frame zero — show ~2.5s of audio in the
+    // visible width.  Setting `minPxPerSec` at create time is more
+    // reliable than calling `zoom()` afterwards: it survives the
+    // initial layout pass without racing with autoCenter / autoScroll.
+    const measuredWidth = containerRef.current.clientWidth || 800;
+    const lockedMinPxPerSec = Math.max(200, measuredWidth / 2.5);
     const ws = WaveSurfer.create({
       container: containerRef.current,
       media: audio,
@@ -542,6 +548,8 @@ export default function TranscriptionMode() {
       barGap: 0,
       barRadius: 1,
       normalize: true,
+      minPxPerSec: lockedMinPxPerSec,
+      fillParent: false,
       // Auto-scroll + auto-center keep the playhead in view so the
       // zoomed view slides under the cursor like Anytune's content
       // view.  (The min-w-0 / overflow-hidden on the parent section
@@ -584,18 +592,15 @@ export default function TranscriptionMode() {
     }
   }, [speed]);
 
-  // Apply a fixed zoom (px/s) to the main waveform as soon as it
-  // knows its duration.  ~2.5s visible — tight enough to see
-  // individual note attacks (like Anytune's "content view").  The
-  // minimap below provides the full-song overview.  Deferred to rAF
-  // so the container has its final width when we measure it.
+  // Safety: re-apply the ~2.5s visible zoom after the duration is
+  // known, in case the container's clientWidth was 0 at create time
+  // (e.g. the panel was mounted while hidden).
   useEffect(() => {
     const ws = wsRef.current;
     if (!ws || duration <= 0) return;
     const raf = requestAnimationFrame(() => {
       const containerWidth = containerRef.current?.clientWidth ?? 800;
-      const visibleSeconds = 2.5;
-      const pxPerSec = containerWidth / visibleSeconds;
+      const pxPerSec = Math.max(200, containerWidth / 2.5);
       try { ws.zoom(pxPerSec); } catch { /* ignore */ }
     });
     return () => cancelAnimationFrame(raf);
