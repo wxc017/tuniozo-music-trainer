@@ -115,6 +115,22 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
   // indicator.  Both reset on each new Play.
   const clipPadRef = useRef({ before: 0, after: 0 });
   const [clipPad, setClipPad] = useState({ before: 0, after: 0 });
+  // Click-to-drop checkpoint markers on the audio scrubber.  Selecting two
+  // checkpoints defines a loop region (playback wraps between them); zero or
+  // one selected is non-restricting.  Both reset when the audio segment src
+  // changes — checkpoints are per-clip.
+  const [checkpoints, setCheckpoints] = useState<number[]>([]);
+  const [selectedCps, setSelectedCps] = useState<number[]>([]);
+  const [nowSec, setNowSec] = useState(0);
+  useEffect(() => { setCheckpoints([]); setSelectedCps([]); }, [audioSeg?.src]);
+  // Live playhead via rAF whenever an audio segment is loaded.
+  useEffect(() => {
+    if (!audioSeg) return;
+    let raf = 0;
+    const tick = () => { const a = audioRef.current; if (a) setNowSec(a.currentTime); raf = requestAnimationFrame(tick); };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [audioSeg]);
 
   // Saved-phrases bookmarking lives in the Transcription player now
   // (see TranscriptionMode.tsx).  Tonal Audiation focuses on the
@@ -493,7 +509,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
               already heard the real recording).  Notated corpora show notation. */}
           {!isAudioSource(item.source) && (
             <>
-              <div className="bg-[#161616] rounded-md p-2 overflow-x-auto">
+              <div className="bg-[#161616] rounded-md p-2 overflow-x-auto no-scrollbar">
                 <TranscriptionNotation excerpt={excerpt} showMelody={withMelody} showChords={withChords} showBass={withBass} />
               </div>
               <div className="text-xs text-[#777]">
@@ -590,13 +606,91 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
             not bookmarking — keep the two surfaces focused. */}
       </div>
 
+      {/* Audio scrubber for the local-file player.  Click on the bar to drop
+          a checkpoint line; click a checkpoint to (de)select it.  Two selected
+          checkpoints define a loop region — playback wraps between them.  A
+          single selection (or zero) doesn't restrict playback. */}
+      {audioSeg && (() => {
+        const fullDur = (Number.isFinite(audioSeg.end) ? audioSeg.end : (audioRef.current?.duration ?? 0)) - audioSeg.start;
+        const span = Math.max(0.01, fullDur);
+        const xPct = (t: number) => ((t - audioSeg.start) / span) * 100;
+        const loopRange = selectedCps.length === 2
+          ? [Math.min(checkpoints[selectedCps[0]], checkpoints[selectedCps[1]]),
+             Math.max(checkpoints[selectedCps[0]], checkpoints[selectedCps[1]])] as const
+          : null;
+        return (
+          <div className="mt-2">
+            <div
+              className="relative h-7 rounded bg-[#161616] border border-[#2a2a2a] cursor-crosshair select-none"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                const t = audioSeg.start + frac * span;
+                // Hit-test existing checkpoints (~1.5% tolerance).
+                const hitIdx = checkpoints.findIndex(c => Math.abs(xPct(c) / 100 - frac) < 0.015);
+                if (hitIdx >= 0) {
+                  setSelectedCps(prev => {
+                    if (prev.includes(hitIdx)) return prev.filter(i => i !== hitIdx);
+                    if (prev.length >= 2) return [prev[1], hitIdx];   // cycle: drop oldest
+                    return [...prev, hitIdx];
+                  });
+                } else {
+                  setCheckpoints(prev => [...prev, t]);
+                  const a = audioRef.current; if (a) { try { a.currentTime = t; } catch { /* */ } }
+                }
+              }}
+            >
+              {loopRange && (
+                <div style={{ position: "absolute", left: `${xPct(loopRange[0])}%`, top: 0, height: "100%",
+                              width: `${xPct(loopRange[1]) - xPct(loopRange[0])}%`, background: "#7173e644" }} />
+              )}
+              {checkpoints.map((c, i) => {
+                const p = xPct(c);
+                if (p < -0.5 || p > 100.5) return null;
+                const sel = selectedCps.includes(i);
+                return (
+                  <div key={i} style={{ position: "absolute", left: `${p}%`, top: 0, width: 2, height: "100%",
+                                        background: sel ? "#9999ee" : "#cd6", marginLeft: -1 }} />
+                );
+              })}
+              {(() => {
+                const p = xPct(nowSec);
+                if (p < 0 || p > 100) return null;
+                return <div style={{ position: "absolute", left: `${p}%`, top: 0, width: 1, height: "100%", background: "#fff" }} />;
+              })()}
+            </div>
+            <div className="flex items-center justify-between mt-1 text-[10px] text-[#666]">
+              <span>
+                {checkpoints.length === 0 ? "Click the bar to drop a checkpoint"
+                  : loopRange ? "Loop active — click a selected line to release"
+                  : selectedCps.length === 1 ? "Click a second checkpoint to loop between them"
+                  : "Click a checkpoint to select"}
+              </span>
+              {checkpoints.length > 0 && (
+                <button onClick={() => { setCheckpoints([]); setSelectedCps([]); }}
+                  className="text-[10px] text-[#888] hover:text-[#bbb] underline">clear</button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Blues clip playback uses a LOCAL file, driven by the transport buttons
           (Play / Replay / Full song / Stop) — the element is always hidden (no
-          native scrubber bar).  onTimeUpdate stops it at the clip's end. */}
+          native scrubber bar).  onTimeUpdate stops it at the clip's end, OR
+          wraps to the loop start if a two-checkpoint loop is active. */}
       <audio
         ref={audioRef}
         className="hidden"
-        onTimeUpdate={() => { const a = audioRef.current; if (a && a.currentTime >= segEndRef.current) a.pause(); }}
+        onTimeUpdate={() => {
+          const a = audioRef.current; if (!a) return;
+          if (selectedCps.length === 2) {
+            const lo = Math.min(checkpoints[selectedCps[0]], checkpoints[selectedCps[1]]);
+            const hi = Math.max(checkpoints[selectedCps[0]], checkpoints[selectedCps[1]]);
+            if (a.currentTime >= hi) { try { a.currentTime = lo; } catch { /* */ } return; }
+          }
+          if (a.currentTime >= segEndRef.current) a.pause();
+        }}
       />
     </div>
   );
