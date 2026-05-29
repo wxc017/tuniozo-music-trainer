@@ -162,7 +162,7 @@ const DRONE_PEAK_CAP   = 0.95;
  *  loudness per unit path gain (sustained drone integrates much
  *  louder than transient play notes).  Lowering to 0.075 puts equal
  *  sliders at equal loudness. */
-const DRONE_PATH_GAIN = 0.075;
+const DRONE_PATH_GAIN = 0.4;
 
 /** Pre-process a freshly-decoded sample buffer for drone use:
  *  peak-normalize the loop region and report loopStart / loopEnd so
