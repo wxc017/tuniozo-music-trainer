@@ -5992,7 +5992,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
           const nd = edoTonnetzData.nodeMap.get(k);
           return nd ? nd.pc : 0;
         });
-        audioEngine.startDrone(absNotes, edo, 0.5);
+        audioEngine.startDrone(absNotes, edo, 1.0);
       }
       return next;
     });
@@ -6015,7 +6015,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               const nd = edoTonnetzData.nodeMap.get(k);
               return nd ? nd.pc : 0;
             });
-            audioEngine.startDrone(absNotes, edo, 0.5);
+            audioEngine.startDrone(absNotes, edo, 1.0);
           }
           return next;
         });
@@ -6027,7 +6027,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
             const nd = edoTonnetzData.nodeMap.get(k);
             return nd ? nd.pc : 0;
           });
-          audioEngine.startDrone(absNotes, edo, 0.5);
+          audioEngine.startDrone(absNotes, edo, 1.0);
           return next;
         });
       }
@@ -6051,7 +6051,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
           const nd = edoTonnetzData.nodeMap.get(k);
           return nd ? nd.pc : 0;
         });
-        audioEngine.startDrone(absNotes, edo, 0.5);
+        audioEngine.startDrone(absNotes, edo, 1.0);
         return next;
       });
     }
@@ -6134,7 +6134,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
         const nd = edoTonnetzData.nodeMap.get(k);
         return nd ? nd.pc : 0;
       });
-      audioEngine.startDrone(absNotes, edo, 0.5);
+      audioEngine.startDrone(absNotes, edo, 1.0);
     }
   }, [ensureAudio, tonnetzSubMode, tonnetzData, edoTonnetzData, latticeDroneRoot]);
 
@@ -6155,7 +6155,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
         const nd = edoTonnetzData.nodeMap.get(k);
         return nd ? nd.pc : 0;
       });
-      audioEngine.startDrone(absNotes, edo, 0.5);
+      audioEngine.startDrone(absNotes, edo, 1.0);
     }
   }, [ensureAudio, tonnetzSubMode, tonnetzData, edoTonnetzData, latticeDroneRoot]);
 
