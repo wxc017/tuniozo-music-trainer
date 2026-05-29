@@ -4144,6 +4144,34 @@ function EdoTonnetzSvg({
     return () => ro.disconnect();
   }, []);
 
+  // Auto-fit the view to the current preset's bounds whenever the lattice
+  // data changes (preset switch) or the container resizes — previously zoom
+  // and pan stayed at their initial defaults, so most presets ended up
+  // partly or entirely off-screen.
+  useEffect(() => {
+    if (data.nodes.length === 0 || size.w === 0 || size.h === 0) return;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const n of data.nodes) {
+      const [x, y] = n.pos2d;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const w = Math.max(1e-3, maxX - minX);
+    const h = Math.max(1e-3, maxY - minY);
+    const padding = 0.85;          // leave a margin around the bounding box
+    const zX = (size.w * padding) / w;
+    const zY = (size.h * padding) / h;
+    const newZoom = Math.max(5, Math.min(200, Math.min(zX, zY)));
+    const dataCx = (minX + maxX) / 2;
+    const dataCy = (minY + maxY) / 2;
+    // toScreen: [x*zoom + size.w/2 + pan[0], -y*zoom + size.h/2 + pan[1]] —
+    // solve for pan that lands (dataCx, dataCy) at the screen centre.
+    setZoom(newZoom);
+    setPan([-dataCx * newZoom, dataCy * newZoom]);
+  }, [data, size.w, size.h]);
+
   const cx = size.w / 2 + pan[0];
   const cy = size.h / 2 + pan[1];
   const toScreen = useCallback((pos: [number, number]): [number, number] => {
