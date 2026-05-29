@@ -9,6 +9,7 @@
 import { useMemo } from "react";
 import { useLS } from "@/lib/storage";
 import { allMusicalGroupings } from "@/lib/groupingSelector";
+import { canonicalCellName } from "@/lib/musicalScoring";
 
 // Default for every permutation that hasn't been touched yet is "red"
 // ("haven't got it") per direct user direction "have everything
@@ -132,13 +133,21 @@ export default function SplitPermutationsTab() {
             {shownKeys.map(key => {
               const s = status[key] ?? DEFAULT_STATUS;
               const p = STATUS_PALETTE[s];
+              const cell = canonicalCellName(key.split("+").map(n => parseInt(n, 10)));
               return (
                 <div key={key} className="flex items-center justify-between px-3 py-1.5 rounded border border-[#1a1a1a] bg-[#0e0e0e]">
-                  <span className="font-mono text-sm text-[#ddd] tracking-wide">{key}</span>
+                  <span className="flex items-baseline gap-2 min-w-0">
+                    <span className="font-mono text-sm text-[#ddd] tracking-wide">{key}</span>
+                    {cell && (
+                      <span className="text-[10px] italic text-[#888] truncate" title={`Canonical additive cell: ${cell}`}>
+                        {cell}
+                      </span>
+                    )}
+                  </span>
                   <button
                     onClick={() => cycleStatus(key)}
                     title={`Status: ${p.name} — click to cycle (red ✕ → yellow ■ → green ✓)`}
-                    className="w-8 h-7 rounded inline-flex items-center justify-center text-sm font-bold leading-none cursor-pointer"
+                    className="w-8 h-7 rounded inline-flex items-center justify-center text-sm font-bold leading-none cursor-pointer shrink-0"
                     style={{ background: p.bg, border: `1px solid ${p.border}`, color: p.color }}>
                     {p.label}
                   </button>

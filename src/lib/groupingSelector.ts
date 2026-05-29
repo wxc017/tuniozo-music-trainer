@@ -253,9 +253,11 @@ export function allMusicalGroupings(n: number, maxPart: number = Math.min(n, 8))
   // 2+2…) and tier 4+/D (genuinely awkward).  Keep tier 2 (strong-shape
   // Class B like 3+3+5+5) and tier 3 (generic two-size Class B).
   const musical = classified.filter(c => c.tier === 2 || c.tier === 3);
-  // Tier 2 first (strong-shape — most idiomatic).  Within each tier, fewer
-  // groups first (simpler / clearer pulse), then lex for stability.
+  // Sort by musical score DESCENDING so the canonical additive cells
+  // (tresillo, daichovo, aksak 13 / 16 etc. — bonused inside scoreGrouping)
+  // surface at the top, then tier, then fewer groups, then lex.
   musical.sort((a, b) =>
+    scoreGrouping(b.grouping, "musical") - scoreGrouping(a.grouping, "musical") ||
     a.tier - b.tier ||
     a.grouping.length - b.grouping.length ||
     groupingKey(a.grouping).localeCompare(groupingKey(b.grouping)),
