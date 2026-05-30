@@ -55,7 +55,11 @@ interface YTPlayerAPI {
 // keeps the standard scale.
 let STAVE_TOP_Y      = 38;
 let LINE_SPACING     = 10;
-let STAVE_AREA_H     = 160;
+// STAVE_AREA_H / EDIT_STAVE_AREA_H include extra bottom slack so stems
+// pointing DOWN from the kick (now its own stems-down voice, per 2-voice
+// refactor) aren't clipped by the overflow:hidden wrapper.  Per user
+// direction 2026-05-30: "i cant see the bottom of the stem for bass".
+let STAVE_AREA_H     = 180;
 const DEFAULT_MEASURE_W = 220;
 
 /** Visual zoom applied to the edit-pane SVG.  Preview bars render
@@ -71,7 +75,10 @@ const EDIT_PANE_SCALE = 2.4;
  *   - staff: 40 SVG units (5 lines × 10 spacing)
  *   - bottom: ~52 SVG units (room for hh-foot at lineIdx 4.5 + clearance) */
 const EDIT_STAVE_TOP_Y = 28;
-const EDIT_STAVE_AREA_H = 120;
+// 140 (was 120) — extra bottom space for stems-down kick voice.  Matches the
+// STAVE_AREA_H bump on the preview pane (which gets temporarily overridden to
+// this value while the edit pane is being rendered).
+const EDIT_STAVE_AREA_H = 140;
 
 /** The 8 valid drum lines.  Click placement on the edit pane snaps
  *  the cursor's lineIdx to whichever of these is closest; clicks
@@ -191,24 +198,27 @@ function pitchWithHead(pitch: string, head?: NoteheadType): string {
   return pitch + NOTEHEAD_SUFFIX[head];
 }
 
-// Draws a small "z" on the stem for buzz roll notation.  Copy-paste from
-// VexDrumNotation.tsx so the look matches AccentStudy / the drum-patterns
-// renderer.  Per user direction 2026-05-30: "in scoring fro drums allow me
-// to turn notes into buzz, there is code ofr it in drum patterns just copy
-// and paste".
+// Draws a clear "z" on the stem for buzz-roll notation.  Size bumped from
+// 12 -> 18 (per user 2026-05-30: "not very visible here as wel") and the
+// fill is forced white so it shows against the dark canvas — VexFlow's
+// inherited context fill is unreliable here.
 class DrumBuzzZ extends Annotation {
-  constructor() { super("z"); this.setFont("Arial", 12, "bold"); }
+  constructor() { super("z"); this.setFont("Arial", 18, "bold"); }
   override draw(): void {
     const note = (this as unknown as { checkAttachedNote: () => StaveNote }).checkAttachedNote();
     const ctx = this.checkContext();
     const stemX = (note as unknown as { getStemX?: () => number }).getStemX?.() ?? note.getAbsoluteX();
     const ext = note.getStemExtents();
-    const y = ext.topY + (ext.baseY - ext.topY) * 0.70 + 3;
+    // Park the "z" roughly in the middle of the stem (slightly above mid).
+    const y = ext.topY + (ext.baseY - ext.topY) * 0.55 + 6;
     const prevFont = ctx.getFont();
-    ctx.setFont("Arial", 12, "bold");
-    // Center the "z" on the stem (half glyph width ~4px)
-    ctx.fillText("z", stemX - 4, y);
+    const prevFill = (ctx as unknown as { fillStyle?: string }).fillStyle;
+    ctx.setFont("Arial", 18, "bold");
+    ctx.setFillStyle("#ffffff");
+    // Center the "z" on the stem (half glyph width ~6 at 18pt).
+    ctx.fillText("z", stemX - 6, y);
     ctx.setFont(prevFont);
+    if (prevFill) ctx.setFillStyle(prevFill);
   }
 }
 
@@ -489,7 +499,15 @@ function renderScore(
   // Track every rendered (vfNote, source-note ids) pair across all measures
   // so we can draw ties — including cross-bar ties — in a single pass after
   // every measure has been laid out.
-  const allRendered: { vfNote: StaveNote; ids: string[] }[] = [];
+  // Per-voice tie buckets.  Ties walk consecutive notes within a voice
+  // (so cross-voice ties between e.g. snare and kick never fire).  Each
+  // bucket holds (vfNote, ids) entries in render order — bars are pushed
+  // in (rowIdx, mInRow) order, so cross-bar ties within a voice work via
+  // the same walk-and-pair logic as before.
+  const renderedByVoice: Record<"upper" | "kick", { vfNote: StaveNote; ids: string[] }[]> = {
+    upper: [],
+    kick: [],
+  };
   const globalNoteById = new Map<string, NoteData>();
   for (const n of notes) globalNoteById.set(n.id, n);
 
@@ -662,20 +680,21 @@ function renderScore(
         // Build the voices (only the non-empty ones).  Upper voice first so
         // its layout drives the visible spacing when both are present.
         const voices: Voice[] = [];
-        const voiceData: { vfNotes: StaveNote[]; idGroups: string[][]; slotMap: number[] }[] = [];
+        type VoiceBuild = { vfNotes: StaveNote[]; idGroups: string[][]; slotMap: number[]; voiceKey: "upper" | "kick" };
+        const voiceData: VoiceBuild[] = [];
         if (otherBuild.vfNotes.length > 0) {
           const v = new Voice({ numBeats: ts.num, beatValue: ts.den });
           (v as unknown as { setMode(m: number): void }).setMode(2);
           v.addTickables(otherTickables);
           voices.push(v);
-          voiceData.push(otherBuild);
+          voiceData.push({ ...otherBuild, voiceKey: "upper" });
         }
         if (kickBuild.vfNotes.length > 0) {
           const v = new Voice({ numBeats: ts.num, beatValue: ts.den });
           (v as unknown as { setMode(m: number): void }).setMode(2);
           v.addTickables(kickTickables);
           voices.push(v);
-          voiceData.push(kickBuild);
+          voiceData.push({ ...kickBuild, voiceKey: "kick" });
         }
 
         try {
@@ -776,14 +795,17 @@ function renderScore(
           ctx.setFillStyle("#ffffff");
           beams.forEach(b => { try { b.setContext(ctx).draw(); } catch { /* skip */ } });
 
-          // Stash every rendered note for the post-render tie pass — handled
-          // outside this measure loop so ties can span bar lines.  Iterate
-          // both voices (preserves their slot ordering; tie pass walks the
-          // global list so cross-voice ties don't fire spuriously because
-          // tie endpoints are matched by pitch / index).
-          for (const { vfNotes, idGroups } of voiceData) {
+          // Stash every rendered note in its voice bucket for the
+          // post-render tie pass — handled outside this measure loop so
+          // ties can span bar lines.  Per-voice buckets prevent the walk
+          // from pairing a snare with the following kick (different
+          // voices) and drawing a cross-voice tie that overlaps the legit
+          // within-voice ties.  Per user direction 2026-05-30: "ties are
+          // overlapping".
+          for (const { vfNotes, idGroups, voiceKey } of voiceData) {
+            const bucket = renderedByVoice[voiceKey];
             for (let i = 0; i < vfNotes.length; i++) {
-              allRendered.push({ vfNote: vfNotes[i], ids: idGroups[i] });
+              bucket.push({ vfNote: vfNotes[i], ids: idGroups[i] });
             }
           }
 
@@ -834,57 +856,62 @@ function renderScore(
   }
 
   // ── Tie pass ─────────────────────────────────────────────────────────
-  // Walk every consecutive pair of rendered notes (across bar lines) and
-  // emit a StaveTie when the source NoteData says one should connect.
-  // Each tie attaches to a specific notehead index inside any chord
-  // member, so chord-mates that aren't part of the tie don't get a curve.
-  for (let i = 0; i + 1 < allRendered.length; i++) {
-    const a = allRendered[i];
-    const b = allRendered[i + 1];
-    if (a.vfNote.isRest() || b.vfNote.isRest()) continue;
-    // Find which chord member in A starts the tie and which in B ends it.
-    let aIdx = -1;
-    let aTiePitch: string | null = null;
-    for (let k = 0; k < a.ids.length; k++) {
-      const src = globalNoteById.get(a.ids[k]);
-      if (src?.isTieStart) { aIdx = k; aTiePitch = src.pitch; break; }
-    }
-    let bIdx = -1;
-    let bTiePitch: string | null = null;
-    for (let k = 0; k < b.ids.length; k++) {
-      const src = globalNoteById.get(b.ids[k]);
-      if (src?.isTieEnd) { bIdx = k; bTiePitch = src.pitch; break; }
-    }
-    if (aIdx < 0 && bIdx < 0) continue;
-    // If only one side has the explicit flag, find the matching pitch on
-    // the other side.  Falls back to the same chord-position-index when
-    // pitches differ (e.g. user-driven non-standard tie).
-    const tiePitch = aTiePitch ?? bTiePitch ?? null;
-    if (aIdx < 0) {
-      if (tiePitch != null) {
-        for (let k = 0; k < a.ids.length; k++) {
-          if (globalNoteById.get(a.ids[k])?.pitch === tiePitch) { aIdx = k; break; }
-        }
+  // Walk every consecutive pair of rendered notes WITHIN A VOICE and emit
+  // a StaveTie when the source NoteData says one should connect.  Each
+  // tie attaches to a specific notehead index inside any chord member,
+  // so chord-mates that aren't part of the tie don't get a curve.
+  // Two voices = two independent walks: a snare in the upper voice can
+  // never accidentally tie to the next kick in the lower voice.
+  for (const voiceKey of ["upper", "kick"] as const) {
+    const list = renderedByVoice[voiceKey];
+    for (let i = 0; i + 1 < list.length; i++) {
+      const a = list[i];
+      const b = list[i + 1];
+      if (a.vfNote.isRest() || b.vfNote.isRest()) continue;
+      // Find which chord member in A starts the tie and which in B ends it.
+      let aIdx = -1;
+      let aTiePitch: string | null = null;
+      for (let k = 0; k < a.ids.length; k++) {
+        const src = globalNoteById.get(a.ids[k]);
+        if (src?.isTieStart) { aIdx = k; aTiePitch = src.pitch; break; }
       }
-      if (aIdx < 0) aIdx = Math.min(bIdx, a.ids.length - 1);
-    }
-    if (bIdx < 0) {
-      if (tiePitch != null) {
-        for (let k = 0; k < b.ids.length; k++) {
-          if (globalNoteById.get(b.ids[k])?.pitch === tiePitch) { bIdx = k; break; }
-        }
+      let bIdx = -1;
+      let bTiePitch: string | null = null;
+      for (let k = 0; k < b.ids.length; k++) {
+        const src = globalNoteById.get(b.ids[k]);
+        if (src?.isTieEnd) { bIdx = k; bTiePitch = src.pitch; break; }
       }
-      if (bIdx < 0) bIdx = Math.min(aIdx, b.ids.length - 1);
+      if (aIdx < 0 && bIdx < 0) continue;
+      // If only one side has the explicit flag, find the matching pitch on
+      // the other side.  Falls back to the same chord-position-index when
+      // pitches differ (e.g. user-driven non-standard tie).
+      const tiePitch = aTiePitch ?? bTiePitch ?? null;
+      if (aIdx < 0) {
+        if (tiePitch != null) {
+          for (let k = 0; k < a.ids.length; k++) {
+            if (globalNoteById.get(a.ids[k])?.pitch === tiePitch) { aIdx = k; break; }
+          }
+        }
+        if (aIdx < 0) aIdx = Math.min(bIdx, a.ids.length - 1);
+      }
+      if (bIdx < 0) {
+        if (tiePitch != null) {
+          for (let k = 0; k < b.ids.length; k++) {
+            if (globalNoteById.get(b.ids[k])?.pitch === tiePitch) { bIdx = k; break; }
+          }
+        }
+        if (bIdx < 0) bIdx = Math.min(aIdx, b.ids.length - 1);
+      }
+      try {
+        const tie = new StaveTie({
+          firstNote: a.vfNote,
+          lastNote: b.vfNote,
+          firstIndexes: [aIdx],
+          lastIndexes: [bIdx],
+        });
+        tie.setContext(ctx).draw();
+      } catch { /* skip */ }
     }
-    try {
-      const tie = new StaveTie({
-        firstNote: a.vfNote,
-        lastNote: b.vfNote,
-        firstIndexes: [aIdx],
-        lastIndexes: [bIdx],
-      });
-      tie.setContext(ctx).draw();
-    } catch { /* skip */ }
   }
 
   // Post-process the SVG so every element is visible on a dark background.
