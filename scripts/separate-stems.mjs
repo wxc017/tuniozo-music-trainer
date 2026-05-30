@@ -62,27 +62,64 @@ function run(cmd, args, opts = {}) {
   });
 }
 
-// Try a chain of (cmd, prefixArgs) strategies, falling through to the next one
-// only when a strategy fails because the executable is MISSING (ENOENT) — a
-// non-zero exit code is a real failure that propagates immediately.
-async function runFirstWorking(strategies, args) {
-  let lastErr;
-  for (let i = 0; i < strategies.length; i++) {
-    const { cmd, prefix = [], label } = strategies[i];
-    const fullArgs = [...prefix, ...args];
-    try {
-      await run(cmd, fullArgs);
-      return;
-    } catch (e) {
-      lastErr = e;
-      const missing = e?.code === "ENOENT" || e?.spawnFailed;
-      if (!missing) throw e;                       // real failure → stop
-      if (i < strategies.length - 1) {
-        console.log(`  (${label || cmd} not found, trying next)`);
-      }
+// Probe whether `cmd` exists on PATH by trying to spawn it.  Node's spawn
+// emits an 'error' event with code 'ENOENT' when the binary can't be found;
+// any successful spawn (regardless of exit code) means the executable exists.
+function hasOnPath(cmd) {
+  return new Promise(r => {
+    const p = spawn(cmd, ["--version"], { stdio: "ignore" });
+    p.on("error", () => r(false));
+    p.on("exit", () => r(true));
+  });
+}
+
+// Ask the `py -<version>` launcher where its audio-separator(.exe) shim is.
+// Returns the absolute path, or null if the launcher / install isn't there.
+// Looks for the EXACT filename — globbing `audio-separator*` would
+// alphabetically match `audio-separator-remote.exe` first because '-' sorts
+// before '.' in ASCII, and the -remote helper isn't the splitter CLI.
+function findInPyVersion(version) {
+  return new Promise(r => {
+    const probe = "import sys, os; sc = os.path.join(os.path.dirname(sys.executable), 'Scripts'); [print(p) for p in [os.path.join(sc, 'audio-separator.exe'), os.path.join(sc, 'audio-separator')] if os.path.exists(p)]";
+    const p = spawn("py", [`-${version}`, "-c", probe], { stdio: ["ignore", "pipe", "ignore"] });
+    let out = "";
+    p.stdout.on("data", d => { out += d.toString(); });
+    p.on("error", () => r(null));
+    p.on("exit", code => r(code === 0 && out.trim() ? out.trim().split(/\r?\n/)[0] : null));
+  });
+}
+
+// Cache the resolved separator path so we don't reprobe on every call.
+let _separatorPath = null;
+async function resolveSeparator() {
+  if (_separatorPath) return _separatorPath;
+  // 1. Explicit override.
+  if (process.env.AUDIO_SEPARATOR_BIN) {
+    _separatorPath = process.env.AUDIO_SEPARATOR_BIN;
+    return _separatorPath;
+  }
+  // 2. Bare `audio-separator` on PATH (Linux / Mac / Windows with Scripts dir
+  //    on PATH).  Probed with --version so we don't kick off a real run.
+  if (await hasOnPath("audio-separator")) {
+    _separatorPath = "audio-separator";
+    return _separatorPath;
+  }
+  // 3. Windows `py` launcher: query each common Python version for its
+  //    Scripts/audio-separator(.exe).  Newest first so a user with both
+  //    3.13 x64 and 3.12 ARM64 gets the 3.13 install.  (The PYTHON_BIN
+  //    env var would let users pin a specific interpreter; we don't try
+  //    `python -m audio_separator.utils.cli` because that module has no
+  //    `if __name__ == "__main__"` block in audio-separator 0.44+ — it
+  //    exits silently with no work done.)
+  for (const v of ["3.13", "3.12", "3.11", "3.10"]) {
+    const found = await findInPyVersion(v);
+    if (found) {
+      console.log(`  Found audio-separator under py -${v}: ${found}`);
+      _separatorPath = found;
+      return _separatorPath;
     }
   }
-  throw new Error(`No working audio-separator install found.  Tried: ${strategies.map(s => s.label || s.cmd).join(", ")}.  Last error: ${lastErr?.message || lastErr}`);
+  throw new Error("audio-separator not found.  Install it: `pip install audio-separator` (or `py -3.13 -m pip install audio-separator` on Windows).  Set AUDIO_SEPARATOR_BIN to override.");
 }
 
 async function exists(path) {
@@ -100,21 +137,12 @@ async function separateOne(input, model) {
   if (!modelFile) throw new Error(`Unknown --model "${model}".  Use mdx, demucs, or htdemucs_6s.`);
 
   console.log(`\n── Separating ${base} (${model}) ──`);
-  // Build a strategy chain for invoking audio-separator.  Each strategy is
-  // tried in turn; the first one whose executable is found wins.  Env-var
-  // overrides come first so users with custom installs (e.g. a venv) can
-  // pin a specific interpreter.  After those, the bare PATH command, then
-  // the Windows `py` launcher targeting Python 3.13 (the user's x64
-  // install — the ARM64 one can't build some ML deps from source), then a
-  // generic `python -m` fallback for non-Windows / non-py-launcher boxes.
-  const baseArgs = [abs, "--model_filename", modelFile, "--output_dir", stemsDir, "--output_format", "WAV"];
-  const strategies = [];
-  if (process.env.AUDIO_SEPARATOR_BIN) strategies.push({ cmd: process.env.AUDIO_SEPARATOR_BIN, label: "AUDIO_SEPARATOR_BIN" });
-  if (process.env.PYTHON_BIN) strategies.push({ cmd: process.env.PYTHON_BIN, prefix: ["-m", "audio_separator.utils.cli"], label: "PYTHON_BIN" });
-  strategies.push({ cmd: "audio-separator", label: "audio-separator (PATH)" });
-  strategies.push({ cmd: "py", prefix: ["-3.13", "-m", "audio_separator.utils.cli"], label: "py -3.13" });
-  strategies.push({ cmd: "python", prefix: ["-m", "audio_separator.utils.cli"], label: "python -m" });
-  await runFirstWorking(strategies, baseArgs);
+  // Resolve the audio-separator binary once per process and reuse the path.
+  // Auto-discovery works on Windows with `py` launcher available (finds the
+  // x64 Python's Scripts/audio-separator.exe); other platforms expect the
+  // command on PATH or AUDIO_SEPARATOR_BIN to be set.
+  const separator = await resolveSeparator();
+  await run(separator, [abs, "--model_filename", modelFile, "--output_dir", stemsDir, "--output_format", "WAV"]);
 
   // audio-separator names outputs with the original filename + suffix.
   // Rename them to the canonical {vocals,drums,bass,other,guitar,piano}.wav
