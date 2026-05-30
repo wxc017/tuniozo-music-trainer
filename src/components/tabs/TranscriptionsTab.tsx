@@ -125,13 +125,21 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
   // On-demand Demucs stems (per user direction 2026-05-29: "split it when i
   // click on a file").  When a blues/drums track loads, ask the Vite middleware
   // whether stems already exist on disk; the user can trigger a split and then
-  // play a single stem in isolation (vocals-only, drums-only, etc.).
+  // mute/solo individual stems while practising.
+  //
+  // Mixing architecture: the existing audioRef stays the MASTER — it plays the
+  // original mp3 and drives the scrubber, WaveSurfer, loop wrap, and seek.
+  // When `stemsMode` is on the master is muted and six FOLLOWER <audio>
+  // elements (one per stem) are slaved to the master's play/pause/seek state.
+  // Per-stem muting in stems mode just sets follower.muted; "solo" is sugar for
+  // "mute every other follower".
   //
   // `progress` carries the live stdout/stderr from the spawned splitter so the
-  // user sees what audio-separator is doing during the multi-minute job (per
-  // user direction 2026-05-30: "im not seeing instrument splitting in
-  // progress for the songs").
+  // user sees what audio-separator is doing during the multi-minute job.
   const [stems, setStems] = useState<{ available: string[]; loading: boolean; current: string | null; error?: string; progress?: string }>({ available: [], loading: false, current: null });
+  const [stemsMode, setStemsMode] = useState<boolean>(false);
+  const [stemMutes, setStemMutes] = useState<Record<string, boolean>>({});
+  const stemAudioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
   const srcKey = audioSeg?.src ?? "";
   const checkpoints = (srcKey ? allCheckpoints[srcKey] : undefined) ?? [];
   const loop = srcKey ? allLoops[srcKey] : undefined;
@@ -233,25 +241,78 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
       setStems(s => ({ ...s, loading: false, error: String(e) }));
     }
   }, [audioSeg, audioRelFromSrc]);
-  // Switch the audio element's src to a single stem (or back to the mixed
-  // original).  Preserves the current playhead and play/pause state.
-  const playStem = useCallback((stemName: string | null) => {
-    const a = audioRef.current; if (!a || !audioSeg) return;
-    const t = a.currentTime;
-    const wasPlaying = !a.paused;
-    let newSrc: string;
-    if (stemName) {
-      // Stems live at "<audio>.stems/<stem>.wav" next to the original file.
-      newSrc = audioSeg.src.replace(/\.(mp3|m4a|ogg|wav|flac)$/i, `.stems/${stemName}.wav`);
-    } else {
-      newSrc = audioSeg.src;
+  // Multi-stem mixing.  Toggle stems mode on/off; while on, each stem has its
+  // own mute toggle (and solo = "mute every other one").
+  const toggleStemMute = useCallback((stemName: string) => {
+    setStemMutes(prev => ({ ...prev, [stemName]: !prev[stemName] }));
+  }, []);
+  const soloStem = useCallback((stemName: string) => {
+    setStemMutes(() => {
+      const next: Record<string, boolean> = {};
+      for (const s of stems.available) next[s] = s !== stemName;
+      return next;
+    });
+  }, [stems.available]);
+  // Reset stems mode (and per-stem mutes) when the audio source changes — the
+  // new song's split status is unknown until /api/stems-check responds.
+  useEffect(() => { setStemsMode(false); setStemMutes({}); }, [audioSeg?.src]);
+  // Load each follower's src when stems become available (or change).
+  useEffect(() => {
+    if (!audioSeg || stems.available.length === 0) return;
+    for (const stemName of stems.available) {
+      const ref = stemAudioRefs.current[stemName];
+      if (!ref) continue;
+      const stemUrl = audioSeg.src.replace(/\.(mp3|m4a|ogg|wav|flac)$/i, `.stems/${stemName}.wav`);
+      const abs = new URL(stemUrl, location.href).href;
+      if (ref.src !== abs) { ref.src = stemUrl; ref.load(); }
     }
-    a.src = newSrc;
-    a.load();
-    const onReady = () => { try { a.currentTime = t; } catch { /* */ } if (wasPlaying) a.play().catch(() => {}); };
-    a.addEventListener("loadedmetadata", onReady, { once: true });
-    setStems(s => ({ ...s, current: stemName }));
-  }, [audioSeg]);
+  }, [audioSeg?.src, stems.available]);
+  // Sync followers to master.  Master fires play/pause/seeked on user
+  // interaction AND on the loop-wrap inside onTimeUpdate (which calls
+  // a.currentTime = lo → 'seeked' event), so a single set of listeners covers
+  // every state transition.  Tiny drift between elements is below the 30 ms
+  // perceptual threshold for most program material; tight phasing on percussive
+  // hits could use Web Audio + AudioBufferSourceNode if it ever matters.
+  useEffect(() => {
+    const a = audioRef.current; if (!a) return;
+    const followers = () => stems.available
+      .map(s => stemAudioRefs.current[s])
+      .filter((f): f is HTMLAudioElement => !!f);
+    const onPlay = () => { for (const f of followers()) { try { f.currentTime = a.currentTime; } catch { /* */ } f.play().catch(() => {}); } };
+    const onPause = () => { for (const f of followers()) f.pause(); };
+    const onSeeked = () => { for (const f of followers()) { try { f.currentTime = a.currentTime; } catch { /* */ } } };
+    a.addEventListener("play", onPlay);
+    a.addEventListener("pause", onPause);
+    a.addEventListener("seeked", onSeeked);
+    return () => {
+      a.removeEventListener("play", onPlay);
+      a.removeEventListener("pause", onPause);
+      a.removeEventListener("seeked", onSeeked);
+    };
+  }, [stems.available]);
+  // Mute routing.  In stems mode the master is muted (only followers are
+  // audible); per-stem mute toggles follower.muted.  Out of stems mode every
+  // follower is muted so the master alone produces sound.
+  //
+  // Also handles the mode-toggle-mid-playback case: if the user flips stems
+  // mode on while audio is already playing, master's 'play' event has long
+  // since fired, so we have to start/pause the followers here.
+  useEffect(() => {
+    const a = audioRef.current;
+    if (a) a.muted = stemsMode;
+    const masterPlaying = a && !a.paused;
+    for (const stemName of stems.available) {
+      const ref = stemAudioRefs.current[stemName];
+      if (!ref) continue;
+      ref.muted = !stemsMode || !!stemMutes[stemName];
+      if (stemsMode && masterPlaying) {
+        try { ref.currentTime = a!.currentTime; } catch { /* */ }
+        ref.play().catch(() => {});
+      } else if (!stemsMode) {
+        ref.pause();
+      }
+    }
+  }, [stemsMode, stemMutes, stems.available]);
   // WaveSurfer.js renders the real waveform as the scrubber's background; our
   // own overlay (markers + playhead) draws on top.  We share the existing
   // <audio> via `media:` so seek / play / pause stay routed through audioRef.
@@ -932,19 +993,36 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
               )}
               {stems.available.length > 0 && (
                 <>
+                  {/* Mode toggle: Original mix vs Stems mix.  Stems mode
+                      mutes the master and plays the 6 followers; mute toggles
+                      next to each stem are only effective in stems mode. */}
                   <button
-                    onClick={() => playStem(null)}
+                    onClick={() => setStemsMode(m => !m)}
+                    title={stemsMode ? "Switch back to the original mixed track" : "Switch to the 6 separated stems (mute/solo per stem)"}
                     className={`px-2 py-0.5 rounded border transition-colors ${
-                      stems.current === null ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#141414] border-[#2a2a2a] text-[#888]"
-                    }`}>Mix</button>
-                  {stems.available.map(s => (
-                    <button
-                      key={s}
-                      onClick={() => playStem(s)}
-                      className={`px-2 py-0.5 rounded border transition-colors capitalize ${
-                        stems.current === s ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#141414] border-[#2a2a2a] text-[#888]"
-                      }`}>{s}</button>
-                  ))}
+                      stemsMode ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#141414] border-[#2a2a2a] text-[#888]"
+                    }`}>
+                    {stemsMode ? "Stems" : "Original"}
+                  </button>
+                  {stems.available.map(s => {
+                    const muted = !!stemMutes[s];
+                    const active = stemsMode && !muted;
+                    return (
+                      <button
+                        key={s}
+                        disabled={!stemsMode}
+                        onClick={() => toggleStemMute(s)}
+                        onDoubleClick={() => soloStem(s)}
+                        title="Click to mute/unmute · double-click to solo"
+                        className={`px-2 py-0.5 rounded border transition-colors capitalize ${
+                          !stemsMode
+                            ? "bg-[#141414] border-[#2a2a2a] text-[#444] cursor-not-allowed"
+                            : active
+                              ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]"
+                              : "bg-[#141414] border-[#2a2a2a] text-[#666] line-through"
+                        }`}>{s}</button>
+                    );
+                  })}
                 </>
               )}
               {stems.error && (
@@ -978,6 +1056,19 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
           if (a.currentTime >= segEndRef.current) a.pause();
         }}
       />
+      {/* Follower <audio> elements for stem mixing (one per available stem).
+          Slaved to the master via play/pause/seeked listeners; muted at all
+          times outside stems mode.  preload="auto" lets the browser start
+          buffering so toggling stems mode on doesn't introduce a load gap. */}
+      {stems.available.map(stemName => (
+        <audio
+          key={stemName}
+          ref={el => { stemAudioRefs.current[stemName] = el; }}
+          className="hidden"
+          preload="auto"
+          muted
+        />
+      ))}
     </div>
   );
 }
