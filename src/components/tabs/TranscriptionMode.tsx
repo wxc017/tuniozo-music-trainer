@@ -649,6 +649,12 @@ export default function TranscriptionMode() {
       normalize: true,
       minPxPerSec: FIXED_MIN_PX_PER_SEC,
       fillParent: false,
+      // WaveSurfer v7 has a built-in scrollbar-hide that toggles the
+      // `noScrollbar` class inside its shadow root (scrollbar-width:none
+      // + ::-webkit-scrollbar{display:none}).  No more JS overflowX
+      // overrides — those disturbed internal layout and broke the
+      // waveform render in earlier iterations.
+      hideScrollbar: true,
       // Click anywhere on the waveform to seek; drag the cursor to
       // scrub.  (interact defaults to true but we set it explicitly so
       // it's obvious in the diff this is a contract.)
@@ -664,54 +670,22 @@ export default function TranscriptionMode() {
     });
     wsRef.current = ws;
 
-    // WaveSurfer v7 renders into a Shadow DOM whose `.scroll` element
-    // shows a horizontal scrollbar (CSS targeting it from the outer
-    // document fails because of the shadow boundary, and styles
-    // injected into the shadow root weren't reliably applied either).
-    // Brute-force: set overflowX="hidden" on the scroll element via
-    // JS after every layout pass.  Programmatic scrollLeft (which is
-    // what autoScroll uses) still works without a visible bar.
-    //
-    // NOTE: the recursive walk that touched EVERY descendant was reverted
-    // — it disturbed WaveSurfer's internal scroll container's layout and
-    // collapsed the rendered waveform to fit-the-container (instead of
-    // honouring minPxPerSec).  Targeted-only here.
-    const hideInnerScrollbar = () => {
-      const root = containerRef.current; if (!root) return;
-      const candidates: (Element | null)[] = [
-        root.shadowRoot?.querySelector(".scroll") ?? null,
-        root.shadowRoot?.querySelector('[part="scroll"]') ?? null,
-        root.querySelector(".scroll"),
-        root.querySelector('[part="scroll"]'),
-      ];
-      for (const el of candidates) {
-        if (el instanceof HTMLElement) el.style.overflowX = "hidden";
-      }
-    };
-    // Run now, again on next frame (in case the renderer hasn't
-    // attached the scroll container yet), and on every WS redraw
-    // (the renderer occasionally re-creates the scroll element when
-    // the canvas re-tiles during play).
-    hideInnerScrollbar();
-    requestAnimationFrame(hideInnerScrollbar);
-
-    const onReady = () => { setDuration(ws.getDuration()); hideInnerScrollbar(); };
+    // Scrollbar-hide is handled by the WaveSurfer `hideScrollbar: true`
+    // option above — no more JS overrides needed.
+    const onReady = () => { setDuration(ws.getDuration()); };
     const onTime = (t: number) => setCurrentTime(t);
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
-    const onRedraw = () => hideInnerScrollbar();
     ws.on("ready", onReady);
     ws.on("timeupdate", onTime);
     ws.on("play", onPlay);
     ws.on("pause", onPause);
-    ws.on("redrawcomplete", onRedraw);
 
     return () => {
       ws.un("ready", onReady);
       ws.un("timeupdate", onTime);
       ws.un("play", onPlay);
       ws.un("pause", onPause);
-      ws.un("redrawcomplete", onRedraw);
       ws.destroy();
       wsRef.current = null;
       audio.pause();
