@@ -249,31 +249,31 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
       while (chord.length && Math.max(...chord) > 60) chord = chord.map(n => n - 12);  // keep on the bass staff
       return chord;
     };
-    // Comp + bass come from the SAME engine the audio plays, so the notation
-    // shows the actual comped RHYTHM (not one block chord per bar).
-    const comp = (showChordSymbols || showBassStaff)
+    // Chord staff renders as BLOCK chords — one held stack per chord change,
+    // sized to the chord's actual duration.  NOT the comp's stab rhythm: the
+    // audio still plays idiomatic comping, but the notation reads as clean
+    // harmony.  Per user direction 2026-05-29: "this comping is also terrible".
+    // Merge consecutive same-symbol chords first — lead-sheet sources sometimes
+    // encode each beat as its own chord entry even when the chord is held, and
+    // that produced one quarter-note stab per beat in the rendered bar.
+    const mergedChords: typeof excerpt.chords = [];
+    for (const c of excerpt.chords) {
+      const last = mergedChords[mergedChords.length - 1];
+      if (last && last.sym === c.sym && Math.abs(last.startBeat + last.durBeats - c.startBeat) < 1e-6) {
+        last.durBeats += c.durBeats;
+      } else {
+        mergedChords.push({ ...c });
+      }
+    }
+    const chordBlockEvents = mergedChords
+      .map(c => ({ startBeat: c.startBeat, durBeats: c.durBeats, data: voiceBlock(c.rootPc, c.intervals) }))
+      .filter(e => e.data.length);
+    const chordVoicingByBar = segmentByBar<number[]>(
+      showChordSymbols ? chordBlockEvents : [], bars, bpb);
+    // Bass line still uses the comp engine (walking bass is a real rhythm).
+    const comp = showBassStaff
       ? compEvents(excerpt.chords, compGenre, bpb, ts, bars * bpb)
       : { chord: [], bass: [] };
-    // Which chord is sounding at a given beat (for a clean, readable voicing).
-    const chordAt = (beat: number) => {
-      let c = excerpt.chords[0];
-      for (const x of excerpt.chords) { if (x.startBeat <= beat + 1e-6) c = x; else break; }
-      return c;
-    };
-    // One stacked chord per comp HIT, at the stab's onset/duration, voiced
-    // compactly (root position) so it reads cleanly and shows the rhythm played.
-    const stabByOnset = new Map<number, number>();   // onset → duration
-    for (const e of comp.chord) {
-      const k = Math.round(e.startBeat / 0.0625) * 0.0625;
-      stabByOnset.set(k, Math.max(stabByOnset.get(k) ?? 0, e.durBeats));
-    }
-    const chordVoicingByBar = segmentByBar<number[]>(
-      showChordSymbols
-        ? [...stabByOnset.entries()].map(([k, dur]) => {
-            const c = chordAt(k);
-            return { startBeat: k, durBeats: dur, data: c ? voiceBlock(c.rootPc, c.intervals) : [] };
-          }).filter(e => e.data.length)
-        : [], bars, bpb);
     const bassLineByBar = segmentByBar<number>(
       showBassStaff ? comp.bass.map(e => ({ startBeat: e.startBeat, durBeats: e.durBeats, data: e.midi + 12 })) : [], bars, bpb);
 
