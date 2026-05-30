@@ -909,6 +909,16 @@ function renderScore(
           firstIndexes: [aIdx],
           lastIndexes: [bIdx],
         });
+        // Force ALL ties to curve UP (direction = -1 in VexFlow's tie
+        // coordinate system = the curve sits ABOVE the noteheads).  By
+        // default VexFlow picks tie direction from stem direction, which
+        // with our two-voice layout meant the upper voice's ties curved
+        // INTO the kick voice's ties in the middle of the staff.  Per
+        // user direction 2026-05-30: "make them go in te same direction
+        // not opposite".  Upper-voice ties land above the staff; kick-
+        // voice ties land between the kick line and the snare line —
+        // visually separated.
+        try { (tie as unknown as { setDirection(d: number): void }).setDirection(-1); } catch { /* */ }
         tie.setContext(ctx).draw();
       } catch { /* skip */ }
     }
@@ -4106,12 +4116,13 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
               edit-pane wrapper (mt-auto in the parent flex column)
               so it sits at the viewport bottom instead of floating
               just under the staff. */}
-          <div className="mt-auto px-3 pt-1 text-[9px] text-[#666] flex flex-wrap gap-x-3 gap-y-0.5 leading-tight">
+          <div className="mt-auto px-3 pt-1 pb-1 text-[11px] text-[#999] flex flex-wrap gap-x-3 gap-y-0.5 leading-tight">
             <span><span className="text-[#aaa] font-mono">1/2/4/8</span> dur (q/8/16/32)</span>
             <span><span className="text-[#aaa] font-mono">A</span> accent</span>
             <span><span className="text-[#aaa] font-mono">G</span> ghost</span>
             <span><span className="text-[#aaa] font-mono">F</span> flam</span>
             <span><span className="text-[#aaa] font-mono">D</span> drag</span>
+            <span><span className="text-[#aaa] font-mono">Z</span> buzz</span>
             <span><span className="text-[#aaa] font-mono">N</span> normal</span>
             <span><span className="text-[#aaa] font-mono">U</span>/<span className="text-[#aaa] font-mono">Y</span> stick R/L</span>
             <span><span className="text-[#aaa] font-mono">R</span> rest</span>
