@@ -664,35 +664,29 @@ export default function TranscriptionMode() {
     });
     wsRef.current = ws;
 
-    // WaveSurfer v7 may render the scrollable inner container outside the
-    // reach of our outer-document CSS (shadow DOM in some versions; a
-    // class-named child in others).  Brute-force: walk every descendant
-    // (light DOM AND shadow DOM if present), and for any element whose
-    // computed style has overflow-x scroll/auto, clamp it to hidden.
-    // Programmatic scrollLeft — which is what autoScroll uses — still
-    // works without a visible bar.  Re-runs on every redraw because the
-    // renderer can re-create the scroll element when canvas re-tiles.
+    // WaveSurfer v7 renders into a Shadow DOM whose `.scroll` element
+    // shows a horizontal scrollbar (CSS targeting it from the outer
+    // document fails because of the shadow boundary, and styles
+    // injected into the shadow root weren't reliably applied either).
+    // Brute-force: set overflowX="hidden" on the scroll element via
+    // JS after every layout pass.  Programmatic scrollLeft (which is
+    // what autoScroll uses) still works without a visible bar.
+    //
+    // NOTE: the recursive walk that touched EVERY descendant was reverted
+    // — it disturbed WaveSurfer's internal scroll container's layout and
+    // collapsed the rendered waveform to fit-the-container (instead of
+    // honouring minPxPerSec).  Targeted-only here.
     const hideInnerScrollbar = () => {
       const root = containerRef.current; if (!root) return;
-      const seen = new WeakSet<Element>();
-      const walk = (el: Element | null) => {
-        if (!el || seen.has(el)) return;
-        seen.add(el);
-        if (el instanceof HTMLElement) {
-          const cs = el.ownerDocument?.defaultView?.getComputedStyle(el);
-          const ox = cs?.overflowX ?? "";
-          if (ox === "scroll" || ox === "auto") {
-            el.style.overflowX = "hidden";
-          }
-          // Belt-and-braces: nuke the bar via the scrollbar pseudo-classes
-          // too, in case computed style misses a non-standard container.
-          el.style.scrollbarWidth = "none";
-        }
-        for (const c of Array.from(el.children)) walk(c);
-        const sr = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
-        if (sr) for (const c of Array.from(sr.children)) walk(c);
-      };
-      walk(root);
+      const candidates: (Element | null)[] = [
+        root.shadowRoot?.querySelector(".scroll") ?? null,
+        root.shadowRoot?.querySelector('[part="scroll"]') ?? null,
+        root.querySelector(".scroll"),
+        root.querySelector('[part="scroll"]'),
+      ];
+      for (const el of candidates) {
+        if (el instanceof HTMLElement) el.style.overflowX = "hidden";
+      }
     };
     // Run now, again on next frame (in case the renderer hasn't
     // attached the scroll container yet), and on every WS redraw
@@ -1417,12 +1411,7 @@ export default function TranscriptionMode() {
         </aside>
 
         {/* ── RIGHT: player ───────────────────────────────────── */}
-        {/* sticky top-4 + max-h pins the player at the top of the viewport
-            while the left panel scrolls; overflow-y-auto lets the player
-            content (transport + checkpoints list + stems grid) scroll within
-            its own bounds when it exceeds viewport height. */}
-        <section className="bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg p-4 flex flex-col gap-4 min-h-[520px] min-w-0 overflow-y-auto sticky top-4"
-                 style={{ maxHeight: "calc(100vh - 2rem)" }}>
+        <section className="bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg p-4 flex flex-col gap-4 min-h-[520px] min-w-0 overflow-hidden">
           {!track ? (
             <div className="flex-1 flex items-center justify-center text-center text-[#666] text-xs leading-relaxed">
               <div className="max-w-sm">
@@ -1498,7 +1487,15 @@ export default function TranscriptionMode() {
                     {rbStatus === "ready" ? "RUBBER BAND" : rbStatus === "loading" ? "LOADING…" : rbStatus === "failed" ? "NATIVE" : "NATIVE"}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 ml-auto">
+                <div className="flex items-center gap-1 ml-auto flex-wrap">
+                  {/* Drop-a-checkpoint button lives in the transport row
+                      next to L₀/L₁ per user direction 2026-05-30: "this
+                      butotn is not next to the looping button". */}
+                  <button onClick={addCheckpoint}
+                    title="Drop a checkpoint at the current playhead"
+                    className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider bg-[#1a1408] border border-[#3a2e1a] text-[#d4a050] hover:bg-[#2a2010] rounded">
+                    + {mmss(currentTime)}
+                  </button>
                   <button onClick={() => setLoopEnd("A")} title="Set L₀ (loop start) to the current playhead"
                     className="px-2 py-1.5 text-[10px] font-mono tracking-wider border border-[#3a3a3a] text-[#aaa] hover:border-[#5a5a5a] hover:text-white rounded">L₀</button>
                   <button onClick={() => setLoopEnd("B")} title="Set L₁ (loop end) to the current playhead"
@@ -1513,33 +1510,23 @@ export default function TranscriptionMode() {
                 </div>
               </div>
 
-              {/* Checkpoint strip — always visible so the user can drop a
-                  checkpoint without scrolling.  Left side: + Add button
-                  (always present); right side: one letter button per
-                  existing checkpoint, click to jump.  Per user direction
-                  2026-05-30: "i want a [button] to always be visible —
-                  others wise I cant even make a check point". */}
-              <div className="flex items-center gap-1 flex-wrap text-[11px]">
-                <button onClick={addCheckpoint}
-                  title="Drop a checkpoint at the current playhead"
-                  className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider bg-[#1a1408] border border-[#3a2e1a] text-[#d4a050] hover:bg-[#2a2010] rounded">
-                  + Checkpoint at {mmss(currentTime)}
-                </button>
-                {checkpoints.length > 0 && (
-                  <>
-                    <span className="text-[#888] ml-2">Jump:</span>
-                    {checkpoints.map((cp, i) => (
-                      <button
-                        key={cp.id}
-                        onClick={() => seekTo(cp.time)}
-                        title={`Seek to checkpoint ${ordinalLetter(i)} (${mmss(cp.time)}${cp.label ? " — " + cp.label : ""})`}
-                        className="px-2 py-0.5 rounded border bg-[#1a1408] border-[#d4a050] text-[#d4a050] hover:bg-[#d4a050] hover:text-black transition-colors font-bold tabular-nums">
-                        {ordinalLetter(i)}
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
+              {/* Quick-jump strip — one letter button per existing checkpoint.
+                  Only renders when there are checkpoints to jump to (the
+                  + Add button itself now lives in the transport row above). */}
+              {checkpoints.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap text-[11px]">
+                  <span className="text-[#888]">Jump:</span>
+                  {checkpoints.map((cp, i) => (
+                    <button
+                      key={cp.id}
+                      onClick={() => seekTo(cp.time)}
+                      title={`Seek to checkpoint ${ordinalLetter(i)} (${mmss(cp.time)}${cp.label ? " — " + cp.label : ""})`}
+                      className="px-2 py-0.5 rounded border bg-[#1a1408] border-[#d4a050] text-[#d4a050] hover:bg-[#d4a050] hover:text-black transition-colors font-bold tabular-nums">
+                      {ordinalLetter(i)}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Stems — render the SPLIT button whenever a corpus track has
                   no sibling .stems folder yet, so the user can spawn the
@@ -1666,9 +1653,6 @@ export default function TranscriptionMode() {
         </section>
       </div>
 
-      <p className="text-[10px] text-[#444] text-center">
-        Drag audio files anywhere on this page · slowdown uses Rubber Band (WASM) for distortion-free pitch preservation down to 40&#37; speed · pre-compute stems with <code className="text-[#888]">npm run separate-stems</code> (MDX-Net) to enable mute/solo per instrument.
-      </p>
     </div>
   );
 }
