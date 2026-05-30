@@ -113,15 +113,11 @@ interface Track {
 
 interface Checkpoint { id: string; label: string; time: number }
 
-// Stems live in a sibling folder named `<basename>.stems/` (the
-// output convention of scripts/separate-stems.mjs).  When a track is
-// loaded the player checks for the canonical four — vocals/drums/
-// bass/other — and exposes mute/solo for whichever ones are found.
-type StemName = "vocals" | "drums" | "bass" | "other";
-const STEM_NAMES: StemName[] = ["vocals", "drums", "bass", "other"];
-const STEM_LABEL: Record<StemName, string> = { vocals: "Vocals", drums: "Drums", bass: "Bass", other: "Other" };
+type StemName = "vocals" | "drums" | "bass" | "other" | "guitar" | "piano";
+const STEM_NAMES: StemName[] = ["vocals", "drums", "bass", "other", "guitar", "piano"];
+const STEM_LABEL: Record<StemName, string> = { vocals: "Vocals", drums: "Drums", bass: "Bass", other: "Other", guitar: "Guitar", piano: "Piano" };
 const STEM_COLOR: Record<StemName, string> = {
-  vocals: "#e8aa50", drums: "#7173e6", bass: "#5acc7a", other: "#aaa",
+  vocals: "#e8aa50", drums: "#7173e6", bass: "#5acc7a", other: "#aaa", guitar: "#d05a5a", piano: "#a3c6ec",
 };
 /** Corpus track the user has starred from inside the player. */
 interface SavedSong {
@@ -1347,9 +1343,6 @@ export default function TranscriptionMode() {
 
           {sourceTab === "saved" && (
             <div className="flex-1 flex flex-col p-2 gap-2 min-h-0">
-              <p className="text-[10px] text-[#666] leading-relaxed">
-                Songs starred from inside this player, plus phrases bookmarked under Tonal Audiation → Transcriptions.
-              </p>
               <div className="flex-1 overflow-y-auto -mx-2 px-2 space-y-2">
                 {/* Saved songs (corpus tracks starred from the player). */}
                 {savedSongs.length > 0 && (
@@ -1538,10 +1531,7 @@ export default function TranscriptionMode() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-xs font-semibold tracking-widest text-[#d4a050] uppercase">Stems</h4>
-                    <span className="text-[10px] text-[#666]">
-                      Click MUTE to silence · click SOLO to hear only that stem
-                      {stemSolo && <button onClick={() => setStemSolo(null)} className="ml-2 text-[#d4a050] hover:text-white">clear solo</button>}
-                    </span>
+                    {stemSolo && <button onClick={() => setStemSolo(null)} className="text-[10px] text-[#d4a050] hover:text-white">clear solo</button>}
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {STEM_NAMES.filter(n => !!track.stems?.[n]).map(name => {
@@ -1571,14 +1561,9 @@ export default function TranscriptionMode() {
                 </div>
               )}
 
-              {/* Checkpoints */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-xs font-semibold tracking-widest text-[#d4a050] uppercase">Checkpoints</h4>
-                  <button onClick={addCheckpoint}
-                    className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider bg-[#1a1408] border border-[#3a2e1a] text-[#d4a050] hover:bg-[#2a2010] rounded">
-                    + Add at {mmss(currentTime)}
-                  </button>
                 </div>
                 {checkpoints.length === 0 ? null : (
                   <>
