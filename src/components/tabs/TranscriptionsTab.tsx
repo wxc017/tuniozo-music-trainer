@@ -126,7 +126,12 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
   // click on a file").  When a blues/drums track loads, ask the Vite middleware
   // whether stems already exist on disk; the user can trigger a split and then
   // play a single stem in isolation (vocals-only, drums-only, etc.).
-  const [stems, setStems] = useState<{ available: string[]; loading: boolean; current: string | null; error?: string }>({ available: [], loading: false, current: null });
+  //
+  // `progress` carries the live stdout/stderr from the spawned splitter so the
+  // user sees what audio-separator is doing during the multi-minute job (per
+  // user direction 2026-05-30: "im not seeing instrument splitting in
+  // progress for the songs").
+  const [stems, setStems] = useState<{ available: string[]; loading: boolean; current: string | null; error?: string; progress?: string }>({ available: [], loading: false, current: null });
   const srcKey = audioSeg?.src ?? "";
   const checkpoints = (srcKey ? allCheckpoints[srcKey] : undefined) ?? [];
   const loop = srcKey ? allLoops[srcKey] : undefined;
@@ -187,16 +192,43 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
   const splitStems = useCallback(async () => {
     if (!audioSeg) return;
     const rel = audioRelFromSrc(audioSeg.src);
-    setStems(s => ({ ...s, loading: true, error: undefined }));
+    setStems(s => ({ ...s, loading: true, error: undefined, progress: "Starting split…" }));
     try {
       const r = await fetch("/api/split", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ audio: rel, model: "htdemucs_6s" }),
       });
-      const d = await r.json();
-      if (d?.ok) setStems({ available: d.stems ?? [], loading: false, current: null });
-      else setStems(s => ({ ...s, loading: false, error: d?.error || "split failed" }));
+      if (!r.ok || !r.body) {
+        setStems(s => ({ ...s, loading: false, error: `HTTP ${r.status}` }));
+        return;
+      }
+      // NDJSON stream: each line is one event from the splitter — a stdout/
+      // stderr line during the multi-minute job, then a final { done: true }.
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let finished = false;
+      while (!finished) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const raw of lines) {
+          const t = raw.trim();
+          if (!t) continue;
+          let msg: { line?: string; err?: boolean; done?: boolean; ok?: boolean; stems?: string[]; error?: string };
+          try { msg = JSON.parse(t); } catch { continue; }
+          if (msg.done) {
+            finished = true;
+            if (msg.ok) setStems({ available: msg.stems ?? [], loading: false, current: null });
+            else setStems(s => ({ ...s, loading: false, error: msg.error || "split failed" }));
+          } else if (msg.line) {
+            setStems(s => ({ ...s, progress: msg.line }));
+          }
+        }
+      }
     } catch (e) {
       setStems(s => ({ ...s, loading: false, error: String(e) }));
     }
@@ -891,7 +923,12 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
                 </button>
               )}
               {stems.loading && (
-                <span className="text-[#cd6] animate-pulse">Splitting… this can take a few minutes.</span>
+                <span
+                  className="text-[#cd6] font-mono text-[10px] truncate max-w-[28rem]"
+                  title={stems.progress}
+                >
+                  <span className="animate-pulse">●</span> {stems.progress || "Splitting…"}
+                </span>
               )}
               {stems.available.length > 0 && (
                 <>

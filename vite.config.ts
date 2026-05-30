@@ -70,35 +70,61 @@ function demucsPlugin(): Plugin {
         const abs = resolveAudio(parsed.audio || "");
         if (!abs || !fs.existsSync(abs)) { res.statusCode = 404; res.end(JSON.stringify({ ok: false, error: "audio not found" })); return; }
         const model = parsed.model || "htdemucs_6s";
+        // NDJSON streaming response.  Each line is one event:
+        //   { "line": "..." }         — splitter stdout line (progress)
+        //   { "line": "...", "err": true }  — splitter stderr line
+        //   { "done": true, "ok": bool, "stems": [...], "error"?: "..." }
+        // The split itself takes minutes; without streaming the user would sit
+        // on a static "Splitting..." spinner the whole time (per user
+        // direction 2026-05-30: "im not seeing instrument splitting in
+        // progress for the songs").
+        res.setHeader("Content-Type", "application/x-ndjson");
+        res.setHeader("Cache-Control", "no-store");
+        // Disable proxy buffering so chunks reach the browser as they're written.
+        res.setHeader("X-Accel-Buffering", "no");
+        // Flush headers immediately so the browser knows the stream is open
+        // and starts reading; without this, the spinner sits idle until the
+        // first chunk crosses Node's internal write buffer.
+        res.flushHeaders();
+        const send = (obj: Record<string, unknown>) => { res.write(JSON.stringify(obj) + "\n"); };
+
         // Short-circuit when stems already exist (cache: per-file by location).
         const dir = stemsDirFor(abs);
         const have = listExistingStems(dir);
         if (have.length >= (model === "htdemucs_6s" ? 6 : model === "demucs" ? 4 : 2)) {
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ ok: true, cached: true, dir: path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/"), stems: have }));
+          send({ line: `Cached: ${have.length} stems already at ${path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/")}` });
+          send({ done: true, ok: true, cached: true, dir: path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/"), stems: have });
+          res.end();
           return;
         }
-        // Spawn the CLI.  Capture stderr/stdout for the response payload so a
-        // failed split surfaces something actionable in the browser.
         const { spawn } = await import("node:child_process");
         const scriptPath = path.join(import.meta.dirname, "scripts", "separate-stems.mjs");
+        send({ line: `Spawning audio-separator (${model}) on ${path.basename(abs)}…` });
         const proc = spawn(process.execPath, [scriptPath, "--model", model, abs], { stdio: ["ignore", "pipe", "pipe"] });
-        let stdout = "", stderr = "";
-        proc.stdout.on("data", d => { stdout += d.toString(); });
-        proc.stderr.on("data", d => { stderr += d.toString(); });
+        // Stream every stdout line.  audio-separator prints checkpoint download
+        // progress and per-stem completion notes; htdemucs_6s on CPU is mostly
+        // silent during inference (no per-second progress), so the user mainly
+        // sees the model-loading + finalization phases.
+        const splitAndSend = (data: Buffer, err: boolean) => {
+          for (const line of data.toString().split(/\r?\n/)) {
+            const t = line.trim();
+            if (t) send(err ? { line: t, err: true } : { line: t });
+          }
+        };
+        proc.stdout.on("data", d => splitAndSend(d, false));
+        proc.stderr.on("data", d => splitAndSend(d, true));
         proc.on("error", err => {
-          res.statusCode = 500;
-          res.end(JSON.stringify({ ok: false, error: `spawn failed: ${err.message}`, stderr }));
+          send({ done: true, ok: false, error: `spawn failed: ${err.message}` });
+          res.end();
         });
         proc.on("exit", code => {
           if (code === 0) {
             const stems = listExistingStems(dir);
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify({ ok: true, dir: path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/"), stems, log: stdout }));
+            send({ done: true, ok: true, dir: path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/"), stems });
           } else {
-            res.statusCode = 500;
-            res.end(JSON.stringify({ ok: false, error: `separate-stems exit ${code}`, stderr, stdout }));
+            send({ done: true, ok: false, error: `separate-stems exit ${code}` });
           }
+          res.end();
         });
       });
     },
