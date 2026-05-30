@@ -33,8 +33,9 @@ export const NOTEHEAD_ORDER: NoteheadType[] = ["default", "x", "circle-x", "diam
 // ── Drum-mode articulations & stickings ─────────────────────────────
 // Mirrors the semantics of `accentData.ts` (used by AccentStudy /
 // VexDrumNotation) so the rendering style is consistent across the
-// app: accent = ">"  ghost = parens  flam = 1 grace note  drag = 2.
-export type DrumArticulation = "normal" | "accent" | "ghost" | "flam" | "drag";
+// app: accent = ">"  ghost = parens  flam = 1 grace note  drag = 2
+// buzz = "z" on the stem (standard buzz-roll notation).
+export type DrumArticulation = "normal" | "accent" | "ghost" | "flam" | "drag" | "buzz";
 
 export const DRUM_ARTIC_LABELS: Record<DrumArticulation, string> = {
   normal: "Normal",
@@ -42,9 +43,10 @@ export const DRUM_ARTIC_LABELS: Record<DrumArticulation, string> = {
   ghost:  "Ghost ( )",
   flam:   "Flam",
   drag:   "Drag",
+  buzz:   "Buzz (z)",
 };
 
-export const DRUM_ARTIC_ORDER: DrumArticulation[] = ["normal", "accent", "ghost", "flam", "drag"];
+export const DRUM_ARTIC_ORDER: DrumArticulation[] = ["normal", "accent", "ghost", "flam", "drag", "buzz"];
 
 /** Stick assignment shown above a note (R = right, L = left).  Same
  *  letter convention as `accentData.Sticking` derivations. */

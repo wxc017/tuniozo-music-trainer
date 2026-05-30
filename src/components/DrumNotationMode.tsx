@@ -191,6 +191,27 @@ function pitchWithHead(pitch: string, head?: NoteheadType): string {
   return pitch + NOTEHEAD_SUFFIX[head];
 }
 
+// Draws a small "z" on the stem for buzz roll notation.  Copy-paste from
+// VexDrumNotation.tsx so the look matches AccentStudy / the drum-patterns
+// renderer.  Per user direction 2026-05-30: "in scoring fro drums allow me
+// to turn notes into buzz, there is code ofr it in drum patterns just copy
+// and paste".
+class DrumBuzzZ extends Annotation {
+  constructor() { super("z"); this.setFont("Arial", 12, "bold"); }
+  override draw(): void {
+    const note = (this as unknown as { checkAttachedNote: () => StaveNote }).checkAttachedNote();
+    const ctx = this.checkContext();
+    const stemX = (note as unknown as { getStemX?: () => number }).getStemX?.() ?? note.getAbsoluteX();
+    const ext = note.getStemExtents();
+    const y = ext.topY + (ext.baseY - ext.topY) * 0.70 + 3;
+    const prevFont = ctx.getFont();
+    ctx.setFont("Arial", 12, "bold");
+    // Center the "z" on the stem (half glyph width ~4px)
+    ctx.fillText("z", stemX - 4, y);
+    ctx.setFont(prevFont);
+  }
+}
+
 // Apply drum-mode articulation modifiers to a freshly-built StaveNote.
 // Reuses VexFlow's standard glyphs so the look matches AccentStudy /
 // VexDrumNotation:
@@ -198,6 +219,7 @@ function pitchWithHead(pitch: string, head?: NoteheadType): string {
 //   ghost  → parentheses around the notehead
 //   flam   → 1 slashed grace note before
 //   drag   → 2 slashed grace notes before
+//   buzz   → "z" on the stem (standard buzz-roll mark)
 function applyDrumArtic(
   vfn: StaveNote,
   artic: DrumArticulation | undefined,
@@ -212,6 +234,10 @@ function applyDrumArtic(
   if (artic === "ghost") {
     try { vfn.addModifier(new Parenthesis(1 /* LEFT */), keyIdx); } catch { /* */ }
     try { vfn.addModifier(new Parenthesis(2 /* RIGHT */), keyIdx); } catch { /* */ }
+    return;
+  }
+  if (artic === "buzz") {
+    try { vfn.addModifier(new DrumBuzzZ()); } catch { /* */ }
     return;
   }
   if (artic === "flam" || artic === "drag") {
@@ -1940,6 +1966,11 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
           setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
             ? { ...n, articulation: n.articulation === "drag" ? "normal" : "drag" } : n));
         }
+        if (e.key === "z" || e.key === "Z") {
+          e.preventDefault();
+          setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
+            ? { ...n, articulation: n.articulation === "buzz" ? "normal" : "buzz" } : n));
+        }
         if (e.key === "n" || e.key === "N") {
           setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
             ? { ...n, articulation: "normal" } : n));
@@ -3547,11 +3578,46 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                     );
                   })()}
 
+                  {/* Articulation row — drum-mode articulations including
+                       buzz (z on the stem).  Per user direction 2026-05-30:
+                       "buzz should be in overlay as well". */}
+                  {!selectedNote.isRest && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-[#666]">Art:</span>
+                      {DRUM_ARTIC_ORDER.map(a => {
+                        const current = selectedNote.articulation ?? "normal";
+                        const active = current === a;
+                        return (
+                          <button
+                            key={a}
+                            title={DRUM_ARTIC_LABELS[a]}
+                            className={`px-1.5 py-0.5 border rounded transition-colors text-[10px] ${active ? "bg-[#7173e6] border-[#7173e6] text-white" : "border-[#333] text-[#aaa] hover:text-white hover:border-[#555]"}`}
+                            onClick={() => {
+                              pushHistory(notes);
+                              // Apply to all chord-mates at the same (measure,
+                              // startSlot) so a single click on one notehead of
+                              // a chord updates the whole stack — matches the
+                              // chord-aware behaviour of the Tie row below.
+                              const targets = new Set(
+                                notes.filter(n => !n.isRest && n.measure === selectedNote.measure && n.startSlot === selectedNote.startSlot).map(n => n.id),
+                              );
+                              setNotes(all => all.map(n => targets.has(n.id) ? { ...n, articulation: a === "normal" ? undefined : a } : n));
+                            }}
+                          >{DRUM_ARTIC_LABELS[a]}</button>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {/* Row 6: tie — allowed between any selected non-rest note and
                        its previous / next non-rest note in the score, including
                        across bar lines and regardless of pitch.  Chord-mates at
                        the same slot are skipped so a chord member can still
-                       reach the actual prev/next-in-time note. */}
+                       reach the actual prev/next-in-time note.
+                       Toggle applies to ALL chord-mates at the same (measure,
+                       startSlot) so a 2-note chord ties as a unit — per user
+                       direction 2026-05-30: "i should be able to tie both
+                       notes". */}
                   {!selectedNote.isRest && (() => {
                     const sorted = [...notes].sort((a, b) =>
                       a.measure !== b.measure ? a.measure - b.measure : a.startSlot - b.startSlot);
@@ -3581,6 +3647,11 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                     const canTieNext = !!nextN;
 
                     if (!canTiePrev && !canTieNext) return null;
+                    // All chord-mates at this slot — toggled together so the
+                    // whole chord ties as a unit.
+                    const chordIds = new Set(
+                      notes.filter(n => !n.isRest && n.measure === selectedNote.measure && n.startSlot === selectedNote.startSlot).map(n => n.id),
+                    );
                     return (
                       <div className="flex items-center gap-1 flex-wrap">
                         <span className="text-[#666]">Tie:</span>
@@ -3589,14 +3660,19 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                             className={`px-2 py-0.5 border rounded transition-colors ${selectedNote.isTieEnd ? "bg-[#7173e6] border-[#7173e6] text-white" : "border-[#333] text-[#aaa] hover:text-white hover:border-[#7173e6]"}`}
                             onClick={() => {
                               pushHistory(notes);
-                              setNotes(all => all.map(n => n.id === selectedNote.id ? { ...n, isTieEnd: !n.isTieEnd } : n));
+                              const newVal = !selectedNote.isTieEnd;
+                              setNotes(all => all.map(n => chordIds.has(n.id) ? { ...n, isTieEnd: newVal } : n));
                             }}
                           >← from prev</button>
                         )}
                         {canTieNext && (
                           <button
                             className={`px-2 py-0.5 border rounded transition-colors ${selectedNote.isTieStart ? "bg-[#7173e6] border-[#7173e6] text-white" : "border-[#333] text-[#aaa] hover:text-white hover:border-[#7173e6]"}`}
-                            onClick={() => { pushHistory(notes); setNotes(all => all.map(n => n.id === selectedNote.id ? { ...n, isTieStart: !n.isTieStart } : n)); }}
+                            onClick={() => {
+                              pushHistory(notes);
+                              const newVal = !selectedNote.isTieStart;
+                              setNotes(all => all.map(n => chordIds.has(n.id) ? { ...n, isTieStart: newVal } : n));
+                            }}
                           >→ to next</button>
                         )}
                       </div>
