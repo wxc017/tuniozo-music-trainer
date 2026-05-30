@@ -29,3 +29,7 @@ src/lib/fileStorage.ts
 /tools/
 scripts/build-transcriptions/sldl.conf
 /public/drums/
+
+# User-uploaded tracks (dropped/folder files saved server-side by
+# /api/split-upload so the splitter can reach them).  Per-user, never push.
+/public/uploads/

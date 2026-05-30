@@ -61,41 +61,35 @@ function demucsPlugin(): Plugin {
         res.end(JSON.stringify({ ok: true, exists: stems.length > 0, stems, dir: path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/") }));
       });
 
-      server.middlewares.use("/api/split", async (req, res, next) => {
-        if (req.method !== "POST") return next();
-        let body = "";
-        for await (const chunk of req) body += chunk;
-        let parsed: { audio?: string; model?: string; force?: boolean };
-        try { parsed = JSON.parse(body || "{}"); } catch { res.statusCode = 400; res.end(JSON.stringify({ ok: false, error: "bad json" })); return; }
-        const abs = resolveAudio(parsed.audio || "");
-        if (!abs || !fs.existsSync(abs)) { res.statusCode = 404; res.end(JSON.stringify({ ok: false, error: "audio not found" })); return; }
-        const model = parsed.model || "htdemucs_6s";
-        const force = !!parsed.force;
-        // NDJSON streaming response.  Each line is one event:
-        //   { "line": "..." }         — splitter stdout line (progress)
-        //   { "line": "...", "err": true }  — splitter stderr line
-        //   { "done": true, "ok": bool, "stems": [...], "error"?: "..." }
-        // The split itself takes minutes; without streaming the user would sit
-        // on a static "Splitting..." spinner the whole time (per user
-        // direction 2026-05-30: "im not seeing instrument splitting in
-        // progress for the songs").
+      // Open an NDJSON streaming response: sets headers, flushes, returns a
+      // `send(obj)` writer.  Each line of the response body is one JSON event:
+      //   { "line": "..." }         — splitter stdout line (progress)
+      //   { "line": "...", "err": true }  — splitter stderr line
+      //   { "done": true, "ok": bool, "stems": [...], "error"?: "..." }
+      // The split itself takes minutes; without streaming the user would sit on
+      // a static "Splitting..." spinner the whole time.
+      function openNdjsonStream(res: import("node:http").ServerResponse) {
         res.setHeader("Content-Type", "application/x-ndjson");
         res.setHeader("Cache-Control", "no-store");
-        // Disable proxy buffering so chunks reach the browser as they're written.
         res.setHeader("X-Accel-Buffering", "no");
-        // Flush headers immediately so the browser knows the stream is open
-        // and starts reading; without this, the spinner sits idle until the
-        // first chunk crosses Node's internal write buffer.
         res.flushHeaders();
-        const send = (obj: Record<string, unknown>) => { res.write(JSON.stringify(obj) + "\n"); };
+        return (obj: Record<string, unknown>) => { res.write(JSON.stringify(obj) + "\n"); };
+      }
 
-        // Short-circuit when stems already exist (cache: per-file by location),
-        // UNLESS the caller passed { force: true } to redo the split — in
-        // which case wipe the existing .stems dir first so audio-separator
-        // doesn't see stale outputs and skip work.  Per user direction
-        // 2026-05-30: "allow me to redo the split i ahve a sng that split
-        // before tha ti want to redo with this".
+      // Run the splitter on an absolute file path, streaming progress via
+      // `send` and ending `res` when finished.  Shared between /api/split
+      // (corpus tracks) and /api/split-upload (dropped / folder-handle
+      // tracks the user just streamed up).
+      async function streamSplit(
+        abs: string,
+        model: string,
+        force: boolean,
+        send: (obj: Record<string, unknown>) => void,
+        res: import("node:http").ServerResponse,
+      ): Promise<void> {
         const dir = stemsDirFor(abs);
+        // Force re-split wipes the existing .stems dir before running so
+        // audio-separator doesn't see stale outputs and skip work.
         if (force && fs.existsSync(dir)) {
           send({ line: `Force re-split: removing existing stems at ${path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/")}` });
           try { fs.rmSync(dir, { recursive: true, force: true }); }
@@ -106,7 +100,8 @@ function demucsPlugin(): Plugin {
           }
         }
         const have = listExistingStems(dir);
-        if (!force && have.length >= (model === "htdemucs_6s" || model === "ensemble_6s" ? 6 : model === "demucs" ? 4 : 2)) {
+        const need = (model === "htdemucs_6s" || model === "ensemble_6s") ? 6 : model === "demucs" ? 4 : 2;
+        if (!force && have.length >= need) {
           send({ line: `Cached: ${have.length} stems already at ${path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/")}` });
           send({ done: true, ok: true, cached: true, dir: path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/"), stems: have });
           res.end();
@@ -116,13 +111,9 @@ function demucsPlugin(): Plugin {
         const scriptPath = path.join(import.meta.dirname, "scripts", "separate-stems.mjs");
         send({ line: `Spawning audio-separator (${model}) on ${path.basename(abs)}…` });
         const proc = spawn(process.execPath, [scriptPath, "--model", model, abs], { stdio: ["ignore", "pipe", "pipe"] });
-        // Stream every stdout line.  audio-separator prints checkpoint download
-        // progress and per-stem completion notes; htdemucs_6s on CPU is mostly
-        // silent during inference, so the user mainly sees the model-loading +
-        // finalization phases.  tqdm progress bars overwrite a single line via
-        // bare \r (no newline), so we split on \r OR \n — that turns each tqdm
-        // tick into its own NDJSON event so the user sees download/finalize %
-        // climb in real time instead of seeing nothing until the bar wraps.
+        // tqdm progress bars overwrite a single line via bare \r (no newline),
+        // so we split on \r OR \n — each tqdm tick becomes its own NDJSON event
+        // and the user sees download/finalize % climb in real time.
         const splitAndSend = (data: Buffer, err: boolean) => {
           for (const line of data.toString().split(/[\r\n]/)) {
             const t = line.trim();
@@ -144,6 +135,67 @@ function demucsPlugin(): Plugin {
           }
           res.end();
         });
+      }
+
+      server.middlewares.use("/api/split", async (req, res, next) => {
+        if (req.method !== "POST") return next();
+        let body = "";
+        for await (const chunk of req) body += chunk;
+        let parsed: { audio?: string; model?: string; force?: boolean };
+        try { parsed = JSON.parse(body || "{}"); } catch { res.statusCode = 400; res.end(JSON.stringify({ ok: false, error: "bad json" })); return; }
+        const abs = resolveAudio(parsed.audio || "");
+        if (!abs || !fs.existsSync(abs)) { res.statusCode = 404; res.end(JSON.stringify({ ok: false, error: "audio not found" })); return; }
+        const model = parsed.model || "htdemucs_6s";
+        const force = !!parsed.force;
+        const send = openNdjsonStream(res);
+        await streamSplit(abs, model, force, send, res);
+      });
+
+      // /api/split-upload — for tracks the browser holds as blob: URLs (dropped
+      // files, folder picker entries).  The browser can't expose the disk path,
+      // so we receive the raw bytes here, persist them under public/uploads/,
+      // then run the same splitter pipeline.  Per user direction 2026-05-30:
+      // "all these files should be local" — the user dragged it in and expects
+      // the splitter to work on it just like a corpus track.
+      //
+      // Query params carry metadata so we don't need a multipart parser:
+      //   name   — original filename (sanitized server-side for the path)
+      //   model  — splitter model id (default htdemucs_6s)
+      //   force  — "true" to wipe + re-split
+      //
+      // The file's bytes are the entire request body.
+      server.middlewares.use("/api/split-upload", async (req, res, next) => {
+        if (req.method !== "POST") return next();
+        const reqUrl = new URL(req.url ?? "", `http://${req.headers.host || "localhost"}`);
+        const rawName = reqUrl.searchParams.get("name") || "upload.mp3";
+        const model = reqUrl.searchParams.get("model") || "htdemucs_6s";
+        const force = reqUrl.searchParams.get("force") === "true";
+        // Restrict the filename to safe characters + length so it can't escape
+        // the uploads dir or land at a path that breaks the splitter CLI.
+        const safeName = rawName.replace(/[^A-Za-z0-9._-]/g, "_").replace(/^\.+/, "").slice(0, 200) || "upload.mp3";
+        const uploadsDir = path.join(PUBLIC_DIR, "uploads");
+        fs.mkdirSync(uploadsDir, { recursive: true });
+        const dest = path.join(uploadsDir, safeName);
+        // Open the response stream BEFORE the upload so the client can see
+        // the upload + split progress as a single flow.
+        const send = openNdjsonStream(res);
+        send({ line: `Uploading ${safeName}…` });
+        try {
+          await new Promise<void>((resolveP, rejectP) => {
+            const out = fs.createWriteStream(dest);
+            req.on("error", rejectP);
+            out.on("error", rejectP);
+            out.on("finish", () => resolveP());
+            req.pipe(out);
+          });
+        } catch (e) {
+          send({ done: true, ok: false, error: `upload failed: ${(e as Error).message}` });
+          res.end();
+          return;
+        }
+        const stats = fs.statSync(dest);
+        send({ line: `Saved ${stats.size.toLocaleString()} bytes to public/uploads/${safeName}` });
+        await streamSplit(dest, model, force, send, res);
       });
     },
   };

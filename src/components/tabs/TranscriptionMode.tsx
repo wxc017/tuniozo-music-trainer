@@ -458,27 +458,50 @@ export default function TranscriptionMode() {
   // sibling .stems folder + patches the track so the stems UI lights up.
   const runSplit = useCallback(async (force = false) => {
     if (!track) return;
-    // Only corpus tracks (under public/) can be split here — dropped blobs +
-    // folder handles aren't reachable by the server-side splitter.
-    if (track.src.startsWith("blob:")) {
-      alert("Splitting works on corpus tracks (server-side); dropped/folder files would need a different pipeline.");
-      return;
-    }
-    const escapedBase = BASE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const rel = track.src.replace(new RegExp("^" + escapedBase), "").replace(/^\/+/, "");
     setSplitState({ loading: true, progress: force ? "Wiping old stems…" : "Starting split…", error: undefined });
     // On force re-split, drop the current track's stems from state right away
     // so the mixer doesn't reference files the middleware is about to delete —
     // otherwise the follower <audio> elements 404 mid-update.
     if (force) setTrack(prev => prev && prev.id === track.id ? { ...prev, stems: {} } : prev);
+
+    // Choose endpoint based on track origin:
+    //   - corpus track (server-resolvable path)  → /api/split with the rel path
+    //   - blob: URL (dropped file / folder pick) → /api/split-upload with the
+    //     raw bytes; the server saves them under public/uploads/ then runs the
+    //     same splitter pipeline.  Per user direction 2026-05-30: "all these
+    //     files should be local" — the bytes are on the user's disk; the
+    //     browser just doesn't expose the path, so we have to stream them up.
+    let r: Response;
     try {
-      const r = await fetch("/api/split", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // force=true makes the middleware delete the existing .stems/ folder
-        // before running, so re-splits don't get short-circuited by the cache.
-        body: JSON.stringify({ audio: rel, model: "ensemble_6s", force }),
-      });
+      if (track.src.startsWith("blob:")) {
+        // Pull the bytes back from the same-document blob URL.  Browsers allow
+        // fetch() on blob: URLs whose blob is still alive in this document.
+        const blob = await (await fetch(track.src)).blob();
+        // Restrict to safe characters server-side, but pass the raw name and
+        // let the middleware sanitize so we don't double-encode.
+        const uploadName = (track.title || "upload.mp3").replace(/[/\\]/g, "_");
+        const q = new URLSearchParams({ name: uploadName, model: "ensemble_6s", force: String(force) });
+        r = await fetch(`/api/split-upload?${q.toString()}`, {
+          method: "POST",
+          headers: { "Content-Type": blob.type || "application/octet-stream" },
+          body: blob,
+        });
+      } else {
+        const escapedBase = BASE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const rel = track.src.replace(new RegExp("^" + escapedBase), "").replace(/^\/+/, "");
+        r = await fetch("/api/split", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // force=true makes the middleware delete the existing .stems/ folder
+          // before running, so re-splits don't get short-circuited by the cache.
+          body: JSON.stringify({ audio: rel, model: "ensemble_6s", force }),
+        });
+      }
+    } catch (e) {
+      setSplitState({ loading: false, error: String(e) });
+      return;
+    }
+    try {
       if (!r.ok || !r.body) {
         setSplitState({ loading: false, error: `HTTP ${r.status}` });
         return;
@@ -496,16 +519,20 @@ export default function TranscriptionMode() {
         for (const raw of lines) {
           const t = raw.trim();
           if (!t) continue;
-          let msg: { line?: string; err?: boolean; done?: boolean; ok?: boolean; stems?: string[]; error?: string };
+          let msg: { line?: string; err?: boolean; done?: boolean; ok?: boolean; dir?: string; stems?: string[]; error?: string };
           try { msg = JSON.parse(t); } catch { continue; }
           if (msg.done) {
             finished = true;
             if (msg.ok) {
               // Re-probe the freshly-written .stems folder and patch the
               // current track in place so the stems UI shows up without a
-              // re-select.
-              const base = siblingStemsBase(track.src);
-              const stems = base ? await probeStems(base) : {};
+              // re-select.  For uploaded (blob:) tracks the server tells us
+              // where stems landed via msg.dir (e.g. "uploads/song.stems");
+              // for corpus tracks we still derive it from the track URL.
+              const stemsBase = msg.dir
+                ? (msg.dir.startsWith("/") ? msg.dir : `/${msg.dir}`)
+                : siblingStemsBase(track.src);
+              const stems = stemsBase ? await probeStems(stemsBase) : {};
               setTrack(prev => prev && prev.id === track.id ? { ...prev, stems } : prev);
               setSplitState({ loading: false });
             } else {
