@@ -490,5 +490,8 @@ export default function TranscriptionNotation({ excerpt, showMelody = true, show
     }
   }, [excerpt, showMelody, showChords, showBass]);
 
-  return <div ref={ref} style={{ overflowX: "auto", maxWidth: "100%" }} />;
+  // overflow hidden (per user direction 2026-05-29): no horizontal scrollbar.
+  // The layout already wraps bars into rows at MAX_ROW_W, so the score should
+  // fit without scrolling on standard viewports.
+  return <div ref={ref} style={{ overflowX: "hidden", maxWidth: "100%" }} />;
 }

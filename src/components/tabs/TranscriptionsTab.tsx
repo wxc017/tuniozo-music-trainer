@@ -145,20 +145,23 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [audioSeg]);
-  // Space toggles play/pause globally for the audio player (unless a text
-  // input is focused — Space in a field should still type a space).
+  // Space = the Play button: fires playNew (pick + play a new excerpt) when
+  // focus isn't in a text field.  Per direct user direction (2026-05-29):
+  // "make space be play".
+  // Note: playNewRef is set after playNew is declared so the handler always
+  // sees the latest callback without re-binding on every render.
+  const playNewRef = useRef<() => void>(() => {});
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== "Space") return;
       const el = document.activeElement;
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable) return;
-      const a = audioRef.current; if (!a || !audioSeg) return;
       e.preventDefault();
-      if (a.paused) a.play().catch(() => {}); else a.pause();
+      playNewRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [audioSeg]);
+  }, []);
   // WaveSurfer.js renders the real waveform as the scrubber's background; our
   // own overlay (markers + playhead) draws on top.  We share the existing
   // <audio> via `media:` so seek / play / pause stay routed through audioRef.
@@ -335,6 +338,9 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
     setBpm(0);
     await playGivenExcerpt(picked, ex, false, picked.tempoBpm);
   }, [sources, bars, withChords, withMelody, styleFilter, playGivenExcerpt]);
+  // Keep the spacebar handler's ref pointed at the latest playNew callback
+  // (so it always sees current state without re-binding the listener).
+  useEffect(() => { playNewRef.current = () => { playNew().catch(() => {}); }; }, [playNew]);
 
   const replay = useCallback(async () => {
     clearEndTimer();
@@ -666,9 +672,18 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
           so Play / Replay / Full song never wipe them.  Looping is a separate
           control below the bar. */}
       {audioSeg && (() => {
-        const fullDur = (Number.isFinite(audioSeg.end) ? audioSeg.end : (audioRef.current?.duration ?? 0)) - audioSeg.start;
+        // Visible scrubber range extends to include any checkpoints / the loop
+        // even when they fall OUTSIDE the current excerpt's clip — otherwise a
+        // fresh Play (which re-picks a random clip window) hides the loop
+        // highlight off-screen.  Per user direction 2026-05-29:
+        // "when i play and have a loop this highlighted box disappears,
+        // it needs to always be visible".
+        let visStart = audioSeg.start;
+        let visEnd = Number.isFinite(audioSeg.end) ? audioSeg.end : (audioRef.current?.duration ?? audioSeg.start + 30);
+        for (const c of checkpoints) { if (c < visStart) visStart = c; if (c > visEnd) visEnd = c; }
+        const fullDur = visEnd - visStart;
         const span = Math.max(0.01, fullDur);
-        const xPct = (t: number) => ((t - audioSeg.start) / span) * 100;
+        const xPct = (t: number) => ((t - visStart) / span) * 100;
         // Alphabet label: 0→A, 1→B, … 25→Z, 26→AA, …
         const letterFor = (i: number) => {
           let n = i, s = "";
@@ -689,7 +704,7 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                const t = audioSeg.start + frac * span;
+                const t = visStart + frac * span;
                 // Hit-test existing checkpoints (~1.5% tolerance) → seek to it.
                 const hitIdx = checkpoints.findIndex(c => Math.abs(xPct(c) / 100 - frac) < 0.015);
                 if (hitIdx >= 0) {
@@ -739,6 +754,25 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
             {/* Loop control — separate from checkpoints. Pick two checkpoint
                 letters as the loop boundaries, then toggle Loop on/off. */}
             <div className="flex items-center gap-2 mt-2 flex-wrap text-[11px]">
+              {/* Checkpoint jump buttons — one per checkpoint, click to seek.
+                  Per user direction 2026-05-29: "add check points buttons
+                  next to loop". */}
+              {checkpoints.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <span className="text-[#888]">Jump:</span>
+                  {checkpoints.map((t, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { const a = audioRef.current; if (a) try { a.currentTime = t; } catch { /* */ } }}
+                      title={`Seek to checkpoint ${letterFor(i)} (${t.toFixed(2)}s)`}
+                      className="px-2 py-0.5 rounded border bg-[#1a1a1a] border-[#cd6] text-[#cd6] hover:bg-[#cd6] hover:text-black transition-colors font-bold tabular-nums"
+                    >
+                      {letterFor(i)}
+                    </button>
+                  ))}
+                  <span className="w-px h-4 bg-[#2a2a2a] mx-1" />
+                </div>
+              )}
               <span className="text-[#888]">Loop:</span>
               <select
                 value={loop?.startIdx ?? ""}
