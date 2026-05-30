@@ -579,24 +579,35 @@ export default function TranscriptionMode() {
     });
     wsRef.current = ws;
 
-    // WaveSurfer v7 renders into a Shadow DOM whose `.scroll` element
-    // shows a horizontal scrollbar (CSS targeting it from the outer
-    // document fails because of the shadow boundary, and styles
-    // injected into the shadow root weren't reliably applied either).
-    // Brute-force: set overflowX="hidden" on the scroll element via
-    // JS after every layout pass.  Programmatic scrollLeft (which is
-    // what autoScroll uses) still works without a visible bar.
+    // WaveSurfer v7 may render the scrollable inner container outside the
+    // reach of our outer-document CSS (shadow DOM in some versions; a
+    // class-named child in others).  Brute-force: walk every descendant
+    // (light DOM AND shadow DOM if present), and for any element whose
+    // computed style has overflow-x scroll/auto, clamp it to hidden.
+    // Programmatic scrollLeft — which is what autoScroll uses — still
+    // works without a visible bar.  Re-runs on every redraw because the
+    // renderer can re-create the scroll element when canvas re-tiles.
     const hideInnerScrollbar = () => {
       const root = containerRef.current; if (!root) return;
-      const candidates: (Element | null)[] = [
-        root.shadowRoot?.querySelector(".scroll") ?? null,
-        root.shadowRoot?.querySelector('[part="scroll"]') ?? null,
-        root.querySelector(".scroll"),
-        root.querySelector('[part="scroll"]'),
-      ];
-      for (const el of candidates) {
-        if (el instanceof HTMLElement) el.style.overflowX = "hidden";
-      }
+      const seen = new WeakSet<Element>();
+      const walk = (el: Element | null) => {
+        if (!el || seen.has(el)) return;
+        seen.add(el);
+        if (el instanceof HTMLElement) {
+          const cs = el.ownerDocument?.defaultView?.getComputedStyle(el);
+          const ox = cs?.overflowX ?? "";
+          if (ox === "scroll" || ox === "auto") {
+            el.style.overflowX = "hidden";
+          }
+          // Belt-and-braces: nuke the bar via the scrollbar pseudo-classes
+          // too, in case computed style misses a non-standard container.
+          el.style.scrollbarWidth = "none";
+        }
+        for (const c of Array.from(el.children)) walk(c);
+        const sr = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+        if (sr) for (const c of Array.from(sr.children)) walk(c);
+      };
+      walk(root);
     };
     // Run now, again on next frame (in case the renderer hasn't
     // attached the scroll container yet), and on every WS redraw
@@ -777,23 +788,25 @@ export default function TranscriptionMode() {
     // Build the regions list.  Encapsulated so we can re-run it after
     // WaveSurfer's `redrawcomplete` (which can wipe the region DOM
     // when autoScroll re-tiles the canvas while playing).
+    //
+    // The loop highlight BAND is no longer a region — it's a plain HTML
+    // overlay appended to the WaveSurfer wrapper (see the next useEffect).
+    // Regions get destroyed and re-attached during canvas re-tile, so a
+    // band rendered via Regions visibly disappeared on and off during
+    // autoScroll.  An HTML overlay on the wrapper scrolls naturally with
+    // the waveform and never gets touched by the plugin.
     const renderRegions = () => {
       regions.clearRegions();
-      // Loop window: orange band between L_0 and L_1, click-through so
-      // the user can still seek inside the loop.  Only the small
-      // flag labels at each end capture clicks.
+      // L₀ / L₁ point flags at the loop endpoints — kept as regions
+      // because they need to be clickable and the small flag DOM is
+      // less perceptually disturbing if it momentarily disappears.
       if (loop) {
-        const loopBand = regions.addRegion({
-          id: "loop:ab", start: loop[0], end: loop[1],
-          color: "rgba(232,170,80,0.28)", drag: false, resize: false,
-        });
-        if (loopBand.element) loopBand.element.style.pointerEvents = "none";
         const l0 = document.createElement("div");
-        l0.textContent = "L₀"; // L with subscript 0
+        l0.textContent = "L₀";
         l0.style.cssText = "font-size:10px;color:#0a0a08;background:#d4a050;padding:2px 6px;border-radius:0 3px 3px 0;font-weight:700;font-family:monospace;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.4);pointer-events:auto;";
         regions.addRegion({ id: "loop:a", start: loop[0], color: "rgba(212,160,80,0)", drag: false, resize: false, content: l0 });
         const l1 = document.createElement("div");
-        l1.textContent = "L₁"; // L with subscript 1
+        l1.textContent = "L₁";
         l1.style.cssText = "font-size:10px;color:#0a0a08;background:#d4a050;padding:2px 6px;border-radius:0 3px 3px 0;font-weight:700;font-family:monospace;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.4);pointer-events:auto;";
         regions.addRegion({ id: "loop:b", start: loop[1], color: "rgba(212,160,80,0)", drag: false, resize: false, content: l1 });
       }
@@ -814,49 +827,49 @@ export default function TranscriptionMode() {
       }
     };
     renderRegions();
-    // Re-attach regions after WaveSurfer re-tiles its canvas (which can happen
-    // during autoScroll while playing).  `redrawcomplete` alone leaves a
-    // visible gap because the region DOM is destroyed at the START of the
-    // redraw and we re-add only at the END.  Add two more safety nets:
-    //
-    // 1. `scroll` fires continuously during autoScroll — catches the missing
-    //    regions sooner than waiting for a full redraw cycle to complete.
-    // 2. A RAF poll that re-renders whenever any expected region is missing
-    //    from the plugin's state OR has been detached from the DOM.  Cheap
-    //    (one getRegions() call per frame); only triggers a real re-render
-    //    when something is actually gone.
-    //
-    // Together these keep the loop highlight band pinned during playback per
-    // user direction 2026-05-30: "when i have a loop going on, the
-    // highlighted area still disappears on and off".
-    const expectedIds = new Set<string>();
-    if (loop) { expectedIds.add("loop:ab"); expectedIds.add("loop:a"); expectedIds.add("loop:b"); }
-    for (const cp of checkpoints) expectedIds.add(`cp:${cp.id}`);
-    const ensureRegions = () => {
-      if (expectedIds.size === 0) return;
-      const have = regions.getRegions();
-      const haveIds = new Set(have.map(r => r.id));
-      for (const id of expectedIds) {
-        if (!haveIds.has(id)) { renderRegions(); return; }
-      }
-      for (const r of have) {
-        if (r.element && !document.contains(r.element)) { renderRegions(); return; }
-      }
-    };
+    // Re-attach regions after WaveSurfer re-tiles its canvas (which
+    // can happen during autoScroll while playing).  Without this the
+    // checkpoint flags and loop overlay vanish a few seconds in.
     const onRedraw = () => renderRegions();
     ws.on("redrawcomplete", onRedraw);
-    ws.on("scroll", ensureRegions);
-    let raf = requestAnimationFrame(function tick() {
-      ensureRegions();
-      raf = requestAnimationFrame(tick);
-    });
     return () => {
-      cancelAnimationFrame(raf);
       regions.un("region-clicked", onRegionClick);
       ws.un("redrawcomplete", onRedraw);
-      ws.un("scroll", ensureRegions);
     };
   }, [checkpoints, loop, duration, track?.id]);
+
+  // ── Loop highlight band (HTML overlay, NOT a region) ────────────
+  //
+  // Append a plain absolute-positioned div directly to WaveSurfer's wrapper
+  // element — the wide inner div whose width = duration × pxPerSec.  We
+  // position the band by left% / width% of duration so it sits exactly over
+  // the loop window; as the wrapper scrolls under the visible scroll
+  // container (autoScroll, drag, click), the band scrolls naturally with it
+  // because it's a child of the wrapper, not a sibling.
+  //
+  // The Regions plugin tears down and re-attaches its DOM during canvas
+  // re-tile, which made the band visibly flicker on and off during playback
+  // — and the previous RAF-poll workaround thrashed clearRegions()+addRegion
+  // in a feedback loop that broke playback.  An HTML overlay is owned by us,
+  // never touched by the plugin, so it stays put.  Per user direction
+  // 2026-05-30: "i cant no longer see the hightlighted box for loops".
+  useEffect(() => {
+    const ws = wsRef.current;
+    if (!ws || !loop || duration <= 0) return;
+    const wrapper = ws.getWrapper();
+    if (!wrapper) return;
+    const band = document.createElement("div");
+    band.style.cssText =
+      "position:absolute;top:0;height:100%;" +
+      `left:${(loop[0] / duration) * 100}%;` +
+      `width:${((loop[1] - loop[0]) / duration) * 100}%;` +
+      "background:rgba(232,170,80,0.28);" +
+      "border-left:1px solid rgba(212,160,80,0.85);" +
+      "border-right:1px solid rgba(212,160,80,0.85);" +
+      "pointer-events:none;z-index:4;";
+    wrapper.appendChild(band);
+    return () => { band.remove(); };
+  }, [loop, duration, track?.id]);
 
   // ── Controls ──────────────────────────────────────────────────
   const togglePlay = async () => {
