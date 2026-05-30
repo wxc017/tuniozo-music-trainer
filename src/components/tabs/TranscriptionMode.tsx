@@ -972,6 +972,31 @@ export default function TranscriptionMode() {
   };
   const seekTo = (t: number) => { if (audioRef.current) audioRef.current.currentTime = t; };
 
+  // Spacebar = play/pause, regardless of which button is focused.  Browsers'
+  // default Space behaviour activates the focused button (and also scrolls if
+  // nothing is focused), so we capture the event AND preventDefault — the
+  // focused button stays focused but doesn't fire.  Per user direction
+  // 2026-05-30: "have space in transcriptons only work for playing that its
+  // nothing else, if i click on another button it shouldnt sotp space form
+  // being play or stop".  togglePlay is held in a ref so the listener doesn't
+  // need to re-bind on every render.
+  const togglePlayRef = useRef(togglePlay);
+  useEffect(() => { togglePlayRef.current = togglePlay; });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space") return;
+      // Don't hijack the key while the user is typing in an input.
+      const el = document.activeElement;
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable) return;
+      e.preventDefault();
+      e.stopPropagation();
+      togglePlayRef.current();
+    };
+    // Capture phase so we beat the focused button's default Space activation.
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
   // Ctrl/Cmd-click two checkpoint timestamps to convert them into the
   // A/B loop endpoints — fast way to A-B between two marks without
   // touching the transport.  Holds up to two; the second click sets
