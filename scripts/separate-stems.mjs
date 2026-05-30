@@ -57,9 +57,32 @@ const MODEL_STEMS = {
 function run(cmd, args, opts = {}) {
   return new Promise((resolveP, rejectP) => {
     const p = spawn(cmd, args, { stdio: "inherit", ...opts });
-    p.on("error", rejectP);
+    p.on("error", err => { err.spawnFailed = true; rejectP(err); });
     p.on("exit", code => code === 0 ? resolveP() : rejectP(new Error(`${cmd} exited ${code}`)));
   });
+}
+
+// Try a chain of (cmd, prefixArgs) strategies, falling through to the next one
+// only when a strategy fails because the executable is MISSING (ENOENT) — a
+// non-zero exit code is a real failure that propagates immediately.
+async function runFirstWorking(strategies, args) {
+  let lastErr;
+  for (let i = 0; i < strategies.length; i++) {
+    const { cmd, prefix = [], label } = strategies[i];
+    const fullArgs = [...prefix, ...args];
+    try {
+      await run(cmd, fullArgs);
+      return;
+    } catch (e) {
+      lastErr = e;
+      const missing = e?.code === "ENOENT" || e?.spawnFailed;
+      if (!missing) throw e;                       // real failure → stop
+      if (i < strategies.length - 1) {
+        console.log(`  (${label || cmd} not found, trying next)`);
+      }
+    }
+  }
+  throw new Error(`No working audio-separator install found.  Tried: ${strategies.map(s => s.label || s.cmd).join(", ")}.  Last error: ${lastErr?.message || lastErr}`);
 }
 
 async function exists(path) {
@@ -77,27 +100,21 @@ async function separateOne(input, model) {
   if (!modelFile) throw new Error(`Unknown --model "${model}".  Use mdx, demucs, or htdemucs_6s.`);
 
   console.log(`\n── Separating ${base} (${model}) ──`);
-  // Two env-var overrides for picking the right Python install when there's
-  // more than one on the machine (e.g. Windows ARM64 alongside x64 — the ARM64
-  // pip can't build some ML deps from source, so the user wants the x64
-  // install to do the work).  Precedence:
-  //
-  //   AUDIO_SEPARATOR_BIN  →  full path to audio-separator.exe / shim
-  //   PYTHON_BIN           →  full path to python.exe → runs `python -m audio_separator.utils.cli`
-  //   (neither set)        →  fall back to whatever "audio-separator" is on PATH
-  //
-  // Example (PowerShell, Windows 3.13 x64):
-  //   $env:PYTHON_BIN = "C:\Users\wilda\AppData\Local\Programs\Python\Python313\python.exe"
-  const sepBin = process.env.AUDIO_SEPARATOR_BIN;
-  const pyBin = process.env.PYTHON_BIN;
+  // Build a strategy chain for invoking audio-separator.  Each strategy is
+  // tried in turn; the first one whose executable is found wins.  Env-var
+  // overrides come first so users with custom installs (e.g. a venv) can
+  // pin a specific interpreter.  After those, the bare PATH command, then
+  // the Windows `py` launcher targeting Python 3.13 (the user's x64
+  // install — the ARM64 one can't build some ML deps from source), then a
+  // generic `python -m` fallback for non-Windows / non-py-launcher boxes.
   const baseArgs = [abs, "--model_filename", modelFile, "--output_dir", stemsDir, "--output_format", "WAV"];
-  if (sepBin) {
-    await run(sepBin, baseArgs);
-  } else if (pyBin) {
-    await run(pyBin, ["-m", "audio_separator.utils.cli", ...baseArgs]);
-  } else {
-    await run("audio-separator", baseArgs);
-  }
+  const strategies = [];
+  if (process.env.AUDIO_SEPARATOR_BIN) strategies.push({ cmd: process.env.AUDIO_SEPARATOR_BIN, label: "AUDIO_SEPARATOR_BIN" });
+  if (process.env.PYTHON_BIN) strategies.push({ cmd: process.env.PYTHON_BIN, prefix: ["-m", "audio_separator.utils.cli"], label: "PYTHON_BIN" });
+  strategies.push({ cmd: "audio-separator", label: "audio-separator (PATH)" });
+  strategies.push({ cmd: "py", prefix: ["-3.13", "-m", "audio_separator.utils.cli"], label: "py -3.13" });
+  strategies.push({ cmd: "python", prefix: ["-m", "audio_separator.utils.cli"], label: "python -m" });
+  await runFirstWorking(strategies, baseArgs);
 
   // audio-separator names outputs with the original filename + suffix.
   // Rename them to the canonical {vocals,drums,bass,other,guitar,piano}.wav
