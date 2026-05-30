@@ -122,6 +122,11 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
   // and toggle it on.
   const [allCheckpoints, setAllCheckpoints] = useLS<Record<string, number[]>>("lt_tx_checkpoints", {});
   const [allLoops, setAllLoops] = useLS<Record<string, { startIdx: number; endIdx: number; on: boolean }>>("lt_tx_loops", {});
+  // On-demand Demucs stems (per user direction 2026-05-29: "split it when i
+  // click on a file").  When a blues/drums track loads, ask the Vite middleware
+  // whether stems already exist on disk; the user can trigger a split and then
+  // play a single stem in isolation (vocals-only, drums-only, etc.).
+  const [stems, setStems] = useState<{ available: string[]; loading: boolean; current: string | null; error?: string }>({ available: [], loading: false, current: null });
   const srcKey = audioSeg?.src ?? "";
   const checkpoints = (srcKey ? allCheckpoints[srcKey] : undefined) ?? [];
   const loop = srcKey ? allLoops[srcKey] : undefined;
@@ -162,6 +167,59 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  // Stems: when the audio source changes, check the dev server for an existing
+  // split.  The audio src is e.g. "/blues/lib/...mp3" — the API expects the
+  // path relative to public/, so strip the leading BASE.
+  const audioRelFromSrc = useCallback((src: string): string => {
+    const stripped = src.replace(new RegExp("^" + BASE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), "");
+    return stripped.replace(/^\/+/, "");
+  }, []);
+  useEffect(() => {
+    if (!audioSeg) { setStems({ available: [], loading: false, current: null }); return; }
+    const rel = audioRelFromSrc(audioSeg.src);
+    let cancelled = false;
+    fetch(`/api/stems-check?audio=${encodeURIComponent(rel)}`)
+      .then(r => r.json())
+      .then(d => { if (!cancelled && d?.ok) setStems({ available: d.stems ?? [], loading: false, current: null }); })
+      .catch(() => { /* dev server not running or endpoint missing — silently no stems */ });
+    return () => { cancelled = true; };
+  }, [audioSeg?.src, audioRelFromSrc]);
+  const splitStems = useCallback(async () => {
+    if (!audioSeg) return;
+    const rel = audioRelFromSrc(audioSeg.src);
+    setStems(s => ({ ...s, loading: true, error: undefined }));
+    try {
+      const r = await fetch("/api/split", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio: rel, model: "htdemucs_6s" }),
+      });
+      const d = await r.json();
+      if (d?.ok) setStems({ available: d.stems ?? [], loading: false, current: null });
+      else setStems(s => ({ ...s, loading: false, error: d?.error || "split failed" }));
+    } catch (e) {
+      setStems(s => ({ ...s, loading: false, error: String(e) }));
+    }
+  }, [audioSeg, audioRelFromSrc]);
+  // Switch the audio element's src to a single stem (or back to the mixed
+  // original).  Preserves the current playhead and play/pause state.
+  const playStem = useCallback((stemName: string | null) => {
+    const a = audioRef.current; if (!a || !audioSeg) return;
+    const t = a.currentTime;
+    const wasPlaying = !a.paused;
+    let newSrc: string;
+    if (stemName) {
+      // Stems live at "<audio>.stems/<stem>.wav" next to the original file.
+      newSrc = audioSeg.src.replace(/\.(mp3|m4a|ogg|wav|flac)$/i, `.stems/${stemName}.wav`);
+    } else {
+      newSrc = audioSeg.src;
+    }
+    a.src = newSrc;
+    a.load();
+    const onReady = () => { try { a.currentTime = t; } catch { /* */ } if (wasPlaying) a.play().catch(() => {}); };
+    a.addEventListener("loadedmetadata", onReady, { once: true });
+    setStems(s => ({ ...s, current: stemName }));
+  }, [audioSeg]);
   // WaveSurfer.js renders the real waveform as the scrubber's background; our
   // own overlay (markers + playhead) draws on top.  We share the existing
   // <audio> via `media:` so seek / play / pause stay routed through audioRef.
@@ -813,6 +871,47 @@ export default function TranscriptionsTab({ ensureAudio, playVol = 0.8, lockSour
               {checkpoints.length > 0 && (
                 <button onClick={() => { setCheckpointsForSrc(() => []); setLoopForSrc(null); }}
                   className="ml-auto text-[10px] text-[#888] hover:text-[#bbb] underline">clear checkpoints</button>
+              )}
+            </div>
+
+            {/* On-demand stem separation — split this track into 6 isolated
+                stems via Demucs (htdemucs_6s).  First click spawns the model
+                (CPU: a few minutes per song); subsequent loads of the same
+                track find the cached stems instantly.  Pick a stem to listen
+                to it in isolation, or Mix to hear the original.  Per user
+                direction 2026-05-29: "split it when i click on a file". */}
+            <div className="flex items-center gap-2 mt-2 flex-wrap text-[11px]">
+              <span className="text-[#888]">Stems:</span>
+              {stems.available.length === 0 && !stems.loading && (
+                <button
+                  onClick={splitStems}
+                  title="Run Demucs (htdemucs_6s) on this track — takes a few minutes on CPU. Stems are cached after the first run."
+                  className="px-2 py-0.5 rounded border bg-[#1a1a1a] border-[#7173e6] text-[#9999ee] hover:bg-[#1a1a2e] transition-colors">
+                  Split into 6 stems (Demucs)
+                </button>
+              )}
+              {stems.loading && (
+                <span className="text-[#cd6] animate-pulse">Splitting… this can take a few minutes.</span>
+              )}
+              {stems.available.length > 0 && (
+                <>
+                  <button
+                    onClick={() => playStem(null)}
+                    className={`px-2 py-0.5 rounded border transition-colors ${
+                      stems.current === null ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#141414] border-[#2a2a2a] text-[#888]"
+                    }`}>Mix</button>
+                  {stems.available.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => playStem(s)}
+                      className={`px-2 py-0.5 rounded border transition-colors capitalize ${
+                        stems.current === s ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#141414] border-[#2a2a2a] text-[#888]"
+                      }`}>{s}</button>
+                  ))}
+                </>
+              )}
+              {stems.error && (
+                <span className="text-[#c66] text-[10px]" title={stems.error}>(split failed — check dev console)</span>
               )}
             </div>
           </div>
