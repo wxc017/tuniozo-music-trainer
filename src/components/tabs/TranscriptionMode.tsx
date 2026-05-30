@@ -580,9 +580,11 @@ export default function TranscriptionMode() {
   // ── WaveSurfer init when track changes ─────────────────────────
   useEffect(() => {
     if (!track || !containerRef.current || !audioRef.current) return;
-    // Tear down any previous wavesurfer instance.
     wsRef.current?.destroy();
     wsRef.current = null;
+    setPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
 
     const audio = audioRef.current;
     audio.src = track.src;
@@ -678,13 +680,13 @@ export default function TranscriptionMode() {
     ws.on("pause", onPause);
 
     return () => {
+      audio.pause();
       ws.un("ready", onReady);
       ws.un("timeupdate", onTime);
       ws.un("play", onPlay);
       ws.un("pause", onPause);
       ws.destroy();
       wsRef.current = null;
-      audio.pause();
       track.cleanup?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
