@@ -323,12 +323,50 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
     return -7;                                        // off the pulse → ghosted
   };
 
+  // Render an articulation (Weimar Jazz DB inflections) as ornament notes
+  // around the main note.  Real-time pitch bending isn't supported by smplr
+  // soundfonts, so this APPROXIMATES each via additional scheduled notes:
+  //   bend    ↗  → grace note a semitone below leading up to the target
+  //   slide   ⁄  → 3-step chromatic glissando into the target
+  //   vibrato ∿  → ±1-semitone alternations mid-note (timbral wobble)
+  //   fall    ↘  → descending tail after the main note dies
+  // Per user direction 2026-05-29: "im not hearing all the inflections and
+  // phrasing in weimer jazz database".
+  const scheduleInflection = (
+    inst: SoundfontInst, midi: number, artic: string | undefined,
+    time: number, dur: number, vel: number,
+  ): Array<(time?: number) => void> => {
+    if (!artic) return [];
+    const stops: Array<(time?: number) => void> = [];
+    const grace = secPerBeat * 0.08;
+    if (artic === "bend") {
+      stops.push(inst.start({ note: midi - 1, time: Math.max(0, time - grace), duration: grace * 1.2, velocity: Math.max(1, vel - 8) }));
+    } else if (artic === "slide") {
+      for (let s = 3; s >= 1; s--) {
+        stops.push(inst.start({ note: midi - s, time: Math.max(0, time - grace * s), duration: grace * 1.1, velocity: Math.max(1, vel - 4 - s * 2) }));
+      }
+    } else if (artic === "vibrato") {
+      const mid = time + dur * 0.4;
+      stops.push(inst.start({ note: midi + 1, time: mid, duration: grace, velocity: Math.max(1, vel - 10) }));
+      stops.push(inst.start({ note: midi - 1, time: mid + grace * 1.6, duration: grace, velocity: Math.max(1, vel - 10) }));
+      stops.push(inst.start({ note: midi + 1, time: mid + grace * 3.2, duration: grace, velocity: Math.max(1, vel - 12) }));
+    } else if (artic === "fall") {
+      const tail = time + dur * 0.95;
+      for (let s = 2; s <= 8; s += 2) {
+        stops.push(inst.start({ note: midi - s, time: tail + (s / 2 - 1) * grace * 0.7, duration: grace * 1.3, velocity: Math.max(1, vel - 4 - s * 2) }));
+      }
+    }
+    return stops;
+  };
+
   // ── Melody ────────────────────────────────────────────────────────
   // A solo isn't a flat sequence of equal notes.  We shape three things:
   //   • metric accent (lean on beats, ghost offbeats),
   //   • pitch contour (higher = a touch brighter/louder),
   //   • phrase arch (swell into a phrase, taper out of it — phrases are split
   //     by rests), plus a hair of laid-back time on swing tunes.
+  // Inflections (bend/slide/vibrato/fall) on Weimar notes are scheduled as
+  // ornament notes around the main one (see scheduleInflection above).
   if (opts.withMelody) {
     const inst = loaded.get(kit.melody)!;
     const mel = ex.melody;
@@ -353,12 +391,15 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
       // Slightly detached on long notes that precede a rest, legato otherwise.
       const next = i + 1 < mel.length ? mel[i + 1].startBeat : Infinity;
       const rest = next - (note.startBeat + note.durBeats) > pulse * 0.5;
-      activeStops.push(inst.start({
-        note: note.midi,
-        time: humanTime(note.startBeat) + (swing ? 0.012 : 0),  // lay back the lead on swing
-        duration: Math.max(0.05, note.durBeats * secPerBeat * (rest ? 0.9 : 0.97)),
-        velocity: hvel(base),
-      }));
+      const noteTime = humanTime(note.startBeat) + (swing ? 0.012 : 0);  // lay back the lead on swing
+      const noteDur = Math.max(0.05, note.durBeats * secPerBeat * (rest ? 0.9 : 0.97));
+      const noteVel = hvel(base);
+      activeStops.push(inst.start({ note: note.midi, time: noteTime, duration: noteDur, velocity: noteVel }));
+      // Weimar inflections (bend/slide/vibrato/fall): ornament notes around
+      // the main one so the inflection is AUDIBLE, not just a glyph.
+      for (const stop of scheduleInflection(inst, note.midi, note.artic, noteTime, noteDur, noteVel)) {
+        activeStops.push(stop);
+      }
     });
   }
 
