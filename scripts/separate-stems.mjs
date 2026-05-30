@@ -74,15 +74,30 @@ async function separateOne(input, model) {
   await mkdir(stemsDir, { recursive: true });
 
   const modelFile = MODEL_FILES[model];
-  if (!modelFile) throw new Error(`Unknown --model "${model}".  Use mdx or demucs.`);
+  if (!modelFile) throw new Error(`Unknown --model "${model}".  Use mdx, demucs, or htdemucs_6s.`);
 
   console.log(`\n── Separating ${base} (${model}) ──`);
-  await run("audio-separator", [
-    abs,
-    "--model_filename", modelFile,
-    "--output_dir", stemsDir,
-    "--output_format", "WAV",
-  ]);
+  // Two env-var overrides for picking the right Python install when there's
+  // more than one on the machine (e.g. Windows ARM64 alongside x64 — the ARM64
+  // pip can't build some ML deps from source, so the user wants the x64
+  // install to do the work).  Precedence:
+  //
+  //   AUDIO_SEPARATOR_BIN  →  full path to audio-separator.exe / shim
+  //   PYTHON_BIN           →  full path to python.exe → runs `python -m audio_separator.utils.cli`
+  //   (neither set)        →  fall back to whatever "audio-separator" is on PATH
+  //
+  // Example (PowerShell, Windows 3.13 x64):
+  //   $env:PYTHON_BIN = "C:\Users\wilda\AppData\Local\Programs\Python\Python313\python.exe"
+  const sepBin = process.env.AUDIO_SEPARATOR_BIN;
+  const pyBin = process.env.PYTHON_BIN;
+  const baseArgs = [abs, "--model_filename", modelFile, "--output_dir", stemsDir, "--output_format", "WAV"];
+  if (sepBin) {
+    await run(sepBin, baseArgs);
+  } else if (pyBin) {
+    await run(pyBin, ["-m", "audio_separator.utils.cli", ...baseArgs]);
+  } else {
+    await run("audio-separator", baseArgs);
+  }
 
   // audio-separator names outputs with the original filename + suffix.
   // Rename them to the canonical {vocals,drums,bass,other,guitar,piano}.wav
