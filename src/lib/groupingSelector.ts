@@ -9,14 +9,38 @@ export type GroupingMode = "musical" | "awkward" | "both";
 
 // ── 1. Hard Rejection ────────────────────────────────────────────────────────
 
+/** True if `g` is k>=2 repeats of a smaller cell (e.g. [2,1,2,1] = 2×[2,1]).
+ *  Periodicity is the strongest internal-repetition signal a grouping can
+ *  carry — every cell boundary lands on the same size, which is exactly what
+ *  makes hemiola, alternating-tisra, and additive ostinatos audible.  We treat
+ *  it as an explicit musicality override: a periodic grouping is musical even
+ *  when it would otherwise fail the multi-1s / fragmentation / edge-1 rules. */
+function isPeriodicRepeat(g: number[]): boolean {
+  if (g.length < 2) return false;
+  for (let cell = 1; cell < g.length; cell++) {
+    if (g.length % cell !== 0) continue;
+    let periodic = true;
+    for (let i = cell; i < g.length; i++) {
+      if (g[i] !== g[i - cell]) { periodic = false; break; }
+    }
+    if (periodic) return true;
+  }
+  return false;
+}
+
 function isRejected(g: number[]): boolean {
   if (g.some(v => v < 1)) return true;                          // 2.1
   if (g.every(v => v === 1)) return true;                       // 2.2
+  // Periodic groupings (2+1+2+1, 3+1+3+1, 2+2+1+2+2+1) are intrinsically
+  // musical via their explicit cell loop — accept past the fragmentation
+  // and 1-count rules below.  Only the pathological all-1s / non-positive
+  // cases above still reject.
+  if (isPeriodicRepeat(g)) return false;
   const sizes = new Set(g);
   const n = g.reduce((s, v) => s + v, 0);
   if (sizes.size > 3) return true;                              // 2.3
   if (g.filter(v => v === 1).length > 1) return true;           // 2.4
-  if (g.length > n / 2) return true;                            // 2.5
+  if (g.length > (n + 1) / 2) return true;                      // 2.5 — softened
   if (Math.max(...g) - Math.min(...g) > 5) return true;         // 2.6
   if (g.length > 3 && sizes.size === g.length) return true;     // 2.7
   for (let i = 1; i < g.length - 1; i++) {                     // 2.8
@@ -33,6 +57,19 @@ type GroupClass = "A" | "B" | "C" | "D";
 function classify(g: number[]): GroupClass {
   const sizes = new Set(g);
   if (sizes.size === 1) return "A";
+  // Periodic groupings that contain 1s (2+1+2+1, 3+1+3+1) carry strong
+  // shape via their cell repetition — class as B, not D.
+  if (g.includes(1) && isPeriodicRepeat(g)) return "B";
+  // A single 1 at one edge with exactly two distinct sizes (2+2+1, 1+3+3,
+  // 4+4+1) is an additive cell pattern, not a fragmentation — class as B
+  // so the strong-shape detector can pick up the repeated non-1 sizes.
+  // Requires len >= 3 (so 1+4, 4+1, etc. stay D — those are just lopsided
+  // pairs, not additive cells).
+  if (g.includes(1)
+      && g.filter(v => v === 1).length === 1
+      && (g[0] === 1 || g[g.length - 1] === 1)
+      && g.length >= 3
+      && sizes.size === 2) return "B";
   if (g.includes(1)) return "D";
   if (sizes.size === 2) return "B";
   return "C";
@@ -63,6 +100,8 @@ function getTier(g: number[], cls: GroupClass): Tier {
  */
 function hasStrongShape(g: number[]): boolean {
   if (g.length < 2) return false;
+  // Periodic repetition is the strongest shape signal — explicit cell loop.
+  if (isPeriodicRepeat(g)) return true;
   // Repeated beginning
   if (g.length >= 2 && g[0] === g[1]) return true;
   // Repeated ending
@@ -282,4 +321,4 @@ function allCompositions(n: number, maxPart: number): number[][] {
 
 // ── Exports for testing / external use ───────────────────────────────────────
 
-export { isRejected, classify, getTier, classifyCandidates };
+export { isRejected, classify, getTier, classifyCandidates, isPeriodicRepeat };

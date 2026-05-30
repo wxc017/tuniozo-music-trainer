@@ -45,8 +45,8 @@ import {
 
 // ── groupingSelector ──────────────────────────────────────────────────────
 import {
-  selectGrouping, generateAndSelectGrouping,
-  isRejected, classify, getTier, classifyCandidates,
+  selectGrouping, generateAndSelectGrouping, allMusicalGroupings,
+  isRejected, classify, getTier, classifyCandidates, isPeriodicRepeat,
 } from "./groupingSelector";
 
 // ── musicalScoring ────────────────────────────────────────────────────────
@@ -831,9 +831,68 @@ describe("classify", () => {
     expect(classify([2, 3, 4])).toBe("C");
   });
 
-  it("D: contains a 1", () => {
+  it("D: 1 at an edge in a 2-element lopsided pair stays awkward", () => {
     expect(classify([1, 7])).toBe("D");
+    expect(classify([4, 1])).toBe("D");
+  });
+
+  it("D: 1 with three distinct sizes stays awkward", () => {
     expect(classify([3, 4, 1])).toBe("D");
+  });
+
+  it("B: periodic groupings with 1s (cell repetition) — 2+1+2+1, 3+1+3+1", () => {
+    // Periodic patterns have explicit cell-loop structure, so they're
+    // promoted out of class D regardless of containing 1s.
+    expect(classify([2, 1, 2, 1])).toBe("B");
+    expect(classify([1, 2, 1, 2])).toBe("B");
+    expect(classify([3, 1, 3, 1])).toBe("B");
+  });
+
+  it("B: additive cells with a single edge-1 and two distinct sizes — 2+2+1, 1+3+3", () => {
+    // A solitary 1 at one edge is an additive-cell accent, not
+    // fragmentation, so it stays in class B (and tier 2 via strong shape).
+    expect(classify([2, 2, 1])).toBe("B");
+    expect(classify([1, 2, 2])).toBe("B");
+    expect(classify([1, 3, 3])).toBe("B");
+    expect(classify([4, 4, 1])).toBe("B");
+  });
+});
+
+describe("isPeriodicRepeat", () => {
+  it("detects k>=2 repeats of a smaller cell", () => {
+    expect(isPeriodicRepeat([2, 1, 2, 1])).toBe(true);     // 2×[2,1]
+    expect(isPeriodicRepeat([3, 1, 3, 1])).toBe(true);     // 2×[3,1]
+    expect(isPeriodicRepeat([2, 1, 2, 1, 2, 1])).toBe(true); // 3×[2,1]
+    expect(isPeriodicRepeat([3, 3, 3, 3])).toBe(true);     // 4×[3]
+  });
+
+  it("rejects non-periodic groupings", () => {
+    expect(isPeriodicRepeat([2, 2, 1])).toBe(false);
+    expect(isPeriodicRepeat([3, 3, 2])).toBe(false);
+    expect(isPeriodicRepeat([2, 3, 2])).toBe(false);
+    expect(isPeriodicRepeat([4, 2])).toBe(false);
+  });
+});
+
+describe("musical groupings — periodicity and single-edge-1 promotion", () => {
+  it("2+1+2+1 is musical (periodic hemiola, n=6)", () => {
+    expect(isRejected([2, 1, 2, 1])).toBe(false);
+    const musical = allMusicalGroupings(6).map(m => m.grouping.join("+"));
+    expect(musical).toContain("2+1+2+1");
+  });
+
+  it("2+2+1 / 1+2+2 are musical (additive 5-pulse, n=5)", () => {
+    expect(isRejected([2, 2, 1])).toBe(false);
+    expect(isRejected([1, 2, 2])).toBe(false);
+    const musical = allMusicalGroupings(5).map(m => m.grouping.join("+"));
+    expect(musical).toContain("2+2+1");
+    expect(musical).toContain("1+2+2");
+  });
+
+  it("interior-1 patterns stay rejected (2+1+2 fragments the beat)", () => {
+    // Interior 1s without periodicity are still awkward.
+    expect(isRejected([2, 1, 2])).toBe(true);
+    expect(isRejected([3, 1, 3])).toBe(true);
   });
 });
 
