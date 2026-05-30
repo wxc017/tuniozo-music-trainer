@@ -27,9 +27,11 @@ function voicedChord(sym: string, rootPc: number, intervals: number[], prev: str
   if (genre === "jazz" || genre === "fusion") {
     const name = sym.split("/")[0];
     let v: string[] = [];
-    // Keep left-hand voicings in the pianist's comping register (C3–E4) so
-    // they stay UNDER the melody rather than crowding it.
-    try { v = Voicing.get(name, ["C3", "E4"], VoicingDictionary.lefthand, VoiceLeading.topNoteDiff, prev) ?? []; } catch { v = []; }
+    // Idiomatic Bill-Evans-style left-hand comping register (E3–G4): the LH
+    // sits in the middle of the keyboard, well clear of the upright bass below
+    // and the soloist above.  The old C3–E4 range was too low — voicings
+    // collided with the bass register, muddying the harmony.
+    try { v = Voicing.get(name, ["E3", "G4"], VoicingDictionary.lefthand, VoiceLeading.topNoteDiff, prev) ?? []; } catch { v = []; }
     const midis = v.map(n => Note.midi(n)).filter((m): m is number => m != null);
     if (midis.length) {
       // Rootless voicings assume a bass supplies the root.  With NO bass line,
@@ -330,7 +332,10 @@ function buildBass(
 
     const midi = nearBass(pc, prev);
     prev = midi;
-    const vel = (onChordStart ? 80 : 70) + Math.floor(rand() * 7) - 3;
+    // Bass velocity dropped from 80/70 → 68/58 so the upright doesn't bury
+    // the comp.  Real jazz mixes put bass and piano comp roughly equal under
+    // the soloist; the prior 80/70 vs comp ~58 left the bass ~10 dB louder.
+    const vel = (onChordStart ? 68 : 58) + Math.floor(rand() * 7) - 3;
 
     if (genre === "jazz" && !onChordStart && !changeNext && rand() < 0.2) {
       // eighth-note skip: a quick stepwise passing note for life

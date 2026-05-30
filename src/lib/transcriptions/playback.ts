@@ -294,8 +294,11 @@ export async function playExcerpt(ex: TxExcerpt, opts: PlayOptions): Promise<Pla
   const genre = compGenreFor(ex.item.source, ex.item.style);
   const swing = genre === "jazz" && !(den === 8 && num % 3 === 0);
   // Comp loudness vs the lead: in jazz the SOLO is the star, so comp sits well
-  // under it; in folk/pop the accompaniment should be clearly audible.
-  const compBoost = (genre === "jazz" || genre === "fusion") ? 2 : 20;
+  // under it; in folk/pop the accompaniment should be clearly audible.  Jazz
+  // bumped from +2 to +14 — the old +2 left chord velocity at ~58, which the
+  // upright bass (was 80) completely buried; new value puts the piano comp
+  // roughly level with the bass, both clearly under the melody.
+  const compBoost = (genre === "jazz" || genre === "fusion") ? 14 : 20;
   let hseed = (Math.round(ex.windowBeats * 131 + (ex.item.tempoBpm || 100)) >>> 0) || 1;
   const hrand = () => { hseed = (hseed * 1103515245 + 12345) & 0x7fffffff; return hseed / 0x7fffffff; };
   const humanTime = (beat: number) => {
