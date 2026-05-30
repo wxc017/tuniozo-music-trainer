@@ -56,7 +56,14 @@ const MODEL_STEMS = {
 
 function run(cmd, args, opts = {}) {
   return new Promise((resolveP, rejectP) => {
-    const p = spawn(cmd, args, { stdio: "inherit", ...opts });
+    // PYTHONUNBUFFERED=1 forces line-buffered stdout from audio-separator (a
+    // Python CLI).  Without it Python sees no TTY (our parent stdout is a pipe
+    // to the Vite middleware that streams progress to the browser) and buffers
+    // the whole job — the user sees a blank spinner the entire run, then a
+    // wall of output at the end.  Per user direction 2026-05-30: "i dont see
+    // anything about instrument seperaetoin in progress".
+    const env = { ...process.env, PYTHONUNBUFFERED: "1", ...(opts.env ?? {}) };
+    const p = spawn(cmd, args, { stdio: "inherit", ...opts, env });
     p.on("error", err => { err.spawnFailed = true; rejectP(err); });
     p.on("exit", code => code === 0 ? resolveP() : rejectP(new Error(`${cmd} exited ${code}`)));
   });

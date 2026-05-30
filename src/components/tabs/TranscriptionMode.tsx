@@ -814,14 +814,47 @@ export default function TranscriptionMode() {
       }
     };
     renderRegions();
-    // Re-attach regions after WaveSurfer re-tiles its canvas (which
-    // can happen during autoScroll while playing).  Without this the
-    // checkpoint flags and loop overlay vanish a few seconds in.
+    // Re-attach regions after WaveSurfer re-tiles its canvas (which can happen
+    // during autoScroll while playing).  `redrawcomplete` alone leaves a
+    // visible gap because the region DOM is destroyed at the START of the
+    // redraw and we re-add only at the END.  Add two more safety nets:
+    //
+    // 1. `scroll` fires continuously during autoScroll — catches the missing
+    //    regions sooner than waiting for a full redraw cycle to complete.
+    // 2. A RAF poll that re-renders whenever any expected region is missing
+    //    from the plugin's state OR has been detached from the DOM.  Cheap
+    //    (one getRegions() call per frame); only triggers a real re-render
+    //    when something is actually gone.
+    //
+    // Together these keep the loop highlight band pinned during playback per
+    // user direction 2026-05-30: "when i have a loop going on, the
+    // highlighted area still disappears on and off".
+    const expectedIds = new Set<string>();
+    if (loop) { expectedIds.add("loop:ab"); expectedIds.add("loop:a"); expectedIds.add("loop:b"); }
+    for (const cp of checkpoints) expectedIds.add(`cp:${cp.id}`);
+    const ensureRegions = () => {
+      if (expectedIds.size === 0) return;
+      const have = regions.getRegions();
+      const haveIds = new Set(have.map(r => r.id));
+      for (const id of expectedIds) {
+        if (!haveIds.has(id)) { renderRegions(); return; }
+      }
+      for (const r of have) {
+        if (r.element && !document.contains(r.element)) { renderRegions(); return; }
+      }
+    };
     const onRedraw = () => renderRegions();
     ws.on("redrawcomplete", onRedraw);
+    ws.on("scroll", ensureRegions);
+    let raf = requestAnimationFrame(function tick() {
+      ensureRegions();
+      raf = requestAnimationFrame(tick);
+    });
     return () => {
+      cancelAnimationFrame(raf);
       regions.un("region-clicked", onRegionClick);
       ws.un("redrawcomplete", onRedraw);
+      ws.un("scroll", ensureRegions);
     };
   }, [checkpoints, loop, duration, track?.id]);
 
@@ -1322,6 +1355,27 @@ export default function TranscriptionMode() {
                   )}
                 </div>
               </div>
+
+              {/* Quick-jump strip — one letter button per checkpoint, click to
+                  seek there directly.  The transport row's ⏮ ⏭ only step
+                  through adjacent marks; with several checkpoints set, a
+                  flat row is much faster than tabbing through them.  Matches
+                  the Jump: A B C row in TranscriptionsTab so the two surfaces
+                  feel the same. */}
+              {checkpoints.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap text-[11px]">
+                  <span className="text-[#888]">Jump:</span>
+                  {checkpoints.map((cp, i) => (
+                    <button
+                      key={cp.id}
+                      onClick={() => seekTo(cp.time)}
+                      title={`Seek to checkpoint ${ordinalLetter(i)} (${mmss(cp.time)}${cp.label ? " — " + cp.label : ""})`}
+                      className="px-2 py-0.5 rounded border bg-[#1a1408] border-[#d4a050] text-[#d4a050] hover:bg-[#d4a050] hover:text-black transition-colors font-bold tabular-nums">
+                      {ordinalLetter(i)}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Stems — only rendered when a sibling `.stems/` folder
                   was detected for the current track. */}

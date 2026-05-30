@@ -103,10 +103,13 @@ function demucsPlugin(): Plugin {
         const proc = spawn(process.execPath, [scriptPath, "--model", model, abs], { stdio: ["ignore", "pipe", "pipe"] });
         // Stream every stdout line.  audio-separator prints checkpoint download
         // progress and per-stem completion notes; htdemucs_6s on CPU is mostly
-        // silent during inference (no per-second progress), so the user mainly
-        // sees the model-loading + finalization phases.
+        // silent during inference, so the user mainly sees the model-loading +
+        // finalization phases.  tqdm progress bars overwrite a single line via
+        // bare \r (no newline), so we split on \r OR \n — that turns each tqdm
+        // tick into its own NDJSON event so the user sees download/finalize %
+        // climb in real time instead of seeing nothing until the bar wraps.
         const splitAndSend = (data: Buffer, err: boolean) => {
-          for (const line of data.toString().split(/\r?\n/)) {
+          for (const line of data.toString().split(/[\r\n]/)) {
             const t = line.trim();
             if (t) send(err ? { line: t, err: true } : { line: t });
           }
