@@ -15,15 +15,30 @@ import type { TxChord, TxKey } from "./types";
 import { spellPc } from "./chordSymbols";
 import { Voicing, VoicingDictionary, VoiceLeading, Note } from "tonal";
 
-/** Voice a chord for comping, genre-appropriately:
- *   • jazz / fusion → tonal's left-hand (rootless) dictionary, voice-led from
- *     the previous voicing (minimal top-note motion) — the 3rd/7th carry the
+/** Previous voicing state carried chord-to-chord so successive comps voice-
+ *  lead instead of re-spelling root-position triads each bar. */
+interface PrevVoicing {
+  /** Tonal voicing strings, for the jazz path's `Voicing.get` continuity
+   *  (minimal top-note motion across LH voicings). */
+  voicing?: string[];
+  /** Raw MIDI notes of the last comp, for the folk/pop path's nearest-octave
+   *  voice leading. */
+  midis?: number[];
+}
+
+/** Voice a chord for comping, genre-appropriately AND voice-led from the prior
+ *  chord so successive comps trace a coherent line rather than block-jumping:
+ *   • jazz / fusion → tonal's left-hand (rootless) dictionary, voice-led via
+ *     `VoiceLeading.topNoteDiff` (minimal top-note motion).  3rd/7th carry the
  *     harmony, the bass (or the ear) supplies the root.
- *   • folk / pop → a plain mid-register root-position triad — no jazz tensions,
- *     no separate sub-bass note.
- *  No octave-low root is ever added: that produced an inaudible "super bassy"
- *  note and piled deep ledger lines under the staff. */
-function voicedChord(sym: string, rootPc: number, intervals: number[], prev: string[] | undefined, genre: CompGenre, withRoot: boolean): { midis: number[]; voicing: string[] | undefined } {
+ *   • folk / pop → triad placed at the nearest-octave inversion to the previous
+ *     voicing's notes (greedy per-pc voice leading), staying in the typical
+ *     guitar-comp register (top ≤ E4).
+ *  No octave-low root is ever added on the chord instrument: that produced an
+ *  inaudible super-bassy note and piled deep ledger lines under the staff.
+ *  In the jazz withRoot case, the root is anchored separately in low bass
+ *  register (C2-B2) per two-hand voicing pedagogy. */
+function voicedChord(sym: string, rootPc: number, intervals: number[], prev: PrevVoicing | undefined, genre: CompGenre, withRoot: boolean): { midis: number[]; voicing: string[] | undefined } {
   if (genre === "jazz" || genre === "fusion") {
     const name = sym.split("/")[0];
     let v: string[] = [];
@@ -31,33 +46,41 @@ function voicedChord(sym: string, rootPc: number, intervals: number[], prev: str
     // sits in the middle of the keyboard, well clear of the upright bass below
     // and the soloist above.  The old C3–E4 range was too low — voicings
     // collided with the bass register, muddying the harmony.
-    try { v = Voicing.get(name, ["E3", "G4"], VoicingDictionary.lefthand, VoiceLeading.topNoteDiff, prev) ?? []; } catch { v = []; }
+    try { v = Voicing.get(name, ["E3", "G4"], VoicingDictionary.lefthand, VoiceLeading.topNoteDiff, prev?.voicing) ?? []; } catch { v = []; }
     const midis = v.map(n => Note.midi(n)).filter((m): m is number => m != null);
     if (midis.length) {
       // Rootless voicings assume a bass supplies the root.  With NO bass line,
-      // add the root just below the voicing so the harmony is grounded.
+      // add a two-hand-voicing bass root — anchored in a fixed low register
+      // (C2-B2 / MIDI 36-47) regardless of where the RH voicing sits.
+      //
+      // Per standard piano pedagogy (Mark Levine, Bill Evans, Barry Harris):
+      // the LH root stays in bass register and the RH chord floats above.
+      // Tracking the RH up the keyboard would lift the root out of bass
+      // register and lose the bass function.  The gap between root and RH
+      // ends up as whatever the RH voice leading dictates (a 10th, an 11th,
+      // 2 octaves) — never a fixed octave shadow.
       if (withRoot) {
-        let rootMidi = Math.min(...midis) - 1;
         const pc = ((rootPc % 12) + 12) % 12;
-        while ((((rootMidi % 12) + 12) % 12) !== pc) rootMidi--;
-        if (rootMidi < 33) rootMidi += 12;
+        const rootMidi = 36 + pc;                       // C2..B2
         return { midis: [rootMidi, ...midis], voicing: v };
       }
       return { midis, voicing: v };
     }
   }
-  // Folk / pop (and any jazz symbol tonal can't parse): simple triad (has root).
-  return { midis: voiceChord(rootPc, intervals), voicing: undefined };
+  // Folk / pop (and any jazz symbol tonal can't parse): triad voice-led from
+  // the previous comp's midis.
+  return { midis: voiceChord(rootPc, intervals, prev?.midis), voicing: undefined };
 }
 
 /** The voiced pitches (MIDI) of each chord, voice-led exactly as compEvents
  *  plays them — so the notated chord voicing matches what's heard.  `withRoot`
  *  adds the root to jazz voicings (when there's no bass line to supply it). */
 export function chordVoicings(chords: { sym: string; rootPc: number; intervals: number[] }[], genre: CompGenre, withRoot: boolean): number[][] {
-  let prevV: string[] | undefined;
+  const prev: PrevVoicing = {};
   return chords.map(c => {
-    const r = voicedChord(c.sym, c.rootPc, c.intervals, prevV, genre, withRoot);
-    if (r.voicing) prevV = r.voicing;
+    const r = voicedChord(c.sym, c.rootPc, c.intervals, prev, genre, withRoot);
+    if (r.voicing) prev.voicing = r.voicing;
+    prev.midis = r.midis;
     return r.midis;
   });
 }
@@ -174,17 +197,44 @@ export function compGenreFor(source: string, style?: string): CompGenre {
   return "jazz";
 }
 
-/** Compact comp voicing (root, 3rd, 5th, [7th]) in a STABLE low-mid register
- *  that always sits below a typical melody.  The old version anchored the root
- *  at 52+rootPc, so high pitch-classes (A#, B) landed up in the treble and
- *  collided with the tune; here we fold the whole stack down until its top note
- *  is at or below Bb3 (MIDI 58), keeping comping firmly in the bass clef. */
-function voiceChord(rootPc: number, intervals: number[]): number[] {
-  const reduced = [...new Set(intervals.map(i => ((i % 12) + 12) % 12))].sort((a, b) => a - b).slice(0, 4);
-  const root = 48 + (((rootPc % 12) + 12) % 12);   // C3..B3
-  let chord = reduced.map(i => root + i);
+/** Voice-led triad placement for folk/pop comping.
+ *
+ *  First chord (no prev) anchors at a typical guitar-comp midpoint (F3 ≈ MIDI
+ *  53), placing each pitch class at its closest octave.  Successive chords
+ *  voice-lead — for every pitch class in the new chord, pick the octave that
+ *  minimizes the leap to ANY note of the previous voicing.  This is a greedy
+ *  approximation of optimal voice leading: between e.g. C and F it'll
+ *  naturally pick C-F-A (sec. inv. of F: C stays, E→F, G→A — total 3
+ *  semitones) over root-position F-A-C (15 semitones of parallel motion).
+ *
+ *  Output is clamped to the typical guitar/folk comp register (top ≤ E4 / MIDI
+ *  64) so voice-leading drift across many chords doesn't push the chord into
+ *  the melody's space. */
+function voiceChord(rootPc: number, intervals: number[], prev?: number[]): number[] {
+  const pcs = [...new Set(intervals.map(i => ((rootPc + i) % 12 + 12) % 12))].slice(0, 4);
+  // Anchor target: previous voicing's midpoint, or F3 (MIDI 53) on first chord.
+  const target = prev && prev.length
+    ? prev.reduce((s, m) => s + m, 0) / prev.length
+    : 53;
+  const place = (pc: number): number => {
+    let best = pc + 48, bd = Infinity;
+    // Try each octave from C2..C6; prefer the placement closest to the
+    // previous voicing (any note) — falls back to closest-to-target when
+    // there's no prev.
+    for (let oct = 2; oct <= 5; oct++) {
+      const m = oct * 12 + pc;
+      const d = prev && prev.length
+        ? Math.min(...prev.map(p => Math.abs(m - p)))
+        : Math.abs(m - target);
+      if (d < bd) { bd = d; best = m; }
+    }
+    return best;
+  };
+  let chord = pcs.map(place).sort((a, b) => a - b);
+  // Clamp the top to E4 (MIDI 64) so voice-leading drift over many chords
+  // doesn't lift the comp into the melody's range.
   let guard = 0;
-  while (Math.max(...chord) > 58 && guard++ < 4) chord = chord.map(n => n - 12);
+  while (Math.max(...chord) > 64 && guard++ < 4) chord = chord.map(n => n - 12);
   return chord;
 }
 const bassMidi = (pc: number) => 36 + (((pc % 12) + 12) % 12);   // C2..B2
@@ -363,10 +413,13 @@ export function compEvents(
 
   // Voice every chord up front, voice-led (minimal motion) from the prior one.
   // `withRoot` adds the root to jazz voicings when no bass line will supply it.
-  let prevV: string[] | undefined;
+  // PrevVoicing carries BOTH the tonal voicing strings (jazz Voicing.get) and
+  // the prior MIDIs (folk/pop voiceChord) so both paths voice-lead correctly.
+  const prev: PrevVoicing = {};
   const voicings = chords.map(c => {
-    const r = voicedChord(c.sym, c.rootPc, c.intervals, prevV, genre, withRoot);
-    if (r.voicing) prevV = r.voicing;
+    const r = voicedChord(c.sym, c.rootPc, c.intervals, prev, genre, withRoot);
+    if (r.voicing) prev.voicing = r.voicing;
+    prev.midis = r.midis;
     return r.midis;
   });
   const indexAt = (beat: number): number => {
