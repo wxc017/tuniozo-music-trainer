@@ -91,7 +91,7 @@ function demucsPlugin(): Plugin {
         // Short-circuit when stems already exist (cache: per-file by location).
         const dir = stemsDirFor(abs);
         const have = listExistingStems(dir);
-        if (have.length >= (model === "htdemucs_6s" ? 6 : model === "demucs" ? 4 : 2)) {
+        if (have.length >= (model === "htdemucs_6s" || model === "ensemble_6s" ? 6 : model === "demucs" ? 4 : 2)) {
           send({ line: `Cached: ${have.length} stems already at ${path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/")}` });
           send({ done: true, ok: true, cached: true, dir: path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/"), stems: have });
           res.end();

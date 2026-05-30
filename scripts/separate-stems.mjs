@@ -22,7 +22,7 @@
 //   player auto-detects this layout when present.
 
 import { spawn } from "node:child_process";
-import { mkdir, access, rename } from "node:fs/promises";
+import { mkdir, access, rename, unlink, copyFile } from "node:fs/promises";
 import { dirname, join, basename, extname, resolve } from "node:path";
 
 function parseArgs(argv) {
@@ -39,19 +39,17 @@ function parseArgs(argv) {
 // Map our model alias to the audio-separator model filename.  These
 // names are what audio-separator downloads from UVR's HF repo.
 const MODEL_FILES = {
-  mdx:        "UVR-MDX-NET-Inst_HQ_3.onnx",   // high-quality MDX-Net instrumental
-  demucs:     "htdemucs_ft.yaml",              // Meta's htdemucs (fine-tuned, 4 stems)
-  // Per user direction 2026-05-29: 6-stem split (drums, bass, vocals, other,
-  // guitar, piano).  Best on-demand option for transcription practice.
+  mdx:        "UVR-MDX-NET-Inst_HQ_3.onnx",
+  demucs:     "htdemucs_ft.yaml",
   htdemucs_6s: "htdemucs_6s.yaml",
+  bs_roformer: "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
 };
 
-// Stem files audio-separator may produce, by model.  Used to rename the
-// suffixed default output to a stable {stem}.wav name the player can find.
 const MODEL_STEMS = {
   mdx:         ["Vocals", "Instrumental"],
   demucs:      ["Vocals", "Drums", "Bass", "Other"],
   htdemucs_6s: ["Vocals", "Drums", "Bass", "Other", "Guitar", "Piano"],
+  bs_roformer: ["Vocals", "Instrumental"],
 };
 
 function run(cmd, args, opts = {}) {
@@ -163,36 +161,68 @@ async function separateOne(input, model) {
   console.log(`✓ stems written to ${stemsDir}`);
 }
 
-// Compute where the stems would land for a given audio file — pure path math,
-// no IO.  Used by the Vite middleware to check existing stems before invoking
-// the (slow) separation step.
+// Ensemble: BS-Roformer (vocals, SDR 11.77) → htdemucs_6s on the
+// vocal-removed instrumental (drums/bass/other/guitar/piano).  Cleaner
+// guitar/piano isolation than htdemucs_6s alone since the vocal stem
+// is no longer competing for spectral space inside the 6-stem model.
+async function separateEnsemble(input) {
+  const abs = resolve(input);
+  const dir = dirname(abs);
+  const base = basename(abs, extname(abs));
+  const stemsDir = join(dir, `${base}.stems`);
+  await mkdir(stemsDir, { recursive: true });
+  const separator = await resolveSeparator();
+
+  console.log(`\n── Ensemble pass 1/2: BS-Roformer (vocals) on ${base} ──`);
+  const rf = MODEL_FILES.bs_roformer;
+  await run(separator, [abs, "--model_filename", rf, "--output_dir", stemsDir, "--output_format", "WAV"]);
+  const rfStem = rf.replace(/\.[^.]+$/, "");
+  const rfVocals = join(stemsDir, `${base}_(Vocals)_${rfStem}.wav`);
+  const rfInst = join(stemsDir, `${base}_(Instrumental)_${rfStem}.wav`);
+  const vocalsDst = join(stemsDir, "vocals.wav");
+  if (await exists(rfVocals)) await rename(rfVocals, vocalsDst);
+  if (!(await exists(rfInst))) throw new Error("BS-Roformer didn't produce an instrumental — cannot proceed to pass 2");
+
+  console.log(`\n── Ensemble pass 2/2: htdemucs_6s on instrumental ──`);
+  const dm = MODEL_FILES.htdemucs_6s;
+  await run(separator, [rfInst, "--model_filename", dm, "--output_dir", stemsDir, "--output_format", "WAV"]);
+  const dmStem = dm.replace(/\.[^.]+$/, "");
+  const instBase = basename(rfInst, ".wav");
+  for (const stem of ["Drums", "Bass", "Other", "Guitar", "Piano"]) {
+    const src = join(stemsDir, `${instBase}_(${stem})_${dmStem}.wav`);
+    const dst = join(stemsDir, `${stem.toLowerCase()}.wav`);
+    if (await exists(src)) await rename(src, dst);
+  }
+  const dropVocals2 = join(stemsDir, `${instBase}_(Vocals)_${dmStem}.wav`);
+  if (await exists(dropVocals2)) await unlink(dropVocals2);
+  if (await exists(rfInst)) await unlink(rfInst);
+  console.log(`✓ ensemble stems written to ${stemsDir}`);
+}
+
 export function stemsDirForFile(input) {
   const abs = resolve(input);
   return join(dirname(abs), `${basename(abs, extname(abs))}.stems`);
 }
 
-// The canonical stem filenames the player looks up under stemsDirForFile().
-// Mirrors MODEL_STEMS[model] lowercased + .wav, but exposed as a single source
-// of truth so the frontend and middleware agree on names.
 export const STEM_NAMES_6 = ["vocals", "drums", "bass", "other", "guitar", "piano"];
 
-// Programmatic entry point — used by the Vite dev-server middleware so the
-// transcription player can split a track on-click (per user direction
-// 2026-05-29: "split it when i click on a file").  Returns the canonical
-// stems directory once the split completes successfully.
 export async function separateFile(input, model = "htdemucs_6s") {
-  await separateOne(input, model);
+  if (model === "ensemble_6s") await separateEnsemble(input);
+  else await separateOne(input, model);
   return stemsDirForFile(input);
 }
 
 async function main() {
   const { model, inputs } = parseArgs(process.argv);
   if (inputs.length === 0) {
-    console.error("Usage: node scripts/separate-stems.mjs [--model mdx|demucs] <audio>...");
+    console.error("Usage: node scripts/separate-stems.mjs [--model mdx|demucs|htdemucs_6s|ensemble_6s] <audio>...");
     process.exit(1);
   }
   for (const f of inputs) {
-    try { await separateOne(f, model); }
+    try {
+      if (model === "ensemble_6s") await separateEnsemble(f);
+      else await separateOne(f, model);
+    }
     catch (err) { console.error(`✗ ${f}: ${err.message}`); }
   }
 }

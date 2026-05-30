@@ -471,7 +471,7 @@ export default function TranscriptionMode() {
       const r = await fetch("/api/split", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ audio: rel, model: "htdemucs_6s" }),
+        body: JSON.stringify({ audio: rel, model: "ensemble_6s" }),
       });
       if (!r.ok || !r.body) {
         setSplitState({ loading: false, error: `HTTP ${r.status}` });
@@ -1509,9 +1509,9 @@ export default function TranscriptionMode() {
                   return (
                     <div className="flex items-center gap-2 flex-wrap">
                       <button onClick={runSplit}
-                        title="Run Demucs (htdemucs_6s) on this track — a few minutes on CPU. Stems cache on disk after the first run."
+                        title="Two-pass split: BS-Roformer for vocals, htdemucs_6s for the 5 instrument stems. Cleaner guitar/piano isolation than a single Demucs pass. ~2x the runtime; cached after first run."
                         className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider bg-[#1a1a2e] border border-[#7173e6] text-[#9999ee] hover:bg-[#252550] rounded">
-                        ⌁ Split into 6 stems (Demucs)
+                        ⌁ Split into 6 stems (BS-Roformer + htdemucs_6s ensemble)
                       </button>
                       {splitState.error && (
                         <span className="text-[10px] text-[#c66]" title={splitState.error}>(split failed — check dev console)</span>
