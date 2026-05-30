@@ -86,9 +86,11 @@ async function idbDelete(store: string, key: IDBValidKey) {
 }
 
 // ── Track abstraction ──────────────────────────────────────────────
-// Three tabs: Corpus (read-only library), Files (user-supplied — both
-// granted folders and dropped files), Saved phrases.
-type SourceTab = "corpus" | "files" | "saved";
+// Four tabs: Corpus (read-only library), Files (user-supplied — both granted
+// folders and dropped files), Saved phrases, and Recent (most-recently played
+// corpus tracks for quick-resume, per user direction 2026-05-30: "I want a
+// recent tab for the ones I recently was on").
+type SourceTab = "corpus" | "files" | "saved" | "recent";
 interface SavedFolder { id: string; name: string; handle: FileSystemDirectoryHandle }
 
 interface Track {
@@ -209,6 +211,24 @@ export default function TranscriptionMode() {
   // Per-corpus-id hide list, scoped to this player's source list.
   const [hiddenCorpus, setHiddenCorpus] = useLS<Record<string, boolean>>("lt_trx_hiddenCorpus", {});
   const [showHiddenCorpus, setShowHiddenCorpus] = useState(false);
+
+  // Recent corpus tracks — array of TxItem.id strings, most-recently played
+  // first, capped at 30.  Updated on every corpus pick so the Recent tab
+  // always reflects what the user was last on.
+  const [recentIds, setRecentIds] = useLS<string[]>("lt_trx_recent", []);
+  const RECENT_MAX = 30;
+  const pushRecent = useCallback((id: string) => {
+    setRecentIds(prev => {
+      const next = [id, ...prev.filter(x => x !== id)];
+      return next.slice(0, RECENT_MAX);
+    });
+  }, [setRecentIds]);
+
+  // Instrument-separation (Demucs htdemucs_6s) state.  When a track has no
+  // sibling .stems folder yet, the user can click "Split into stems" to spawn
+  // audio-separator via the Vite middleware.  Progress is streamed back as
+  // NDJSON and shown live so the user knows the multi-minute job is alive.
+  const [splitState, setSplitState] = useState<{ loading: boolean; progress?: string; error?: string }>({ loading: false });
 
   // Saved songs — corpus tracks the user has starred from inside this
   // player, so they're one click away in the Saved tab.  (Saved
@@ -432,7 +452,72 @@ export default function TranscriptionMode() {
     const base = siblingStemsBase(url);
     const stems = base ? await probeStems(base) : {};
     setTrack({ id: `corpus:${item.id}`, title: item.title, artist: item.artist, src: url, source: SOURCE_LABEL[item.source], stems });
+    pushRecent(item.id);
   };
+
+  // Trigger an instrument-separation job for the current track.  Resolves the
+  // track's audio src into a path relative to public/, posts to /api/split,
+  // streams NDJSON progress events back into splitState.progress so the user
+  // sees the multi-minute job advancing, and on completion re-probes the
+  // sibling .stems folder + patches the track so the stems UI lights up.
+  const runSplit = useCallback(async () => {
+    if (!track) return;
+    // Only corpus tracks (under public/) can be split here — dropped blobs +
+    // folder handles aren't reachable by the server-side splitter.
+    if (track.src.startsWith("blob:")) {
+      alert("Splitting works on corpus tracks (server-side); dropped/folder files would need a different pipeline.");
+      return;
+    }
+    const escapedBase = BASE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rel = track.src.replace(new RegExp("^" + escapedBase), "").replace(/^\/+/, "");
+    setSplitState({ loading: true, progress: "Starting split…", error: undefined });
+    try {
+      const r = await fetch("/api/split", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio: rel, model: "htdemucs_6s" }),
+      });
+      if (!r.ok || !r.body) {
+        setSplitState({ loading: false, error: `HTTP ${r.status}` });
+        return;
+      }
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let finished = false;
+      while (!finished) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const raw of lines) {
+          const t = raw.trim();
+          if (!t) continue;
+          let msg: { line?: string; err?: boolean; done?: boolean; ok?: boolean; stems?: string[]; error?: string };
+          try { msg = JSON.parse(t); } catch { continue; }
+          if (msg.done) {
+            finished = true;
+            if (msg.ok) {
+              // Re-probe the freshly-written .stems folder and patch the
+              // current track in place so the stems UI shows up without a
+              // re-select.
+              const base = siblingStemsBase(track.src);
+              const stems = base ? await probeStems(base) : {};
+              setTrack(prev => prev && prev.id === track.id ? { ...prev, stems } : prev);
+              setSplitState({ loading: false });
+            } else {
+              setSplitState({ loading: false, error: msg.error || "split failed" });
+            }
+          } else if (msg.line) {
+            setSplitState(s => ({ ...s, progress: msg.line }));
+          }
+        }
+      }
+    } catch (e) {
+      setSplitState({ loading: false, error: String(e) });
+    }
+  }, [track]);
 
   const selectDropped = (d: DroppedFile) => {
     const url = URL.createObjectURL(d.blob);
@@ -977,8 +1062,10 @@ export default function TranscriptionMode() {
   };
 
   // ── Derived corpus list (audio only — folder/dropped covers BYO) ─
+  // Drums dropped from the player corpus per user direction 2026-05-30:
+  // "remove all the drummers from the files".
   const playableCorpus = useMemo(
-    () => corpus.filter(c => isAudioSource(c.source)),
+    () => corpus.filter(c => isAudioSource(c.source) && c.source !== "drums"),
     [corpus],
   );
 
@@ -1023,9 +1110,15 @@ export default function TranscriptionMode() {
     list.sort((a, b) => a.artist.localeCompare(b.artist));
     return list;
   }, [filteredCorpus]);
+  // Per-artist collapsed state.  Persisted state stores OVERRIDES; the default
+  // is collapsed (per user direction 2026-05-30: "have all folders automatically
+  // collapse"), so an artist appears collapsed unless the user explicitly
+  // toggled it open.  Resolved via isArtistCollapsed below.
   const [collapsedArtists, setCollapsedArtists] = useLS<Record<string, boolean>>("lt_trx_collapsedArtists", {});
+  const isArtistCollapsed = (artist: string): boolean =>
+    collapsedArtists[artist] ?? true;
   const toggleArtistCollapsed = (artist: string) => {
-    setCollapsedArtists(prev => ({ ...prev, [artist]: !prev[artist] }));
+    setCollapsedArtists(prev => ({ ...prev, [artist]: !isArtistCollapsed(artist) }));
   };
 
   // Search across both dropped files and folder entries for the merged Files tab.
@@ -1059,16 +1152,21 @@ export default function TranscriptionMode() {
         .ws-noscroll::-webkit-scrollbar,
         .ws-noscroll *::-webkit-scrollbar { display: none; width: 0; height: 0; }
       `}</style>
-      <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-4">
+      {/* The grid is `items-start` so each column owns its own height — the
+          right player can be `position: sticky` and pin while the left file
+          list grows / page scrolls.  Per user direction 2026-05-30: "when I
+          scroll i only want the scroll to effect the file selection, the
+          player can stick". */}
+      <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-4 items-start">
         {/* ── LEFT: source picker ───────────────────────────────── */}
         <aside className="bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg overflow-hidden flex flex-col" style={{ minHeight: 520 }}>
           <div className="flex border-b border-[#1a1a1a]">
-            {(["corpus", "files", "saved"] as SourceTab[]).map(t => (
+            {(["corpus", "recent", "files", "saved"] as SourceTab[]).map(t => (
               <button key={t} onClick={() => setSourceTab(t)}
                 className={`flex-1 px-2 py-2 text-[10px] font-semibold tracking-widest uppercase transition-colors ${
                   sourceTab === t ? "bg-[#1a1408] text-[#d4a050]" : "text-[#666] hover:text-[#aaa]"
                 }`}>
-                {t === "corpus" ? "Corpus" : t === "files" ? "Files" : "Saved"}
+                {t === "corpus" ? "Corpus" : t === "recent" ? "Recent" : t === "files" ? "Files" : "Saved"}
               </button>
             ))}
           </div>
@@ -1095,7 +1193,7 @@ export default function TranscriptionMode() {
                   : (
                     <div className="space-y-1">
                       {corpusByArtist.map(group => {
-                        const collapsed = collapsedArtists[group.artist];
+                        const collapsed = isArtistCollapsed(group.artist);
                         return (
                           <div key={group.artist} className="border border-[#1a1a1a] rounded">
                             <button onClick={() => toggleArtistCollapsed(group.artist)}
@@ -1238,6 +1336,47 @@ export default function TranscriptionMode() {
             </div>
           )}
 
+          {sourceTab === "recent" && (
+            <div className="flex-1 flex flex-col p-2 gap-2 min-h-0">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-[#666]">Last {RECENT_MAX} corpus tracks you opened, newest first.</p>
+                {recentIds.length > 0 && (
+                  <button onClick={() => setRecentIds([])}
+                    className="text-[10px] text-[#888] hover:text-[#bbb] underline">clear</button>
+                )}
+              </div>
+              <div className="flex-1 overflow-y-auto -mx-2 px-2">
+                {recentIds.length === 0 ? (
+                  <p className="text-[11px] text-[#666]">Nothing yet — pick a track from Corpus and it'll show up here for one-click resume.</p>
+                ) : (
+                  <ul className="space-y-0.5">
+                    {recentIds.map(id => {
+                      // Resolve the recent id against the loaded corpus index;
+                      // drop stale entries silently (corpus may have been
+                      // rebuilt since last visit).
+                      const e = corpus.find(c => c.id === id);
+                      if (!e || !isAudioSource(e.source)) return null;
+                      return (
+                        <li key={id} className="flex items-center gap-1">
+                          <button onClick={() => void selectCorpus(e)}
+                            className={`flex-1 text-left px-2 py-1 rounded text-[11px] transition-colors min-w-0 ${
+                              track?.id === `corpus:${id}` ? "bg-[#1a1408] text-[#d4a050]" : "text-[#bbb] hover:bg-[#161616]"
+                            }`}>
+                            <div className="truncate">{e.title}</div>
+                            <div className="text-[10px] text-[#666] truncate">{e.artist ?? ""}{e.artist ? " · " : ""}{SOURCE_LABEL[e.source]}</div>
+                          </button>
+                          <button onClick={() => setRecentIds(prev => prev.filter(x => x !== id))}
+                            title="Remove from recent"
+                            className="px-1.5 py-1 text-[#666] hover:text-[#a66] text-[12px]">×</button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+
           {sourceTab === "saved" && (
             <div className="flex-1 flex flex-col p-2 gap-2 min-h-0">
               <p className="text-[10px] text-[#666] leading-relaxed">
@@ -1278,7 +1417,12 @@ export default function TranscriptionMode() {
         </aside>
 
         {/* ── RIGHT: player ───────────────────────────────────── */}
-        <section className="bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg p-4 flex flex-col gap-4 min-h-[520px] min-w-0 overflow-hidden">
+        {/* sticky top-4 + max-h pins the player at the top of the viewport
+            while the left panel scrolls; overflow-y-auto lets the player
+            content (transport + checkpoints list + stems grid) scroll within
+            its own bounds when it exceeds viewport height. */}
+        <section className="bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg p-4 flex flex-col gap-4 min-h-[520px] min-w-0 overflow-y-auto sticky top-4"
+                 style={{ maxHeight: "calc(100vh - 2rem)" }}>
           {!track ? (
             <div className="flex-1 flex items-center justify-center text-center text-[#666] text-xs leading-relaxed">
               <div className="max-w-sm">
@@ -1369,29 +1513,66 @@ export default function TranscriptionMode() {
                 </div>
               </div>
 
-              {/* Quick-jump strip — one letter button per checkpoint, click to
-                  seek there directly.  The transport row's ⏮ ⏭ only step
-                  through adjacent marks; with several checkpoints set, a
-                  flat row is much faster than tabbing through them.  Matches
-                  the Jump: A B C row in TranscriptionsTab so the two surfaces
-                  feel the same. */}
-              {checkpoints.length > 0 && (
-                <div className="flex items-center gap-1 flex-wrap text-[11px]">
-                  <span className="text-[#888]">Jump:</span>
-                  {checkpoints.map((cp, i) => (
-                    <button
-                      key={cp.id}
-                      onClick={() => seekTo(cp.time)}
-                      title={`Seek to checkpoint ${ordinalLetter(i)} (${mmss(cp.time)}${cp.label ? " — " + cp.label : ""})`}
-                      className="px-2 py-0.5 rounded border bg-[#1a1408] border-[#d4a050] text-[#d4a050] hover:bg-[#d4a050] hover:text-black transition-colors font-bold tabular-nums">
-                      {ordinalLetter(i)}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {/* Checkpoint strip — always visible so the user can drop a
+                  checkpoint without scrolling.  Left side: + Add button
+                  (always present); right side: one letter button per
+                  existing checkpoint, click to jump.  Per user direction
+                  2026-05-30: "i want a [button] to always be visible —
+                  others wise I cant even make a check point". */}
+              <div className="flex items-center gap-1 flex-wrap text-[11px]">
+                <button onClick={addCheckpoint}
+                  title="Drop a checkpoint at the current playhead"
+                  className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider bg-[#1a1408] border border-[#3a2e1a] text-[#d4a050] hover:bg-[#2a2010] rounded">
+                  + Checkpoint at {mmss(currentTime)}
+                </button>
+                {checkpoints.length > 0 && (
+                  <>
+                    <span className="text-[#888] ml-2">Jump:</span>
+                    {checkpoints.map((cp, i) => (
+                      <button
+                        key={cp.id}
+                        onClick={() => seekTo(cp.time)}
+                        title={`Seek to checkpoint ${ordinalLetter(i)} (${mmss(cp.time)}${cp.label ? " — " + cp.label : ""})`}
+                        className="px-2 py-0.5 rounded border bg-[#1a1408] border-[#d4a050] text-[#d4a050] hover:bg-[#d4a050] hover:text-black transition-colors font-bold tabular-nums">
+                        {ordinalLetter(i)}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
 
-              {/* Stems — only rendered when a sibling `.stems/` folder
-                  was detected for the current track. */}
+              {/* Stems — render the SPLIT button whenever a corpus track has
+                  no sibling .stems folder yet, so the user can spawn the
+                  Demucs (htdemucs_6s) job on demand.  Once stems exist (or
+                  arrive after a split completes), render the mute/solo grid.
+                  Per user direction 2026-05-30: "I see no button for
+                  instrument seperation still". */}
+              {(() => {
+                const hasStems = track.stems && Object.keys(track.stems).length > 0;
+                if (!hasStems && !splitState.loading) {
+                  return (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button onClick={runSplit}
+                        title="Run Demucs (htdemucs_6s) on this track — a few minutes on CPU. Stems cache on disk after the first run."
+                        className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider bg-[#1a1a2e] border border-[#7173e6] text-[#9999ee] hover:bg-[#252550] rounded">
+                        ⌁ Split into 6 stems (Demucs)
+                      </button>
+                      {splitState.error && (
+                        <span className="text-[10px] text-[#c66]" title={splitState.error}>(split failed — check dev console)</span>
+                      )}
+                    </div>
+                  );
+                }
+                if (splitState.loading) {
+                  return (
+                    <div className="flex items-center gap-2 text-[10px] text-[#9999ee] font-mono">
+                      <span className="animate-pulse">●</span>
+                      <span className="truncate" title={splitState.progress}>{splitState.progress || "Splitting…"}</span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
               {track.stems && Object.keys(track.stems).length > 0 && (
                 <div>
                   <div className="flex items-center justify-between mb-2">
