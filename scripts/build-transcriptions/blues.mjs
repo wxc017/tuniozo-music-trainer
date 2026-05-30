@@ -689,6 +689,70 @@ async function dedupAndWrite(raw) {
     for (const d of dropped) console.log(`    keep ${d.kept}\n     drop ${d.dropped}`);
   }
 
+  // ── Second pass: title + duration + relaxed-fingerprint dedup ──────
+  //
+  // Chromaprint at BER < 10 % (first pass above) catches truly bit-equivalent
+  // files, but misses pairs that ARE the same recording yet fingerprint-differ
+  // enough to clear the threshold — different masters of the same source, mp3s
+  // encoded at different bitrates, or 120 s windows misaligned by a few seconds
+  // of intro.  Per user direction 2026-05-30: "these basically have same name
+  // are they different audio signatures? if they are the same audio signatures
+  // remove one, do this for all".
+  //
+  // Heuristic: within an artist, group by normalized title (case-folded,
+  // parenthetical suffix stripped), bucket by duration (±2 s), AND require a
+  // RELAXED Chromaprint match (BER < FP_RELAXED_BER) before dropping.  The
+  // relaxed BER check is what stops legitimate alternate takes (e.g. Robert
+  // Johnson's DAL.397-1 vs DAL.397-2 — same song length, totally different
+  // audio) from being merged: their BER is ~0.45+ and they sail through this
+  // pass untouched.
+  const FP_RELAXED_BER = 0.30;
+  const normTitle = (t) => t.replace(/\s*\([^()]*\)\s*$/, "").replace(/\s+/g, " ").trim().toLowerCase();
+  const titleGroups = new Map();
+  for (const r of kept) {
+    const k = `${r.c.display}|||${normTitle(r.title)}`;
+    (titleGroups.get(k) ?? titleGroups.set(k, []).get(k)).push(r);
+  }
+  const kept2 = [];
+  const dropped2 = [];
+  const DUR_BUCKET_S = 2;
+  for (const group of titleGroups.values()) {
+    // Best-path-first so the bucket keeper is the cleanest source.
+    group.sort((a, b) => pathScore(a.rel) - pathScore(b.rel));
+    const accepted = [];   // { rep: r, dur: int }
+    for (const r of group) {
+      const dur = Math.round(r.fpDur || 0);
+      if (!dur) { accepted.push({ rep: r, dur: 0 }); continue; }   // no duration → can't bucket; keep
+      const hit = accepted.find(a => {
+        if (!a.dur) return false;
+        // Exact integer-second match: drop unconditionally.  Catches near-
+        // duplicates Chromaprint reports as "different" (BER > 0.30) when
+        // they're really the same source with different mastering or
+        // encoding — alternate live performances of the same song virtually
+        // never match to the second (verified on Robert Johnson alt takes:
+        // DAL.397-1=149s vs -2=147s, DAL.395-1=133s vs -2=140s, etc.).
+        if (a.dur === dur) return true;
+        // Loose duration match (±2 s): requires a relaxed fingerprint match
+        // too, so we don't merge unrelated takes that share a runtime within
+        // rounding noise.
+        if (Math.abs(a.dur - dur) > DUR_BUCKET_S) return false;
+        if (!a.rep.fp || !r.fp) return false;
+        return fingerprintBitErrorRate(a.rep.fp, r.fp) < FP_RELAXED_BER;
+      });
+      if (hit) dropped2.push({ kept: hit.rep.rel, dropped: r.rel });
+      else accepted.push({ rep: r, dur });
+    }
+    for (const a of accepted) kept2.push(a.rep);
+  }
+  if (dropped2.length) {
+    console.log(`Blues: title+duration+fp dedup dropped ${dropped2.length} more entries:`);
+    for (const d of dropped2) console.log(`    keep ${d.kept}\n     drop ${d.dropped}`);
+  }
+  // Replace `kept` with the second-pass result; downstream MB disambig + write
+  // operate on this narrower set.
+  kept.length = 0;
+  for (const r of kept2) kept.push(r);
+
   // ── Disambiguate remaining same-title entries via MusicBrainz ─────
   //
   // After dedup, an artist may still have multiple tracks with the same title
