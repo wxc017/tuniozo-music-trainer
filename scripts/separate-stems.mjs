@@ -39,8 +39,19 @@ function parseArgs(argv) {
 // Map our model alias to the audio-separator model filename.  These
 // names are what audio-separator downloads from UVR's HF repo.
 const MODEL_FILES = {
-  mdx:    "UVR-MDX-NET-Inst_HQ_3.onnx",   // high-quality MDX-Net instrumental
-  demucs: "htdemucs_ft.yaml",              // Meta's htdemucs (fine-tuned)
+  mdx:        "UVR-MDX-NET-Inst_HQ_3.onnx",   // high-quality MDX-Net instrumental
+  demucs:     "htdemucs_ft.yaml",              // Meta's htdemucs (fine-tuned, 4 stems)
+  // Per user direction 2026-05-29: 6-stem split (drums, bass, vocals, other,
+  // guitar, piano).  Best on-demand option for transcription practice.
+  htdemucs_6s: "htdemucs_6s.yaml",
+};
+
+// Stem files audio-separator may produce, by model.  Used to rename the
+// suffixed default output to a stable {stem}.wav name the player can find.
+const MODEL_STEMS = {
+  mdx:         ["Vocals", "Instrumental"],
+  demucs:      ["Vocals", "Drums", "Bass", "Other"],
+  htdemucs_6s: ["Vocals", "Drums", "Bass", "Other", "Guitar", "Piano"],
 };
 
 function run(cmd, args, opts = {}) {
@@ -74,15 +85,37 @@ async function separateOne(input, model) {
   ]);
 
   // audio-separator names outputs with the original filename + suffix.
-  // Rename them to the canonical {vocals,drums,bass,other}.wav so the
-  // player can look them up consistently.
-  const candidates = ["Vocals", "Instrumental", "Drums", "Bass", "Other"];
+  // Rename them to the canonical {vocals,drums,bass,other,guitar,piano}.wav
+  // so the player can look them up consistently across models.
+  const candidates = MODEL_STEMS[model] ?? ["Vocals", "Instrumental", "Drums", "Bass", "Other", "Guitar", "Piano"];
   for (const stem of candidates) {
     const src = join(stemsDir, `${base}_(${stem})_${modelFile.replace(/\.[^.]+$/, "")}.wav`);
     const dst = join(stemsDir, `${stem.toLowerCase()}.wav`);
     if (await exists(src)) await rename(src, dst);
   }
   console.log(`✓ stems written to ${stemsDir}`);
+}
+
+// Compute where the stems would land for a given audio file — pure path math,
+// no IO.  Used by the Vite middleware to check existing stems before invoking
+// the (slow) separation step.
+export function stemsDirForFile(input) {
+  const abs = resolve(input);
+  return join(dirname(abs), `${basename(abs, extname(abs))}.stems`);
+}
+
+// The canonical stem filenames the player looks up under stemsDirForFile().
+// Mirrors MODEL_STEMS[model] lowercased + .wav, but exposed as a single source
+// of truth so the frontend and middleware agree on names.
+export const STEM_NAMES_6 = ["vocals", "drums", "bass", "other", "guitar", "piano"];
+
+// Programmatic entry point — used by the Vite dev-server middleware so the
+// transcription player can split a track on-click (per user direction
+// 2026-05-29: "split it when i click on a file").  Returns the canonical
+// stems directory once the split completes successfully.
+export async function separateFile(input, model = "htdemucs_6s") {
+  await separateOne(input, model);
+  return stemsDirForFile(input);
 }
 
 async function main() {
