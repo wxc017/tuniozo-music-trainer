@@ -909,16 +909,15 @@ function renderScore(
           firstIndexes: [aIdx],
           lastIndexes: [bIdx],
         });
-        // Force ALL ties to curve UP (direction = -1 in VexFlow's tie
-        // coordinate system = the curve sits ABOVE the noteheads).  By
+        // Force ALL ties to curve DOWN (direction = +1 in VexFlow's tie
+        // coordinate system = the curve sits BELOW the noteheads).  By
         // default VexFlow picks tie direction from stem direction, which
-        // with our two-voice layout meant the upper voice's ties curved
-        // INTO the kick voice's ties in the middle of the staff.  Per
-        // user direction 2026-05-30: "make them go in te same direction
-        // not opposite".  Upper-voice ties land above the staff; kick-
-        // voice ties land between the kick line and the snare line —
-        // visually separated.
-        try { (tie as unknown as { setDirection(d: number): void }).setDirection(-1); } catch { /* */ }
+        // with our two-voice layout meant the upper voice's ties and the
+        // kick voice's ties were meeting in the middle of the staff.
+        // Per user direction 2026-05-30: "make them go in te same
+        // direction not opposite" + "make them curve down" — both
+        // voices' ties now hang BELOW their noteheads.
+        try { (tie as unknown as { setDirection(d: number): void }).setDirection(1); } catch { /* */ }
         tie.setContext(ctx).draw();
       } catch { /* skip */ }
     }
