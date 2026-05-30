@@ -1566,7 +1566,7 @@ export default function TranscriptionMode() {
                 if (!hasStems && !splitState.loading) {
                   return (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <button onClick={runSplit}
+                      <button onClick={() => runSplit(false)}
                         title="Two-pass split: BS-Roformer for vocals, htdemucs_6s for the 5 instrument stems. Cleaner guitar/piano isolation than a single Demucs pass. ~2x the runtime; cached after first run."
                         className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider bg-[#1a1a2e] border border-[#7173e6] text-[#9999ee] hover:bg-[#252550] rounded">
                         ⌁ Split into 6 stems (BS-Roformer + htdemucs_6s ensemble)

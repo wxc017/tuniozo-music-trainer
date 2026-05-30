@@ -607,43 +607,81 @@ function renderScore(
       }
 
       if (mNotes.length > 0) {
-        const { vfNotes, idGroups, slotMap } = buildVFNotes(mIdx, mNotes, totalSlots, vfClef, selectedIds, playingIds);
-        if (vfNotes.length === 0) continue;
+        // Standard drum-set notation uses TWO voices: stems-up for snare /
+        // hi-hat / cymbals / toms, stems-down for kick (bass drum).  When
+        // everything lives in one voice, VexFlow gives all stems the same
+        // direction and modifiers like the buzz "z" attach to the wrong
+        // stem position (per user 2026-05-30: "buzz location is not correct
+        // because they are considered the same voice" / "bass and everything
+        // else should always be two seperate voices").
+        //
+        // Kick lives on the F/4 or E/4 line.  Rests stay in the upper voice
+        // (where rests normally sit on a drum staff).
+        const isKickPitch = (p: string) => p.startsWith("f/4") || p.startsWith("e/4");
+        const kickNotes = mNotes.filter(n => !n.isRest && isKickPitch(n.pitch));
+        const otherNotes = mNotes.filter(n => n.isRest || !isKickPitch(n.pitch));
 
-        // Fill empty slots with VexFlow GhostNotes so the formatter distributes
-        // notes across the full measure width (prevents "squishing").
-        const allTickables: (StaveNote | VFGhostNote)[] = [];
-        let cursor = 0;
-        const addGhosts = (upTo: number) => {
-          if (upTo <= cursor) return;
-          let rem = upTo - cursor;
-          while (rem >= 2) {
-            allTickables.push(new VFGhostNote({ duration: "16" }));
-            cursor += 2;
-            rem -= 2;
+        const kickBuild = buildVFNotes(mIdx, kickNotes, totalSlots, vfClef, selectedIds, playingIds);
+        const otherBuild = buildVFNotes(mIdx, otherNotes, totalSlots, vfClef, selectedIds, playingIds);
+
+        if (kickBuild.vfNotes.length === 0 && otherBuild.vfNotes.length === 0) continue;
+
+        // Force stem directions: kick down (-1), everything else up (+1).
+        // Rests don't have stems but VexFlow tolerates the call.
+        kickBuild.vfNotes.forEach(n => {
+          try { (n as unknown as { setStemDirection(d: number): void }).setStemDirection(-1); } catch { /* skip */ }
+        });
+        otherBuild.vfNotes.forEach(n => {
+          if (n.isRest()) return;
+          try { (n as unknown as { setStemDirection(d: number): void }).setStemDirection(1); } catch { /* skip */ }
+        });
+
+        // Pad each voice with invisible GhostNotes so both voices span the
+        // full measure and align to the same time grid.
+        const buildTickables = (vfNotes: StaveNote[], slotMap: number[], srcNotes: NoteData[]): (StaveNote | VFGhostNote)[] => {
+          const out: (StaveNote | VFGhostNote)[] = [];
+          let cursor = 0;
+          const addGhosts = (upTo: number) => {
+            if (upTo <= cursor) return;
+            let rem = upTo - cursor;
+            while (rem >= 2) { out.push(new VFGhostNote({ duration: "16" })); cursor += 2; rem -= 2; }
+            if (rem >= 1) { out.push(new VFGhostNote({ duration: "32" })); cursor += 1; rem -= 1; }
+          };
+          for (let ni = 0; ni < vfNotes.length; ni++) {
+            addGhosts(slotMap[ni]);
+            out.push(vfNotes[ni]);
+            const nd = srcNotes.find(n => n.startSlot === slotMap[ni]);
+            cursor = slotMap[ni] + (nd ? noteSlots(nd) : 8);
           }
-          if (rem >= 1) {
-            allTickables.push(new VFGhostNote({ duration: "32" }));
-            cursor += 1;
-            rem -= 1;
-          }
+          addGhosts(totalSlots);
+          return out;
         };
-        for (let ni = 0; ni < vfNotes.length; ni++) {
-          addGhosts(slotMap[ni]);
-          allTickables.push(vfNotes[ni]);
-          const nd = mNotes.find(n => n.startSlot === slotMap[ni]);
-          cursor = slotMap[ni] + (nd ? noteSlots(nd) : 8);
-        }
-        addGhosts(totalSlots);
+        const otherTickables = buildTickables(otherBuild.vfNotes, otherBuild.slotMap, otherNotes);
+        const kickTickables = buildTickables(kickBuild.vfNotes, kickBuild.slotMap, kickNotes);
 
-        const voice = new Voice({ numBeats: ts.num, beatValue: ts.den });
-        (voice as unknown as { setMode(m: number): void }).setMode(2);
-        voice.addTickables(allTickables);
+        // Build the voices (only the non-empty ones).  Upper voice first so
+        // its layout drives the visible spacing when both are present.
+        const voices: Voice[] = [];
+        const voiceData: { vfNotes: StaveNote[]; idGroups: string[][]; slotMap: number[] }[] = [];
+        if (otherBuild.vfNotes.length > 0) {
+          const v = new Voice({ numBeats: ts.num, beatValue: ts.den });
+          (v as unknown as { setMode(m: number): void }).setMode(2);
+          v.addTickables(otherTickables);
+          voices.push(v);
+          voiceData.push(otherBuild);
+        }
+        if (kickBuild.vfNotes.length > 0) {
+          const v = new Voice({ numBeats: ts.num, beatValue: ts.den });
+          (v as unknown as { setMode(m: number): void }).setMode(2);
+          v.addTickables(kickTickables);
+          voices.push(v);
+          voiceData.push(kickBuild);
+        }
 
         try {
           const fmt = new Formatter();
-          fmt.joinVoices([voice]);
-          fmt.format([voice], justifyWidth);
+          fmt.joinVoices(voices);
+          fmt.format(voices, justifyWidth);
 
           // Anchors come from the pure-16th-note ghost pass above — they
           // define where the X-ray grid lines sit.  We use them BOTH for
@@ -668,110 +706,116 @@ function renderScore(
           // leaves a gap that reads as too wide for drum notation
           // (where a flam visually "leans into" the main note).  We
           // override AFTER the format pass so our value sticks.
-          vfNotes.forEach(vfn => {
-            try {
-              const mods = (vfn as unknown as {
-                getModifiers(): Array<{
-                  getCategory?(): string;
-                  setSpacingFromNextModifier?(x: number): void;
-                }>;
-              }).getModifiers();
-              mods.forEach(mod => {
-                if (mod.getCategory?.() === "GraceNoteGroup") {
-                  // Larger value = grace sits further RIGHT (closer
-                  // to the main note).  16 is enough to nestle the
-                  // slashed grace right against the notehead.
-                  mod.setSpacingFromNextModifier?.(16);
-                }
-              });
-            } catch { /* skip */ }
-          });
-          vfNotes.forEach((vfn, i) => {
-            try {
-              const desiredAbsX = slotToX(slotMap[i], anchors);
-              const tc = (vfn as unknown as {
-                getTickContext(): { setX(x: number): void };
-              }).getTickContext();
-              tc.setX(desiredAbsX - noteStartX - STAVE_PADDING);
-              (vfn as unknown as { setXShift(x: number): void }).setXShift(0);
-            } catch { /* skip */ }
-          });
-
-          // Manual beam grouping: group consecutive beamable notes
-          // (8th or shorter, non-rest) within the same beat.  Beams
-          // never cross a beat boundary; they always render flat per
-          // user preference.  A rest or a quarter-or-longer note
-          // breaks the beam and starts a new group.  Mixed durations
-          // (e.g. 8th + 16th in the same beat) stay in one beam so
-          // VexFlow can draw the partial secondary beams correctly.
-          const beatSlots = 32 / ts.den;
+          // Beam containers — one set per voice (beams must NOT cross
+          // voices).  Filled below.
           const beams: Beam[] = [];
-          {
-            let currentGroup: StaveNote[] = [];
-            let currentBeat = -1;
-            const flushGroup = () => {
-              if (currentGroup.length > 1) {
-                try {
-                  const beam = new Beam(currentGroup);
-                  beam.renderOptions.flatBeams = true;
-                  beams.push(beam);
-                } catch { /* skip */ }
+          const beatSlots = 32 / ts.den;
+          for (const { vfNotes, slotMap } of voiceData) {
+            vfNotes.forEach(vfn => {
+              try {
+                const mods = (vfn as unknown as {
+                  getModifiers(): Array<{
+                    getCategory?(): string;
+                    setSpacingFromNextModifier?(x: number): void;
+                  }>;
+                }).getModifiers();
+                mods.forEach(mod => {
+                  if (mod.getCategory?.() === "GraceNoteGroup") {
+                    mod.setSpacingFromNextModifier?.(16);
+                  }
+                });
+              } catch { /* skip */ }
+            });
+            // Pin every real note to its fixed grid X.
+            vfNotes.forEach((vfn, i) => {
+              try {
+                const desiredAbsX = slotToX(slotMap[i], anchors);
+                const tc = (vfn as unknown as {
+                  getTickContext(): { setX(x: number): void };
+                }).getTickContext();
+                tc.setX(desiredAbsX - noteStartX - STAVE_PADDING);
+                (vfn as unknown as { setXShift(x: number): void }).setXShift(0);
+              } catch { /* skip */ }
+            });
+            // Manual beam grouping per beat WITHIN this voice — beams
+            // never cross voices.  Same rules as before: 8th-or-shorter
+            // beamable notes, broken by rests / quarters / beat lines.
+            {
+              let currentGroup: StaveNote[] = [];
+              let currentBeat = -1;
+              const flushGroup = () => {
+                if (currentGroup.length > 1) {
+                  try {
+                    const beam = new Beam(currentGroup);
+                    beam.renderOptions.flatBeams = true;
+                    beams.push(beam);
+                  } catch { /* skip */ }
+                }
+              };
+              for (let ni = 0; ni < vfNotes.length; ni++) {
+                const n = vfNotes[ni];
+                const slot = slotMap[ni];
+                const beat = Math.floor(slot / beatSlots);
+                const isBeamable = !n.isRest() && parseInt(n.getDuration(), 10) >= 8;
+                if (isBeamable && beat === currentBeat) {
+                  currentGroup.push(n);
+                } else {
+                  flushGroup();
+                  currentGroup = isBeamable ? [n] : [];
+                  currentBeat = beat;
+                }
               }
-            };
-            for (let ni = 0; ni < vfNotes.length; ni++) {
-              const n = vfNotes[ni];
-              const slot = slotMap[ni];
-              const beat = Math.floor(slot / beatSlots);
-              const isBeamable = !n.isRest() && parseInt(n.getDuration(), 10) >= 8;
-              if (isBeamable && beat === currentBeat) {
-                currentGroup.push(n);
-              } else {
-                flushGroup();
-                currentGroup = isBeamable ? [n] : [];
-                currentBeat = beat;
-              }
+              flushGroup();
             }
-            flushGroup();
           }
 
-          voice.draw(ctx, stave);
+          // Draw all voices.
+          for (const v of voices) v.draw(ctx, stave);
 
           ctx.setStrokeStyle("#ffffff");
           ctx.setFillStyle("#ffffff");
           beams.forEach(b => { try { b.setContext(ctx).draw(); } catch { /* skip */ } });
 
           // Stash every rendered note for the post-render tie pass — handled
-          // outside this measure loop so ties can span bar lines.
-          for (let i = 0; i < vfNotes.length; i++) {
-            allRendered.push({ vfNote: vfNotes[i], ids: idGroups[i] });
+          // outside this measure loop so ties can span bar lines.  Iterate
+          // both voices (preserves their slot ordering; tie pass walks the
+          // global list so cross-voice ties don't fire spuriously because
+          // tie endpoints are matched by pitch / index).
+          for (const { vfNotes, idGroups } of voiceData) {
+            for (let i = 0; i < vfNotes.length; i++) {
+              allRendered.push({ vfNote: vfNotes[i], ids: idGroups[i] });
+            }
           }
 
-          // Collect note pixel positions from actual rendered positions.
-          vfNotes.forEach((vfn, i) => {
-            const ids = idGroups[i];
-            const nx = slotToX(slotMap[i], anchors);
-            try {
-              const isRestNote = vfn.isRest();
-              if (isRestNote) {
-                let ny: number;
-                try {
-                  const bb = (vfn as unknown as {
-                    getBoundingBox(): { x: number; y: number; w: number; h: number };
-                  }).getBoundingBox();
-                  ny = bb.y + bb.h / 2;
-                } catch {
-                  ny = staveTopLineY + 2 * lineSpacing;
+          // Collect note pixel positions from actual rendered positions —
+          // both voices' notes are individually hit-testable.
+          for (const { vfNotes, idGroups, slotMap } of voiceData) {
+            vfNotes.forEach((vfn, i) => {
+              const ids = idGroups[i];
+              const nx = slotToX(slotMap[i], anchors);
+              try {
+                const isRestNote = vfn.isRest();
+                if (isRestNote) {
+                  let ny: number;
+                  try {
+                    const bb = (vfn as unknown as {
+                      getBoundingBox(): { x: number; y: number; w: number; h: number };
+                    }).getBoundingBox();
+                    ny = bb.y + bb.h / 2;
+                  } catch {
+                    ny = staveTopLineY + 2 * lineSpacing;
+                  }
+                  positions.push({ id: ids[0], x: nx, y: ny });
+                } else {
+                  const ys = (vfn as unknown as { getYs(): number[] }).getYs();
+                  ids.forEach((id, keyIdx) => {
+                    const ny = ys[keyIdx] ?? (staveTopLineY + 2 * lineSpacing);
+                    positions.push({ id, x: nx, y: ny });
+                  });
                 }
-                positions.push({ id: ids[0], x: nx, y: ny });
-              } else {
-                const ys = (vfn as unknown as { getYs(): number[] }).getYs();
-                ids.forEach((id, keyIdx) => {
-                  const ny = ys[keyIdx] ?? (staveTopLineY + 2 * lineSpacing);
-                  positions.push({ id, x: nx, y: ny });
-                });
-              }
-            } catch { /* skip */ }
-          });
+              } catch { /* skip */ }
+            });
+          }
 
         } catch (e) {
           console.warn("VexFlow format error in measure", mIdx, e);
