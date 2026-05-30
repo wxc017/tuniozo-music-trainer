@@ -65,11 +65,12 @@ function demucsPlugin(): Plugin {
         if (req.method !== "POST") return next();
         let body = "";
         for await (const chunk of req) body += chunk;
-        let parsed: { audio?: string; model?: string };
+        let parsed: { audio?: string; model?: string; force?: boolean };
         try { parsed = JSON.parse(body || "{}"); } catch { res.statusCode = 400; res.end(JSON.stringify({ ok: false, error: "bad json" })); return; }
         const abs = resolveAudio(parsed.audio || "");
         if (!abs || !fs.existsSync(abs)) { res.statusCode = 404; res.end(JSON.stringify({ ok: false, error: "audio not found" })); return; }
         const model = parsed.model || "htdemucs_6s";
+        const force = !!parsed.force;
         // NDJSON streaming response.  Each line is one event:
         //   { "line": "..." }         — splitter stdout line (progress)
         //   { "line": "...", "err": true }  — splitter stderr line
@@ -88,10 +89,24 @@ function demucsPlugin(): Plugin {
         res.flushHeaders();
         const send = (obj: Record<string, unknown>) => { res.write(JSON.stringify(obj) + "\n"); };
 
-        // Short-circuit when stems already exist (cache: per-file by location).
+        // Short-circuit when stems already exist (cache: per-file by location),
+        // UNLESS the caller passed { force: true } to redo the split — in
+        // which case wipe the existing .stems dir first so audio-separator
+        // doesn't see stale outputs and skip work.  Per user direction
+        // 2026-05-30: "allow me to redo the split i ahve a sng that split
+        // before tha ti want to redo with this".
         const dir = stemsDirFor(abs);
+        if (force && fs.existsSync(dir)) {
+          send({ line: `Force re-split: removing existing stems at ${path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/")}` });
+          try { fs.rmSync(dir, { recursive: true, force: true }); }
+          catch (e) {
+            send({ done: true, ok: false, error: `couldn't remove old stems: ${(e as Error).message}` });
+            res.end();
+            return;
+          }
+        }
         const have = listExistingStems(dir);
-        if (have.length >= (model === "htdemucs_6s" || model === "ensemble_6s" ? 6 : model === "demucs" ? 4 : 2)) {
+        if (!force && have.length >= (model === "htdemucs_6s" || model === "ensemble_6s" ? 6 : model === "demucs" ? 4 : 2)) {
           send({ line: `Cached: ${have.length} stems already at ${path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/")}` });
           send({ done: true, ok: true, cached: true, dir: path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/"), stems: have });
           res.end();

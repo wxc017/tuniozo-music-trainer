@@ -456,7 +456,7 @@ export default function TranscriptionMode() {
   // streams NDJSON progress events back into splitState.progress so the user
   // sees the multi-minute job advancing, and on completion re-probes the
   // sibling .stems folder + patches the track so the stems UI lights up.
-  const runSplit = useCallback(async () => {
+  const runSplit = useCallback(async (force = false) => {
     if (!track) return;
     // Only corpus tracks (under public/) can be split here — dropped blobs +
     // folder handles aren't reachable by the server-side splitter.
@@ -466,12 +466,18 @@ export default function TranscriptionMode() {
     }
     const escapedBase = BASE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const rel = track.src.replace(new RegExp("^" + escapedBase), "").replace(/^\/+/, "");
-    setSplitState({ loading: true, progress: "Starting split…", error: undefined });
+    setSplitState({ loading: true, progress: force ? "Wiping old stems…" : "Starting split…", error: undefined });
+    // On force re-split, drop the current track's stems from state right away
+    // so the mixer doesn't reference files the middleware is about to delete —
+    // otherwise the follower <audio> elements 404 mid-update.
+    if (force) setTrack(prev => prev && prev.id === track.id ? { ...prev, stems: {} } : prev);
     try {
       const r = await fetch("/api/split", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ audio: rel, model: "ensemble_6s" }),
+        // force=true makes the middleware delete the existing .stems/ folder
+        // before running, so re-splits don't get short-circuited by the cache.
+        body: JSON.stringify({ audio: rel, model: "ensemble_6s", force }),
       });
       if (!r.ok || !r.body) {
         setSplitState({ loading: false, error: `HTTP ${r.status}` });
@@ -1533,7 +1539,23 @@ export default function TranscriptionMode() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-xs font-semibold tracking-widest text-[#d4a050] uppercase">Stems</h4>
-                    {stemSolo && <button onClick={() => setStemSolo(null)} className="text-[10px] text-[#d4a050] hover:text-white">clear solo</button>}
+                    <div className="flex items-center gap-3">
+                      {stemSolo && <button onClick={() => setStemSolo(null)} className="text-[10px] text-[#d4a050] hover:text-white">clear solo</button>}
+                      {/* Re-split: wipe the existing stems and run the
+                          splitter again on the same track.  Useful when the
+                          first split landed before a model/setting change
+                          (e.g. switching to the BS-Roformer + htdemucs_6s
+                          ensemble) or when the cached output was botched.
+                          Per user direction 2026-05-30: "allow me to redo
+                          the split". */}
+                      <button
+                        onClick={() => runSplit(true)}
+                        disabled={splitState.loading}
+                        title="Delete the existing stems and run the splitter again from scratch (~minutes on CPU)."
+                        className="text-[10px] text-[#888] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed">
+                        ↻ Re-split
+                      </button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {STEM_NAMES.filter(n => !!track.stems?.[n]).map(name => {
