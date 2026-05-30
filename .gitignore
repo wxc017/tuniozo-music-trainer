@@ -5,6 +5,8 @@ release/
 
 # Transcriptions ETL — cached raw corpora (large; re-downloadable)
 scripts/build-transcriptions/.cache/
+# Portable third-party binaries used by the ETL (fpcalc etc.)
+scripts/build-transcriptions/bin/
 .env
 .env.local
 .DS_Store

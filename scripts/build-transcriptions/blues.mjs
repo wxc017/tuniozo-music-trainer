@@ -20,6 +20,11 @@ import { fileURLToPath } from "node:url";
 import https from "node:https";
 import { writeSource, rebuildIndex, isMain } from "./common.mjs";
 
+// Portable Chromaprint binary (gitignored) — used to fingerprint each track so
+// we can drop audio-identical entries that share an audio footprint across
+// different "albums" (compilations, re-issues, fan-made bootlegs).
+const FPCALC = process.env.FPCALC || join(dirname(fileURLToPath(import.meta.url)), "bin", "fpcalc.exe");
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const AUDIO_DIR = join(__dirname, "..", "..", "public", "blues", "audio");
 mkdirSync(AUDIO_DIR, { recursive: true });
@@ -442,6 +447,141 @@ function analyzeOnsets(file) {
   });
 }
 
+// ── Chromaprint fingerprint (MusicBrainz-style audio identity) ──────
+//
+// `fpcalc -raw` emits the uncompressed 32-bit fingerprint as a CSV of uints
+// (~8 hashes/sec, 120 s = ~960 hashes).  Two recordings are the SAME track if
+// their durations match within a few seconds and their fingerprints have a low
+// bit error rate (Hamming distance / total bits) — that's the AcoustID match
+// criterion.  We use this to drop entries whose audio is byte-equivalent (e.g.
+// the same B.B. King "The Thrill Is Gone" appearing on both _Completely Well_
+// and a "Greatest Hits" compilation under different paths/titles).
+function fpcalcRaw(file) {
+  return new Promise((resolve) => {
+    execFile(FPCALC, ["-raw", "-length", "120", file], { encoding: "utf8", maxBuffer: 1 << 24 }, (err, stdout) => {
+      if (err) return resolve(null);
+      let dur = 0, fp = null;
+      for (const line of stdout.split(/\r?\n/)) {
+        if (line.startsWith("DURATION=")) dur = parseFloat(line.slice(9)) || 0;
+        else if (line.startsWith("FINGERPRINT=")) {
+          const parts = line.slice(12).split(",");
+          fp = new Uint32Array(parts.length);
+          for (let i = 0; i < parts.length; i++) fp[i] = (parts[i] >>> 0);
+        }
+      }
+      resolve(fp && fp.length ? { dur, fp } : null);
+    });
+  });
+}
+
+// Per-file fpcalc cache keyed by (path, size, mtime) so re-runs only fingerprint
+// files that actually changed — fpcalc is ~1-2 s/file and the library is large.
+const FP_CACHE_PATH = join(__dirname, ".cache", "blues-fpcache.json");
+function loadFpCache() {
+  try { return JSON.parse(readFileSync(FP_CACHE_PATH, "utf8")); } catch { return {}; }
+}
+function saveFpCache(cache) {
+  mkdirSync(dirname(FP_CACHE_PATH), { recursive: true });
+  writeFileSync(FP_CACHE_PATH, JSON.stringify(cache));
+}
+function fpCacheKey(abs) {
+  const st = statSync(abs);
+  return `${abs}|${st.size}|${Math.floor(st.mtimeMs)}`;
+}
+
+// Hamming distance between two equal-length 32-bit hash arrays — i.e. the
+// number of bits that differ across the aligned fingerprint sequences.
+function popcnt32(v) {
+  v = v - ((v >>> 1) & 0x55555555);
+  v = (v & 0x33333333) + ((v >>> 2) & 0x33333333);
+  return (((v + (v >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24;
+}
+function fingerprintBitErrorRate(a, b) {
+  const n = Math.min(a.length, b.length);
+  if (!n) return 1;
+  let diff = 0;
+  for (let i = 0; i < n; i++) diff += popcnt32((a[i] ^ b[i]) >>> 0);
+  return diff / (n * 32);
+}
+// AcoustID convention: BER < ~7% is a confident "same recording" match; we use
+// 10% to be a touch more lenient (lossy re-encodes drift the fingerprint a few
+// percent), still well below the cross-recording floor (~40-50%).
+const FP_SAME_BER = 0.10;
+const FP_SAME_DUR_S = 7;          // seconds tolerance on duration
+
+// ── MusicBrainz lookup (canonical recording info for same-title pairs) ──
+//
+// When two files of the same artist+title turn out to be genuinely different
+// recordings (BER too high to dedup), we still need to tell them apart in the
+// picker.  Query the MusicBrainz Web Service (artist:"..." AND recording:"...")
+// to enumerate the canonical recordings and match each of our files to one by
+// duration (±5 s).  The matched recording's `disambiguation` ("live, 1972-...")
+// or release title is then folded into the displayed title.
+//
+// MB rate-limits the public API to 1 req/sec for an identified User-Agent.
+const MB_UA = "EarTrainerV2-BluesETL/1.0 ( https://github.com/wxc017/ear-trainer )";
+const MB_CACHE_PATH = join(__dirname, ".cache", "blues-mbcache.json");
+function loadMbCache() {
+  try { return JSON.parse(readFileSync(MB_CACHE_PATH, "utf8")); } catch { return {}; }
+}
+function saveMbCache(cache) {
+  mkdirSync(dirname(MB_CACHE_PATH), { recursive: true });
+  writeFileSync(MB_CACHE_PATH, JSON.stringify(cache));
+}
+let mbLastReqAt = 0;
+async function mbThrottle() {
+  const wait = Math.max(0, 1100 - (Date.now() - mbLastReqAt));
+  if (wait) await new Promise(r => setTimeout(r, wait));
+  mbLastReqAt = Date.now();
+}
+function mbGet(url) {
+  return new Promise((resolve) => {
+    https.get(url, { headers: { "User-Agent": MB_UA, "Accept": "application/json" } }, (res) => {
+      let d = ""; res.on("data", c => d += c);
+      res.on("end", () => { try { resolve(JSON.parse(d)); } catch { resolve(null); } });
+    }).on("error", () => resolve(null)).setTimeout(15000, function () { this.destroy(); resolve(null); });
+  });
+}
+async function mbRecordings(artist, title, cache) {
+  const key = `${artist}|||${title}`;
+  if (cache[key]) return cache[key];
+  await mbThrottle();
+  const q = encodeURIComponent(`artist:"${artist}" AND recording:"${title.replace(/"/g, "")}"`);
+  const url = `https://musicbrainz.org/ws/2/recording?query=${q}&fmt=json&limit=25`;
+  const res = await mbGet(url);
+  const recs = (res?.recordings || []).map(r => ({
+    title: r.title, length: r.length, disambig: r.disambiguation,
+    release: (r.releases || [])[0]?.title,
+    date: r["first-release-date"] || (r.releases || [])[0]?.date,
+  }));
+  cache[key] = recs;
+  return recs;
+}
+function pickMbVersion(recs, durMs) {
+  const cands = recs.filter(r => r.length && Math.abs(r.length - durMs) <= 5000);
+  if (!cands.length) return null;
+  cands.sort((a, b) => Math.abs(a.length - durMs) - Math.abs(b.length - durMs));
+  return cands[0];
+}
+/** Build a short, picker-friendly version label from an MB recording match. */
+function mbVersionLabel(rec) {
+  if (rec.disambig) {
+    // Trim MB's verbose disambig down to "live 1972" / "studio 1969" / "alternate take".
+    const kind = rec.disambig.match(/\b(live|studio|alternate(?: take)?|demo|edit|instrumental|remix|mono|stereo)\b/i);
+    const year = rec.disambig.match(/\b(19|20)\d{2}\b/);
+    if (kind && year) return `${kind[0].toLowerCase()} ${year[0]}`;
+    if (kind) return kind[0].toLowerCase();
+    if (year) return year[0];
+    return rec.disambig.length > 36 ? rec.disambig.slice(0, 36).trim() + "…" : rec.disambig;
+  }
+  if (rec.release) {
+    const clean = rec.release.replace(/\s*\([^)]*\)\s*$/, "").trim();
+    return clean.length > 36 ? clean.slice(0, 36).trim() + "…" : clean;
+  }
+  if (rec.date) return rec.date.slice(0, 4);
+  return null;
+}
+
 function walkAudio(dir, base = dir) {
   const out = [];
   let entries; try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return out; }
@@ -457,10 +597,13 @@ export async function buildFromLibrary() {
   if (!existsSync(LIB_DIR)) { console.error(`no library at ${LIB_DIR}`); return; }
   const files = walkAudio(LIB_DIR);
   console.log(`Blues: analysing ${files.length} audio files…`);
+  const fpCache = loadFpCache();
   let done = 0;
-  // Parallel pass: tags (artist/title) + onset detection per file.  The onsets
-  // let the app pick a RANDOM window at play time that actually contains notes
-  // (>=2), instead of a fixed precomputed clip.
+  // Parallel pass per file: ffprobe tags + onset detection + Chromaprint
+  // fingerprint.  Onsets let the app pick a RANDOM window at play time that
+  // actually contains notes (>=2 attacks); the fingerprint+duration drive the
+  // post-pass dedup of audio-identical entries that share a footprint across
+  // different albums.
   const raw = await pool(files, 8, async (abs) => {
     const tags = await ffTags(abs);
     if (++done % 200 === 0) console.log(`  …${done}/${files.length}`);
@@ -471,14 +614,136 @@ export async function buildFromLibrary() {
     const an = await analyzeOnsets(abs);
     if (!an || (an.onsets?.length ?? 0) < 4) return null;  // too sparse / silent
     const title = (tags.title || rel.split("/").pop().replace(AUDIO_EXT, "")).trim();
-    return { c, title, rel, onsets: an.onsets, bpm: an.bpm || 100 };
+    // Fingerprint (cached by path+size+mtime).
+    const key = fpCacheKey(abs);
+    let fp = null, fpDur = tags.dur;
+    const hit = fpCache[abs];
+    if (hit && hit.key === key && Array.isArray(hit.fp)) {
+      fp = new Uint32Array(hit.fp); fpDur = hit.dur ?? tags.dur;
+    } else {
+      const res = await fpcalcRaw(abs);
+      if (res) {
+        fp = res.fp; fpDur = res.dur || tags.dur;
+        fpCache[abs] = { key, dur: fpDur, fp: Array.from(res.fp) };
+      }
+    }
+    return { c, title, rel, onsets: an.onsets, bpm: an.bpm || 100, fp, fpDur };
   });
+  saveFpCache(fpCache);
+
+  await dedupAndWrite(raw.filter(Boolean));
+}
+
+// ── Dedup + MB rename + write the two source JSONs ──────────────────
+//
+// Operates on an array of "raw" entries shaped { c:{display,role}, title, rel,
+// onsets, bpm, fp, fpDur }.  Used both by the full ETL (buildFromLibrary above)
+// and by dedupFromExisting (which skips onset/tag analysis when the JSONs were
+// already built — we just need to fingerprint and re-disambiguate).
+async function dedupAndWrite(raw) {
+  // ── Dedup pass: drop audio-identical entries ──────────────────────
+  //
+  // Per-artist (artists own their solos in the corpus — a track on two artists'
+  // discographies is rare and meaningfully different even when fingerprints
+  // match), greedy union by fingerprint similarity: BER < FP_SAME_BER plus a
+  // duration match.  Within each cluster we keep the entry with the cleanest
+  // path: short paths from canonical album folders beat compilations, "[*]"
+  // markers (often signals an edit/clean variant in shared libraries), and
+  // deeper nests like "Greatest Hits/Disc 2/…".
+  const byArtist = new Map();
+  for (const r of raw) { if (r) (byArtist.get(r.c.display) ?? byArtist.set(r.c.display, []).get(r.c.display)).push(r); }
+  const pathScore = (rel) => {
+    // Lower = better.  Penalize [*]/bracket markers and very deep paths.
+    let s = rel.length;
+    if (/\[[^\]]*\]/.test(rel)) s += 500;
+    if (/\b(greatest\s*hits|best of|essential|the very best|compilation|anthology|disc\s*\d)/i.test(rel)) s += 300;
+    s += (rel.split("/").length - 3) * 50;   // extra nesting beyond lib/Artist/Album/track.mp3
+    return s;
+  };
+  const kept = [], dropped = [];
+  for (const entries of byArtist.values()) {
+    const used = new Array(entries.length).fill(false);
+    for (let i = 0; i < entries.length; i++) {
+      if (used[i]) continue;
+      const cluster = [i];
+      const a = entries[i];
+      if (a.fp) {
+        for (let j = i + 1; j < entries.length; j++) {
+          if (used[j]) continue;
+          const b = entries[j];
+          if (!b.fp) continue;
+          if (Math.abs(a.fpDur - b.fpDur) > FP_SAME_DUR_S) continue;
+          if (fingerprintBitErrorRate(a.fp, b.fp) >= FP_SAME_BER) continue;
+          cluster.push(j);
+        }
+      }
+      cluster.sort((x, y) => pathScore(entries[x].rel) - pathScore(entries[y].rel));
+      const keeper = cluster[0];
+      for (const idx of cluster) used[idx] = true;
+      kept.push(entries[keeper]);
+      for (let k = 1; k < cluster.length; k++) dropped.push({ kept: entries[keeper].rel, dropped: entries[cluster[k]].rel });
+    }
+  }
+  if (dropped.length) {
+    console.log(`Blues: dedup dropped ${dropped.length} audio-identical entries:`);
+    for (const d of dropped) console.log(`    keep ${d.kept}\n     drop ${d.dropped}`);
+  }
+
+  // ── Disambiguate remaining same-title entries via MusicBrainz ─────
+  //
+  // After dedup, an artist may still have multiple tracks with the same title
+  // when those are genuinely different recordings (studio + live, two different
+  // live nights, etc.).  For each collision, look up the canonical recordings
+  // on MusicBrainz (artist + title), match each of our files to the MB
+  // recording with the closest duration (±5 s), and use the matched recording's
+  // `disambiguation` ("live, 1972-..." → "live 1972") or release title as the
+  // version label.  Falls back to the album folder name from the path when MB
+  // returns nothing usable.
+  const titleCount = new Map();
+  for (const r of kept) {
+    const k = `${r.c.display}|||${r.title}`;
+    titleCount.set(k, (titleCount.get(k) ?? 0) + 1);
+  }
+  const collisions = kept.filter(r => (titleCount.get(`${r.c.display}|||${r.title}`) ?? 0) > 1);
+  if (collisions.length) {
+    console.log(`Blues: disambiguating ${collisions.length} same-title entries via MusicBrainz…`);
+    const mbCache = loadMbCache();
+    // Group by (artist, title) so we only query MB once per group.
+    const groups = new Map();
+    for (const r of collisions) {
+      const k = `${r.c.display}|||${r.title}`;
+      (groups.get(k) ?? groups.set(k, []).get(k)).push(r);
+    }
+    for (const [key, entries] of groups) {
+      const [artist, title] = key.split("|||");
+      let recs = [];
+      try { recs = await mbRecordings(artist, title, mbCache); }
+      catch { /* network blip — fall through to path fallback */ }
+      const usedLabels = new Set();
+      for (const r of entries) {
+        const durMs = Math.round((r.fpDur || 0) * 1000);
+        const rec = pickMbVersion(recs, durMs);
+        let label = rec ? mbVersionLabel(rec) : null;
+        if (!label || usedLabels.has(label)) {
+          // MB didn't help, or it gave the same label for two distinct files:
+          // fall back to the album folder name from the library path.
+          const parts = r.rel.split("/");
+          const album = parts.length >= 3 ? parts[parts.length - 2] : "";
+          if (album) label = album;
+        }
+        if (label) {
+          r.title = `${r.title} (${label})`;
+          usedLabels.add(label);
+        }
+      }
+    }
+    saveMbCache(mbCache);
+  }
 
   // Two separate sources: Blues Guitar and Blues Vocal (the role IS the source,
   // so style is just the player — the Styles filter then organises by artist).
   const guitar = [], vocal = [];
-  for (const r of raw) {
-    if (!r) continue;
+  for (const r of kept) {
     const source = r.c.role === "Vocals" ? "bluesvocal" : "bluesguitar";
     const bucket = source === "bluesvocal" ? vocal : guitar;
     bucket.push({
@@ -490,9 +755,72 @@ export async function buildFromLibrary() {
       youtubeQuery: `${r.c.display} ${r.title}`,
     });
   }
-  console.log(`Blues: built ${guitar.length} guitar + ${vocal.length} vocal tracks`);
+  console.log(`Blues: built ${guitar.length} guitar + ${vocal.length} vocal tracks (after dedup)`);
   writeSource("bluesguitar", guitar);
   writeSource("bluesvocal", vocal);
 }
 
-if (isMain(import.meta.url)) buildFromLibrary().then(rebuildIndex).catch(e => { console.error(e); process.exit(1); });
+// ── Re-dedup an already-built corpus (no onset / tag re-analysis) ────
+//
+// Reads the existing bluesguitar.json + bluesvocal.json, fingerprints each
+// referenced audio file (using the cache so unchanged files are instant),
+// then re-runs dedup + MB rename and writes both sources back out.  Lets us
+// iterate on the dedup/rename logic without paying the multi-minute cost of
+// re-running ffprobe and the Python onset detector across the whole library.
+export async function dedupFromExisting() {
+  const TX_DIR = join(__dirname, "..", "..", "public", "transcriptions");
+  const sources = ["bluesguitar", "bluesvocal"];
+  const fpCache = loadFpCache();
+  // Strip any pre-existing "(...)" disambiguator suffix on existing titles
+  // (added by an earlier run of this same pass) so we re-derive a clean
+  // version label each time instead of compounding parens.
+  const stripPrevDisambig = (t) => t.replace(/\s*\([^()]*\)\s*$/, "").trim();
+  const items = [];
+  for (const src of sources) {
+    let entries;
+    try { entries = JSON.parse(readFileSync(join(TX_DIR, `${src}.json`), "utf8")); }
+    catch { console.warn(`  ${src}.json missing — skipping`); continue; }
+    for (const e of entries) items.push({ src, e });
+  }
+  console.log(`Blues: re-dedup of ${items.length} existing entries`);
+  let fpDone = 0;
+  // The c.role drives the bluesguitar-vs-bluesvocal split downstream; rebuild
+  // the {display, role} shape that dedupAndWrite expects from each entry's
+  // source key.  rel is the decoded library path; audio in the JSON is URL-
+  // encoded so decode each segment before joining.
+  const decRel = (audio) => audio.split("/").map(decodeURIComponent).join("/");
+  const raw = await pool(items, 8, async ({ src, e }) => {
+    if (++fpDone % 200 === 0) console.log(`  …${fpDone}/${items.length}`);
+    const rel = decRel(e.audio);
+    const abs = join(__dirname, "..", "..", "public", "blues", rel);
+    if (!existsSync(abs)) return null;
+    const key = fpCacheKey(abs);
+    let fp = null, fpDur = 0;
+    const hit = fpCache[abs];
+    if (hit && hit.key === key && Array.isArray(hit.fp)) {
+      fp = new Uint32Array(hit.fp); fpDur = hit.dur ?? 0;
+    } else {
+      const res = await fpcalcRaw(abs);
+      if (res) {
+        fp = res.fp; fpDur = res.dur;
+        fpCache[abs] = { key, dur: fpDur, fp: Array.from(res.fp) };
+      }
+    }
+    return {
+      c: { display: e.artist, role: src === "bluesvocal" ? "Vocals" : "Guitar" },
+      title: stripPrevDisambig(e.title),
+      rel,
+      onsets: e.onsets || [],
+      bpm: e.tempoBpm || 100,
+      fp, fpDur,
+    };
+  });
+  saveFpCache(fpCache);
+  await dedupAndWrite(raw.filter(Boolean));
+}
+
+const args = process.argv.slice(2);
+if (isMain(import.meta.url)) {
+  const fn = args.includes("--existing") ? dedupFromExisting : buildFromLibrary;
+  fn().then(rebuildIndex).catch(e => { console.error(e); process.exit(1); });
+}
