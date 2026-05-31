@@ -29,23 +29,26 @@ import PracticeLogSaveBar from "./PracticeLogSaveBar";
 // sample isn't loaded yet, playDrumHit falls back to its synth path so the
 // very first beat isn't silent while the fetch is in flight.
 type DrumKind = "kick" | "snare" | "hihat" | "hihat-open" | "ride" | "crash" | "tom-high" | "tom-mid" | "tom-floor" | "hihat-foot";
+// Real recorded acoustic kit: the "Pearl Master Studio" pack from the Oramics
+// `sampled` library (CC-BY 3.0), close-mic one-shots of an actual Pearl kit —
+// every voice is its OWN recording, including dedicated open hat, ride, and
+// crash (the old Tone.js "acoustic-kit" had no ride/crash files at all, so
+// those fell back to a synth beep).  Served from github.io with CORS `*` and a
+// correct audio/wav content-type (all 15 URLs HTTP-verified).
+const PEARL = "https://oramics.github.io/sampled/DRUMS/pearl-master-studio/samples";
 const DRUM_SAMPLE_URLS: Record<DrumKind, string> = {
-  // Tone.js's free hosted drum samples (acoustic-kit), CORS-enabled.
-  kick:         "https://tonejs.github.io/audio/drum-samples/acoustic-kit/kick.mp3",
-  snare:        "https://tonejs.github.io/audio/drum-samples/acoustic-kit/snare.mp3",
-  hihat:        "https://tonejs.github.io/audio/drum-samples/acoustic-kit/hihat.mp3",
-  // No dedicated open-hat / hi-hat-foot sample in this kit; reuse hihat with
-  // playback-rate / gain tweaks in playDrumHit for now.
-  "hihat-open": "https://tonejs.github.io/audio/drum-samples/acoustic-kit/hihat.mp3",
-  "hihat-foot": "https://tonejs.github.io/audio/drum-samples/acoustic-kit/hihat.mp3",
-  // acoustic-kit has NO ride/crash file (both 404 → silent synth fallback).
-  // Use Berklee's recorded crash cymbal (same GitHub-Pages host, CORS *).
-  // Ride reuses it, brightened + gated in playDrumHit so it reads as a ping.
-  ride:         "https://tonejs.github.io/audio/berklee/crash_1.mp3",
-  crash:        "https://tonejs.github.io/audio/berklee/crash_1.mp3",
-  "tom-high":   "https://tonejs.github.io/audio/drum-samples/acoustic-kit/tom1.mp3",
-  "tom-mid":    "https://tonejs.github.io/audio/drum-samples/acoustic-kit/tom2.mp3",
-  "tom-floor":  "https://tonejs.github.io/audio/drum-samples/acoustic-kit/tom3.mp3",
+  kick:         `${PEARL}/kick-01.wav`,
+  snare:        `${PEARL}/snare-01.wav`,
+  hihat:        `${PEARL}/hihat-closed.wav`,
+  "hihat-open": `${PEARL}/hihat-open.wav`,
+  // Foot chick: reuse the closed hat, softened in playDrumHit.
+  "hihat-foot": `${PEARL}/hihat-closed.wav`,
+  ride:         `${PEARL}/ride-01.wav`,
+  crash:        `${PEARL}/crash-01.wav`,
+  // Three real toms — high / mid / floor, no pitch-shifting needed.
+  "tom-high":   `${PEARL}/tom-01.wav`,
+  "tom-mid":    `${PEARL}/tom-02.wav`,
+  "tom-floor":  `${PEARL}/tom-03.wav`,
 };
 // The bytes cache is context-independent: fetched ONCE, reused for the
 // life of the page.  Decoded AudioBuffers are per-context (handlePlayDrums
@@ -2686,17 +2689,9 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       const src = ctx.createBufferSource();
       src.buffer = buf;
       const g = ctx.createGain();
-      // hihat-open / hihat-foot reuse the closed hihat sample so adjust
-      // gain + a touch of detune so they don't sound identical.
+      // Every voice now has its own recording.  Foot-chick is the only
+      // borrowed sample (closed hat), softened so it sits under the kit.
       if (kind === "hihat-foot") g.gain.value = vol * 0.55;
-      else if (kind === "hihat-open") { g.gain.value = vol * 1.1; src.playbackRate.value = 0.78; }
-      else if (kind === "ride") {
-        // Ride shares the crash recording — play it brighter and gated so it
-        // sounds like a ride ping, not a full crash wash.
-        src.playbackRate.value = 1.5;
-        g.gain.setValueAtTime(vol * 0.9, t);
-        g.gain.exponentialRampToValueAtTime(0.0008, t + 0.45);
-      }
       else g.gain.value = vol;
       src.connect(g); g.connect(dest);
       src.start(t);
