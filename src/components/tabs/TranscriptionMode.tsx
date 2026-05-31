@@ -636,9 +636,17 @@ export default function TranscriptionMode() {
       try { oldRb.disconnect(); } catch { /* */ }
       try { oldRb.close(); } catch { /* */ }
       rbNodeRef.current = null;
-      rbReadyRef.current = false;
-      setRbStatus("idle");
     }
+    // The <audio> element is remounted per track (key={track.id}) to shed its
+    // one-shot MediaElementSource bond: a source node, once created for an
+    // element, keeps outputting that element's ORIGINAL media even after its
+    // src changes (Chromium) — which is why switching songs kept playing the
+    // previous one.  Drop the stale source so the next play() wires a fresh
+    // MediaElementSource onto the freshly-mounted element.
+    try { mediaSrc?.disconnect(); } catch { /* */ }
+    mediaSrcRef.current = null;
+    rbReadyRef.current = false;
+    setRbStatus("idle");
     audio.crossOrigin = "anonymous";
     audio.src = track.src;
     // Force-flush the previous track's buffered media. Without load() a
@@ -1513,7 +1521,7 @@ export default function TranscriptionMode() {
                   -{mmss(Math.max(0, duration - currentTime))}
                 </span>
               </div>
-              <audio ref={audioRef} preload="auto" className="hidden" />
+              <audio key={track?.id ?? "none"} ref={audioRef} preload="auto" className="hidden" />
 
               {/* Transport — Anytune-style: marks nav · play · A/B loop. */}
               <div className="flex items-center gap-3 flex-wrap">
