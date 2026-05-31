@@ -639,8 +639,12 @@ export default function TranscriptionMode() {
       rbReadyRef.current = false;
       setRbStatus("idle");
     }
-    audio.src = track.src;
     audio.crossOrigin = "anonymous";
+    audio.src = track.src;
+    // Force-flush the previous track's buffered media. Without load() a
+    // paused element resumes the OLD media on the next play() despite the
+    // new .src — the "look changes but the old song keeps playing" bug.
+    audio.load();
     // With RB torn down, fall back to native preservesPitch so slowdown
     // still works until the user re-plays and RB is recreated.
     (audio as HTMLAudioElement & { preservesPitch?: boolean }).preservesPitch = true;
