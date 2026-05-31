@@ -5,7 +5,7 @@ import {
 import {
   Renderer, Stave, StaveNote, Voice, Formatter, Beam, Barline, Accidental, Dot,
   Articulation, Annotation, GraceNote, GraceNoteGroup, Parenthesis,
-  Volta, StaveTie,
+  Volta, StaveTie, Tuplet,
   GhostNote as VFGhostNote,
   type StaveNoteStruct,
 } from "vexflow";
@@ -788,12 +788,64 @@ function renderScore(
             }
           }
 
+          // Tuplet brackets — walk each voice and group consecutive notes
+          // sharing the same tuplet value (3 = triplet, 5 = quintuplet,
+          // 6 = sextuplet, 7 = septuplet), wrap them in a VexFlow Tuplet.
+          // The bracket draws the digit above/below the run; VexFlow
+          // also adjusts inter-note spacing to match the tuplet ratio.
+          // Per user direction 2026-05-30: "per bar I can change grid
+          // and make a group of 5 then change back grid and it stays
+          // as that" + "allow polyrhythmcs to be made, i can select
+          // group of notes and made polyrhythms".
+          const tuplets: Tuplet[] = [];
+          for (const { vfNotes, slotMap } of voiceData) {
+            let groupStart = -1;
+            let groupTuplet: 3 | 5 | 6 | 7 | undefined = undefined;
+            const flushTuplet = (endExclusive: number) => {
+              if (groupStart < 0 || groupTuplet === undefined) return;
+              const groupNotes = vfNotes.slice(groupStart, endExclusive);
+              if (groupNotes.length >= 2) {
+                try {
+                  // numNotes:notesOccupied — 3:2 for triplet, 5:4 for
+                  // quintuplet, 6:4 for sextuplet, 7:4 for septuplet.
+                  const notesOccupied = groupTuplet === 3 ? 2 : 4;
+                  const tup = new Tuplet(groupNotes, { numNotes: groupTuplet, notesOccupied });
+                  tuplets.push(tup);
+                } catch { /* skip */ }
+              }
+              groupStart = -1;
+              groupTuplet = undefined;
+            };
+            for (let ni = 0; ni < vfNotes.length; ni++) {
+              const srcId = voiceData.find(vd => vd.vfNotes === vfNotes)?.idGroups[ni]?.[0];
+              const src = srcId ? globalNoteById.get(srcId) : undefined;
+              const t = src?.tuplet;
+              if (t && t === groupTuplet) {
+                // extend current run
+              } else {
+                flushTuplet(ni);
+                if (t) { groupStart = ni; groupTuplet = t; }
+              }
+              // If we just started a run, mark it.
+              if (t && groupStart < 0) { groupStart = ni; groupTuplet = t; }
+              // Run breaks on slot discontinuity too — only group
+              // notes whose slots advance in order with no big gap.
+              if (groupStart >= 0 && ni > groupStart) {
+                const prevSlot = slotMap[ni - 1];
+                const thisSlot = slotMap[ni];
+                if (thisSlot <= prevSlot) flushTuplet(ni);
+              }
+            }
+            flushTuplet(vfNotes.length);
+          }
+
           // Draw all voices.
           for (const v of voices) v.draw(ctx, stave);
 
           ctx.setStrokeStyle("#ffffff");
           ctx.setFillStyle("#ffffff");
           beams.forEach(b => { try { b.setContext(ctx).draw(); } catch { /* skip */ } });
+          tuplets.forEach(t => { try { t.setContext(ctx).draw(); } catch { /* skip */ } });
 
           // Stash every rendered note in its voice bucket for the
           // post-render tie pass — handled outside this measure loop so
@@ -3420,6 +3472,38 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                       </div>
                     );
                   })()}
+                  {/* Tuplet row — wrap the entire selection in a tuplet
+                       group.  Picking 3 turns the selection into a
+                       triplet, 5 into a quintuplet, etc.; "—" clears.
+                       Renderer detects consecutive same-tuplet notes and
+                       draws the VexFlow bracket.  Per user direction
+                       2026-05-30: "allow polyrhythmcs to be made, i can
+                       select group of notes and made polyrhythms". */}
+                  {(() => {
+                    const sel = notes.filter(n => selectedIds.includes(n.id) && !n.isRest);
+                    if (sel.length < 2) return null;
+                    const sharedTuplet = sel.every(n => n.tuplet === sel[0].tuplet) ? (sel[0].tuplet ?? undefined) : undefined;
+                    return (
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-[#666]">Tup:</span>
+                        {([undefined, 3, 5, 6, 7] as const).map(t => {
+                          const active = sharedTuplet === t;
+                          return (
+                            <button
+                              key={String(t)}
+                              title={t === undefined ? "Clear tuplet" : `Mark selection as ${t === 3 ? "triplet" : t === 5 ? "quintuplet" : t === 6 ? "sextuplet" : "septuplet"}`}
+                              className={`px-2 py-0.5 border rounded transition-colors text-[10px] ${active ? "bg-[#7173e6] border-[#7173e6] text-white" : "border-[#333] text-[#aaa] hover:text-white hover:border-[#555]"}`}
+                              onClick={() => {
+                                pushHistory(notes);
+                                setNotes(all => all.map(n => selectedIds.includes(n.id) && !n.isRest ? { ...n, tuplet: t } : n));
+                              }}
+                            >{t === undefined ? "—" : t}</button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
                   {/* Consolidate row — merge adjacent same-pitch notes into one longer note */}
                   {(() => {
                     const sel = notes
@@ -3657,6 +3741,33 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                       </div>
                     );
                   })()}
+
+                  {/* Tuplet row — mark this note as part of a tuplet
+                       group (triplet / quintuplet / sextuplet / septuplet).
+                       Place a run of notes, select them, hit one of these
+                       buttons; the renderer wraps consecutive same-tuplet
+                       notes in a VexFlow Tuplet bracket.  Per user
+                       direction 2026-05-30: "per bar I can change grid and
+                       make a group of 5". */}
+                  {!selectedNote.isRest && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-[#666]">Tup:</span>
+                      {([undefined, 3, 5, 6, 7] as const).map(t => {
+                        const active = (selectedNote.tuplet ?? undefined) === t;
+                        return (
+                          <button
+                            key={String(t)}
+                            title={t === undefined ? "No tuplet" : `${t === 3 ? "Triplet" : t === 5 ? "Quintuplet" : t === 6 ? "Sextuplet" : "Septuplet"} (${t}:${t === 3 ? 2 : 4})`}
+                            className={`px-2 py-0.5 border rounded transition-colors text-[10px] ${active ? "bg-[#7173e6] border-[#7173e6] text-white" : "border-[#333] text-[#aaa] hover:text-white hover:border-[#555]"}`}
+                            onClick={() => {
+                              pushHistory(notes);
+                              setNotes(all => all.map(n => n.id === selectedNote.id ? { ...n, tuplet: t } : n));
+                            }}
+                          >{t === undefined ? "—" : t}</button>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {/* Articulation row — drum-mode articulations including
                        buzz (z on the stem).  Per user direction 2026-05-30:
