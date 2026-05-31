@@ -620,18 +620,21 @@ export default function TranscriptionMode() {
     setDuration(0);
 
     const audio = audioRef.current;
-    // Pause + zero out + explicit load BEFORE swapping src.  Without this,
-    // the previous track keeps audible for a beat or two — the browser
-    // doesn't synchronously stop the old playback when src changes, and
-    // Rubber Band's worklet has its own internal sample queue that drains
-    // out the old audio.  Per user direction 2026-05-30: "when i click
-    // another song the player look changes but it keeps the sound of the
-    // previous song".
+    // Pause + zero out + crossOrigin BEFORE swapping src + load.  Without
+    // pausing first the previous track keeps audible for a beat or two
+    // (browser doesn't synchronously stop the old playback on src change,
+    // and Rubber Band's worklet has its own sample queue that drains the
+    // old audio).  crossOrigin must be set BEFORE the new fetch starts —
+    // otherwise the fetch goes out without CORS, the Web Audio graph
+    // refuses the cross-origin stream, and play() silently fails on the
+    // next click.  Per user direction 2026-05-30: "when i click another
+    // song the player look changes but it keeps the sound of the previous
+    // song" + "now the player is not playing when i click play".
     try { audio.pause(); } catch { /* */ }
     try { audio.currentTime = 0; } catch { /* */ }
+    audio.crossOrigin = "anonymous";
     audio.src = track.src;
     audio.load();
-    audio.crossOrigin = "anonymous";
     // If Rubber Band is already wired up, it handles pitch correction
     // and we leave native preservesPitch OFF.  Otherwise default to
     // native preservesPitch so slowdown still works pre-init.
@@ -1448,7 +1451,13 @@ export default function TranscriptionMode() {
         </aside>
 
         {/* ── RIGHT: player ───────────────────────────────────── */}
-        <section className="bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg p-4 flex flex-col gap-4 min-h-[520px] min-w-0 overflow-hidden">
+        {/* sticky top-4 + max-h pins the player at the top of the viewport
+            while the left panel scrolls; overflow-y-auto lets the player
+            scroll its own bounds when its contents exceed viewport height.
+            Restored per user direction 2026-05-30: "the player and its
+            options is no longer sticking when i scroll down either". */}
+        <section className="bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg p-4 flex flex-col gap-4 min-h-[520px] min-w-0 overflow-y-auto sticky top-4"
+                 style={{ maxHeight: "calc(100vh - 2rem)" }}>
           {!track ? (
             <div className="flex-1 flex items-center justify-center text-center text-[#666] text-xs leading-relaxed">
               <div className="max-w-sm">
