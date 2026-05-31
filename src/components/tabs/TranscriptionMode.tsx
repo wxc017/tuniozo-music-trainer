@@ -620,7 +620,17 @@ export default function TranscriptionMode() {
     setDuration(0);
 
     const audio = audioRef.current;
+    // Pause + zero out + explicit load BEFORE swapping src.  Without this,
+    // the previous track keeps audible for a beat or two — the browser
+    // doesn't synchronously stop the old playback when src changes, and
+    // Rubber Band's worklet has its own internal sample queue that drains
+    // out the old audio.  Per user direction 2026-05-30: "when i click
+    // another song the player look changes but it keeps the sound of the
+    // previous song".
+    try { audio.pause(); } catch { /* */ }
+    try { audio.currentTime = 0; } catch { /* */ }
     audio.src = track.src;
+    audio.load();
     audio.crossOrigin = "anonymous";
     // If Rubber Band is already wired up, it handles pitch correction
     // and we leave native preservesPitch OFF.  Otherwise default to
