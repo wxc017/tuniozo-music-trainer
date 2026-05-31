@@ -340,6 +340,11 @@ export default function TranscriptionMode() {
 
   // ── Load dropped files + restore folder handles on mount ────────
   useEffect(() => {
+    // Dropped-file blobs live in IndexedDB, which is best-effort storage by
+    // default and can be evicted between sessions.  Request durable storage so
+    // they survive a reload (per user: dropped files don't save between
+    // sessions).
+    void navigator.storage?.persist?.();
     idbGetAll<DroppedFile>(FILE_STORE).then(setDropped).catch(() => {});
     (async () => {
       try {
