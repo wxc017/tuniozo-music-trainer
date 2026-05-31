@@ -38,8 +38,11 @@ const DRUM_SAMPLE_URLS: Record<DrumKind, string> = {
   // playback-rate / gain tweaks in playDrumHit for now.
   "hihat-open": "https://tonejs.github.io/audio/drum-samples/acoustic-kit/hihat.mp3",
   "hihat-foot": "https://tonejs.github.io/audio/drum-samples/acoustic-kit/hihat.mp3",
-  ride:         "https://tonejs.github.io/audio/drum-samples/acoustic-kit/ride.mp3",
-  crash:        "https://tonejs.github.io/audio/drum-samples/acoustic-kit/crash.mp3",
+  // acoustic-kit has NO ride/crash file (both 404 → silent synth fallback).
+  // Use Berklee's recorded crash cymbal (same GitHub-Pages host, CORS *).
+  // Ride reuses it, brightened + gated in playDrumHit so it reads as a ping.
+  ride:         "https://tonejs.github.io/audio/berklee/crash_1.mp3",
+  crash:        "https://tonejs.github.io/audio/berklee/crash_1.mp3",
   "tom-high":   "https://tonejs.github.io/audio/drum-samples/acoustic-kit/tom1.mp3",
   "tom-mid":    "https://tonejs.github.io/audio/drum-samples/acoustic-kit/tom2.mp3",
   "tom-floor":  "https://tonejs.github.io/audio/drum-samples/acoustic-kit/tom3.mp3",
@@ -2671,9 +2674,9 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     return buf;
   }
 
-  function playDrumHit(ctx: AudioContext, t: number, kind: DrumSound, accent: boolean = false) {
+  function playDrumHit(ctx: AudioContext, t: number, kind: DrumSound, accent: boolean = false, gainScale: number = 1) {
     const dest = ctx.destination;
-    const vol = accent ? 1.0 : 0.75;
+    const vol = (accent ? 1.0 : 0.75) * gainScale;
 
     // Sample path: if the AudioBuffer for this kind is already decoded,
     // play it.  Otherwise kick off the (async) load and fall through to
@@ -2687,6 +2690,13 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
       // gain + a touch of detune so they don't sound identical.
       if (kind === "hihat-foot") g.gain.value = vol * 0.55;
       else if (kind === "hihat-open") { g.gain.value = vol * 1.1; src.playbackRate.value = 0.78; }
+      else if (kind === "ride") {
+        // Ride shares the crash recording — play it brighter and gated so it
+        // sounds like a ride ping, not a full crash wash.
+        src.playbackRate.value = 1.5;
+        g.gain.setValueAtTime(vol * 0.9, t);
+        g.gain.exponentialRampToValueAtTime(0.0008, t + 0.45);
+      }
       else g.gain.value = vol;
       src.connect(g); g.connect(dest);
       src.start(t);
@@ -2911,7 +2921,10 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     for (let m = 0; m < activeProject.setup.barCount; m++) {
       const ts = activeProject.setup.perBarTimeSig?.[m] ?? activeProject.setup.defaultTimeSig;
       const mSlots = measureSlots(ts);
-      const measureNotes = notes.filter(n => n.measure === m && !n.isRest);
+      // Skip tie continuations (isTieEnd): a tied note must NOT be re-struck —
+      // the sustaining note from the tie start already rings.  Without this a
+      // tie just sounded like a second, separate hit.
+      const measureNotes = notes.filter(n => n.measure === m && !n.isRest && !n.isTieEnd);
 
       // Group by startSlot so highlights stay in sync for chords.
       const bySlot = new Map<number, NoteData[]>();
@@ -2925,7 +2938,30 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
         for (const n of group) {
           const sound = pitchToDrum(n.pitch, n.notehead);
           const accent = n.articulation === "accent";
-          playDrumHit(ctx, t, sound, accent);
+          const artic = n.articulation;
+          if (artic === "buzz") {
+            // Buzz roll: rapid even retriggers across the note's duration so
+            // the articulation is actually audible (it was silent-as-a-roll).
+            const rollDur = Math.min(noteSlots(n) * secondsPerSlot, 0.5);
+            const hits = Math.max(6, Math.round(rollDur / 0.035));
+            for (let i = 0; i < hits; i++) {
+              playDrumHit(ctx, t + (i / hits) * rollDur, sound, false, 0.5);
+            }
+          } else if (artic === "flam") {
+            // Flam: one soft grace ~30 ms before the main hit.
+            playDrumHit(ctx, t - 0.03, sound, false, 0.5);
+            playDrumHit(ctx, t, sound, accent);
+          } else if (artic === "drag") {
+            // Drag: two soft graces before the main hit.
+            playDrumHit(ctx, t - 0.06, sound, false, 0.4);
+            playDrumHit(ctx, t - 0.03, sound, false, 0.4);
+            playDrumHit(ctx, t, sound, accent);
+          } else if (artic === "ghost") {
+            // Ghost: quiet tap.
+            playDrumHit(ctx, t, sound, false, 0.4);
+          } else {
+            playDrumHit(ctx, t, sound, accent);
+          }
         }
         // Highlight the chord's notes in sync with the audio.  Delay
         // is computed from real wall-clock time so it stays aligned
@@ -2951,6 +2987,26 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     }, (drumStopAtRef.current - ctx.currentTime) * 1000);
     drumHighlightTimeoutsRef.current.push(stopT);
   }
+
+  // Spacebar = play / stop the drum score, regardless of which control is
+  // focused (mirrors the Transcription player).  handlePlayDrums is held in a
+  // ref so this listener binds once yet always calls the latest closure
+  // (capturing the current drumPlaying / notes).  Capture phase + stopProp so
+  // Space doesn't also activate a focused button or scroll the page.
+  const handlePlayDrumsRef = useRef(handlePlayDrums);
+  handlePlayDrumsRef.current = handlePlayDrums;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space") return;
+      const el = document.activeElement;
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable) return;
+      e.preventDefault();
+      e.stopPropagation();
+      handlePlayDrumsRef.current();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
 
   function handleSync() {
     const ts = ytPlayerRef.current?.getCurrentTime() ?? 0;
