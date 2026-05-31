@@ -620,21 +620,8 @@ export default function TranscriptionMode() {
     setDuration(0);
 
     const audio = audioRef.current;
-    // Pause + zero out + crossOrigin BEFORE swapping src + load.  Without
-    // pausing first the previous track keeps audible for a beat or two
-    // (browser doesn't synchronously stop the old playback on src change,
-    // and Rubber Band's worklet has its own sample queue that drains the
-    // old audio).  crossOrigin must be set BEFORE the new fetch starts —
-    // otherwise the fetch goes out without CORS, the Web Audio graph
-    // refuses the cross-origin stream, and play() silently fails on the
-    // next click.  Per user direction 2026-05-30: "when i click another
-    // song the player look changes but it keeps the sound of the previous
-    // song" + "now the player is not playing when i click play".
-    try { audio.pause(); } catch { /* */ }
-    try { audio.currentTime = 0; } catch { /* */ }
-    audio.crossOrigin = "anonymous";
     audio.src = track.src;
-    audio.load();
+    audio.crossOrigin = "anonymous";
     // If Rubber Band is already wired up, it handles pitch correction
     // and we leave native preservesPitch OFF.  Otherwise default to
     // native preservesPitch so slowdown still works pre-init.
