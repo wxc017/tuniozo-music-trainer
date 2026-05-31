@@ -22,6 +22,81 @@ import { exportToPdf } from "@/lib/exportPdf";
 import { exportToPdfViaVerovio } from "@/lib/exportPdfVerovio";
 import PracticeLogSaveBar from "./PracticeLogSaveBar";
 
+// ── Drum-sample preload (acoustic-kit via Tone.js's free CDN) ───────────────
+//
+// Module-level so it persists across re-renders and unmounts.  Each kind
+// downloads + decodes once; subsequent calls reuse the AudioBuffer.  When the
+// sample isn't loaded yet, playDrumHit falls back to its synth path so the
+// very first beat isn't silent while the fetch is in flight.
+type DrumKind = "kick" | "snare" | "hihat" | "hihat-open" | "ride" | "crash" | "tom-high" | "tom-mid" | "tom-floor" | "hihat-foot";
+const DRUM_SAMPLE_URLS: Record<DrumKind, string> = {
+  // Tone.js's free hosted drum samples (acoustic-kit), CORS-enabled.
+  kick:         "https://tonejs.github.io/audio/drum-samples/acoustic-kit/kick.mp3",
+  snare:        "https://tonejs.github.io/audio/drum-samples/acoustic-kit/snare.mp3",
+  hihat:        "https://tonejs.github.io/audio/drum-samples/acoustic-kit/hihat.mp3",
+  // No dedicated open-hat / hi-hat-foot sample in this kit; reuse hihat with
+  // playback-rate / gain tweaks in playDrumHit for now.
+  "hihat-open": "https://tonejs.github.io/audio/drum-samples/acoustic-kit/hihat.mp3",
+  "hihat-foot": "https://tonejs.github.io/audio/drum-samples/acoustic-kit/hihat.mp3",
+  ride:         "https://tonejs.github.io/audio/drum-samples/acoustic-kit/ride.mp3",
+  crash:        "https://tonejs.github.io/audio/drum-samples/acoustic-kit/crash.mp3",
+  "tom-high":   "https://tonejs.github.io/audio/drum-samples/acoustic-kit/tom1.mp3",
+  "tom-mid":    "https://tonejs.github.io/audio/drum-samples/acoustic-kit/tom2.mp3",
+  "tom-floor":  "https://tonejs.github.io/audio/drum-samples/acoustic-kit/tom3.mp3",
+};
+// The bytes cache is context-independent: fetched ONCE, reused for the
+// life of the page.  Decoded AudioBuffers are per-context (handlePlayDrums
+// closes its AudioContext on stop, which invalidates buffers decoded under
+// it) — stored in a WeakMap so closed contexts can be garbage-collected.
+const drumSampleBytes = new Map<DrumKind, ArrayBuffer>();
+const drumSampleBytesLoading = new Map<DrumKind, Promise<ArrayBuffer | null>>();
+const drumSampleDecodeCache = new WeakMap<AudioContext, Map<DrumKind, AudioBuffer>>();
+
+async function loadDrumSampleBytes(kind: DrumKind): Promise<ArrayBuffer | null> {
+  const cached = drumSampleBytes.get(kind);
+  if (cached) return cached;
+  let p = drumSampleBytesLoading.get(kind);
+  if (p) return p;
+  p = (async () => {
+    try {
+      const r = await fetch(DRUM_SAMPLE_URLS[kind]);
+      if (!r.ok) return null;
+      const arr = await r.arrayBuffer();
+      drumSampleBytes.set(kind, arr);
+      return arr;
+    } catch { return null; }
+  })();
+  drumSampleBytesLoading.set(kind, p);
+  return p;
+}
+
+/** Synchronous lookup of the decoded sample for this (ctx, kind). */
+function getDrumSample(ctx: AudioContext, kind: DrumKind): AudioBuffer | undefined {
+  return drumSampleDecodeCache.get(ctx)?.get(kind);
+}
+
+/** Async fetch + decode.  Idempotent per (ctx, kind). */
+async function loadDrumSample(ctx: AudioContext, kind: DrumKind): Promise<AudioBuffer | null> {
+  const perCtx0 = drumSampleDecodeCache.get(ctx);
+  if (perCtx0?.has(kind)) return perCtx0.get(kind) ?? null;
+  const bytes = await loadDrumSampleBytes(kind);
+  if (!bytes) return null;
+  try {
+    // decodeAudioData detaches its source ArrayBuffer on most browsers, so
+    // pass a fresh slice each time to keep the cached bytes reusable.
+    const buf = await ctx.decodeAudioData(bytes.slice(0));
+    let perCtx = drumSampleDecodeCache.get(ctx);
+    if (!perCtx) { perCtx = new Map(); drumSampleDecodeCache.set(ctx, perCtx); }
+    perCtx.set(kind, buf);
+    return buf;
+  } catch { return null; }
+}
+
+/** Kick off all 10 sample loads in parallel.  Safe to call repeatedly. */
+function preloadDrumSamples(ctx: AudioContext): void {
+  (Object.keys(DRUM_SAMPLE_URLS) as DrumKind[]).forEach(k => { void loadDrumSample(ctx, k); });
+}
+
 // ── YouTube API global ──────────────────────────────────────────────────────
 declare global {
   interface Window {
@@ -2562,12 +2637,12 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     }
   }
 
-  // ── Drum playback (Web Audio synthesis) ──────────────────────────
-  // Maps each placed note to a drum-sample type using its (pitch,
-  // notehead) pair, then schedules a synthesized hit at the right
-  // time in the AudioContext.  No external samples — kicks/snares/
-  // cymbals are generated from oscillators + noise so the editor
-  // works offline and adds zero asset weight.
+  // ── Drum playback (samples with synth fallback) ──────────────────
+  // Real drum samples (Tone.js's hosted acoustic-kit) load lazily on
+  // first playback.  Until they're cached, hits fall back to the
+  // oscillator+noise synth below — so the editor stays usable offline
+  // and on the very first beat of a fresh tab.  Per user direction
+  // 2026-05-30: "add playblack use drumn samples high quality".
   type DrumSound = "kick" | "snare" | "hihat" | "hihat-open" | "ride" | "crash" | "tom-high" | "tom-mid" | "tom-floor" | "hihat-foot";
 
   function pitchToDrum(pitch: string, notehead?: NoteheadType): DrumSound {
@@ -2599,6 +2674,25 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   function playDrumHit(ctx: AudioContext, t: number, kind: DrumSound, accent: boolean = false) {
     const dest = ctx.destination;
     const vol = accent ? 1.0 : 0.75;
+
+    // Sample path: if the AudioBuffer for this kind is already decoded,
+    // play it.  Otherwise kick off the (async) load and fall through to
+    // the synth path below so this first hit isn't silent.
+    const buf = getDrumSample(ctx, kind);
+    if (buf) {
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const g = ctx.createGain();
+      // hihat-open / hihat-foot reuse the closed hihat sample so adjust
+      // gain + a touch of detune so they don't sound identical.
+      if (kind === "hihat-foot") g.gain.value = vol * 0.55;
+      else if (kind === "hihat-open") { g.gain.value = vol * 1.1; src.playbackRate.value = 0.78; }
+      else g.gain.value = vol;
+      src.connect(g); g.connect(dest);
+      src.start(t);
+      return;
+    }
+    void loadDrumSample(ctx, kind);
 
     if (kind === "kick") {
       // Three-component kick: thump (sine pitch sweep) + body (low
@@ -2795,6 +2889,10 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     const Ctx = (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext);
     const ctx = new Ctx();
     playCtxRef.current = ctx;
+    // Kick off the drum-sample fetch + decode now so by the second beat
+    // (or the second play press) the sample path is hot.  First hit may
+    // still use the synth fallback while bytes are in flight.
+    preloadDrumSamples(ctx);
 
     const tempo = activeProject.tempo && activeProject.tempo > 0 ? activeProject.tempo : 100;
     const slotsPerQuarter = 8;
