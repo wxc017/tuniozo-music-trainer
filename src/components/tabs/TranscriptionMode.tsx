@@ -620,12 +620,30 @@ export default function TranscriptionMode() {
     setDuration(0);
 
     const audio = audioRef.current;
+    // Tear down Rubber Band before swapping src.  The RB worklet has an
+    // internal ~hundreds-of-ms sample queue that would otherwise drain the
+    // OLD track's audio after the src change (per user 2026-05-30: "when
+    // i click another song the player look changes but it keeps the sound
+    // of the previous song").  Closing the node drops the queue with it.
+    // MediaElementSource can't be recreated (browser limit: one per audio
+    // element), so we leave it in place and just disconnect + close RB.
+    // The user's next togglePlay will call initRubberBand() to spawn a
+    // fresh worklet — same lazy-init path used on first play.
+    const oldRb = rbNodeRef.current;
+    const mediaSrc = mediaSrcRef.current;
+    if (oldRb) {
+      try { mediaSrc?.disconnect(oldRb); } catch { /* */ }
+      try { oldRb.disconnect(); } catch { /* */ }
+      try { oldRb.close(); } catch { /* */ }
+      rbNodeRef.current = null;
+      rbReadyRef.current = false;
+      setRbStatus("idle");
+    }
     audio.src = track.src;
     audio.crossOrigin = "anonymous";
-    // If Rubber Band is already wired up, it handles pitch correction
-    // and we leave native preservesPitch OFF.  Otherwise default to
-    // native preservesPitch so slowdown still works pre-init.
-    (audio as HTMLAudioElement & { preservesPitch?: boolean }).preservesPitch = !rbReadyRef.current;
+    // With RB torn down, fall back to native preservesPitch so slowdown
+    // still works until the user re-plays and RB is recreated.
+    (audio as HTMLAudioElement & { preservesPitch?: boolean }).preservesPitch = true;
     audio.playbackRate = speed;
 
     const regions = RegionsPlugin.create();
