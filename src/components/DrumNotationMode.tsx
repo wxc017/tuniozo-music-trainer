@@ -389,6 +389,17 @@ function applyDrumStick(vfn: StaveNote, stick: DrumStick | undefined, keyIdx: nu
   } catch { /* */ }
 }
 
+// Open ("o") / closed ("+") hi-hat mark, drawn above the notehead — standard
+// drum notation for an open vs. foot-closed/choked hi-hat.
+function applyHihatOpen(vfn: StaveNote, mark: "open" | "closed" | undefined, keyIdx: number) {
+  if (!mark) return;
+  try {
+    const a = new Annotation(mark === "open" ? "o" : "+");
+    (a as unknown as { setPosition(p: number): Annotation }).setPosition(3); // above
+    vfn.addModifier(a, keyIdx);
+  } catch { /* */ }
+}
+
 // idGroups[i] = array of NoteData.ids for vfNotes[i] (chord = multiple ids)
 function buildVFNotes(
   _mIdx: number,
@@ -466,6 +477,7 @@ function buildVFNotes(
       }
       applyDrumArtic(vfn, note.articulation, 0, pitchWithHead(note.pitch, note.notehead));
       applyDrumStick(vfn, note.stick, 0);
+      applyHihatOpen(vfn, note.hihatOpen, 0);
       vfn.setStyle({ fillStyle: color, strokeStyle: color });
       try {
         (vfn as unknown as { setLedgerLineStyle(s: object): void })
@@ -528,6 +540,7 @@ function buildVFNotes(
         }
         applyDrumArtic(vfn, n.articulation, idx, pitchWithHead(n.pitch, n.notehead), sorted.length > 1);
         applyDrumStick(vfn, n.stick, idx);
+        applyHihatOpen(vfn, n.hihatOpen, idx);
       });
       // Color each notehead individually so selecting one doesn't highlight the whole chord
       const keyColors = sorted.map(n => {
@@ -2243,6 +2256,19 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
           setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
             ? { ...n, articulation: "normal" } : n));
         }
+        // Hi-hat open ("o") / closed ("+") marks above the note.  Toggle off
+        // on re-press.  Independent of articulation so you can have e.g. an
+        // accented open hat.
+        if (e.key === "o" || e.key === "O") {
+          e.preventDefault();
+          setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
+            ? { ...n, hihatOpen: n.hihatOpen === "open" ? undefined : "open" } : n));
+        }
+        if (e.key === "+" || e.key === "=") {   // "=" is the unshifted "+" key
+          e.preventDefault();
+          setNotes(prev => prev.map(n => targetIds.includes(n.id) && !n.isRest
+            ? { ...n, hihatOpen: n.hihatOpen === "closed" ? undefined : "closed" } : n));
+        }
         // Stickings — `U` for right (R) and `Y` for left (L).  These
         // letters were chosen so they don't collide with the
         // articulation row; a re-press toggles the sticking off.
@@ -3842,6 +3868,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                               accidental: undefined,
                               notehead: undefined,
                               articulation: undefined,
+                              hihatOpen: undefined,
                               stick: undefined,
                               isTieStart: undefined,
                               isTieEnd: undefined,
@@ -4010,6 +4037,31 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                               setNotes(all => all.map(n => targets.has(n.id) ? { ...n, articulation: a === "normal" ? undefined : a } : n));
                             }}
                           >{DRUM_ARTIC_LABELS[a]}</button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Hi-hat open / closed mark (o / +).  Independent of the
+                       articulation row.  Keys: o = open, + = closed. */}
+                  {!selectedNote.isRest && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-[#666]">Hat:</span>
+                      {([["open", "o"], ["closed", "+"]] as const).map(([val, label]) => {
+                        const active = selectedNote.hihatOpen === val;
+                        const targets = new Set(
+                          notes.filter(n => !n.isRest && n.measure === selectedNote.measure && n.startSlot === selectedNote.startSlot).map(n => n.id),
+                        );
+                        return (
+                          <button
+                            key={val}
+                            title={val === "open" ? "Open hi-hat (o) — key: o" : "Closed / choked hi-hat (+) — key: +"}
+                            className={`px-1.5 py-0.5 border rounded transition-colors text-[10px] ${active ? "bg-[#7173e6] border-[#7173e6] text-white" : "border-[#333] text-[#aaa] hover:text-white hover:border-[#555]"}`}
+                            onClick={() => {
+                              pushHistory(notes);
+                              setNotes(all => all.map(n => targets.has(n.id) ? { ...n, hihatOpen: n.hihatOpen === val ? undefined : val } : n));
+                            }}
+                          >{label}</button>
                         );
                       })}
                     </div>

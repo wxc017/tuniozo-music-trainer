@@ -89,6 +89,10 @@ export interface NoteData {
   /** Drum-mode articulation: accent / ghost / flam / drag.  Absent or
    *  "normal" → no extra modifier.  Harmonic mode ignores this. */
   articulation?: DrumArticulation;
+  /** Hi-hat open/closed mark (independent of articulation): "open" draws an
+   *  "o" above the note, "closed" a "+".  Standard drum notation for an open
+   *  vs. foot-closed/choked hi-hat. */
+  hihatOpen?: "open" | "closed";
   /** Drum-mode stick assignment ("R" / "L") shown above the note. */
   stick?: DrumStick;
   /** Drum-mode tuplet number (3 = triplet, 5 = quintuplet, 6 = sextuplet,
