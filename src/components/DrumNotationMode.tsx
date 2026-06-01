@@ -290,21 +290,45 @@ function pitchWithHead(pitch: string, head?: NoteheadType): string {
 // 12 -> 18 (per user 2026-05-30: "not very visible here as wel") and the
 // fill is forced white so it shows against the dark canvas — VexFlow's
 // inherited context fill is unreliable here.
+//
+// `small` mode (per user direction): when the buzz note is part of a chord —
+// e.g. a hi-hat stacked on the buzz — a big mid-stem "z" collides with the
+// stacked noteheads, so render it small and tuck it in the gap BETWEEN the
+// two noteheads instead.
 class DrumBuzzZ extends Annotation {
-  constructor() { super("z"); this.setFont("Arial", 18, "bold"); }
+  private readonly small: boolean;
+  constructor(small = false) {
+    super("z");
+    this.small = small;
+    this.setFont("Arial", small ? 10 : 18, "bold");
+  }
   override draw(): void {
     const note = (this as unknown as { checkAttachedNote: () => StaveNote }).checkAttachedNote();
     const ctx = this.checkContext();
     const stemX = (note as unknown as { getStemX?: () => number }).getStemX?.() ?? note.getAbsoluteX();
-    const ext = note.getStemExtents();
-    // Park the "z" roughly in the middle of the stem (slightly above mid).
-    const y = ext.topY + (ext.baseY - ext.topY) * 0.55 + 6;
+    const size = this.small ? 10 : 18;
+    let y: number;
+    if (this.small) {
+      // Center vertically in the gap between the chord's outer noteheads.
+      const ys = (note as unknown as { getYs?: () => number[] }).getYs?.() ?? [];
+      if (ys.length >= 2) {
+        const lo = Math.min(...ys), hi = Math.max(...ys);
+        y = (lo + hi) / 2 + size * 0.35;   // optical-center the glyph baseline
+      } else {
+        const ext = note.getStemExtents();
+        y = ext.topY + (ext.baseY - ext.topY) * 0.55 + 6;
+      }
+    } else {
+      const ext = note.getStemExtents();
+      // Park the "z" roughly in the middle of the stem (slightly above mid).
+      y = ext.topY + (ext.baseY - ext.topY) * 0.55 + 6;
+    }
     const prevFont = ctx.getFont();
     const prevFill = (ctx as unknown as { fillStyle?: string }).fillStyle;
-    ctx.setFont("Arial", 18, "bold");
+    ctx.setFont("Arial", size, "bold");
     ctx.setFillStyle("#ffffff");
-    // Center the "z" on the stem (half glyph width ~6 at 18pt).
-    ctx.fillText("z", stemX - 6, y);
+    // Center the "z" on the stem (half glyph width ~ size/3).
+    ctx.fillText("z", stemX - size / 3, y);
     ctx.setFont(prevFont);
     if (prevFill) ctx.setFillStyle(prevFill);
   }
@@ -323,6 +347,9 @@ function applyDrumArtic(
   artic: DrumArticulation | undefined,
   keyIdx: number,
   pitch: string,
+  // True when this note shares a stem with others (a chord, e.g. hi-hat + buzz).
+  // Buzz then renders small and tucked between the noteheads.
+  inChord = false,
 ) {
   if (!artic || artic === "normal") return;
   if (artic === "accent") {
@@ -335,7 +362,7 @@ function applyDrumArtic(
     return;
   }
   if (artic === "buzz") {
-    try { vfn.addModifier(new DrumBuzzZ()); } catch { /* */ }
+    try { vfn.addModifier(new DrumBuzzZ(inChord)); } catch { /* */ }
     return;
   }
   if (artic === "flam" || artic === "drag") {
@@ -499,7 +526,7 @@ function buildVFNotes(
         if (n.accidental) {
           try { vfn.addModifier(new Accidental(n.accidental), idx); } catch { /* skip */ }
         }
-        applyDrumArtic(vfn, n.articulation, idx, pitchWithHead(n.pitch, n.notehead));
+        applyDrumArtic(vfn, n.articulation, idx, pitchWithHead(n.pitch, n.notehead), sorted.length > 1);
         applyDrumStick(vfn, n.stick, idx);
       });
       // Color each notehead individually so selecting one doesn't highlight the whole chord
@@ -626,9 +653,14 @@ function renderScore(
       const titleLabel = setup.perBarTitle?.[mIdx];
       if (titleLabel && !hideStaveDecorations) {
         try {
+          // VexFlow renders the section via an SVG <text> node, which collapses
+          // and strips runs of normal spaces — so "Groove into fill" rendered as
+          // "Groovintofill".  Use non-breaking spaces (U+00A0), which SVG never
+          // collapses, so the spaces the user typed are preserved.
+          const spaced = titleLabel.replace(/ /g, " ");
           (stave as unknown as {
             setSection(s: string, y: number, xOffset?: number, fontSize?: number, drawRect?: boolean): void;
-          }).setSection(titleLabel, -16, 0, 12, false);
+          }).setSection(spaced, -16, 0, 12, false);
         } catch { /* skip section errors */ }
       }
 
@@ -2290,13 +2322,20 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     const y = (e.clientY - rect.top) / EDIT_PANE_SCALE;
 
     // Track which (if any) note's notehead the cursor is on so
-    // hover-keys (G/A/D/F/N/U/Y) can target it.
+    // hover-keys (G/A/D/F/N/U/Y) and Delete can target it.  Pick the NEAREST
+    // notehead within the hit radius, not the first match — stacked voices
+    // (e.g. hi-hat directly above a snare/kick) sit within ~10px of each other,
+    // so a first-match test would delete the wrong (lower) note while hovering
+    // the upper one.
     const HIT_R = 14;
-    const hovered = editPaneNotePosRef.current.find(p => {
+    let hovered: NotePixelPos | null = null;
+    let bestD2 = HIT_R * HIT_R;
+    for (const p of editPaneNotePosRef.current) {
       const dx = p.x - x;
       const dy = p.y - y;
-      return dx * dx + dy * dy < HIT_R * HIT_R;
-    });
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) { bestD2 = d2; hovered = p; }
+    }
     hoveredNoteIdRef.current = hovered ? hovered.id : null;
 
     // Drag-rect update when the user is mid-drag.
@@ -3907,32 +3946,9 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
                     );
                   })()}
 
-                  {/* Tuplet row — mark this note as part of a tuplet
-                       group (triplet / quintuplet / sextuplet / septuplet).
-                       Place a run of notes, select them, hit one of these
-                       buttons; the renderer wraps consecutive same-tuplet
-                       notes in a VexFlow Tuplet bracket.  Per user
-                       direction 2026-05-30: "per bar I can change grid and
-                       make a group of 5". */}
-                  {!selectedNote.isRest && (
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-[#666]">Tup:</span>
-                      {([undefined, 3, 5, 6, 7] as const).map(t => {
-                        const active = (selectedNote.tuplet ?? undefined) === t;
-                        return (
-                          <button
-                            key={String(t)}
-                            title={t === undefined ? "No tuplet" : `${t === 3 ? "Triplet" : t === 5 ? "Quintuplet" : t === 6 ? "Sextuplet" : "Septuplet"} (${t}:${t === 3 ? 2 : 4})`}
-                            className={`px-2 py-0.5 border rounded transition-colors text-[10px] ${active ? "bg-[#7173e6] border-[#7173e6] text-white" : "border-[#333] text-[#aaa] hover:text-white hover:border-[#555]"}`}
-                            onClick={() => {
-                              pushHistory(notes);
-                              setNotes(all => all.map(n => n.id === selectedNote.id ? { ...n, tuplet: t } : n));
-                            }}
-                          >{t === undefined ? "—" : t}</button>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {/* Tuplet row removed from the overlay for now (per user
+                       direction).  The tuplet data model + renderer remain;
+                       only this selected-note control is hidden. */}
 
                   {/* Articulation row — drum-mode articulations including
                        buzz (z on the stem).  Per user direction 2026-05-30:
@@ -4225,6 +4241,20 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
               title="Force this bar to start a new line"
             >
               ↵ Break
+            </button>
+
+            {/* Grid: toggle the X-Ray beat-grid + empty-space overlay on the
+                read-only score.  Lives next to Break per user direction. */}
+            <button
+              onClick={() => setShowXRay(v => !v)}
+              className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
+                showXRay
+                  ? "border-[#7173e6] bg-[#7173e618] text-[#9999ee]"
+                  : "border-[#2a2a2a] bg-[#1a1a1a] text-[#aaa] hover:text-white hover:border-[#3a3a3a]"
+              }`}
+              title="Toggle the beat-grid overlay (X-Ray) on the score"
+            >
+              ⊞ Grid
             </button>
 
             {/* Hide / show the note-placement staff so the user can view
