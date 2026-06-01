@@ -631,6 +631,11 @@ function renderScore(
     const rowBars = rowLayout.rows[rowIdx];
 
     for (let mInRow = 0; mInRow < rowBars.length; mInRow++) {
+     // Render each measure in isolation: a throw building ONE bar (a bad
+     // chord/tie/beam combo) must not blank the entire score.  Before this
+     // guard, an unhandled error here propagated out of renderScore and the
+     // whole editor went blank after adding certain notes.
+     try {
       const mIdx = rowBars[mInRow];
       const isLast = mIdx === barCount - 1;
       const x = measureX(mInRow);
@@ -1024,6 +1029,9 @@ function renderScore(
         .map(([slot, x]) => ({ slot, x }))
         .sort((a, b) => a.slot - b.slot);
       layouts.push({ mIdx, noteStartX, justifyWidth, rowIdx, mInRow, staveTopLineY, lineSpacing, slotAnchors });
+     } catch (e) {
+       console.warn("Drum render: skipped a measure that failed to build", e);
+     }
     }
   }
 
