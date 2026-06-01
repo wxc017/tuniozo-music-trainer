@@ -98,9 +98,16 @@ async function loadDrumSample(ctx: AudioContext, kind: DrumKind): Promise<AudioB
   } catch { return null; }
 }
 
-/** Kick off all 10 sample loads in parallel.  Safe to call repeatedly. */
-function preloadDrumSamples(ctx: AudioContext): void {
-  (Object.keys(DRUM_SAMPLE_URLS) as DrumKind[]).forEach(k => { void loadDrumSample(ctx, k); });
+/** Await fetch+decode of every drum sample, but never block longer than
+ *  `timeoutMs` — a slow/failed CDN must not hang playback (the synth path
+ *  covers any voice that isn't ready).  Resolves once all are decoded or the
+ *  timeout wins, whichever comes first. */
+function awaitDrumSamples(ctx: AudioContext, timeoutMs = 4000): Promise<void> {
+  const all = Promise.all(
+    (Object.keys(DRUM_SAMPLE_URLS) as DrumKind[]).map(k => loadDrumSample(ctx, k)),
+  ).then(() => undefined);
+  const timeout = new Promise<void>(resolve => setTimeout(resolve, timeoutMs));
+  return Promise.race([all, timeout]);
 }
 
 // ── YouTube API global ──────────────────────────────────────────────────────
@@ -2894,14 +2901,24 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     const Ctx = (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext);
     const ctx = new Ctx();
     playCtxRef.current = ctx;
-    // Kick off the drum-sample fetch + decode now so by the second beat
-    // (or the second play press) the sample path is hot.  First hit may
-    // still use the synth fallback while bytes are in flight.
-    preloadDrumSamples(ctx);
+    // A freshly-created AudioContext can start "suspended"; resume so it runs.
+    try { await ctx.resume(); } catch { /* */ }
+    // WAIT for the real samples to fetch + decode BEFORE scheduling anything.
+    // The whole song is queued up-front at absolute times, so if we scheduled
+    // while the samples were still in flight every hit would use the synth
+    // fallback and the late-arriving samples would never play — which made the
+    // kit sound synthetic on first play.  awaitDrumSamples caps the wait so a
+    // slow CDN still falls back gracefully instead of hanging.
+    setDrumPlaying(true);
+    await awaitDrumSamples(ctx);
+    // The user may have pressed Stop (or closed the editor) during the load.
+    if (playCtxRef.current !== ctx) { try { ctx.close(); } catch { /* */ } return; }
 
     const tempo = activeProject.tempo && activeProject.tempo > 0 ? activeProject.tempo : 100;
     const slotsPerQuarter = 8;
     const secondsPerSlot = 60 / tempo / slotsPerQuarter;
+    // Compute startTime AFTER the await — ctx.currentTime has advanced during
+    // the fetch, so reading it earlier would schedule the first beats in the past.
     const startTime = ctx.currentTime + 0.1;
 
     // Walk every measure, scheduling drum hits AND playhead-highlight
@@ -2971,7 +2988,6 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     }
 
     drumStopAtRef.current = startTime + elapsedSlots * secondsPerSlot + 0.5;
-    setDrumPlaying(true);
 
     // Auto-clear at end of schedule.
     const stopT = setTimeout(() => {
