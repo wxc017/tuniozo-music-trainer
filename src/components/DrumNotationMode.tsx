@@ -1117,6 +1117,14 @@ function renderScore(
     svgRoot.setAttribute("stroke", "#ffffff");
     svgRoot.setAttribute("fill", "#ffffff");
     svgRoot.querySelectorAll<SVGElement>("*").forEach(node => {
+      // Preserve whitespace in text — SVG <text> collapses runs of spaces and
+      // strips leading/trailing ones by default, which ate the spaces in
+      // section titles ("Groove into fill" -> "Groovintofill").  xml:space and
+      // the white-space CSS property both force the spaces to render.
+      if (node.tagName.toLowerCase() === "text") {
+        node.setAttribute("xml:space", "preserve");
+        (node as SVGElement).style.whiteSpace = "pre";
+      }
       // Fix SVG presentation attributes
       const fill   = node.getAttribute("fill");
       const stroke = node.getAttribute("stroke");
@@ -2708,9 +2716,12 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
   function pitchToDrum(pitch: string, notehead?: NoteheadType): DrumSound {
     const isCymbalHead = notehead === "x" || notehead === "circle-x";
     if (isCymbalHead) {
+      // Pitches MUST match DRUM_LINES: Crash a/5, Hi-Hat f/5, HH-Foot d/4.
+      // (The old table mapped f/5 -> ride, so every hi-hat played the ride
+      // sample — the hi-hat line is f/5, not g/5.)
       if (pitch.startsWith("a/5")) return "crash";
-      if (pitch.startsWith("g/5")) return "hihat";
-      if (pitch.startsWith("f/5")) return "ride";
+      if (pitch.startsWith("g/5")) return "ride";   // ride sits a space above the hat when used
+      if (pitch.startsWith("f/5")) return "hihat";
       if (pitch.startsWith("d/4")) return "hihat-foot";
       return "hihat";
     }
@@ -2977,7 +2988,11 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
     drumHighlightTimeoutsRef.current.forEach(clearTimeout);
     drumHighlightTimeoutsRef.current = [];
 
-    for (let m = 0; m < activeProject.setup.barCount; m++) {
+    // Start playback from the currently-selected (editing) bar, not always
+    // bar 0 — per user direction: "I have a measure selected, if I click play
+    // it should start from that measure".  Guard the index in case it's stale.
+    const startBar = Math.max(0, Math.min(editingBarIdx, activeProject.setup.barCount - 1));
+    for (let m = startBar; m < activeProject.setup.barCount; m++) {
       const ts = activeProject.setup.perBarTimeSig?.[m] ?? activeProject.setup.defaultTimeSig;
       const mSlots = measureSlots(ts);
       // Skip tie continuations (isTieEnd): a tied note must NOT be re-struck —
@@ -2999,12 +3014,23 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
           const accent = n.articulation === "accent";
           const artic = n.articulation;
           if (artic === "buzz") {
-            // Buzz roll: rapid even retriggers across the note's duration so
-            // the articulation is actually audible (it was silent-as-a-roll).
-            const rollDur = Math.min(noteSlots(n) * secondsPerSlot, 0.5);
-            const hits = Math.max(6, Math.round(rollDur / 0.035));
+            // Buzz / press roll: a real one is a dense SIZZLE, not a handful of
+            // discrete hits.  Retrigger very tightly (~14 ms) with timing +
+            // gain jitter so the strokes blur into a sustained "brrr" instead
+            // of a machine-gun.  Each stroke is quiet and the roll swells
+            // slightly then tapers, like a pressed multiple-bounce roll.
+            const rollDur = Math.min(noteSlots(n) * secondsPerSlot, 0.6);
+            const spacing = 0.014;                       // ~70 strokes/sec
+            const hits = Math.max(8, Math.round(rollDur / spacing));
+            // Deterministic jitter so a Replay sounds identical.
+            let seed = (Math.round(t * 1000) ^ (slot * 2654435761)) >>> 0;
+            const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
             for (let i = 0; i < hits; i++) {
-              playDrumHit(ctx, t + (i / hits) * rollDur, sound, false, 0.5);
+              const frac = i / (hits - 1 || 1);
+              // Swell in, taper out (sin arch), kept quiet overall.
+              const env = 0.18 + 0.22 * Math.sin(frac * Math.PI);
+              const jitterT = (rnd() * 2 - 1) * spacing * 0.4;
+              playDrumHit(ctx, t + i * spacing + jitterT, sound, false, env);
             }
           } else if (artic === "flam") {
             // Flam: one soft grace ~30 ms before the main hit.
