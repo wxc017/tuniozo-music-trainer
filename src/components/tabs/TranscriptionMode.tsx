@@ -316,6 +316,12 @@ export default function TranscriptionMode() {
   // Per-song persisted state (checkpoints + A/B loop endpoints).
   const [checkpointsAll, setCheckpointsAll] = useLS<Record<string, Checkpoint[]>>("lt_trx_checkpoints", {});
   const [loopsAll, setLoopsAll] = useLS<Record<string, [number, number] | null>>("lt_trx_loops", {});
+  // Remember the last-opened track id so the song (and therefore its loop +
+  // checkpoints, which are keyed by track id) is restored on reload — per user:
+  // "between sessions it should remember the loop I was working with".  The loop
+  // data already persisted; only the selected track was being lost on reload.
+  const [lastTrackId, setLastTrackId] = useLS<string | null>("lt_trx_lastTrackId", null);
+  const restoredTrackRef = useRef(false);
 
   const checkpoints = track ? (checkpointsAll[track.id] ?? []) : [];
   const loop = track ? (loopsAll[track.id] ?? null) : null;
@@ -453,6 +459,7 @@ export default function TranscriptionMode() {
     const base = siblingStemsBase(url);
     const stems = base ? await probeStems(base) : {};
     setTrack({ id: `corpus:${item.id}`, title: item.title, artist: item.artist, src: url, source: SOURCE_LABEL[item.source], stems });
+    setLastTrackId(`corpus:${item.id}`);
     pushRecent(item.id);
   };
 
@@ -485,7 +492,11 @@ export default function TranscriptionMode() {
         // Restrict to safe characters server-side, but pass the raw name and
         // let the middleware sanitize so we don't double-encode.
         const uploadName = (track.title || "upload.mp3").replace(/[/\\]/g, "_");
-        const q = new URLSearchParams({ name: uploadName, model: "ensemble_6s", force: String(force) });
+        // Default to the single-pass 4-stem htdemucs (vocals/drums/bass/other)
+        // instead of the two-pass ensemble_6s — the 6-stem ensemble runs two
+        // full neural-net passes and was extremely slow on CPU.  4 stems is
+        // plenty for practice and roughly 2-3x faster.
+        const q = new URLSearchParams({ name: uploadName, model: "demucs", force: String(force) });
         r = await fetch(`/api/split-upload?${q.toString()}`, {
           method: "POST",
           headers: { "Content-Type": blob.type || "application/octet-stream" },
@@ -499,7 +510,9 @@ export default function TranscriptionMode() {
           headers: { "Content-Type": "application/json" },
           // force=true makes the middleware delete the existing .stems/ folder
           // before running, so re-splits don't get short-circuited by the cache.
-          body: JSON.stringify({ audio: rel, model: "ensemble_6s", force }),
+          // 4-stem htdemucs (single pass) — see the upload branch above for why
+          // we no longer default to the slow two-pass ensemble_6s.
+          body: JSON.stringify({ audio: rel, model: "demucs", force }),
         });
       }
     } catch (e) {
@@ -556,6 +569,7 @@ export default function TranscriptionMode() {
   const selectDropped = (d: DroppedFile) => {
     const url = URL.createObjectURL(d.blob);
     setTrack({ id: `dropped:${d.id}`, title: d.name, src: url, source: "Dropped file", cleanup: () => URL.revokeObjectURL(url) });
+    setLastTrackId(`dropped:${d.id}`);
   };
 
   const selectFolder = async (folderId: string, e: { name: string; handle: FileSystemFileHandle }) => {
@@ -564,6 +578,7 @@ export default function TranscriptionMode() {
       const url = URL.createObjectURL(file);
       const fname = folders.find(f => f.id === folderId)?.name ?? "Folder";
       setTrack({ id: `folder:${folderId}:${e.name}`, title: e.name, src: url, source: fname, cleanup: () => URL.revokeObjectURL(url) });
+      setLastTrackId(`folder:${folderId}:${e.name}`);
     } catch {
       alert("Could not read this file — permission may have been revoked.");
     }
@@ -574,6 +589,32 @@ export default function TranscriptionMode() {
     setDropped(prev => prev.filter(d => d.id !== id));
     if (track?.id === `dropped:${id}`) { track.cleanup?.(); setTrack(null); }
   };
+
+  // Restore the last-opened track once its source data is available, so the
+  // song + its persisted loop/checkpoints come back on reload.  Runs once.
+  useEffect(() => {
+    if (restoredTrackRef.current || track || !lastTrackId) return;
+    if (lastTrackId.startsWith("dropped:")) {
+      const id = lastTrackId.slice("dropped:".length);
+      const d = dropped.find(x => x.id === id);
+      if (d) { restoredTrackRef.current = true; selectDropped(d); }
+    } else if (lastTrackId.startsWith("corpus:")) {
+      if (!corpusReady) return;                       // wait for the index
+      const id = lastTrackId.slice("corpus:".length);
+      const entry = corpus.find(c => c.id === id);
+      if (entry) { restoredTrackRef.current = true; void selectCorpus(entry); }
+      else restoredTrackRef.current = true;           // stale id — give up
+    } else if (lastTrackId.startsWith("folder:")) {
+      const rest = lastTrackId.slice("folder:".length);
+      const sep = rest.indexOf(":");
+      if (sep > 0) {
+        const folderId = rest.slice(0, sep);
+        const name = rest.slice(sep + 1);
+        const entry = folderEntries[folderId]?.find(fl => fl.name === name);
+        if (entry) { restoredTrackRef.current = true; void selectFolder(folderId, entry); }
+      }
+    }
+  }, [lastTrackId, track, dropped, corpus, corpusReady, folderEntries]);
 
   // Hide a corpus entry from the picker (local LS preference only —
   // does not touch the corpus files).  Toggleable via "Show hidden".
