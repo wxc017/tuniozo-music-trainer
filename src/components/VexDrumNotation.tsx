@@ -15,12 +15,15 @@ class DrumAccent extends Annotation {
       const note = (this as any).checkAttachedNote() as StaveNote;
       const ctx = this.checkContext();
       const x = note.getAbsoluteX();
-      // Use stave top line as consistent reference so all accents align horizontally
+      // Drum-kit accents sit ABOVE the staff.  Anchor to the stave's top-text
+      // line, not the stem tip: modifiers draw during voice.draw(), BEFORE the
+      // beam extends the stems, so a stem-relative accent landed below the
+      // finished beam (per user: "accent not above the beam").  We still clear
+      // a taller stem/beam by taking whichever is higher.
       const stave = note.getStave();
-      // Use the higher of stave-top-text or stem-top so accents clear 32nd-note beams
-      const staveY = stave ? stave.getYForTopText(1) - 4 : Infinity;
-      const stemY  = note.getStemExtents().topY - 8;
-      const y = Math.min(staveY, stemY);
+      const staveY = stave ? stave.getYForTopText(1) - 6 : Infinity;
+      const stemY  = note.getStemExtents().topY - 12;
+      const y = stave ? Math.min(staveY, stemY) : stemY;
       const prevFont = ctx.getFont();
       ctx.setFont("Arial", 14, "bold");
       ctx.fillText(">", x - 2, y);
