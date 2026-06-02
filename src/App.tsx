@@ -20,6 +20,7 @@ import RhythmicAudiationTab from "@/components/tabs/RhythmicAudiationTab";
 import PresetBar from "@/components/PresetBar";
 import DrumPatterns from "@/components/DrumPatterns";
 import SplitPermutationsTab from "@/components/tabs/SplitPermutationsTab";
+import ParadiddleOrchestrationsTab from "@/components/tabs/ParadiddleOrchestrationsTab";
 import TranscriptionMode from "@/components/tabs/TranscriptionMode";
 import ChordChart from "@/components/ChordChart";
 import Konnakol from "@/components/Konnakol";
@@ -353,6 +354,14 @@ export default function App() {
   const [droneVol, setDroneVol] = useLS<number>("lt_app_droneVol", 0.5);
   const [droneIsOn, setDroneIsOn] = useState(false);
   const [section, setSection] = useLS<string>("lt_app_section", "ear-trainer");
+  // Permutations mode subtab (Split Permutations ↔ Paradiddle Orchestrations).
+  const [permSubtab, setPermSubtab] = useLS<"split" | "paradiddle">("lt_app_perm_subtab", "split");
+  // Migrate the old section id so a persisted "split-permutations" still lands
+  // on the renamed "permutations" mode.
+  useEffect(() => {
+    if (section === "split-permutations") setSection("permutations");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // When user enters Scalar Explorations from a non-Meantone EDO (41 / 53
   // etc.), snap EDO down to 31 so the meantone-only chord-pool / lattice
   // infrastructure stays valid.  Reverts to the previous EDO is up to the
@@ -858,7 +867,7 @@ export default function App() {
                   { id: "scalar-exploration",   label: "Scalar Explorations" },
                   { id: "lattice",              label: "Harmonic Lattice" },
                   { id: "drum-patterns",        label: "Drum Patterns" },
-                  { id: "split-permutations",   label: "Split Permutations" },
+                  { id: "permutations",         label: "Permutations" },
                   { id: "rhythm-audiation",     label: "Rhythmic Audiation",   beta: true },
                   { id: "melodic-patterns",     label: "Melodic Patterns",     beta: true },
                   { id: "chord-chart",          label: "Chord Chart",          beta: true },
@@ -1282,12 +1291,31 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Split Permutations ── */}
-      {section === "split-permutations" && (
+      {/* ── Permutations (Split Permutations + Paradiddle Orchestrations) ── */}
+      {section === "permutations" && (
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          <div className="max-w-3xl mx-auto bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-            <h2 className="font-semibold mb-4">Split Permutations</h2>
-            <SplitPermutationsTab />
+          <div className="max-w-[1400px] mx-auto bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+            {(() => {
+              const sub = permSubtab;
+              return (<>
+                <div className="flex items-center gap-2 mb-4">
+                  {([["split", "Split Permutations"], ["paradiddle", "Paradiddle Orchestrations"]] as const).map(([id, label]) => (
+                    <button key={id}
+                      onClick={() => setPermSubtab(id)}
+                      className={`px-3 py-1.5 rounded text-sm font-medium border transition-colors ${
+                        sub === id
+                          ? "bg-[#7173e618] border-[#7173e6] text-[#9999ee]"
+                          : "bg-[#1a1a1a] border-[#2a2a2a] text-[#888] hover:text-[#ccc] hover:border-[#3a3a3a]"
+                      }`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {sub === "split"
+                  ? <div className="max-w-3xl"><SplitPermutationsTab /></div>
+                  : <ParadiddleOrchestrationsTab />}
+              </>);
+            })()}
           </div>
         </div>
       )}

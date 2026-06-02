@@ -577,8 +577,14 @@ function addAccentsAndStickings(
   // note-index walk has to advance over those rest notes when hopping
   // between hits. Without this the accent lands on the wrong StaveNote.
   shortHits: boolean = false,
+  // Per-NOTE buzz: slots that get a "z" buzz mark regardless of whether the
+  // note is a snare/ghost/cymbal hit.  Unlike accentInterp/tapInterp (which
+  // are per-measure and only target accented/ghost-only notes), this marks an
+  // individual stroke — needed for orchestrations where one stroke buzzes and
+  // others in the same bar don't.
+  buzzSet?: Set<number>,
 ) {
-  const hasWork = accentSet.size > 0 || stickingMap.size > 0 || !!accentInterp || !!tapInterp;
+  const hasWork = accentSet.size > 0 || stickingMap.size > 0 || !!accentInterp || !!tapInterp || (!!buzzSet && buzzSet.size > 0);
   if (!hasWork) return;
 
   const ghostSet = new Set(ghostHits.filter(s => s < slotCount));
@@ -606,6 +612,12 @@ function addAccentsAndStickings(
         try {
           note.addModifier(new DrumAccent());
         } catch { /* ignore */ }
+      }
+
+      // Per-note buzz "z" (press / buzz stroke) — independent of the
+      // per-measure accent/tap interpretations.
+      if (buzzSet?.has(pos)) {
+        try { note.addModifier(new DrumBuzzZ()); } catch { /* ignore */ }
       }
 
       // Sticking annotation
@@ -867,6 +879,9 @@ export interface StripMeasureData {
   slotOverride?: number;
   accentInterpretation?: string;
   tapInterpretation?: string;
+  /** Per-note buzz "z" marks (slot indices).  Marks individual strokes as buzz
+   *  / press strokes, independent of the per-measure accent/tap interpretation. */
+  buzzHits?: number[];
   showRests?: boolean;
   hideGhostParens?: boolean;
   bassStemUp?: boolean;
@@ -980,6 +995,7 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
                 tomHits: mTomHits, crashHits: mCrashHits,
                 accentFlags: mAccentFlags, stickings: mStickings,
                 accentInterpretation: mAccentInterp, tapInterpretation: mTapInterp,
+                buzzHits: mBuzzHits,
                 showRests: mShowRests, hideGhostParens: mHideGhostParens,
                 bassStemUp: mBassStemUp } = m;
         const snareDoubles = mSnareDoubleHits ?? [];
@@ -1037,7 +1053,8 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
         );
 
         const upSnareGroup = [...snareHits, ...tomHits, ...crashHits, ...(mBassStemUp ? bassHits : [])];
-        addAccentsAndStickings(upNotes, ostinatoHits, upSnareGroup, ghostHits, slotCount, beatSize, accentSet, stickingMap, mAccentInterp, mTapInterp, tripletGroup3, mShortHits);
+        const buzzSet = new Set<number>((mBuzzHits ?? []).filter(s => s < slotCount));
+        addAccentsAndStickings(upNotes, ostinatoHits, upSnareGroup, ghostHits, slotCount, beatSize, accentSet, stickingMap, mAccentInterp, mTapInterp, tripletGroup3, mShortHits, buzzSet);
         addBassStickings(downNotes, mDownBassHits, slotCount, beatSize, stickingMap);
 
         const hasUp   = upNotes.some(n => !n.isRest());
