@@ -8,11 +8,19 @@
 // See src/lib/paradiddleOrchestrations.ts for the theory.
 
 import { VexDrumStrip } from "@/components/VexDrumNotation";
-import { VOICINGS, voicingToPattern, toStripMeasure, columnWidth } from "@/lib/paradiddleOrchestrations";
+import { VOICINGS, voicingToPattern, toStripMeasure, columnWidth, type Voice } from "@/lib/paradiddleOrchestrations";
 
 const CELL_H = 150;
 const CELL_W = columnWidth(4);
 const CLEF_W = 40;   // VexDrumStrip prepends a clef this wide; tile must include it so SVGs don't overlap
+
+// Four columns grouped by the voice the voicing STARTS with.
+const COLUMNS: { voice: Voice; label: string }[] = [
+  { voice: "hhFoot", label: "Starts: HH Pedal" },
+  { voice: "tap",    label: "Starts: Snare" },
+  { voice: "bass",   label: "Starts: Bass" },
+  { voice: "hh",     label: "Starts: HH" },
+];
 
 export default function ParadiddleOrchestrationsTab() {
   return (
@@ -22,27 +30,37 @@ export default function ParadiddleOrchestrationsTab() {
           Paradiddle linear voicings
         </h3>
         <span className="text-[10px] text-[#666]">
-          {VOICINGS.length} voicings · single paradiddle · 16th notes · ordered by minimal change
+          {VOICINGS.length} voicings · grouped by starting voice
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {VOICINGS.map(v => (
-          <div
-            key={v.id}
-            className="rounded border border-[#1f1f1f] bg-[#0e0e0e] overflow-hidden"
-            style={{ width: CELL_W + CLEF_W, height: CELL_H }}
-            title={v.label}
-          >
-            <VexDrumStrip
-              measures={[toStripMeasure(voicingToPattern(v))]}
-              measureWidth={CELL_W}
-              height={CELL_H}
-              staveY={44}
-              showClef
-            />
-          </div>
-        ))}
+      <div className="flex gap-4 items-start overflow-x-auto">
+        {COLUMNS.map(col => {
+          const items = VOICINGS.filter(v => v.voices[0] === col.voice);
+          return (
+            <div key={col.voice} className="flex flex-col gap-2 flex-shrink-0">
+              <div className="text-xs font-semibold text-[#cda6e0] sticky top-0 bg-[#0d0d0d] py-1 z-10">
+                {col.label} <span className="text-[#555] font-normal">({items.length})</span>
+              </div>
+              {items.map(v => (
+                <div
+                  key={v.id}
+                  className="rounded border border-[#1f1f1f] bg-[#0e0e0e] overflow-hidden"
+                  style={{ width: CELL_W + CLEF_W, height: CELL_H }}
+                  title={v.label}
+                >
+                  <VexDrumStrip
+                    measures={[toStripMeasure(voicingToPattern(v))]}
+                    measureWidth={CELL_W}
+                    height={CELL_H}
+                    staveY={44}
+                    showClef
+                  />
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
