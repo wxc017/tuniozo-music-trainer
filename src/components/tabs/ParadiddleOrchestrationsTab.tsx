@@ -22,10 +22,13 @@ const CELL_H = 120;
 function OrchestrationCell({ pattern, width }: { pattern: Pattern; width: number }) {
   const [slotX, setSlotX] = useState<Record<number, number>>({});
   const slots = pattern.slots ?? pattern.strokes.map((_, i) => i);
-  // Hand per slot (bass slots intentionally blank).
+  // Hand (R/L) per slot — only for strokes played by a HAND.  A pure foot
+  // stroke (bass or hi-hat pedal alone) shows no letter; a hand+foot stack
+  // (e.g. snare + pedal) still shows the hand.
+  const isHandVoice = (v: string) => v === "hh" || v === "tap" || v === "buzz";
   const handBySlot = new Map<number, "R" | "L">();
   pattern.strokes.forEach((s, i) => {
-    if (s.voices.length > 0 && !s.voices.includes("bass")) handBySlot.set(slots[i], s.hand);
+    if (s.voices.some(isHandVoice)) handBySlot.set(slots[i], s.hand);
   });
 
   return (

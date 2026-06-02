@@ -19,7 +19,10 @@
 import type { StripMeasureData } from "@/components/VexDrumNotation";
 
 // ── Voices ─────────────────────────────────────────────────────────
-export type Voice = "hh" | "snare" | "ghost" | "buzz" | "bass";
+// "tap" = a plain snare notehead with NO accent and NO ghost parentheses —
+// kept dynamically AMBIGUOUS per user direction ("remove accents and ghost
+// notes, keep it ambiguous").  "hhFoot" = the left-foot hi-hat pedal.
+export type Voice = "hh" | "tap" | "buzz" | "bass" | "hhFoot";
 
 export interface Stroke { hand: "R" | "L"; voices: Voice[] }
 export interface Pattern { name: string; strokes: Stroke[]; slots?: number[]; slotCount?: number }
@@ -86,51 +89,81 @@ export const SCHEMES: Scheme[] = [
   {
     id: "snare",
     label: "Snare (rudiment)",
-    desc: "The bare rudiment on the snare — accent on the rudiment accent, ghosts between.",
-    voices: c => [c.isAccent ? "snare" : "ghost"],
+    desc: "The bare rudiment on the snare — plain noteheads, dynamically ambiguous.",
+    voices: () => ["tap"],
   },
   {
     id: "hh-snare",
     label: "Hi-hat / snare",
-    desc: "Hands trade off: the lead hand rides the hi-hat, the other hand plays snare (accented) / ghost — e.g. HH s HH s.",
-    voices: c => c.hand === c.lead ? ["hh"] : [c.isAccent ? "snare" : "ghost"],
+    desc: "Hands trade off: the lead hand rides the hi-hat, the other plays the snare — e.g. HH s HH s.",
+    voices: c => c.hand === c.lead ? ["hh"] : ["tap"],
   },
   {
     id: "bounce-hat",
     label: "Bass + hat on diddle",
-    desc: "Bass on the accent, ghosts through the middle, hi-hat on the diddle bounce — B s s HH.",
-    voices: c => c.isAccent ? ["bass"] : c.isBounce ? ["hh"] : ["ghost"],
+    desc: "Bass on the accent, snare through the middle, hi-hat on the diddle bounce — B s s HH.",
+    voices: c => c.isAccent ? ["bass"] : c.isBounce ? ["hh"] : ["tap"],
     appliesTo: hasDouble,
   },
   {
     id: "bounce-bass",
     label: "Hat + bass on diddle",
-    desc: "Hi-hat on the accent, ghosts in the middle, bass on the diddle bounce — HH s s B.",
-    voices: c => c.isAccent ? ["hh"] : c.isBounce ? ["bass"] : ["ghost"],
+    desc: "Hi-hat on the accent, snare in the middle, bass on the diddle bounce — HH s s B.",
+    voices: c => c.isAccent ? ["hh"] : c.isBounce ? ["bass"] : ["tap"],
     appliesTo: hasDouble,
   },
   {
     id: "double-bass",
     label: "Double → bass",
     desc: "Both notes of the double become bass; the single strokes are snare — S BB S.",
-    voices: c => c.isDouble ? ["bass"] : ["snare"],
+    voices: c => c.isDouble ? ["bass"] : ["tap"],
     appliesTo: hasMixedDoubles,
   },
   {
     id: "buzz-on-bounce",
     label: "Buzz on the diddle",
-    desc: "Snare + hi-hat interplay with a buzz / press stroke on the diddle bounce — e.g. S HH S(buzz).",
+    desc: "Snare / hi-hat interplay with a buzz / press stroke on the diddle bounce — e.g. S HH S(buzz).",
     voices: c => {
       if (c.isBounce) return ["buzz"];
-      return c.hand === c.lead ? ["snare"] : ["hh"];
+      return c.hand === c.lead ? ["tap"] : ["hh"];
+    },
+    appliesTo: hasDouble,
+  },
+  {
+    id: "pedal-hat-diddle",
+    label: "Pedal + hat on diddle",
+    desc: "Left-foot hi-hat pedal under the accent, snare in the middle, hi-hat (hand) on the diddle bounce — foot/hand interplay.",
+    voices: c => {
+      if (c.isAccent) return ["tap", "hhFoot"];   // hand snare + left-foot chick together
+      if (c.isBounce) return ["hh"];
+      return ["tap"];
+    },
+    appliesTo: hasDouble,
+  },
+  {
+    id: "left-foot-splash",
+    label: "Left foot on the left hand",
+    desc: "Left-foot hi-hat pedal doubles every LEFT-hand stroke (left-foot/left-hand interplay); right hand rides the hi-hat, left hand snare.",
+    voices: c => {
+      const hand: Voice = c.hand === "R" ? "hh" : "tap";
+      return c.hand === "L" ? [hand, "hhFoot"] : [hand];
+    },
+  },
+  {
+    id: "foot-fills-gaps",
+    label: "Foot fills the diddle",
+    desc: "Hands play hi-hat/snare interplay; the left-foot hi-hat pedal fills the diddle bounce underneath — independence study.",
+    voices: c => {
+      const base: Voice[] = c.hand === c.lead ? ["hh"] : ["tap"];
+      return c.isBounce ? [...base, "hhFoot"] : base;
     },
     appliesTo: hasDouble,
   },
   {
     id: "accent-bass",
     label: "Accent → bass",
-    desc: "The rudiment accent becomes bass drum; the rest are ghost-snare — B s s s.",
-    voices: c => c.isAccent ? ["bass"] : ["ghost"],
+    desc: "The rudiment accent becomes bass drum; the rest are snare — B s s s.",
+    voices: c => c.isAccent ? ["bass"] : ["tap"],
   },
 ];
 
@@ -167,30 +200,29 @@ export function toStripMeasure(p: Pattern): StripMeasureData {
 
   const ostinatoHits: number[] = [];
   const snareHits: number[] = [];
-  const ghostHits: number[] = [];
   const bassHits: number[] = [];
+  const hhFootHits: number[] = [];
   const buzzHits: number[] = [];
-  const accentFlags: boolean[] = new Array(slotCount).fill(false);
 
   p.strokes.forEach((stroke, idx) => {
     const slot = slots[idx];
     for (const v of stroke.voices) {
       switch (v) {
         case "hh": ostinatoHits.push(slot); break;
-        case "snare": snareHits.push(slot); accentFlags[slot] = true; break;
-        case "ghost": ghostHits.push(slot); break;
-        case "buzz": ghostHits.push(slot); buzzHits.push(slot); break;
+        // Plain snare notehead — no accent flag, no ghost parentheses.
+        case "tap": snareHits.push(slot); break;
+        case "buzz": snareHits.push(slot); buzzHits.push(slot); break;
         case "bass": bassHits.push(slot); break;
+        case "hhFoot": hhFootHits.push(slot); break;
       }
     }
   });
 
-  // Linear vocabulary = at most one voice per slot.  Then the bass should beam
-  // together with the hands as a single up-voice (per user: "the bass is still
-  // not beamed with everything else when it's linear vocabulary").  Only split
-  // the bass into its own stem-down voice when some slot actually STACKS bass
-  // under a hand (true two-voice texture), so those still read correctly.
-  const isLinear = p.strokes.every(s => s.voices.length <= 1);
+  // Linear vocabulary = at most one voice per slot AND no foot-pedal voice (the
+  // hi-hat pedal lives stem-down, so a pattern using it is genuinely two-voice).
+  // When linear, the bass beams with the hands as one up-voice; otherwise it
+  // stays a stem-down voice alongside the pedal.
+  const isLinear = p.strokes.every(s => s.voices.length <= 1) && hhFootHits.length === 0;
   const bassStemUp = bassHits.length > 0 && isLinear;
 
   return {
@@ -198,10 +230,9 @@ export function toStripMeasure(p: Pattern): StripMeasureData {
     slotOverride: slotCount,
     ostinatoHits, ostinatoOpen: [],
     snareHits, bassHits,
-    hhFootHits: [], hhFootOpen: [],
-    ghostHits, ghostDoubleHits: [],
+    hhFootHits, hhFootOpen: [],
+    ghostHits: [], ghostDoubleHits: [],
     tomHits: [], crashHits: [],
-    accentFlags,
     buzzHits,
     bassStemUp,
     // No rests: every stroke is a fixed 1-slot attack and the whole cell beams
