@@ -130,32 +130,34 @@ export const SCHEMES: Scheme[] = [
     appliesTo: hasDouble,
   },
   {
-    id: "pedal-hat-diddle",
-    label: "Pedal + hat on diddle",
-    desc: "Left-foot hi-hat pedal under the accent, snare in the middle, hi-hat (hand) on the diddle bounce — foot/hand interplay.",
+    id: "pedal-lead-hat",
+    label: "Pedal lead, hat on diddle",
+    desc: "Left-foot hi-hat pedal IS the lead stroke, snare in the middle, hi-hat (hand) on the diddle bounce — HH-pedal s s HH.",
     voices: c => {
-      if (c.isAccent) return ["tap", "hhFoot"];   // hand snare + left-foot chick together
+      if (c.isAccent) return ["hhFoot"];   // the foot replaces the lead stroke
       if (c.isBounce) return ["hh"];
       return ["tap"];
     },
     appliesTo: hasDouble,
   },
   {
-    id: "left-foot-splash",
-    label: "Left foot on the left hand",
-    desc: "Left-foot hi-hat pedal doubles every LEFT-hand stroke (left-foot/left-hand interplay); right hand rides the hi-hat, left hand snare.",
+    id: "pedal-lead-bass",
+    label: "Pedal lead, bass on diddle",
+    desc: "Left-foot hi-hat pedal leads, snare in the middle, bass drum on the diddle bounce — HH-pedal s s B.",
     voices: c => {
-      const hand: Voice = c.hand === "R" ? "hh" : "tap";
-      return c.hand === "L" ? [hand, "hhFoot"] : [hand];
+      if (c.isAccent) return ["hhFoot"];
+      if (c.isBounce) return ["bass"];
+      return ["tap"];
     },
+    appliesTo: hasDouble,
   },
   {
-    id: "foot-fills-gaps",
-    label: "Foot fills the diddle",
-    desc: "Hands play hi-hat/snare interplay; the left-foot hi-hat pedal fills the diddle bounce underneath — independence study.",
+    id: "pedal-on-diddle",
+    label: "Pedal on the diddle",
+    desc: "Hands play hi-hat / snare, and the diddle bounce is taken by the left-foot hi-hat pedal — s HH s(foot).",
     voices: c => {
-      const base: Voice[] = c.hand === c.lead ? ["hh"] : ["tap"];
-      return c.isBounce ? [...base, "hhFoot"] : base;
+      if (c.isBounce) return ["hhFoot"];
+      return c.hand === c.lead ? ["hh"] : ["tap"];
     },
     appliesTo: hasDouble,
   },
