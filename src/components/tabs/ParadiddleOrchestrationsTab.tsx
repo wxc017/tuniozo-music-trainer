@@ -1,25 +1,17 @@
 // ── Paradiddle Orchestrations ──────────────────────────────────────
-// A matrix of rudiment orchestrations.  COLUMNS = sticking; ROWS = every
-// musical orchestration (a voicing style × a diddle/foot treatment).  Each
-// cell renders that sticking under that orchestration as real drum notation
-// (reusing the Drum-Patterns / Accent-Study VexDrumStrip).
+// COLUMNS = sticking; ROWS = musical orchestration scheme.  Each cell renders
+// that sticking under that scheme as real 16th-note drum notation (reusing the
+// Drum-Patterns VexDrumStrip).  Cells that aren't musical are left empty.
 //
-// See src/lib/paradiddleOrchestrations.ts for the generative theory.
+// See src/lib/paradiddleOrchestrations.ts for the theory.
 
 import { VexDrumStrip } from "@/components/VexDrumNotation";
 import {
-  STICKINGS, STYLES, TREATMENTS,
-  orchestrate, toStripMeasure,
+  STICKINGS, SCHEMES, orchestrate, toStripMeasure, isEmptyPattern,
 } from "@/lib/paradiddleOrchestrations";
 
-const CELL_W = 220;   // notation tile width
-const CELL_H = 120;   // notation tile height
-
-// Every orchestration = one (style, treatment) pair, in a musical reading
-// order (group by style, then by treatment within it).
-const ORCHESTRATIONS = STYLES.flatMap(style =>
-  TREATMENTS.map(treat => ({ style, treat })),
-);
+const CELL_W = 230;   // notation tile width
+const CELL_H = 170;   // tall enough for stem-down bass + hi-hat pedal ledger line
 
 export default function ParadiddleOrchestrationsTab() {
   return (
@@ -29,7 +21,7 @@ export default function ParadiddleOrchestrationsTab() {
           Orchestration matrix
         </h3>
         <span className="text-[10px] text-[#666]">
-          columns = sticking · rows = musical orchestration (style · treatment)
+          columns = sticking · rows = orchestration · 16th notes
         </span>
       </div>
 
@@ -48,28 +40,33 @@ export default function ParadiddleOrchestrationsTab() {
             </tr>
           </thead>
           <tbody>
-            {ORCHESTRATIONS.map(({ style, treat }) => (
-              <tr key={`${style.id}/${treat.id}`}>
+            {SCHEMES.map(scheme => (
+              <tr key={scheme.id}>
                 <th className="sticky left-0 z-10 bg-[#0d0d0d] p-2 text-right align-middle">
-                  <div className="text-xs font-semibold text-[#5cbfae] whitespace-nowrap" title={`${style.desc} — ${treat.desc}`}>
-                    {style.label}
+                  <div className="text-xs font-semibold text-[#5cbfae] whitespace-nowrap" title={scheme.desc}>
+                    {scheme.label}
                   </div>
-                  <div className="text-[10px] text-[#888] whitespace-nowrap">{treat.label}</div>
                 </th>
                 {STICKINGS.map(sk => {
-                  const measure = toStripMeasure(orchestrate(sk, style.id, treat.id));
+                  const pattern = orchestrate(sk, scheme);
+                  const empty = isEmptyPattern(pattern);
                   return (
                     <td key={sk.id} className="p-1 align-top">
                       <div
-                        className="rounded border border-[#1f1f1f] bg-[#0e0e0e]"
-                        title={`${sk.label} · ${style.label} · ${treat.label}`}
+                        className="rounded border border-[#1f1f1f] bg-[#0e0e0e] flex items-center justify-center"
+                        style={{ minHeight: CELL_H }}
+                        title={`${sk.label} · ${scheme.label}`}
                       >
-                        <VexDrumStrip
-                          measures={[measure]}
-                          measureWidth={CELL_W - 12}
-                          height={CELL_H}
-                          showClef
-                        />
+                        {empty ? (
+                          <span className="text-[10px] text-[#444]">—</span>
+                        ) : (
+                          <VexDrumStrip
+                            measures={[toStripMeasure(pattern)]}
+                            measureWidth={CELL_W - 12}
+                            height={CELL_H}
+                            showClef
+                          />
+                        )}
                       </div>
                     </td>
                   );
