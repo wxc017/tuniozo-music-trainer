@@ -2,17 +2,73 @@
 // COLUMNS = sticking; ROWS = musical orchestration.  Each cell renders that
 // sticking under that scheme as real 16th-note drum notation (one voice per
 // stroke, no rests, beamed as one group).  Beneath the notation, two R/L rows
-// show the sticking and its hand-swapped mirror; a bass stroke shows no hand.
+// (the sticking + its hand-swapped mirror) are pinned to the actual notehead
+// x-positions; a bass stroke shows no hand.
 //
 // See src/lib/paradiddleOrchestrations.ts for the theory + sources.
 
+import { useState } from "react";
 import { VexDrumStrip } from "@/components/VexDrumNotation";
 import {
   STICKINGS, SCHEMES, orchestrate, toStripMeasure, isEmptyPattern,
-  columnWidth, stickingRows,
+  columnWidth, mirrorHand, type Pattern,
 } from "@/lib/paradiddleOrchestrations";
 
-const CELL_H = 140;   // notation height (no rests/labels → can be shorter)
+const CELL_H = 120;
+
+// One matrix cell.  Captures the rendered notehead x-positions (per slot) from
+// VexDrumStrip and pins the two R/L label rows under them so the stickings sit
+// exactly below each note.
+function OrchestrationCell({ pattern, width }: { pattern: Pattern; width: number }) {
+  const [slotX, setSlotX] = useState<Record<number, number>>({});
+  const slots = pattern.slots ?? pattern.strokes.map((_, i) => i);
+  // Hand per slot (bass slots intentionally blank).
+  const handBySlot = new Map<number, "R" | "L">();
+  pattern.strokes.forEach((s, i) => {
+    if (s.voices.length > 0 && !s.voices.includes("bass")) handBySlot.set(slots[i], s.hand);
+  });
+
+  return (
+    <div className="relative" style={{ width: width + 40 }}>
+      <VexDrumStrip
+        measures={[toStripMeasure(pattern)]}
+        measureWidth={width}
+        height={CELL_H}
+        showClef
+        onNoteSlotPositions={(positions) => {
+          const next: Record<number, number> = {};
+          for (const p of positions) next[p.slot] = p.x;
+          // Avoid an update loop: only set when something actually changed.
+          setSlotX(prev => {
+            const same = Object.keys(next).length === Object.keys(prev).length &&
+              Object.entries(next).every(([k, v]) => prev[+k] === v);
+            return same ? prev : next;
+          });
+        }}
+      />
+      {/* Two label rows pinned to notehead x-positions. */}
+      <div className="relative" style={{ height: 28 }}>
+        {[0, 1].map(rowIdx => (
+          [...handBySlot.keys()].map(slot => {
+            const x = slotX[slot];
+            if (x === undefined) return null;
+            const hand = handBySlot.get(slot)!;
+            const label = rowIdx === 0 ? hand : mirrorHand(hand);
+            return (
+              <span
+                key={`${rowIdx}-${slot}`}
+                className={`absolute font-mono text-[11px] ${rowIdx === 0 ? "text-[#ddd]" : "text-[#777]"}`}
+                style={{ left: x, top: rowIdx * 13, transform: "translateX(-50%)" }}
+              >
+                {label}
+              </span>
+            );
+          })
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function ParadiddleOrchestrationsTab() {
   const colW = STICKINGS.map(sk => columnWidth(sk.pattern.length));
@@ -36,7 +92,7 @@ export default function ParadiddleOrchestrationsTab() {
                 <span className="text-[10px] text-[#555]">orchestration ╲ sticking</span>
               </th>
               {STICKINGS.map((sk, i) => (
-                <th key={sk.id} className="p-2 text-center align-bottom" style={{ minWidth: colW[i] + 14 }}>
+                <th key={sk.id} className="p-2 text-center align-bottom" style={{ minWidth: colW[i] + 40 }}>
                   <div className="text-xs font-semibold text-[#cda6e0]">{sk.label}</div>
                 </th>
               ))}
@@ -53,41 +109,16 @@ export default function ParadiddleOrchestrationsTab() {
                 {STICKINGS.map((sk, i) => {
                   const pattern = orchestrate(sk, scheme);
                   const empty = isEmptyPattern(pattern);
-                  const rows = empty ? null : stickingRows(pattern);
                   return (
                     <td key={sk.id} className="p-1 align-top">
                       <div
-                        className="rounded border border-[#1f1f1f] bg-[#0e0e0e] flex flex-col items-center justify-center"
-                        style={{ minHeight: CELL_H, minWidth: colW[i] + 14 }}
+                        className="rounded border border-[#1f1f1f] bg-[#0e0e0e] flex items-center justify-center"
+                        style={{ minHeight: CELL_H + 30, minWidth: colW[i] + 44 }}
                         title={`${sk.label} · ${scheme.label}`}
                       >
-                        {empty ? (
-                          <span className="text-[10px] text-[#444]">—</span>
-                        ) : (<>
-                          <VexDrumStrip
-                            measures={[toStripMeasure(pattern)]}
-                            measureWidth={colW[i]}
-                            height={CELL_H}
-                            showClef
-                          />
-                          {/* Two sticking rows: played hand + hand-swapped
-                              mirror, aligned under the evenly-spaced notes.
-                              The clef eats ~40px at the head, so offset to match
-                              the note area. */}
-                          {rows && (
-                            <div style={{ width: colW[i], paddingLeft: 40 }} className="pb-1 -mt-2">
-                              {[rows.top, rows.mirror].map((rowArr, ri) => (
-                                <div key={ri} className="flex">
-                                  {rowArr.map((h, si) => (
-                                    <span key={si} className={`flex-1 text-center font-mono text-[11px] ${ri === 0 ? "text-[#ddd]" : "text-[#777]"}`}>
-                                      {h || " "}
-                                    </span>
-                                  ))}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </>)}
+                        {empty
+                          ? <span className="text-[10px] text-[#444]">—</span>
+                          : <OrchestrationCell pattern={pattern} width={colW[i]} />}
                       </div>
                     </td>
                   );

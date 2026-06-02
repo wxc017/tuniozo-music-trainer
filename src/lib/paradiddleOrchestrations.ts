@@ -34,6 +34,7 @@ export const STICKINGS: Sticking[] = [
   { id: "singles",    label: "Singles · RLRL",     pattern: ["R","L","R","L"] },
   { id: "doubles",    label: "Doubles · RRLL",     pattern: ["R","R","L","L"] },
   { id: "paradiddle", label: "Paradiddle · RLRR",  pattern: ["R","L","R","R"] },
+  { id: "inward",     label: "Inward · RLLR",      pattern: ["R","L","L","R"] },
   { id: "inverted",   label: "Inverted · RRLR",    pattern: ["R","R","L","R"] },
 ];
 
@@ -116,11 +117,14 @@ export const SCHEMES: Scheme[] = [
     appliesTo: hasMixedDoubles,
   },
   {
-    id: "double-buzz",
-    label: "Double → buzz",
-    desc: "Both notes of the double become a buzz / press stroke (z); single strokes snare — e.g. L RR(buzz).",
-    voices: c => c.isDouble ? ["buzz"] : [c.isAccent ? "snare" : "ghost"],
-    appliesTo: hasMixedDoubles,
+    id: "buzz-on-bounce",
+    label: "Buzz on the diddle",
+    desc: "Snare + hi-hat interplay with a buzz / press stroke on the diddle bounce — e.g. S HH S(buzz).",
+    voices: c => {
+      if (c.isBounce) return ["buzz"];
+      return c.hand === c.lead ? ["snare"] : ["hh"];
+    },
+    appliesTo: hasDouble,
   },
   {
     id: "accent-bass",
@@ -181,10 +185,13 @@ export function toStripMeasure(p: Pattern): StripMeasureData {
     }
   });
 
-  // Bass-alone (no upper-voice content) → render the bass stem-UP as a single
-  // readable voice instead of an empty up-voice over a lone stem-down kick.
-  const upperEmpty = ostinatoHits.length === 0 && snareHits.length === 0 && ghostHits.length === 0;
-  const bassStemUp = upperEmpty && bassHits.length > 0;
+  // Linear vocabulary = at most one voice per slot.  Then the bass should beam
+  // together with the hands as a single up-voice (per user: "the bass is still
+  // not beamed with everything else when it's linear vocabulary").  Only split
+  // the bass into its own stem-down voice when some slot actually STACKS bass
+  // under a hand (true two-voice texture), so those still read correctly.
+  const isLinear = p.strokes.every(s => s.voices.length <= 1);
+  const bassStemUp = bassHits.length > 0 && isLinear;
 
   return {
     grid: "16th",
