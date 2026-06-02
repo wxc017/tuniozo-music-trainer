@@ -220,12 +220,14 @@ export function toStripMeasure(p: Pattern): StripMeasureData {
     }
   });
 
-  // Linear vocabulary = at most one voice per slot AND no foot-pedal voice (the
-  // hi-hat pedal lives stem-down, so a pattern using it is genuinely two-voice).
-  // When linear, the bass beams with the hands as one up-voice; otherwise it
-  // stays a stem-down voice alongside the pedal.
-  const isLinear = p.strokes.every(s => s.voices.length <= 1) && hhFootHits.length === 0;
+  // Linear vocabulary = at most one voice per slot.  Then bass AND the hi-hat
+  // foot pedal render in the up-voice (stem-up) so the whole line beams as one
+  // group, instead of dangling as stem-down notes that don't beam and clip off
+  // the bottom of the tile (per user: "can't see the bottom notes and it's not
+  // beamed").
+  const isLinear = p.strokes.every(s => s.voices.length <= 1);
   const bassStemUp = bassHits.length > 0 && isLinear;
+  const footStemUp = hhFootHits.length > 0 && isLinear;
 
   return {
     grid: "16th",
@@ -237,6 +239,7 @@ export function toStripMeasure(p: Pattern): StripMeasureData {
     tomHits: [], crashHits: [],
     buzzHits,
     bassStemUp,
+    footStemUp,
     // No rests: every stroke is a fixed 1-slot attack and the whole cell beams
     // as ONE group, so cells stay evenly-spaced and symmetrical instead of the
     // ragged dotted-note/rest rendering (per user: "remove the rests… linear

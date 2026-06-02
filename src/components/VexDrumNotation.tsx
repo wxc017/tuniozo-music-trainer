@@ -888,6 +888,10 @@ export interface StripMeasureData {
   showRests?: boolean;
   hideGhostParens?: boolean;
   bassStemUp?: boolean;
+  /** Render the hi-hat foot pedal in the UP voice (stem-up) so it beams with
+   *  the hands as one group — used for linear vocabulary where the pedal is a
+   *  stroke in the line, not a stem-down timekeeping layer. */
+  footStemUp?: boolean;
   /** If set, draw a tuplet bracket with this number above the beat (e.g. 3, 5, 6, 7) */
   tupletNum?: number;
   /** Override the beam group size (slots per beam) for this measure.  When
@@ -1000,7 +1004,7 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
                 accentInterpretation: mAccentInterp, tapInterpretation: mTapInterp,
                 buzzHits: mBuzzHits,
                 showRests: mShowRests, hideGhostParens: mHideGhostParens,
-                bassStemUp: mBassStemUp } = m;
+                bassStemUp: mBassStemUp, footStemUp: mFootStemUp } = m;
         const snareDoubles = mSnareDoubleHits ?? [];
         const bassDoubles  = mBassDoubleHits ?? [];
         const tomHits = mTomHits ?? [];
@@ -1028,10 +1032,10 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
         const singleLineSnareKey = singleLine ? "f/5" : SN_KEY;
         const singleLineTomKey = singleLine ? "f/5" : TOM_KEY;
         const singleLineCrashKey = singleLine ? "f/5" : CRASH_KEY;
-        const mUpKeys   = [ostinatoKey, singleLineCrashKey, singleLineSnareKey, singleLineSnareKey, singleLineTomKey, ...(mBassStemUp ? [BD_KEY] : [])];
-        const mUpXFlags = [true,   true,      false,  false,  false,   ...(mBassStemUp ? [false]  : [])];
-        const mUpHits   = [ostinatoHits, crashHits, snareHits, ghostHits, tomHits, ...(mBassStemUp ? [bassHits] : [])];
-        const mUpOpens  = [ostinatoOpen, [],        snareDoubles, ghostDoubleHits, [], ...(mBassStemUp ? [bassDoubles] : [])];
+        const mUpKeys   = [ostinatoKey, singleLineCrashKey, singleLineSnareKey, singleLineSnareKey, singleLineTomKey, ...(mBassStemUp ? [BD_KEY] : []), ...(mFootStemUp ? [HH_FOOT_KEY] : [])];
+        const mUpXFlags = [true,   true,      false,  false,  false,   ...(mBassStemUp ? [false]  : []), ...(mFootStemUp ? [true] : [])];
+        const mUpHits   = [ostinatoHits, crashHits, snareHits, ghostHits, tomHits, ...(mBassStemUp ? [bassHits] : []), ...(mFootStemUp ? [hhFootHits] : [])];
+        const mUpOpens  = [ostinatoOpen, [],        snareDoubles, ghostDoubleHits, [], ...(mBassStemUp ? [bassDoubles] : []), ...(mFootStemUp ? [hhFootOpen] : [])];
         const mUpDoubleI = [2, ...(mBassStemUp ? [5] : [])];
         // When a triplet ostinato is rendered as straight 16ths with
         // beamGrouping:3, split any held 3-slot note into an 8th + tied 16th
@@ -1046,10 +1050,11 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
         );
         const mDownBassHits = mBassStemUp ? [] : bassHits;
         const mDownBassDoubles = mBassStemUp ? [] : bassDoubles;
+        const mDownFootHits = mFootStemUp ? [] : hhFootHits;
         const { notes: downNotes, xPatches: downPatches } = buildMergedVoice(
           [BD_KEY, HH_FOOT_KEY], -1,
           [false, true],
-          [mDownBassHits, hhFootHits],
+          [mDownBassHits, mDownFootHits],
           [mDownBassDoubles, hhFootOpen],
           slotCount, beatSize, [], mShowRests ?? false, false, [0],
           false, mShortHits,
@@ -1183,6 +1188,7 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
             pushHits(ghostHits);
             pushHits(tomHits);
             if (mBassStemUp) pushHits(bassHits);
+            if (mFootStemUp) pushHits(hhFootHits);
             const upSortedHits = [...upSlotSet].sort((a, b) => a - b);
             // Tied-continuation notes share the original hit's slot — skip
             // them so each hit only maps to the first (head) notehead.
