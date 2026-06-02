@@ -33,3 +33,7 @@ scripts/build-transcriptions/sldl.conf
 # User-uploaded tracks (dropped/folder files saved server-side by
 # /api/split-upload so the splitter can reach them).  Per-user, never push.
 /public/uploads/
+
+# Blues corpus index (artist/title/path metadata) — keep out of the public repo
+public/transcriptions/bluesguitar.json
+public/transcriptions/bluesvocal.json
