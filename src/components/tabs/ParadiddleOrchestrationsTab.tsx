@@ -14,7 +14,7 @@ import {
   columnWidth, mirrorHand, type Pattern,
 } from "@/lib/paradiddleOrchestrations";
 
-const CELL_H = 120;
+const CELL_H = 150;   // room below the staff for the c/4 hi-hat-pedal ledger note
 
 // One matrix cell.  Captures the rendered notehead x-positions (per slot) from
 // VexDrumStrip and pins the two R/L label rows under them so the stickings sit
@@ -37,6 +37,7 @@ function OrchestrationCell({ pattern, width }: { pattern: Pattern; width: number
         measures={[toStripMeasure(pattern)]}
         measureWidth={width}
         height={CELL_H}
+        staveY={44}
         showClef
         onNoteSlotPositions={(positions) => {
           const next: Record<number, number> = {};
