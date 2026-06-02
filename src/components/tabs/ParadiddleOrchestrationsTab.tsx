@@ -12,6 +12,7 @@ import { VOICINGS, voicingToPattern, toStripMeasure, columnWidth } from "@/lib/p
 
 const CELL_H = 150;
 const CELL_W = columnWidth(4);
+const CLEF_W = 40;   // VexDrumStrip prepends a clef this wide; tile must include it so SVGs don't overlap
 
 export default function ParadiddleOrchestrationsTab() {
   return (
@@ -29,8 +30,8 @@ export default function ParadiddleOrchestrationsTab() {
         {VOICINGS.map(v => (
           <div
             key={v.id}
-            className="rounded border border-[#1f1f1f] bg-[#0e0e0e] flex flex-col items-center"
-            style={{ width: CELL_W + 14 }}
+            className="rounded border border-[#1f1f1f] bg-[#0e0e0e] overflow-hidden"
+            style={{ width: CELL_W + CLEF_W, height: CELL_H }}
             title={v.label}
           >
             <VexDrumStrip
@@ -40,7 +41,6 @@ export default function ParadiddleOrchestrationsTab() {
               staveY={44}
               showClef
             />
-            <div className="pb-1 font-mono text-[11px] text-[#bbb]">{v.label}</div>
           </div>
         ))}
       </div>
