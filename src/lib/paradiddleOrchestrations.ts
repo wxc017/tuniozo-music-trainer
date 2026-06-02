@@ -27,16 +27,19 @@ export interface Pattern { name: string; strokes: Stroke[]; slots?: number[]; sl
 // ── Stickings (columns) ────────────────────────────────────────────
 export interface Sticking { id: string; label: string; pattern: ("R" | "L")[] }
 
+// Four canonical 4-stroke stickings (one bar of 16ths = 4 strokes).  The
+// label's second line is the hand-swapped mirror, shown as a 2nd R/L row under
+// each note in the matrix.
 export const STICKINGS: Sticking[] = [
-  { id: "single4",     label: "Paradiddle · RLRR",        pattern: ["R","L","R","R"] },
-  { id: "inward4",     label: "Inward · RLLR",            pattern: ["R","L","L","R"] },
-  { id: "singles",     label: "Singles · RLRL RLRL",      pattern: ["R","L","R","L","R","L","R","L"] },
-  { id: "doubles",     label: "Doubles · RR LL",          pattern: ["R","R","L","L"] },
-  { id: "paradiddle",  label: "Paradiddle · RLRR LRLL",   pattern: ["R","L","R","R","L","R","L","L"] },
-  { id: "reverse",     label: "Reverse · RLLR LRRL",      pattern: ["R","L","L","R","L","R","R","L"] },
-  { id: "diddlepara",  label: "Para-diddle-diddle · RLRRLL", pattern: ["R","L","R","R","L","L"] },
-  { id: "doublepara",  label: "Double Paradiddle · RLRLRR", pattern: ["R","L","R","L","R","R"] },
+  { id: "singles",    label: "Singles · RLRL",     pattern: ["R","L","R","L"] },
+  { id: "doubles",    label: "Doubles · RRLL",     pattern: ["R","R","L","L"] },
+  { id: "paradiddle", label: "Paradiddle · RLRR",  pattern: ["R","L","R","R"] },
+  { id: "inverted",   label: "Inverted · RRLR",    pattern: ["R","R","L","R"] },
 ];
+
+/** The hand-swapped mirror of a sticking (R↔L) — the user's "other-hand
+ *  variation" shown as a second label row beneath each note. */
+export function mirrorHand(h: "R" | "L"): "R" | "L" { return h === "R" ? "L" : "R"; }
 
 // ── Double / accent structure ──────────────────────────────────────
 /** Both notes of every RR / LL pair (used by "whole-double" schemes). */
@@ -70,6 +73,13 @@ export interface Scheme {
 }
 
 const hasDouble = (s: Sticking) => bounceSlots(s.pattern).size > 0;
+// Whole-double substitution is only musical when the sticking MIXES singles and
+// doubles — if every note is part of a double (RRLL) the substitution turns the
+// whole bar into one repeated voice (B B B B / z z z z), which is nonsense.
+const hasMixedDoubles = (s: Sticking) => {
+  const n = doublePairSlots(s.pattern).size;
+  return n > 0 && n < s.pattern.length;
+};
 
 export const SCHEMES: Scheme[] = [
   {
@@ -103,14 +113,14 @@ export const SCHEMES: Scheme[] = [
     label: "Double → bass",
     desc: "Both notes of the double become bass; the single strokes are snare — S BB S.",
     voices: c => c.isDouble ? ["bass"] : ["snare"],
-    appliesTo: hasDouble,
+    appliesTo: hasMixedDoubles,
   },
   {
     id: "double-buzz",
     label: "Double → buzz",
-    desc: "Both notes of the double become a buzz / press stroke (z); single strokes snare.",
+    desc: "Both notes of the double become a buzz / press stroke (z); single strokes snare — e.g. L RR(buzz).",
     voices: c => c.isDouble ? ["buzz"] : [c.isAccent ? "snare" : "ghost"],
-    appliesTo: hasDouble,
+    appliesTo: hasMixedDoubles,
   },
   {
     id: "accent-bass",
@@ -156,12 +166,10 @@ export function toStripMeasure(p: Pattern): StripMeasureData {
   const ghostHits: number[] = [];
   const bassHits: number[] = [];
   const buzzHits: number[] = [];
-  const stickings: string[] = new Array(slotCount).fill("");
   const accentFlags: boolean[] = new Array(slotCount).fill(false);
 
   p.strokes.forEach((stroke, idx) => {
     const slot = slots[idx];
-    if (stroke.voices.length > 0) stickings[slot] = stroke.hand;
     for (const v of stroke.voices) {
       switch (v) {
         case "hh": ostinatoHits.push(slot); break;
@@ -188,14 +196,34 @@ export function toStripMeasure(p: Pattern): StripMeasureData {
     tomHits: [], crashHits: [],
     accentFlags,
     buzzHits,
-    stickings,
     bassStemUp,
-    showRests: true,
+    // No rests: every stroke is a fixed 1-slot attack and the whole cell beams
+    // as ONE group, so cells stay evenly-spaced and symmetrical instead of the
+    // ragged dotted-note/rest rendering (per user: "remove the rests… linear
+    // vocabulary all in one beam").  beamAcrossRests is only honoured on the
+    // grouping path, so set beamGrouping to the whole cell.
+    showRests: false,
+    shortHits: true,
+    beamGrouping: slotCount,
+    beamAcrossRests: true,
   };
 }
 
-/** Pixel width for a column rendering `slotCount` sixteenths — wider cells so
- *  the notation isn't cramped (the prior fixed width crushed 8-note cells). */
+/** Pixel width for a column rendering `slotCount` sixteenths. */
 export function columnWidth(slotCount: number): number {
-  return Math.max(150, slotCount * 30 + 24);
+  return Math.max(150, slotCount * 40 + 24);
+}
+
+/** The two sticking label rows for a pattern: the played hand on top and its
+ *  hand-swapped mirror beneath.  A bass-drum stroke shows no hand (foot), so
+ *  both rows are blank there. */
+export function stickingRows(p: Pattern): { top: string[]; mirror: string[] } {
+  const top: string[] = [];
+  const mirror: string[] = [];
+  for (const s of p.strokes) {
+    const isBass = s.voices.includes("bass");
+    if (s.voices.length === 0 || isBass) { top.push(""); mirror.push(""); }
+    else { top.push(s.hand); mirror.push(mirrorHand(s.hand)); }
+  }
+  return { top, mirror };
 }

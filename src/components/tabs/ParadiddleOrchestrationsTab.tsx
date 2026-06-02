@@ -1,20 +1,20 @@
 // ── Paradiddle Orchestrations ──────────────────────────────────────
 // COLUMNS = sticking; ROWS = musical orchestration.  Each cell renders that
 // sticking under that scheme as real 16th-note drum notation (one voice per
-// stroke).  Cells that aren't musical are left empty on purpose.
+// stroke, no rests, beamed as one group).  Beneath the notation, two R/L rows
+// show the sticking and its hand-swapped mirror; a bass stroke shows no hand.
 //
-// See src/lib/paradiddleOrchestrations.ts for the theory.
+// See src/lib/paradiddleOrchestrations.ts for the theory + sources.
 
 import { VexDrumStrip } from "@/components/VexDrumNotation";
 import {
-  STICKINGS, SCHEMES, orchestrate, toStripMeasure, isEmptyPattern, columnWidth,
+  STICKINGS, SCHEMES, orchestrate, toStripMeasure, isEmptyPattern,
+  columnWidth, stickingRows,
 } from "@/lib/paradiddleOrchestrations";
 
-const CELL_H = 170;   // tall enough for stem-down bass + accents above the beam
+const CELL_H = 140;   // notation height (no rests/labels → can be shorter)
 
 export default function ParadiddleOrchestrationsTab() {
-  // Per-column widths so 4-stroke cells aren't stretched and 12-stroke cells
-  // aren't crushed.
   const colW = STICKINGS.map(sk => columnWidth(sk.pattern.length));
 
   return (
@@ -53,23 +53,41 @@ export default function ParadiddleOrchestrationsTab() {
                 {STICKINGS.map((sk, i) => {
                   const pattern = orchestrate(sk, scheme);
                   const empty = isEmptyPattern(pattern);
+                  const rows = empty ? null : stickingRows(pattern);
                   return (
                     <td key={sk.id} className="p-1 align-top">
                       <div
-                        className="rounded border border-[#1f1f1f] bg-[#0e0e0e] flex items-center justify-center"
+                        className="rounded border border-[#1f1f1f] bg-[#0e0e0e] flex flex-col items-center justify-center"
                         style={{ minHeight: CELL_H, minWidth: colW[i] + 14 }}
                         title={`${sk.label} · ${scheme.label}`}
                       >
                         {empty ? (
                           <span className="text-[10px] text-[#444]">—</span>
-                        ) : (
+                        ) : (<>
                           <VexDrumStrip
                             measures={[toStripMeasure(pattern)]}
                             measureWidth={colW[i]}
                             height={CELL_H}
                             showClef
                           />
-                        )}
+                          {/* Two sticking rows: played hand + hand-swapped
+                              mirror, aligned under the evenly-spaced notes.
+                              The clef eats ~40px at the head, so offset to match
+                              the note area. */}
+                          {rows && (
+                            <div style={{ width: colW[i], paddingLeft: 40 }} className="pb-1 -mt-2">
+                              {[rows.top, rows.mirror].map((rowArr, ri) => (
+                                <div key={ri} className="flex">
+                                  {rowArr.map((h, si) => (
+                                    <span key={si} className={`flex-1 text-center font-mono text-[11px] ${ri === 0 ? "text-[#ddd]" : "text-[#777]"}`}>
+                                      {h || " "}
+                                    </span>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>)}
                       </div>
                     </td>
                   );
