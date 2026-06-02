@@ -76,98 +76,43 @@ export interface Scheme {
   appliesTo?: (s: Sticking) => boolean;
 }
 
-const hasDouble = (s: Sticking) => bounceSlots(s.pattern).size > 0;
-// Whole-double substitution is only musical when the sticking MIXES singles and
-// doubles — if every note is part of a double (RRLL) the substitution turns the
-// whole bar into one repeated voice (B B B B / z z z z), which is nonsense.
-const hasMixedDoubles = (s: Sticking) => {
-  const n = doublePairSlots(s.pattern).size;
-  return n > 0 && n < s.pattern.length;
-};
+// A paradiddle-family sticking has EXACTLY ONE diddle in its 4-stroke cell, so
+// it decomposes into: a LEAD stroke (slot 0), two middle taps, and the DIDDLE
+// BOUNCE.  The linear orchestration vocabulary substitutes the lead and the
+// bounce over {snare, hi-hat, hi-hat-pedal, bass}, keeping the middle two on
+// the snare.  RLRR (bounce@3), RLLR (bounce@2), RRLR (bounce@1) all qualify;
+// singles (no diddle) and doubles (two diddles) don't fit this structure.
+const singleDiddle = (s: Sticking) => bounceSlots(s.pattern).size === 1;
 
-export const SCHEMES: Scheme[] = [
-  {
-    id: "snare",
-    label: "Snare (rudiment)",
-    desc: "The bare rudiment on the snare — plain noteheads, dynamically ambiguous.",
-    voices: () => ["tap"],
-  },
-  {
-    id: "hh-snare",
-    label: "Hi-hat / snare",
-    desc: "Hands trade off: the lead hand rides the hi-hat, the other plays the snare — e.g. HH s HH s.",
-    voices: c => c.hand === c.lead ? ["hh"] : ["tap"],
-  },
-  {
-    id: "bounce-hat",
-    label: "Bass + hat on diddle",
-    desc: "Bass on the accent, snare through the middle, hi-hat on the diddle bounce — B s s HH.",
-    voices: c => c.isAccent ? ["bass"] : c.isBounce ? ["hh"] : ["tap"],
-    appliesTo: hasDouble,
-  },
-  {
-    id: "bounce-bass",
-    label: "Hat + bass on diddle",
-    desc: "Hi-hat on the accent, snare in the middle, bass on the diddle bounce — HH s s B.",
-    voices: c => c.isAccent ? ["hh"] : c.isBounce ? ["bass"] : ["tap"],
-    appliesTo: hasDouble,
-  },
-  {
-    id: "double-bass",
-    label: "Double → bass",
-    desc: "Both notes of the double become bass; the single strokes are snare — S BB S.",
-    voices: c => c.isDouble ? ["bass"] : ["tap"],
-    appliesTo: hasMixedDoubles,
-  },
-  {
-    id: "buzz-on-bounce",
-    label: "Buzz on the diddle",
-    desc: "Snare / hi-hat interplay with a buzz / press stroke on the diddle bounce — e.g. S HH S(buzz).",
-    voices: c => {
-      if (c.isBounce) return ["buzz"];
-      return c.hand === c.lead ? ["tap"] : ["hh"];
-    },
-    appliesTo: hasDouble,
-  },
-  {
-    id: "pedal-lead-hat",
-    label: "Pedal lead, hat on diddle",
-    desc: "Left-foot hi-hat pedal IS the lead stroke, snare in the middle, hi-hat (hand) on the diddle bounce — HH-pedal s s HH.",
-    voices: c => {
-      if (c.isAccent) return ["hhFoot"];   // the foot replaces the lead stroke
-      if (c.isBounce) return ["hh"];
-      return ["tap"];
-    },
-    appliesTo: hasDouble,
-  },
-  {
-    id: "pedal-lead-bass",
-    label: "Pedal lead, bass on diddle",
-    desc: "Left-foot hi-hat pedal leads, snare in the middle, bass drum on the diddle bounce — HH-pedal s s B.",
-    voices: c => {
-      if (c.isAccent) return ["hhFoot"];
-      if (c.isBounce) return ["bass"];
-      return ["tap"];
-    },
-    appliesTo: hasDouble,
-  },
-  {
-    id: "pedal-on-diddle",
-    label: "Pedal on the diddle",
-    desc: "Hands play hi-hat / snare, and the diddle bounce is taken by the left-foot hi-hat pedal — s HH s(foot).",
-    voices: c => {
-      if (c.isBounce) return ["hhFoot"];
-      return c.hand === c.lead ? ["hh"] : ["tap"];
-    },
-    appliesTo: hasDouble,
-  },
-  {
-    id: "accent-bass",
-    label: "Accent → bass",
-    desc: "The rudiment accent becomes bass drum; the rest are snare — B s s s.",
-    voices: c => c.isAccent ? ["bass"] : ["tap"],
-  },
+// The four linear voices and how each prints in a label.
+const ENDPOINT_VOICES: { v: Voice; sym: string }[] = [
+  { v: "tap",    sym: "s"  },
+  { v: "hh",     sym: "HH" },
+  { v: "hhFoot", sym: "F"  },
+  { v: "bass",   sym: "B"  },
 ];
+
+// Generate all lead × bounce orchestrations (4 × 4 = 16) minus the monotone
+// snare cell (s s s s), giving the 15 musical linear paradiddle orchestrations.
+function buildEndpointSchemes(): Scheme[] {
+  const out: Scheme[] = [];
+  for (const lead of ENDPOINT_VOICES) {
+    for (const bounce of ENDPOINT_VOICES) {
+      if (lead.v === "tap" && bounce.v === "tap") continue;  // skip plain s s s s
+      out.push({
+        id: `lin-${lead.sym}-${bounce.sym}`,
+        // Label reads as the actual lick on the paradiddle: "<lead> s s <bounce>".
+        label: `${lead.sym} s s ${bounce.sym}`,
+        desc: `Linear paradiddle: ${lead.sym} on the lead, snare on the two middle taps, ${bounce.sym} on the diddle bounce.`,
+        voices: c => c.isAccent ? [lead.v] : c.isBounce ? [bounce.v] : ["tap"],
+        appliesTo: singleDiddle,
+      });
+    }
+  }
+  return out;
+}
+
+export const SCHEMES: Scheme[] = buildEndpointSchemes();
 
 // ── Generator ──────────────────────────────────────────────────────
 export function orchestrate(sticking: Sticking, scheme: Scheme): Pattern {
