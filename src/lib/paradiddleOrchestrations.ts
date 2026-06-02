@@ -68,7 +68,8 @@ function accentSlots(len: number): Set<number> {
 // ── Orchestration schemes (rows) ───────────────────────────────────
 export interface SchemeCtx {
   hand: "R" | "L"; lead: "R" | "L";
-  isAccent: boolean; isBounce: boolean; isDouble: boolean; index: number;
+  isAccent: boolean; isBounce: boolean; isDouble: boolean;
+  isFirst: boolean; isLast: boolean; index: number;
 }
 export interface Scheme {
   id: string; label: string; desc: string;
@@ -76,43 +77,94 @@ export interface Scheme {
   appliesTo?: (s: Sticking) => boolean;
 }
 
-// A paradiddle-family sticking has EXACTLY ONE diddle in its 4-stroke cell, so
-// it decomposes into: a LEAD stroke (slot 0), two middle taps, and the DIDDLE
-// BOUNCE.  The linear orchestration vocabulary substitutes the lead and the
-// bounce over {snare, hi-hat, hi-hat-pedal, bass}, keeping the middle two on
-// the snare.  RLRR (bounce@3), RLLR (bounce@2), RRLR (bounce@1) all qualify;
-// singles (no diddle) and doubles (two diddles) don't fit this structure.
-const singleDiddle = (s: Sticking) => bounceSlots(s.pattern).size === 1;
-
-// The four linear voices and how each prints in a label.
-const ENDPOINT_VOICES: { v: Voice; sym: string }[] = [
+// ── Linear voicings ────────────────────────────────────────────────
+// The mode is now a flat list of raw VOICINGS of the single paradiddle (RLRR):
+// each is a 4-slot cell where every stroke independently takes one of
+// {snare, hi-hat, hi-hat-pedal, bass}.  No sticking columns, no R/L labels —
+// just the voicings (per user direction).  Capped to the musical subset and
+// ordered left-to-right by minimal change from the previous voicing.
+const SLOT_VOICES: { v: Voice; sym: string }[] = [
   { v: "tap",    sym: "s"  },
   { v: "hh",     sym: "HH" },
   { v: "hhFoot", sym: "F"  },
   { v: "bass",   sym: "B"  },
 ];
+const SYM: Record<Voice, string> = { tap: "s", hh: "HH", hhFoot: "F", bass: "B", buzz: "z" };
+const isFootV = (v: Voice) => v === "bass" || v === "hhFoot";
 
-// Generate all lead × bounce orchestrations (4 × 4 = 16) minus the monotone
-// snare cell (s s s s), giving the 15 musical linear paradiddle orchestrations.
-function buildEndpointSchemes(): Scheme[] {
-  const out: Scheme[] = [];
-  for (const lead of ENDPOINT_VOICES) {
-    for (const bounce of ENDPOINT_VOICES) {
-      if (lead.v === "tap" && bounce.v === "tap") continue;  // skip plain s s s s
-      out.push({
-        id: `lin-${lead.sym}-${bounce.sym}`,
-        // Label reads as the actual lick on the paradiddle: "<lead> s s <bounce>".
-        label: `${lead.sym} s s ${bounce.sym}`,
-        desc: `Linear paradiddle: ${lead.sym} on the lead, snare on the two middle taps, ${bounce.sym} on the diddle bounce.`,
-        voices: c => c.isAccent ? [lead.v] : c.isBounce ? [bounce.v] : ["tap"],
-        appliesTo: singleDiddle,
-      });
-    }
+/** Musicality cap for a 4-slot voicing of the paradiddle. */
+function musicalVoicing(v: Voice[]): boolean {
+  if (v.every(x => x === "tap")) return false;          // bare rudiment
+  if (new Set(v).size === 1) return false;              // monotone (HHHH, BBBB…)
+  const feet = v.filter(isFootV).length;
+  if (feet > 2) return false;                           // too much foot for a 4-note lick
+  // No three of the same NON-snare voice in a row (e.g. HH HH HH) — un-idiomatic.
+  // Three snares in a row is fine (e.g. s s s HH = a single substitution).
+  for (let i = 0; i + 2 < v.length; i++) {
+    if (v[i] !== "tap" && v[i] === v[i + 1] && v[i + 1] === v[i + 2]) return false;
+  }
+  return true;
+}
+
+/** All musical 4-slot voicings, unordered. */
+function allMusicalVoicings(): Voice[][] {
+  const out: Voice[][] = [];
+  const VS = SLOT_VOICES.map(s => s.v);
+  for (const a of VS) for (const b of VS) for (const c of VS) for (const d of VS) {
+    const v = [a, b, c, d];
+    if (musicalVoicing(v)) out.push(v);
   }
   return out;
 }
 
-export const SCHEMES: Scheme[] = buildEndpointSchemes();
+/** Hamming distance between two equal-length voicings. */
+function voicingDist(a: Voice[], b: Voice[]): number {
+  let n = 0;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) n++;
+  return n;
+}
+
+/** Order voicings so each differs minimally from the previous (greedy nearest
+ *  neighbour from the snare-heavy "s s s HH" end), per user: "order them left
+ *  to right by alterations compared to the previous voice". */
+function orderByMinimalChange(voicings: Voice[][]): Voice[][] {
+  if (voicings.length === 0) return [];
+  const remaining = [...voicings];
+  // Start from the voicing closest to all-snare (fewest non-snare slots).
+  remaining.sort((a, b) =>
+    a.filter(x => x !== "tap").length - b.filter(x => x !== "tap").length);
+  const ordered: Voice[][] = [remaining.shift()!];
+  while (remaining.length) {
+    const last = ordered[ordered.length - 1];
+    let best = 0, bestD = Infinity;
+    for (let i = 0; i < remaining.length; i++) {
+      const d = voicingDist(last, remaining[i]);
+      if (d < bestD) { bestD = d; best = i; if (d === 1) break; }
+    }
+    ordered.push(remaining.splice(best, 1)[0]);
+  }
+  return ordered;
+}
+
+export interface Voicing { id: string; label: string; voices: Voice[] }
+
+export const VOICINGS: Voicing[] = orderByMinimalChange(allMusicalVoicings()).map(v => ({
+  id: "v-" + v.map(x => SYM[x]).join(""),
+  label: v.map(x => SYM[x]).join(" "),
+  voices: v,
+}));
+
+/** A voicing → Pattern, carrying the paradiddle hands internally (RLRR) even
+ *  though hands are no longer displayed, so toStripMeasure's foot/bass stem
+ *  logic still works. */
+const PARADIDDLE_HANDS: ("R" | "L")[] = ["R", "L", "R", "R"];
+export function voicingToPattern(v: Voicing): Pattern {
+  return {
+    name: v.label,
+    strokes: v.voices.map((voice, i) => ({ hand: PARADIDDLE_HANDS[i], voices: [voice] })),
+    slotCount: v.voices.length,
+  };
+}
 
 // ── Generator ──────────────────────────────────────────────────────
 export function orchestrate(sticking: Sticking, scheme: Scheme): Pattern {
@@ -131,6 +183,8 @@ export function orchestrate(sticking: Sticking, scheme: Scheme): Pattern {
       isAccent: accents.has(index),
       isBounce: bounces.has(index),
       isDouble: doubles.has(index),
+      isFirst: index === 0,
+      isLast: index === p.length - 1,
     }),
   }));
   return { name: `${sticking.label} · ${scheme.label}`, strokes, slotCount: p.length };
