@@ -410,7 +410,7 @@ export default function IntervalsTab({
           Click any scale to auto-check the intervals it contains (unison
           excluded — a unison-vs-unison quiz is degenerate). */}
       <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2 max-h-80 overflow-y-auto">
-        <div className="flex items-center gap-2 sticky top-0 bg-[#0e0e0e] z-10 pb-1">
+        <div className="flex items-center gap-2 sticky top-0 bg-[#0e0e0e] z-10 pt-2 pb-1 -mt-2">
           <p className="text-xs text-[#888] font-medium">QUICK FILL FROM SCALE</p>
           <span className="text-[9px] text-[#555]">{scaleGroups.reduce((n, g) => n + g.scales.length, 0)} scales</span>
           <button onClick={() => setChecked(new Set())}
