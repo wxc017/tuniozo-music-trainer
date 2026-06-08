@@ -262,10 +262,19 @@ export function getScalesForEdo(edo: number | null, exhaustive = false): NamedSc
   // size; if that band has no step in this EDO (e.g. 50-EDO has no "ln7"), fall
   // back to the nearest available size of the same quality — so a Large Neutral
   // can still form from the largest neutral degrees that DO exist.
-  const degStep = (q: string, sz: number, deg: number) => {
-    for (const t of [sz, sz - 1, sz + 1, sz - 2, sz + 2])
+  const degStep = (q: string, sz: number, deg: number, exact = false) => {
+    const order = exact ? [sz] : [sz, sz - 1, sz + 1, sz - 2, sz + 2];
+    for (const t of order)
       if (t >= 0 && t <= 2) { const st = codeStep.get(SZL[t] + q + deg); if (st !== undefined) return st; }
     return undefined;
+  };
+  // Actual rendered size (0 small / 1 centre / 2 large) of a step, from its
+  // spectrum code — so a scale is named for what the EDO ACTUALLY produces, not
+  // for the size we asked for.  e.g. 17-EDO has no small major 3rd, so its only
+  // major scale is "Large Major", never "Small Major".
+  const actualSize = (step: number) => {
+    const cc = fuzzyCode((step * 1200) / edo);
+    return cc.startsWith("s") ? 0 : cc.startsWith("l") ? 2 : 1;
   };
 
   // Emit one 7-note mode/family scale at a base size, with the 6th/7th optionally

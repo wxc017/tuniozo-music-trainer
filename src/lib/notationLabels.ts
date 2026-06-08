@@ -19,7 +19,8 @@ export function notationsForEdo(edo: number): string[] {
 }
 /** Solfège systems available for an EDO (Universal first, then mined). */
 export function solfegesForEdo(edo: number): string[] {
-  return [UNIVERSAL_SOLFEGE, ...(SOLFEGE_SYSTEMS[edo] ?? []).map(s => s.name)];
+  // Drop the mined "extras" catch-all — we want discrete, named systems only.
+  return [UNIVERSAL_SOLFEGE, ...(SOLFEGE_SYSTEMS[edo] ?? []).map(s => s.name).filter(n => !/^extras?$/i.test(n))];
 }
 
 /** Interval label for a step under a notation system (falls back to Schulter). */

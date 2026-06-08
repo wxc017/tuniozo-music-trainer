@@ -420,29 +420,38 @@ export default function IntervalsTab({
       <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2 max-h-80 overflow-y-auto">
         <div className="flex items-center gap-2 sticky top-0 bg-[#0e0e0e] z-10 pt-2 pb-1 -mt-2">
           <p className="text-xs text-[#888] font-medium">QUICK FILL FROM SCALE</p>
-          <span className="text-[9px] text-[#555]">{scaleGroups.reduce((n, g) => n + g.scales.length, 0)} scales</span>
+          <span className="text-[9px] text-[#555]">{scaleCount} scales</span>
           <button onClick={() => setChecked(new Set())}
             className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5 ml-auto">Clear</button>
         </div>
-        {scaleGroups.map(g => (
-          <div key={g.name} className="space-y-1">
-            <p className="text-[9px] font-bold tracking-widest border-b border-[#1a1a1a] pb-0.5 text-[#7a8a9a]">{g.name}</p>
-            <div className="flex flex-wrap gap-1">
-              {g.scales.map((s, i) => {
-                const intervals = s.steps.filter(st => st > 0);
-                const on = intervals.length === checked.size && intervals.every(st => checked.has(st));
-                return (
-                  <button key={s.name + i}
-                    onClick={() => setChecked(new Set(intervals))}
-                    title={`${s.name} · ${s.steps.map(st => `${st}\\${edo}`).join(" ")}`}
-                    className={`px-2 py-1 text-[10px] rounded border transition-colors ${on
-                      ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]"
-                      : "bg-[#111] border-[#2a2a2a] text-[#888] hover:text-[#ccc]"}`}>
-                    {s.name}
-                  </button>
-                );
-              })}
-            </div>
+        {scaleModes.map(m => (
+          <div key={m.mode} className="space-y-1.5">
+            {/* Mode header — blue, mirrors the Interval-Spectrum TONALITIES sections. */}
+            <p className="text-[10px] font-bold tracking-widest border-b border-[#1a1a1a] pb-0.5" style={{ color: "#5b9bd5" }}>
+              {m.mode.toUpperCase()}
+            </p>
+            {m.families.map(f => (
+              <div key={f.family} className="ml-2 space-y-1">
+                {/* Family sub-header — grey, a different colour from the mode. */}
+                <p className="text-[9px] font-medium tracking-wider text-[#666]">{f.family}</p>
+                <div className="flex flex-wrap gap-1">
+                  {f.scales.map((s, i) => {
+                    const intervals = s.steps.filter(st => st > 0);
+                    const on = intervals.length === checked.size && intervals.every(st => checked.has(st));
+                    return (
+                      <button key={s.name + i}
+                        onClick={() => setChecked(new Set(intervals))}
+                        title={`${s.name} · ${s.steps.map(st => `${st}\\${edo}`).join(" ")}`}
+                        className={`px-2 py-1 text-[10px] rounded border transition-colors ${on
+                          ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]"
+                          : "bg-[#111] border-[#2a2a2a] text-[#888] hover:text-[#ccc]"}`}>
+                        {s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         ))}
       </div>
