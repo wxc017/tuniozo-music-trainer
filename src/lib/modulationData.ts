@@ -71,7 +71,10 @@ export function degreeInMode(step: number, mode: Mode): string {
 }
 export function romanDegree(step: number, mode: Mode): string {
   const k = ((step % 31) + 31) % 31;
-  return (mode === "major" ? ROMAN_MAJOR : ROMAN_MINOR)[k] ?? degree(step);
+  // Chromatic roots that aren't in the diatonic map still get a Roman numeral
+  // (e.g. "S2"→"SII", "n7"→"nVII", "♯4"→"♯IV") so the modulation tab matches
+  // the Chords tab's Roman-numeral convention rather than showing degree codes.
+  return (mode === "major" ? ROMAN_MAJOR : ROMAN_MINOR)[k] ?? romanizeDegree(degree(step));
 }
 
 /* ── Chord-quality table ────────────────────────────────────────────

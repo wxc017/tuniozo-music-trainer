@@ -13,6 +13,7 @@ import {
 } from "@/lib/modulationData";
 import { getScalesForEdo, type NamedScale } from "@/lib/commonScales";
 import { notationLabel } from "@/lib/notationLabels";
+import { formatRomanNumeral } from "@/lib/formatRoman";
 import { audioEngine } from "@/lib/audioEngine";
 
 const GLYPH_FONT = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Segoe UI Symbol", "Noto Music", "Cambria Math", "Bravura", monospace';
@@ -116,8 +117,9 @@ export default function ModulationBorrowingTab({ edo, tonicPc, onHighlight, ensu
   const romanCased = (root31: number, quality: string): string => {
     const base = romanDegree(root31, mode);
     const r = MINOR_Q.has(quality) ? base.toLowerCase() : base;
-    if (useSchu) return r + (Q_SUFFIX[quality] ?? "");
-    const q = qualStack(quality);
+    // Space-delimit the quality so formatRomanNumeral superscripts it — the same
+    // convention the Chords tab uses (anything after the first space → <sup>).
+    const q = useSchu ? (Q_SUFFIX[quality] ?? "") : qualStack(quality);
     return q ? `${r} ${q}` : r;
   };
 
@@ -276,7 +278,7 @@ export default function ModulationBorrowingTab({ edo, tonicPc, onHighlight, ensu
                   className={`flex items-center gap-2 px-2 py-1.5 rounded border cursor-pointer transition-colors ${
                     isOpen ? "border-[#5a5a8a] bg-[#12121c]" : "border-[#161616] bg-[#0e0e0e] hover:border-[#2a2a3a]"}`}>
                   <span className="w-[60px] shrink-0"><LimitBadge limit={lim} /></span>
-                  <Cell w="w-24"><span className="text-sm text-[#e0c070]" style={{ fontFamily: GLYPH_FONT }}>{withGlyphs(romanCased(b.root, b.quality))}</span></Cell>
+                  <Cell w="w-24"><span className="text-sm text-[#e0c070]" style={{ fontFamily: GLYPH_FONT }}>{formatRomanNumeral(romanCased(b.root, b.quality))}</span></Cell>
                   <span className="flex-1 min-w-0 truncate"><span className="text-[11px] text-[#aaa]">{b.use}</span> <span className="text-[10px] text-[#666]">· {b.source}</span></span>
                   <span className="text-[10px] text-[#555] shrink-0 w-24 text-right">{isOpen ? "▾ hide" : "▸ progressions"}</span>
                 </div>
@@ -310,7 +312,7 @@ export default function ModulationBorrowingTab({ edo, tonicPc, onHighlight, ensu
                   className={`flex items-center gap-2 px-2 py-1.5 rounded border cursor-pointer transition-colors ${
                     isOpen ? "border-[#5a5a8a] bg-[#12121c]" : "border-[#161616] bg-[#0e0e0e] hover:border-[#2a2a3a]"}`}>
                   <span className="w-[60px] shrink-0"><LimitBadge limit={m.limit} /></span>
-                  <Cell w="w-16"><span className="text-sm text-[#d4a050]" style={{ fontFamily: GLYPH_FONT }}>{withGlyphs(romanDegree(m.target, mode))}</span></Cell>
+                  <Cell w="w-16"><span className="text-sm text-[#d4a050]" style={{ fontFamily: GLYPH_FONT }}>{formatRomanNumeral(romanDegree(m.target, mode))}</span></Cell>
                   <Cell w="w-56"><span className="text-[11px] text-[#cbb]">{m.name}</span></Cell>
                   <span className="flex-1 min-w-0 truncate text-[10px] text-[#cbb]">{m.scales.filter(sk => SCALES[sk]).map(sk => SCALES[sk].name).join(" · ")}</span>
                   <span className="text-[10px] text-[#555] shrink-0 w-24 text-right">{isOpen ? "▾ hide" : "▸ progressions"}</span>

@@ -12,15 +12,18 @@ export const SCHULTER = "Schulter";
 export const UNIVERSAL_SOLFEGE = "Universal Solfège";
 
 /** Notation systems available for an EDO (Schulter first, then mined). */
+// Drop mined duplicate variants ("… 2", "… 3") — keep the primary name only.
+const tidyNames = (names: string[]): string[] => names.filter(n => !/ \d+$/.test(n));
+
 export function notationsForEdo(edo: number): string[] {
   // A "Solfège" entry is a solfège, not an interval notation — keep it out of
   // the notation list (it still appears under the Solfège section).
-  return [SCHULTER, ...(NOTATION_SYSTEMS[edo] ?? []).map(s => s.name).filter(n => !/solf[eè]ge/i.test(n))];
+  return [SCHULTER, ...tidyNames((NOTATION_SYSTEMS[edo] ?? []).map(s => s.name).filter(n => !/solf[eè]ge/i.test(n)))];
 }
 /** Solfège systems available for an EDO (Universal first, then mined). */
 export function solfegesForEdo(edo: number): string[] {
   // Drop the mined "extras" catch-all — we want discrete, named systems only.
-  return [UNIVERSAL_SOLFEGE, ...(SOLFEGE_SYSTEMS[edo] ?? []).map(s => s.name).filter(n => !/^extras?$/i.test(n))];
+  return [UNIVERSAL_SOLFEGE, ...tidyNames((SOLFEGE_SYSTEMS[edo] ?? []).map(s => s.name).filter(n => !/^extras?$/i.test(n)))];
 }
 
 /** Interval label for a step under a notation system (falls back to Schulter). */

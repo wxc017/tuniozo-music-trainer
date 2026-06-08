@@ -286,7 +286,7 @@ export function getScalesForEdo(edo: number | null, exhaustive = false): NamedSc
     const d = [
       0,
       degStep(m.two, size, 2),
-      degStep(m.three, size, 3),
+      degStep(m.three, size, 3, true),                      // the 3rd defines the size — NO fallback
       m.aug4 ? toStepC(edo, 590) : codeStep.get("4"),       // Lydian augmented 4th
       m.dim5 ? toStepC(edo, 600) : codeStep.get("5"),       // Locrian diminished 5th
       degStep(m.six, s6, 6),
@@ -295,9 +295,12 @@ export function getScalesForEdo(edo: number | null, exhaustive = false): NamedSc
     if (d.some(x => x === undefined)) return;
     const steps = [...new Set(d as number[])].sort((a, b) => a - b);
     if (steps.length !== 7) return;
+    // Name from the ACTUAL rendered sizes: the exact-matched 3rd sets the base
+    // size; the 6th/7th get a suffix only when their real size differs from it.
+    const six6 = actualSize(d[5] as number), sev7 = actualSize(d[6] as number);
     const parts = [["Small", "", "Large"][size], modeWord ?? m.name].filter(Boolean);
-    if (s6 !== size) parts.push(SZL[s6] + m.six + "6");
-    if (s7 !== size) parts.push(SZL[s7] + m.sev + "7");
+    if (six6 !== size) parts.push(SZL[six6] + m.six + "6");
+    if (sev7 !== size) parts.push(SZL[sev7] + m.sev + "7");
     add({ name: parts.join(" "), steps, group: grp(steps, m.name) });
   };
 
@@ -317,14 +320,21 @@ export function getScalesForEdo(edo: number | null, exhaustive = false): NamedSc
   // 1b. Pentatonic family — the five pentatonic modes, 3 sizes each (named
   //     "[Size] [Mode] Pentatonic").  Exhaustive adds single-degree colours.
   for (const pm of PENTA_MODES) {
+    // The degree that defines the size (the 3rd if the mode has one, else the
+    // first coloured degree) is matched EXACTLY — no fallback — so a coarse EDO
+    // never fabricates a "Small/Large" flavour it can't actually render.
+    const anchorIdx = (() => {
+      const t = pm.degs.findIndex(([, deg]) => deg === 3);
+      return t >= 0 ? t : pm.degs.findIndex(([q]) => q !== "P");
+    })();
     const emitPenta = (sizes: number[], base: number) => {
       const d: (number | undefined)[] = [0];
-      pm.degs.forEach(([q, deg], i) => d.push(q === "P" ? codeStep.get(String(deg)) : degStep(q, sizes[i], deg)));
+      pm.degs.forEach(([q, deg], i) => d.push(q === "P" ? codeStep.get(String(deg)) : degStep(q, sizes[i], deg, i === anchorIdx)));
       if (d.some(x => x === undefined)) return;
       const steps = [...new Set(d as number[])].sort((a, b) => a - b);
       if (steps.length !== 5) return;
       const parts = [["Small", "", "Large"][base], pm.name, "Pentatonic"].filter(Boolean);
-      pm.degs.forEach(([q, deg], i) => { if (q !== "P" && sizes[i] !== base) parts.push(SZL[sizes[i]] + q + deg); });
+      pm.degs.forEach(([q, deg], i) => { if (q !== "P") { const asz = actualSize(d[i + 1] as number); if (asz !== base) parts.push(SZL[asz] + q + deg); } });
       add({ name: parts.join(" "), steps, group: grp(steps, "Pentatonic") });
     };
     for (let sz = 0; sz < 3; sz++) {
