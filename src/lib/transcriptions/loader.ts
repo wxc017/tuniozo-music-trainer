@@ -13,7 +13,8 @@ import { beatsPerBar, isAudioSource } from "./types";
 import { SEED_ITEMS } from "./seed";
 import { harmonizeMelody } from "./accompaniment";
 
-const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "bluesguitar", "bluesvocal", "drums"];
+// Blues guitar / vocal removed per direct user direction (not on GitHub, not in the app).
+const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "drums"];
 
 function dataUrl(name: string): string {
   const base = import.meta.env.BASE_URL ?? "/";
