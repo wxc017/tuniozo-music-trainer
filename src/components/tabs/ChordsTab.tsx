@@ -1927,7 +1927,7 @@ export default function ChordsTab({
                        the whole progression drifts as the lattice walks
                        through it (comma pumps audibly shift the tonic).
                        Green accent. */}
-      {(edo === 41 || edo === 53) && (() => {
+      {edo === 41 && (() => {   /* progression mode removed from 53 per direct user direction */
         const modeBorderBg = jiMode === "frozen"
           ? "border-[#3a3a8a] bg-[#0e0e1a]"
           : "border-[#3a8a5a] bg-[#0e1a14]";
