@@ -2013,7 +2013,10 @@ export default function ChordsTab({
               ...f,
               tonalities: f.tonalities
                 .filter(t => banksByName[t])
-                .filter(t => !stripJiNames || !t.startsWith("Diatonic ")),
+                .filter(t => !stripJiNames || !t.startsWith("Diatonic "))
+                // Small/Large sizing is a Schulter-spectrum concept — hide those
+                // flavours in any other notation (Ups-and-downs, Pythagorean, …).
+                .filter(t => !notationSystem || notationSystem === "Schulter" || !/^(Small|Large) /.test(t)),
             }))
             .filter(f => f.tonalities.length > 0);
           if (usableFamilies.length === 0) return null;

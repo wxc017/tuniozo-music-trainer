@@ -238,10 +238,12 @@ function ScalarExplorationLayout(props: {
         <div id="main-visualizer" className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: 0 }}>
           {edo !== 12 && (
             <div className="flex justify-end gap-1 mb-1">
-              <button onClick={onOpenNotation}
-                className="px-2 py-0.5 rounded text-[10px] font-medium border bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff] transition-colors">
-                n: Notation / Solfège
-              </button>
+              {(!notationByEdo[edo] || notationByEdo[edo] === "Schulter") && (
+                <button onClick={onOpenNotation}
+                  className="px-2 py-0.5 rounded text-[10px] font-medium border bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff] transition-colors">
+                  n: Notation / Solfège
+                </button>
+              )}
               <button onClick={() => { setShowIvOverlay(v => !v); setShowSolfege(false); }}
                 className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${showIvOverlay
                   ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
@@ -1698,7 +1700,7 @@ export default function App() {
             like it is in scalar explorations".  Still gated to the
             chords tab; other Tonal Audiation tabs (intervals /
             mode-id / melody / etc.) keep the EDO selector hidden. */}
-        {(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && <div className="flex gap-2 flex-wrap items-center mb-3">
+        {(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && <div className="flex gap-2 flex-wrap items-center mb-3 pt-1.5">
           <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">EDO</span>
           <div className="flex items-center gap-2 flex-wrap">
             {TONAL_EDO_GROUPS.map(group => (

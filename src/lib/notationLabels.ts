@@ -13,7 +13,9 @@ export const UNIVERSAL_SOLFEGE = "Universal Solfège";
 
 /** Notation systems available for an EDO (Schulter first, then mined). */
 export function notationsForEdo(edo: number): string[] {
-  return [SCHULTER, ...(NOTATION_SYSTEMS[edo] ?? []).map(s => s.name)];
+  // A "Solfège" entry is a solfège, not an interval notation — keep it out of
+  // the notation list (it still appears under the Solfège section).
+  return [SCHULTER, ...(NOTATION_SYSTEMS[edo] ?? []).map(s => s.name).filter(n => !/solf[eè]ge/i.test(n))];
 }
 /** Solfège systems available for an EDO (Universal first, then mined). */
 export function solfegesForEdo(edo: number): string[] {
