@@ -1698,7 +1698,7 @@ export default function App() {
             like it is in scalar explorations".  Still gated to the
             chords tab; other Tonal Audiation tabs (intervals /
             mode-id / melody / etc.) keep the EDO selector hidden. */}
-        {(activeTab === "chords" || activeTab === "intervals") && <div className="flex gap-2 flex-wrap items-center mb-3">
+        {(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && <div className="flex gap-2 flex-wrap items-center mb-3">
           <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">EDO</span>
           <div className="flex items-center gap-2 flex-wrap">
             {TONAL_EDO_GROUPS.map(group => (
@@ -1740,7 +1740,7 @@ export default function App() {
           )}
         </div>}
         {/* Root — placed directly below the EDO row for Chords/Intervals. */}
-        {(activeTab === "chords" || activeTab === "intervals") && <div className="flex gap-2 flex-wrap items-center mb-3">
+        {(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && <div className="flex gap-2 flex-wrap items-center mb-3">
           <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">ROOT</span>
           {["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"].map((n, i) => (
             <button key={i} onClick={() => setTonicPc(i)}
