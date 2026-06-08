@@ -79,20 +79,28 @@ export default function IntervalsTab({
     ? sizedIntervalNamesFull(edo)                // full-word sized names (e.g. "Small Minor 3rd")
     : Array.from({ length: edo + 1 }, (_, s) => notationLabel(edo, notationSystem, s));
 
-  // Per-EDO scale catalog grouped for the quick-fill picker.  In a non-Schulter
-  // notation the Small/Large flavours are hidden (that notation doesn't express
-  // sizing), leaving the standard non-sized scales.
-  const scaleGroups = (() => {
+  // Per-EDO scale catalog grouped for the quick-fill picker.  Mirrors the
+  // Interval-Spectrum / Chord-Progressions TONALITIES layout: a two-level
+  // hierarchy — MODE (Ionian / Dorian …) as a coloured header, then the JI
+  // family (Ptolemaic / Septimal …) as a grey sub-header.  The catalog's
+  // group string is "<mode> · <family>", so we split on " · ".
+  // In a non-Schulter notation the Small/Large flavours are hidden (that
+  // notation doesn't express sizing), leaving the standard non-sized scales.
+  const scaleModes = (() => {
     const all = getScalesForEdo(edo);
     const scales = isSchulter ? all : all.filter(s => !/^(Small|Large) /.test(s.name));
-    const groups: { name: string; scales: typeof scales }[] = [];
+    const modes: { mode: string; families: { family: string; scales: typeof scales }[] }[] = [];
     for (const s of scales) {
-      let g = groups.find(x => x.name === s.group);
-      if (!g) { g = { name: s.group, scales: [] }; groups.push(g); }
-      g.scales.push(s);
+      const [modeName, familyName = "Other"] = s.group.split(" · ");
+      let m = modes.find(x => x.mode === modeName);
+      if (!m) { m = { mode: modeName, families: [] }; modes.push(m); }
+      let f = m.families.find(x => x.family === familyName);
+      if (!f) { f = { family: familyName, scales: [] }; m.families.push(f); }
+      f.scales.push(s);
     }
-    return groups;
+    return modes;
   })();
+  const scaleCount = scaleModes.reduce((n, m) => n + m.families.reduce((k, f) => k + f.scales.length, 0), 0);
 
   const selectAll = () => setChecked(new Set(ivNames.map((_,i) => i)));
   const clearAll = () => setChecked(new Set());

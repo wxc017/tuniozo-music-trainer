@@ -1754,8 +1754,10 @@ export default function App() {
           ))}
         </div>}
         <div className="flex gap-1 flex-wrap items-center mb-4">
-          <PresetBar onPresetLoaded={() => setTabKey(k => k + 1)} />
-          <div className="w-px h-4 bg-[#2a2a2a]" />
+          {activeTab !== "transcriptions" && (<>
+            <PresetBar onPresetLoaded={() => setTabKey(k => k + 1)} />
+            <div className="w-px h-4 bg-[#2a2a2a]" />
+          </>)}
           {visibleTemperamentTabs.map(t => (
             <button key={t} onClick={() => { stopAllAudio(); setActiveTab(t); }}
               className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
