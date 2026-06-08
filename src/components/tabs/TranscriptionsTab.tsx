@@ -13,7 +13,8 @@ import { pickItem, pickExcerpt, fullExcerpt, sliceExcerpt, loadIndex, loadItemBy
 import { playExcerpt, stopPlayback, ensureInstruments, playTonicDrone } from "@/lib/transcriptions/playback";
 import TranscriptionNotation from "../transcriptions/TranscriptionNotation";
 
-const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "bluesguitar", "bluesvocal", "drums"];
+// Blues guitar / vocal removed per direct user direction.
+const ALL_SOURCES: TxSource[] = ["thesession", "essen", "weimar", "cocopops", "ewld", "drums"];
 const BASE = import.meta.env.BASE_URL ?? "/";
 
 /** Add spaces to run-together titles from filename-derived data, e.g.

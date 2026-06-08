@@ -61,7 +61,7 @@ function LimitBadge({ limit }: { limit: Limit }) {
     style={{ background: s.bg, borderColor: s.border, color: s.color }}>{s.label}</span>;
 }
 
-type View = "borrow" | "modulate" | "ratios" | "scales";
+type View = "borrow" | "modulate" | "scales";
 
 export default function ModulationBorrowingTab({ edo, tonicPc, onHighlight, ensureAudio, setEdo, setTonicPc, notationSystem }: Props) {
   const [view, setView] = useState<View>("borrow");
@@ -73,9 +73,9 @@ export default function ModulationBorrowingTab({ edo, tonicPc, onHighlight, ensu
   const tonicStep = Math.round((tonicPc * edo) / 12);
   const homeTriadRatio = mode === "major" ? "4:5:6" : "10:12:15";
 
-  // Three octaves below the tonic — the played chords (and their highlight)
-  // dropped two octaves from the previous register per direct user direction.
-  const baseStep = tonicStep - 3 * edo;
+  // One octave below the C4 reference so the tonic sounds in octave 3
+  // (pitch 0 = C4) per direct user direction — the chords were too low before.
+  const baseStep = tonicStep - 1 * edo;
   const chordAbs = (root31: number, ratio: string): number[] => {
     const r = toEdoStep(root31, edo);
     return chordStepsForEdo(ratio, edo).map(s => baseStep + r + s);
@@ -240,7 +240,7 @@ export default function ModulationBorrowingTab({ edo, tonicPc, onHighlight, ensu
       {/* View + limit filter */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1">
-          {([["borrow", "Borrowed chords"], ["modulate", "Modulations"], ["ratios", "Chord ratios"], ["scales", "Scales"]] as const).map(([id, label]) => (
+          {([["borrow", "Borrowed chords"], ["modulate", "Modulations"], ["scales", "Scales"]] as const).map(([id, label]) => (
             <button key={id} onClick={() => setView(id)}
               className={`px-3 py-1.5 rounded text-sm font-medium border transition-colors ${
                 view === id ? "bg-[#7173e618] border-[#7173e6] text-[#9999ee]"
@@ -265,10 +265,9 @@ export default function ModulationBorrowingTab({ edo, tonicPc, onHighlight, ensu
           progressions (real roman numerals) that make the borrowing work. */}
       {view === "borrow" && (
         <div className="flex flex-col gap-1">
-          <Header cols={[["Chord", "w-24"], ["Function / source", "flex-1"], ["Ratio", "w-28"]]} />
+          <Header cols={[["Chord", "w-24"], ["Function / source", "flex-1"]]} />
           {BORROWINGS.filter(b => show(b.limit ?? qualityLimit(b.quality)) && !isDiatonicEdo(b.root, b.quality, mode, edo)).map((b, i) => {
             const lim = b.limit ?? qualityLimit(b.quality);
-            const ct = qualityChord(b.quality);
             const key = `${b.quality}-${b.root}-${i}`;
             const isOpen = expanded === key;
             return (
@@ -279,7 +278,6 @@ export default function ModulationBorrowingTab({ edo, tonicPc, onHighlight, ensu
                   <span className="w-[60px] shrink-0"><LimitBadge limit={lim} /></span>
                   <Cell w="w-24"><span className="text-sm text-[#e0c070]" style={{ fontFamily: GLYPH_FONT }}>{withGlyphs(romanCased(b.root, b.quality))}</span></Cell>
                   <span className="flex-1 min-w-0 truncate"><span className="text-[11px] text-[#aaa]">{b.use}</span> <span className="text-[10px] text-[#666]">· {b.source}</span></span>
-                  <Cell w="w-28"><span className="font-mono text-[11px] text-[#888]">{ct.ratio}</span></Cell>
                   <span className="text-[10px] text-[#555] shrink-0 w-24 text-right">{isOpen ? "▾ hide" : "▸ progressions"}</span>
                 </div>
                 {isOpen && (
@@ -328,24 +326,6 @@ export default function ModulationBorrowingTab({ edo, tonicPc, onHighlight, ensu
                   </div>
                 )}
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Chord ratios */}
-      {view === "ratios" && (
-        <div className="flex flex-col gap-1">
-          <Header cols={[["", "w-6"], ["Chord", "w-48"], ["Formula", "w-44"], ["Ratio", "flex-1"]]} />
-          {CHORD_TYPES.filter(c => show(c.limit)).map(c => {
-            const steps = chordStepsForEdo(c.ratio, edo);
-            return (
-              <Row key={c.name} limit={c.limit}>
-                <Cell w="w-6"><Play on={() => { const ch = steps.map(s => tonicStep + s); highlightAbs(ch); void play([ch]); }} /></Cell>
-                <Cell w="w-48"><span className="text-sm text-[#ddd]">{c.name}</span></Cell>
-                <Cell w="w-44"><span className="text-sm text-[#bbb]" style={{ fontFamily: GLYPH_FONT }}>{c.steps.map((s, i) => <span key={i}>{i > 0 && " "}{withGlyphs(degree(s))}</span>)}</span></Cell>
-                <span className="flex-1 min-w-0 font-mono text-[11px] text-[#888]">{c.ratio}</span>
-              </Row>
             );
           })}
         </div>

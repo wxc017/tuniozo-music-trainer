@@ -1108,7 +1108,7 @@ export default function App() {
               built into the section, so it doesn't need the global
               strip either. */}
           {!academicMode && section === "ear-trainer" && (
-            <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 flex flex-wrap items-center gap-3">
+            <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 mb-3 flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-[#888] tracking-widest uppercase">Drone</span>
                 {droneIsOn && <span className="w-2 h-2 rounded-full bg-[#7173e6] animate-pulse inline-block" />}
@@ -1155,7 +1155,7 @@ export default function App() {
             <div className="flex flex-wrap items-center gap-3">
               {/* Chords/Intervals show the Root in its own row BELOW the EDO
                   picker (per direct user direction); other tabs keep it here. */}
-              {!(activeTab === "chords" || activeTab === "intervals") && (<>
+              {!(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && (<>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <label className="text-xs text-[#666]">Tonic</label>
                 {["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"].map((n, i) => (
