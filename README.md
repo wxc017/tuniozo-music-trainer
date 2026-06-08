@@ -4,7 +4,7 @@
 
 A microtonal music practice tool I built for my own daily practice. Mainly uploaded as a backup.
 
-Everything is built around **any EDO** (and JI), an isomorphic **Lumatone** layout, and a shared **sized-interval** notation, so a scale, chord, or interval is named the same way in every tuning.
+Everything is built around **any EDO** (and JI), an isomorphic **Lumatone** layout, and a shared **sized-interval** notation, so a scale, chord, or interval is named the same way in every tuning. It also supports a wide variety of **notation systems and solfège schemes** (switchable per EDO), so you can read intervals and degrees in whatever convention you prefer.
 
 ## Ear & Feel
 

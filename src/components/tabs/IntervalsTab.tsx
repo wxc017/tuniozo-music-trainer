@@ -4,6 +4,7 @@ import { randomChoice } from "@/lib/musicTheory";
 import { getHeathwaiteSolfege, getFullDegreeNames } from "@/lib/edoData";
 import { sizedIntervalNamesFull } from "@/lib/chordNotation";
 import { getScalesForEdo } from "@/lib/commonScales";
+import { notationLabel, SCHULTER } from "@/lib/notationLabels";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
 import { weightedRandomChoice, getOptionStats } from "@/lib/stats";
 import type { TabSettingsSnapshot } from "@/App";
@@ -29,10 +30,11 @@ interface Props {
   playVol?: number;
   tabSettingsRef?: React.MutableRefObject<TabSettingsSnapshot | null>;
   answerButtons?: React.ReactNode;
+  notationSystem?: string;
 }
 
 export default function IntervalsTab({
-  tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, onShowOnKeyboard, playVol = 0.65, tabSettingsRef, answerButtons
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, onShowOnKeyboard, playVol = 0.65, tabSettingsRef, answerButtons, notationSystem
 }: Props) {
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [checked, setChecked] = useLS<Set<number>>("lt_ivl_checked", new Set([3,5,8,10,13,15,18,21,23,26,28]));
@@ -69,11 +71,20 @@ export default function IntervalsTab({
     return n;
   });
 
-  const ivNames = sizedIntervalNamesFull(edo);   // full-word sized names (e.g. "Small Minor 3rd")
+  // Schulter (or no system) -> sized full names with Small/Center/Large.  Any
+  // other notation -> that system's own per-step labels (no Small/Large), since
+  // the size distinction is a Schulter-spectrum concept.
+  const isSchulter = !notationSystem || notationSystem === SCHULTER;
+  const ivNames = isSchulter
+    ? sizedIntervalNamesFull(edo)                // full-word sized names (e.g. "Small Minor 3rd")
+    : Array.from({ length: edo + 1 }, (_, s) => notationLabel(edo, notationSystem, s));
 
-  // Exhaustive, per-EDO-correct scale catalog, grouped for the quick-fill picker.
+  // Per-EDO scale catalog grouped for the quick-fill picker.  In a non-Schulter
+  // notation the Small/Large flavours are hidden (that notation doesn't express
+  // sizing), leaving the standard non-sized scales.
   const scaleGroups = (() => {
-    const scales = getScalesForEdo(edo);
+    const all = getScalesForEdo(edo);
+    const scales = isSchulter ? all : all.filter(s => !/^(Small|Large) /.test(s.name));
     const groups: { name: string; scales: typeof scales }[] = [];
     for (const s of scales) {
       let g = groups.find(x => x.name === s.group);

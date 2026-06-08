@@ -2116,7 +2116,7 @@ export default function App() {
           {activeTab === "intervals" && (
             <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
               <h2 className="font-semibold mb-4">Intervals</h2>
-              <IntervalsTab key={tabKey} {...sharedTabProps} />
+              <IntervalsTab key={tabKey} {...sharedTabProps} notationSystem={notationByEdo[edo]} />
             </div>
           )}
 
