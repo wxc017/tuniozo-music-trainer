@@ -1,0 +1,2074 @@
+{
+ "edo": 46,
+ "snapshot": "20250829021251",
+ "url": "https://en.xen.wiki/w/46edo",
+ "sections": [
+  {
+   "heading": "Contents",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Theory",
+   "level": 2,
+   "text": "In the opinion of some, 46edo is the first equal division to deal adequately with the 13-limit , though others award that distinction to 41edo or 53edo . 46edo's fifth is slightly sharp of just, which some people (e.g. Margo Schulter ) prefer, sometimes strongly, over both the just fifth and fifths of temperaments with flat fifths, such as meantone. Many say that sharp fifths give a characteristic bright sound to 5-limit triads, and consider the sound of meantone triads to be more mellow in comparison. 46edo is not a zeta peak edo , but it is a zeta gap edo . It is distinctly consistent in the 9-odd-limit , and it is consistent to the 13-odd-limit or the no-15 no-19 23-odd-limit .\n46edo is also notable for being the smallest equal division to approximate harmonics 3, 5, 7, 11, and 13 with less than 25% relative interval error .\nRank-2 temperaments it supports include sensi , valentine , shrutar , rodan , leapday , and unidec . The 11-odd-limit minimax tuning for valentine, (11/7) 1/10 , is only 0.01 cents flat of 3\\46 octaves.\nShrutar22 as srutis describes a possible use of 46edo for Indian music."
+  },
+  {
+   "heading": "Prime harmonics",
+   "level": 3,
+   "text": ""
+  },
+  {
+   "heading": "Subsets and supersets",
+   "level": 3,
+   "text": "46edo can be treated as two circles of 23edo separated by an interval of 26.087 cents."
+  },
+  {
+   "heading": "Intervals",
+   "level": 2,
+   "text": "( EUs : v 5 A1 and ^^d2)\ndiminished 8ve\ncomma-wide dim 8ve"
+  },
+  {
+   "heading": "Interval quality and chord names in color notation",
+   "level": 3,
+   "text": "Combining ups and downs notation with color notation , qualities can be loosely associated with colors:\nAll 46edo chords can be named using ups and downs. Alterations are always enclosed in parentheses, additions never are. Ups or downs immediately after the chord root affect the 3rd, 6th, 7th, and/or the 11th (every other note of a stacked-3rds chord 6-1-3-5-7-9-11-13). Here are the zo, gu, ilo, lu, yo and ru triads:\nFor a more complete list, see Ups and downs notation #Chords and chord progressions ."
+  },
+  {
+   "heading": "Notation",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Ups and downs notation",
+   "level": 3,
+   "text": "46edo can be notated with ups and downs , spoken as up, dup, dudsharp, downsharp, sharp, upsharp etc. and down, dud, dupflat etc. Note that dudsharp is equivalent to trup (triple-up) and dupflat is equivalent to trud (triple-down).\nAnother notation uses alternative ups and downs . Here, this can be done using sharps and flats with arrows, borrowed from extended Helmholtz–Ellis notation :"
+  },
+  {
+   "heading": "Sagittal notation",
+   "level": 3,
+   "text": "This notation uses the same sagittal sequence as 39edo ."
+  },
+  {
+   "heading": "Evo flavor",
+   "level": 4,
+   "text": ""
+  },
+  {
+   "heading": "Revo flavor",
+   "level": 4,
+   "text": ""
+  },
+  {
+   "heading": "Approximation to JI",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "17-odd-limit interval mappings",
+   "level": 3,
+   "text": "The following tables show how 17-odd-limit intervals are represented in 46edo. Prime harmonics are in bold ; inconsistent intervals are in italics ."
+  },
+  {
+   "heading": "Consistent circles",
+   "level": 3,
+   "text": "46edo is home to a number of consistent circles , both ones closing after generating all 46 notes and ones closing after generating 23edo.\nFor the 23rd-octave temperament that 46edo supports which combines all above 23-note circles, see icositritonic ."
+  },
+  {
+   "heading": "Regular temperament properties",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Commas",
+   "level": 3,
+   "text": "This is a partial list of the commas that 46et tempers out with its patent val , ⟨ 24 38 56 67 83 89 ] ."
+  },
+  {
+   "heading": "Rank-2 temperaments",
+   "level": 3,
+   "text": ""
+  },
+  {
+   "heading": "Scales",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Harmonic scales",
+   "level": 3,
+   "text": "46edo represents overtones 8 through 16 (written as JI ratios 8:9:10:11:12:13:14:15:16) with degrees 0, 8, 15, 21, 27, 32, 37, 42, 46. This corresponds to scale steps of 8, 7, 6, 6, 5, 5, 5, 4."
+  },
+  {
+   "heading": "Instruments",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Lumatone",
+   "level": 3,
+   "text": ""
+  },
+  {
+   "heading": "Skip fretting",
+   "level": 3,
+   "text": "Skip fretting system 46 2 11 is a skip fretting system for playing 46-edo on a 23-edo stringed instrument.\nSkip fretting system 46 7 11 is another skip fretting system for 46edo. The examples on this page are for 7-string guitar .\n1/1: string 2 open\n2/1: string 3 fret 5\n3/2: not easily accessible\n5/4: string 5 fret 4"
+  },
+  {
+   "heading": "Music",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Modern renditions",
+   "level": 3,
+   "text": ""
+  },
+  {
+   "heading": "21st century",
+   "level": 3,
+   "text": ""
+  },
+  {
+   "heading": "Notes",
+   "level": 2,
+   "text": ""
+  }
+ ],
+ "tables": [
+  {
+   "headers": [],
+   "rows": [
+    [
+     "← 45edo",
+     "46edo",
+     "47edo →"
+    ],
+    [
+     "Prime factorization",
+     "2 × 23"
+    ],
+    [
+     "Step size",
+     "26.087 ¢"
+    ],
+    [
+     "Fifth",
+     "27\\46 (704.348 ¢)"
+    ],
+    [
+     "Semitones (A1:m2)",
+     "5:3 (130.4 ¢ : 78.26 ¢)"
+    ],
+    [
+     "Consistency limit",
+     "13"
+    ],
+    [
+     "Distinct consistency limit",
+     "9"
+    ]
+   ],
+   "title": ""
+  },
+  {
+   "headers": [],
+   "rows": [
+    [
+     "← 45edo",
+     "46edo",
+     "47edo →"
+    ]
+   ],
+   "title": ""
+  },
+  {
+   "headers": [
+    "Harmonic",
+    "2",
+    "3",
+    "5",
+    "7",
+    "11",
+    "13",
+    "17",
+    "19",
+    "23"
+   ],
+   "rows": [
+    [
+     "Error",
+     "Absolute ( ¢ )",
+     "+0.0",
+     "+2.4",
+     "+5.0",
+     "-3.6",
+     "-3.5",
+     "-5.7",
+     "-0.6",
+     "-10.6",
+     "-2.2"
+    ],
+    [
+     "Relative ( % )",
+     "+0.0",
+     "+9.2",
+     "+19.1",
+     "-13.8",
+     "-13.4",
+     "-22.0",
+     "-2.3",
+     "-40.5",
+     "-8.4"
+    ],
+    [
+     "Steps ( reduced )",
+     "46 (0)",
+     "73 (27)",
+     "107 (15)",
+     "129 (37)",
+     "159 (21)",
+     "170 (32)",
+     "188 (4)",
+     "195 (11)",
+     "208 (24)"
+    ]
+   ],
+   "title": "Prime harmonics"
+  },
+  {
+   "headers": [
+    "Harmonic",
+    "29",
+    "31",
+    "37",
+    "41",
+    "43",
+    "47",
+    "53",
+    "59",
+    "61"
+   ],
+   "rows": [
+    [
+     "Error",
+     "Absolute ( ¢ )",
+     "-12.2",
+     "+2.8",
+     "+9.5",
+     "-11.7",
+     "+10.2",
+     "+12.8",
+     "-12.6",
+     "+10.4",
+     "+4.9"
+    ],
+    [
+     "Relative ( % )",
+     "-46.7",
+     "+10.7",
+     "+36.5",
+     "-44.7",
+     "+39.2",
+     "+48.9",
+     "-48.4",
+     "+39.8",
+     "+18.6"
+    ],
+    [
+     "Steps ( reduced )",
+     "223 (39)",
+     "228 (44)",
+     "240 (10)",
+     "246 (16)",
+     "250 (20)",
+     "256 (26)",
+     "263 (33)",
+     "271 (41)",
+     "273 (43)"
+    ]
+   ],
+   "title": "Prime harmonics"
+  },
+  {
+   "headers": [
+    "#",
+    "Cents",
+    "Approximate ratios [ note 1 ]",
+    "Ups and downs notation ( EUs : v 5 A1 and ^^d2)",
+    "SKULO notation (K or S = 1, U = 2)",
+    "Solfege"
+   ],
+   "rows": [
+    [
+     "0",
+     "0.0",
+     "1/1",
+     "perfect unison",
+     "P1",
+     "D",
+     "Perfect unison",
+     "P1",
+     "D",
+     "da",
+     "do"
+    ],
+    [
+     "1",
+     "26.1",
+     "81/80 , 64/63 , 49/48",
+     "up unison",
+     "^1",
+     "^D",
+     "comma-wide unison, super unison",
+     "K1, S1",
+     "KD, SD",
+     "du",
+     "di"
+    ],
+    [
+     "2",
+     "52.2",
+     "28/27 , 36/35 , 33/32",
+     "downminor 2nd",
+     "vm2",
+     "vEb",
+     "subminor 2nd, uber unison",
+     "sm2, U1",
+     "sEb, UD",
+     "fro",
+     "ro"
+    ],
+    [
+     "3",
+     "78.3",
+     "25/24 , 21/20 , 22/21 , 24/23 , 23/22",
+     "minor 2nd",
+     "m2",
+     "Eb",
+     "minor 2nd, classic augmented unison",
+     "m2, kkA1",
+     "Eb, kkD#",
+     "fra",
+     "rih"
+    ],
+    [
+     "4",
+     "104.3",
+     "16/15 , 17/16 , 18/17",
+     "upminor 2nd",
+     "^m2",
+     "^Eb",
+     "classic minor 2nd, comma-narrow aug unison",
+     "Km2, kA1",
+     "KEb, kD#",
+     "fru",
+     "ra"
+    ],
+    [
+     "5",
+     "130.4",
+     "13/12 , 14/13 , 15/14",
+     "dupminor 2nd",
+     "^^m2",
+     "^^Eb",
+     "lesser neutral second, augmented unison",
+     "n2, A1",
+     "UEb, D#",
+     "fri",
+     "ru [ note 2 ]"
+    ],
+    [
+     "6",
+     "156.5",
+     "12/11 , 11/10 , 23/21",
+     "dudmajor 2nd",
+     "vvM2",
+     "vvE",
+     "greater neutral second, super aug unison",
+     "N2, sA1",
+     "uE, sD#",
+     "ri",
+     "ruh [ note 3 ]"
+    ],
+    [
+     "7",
+     "182.6",
+     "10/9",
+     "downmajor 2nd",
+     "vM2",
+     "vE",
+     "classic/comma-narrow major 2nd",
+     "kM2",
+     "kE",
+     "ro",
+     "reh"
+    ],
+    [
+     "8",
+     "208.7",
+     "9/8",
+     "major 2nd",
+     "M2",
+     "E",
+     "major 2nd",
+     "M2",
+     "E",
+     "ra",
+     "re"
+    ],
+    [
+     "9",
+     "234.8",
+     "8/7 , 23/20",
+     "upmajor 2nd",
+     "^M2",
+     "^E",
+     "supermajor 2nd",
+     "SM2",
+     "SE",
+     "ru",
+     "ri"
+    ],
+    [
+     "10",
+     "260.9",
+     "7/6",
+     "downminor 3rd",
+     "vm3",
+     "vF",
+     "subminor 3rd",
+     "sm3",
+     "sF",
+     "no",
+     "ma"
+    ],
+    [
+     "11",
+     "287.0",
+     "13/11 , 20/17",
+     "minor 3rd",
+     "m3",
+     "F",
+     "minor 3rd",
+     "m3",
+     "F",
+     "na",
+     "meh"
+    ],
+    [
+     "12",
+     "313.0",
+     "6/5",
+     "upminor 3rd",
+     "^m3",
+     "^F",
+     "classic minor 3rd",
+     "Km3",
+     "KF",
+     "nu",
+     "me"
+    ],
+    [
+     "13",
+     "339.1",
+     "11/9 , 17/14 , 28/23",
+     "dupminor 3rd",
+     "^^m3",
+     "^^F",
+     "lesser neutral 3rd",
+     "n3",
+     "UF",
+     "ni",
+     "mu [ note 2 ]"
+    ],
+    [
+     "14",
+     "365.2",
+     "16/13 , 26/21 , 21/17",
+     "dudmajor 3rd",
+     "vvM3",
+     "vvF#",
+     "greater neutral 3rd",
+     "N3",
+     "uF#",
+     "mi",
+     "muh [ note 3 ]"
+    ],
+    [
+     "15",
+     "391.3",
+     "5/4",
+     "downmajor 3rd",
+     "vM3",
+     "vF#",
+     "classic major 3rd",
+     "kM3",
+     "kF#",
+     "mo",
+     "mi"
+    ],
+    [
+     "16",
+     "417.4",
+     "14/11 , 23/18",
+     "major 3rd",
+     "M3",
+     "F#",
+     "major 3rd",
+     "M3",
+     "F#",
+     "ma",
+     "maa"
+    ],
+    [
+     "17",
+     "443.5",
+     "9/7 , 13/10 , 22/17",
+     "upmajor 3rd",
+     "^M3",
+     "^F#",
+     "supermajor 3rd",
+     "SM3",
+     "SF#",
+     "mu",
+     "mo"
+    ],
+    [
+     "18",
+     "469.6",
+     "21/16 , 17/13",
+     "down 4th",
+     "v4",
+     "vG",
+     "sub 4th",
+     "s4",
+     "sG",
+     "fo",
+     "fe"
+    ],
+    [
+     "19",
+     "495.7",
+     "4/3",
+     "perfect 4th",
+     "P4",
+     "G",
+     "perfect 4th",
+     "P4",
+     "G",
+     "fa",
+     "fa"
+    ],
+    [
+     "20",
+     "521.7",
+     "27/20 , 23/17",
+     "up 4th",
+     "^4",
+     "^G",
+     "comma-wide 4th",
+     "K4",
+     "KG",
+     "fu",
+     "fih"
+    ],
+    [
+     "21",
+     "547.8",
+     "11/8",
+     "dup 4th",
+     "^^4",
+     "^^G",
+     "uber 4th, sub diminished 5th",
+     "U4, sd5",
+     "UG, sAb",
+     "fi/sho",
+     "fu"
+    ],
+    [
+     "22",
+     "573.9",
+     "7/5 , 18/13 , 32/23",
+     "dudaug 4th, dim 5th",
+     "vvA4, d5",
+     "vvG#, Ab",
+     "classic augmented 4th, diminished 5th",
+     "kkA4, d5",
+     "kkG#, Ab",
+     "pi/sha",
+     "fi"
+    ],
+    [
+     "23",
+     "600.0",
+     "17/12 , 24/17",
+     "downaug 4th, updim 5th",
+     "vA4, ^d5",
+     "vG#, ^Ab",
+     "comma-narrow aug 4th, comma-wide dim 5th",
+     "kA4, Kd5",
+     "kG#, KAb",
+     "po/shu",
+     "seh"
+    ],
+    [
+     "24",
+     "626.1",
+     "10/7 , 13/9 , 23/16",
+     "aug 4th, dupdim 5th",
+     "A4, ^^d5",
+     "G#, ^^Ab",
+     "augmented 4th, classic diminished 5th",
+     "A4, KKd5",
+     "G#, KKAb",
+     "pa/shi",
+     "se"
+    ],
+    [
+     "25",
+     "652.2",
+     "16/11",
+     "dud 5th",
+     "vv5",
+     "vvA",
+     "super augmented 4th, unter 5th",
+     "SA4, u5",
+     "SG#, uA",
+     "pu/si",
+     "su"
+    ],
+    [
+     "26",
+     "678.3",
+     "40/27 , 34/23",
+     "down 5th",
+     "v5",
+     "vA",
+     "comma-narrow 5th",
+     "k5",
+     "kA",
+     "so",
+     "sih"
+    ],
+    [
+     "27",
+     "704.3",
+     "3/2",
+     "perfect 5th",
+     "P5",
+     "A",
+     "perfect 5th",
+     "P5",
+     "A",
+     "sa",
+     "sol"
+    ],
+    [
+     "28",
+     "730.4",
+     "32/21 , 26/17",
+     "up 5th",
+     "^5",
+     "^A",
+     "super 5th",
+     "S5",
+     "SA",
+     "su",
+     "si"
+    ],
+    [
+     "29",
+     "756.5",
+     "14/9 , 20/13 , 17/11",
+     "downminor 6th",
+     "vm6",
+     "vBb",
+     "subminor 6th",
+     "sm6",
+     "sBb",
+     "flo",
+     "lo"
+    ],
+    [
+     "30",
+     "782.6",
+     "11/7",
+     "minor 6th",
+     "m6",
+     "Bb",
+     "minor 6th",
+     "m6",
+     "Bb",
+     "fla",
+     "leh"
+    ],
+    [
+     "31",
+     "808.7",
+     "8/5",
+     "upminor 6th",
+     "^m6",
+     "^Bb",
+     "classic minor 6th",
+     "Km6",
+     "KBb",
+     "flu",
+     "le"
+    ],
+    [
+     "32",
+     "834.8",
+     "13/8 , 21/13 , 34/21",
+     "dupminor 6th",
+     "^^m6",
+     "^^Bb",
+     "lesser neutral 6th",
+     "n6",
+     "UBb",
+     "fli",
+     "lu [ note 2 ]"
+    ],
+    [
+     "33",
+     "860.9",
+     "18/11 , 28/17 , 23/14",
+     "dudmajor 6th",
+     "vvM6",
+     "vvB",
+     "greater neutral 6th",
+     "N6",
+     "uB",
+     "li",
+     "luh [ note 3 ]"
+    ],
+    [
+     "34",
+     "887.0",
+     "5/3",
+     "downmajor 6th",
+     "vM6",
+     "vB",
+     "classic major 6th",
+     "kM6",
+     "kB",
+     "lo",
+     "la"
+    ],
+    [
+     "35",
+     "913.0",
+     "22/13 , 17/10",
+     "major 6th",
+     "M6",
+     "B",
+     "major 6th",
+     "M6",
+     "B",
+     "la",
+     "laa"
+    ],
+    [
+     "36",
+     "939.1",
+     "12/7",
+     "upmajor 6th",
+     "^M6",
+     "^B",
+     "supermajor 6th",
+     "SM6",
+     "SB",
+     "lu",
+     "li"
+    ],
+    [
+     "37",
+     "965.2",
+     "7/4 , 40/23",
+     "downminor 7th",
+     "vm7",
+     "vC",
+     "subminor 7th",
+     "sm7",
+     "sC",
+     "tho",
+     "ta"
+    ],
+    [
+     "38",
+     "991.3",
+     "16/9 , 23/13",
+     "minor 7th",
+     "m7",
+     "C",
+     "minor 7th",
+     "m7",
+     "C",
+     "tha",
+     "teh"
+    ],
+    [
+     "39",
+     "1017.4",
+     "9/5",
+     "upminor 7th",
+     "^m7",
+     "^C",
+     "classic/comma-wide minor 7th",
+     "Km7",
+     "KC",
+     "thu",
+     "te"
+    ],
+    [
+     "40",
+     "1043.5",
+     "11/6 , 20/11 , 42/23",
+     "dupminor 7th",
+     "^^m7",
+     "^^C",
+     "lesser neutral 7th, sub diminished 8ve",
+     "n7, sd8",
+     "UC, sDb",
+     "thi",
+     "tu [ note 2 ]"
+    ],
+    [
+     "41",
+     "1069.6",
+     "24/13 , 13/7 , 28/15",
+     "dudmajor 7th",
+     "vvM7",
+     "vvC#",
+     "greater neutral 7th, diminished 8ve",
+     "N7, d8",
+     "uC#, Db",
+     "ti",
+     "tuh [ note 3 ]"
+    ],
+    [
+     "42",
+     "1095.7",
+     "15/8 , 32/17 , 17/9",
+     "downmajor 7th",
+     "vM7",
+     "vC#",
+     "classic major 7th, comma-wide dim 8ve",
+     "kM7, Kd8",
+     "kC#, KDb",
+     "to",
+     "ti"
+    ],
+    [
+     "43",
+     "1121.7",
+     "48/25 , 40/21 , 21/11 , 23/12 , 44/23",
+     "major 7th",
+     "M7",
+     "C#",
+     "major 7th, classic diminished 8ve",
+     "M7, KKd8",
+     "C#, KKDb",
+     "ta",
+     "taa"
+    ],
+    [
+     "44",
+     "1147.8",
+     "27/14 , 35/18 , 64/33",
+     "upmajor 7th",
+     "^M7",
+     "^C#",
+     "supermajor 7th, unter 8ve",
+     "SM7, u8",
+     "SC#, uD",
+     "tu",
+     "to"
+    ],
+    [
+     "45",
+     "1173.9",
+     "160/81 , 63/32 , 96/49",
+     "down 8ve",
+     "v8",
+     "vD",
+     "comma-narrow 8ve, sub 8ve",
+     "k8/s8",
+     "kD, sD",
+     "do",
+     "da"
+    ],
+    [
+     "46",
+     "1200.0",
+     "2/1",
+     "perfect 8ve",
+     "P8",
+     "D",
+     "perfect 8ve",
+     "P8",
+     "D",
+     "da",
+     "do"
+    ]
+   ],
+   "title": "Intervals"
+  },
+  {
+   "headers": [
+    "Quality",
+    "Color",
+    "Monzo Format",
+    "Examples"
+   ],
+   "rows": [
+    [
+     "downminor",
+     "zo",
+     "[a, b, 0, 1>",
+     "7/6, 7/4"
+    ],
+    [
+     "minor",
+     "fourthward wa",
+     "[a, b>, b < −1",
+     "32/27, 16/9"
+    ],
+    [
+     "upminor",
+     "gu",
+     "[a, b, −1>",
+     "6/5, 9/5"
+    ],
+    [
+     "dupminor",
+     "ilo",
+     "[a, b, 0, 0, 1>",
+     "11/9, 11/6"
+    ],
+    [
+     "dudmajor",
+     "lu",
+     "[a, b, 0, 0, −1>",
+     "12/11, 18/11"
+    ],
+    [
+     "downmajor",
+     "yo",
+     "[a, b, 1>",
+     "5/4, 5/3"
+    ],
+    [
+     "major",
+     "fifthward wa",
+     "[a, b>, b > 1",
+     "9/8, 27/16"
+    ],
+    [
+     "upmajor",
+     "ru",
+     "[a, b, 0, −1>",
+     "9/7, 12/7"
+    ]
+   ],
+   "title": "Interval quality and chord names in color notation"
+  },
+  {
+   "headers": [
+    "Color of the 3rd",
+    "JI Chord",
+    "Notes as Edosteps",
+    "Notes of C Chord",
+    "Written Name",
+    "Spoken Name"
+   ],
+   "rows": [
+    [
+     "zo",
+     "6:7:9",
+     "0–10–27",
+     "C vEb G",
+     "Cvm",
+     "C downminor"
+    ],
+    [
+     "gu",
+     "10:12:15",
+     "0–12–27",
+     "C ^Eb G",
+     "C^m",
+     "C upminor"
+    ],
+    [
+     "ilo",
+     "18:22:27",
+     "0–13–27",
+     "C ^^Eb G",
+     "C^^m",
+     "C dupminor"
+    ],
+    [
+     "lu",
+     "22:27:33",
+     "0–14–27",
+     "C vvE G",
+     "Cvv",
+     "C dudmajor or C dud"
+    ],
+    [
+     "yo",
+     "4:5:6",
+     "0–15–27",
+     "C vE G",
+     "Cv",
+     "C downmajor or C down"
+    ],
+    [
+     "ru",
+     "14:18:21",
+     "0–17–27",
+     "C ^E G",
+     "C^",
+     "C upmajor or C up"
+    ]
+   ],
+   "title": "Interval quality and chord names in color notation"
+  },
+  {
+   "headers": [
+    "Step offset",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12"
+   ],
+   "rows": [
+    [
+     "Sharp symbol",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "Flat symbol",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "title": "Ups and downs notation"
+  },
+  {
+   "headers": [
+    "Step offset",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12"
+   ],
+   "rows": [
+    [
+     "Sharp symbol",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "Flat symbol",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "title": "Ups and downs notation"
+  },
+  {
+   "headers": [
+    "Interval and complement",
+    "Error (abs, ¢ )",
+    "Error (rel, % )"
+   ],
+   "rows": [
+    [
+     "1/1, 2/1",
+     "0.000",
+     "0.0"
+    ],
+    [
+     "11/7, 14/11",
+     "0.117",
+     "0.4"
+    ],
+    [
+     "9/5, 10/9",
+     "0.205",
+     "0.8"
+    ],
+    [
+     "17/16, 32/17",
+     "0.608",
+     "2.3"
+    ],
+    [
+     "13/7, 14/13",
+     "2.137",
+     "8.2"
+    ],
+    [
+     "13/11, 22/13",
+     "2.253",
+     "8.6"
+    ],
+    [
+     "3/2, 4/3",
+     "2.393",
+     "9.2"
+    ],
+    [
+     "5/3, 6/5",
+     "2.598",
+     "10.0"
+    ],
+    [
+     "17/11, 22/17",
+     "2.884",
+     "11.1"
+    ],
+    [
+     "17/12, 24/17",
+     "3.000",
+     "11.5"
+    ],
+    [
+     "17/14, 28/17",
+     "3.001",
+     "11.5"
+    ],
+    [
+     "11/8, 16/11",
+     "3.492",
+     "13.4"
+    ],
+    [
+     "7/4, 8/7",
+     "3.609",
+     "13.8"
+    ],
+    [
+     "9/8, 16/9",
+     "4.786",
+     "18.3"
+    ],
+    [
+     "5/4, 8/5",
+     "4.991",
+     "19.1"
+    ],
+    [
+     "17/13, 26/17",
+     "5.137",
+     "19.7"
+    ],
+    [
+     "17/9, 18/17",
+     "5.393",
+     "20.7"
+    ],
+    [
+     "17/10, 20/17",
+     "5.598",
+     "21.5"
+    ],
+    [
+     "13/8, 16/13",
+     "5.745",
+     "22.0"
+    ],
+    [
+     "11/6, 12/11",
+     "5.885",
+     "22.6"
+    ],
+    [
+     "7/6, 12/7",
+     "6.001",
+     "23.0"
+    ],
+    [
+     "15/8, 16/15",
+     "7.383",
+     "28.3"
+    ],
+    [
+     "17/15, 30/17",
+     "7.991",
+     "30.6"
+    ],
+    [
+     "13/12, 24/13",
+     "8.138",
+     "31.2"
+    ],
+    [
+     "11/9, 18/11",
+     "8.278",
+     "31.7"
+    ],
+    [
+     "9/7, 14/9",
+     "8.394",
+     "32.2"
+    ],
+    [
+     "11/10, 20/11",
+     "8.482",
+     "32.5"
+    ],
+    [
+     "7/5, 10/7",
+     "8.599",
+     "33.0"
+    ],
+    [
+     "13/9, 18/13",
+     "10.531",
+     "40.4"
+    ],
+    [
+     "13/10, 20/13",
+     "10.736",
+     "41.2"
+    ],
+    [
+     "15/11, 22/15",
+     "10.875",
+     "41.7"
+    ],
+    [
+     "15/14, 28/15",
+     "10.992",
+     "42.1"
+    ],
+    [
+     "15/13, 26/15",
+     "12.958",
+     "49.7"
+    ]
+   ],
+   "title": "17-odd-limit interval mappings"
+  },
+  {
+   "headers": [
+    "Interval and complement",
+    "Error (abs, ¢ )",
+    "Error (rel, % )"
+   ],
+   "rows": [
+    [
+     "1/1, 2/1",
+     "0.000",
+     "0.0"
+    ],
+    [
+     "11/7, 14/11",
+     "0.117",
+     "0.4"
+    ],
+    [
+     "9/5, 10/9",
+     "0.205",
+     "0.8"
+    ],
+    [
+     "17/16, 32/17",
+     "0.608",
+     "2.3"
+    ],
+    [
+     "13/7, 14/13",
+     "2.137",
+     "8.2"
+    ],
+    [
+     "13/11, 22/13",
+     "2.253",
+     "8.6"
+    ],
+    [
+     "3/2, 4/3",
+     "2.393",
+     "9.2"
+    ],
+    [
+     "5/3, 6/5",
+     "2.598",
+     "10.0"
+    ],
+    [
+     "17/11, 22/17",
+     "2.884",
+     "11.1"
+    ],
+    [
+     "17/12, 24/17",
+     "3.000",
+     "11.5"
+    ],
+    [
+     "17/14, 28/17",
+     "3.001",
+     "11.5"
+    ],
+    [
+     "11/8, 16/11",
+     "3.492",
+     "13.4"
+    ],
+    [
+     "7/4, 8/7",
+     "3.609",
+     "13.8"
+    ],
+    [
+     "9/8, 16/9",
+     "4.786",
+     "18.3"
+    ],
+    [
+     "5/4, 8/5",
+     "4.991",
+     "19.1"
+    ],
+    [
+     "17/13, 26/17",
+     "5.137",
+     "19.7"
+    ],
+    [
+     "17/9, 18/17",
+     "5.393",
+     "20.7"
+    ],
+    [
+     "17/10, 20/17",
+     "5.598",
+     "21.5"
+    ],
+    [
+     "13/8, 16/13",
+     "5.745",
+     "22.0"
+    ],
+    [
+     "11/6, 12/11",
+     "5.885",
+     "22.6"
+    ],
+    [
+     "7/6, 12/7",
+     "6.001",
+     "23.0"
+    ],
+    [
+     "15/8, 16/15",
+     "7.383",
+     "28.3"
+    ],
+    [
+     "17/15, 30/17",
+     "7.991",
+     "30.6"
+    ],
+    [
+     "13/12, 24/13",
+     "8.138",
+     "31.2"
+    ],
+    [
+     "11/9, 18/11",
+     "8.278",
+     "31.7"
+    ],
+    [
+     "9/7, 14/9",
+     "8.394",
+     "32.2"
+    ],
+    [
+     "11/10, 20/11",
+     "8.482",
+     "32.5"
+    ],
+    [
+     "7/5, 10/7",
+     "8.599",
+     "33.0"
+    ],
+    [
+     "13/9, 18/13",
+     "10.531",
+     "40.4"
+    ],
+    [
+     "13/10, 20/13",
+     "10.736",
+     "41.2"
+    ],
+    [
+     "15/11, 22/15",
+     "10.875",
+     "41.7"
+    ],
+    [
+     "15/14, 28/15",
+     "10.992",
+     "42.1"
+    ],
+    [
+     "15/13, 26/15",
+     "13.129",
+     "50.3"
+    ]
+   ],
+   "title": "17-odd-limit interval mappings"
+  },
+  {
+   "headers": [
+    "Interval",
+    "Closing Error",
+    "Consistency",
+    "1\\1",
+    "1\\2"
+   ],
+   "rows": [
+    [
+     "68/65",
+     "25.9%",
+     "Normal",
+     "Valentine",
+     "Semivalentine"
+    ],
+    [
+     "10/9",
+     "36.1%",
+     "Normal",
+     "Mitonic",
+     "Unidec , hendec"
+    ],
+    [
+     "31/24",
+     "70.2%",
+     "Weak",
+     "Sensible , sensi add-31",
+     "Bison add-31, bisensi add-31"
+    ]
+   ],
+   "title": "Consistent circles"
+  },
+  {
+   "headers": [
+    "Interval",
+    "Closing Error",
+    "Consistency",
+    "Temperaments"
+   ],
+   "rows": [
+    [
+     "17/16",
+     "53.5%",
+     "Weak",
+     "Diaschismic"
+    ],
+    [
+     "23/21",
+     "85.7%",
+     "Weak",
+     "Bison"
+    ],
+    [
+     "44/39",
+     "12.3%",
+     "Super-strong",
+     "Abigail"
+    ],
+    [
+     "21/17",
+     "53.6%",
+     "Weak",
+     "?"
+    ],
+    [
+     "14/11",
+     "10.2%",
+     "Super-strong",
+     "?"
+    ],
+    [
+     "21/16",
+     "107%",
+     "Sub-weak",
+     "?"
+    ]
+   ],
+   "title": "Consistent circles"
+  },
+  {
+   "headers": [
+    "Subgroup",
+    "Comma list",
+    "Mapping",
+    "Optimal 8ve stretch (¢)",
+    "Tuning error"
+   ],
+   "rows": [
+    [
+     "Absolute (¢)",
+     "Relative (%)"
+    ],
+    [
+     "2.3",
+     "[ 73 -46 ⟩",
+     "[ ⟨ 46 73 ] ]",
+     "−0.755",
+     "0.75",
+     "2.89"
+    ],
+    [
+     "2.3.5",
+     "2048/2025, 78732/78125",
+     "[ ⟨ 46 73 107 ] ]",
+     "−1.219",
+     "0.90",
+     "3.45"
+    ],
+    [
+     "2.3.5.7",
+     "126/125, 245/243, 1029/1024",
+     "[ ⟨ 46 73 107 129 ] ]",
+     "−0.595",
+     "1.34",
+     "5.12"
+    ],
+    [
+     "2.3.5.7.11",
+     "121/120, 126/125, 176/175, 245/243",
+     "[ ⟨ 46 73 107 129 159 ] ]",
+     "−0.274",
+     "1.36",
+     "5.20"
+    ],
+    [
+     "2.3.5.7.11.13",
+     "91/90, 121/120, 169/168, 176/175, 245/243",
+     "[ ⟨ 46 73 107 129 159 170 ] ]",
+     "+0.030",
+     "1.41",
+     "5.42"
+    ],
+    [
+     "2.3.5.7.11.13.17",
+     "91/90, 121/120, 154/153, 169/168, 176/175, 245/243",
+     "[ ⟨ 46 73 107 129 159 170 188 ] ]",
+     "+0.047",
+     "1.31",
+     "5.02"
+    ],
+    [
+     "2.3.5.7.11.13.17.23",
+     "91/90, 121/120, 154/153, 169/168, 176/175, 208/207, 231/230",
+     "[ ⟨ 46 73 107 129 159 170 188 208 ] ]",
+     "+0.101",
+     "1.23",
+     "4.72"
+    ]
+   ],
+   "title": "Regular temperament properties"
+  },
+  {
+   "headers": [
+    "Prime limit",
+    "Ratio [ note 4 ]",
+    "Monzo",
+    "Cents",
+    "Color name",
+    "Name(s)"
+   ],
+   "rows": [
+    [
+     "5",
+     "(16 digits)",
+     "[ 24 1 -11 ⟩",
+     "52.50",
+     "Salegu",
+     "Magus comma"
+    ],
+    [
+     "5",
+     "(14 digits)",
+     "[ 13 5 -9 ⟩",
+     "32.95",
+     "Satritrigu",
+     "Valentine comma"
+    ],
+    [
+     "5",
+     "2048/2025",
+     "[ 11 -4 -2 ⟩",
+     "19.55",
+     "Sagugu",
+     "Diaschisma"
+    ],
+    [
+     "5",
+     "78732/78125",
+     "[ 2 9 -7 ⟩",
+     "13.40",
+     "Sepgu",
+     "Sensipent comma"
+    ],
+    [
+     "5",
+     "(14 digits)",
+     "[ 9 -13 5 ⟩",
+     "6.15",
+     "Saquinyo",
+     "Amity comma"
+    ],
+    [
+     "7",
+     "686/675",
+     "[ 1 -3 -2 3 ⟩",
+     "27.99",
+     "Trizo-agugu",
+     "Senga"
+    ],
+    [
+     "7",
+     "245/243",
+     "[ 0 -5 1 2 ⟩",
+     "14.19",
+     "Zozoyo",
+     "Sensamagic comma"
+    ],
+    [
+     "7",
+     "126/125",
+     "[ 1 2 -3 1 ⟩",
+     "13.80",
+     "Zotrigu",
+     "Starling comma"
+    ],
+    [
+     "7",
+     "1029/1024",
+     "[ -10 1 0 3 ⟩",
+     "8.43",
+     "Latrizo",
+     "Gamelisma"
+    ],
+    [
+     "7",
+     "5120/5103",
+     "[ 10 -6 1 -1 ⟩",
+     "5.76",
+     "Saruyo",
+     "Hemifamity comma, aberschisma"
+    ],
+    [
+     "7",
+     "(20 digits)",
+     "[ 31 -6 -2 -6 ⟩",
+     "2.69",
+     "Sasa-tribiru-agugu",
+     "Pessoalisma"
+    ],
+    [
+     "7",
+     "4375/4374",
+     "[ -1 -7 4 1 ⟩",
+     "0.40",
+     "Zoquadyo",
+     "Ragisma"
+    ],
+    [
+     "11",
+     "121/120",
+     "[ -3 -1 -1 0 2 ⟩",
+     "14.37",
+     "Lologu",
+     "Biyatisma"
+    ],
+    [
+     "11",
+     "176/175",
+     "[ 4 0 -2 -1 1 ⟩",
+     "9.86",
+     "Lorugugu",
+     "Valinorsma"
+    ],
+    [
+     "11",
+     "896/891",
+     "[ 7 -4 0 1 -1 ⟩",
+     "9.69",
+     "Saluzo",
+     "Pentacircle comma"
+    ],
+    [
+     "11",
+     "385/384",
+     "[ -7 -1 1 1 1 ⟩",
+     "4.50",
+     "Lozoyo",
+     "Keenanisma"
+    ],
+    [
+     "11",
+     "441/440",
+     "[ -3 2 -1 2 -1 ⟩",
+     "3.93",
+     "Luzozogu",
+     "Werckisma"
+    ],
+    [
+     "13",
+     "91/90",
+     "[ -1 -2 -1 1 0 1 ⟩",
+     "19.13",
+     "Thozogu",
+     "Superleap comma, biome comma"
+    ],
+    [
+     "13",
+     "169/168",
+     "[ -3 -1 0 -1 0 2 ⟩",
+     "10.27",
+     "Thothoru",
+     "Buzurgisma, dhanvantarisma"
+    ],
+    [
+     "13",
+     "196/195",
+     "[ 2 -1 -1 2 0 -1 ⟩",
+     "8.86",
+     "Thuzozogu",
+     "Mynucuma"
+    ],
+    [
+     "13",
+     "507/500",
+     "[ -2 1 -3 0 0 2 ⟩",
+     "24.07",
+     "Thothotrigu",
+     ""
+    ],
+    [
+     "13",
+     "351/350",
+     "[ -1 3 -2 -1 0 1 ⟩",
+     "4.94",
+     "Thorugugu",
+     "Ratwolfsma"
+    ],
+    [
+     "13",
+     "352/351",
+     "[ 5 -3 0 0 1 -1 ⟩",
+     "4.93",
+     "Thulo",
+     "Minor minthma"
+    ],
+    [
+     "17",
+     "256/255",
+     "[ 8 -1 -1 0 0 0 -1 ⟩",
+     "6.78",
+     "Sugu",
+     "Charisma, septendecimal kleisma"
+    ],
+    [
+     "17",
+     "289/288",
+     "[ -5 -2 0 0 0 0 2 ⟩",
+     "6.00",
+     "Soso",
+     "Semitonisma"
+    ]
+   ],
+   "title": "Commas"
+  },
+  {
+   "headers": [
+    "Periods per 8ve",
+    "Generator",
+    "Cents",
+    "Temperaments",
+    "MOS scales",
+    "L:s"
+   ],
+   "rows": [
+    [
+     "1",
+     "1\\46",
+     "26.087",
+     "Sfourth",
+     "",
+     ""
+    ],
+    [
+     "3\\46",
+     "78.261",
+     "Valentine",
+     "1L 14s (15-tone) 15L 1s (16-tone) 16L 15s (31-tone)",
+     "4:3 ~ quasi-equal 3:1 2:1 ~ QE"
+    ],
+    [
+     "5\\46",
+     "130.435",
+     "Twothirdtonic",
+     "1L 8s (9-tone) 9L 1s (10-tone) 9L 10s (19-tone) 9L 19s (28-tone) 9L 28s (37-tone)",
+     "6:5 ~ QE 5:1 4:1 3:1 2:1 ~ QE"
+    ],
+    [
+     "7\\46",
+     "182.609",
+     "Minortone / mitonic",
+     "1L 5s (6-tone) 6L 1s (7-tone) 7L 6s (13-tone) 13L 7s (20-tone) 13L 20s (33-tone)",
+     "11:7 7:4 4:3 ~ QE 3:1 2:1 ~ QE"
+    ],
+    [
+     "9\\46",
+     "234.783",
+     "Rodan",
+     "1L 4s (5-tone) 1L 5s (6-tone) 5L 6s (11-tone) 5L 11s (16-tone) 5L 16s (21-tone) 5L 21s (26-tone) 5L 26s (31-tone) 5L 31s (36-tone) 5L 36s (41-tone)",
+     "10:9 ~QE 9:1 8:1 7:1 6:1 5:1 4:1 3:1 2:1 ~ QE"
+    ],
+    [
+     "11\\46",
+     "286.957",
+     "Gamity",
+     "4L 1s (5-tone) 4L 5s (9-tone) 4L 9s (13-tone) 4L 13s (17-tone) 4L 17s (21-tone) 21L 4s (25-tone)",
+     "11:2 9:2 7:2 5:2 3:2 ~ QE, Golden 2:1 ~ QE"
+    ],
+    [
+     "13\\46",
+     "339.130",
+     "Amity / hitchcock",
+     "4L 3s (7-tone) 7L 4s (11-tone) 7L 11s (18-tone) 7L 18s (25-tone) 7L 25s (32-tone) 7L 32s (39-tone)",
+     "7:6 ~ QE 6:1 5:1 4:1 3:1 2:1 ~ QE"
+    ],
+    [
+     "15\\46",
+     "391.304",
+     "Magus / amigo",
+     "1L 2s (3-tone) 3L 1s (4-tone) 3L 4s (7-tone) 3L 7s (10-tone) 3L 10s (13-tone) 3L 13s (16-tone) 3L 16s (19-tone) 3L 19s (21-tone) 3L 21s (24-tone) 3L 24s (27-tone) 3L 27s (30-tone) 3L 30s (33-tone) 3L 33s (36-tone) 3L 36s (39-tone) 3L 39s (42-tone)",
+     "16:15 ~ QE 15:1 14:1 13:1 12:1 11:1 10:1 9:1 8:1 7:1 6:1 5:1 4:1 3:1 2:1 ~ QE"
+    ],
+    [
+     "17\\46",
+     "443.478",
+     "Sensi",
+     "3L 2s (5-tone) 3L 5s (8-tone) 8L 3s (11-tone) 8L 11s (19-tone) 19L 8s (27-tone)",
+     "12:5 7:5 5:2 3:2 ~ QE, Golden 2:1"
+    ],
+    [
+     "19\\46",
+     "495.652",
+     "Leapday",
+     "2L 3s (5-tone) 5L 2s (7-tone) 5L 7s (12-tone) 12L 5s (17-tone) 17L 12s (29-tone)",
+     "11:8 8:3 5:3 ~ Golden 3:2 ~ QE, Golden 2:1 ~ QE"
+    ],
+    [
+     "21\\46",
+     "547.826",
+     "Heinz",
+     "2L 3s (5-tone) 2L 5s (7-tone) 2L 7s (9-tone) 2L 9s (11-tone) 11L 2s (13-tone) 11L 13s (24-tone) 11L 24s (35-tone)",
+     "17:4 13:4 9:4 5:4 ~ QE 4:1 3:1 2:1 ~ QE"
+    ],
+    [
+     "2",
+     "1\\46",
+     "26.087",
+     "Ketchup",
+     "",
+     ""
+    ],
+    [
+     "2\\46",
+     "52.174",
+     "Shrutar",
+     "2L 2s (4-tone) 2L 4s (6-tone) 2L 6s (8-tone) 2L 8s (10-tone) 2L 10s (12-tone) 2L 12s (14-tone) 2L 14s (16-tone) 2L 16s (18-tone) 2L 18s (20-tone) 2L 20s (22-tone) 22L 2s (24-tone)",
+     "21:2 19:2 17:2 15:2 13:2 11:2 9:2 7:2 5:2 3:2 ~ QE, Golden 2:1 ~ QE"
+    ],
+    [
+     "3\\46",
+     "78.261",
+     "Semivalentine",
+     "2L 2s (4-tone) 2L 4s (6-tone) 2L 6s (8-tone) 2L 8s (10-tone) 2L 10s (12-tone) 2L 12s (14-tone) 14L 2s (16-tone) 16L 14s (30-tone)",
+     "20:3 17:3 14:3 11:3 8:3 5:3 ~ Golden 3:2 ~ QE, Golden 2:1 ~ QE"
+    ],
+    [
+     "4\\46",
+     "104.348",
+     "Srutal / diaschismic",
+     "2L 2s (4-tone) 2L 4s (6-tone) 2L 6s (8-tone) 2L 8s (10-tone) 10L 2s (12-tone) 12L 10s (22-tone) 12L 22s (34-tone)",
+     "19:4 15:4 11:4 7:4 4:3 ~ QE 3:1 2:1 ~ QE"
+    ],
+    [
+     "5\\46",
+     "130.435",
+     "",
+     "2L 2s (4-tone) 2L 4s (6-tone) 2L 6s (8-tone) 8L 2s (10-tone) 8L 10s (18-tone) 18L 10s (28-tone)",
+     "18:5 13:5 8:5 ~ Golden 5:3 ~ Golden 3:2 ~ QE, Golden 2:1 ~ QE"
+    ],
+    [
+     "6\\46",
+     "156.522",
+     "Bison",
+     "2L 2s (4-tone) 2L 4s (6-tone) 6L 2s (8-tone) 8L 6s (14-tone) 8L 14s (22-tone) 8L 22s (30-tone) 8L 30s (38-tone",
+     "17:6 11:6 6:5 ~ QE 5:1 4:1 3:1 2:1 ~ QE"
+    ],
+    [
+     "7\\46",
+     "182.609",
+     "Unidec / hendec",
+     "2L 2s (4-tone) 2L 4s (6-tone) 6L 2s (8-tone) 6L 8s (14-tone) 6L 14s (20-tone) 20L 6s (26-tone)",
+     "16:7 9:7 7:2 5:2 3:2 ~ QE, Golden 2:1 ~ QE"
+    ],
+    [
+     "8\\46",
+     "208.696",
+     "Abigail",
+     "2L 2s (4-tone) 4L 2s (6-tone) 6L 2s (8-tone) 6L 8s (14-tone) 6L 14s (20-tone) 6L 20s (26-tone) 6L 26s (32-tone) 6L 32s (38-tone) 6L 38s (44-tone)",
+     "15:8 8:7 ~ QE 8:1 7:1 6:1 5:1 4:1 3:1 2:1 ~ QE"
+    ],
+    [
+     "9\\46",
+     "234.783",
+     "Echidnic",
+     "2L 2s (4-tone) 4L 2s (6-tone) 6L 4s (10-tone) 10L 6s (16-tone) 10L 16s (26-tone) 10L 26s (36-tone)",
+     "14:9 9:5 5:4 ~ QE 4:1 3:1 2:1 ~ QE"
+    ],
+    [
+     "10\\46",
+     "260.87",
+     "Bamity",
+     "2L 2s (4-tone) 4L 2s (6-tone) 4L 6s (10-tone) 4L 10s (14-tone) 14L 4s (18-tone) 14L 18s (32-tone)",
+     "13:10 10:3 7:3 4:3 ~ QE 3:1 2:1 ~ QE"
+    ],
+    [
+     "11\\46",
+     "286.957",
+     "Vines",
+     "2L 2s (4-tone) 4L 2s (6-tone) 4L 6s (10-tone) 4L 10s (14-tone) 4L 14s (18-tone) 4L 18s (22-tone) 4L 22s (26-tone) 4L 26s (30-tone) 4L 30s (34-tone) 4L 34s (38-tone) 4L 38s (42-tone)",
+     "12:11 ~ QE 11:1 10:1 9:1 8:1 7:1 6:1 5:1 4:1 3:1 2:1 ~ QE"
+    ],
+    [
+     "23",
+     "1\\46",
+     "26.087",
+     "Icositritonic",
+     "",
+     ""
+    ]
+   ],
+   "title": "Rank-2 temperaments"
+  },
+  {
+   "headers": [
+    "Harmonic",
+    "Note (starting from C)"
+   ],
+   "rows": [
+    [
+     "1",
+     "C"
+    ],
+    [
+     "3",
+     "G"
+    ],
+    [
+     "5",
+     "E⁠ ⁠"
+    ],
+    [
+     "7",
+     "G𝄪, B⁠ ⁠"
+    ],
+    [
+     "9",
+     "D"
+    ],
+    [
+     "11",
+     "E♯, F⁠ ⁠"
+    ],
+    [
+     "13",
+     "G♯, A⁠ ⁠"
+    ],
+    [
+     "15",
+     "B⁠ ⁠"
+    ]
+   ],
+   "title": "Harmonic scales"
+  }
+ ]
+}

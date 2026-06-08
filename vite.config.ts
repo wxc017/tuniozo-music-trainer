@@ -100,7 +100,7 @@ function demucsPlugin(): Plugin {
           }
         }
         const have = listExistingStems(dir);
-        const need = (model === "htdemucs_6s" || model === "ensemble_6s") ? 6 : model === "demucs" ? 4 : 2;
+        const need = (model === "htdemucs_6s" || model === "ensemble_6s") ? 6 : (model === "demucs" || model === "demucs_ft") ? 4 : 2;
         if (!force && have.length >= need) {
           send({ line: `Cached: ${have.length} stems already at ${path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/")}` });
           send({ done: true, ok: true, cached: true, dir: path.relative(PUBLIC_DIR, dir).replace(/\\/g, "/"), stems: have });
@@ -145,7 +145,7 @@ function demucsPlugin(): Plugin {
         try { parsed = JSON.parse(body || "{}"); } catch { res.statusCode = 400; res.end(JSON.stringify({ ok: false, error: "bad json" })); return; }
         const abs = resolveAudio(parsed.audio || "");
         if (!abs || !fs.existsSync(abs)) { res.statusCode = 404; res.end(JSON.stringify({ ok: false, error: "audio not found" })); return; }
-        const model = parsed.model || "htdemucs_6s";
+        const model = parsed.model || "demucs";
         const force = !!parsed.force;
         const send = openNdjsonStream(res);
         await streamSplit(abs, model, force, send, res);
@@ -168,7 +168,7 @@ function demucsPlugin(): Plugin {
         if (req.method !== "POST") return next();
         const reqUrl = new URL(req.url ?? "", `http://${req.headers.host || "localhost"}`);
         const rawName = reqUrl.searchParams.get("name") || "upload.mp3";
-        const model = reqUrl.searchParams.get("model") || "htdemucs_6s";
+        const model = reqUrl.searchParams.get("model") || "demucs";
         const force = reqUrl.searchParams.get("force") === "true";
         // Restrict the filename to safe characters + length so it can't escape
         // the uploads dir or land at a path that breaks the splitter CLI.
@@ -245,6 +245,12 @@ export default defineConfig({
   },
   server: {
     port,
+    // Pin the origin. Without strictPort, a busy port makes Vite silently
+    // fall back to 3001/3002/… — a different origin — which orphans the
+    // Local Folder Sync handle in IndexedDB (per-origin), dropping the user
+    // from "Reconnect folder" back to "Connect a folder". Fail loudly
+    // instead so the folder stays remembered across sessions.
+    strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
     fs: {
@@ -254,6 +260,7 @@ export default defineConfig({
   },
   preview: {
     port,
+    strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
   },

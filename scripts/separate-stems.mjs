@@ -40,7 +40,10 @@ function parseArgs(argv) {
 // names are what audio-separator downloads from UVR's HF repo.
 const MODEL_FILES = {
   mdx:        "UVR-MDX-NET-Inst_HQ_3.onnx",
-  demucs:     "htdemucs_ft.yaml",
+  // Plain single htdemucs — 4 stems, ~4x faster than the fine-tuned ensemble.
+  demucs:     "htdemucs.yaml",
+  // Fine-tuned 4-model ensemble — best quality, but ~4x slower.
+  demucs_ft:  "htdemucs_ft.yaml",
   htdemucs_6s: "htdemucs_6s.yaml",
   bs_roformer: "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
 };
@@ -48,6 +51,7 @@ const MODEL_FILES = {
 const MODEL_STEMS = {
   mdx:         ["Vocals", "Instrumental"],
   demucs:      ["Vocals", "Drums", "Bass", "Other"],
+  demucs_ft:   ["Vocals", "Drums", "Bass", "Other"],
   htdemucs_6s: ["Vocals", "Drums", "Bass", "Other", "Guitar", "Piano"],
   bs_roformer: ["Vocals", "Instrumental"],
 };

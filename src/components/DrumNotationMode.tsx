@@ -300,13 +300,13 @@ class DrumBuzzZ extends Annotation {
   constructor(small = false) {
     super("z");
     this.small = small;
-    this.setFont("Arial", small ? 10 : 18, "bold");
+    this.setFont("Arial", small ? 14 : 20, "bold");
   }
   override draw(): void {
     const note = (this as unknown as { checkAttachedNote: () => StaveNote }).checkAttachedNote();
     const ctx = this.checkContext();
     const stemX = (note as unknown as { getStemX?: () => number }).getStemX?.() ?? note.getAbsoluteX();
-    const size = this.small ? 10 : 18;
+    const size = this.small ? 14 : 20;
     let y: number;
     if (this.small) {
       // Center vertically in the gap between the chord's outer noteheads.
@@ -326,9 +326,13 @@ class DrumBuzzZ extends Annotation {
     const prevFont = ctx.getFont();
     const prevFill = (ctx as unknown as { fillStyle?: string }).fillStyle;
     ctx.setFont("Arial", size, "bold");
+    const zx = stemX - size / 3;   // center the "z" on the stem
+    // Dark halo (offset copies) so the "z" reads against noteheads, staff lines
+    // and coloured notes — not only the dark background where it can vanish.
+    ctx.setFillStyle("#0a0a0a");
+    for (const [dx, dy] of [[-1.5, 0], [1.5, 0], [0, -1.5], [0, 1.5]] as const) ctx.fillText("z", zx + dx, y + dy);
     ctx.setFillStyle("#ffffff");
-    // Center the "z" on the stem (half glyph width ~ size/3).
-    ctx.fillText("z", stemX - size / 3, y);
+    ctx.fillText("z", zx, y);
     ctx.setFont(prevFont);
     if (prevFill) ctx.setFillStyle(prevFill);
   }
@@ -401,6 +405,29 @@ function applyHihatOpen(vfn: StaveNote, mark: "open" | "closed" | undefined, key
 }
 
 // idGroups[i] = array of NoteData.ids for vfNotes[i] (chord = multiple ids)
+// Render-time duration clip: a note's DRAWN length is capped at the gap to the
+// next onset in its voice.  Without this, a note placed between two longer ones
+// (e.g. a 16th between two 8ths) overlaps the previous note and over-fills the
+// VexFlow voice — which garbles the whole bar.  Non-destructive: only the copy
+// passed to the renderer is shortened; the stored note.duration is untouched.
+function largestDurationWithin(gapSlots: number): Duration {
+  for (const d of DURATION_ORDER) if (DURATION_SLOTS[d] <= gapSlots) return d;
+  return "32";
+}
+function clipVoiceDurations(voiceNotes: NoteData[], totalSlots: number): NoteData[] {
+  const sorted = [...voiceNotes].sort((a, b) => a.startSlot - b.startSlot);
+  return sorted.map((n, i) => {
+    if (n.isRest) return n;
+    let nextSlot = totalSlots;
+    for (let j = i + 1; j < sorted.length; j++) {
+      if (sorted[j].startSlot > n.startSlot) { nextSlot = sorted[j].startSlot; break; }
+    }
+    const gap = nextSlot - n.startSlot;
+    if (gap <= 0 || noteSlots(n) <= gap) return n;     // fits — no clip
+    return { ...n, duration: largestDurationWithin(gap), dotted: false };
+  });
+}
+
 function buildVFNotes(
   _mIdx: number,
   mNotes: NoteData[],
@@ -774,8 +801,10 @@ function renderScore(
         // Kick lives on the F/4 or E/4 line.  Rests stay in the upper voice
         // (where rests normally sit on a drum staff).
         const isKickPitch = (p: string) => p.startsWith("f/4") || p.startsWith("e/4");
-        const kickNotes = mNotes.filter(n => !n.isRest && isKickPitch(n.pitch));
-        const otherNotes = mNotes.filter(n => n.isRest || !isKickPitch(n.pitch));
+        // Clip each voice's durations to the next onset so a finer note placed
+        // between two coarser ones can't overlap and over-fill the voice.
+        const kickNotes = clipVoiceDurations(mNotes.filter(n => !n.isRest && isKickPitch(n.pitch)), totalSlots);
+        const otherNotes = clipVoiceDurations(mNotes.filter(n => n.isRest || !isKickPitch(n.pitch)), totalSlots);
 
         const kickBuild = buildVFNotes(mIdx, kickNotes, totalSlots, vfClef, selectedIds, playingIds);
         const otherBuild = buildVFNotes(mIdx, otherNotes, totalSlots, vfClef, selectedIds, playingIds);
@@ -4517,6 +4546,7 @@ export default function DrumNotationMode({ controlledActiveId, onBack }: DrumNot
             <span><span className="text-[#aaa] font-mono">D</span> drag</span>
             <span><span className="text-[#aaa] font-mono">Z</span> buzz</span>
             <span><span className="text-[#aaa] font-mono">N</span> normal</span>
+            <span><span className="text-[#aaa] font-mono">O</span> open hat</span>
             <span><span className="text-[#aaa] font-mono">U</span>/<span className="text-[#aaa] font-mono">Y</span> stick R/L</span>
             <span><span className="text-[#aaa] font-mono">R</span> rest</span>
             <span><span className="text-[#aaa] font-mono">I</span> insert bar</span>

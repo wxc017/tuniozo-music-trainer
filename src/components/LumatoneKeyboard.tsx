@@ -1,10 +1,24 @@
-import { useMemo } from "react";
+import { useMemo, type MouseEvent } from "react";
 import { ComputedKey, HEX_RADIUS, LayoutResult } from "@/lib/lumatoneLayout";
 
 interface Props {
   layout: LayoutResult;
   highlightedPitches: Set<number>;
-  onKeyClick?: (key: ComputedKey) => void;
+  /** Light only these specific KEY INDICES (one instance per note) instead of
+   *  every key sharing a pitch class.  When set, it overrides highlightedPitches. */
+  litKeys?: Set<number>;
+  /** Pitch CLASSES (not absolute pitches) to render with a very dim glow —
+   *  e.g. the underlying scale shown faintly behind the lit chord tones.
+   *  Matched modulo `edo` so every octave of each scale degree lights. */
+  dimPitchClasses?: Set<number>;
+  edo?: number;
+  onKeyClick?: (key: ComputedKey, e: MouseEvent) => void;
+  /** Optional short text drawn in the middle of every key (e.g. interval suffix). */
+  labelOf?: (pitch: number) => string | undefined;
+  /** Pitch CLASS treated as the root — its keys get a bright outline. */
+  rootPitchClass?: number;
+  /** Pitch CLASSES to darken and unlabel (e.g. the ring you're not viewing). */
+  mutedPitchClasses?: Set<number>;
   /** SVG max-height in px.  Default 220 keeps the global header
    *  visualizer compact; pass a larger number (or null to remove
    *  the cap entirely) when embedding inside a tall column that
@@ -21,11 +35,14 @@ function hexPoints(cx: number, cy: number, r: number): string {
   return pts.join(" ");
 }
 
+// How much a lit chord node is brightened over its base key colour.
+const LIT_BOOST = 110;
+
 function lightenHex(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  return `rgb(${Math.min(255, r + 120)},${Math.min(255, g + 120)},${Math.min(255, b + 120)})`;
+  return `rgb(${Math.min(255, r + LIT_BOOST)},${Math.min(255, g + LIT_BOOST)},${Math.min(255, b + LIT_BOOST)})`;
 }
 
 function darkenHex(hex: string): string {
@@ -35,9 +52,29 @@ function darkenHex(hex: string): string {
   return `rgb(${Math.round(r * 0.28)},${Math.round(g * 0.28)},${Math.round(b * 0.28)})`;
 }
 
-export default function LumatoneKeyboard({ layout, highlightedPitches, onKeyClick, maxHeight = 220 }: Props) {
+// The scale wash: about 45% of the brightness of a lit chord node (which renders
+// as lightenHex(color)), so scale degrees read clearly below the chord tones.
+function dimHex(hex: string): string {
+  const lr = Math.min(255, parseInt(hex.slice(1, 3), 16) + LIT_BOOST);
+  const lg = Math.min(255, parseInt(hex.slice(3, 5), 16) + LIT_BOOST);
+  const lb = Math.min(255, parseInt(hex.slice(5, 7), 16) + LIT_BOOST);
+  return `rgb(${Math.round(lr * 0.45)},${Math.round(lg * 0.45)},${Math.round(lb * 0.45)})`;
+}
+
+function luminance(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, dimPitchClasses, edo, onKeyClick, labelOf, rootPitchClass, mutedPitchClasses, maxHeight = 220 }: Props) {
   const pad = 32;
-  const hasHighlight = highlightedPitches.size > 0;
+  const hasHighlight = (litKeys ?? highlightedPitches).size > 0;
+  const hasDim = !!dimPitchClasses && dimPitchClasses.size > 0;
+  // When something is lit OR a dim scale is shown, non-member keys darken so
+  // the (dim or full) highlights stand out.
+  const hasAny = hasHighlight || hasDim;
 
   const { viewBox } = useMemo(() => {
     const w = layout.maxX - layout.minX + pad * 2 + HEX_RADIUS * 2;
@@ -57,25 +94,58 @@ export default function LumatoneKeyboard({ layout, highlightedPitches, onKeyClic
         xmlns="http://www.w3.org/2000/svg"
       >
         {layout.keys.map((key, i) => {
-          const isLit = highlightedPitches.has(key.pitch);
-          const fill = isLit
-            ? lightenHex(key.color_hex)
-            : hasHighlight
-              ? darkenHex(key.color_hex)
-              : key.color_hex;
-          const stroke = isLit ? "#ffffff" : hasHighlight ? "#0d0d0d" : "#111111";
-          const strokeW = isLit ? 2.0 : 0.35;
+          const isLit = litKeys ? litKeys.has(i) : highlightedPitches.has(key.pitch);
+          const pc = hasDim && edo && edo > 0 ? ((key.pitch % edo) + edo) % edo : -1;
+          const isDim = !isLit && hasDim && dimPitchClasses!.has(pc);
+          const isMuted = edo != null && !!mutedPitchClasses
+            && mutedPitchClasses.has(((key.pitch % edo) + edo) % edo);
+          const fill = isMuted
+            ? darkenHex(key.color_hex)
+            : isLit
+              ? lightenHex(key.color_hex)
+              : isDim
+                ? dimHex(key.color_hex)
+                : hasAny
+                  ? darkenHex(key.color_hex)
+                  : key.color_hex;
+          const isRoot = !isMuted && edo != null && rootPitchClass != null
+            && ((key.pitch % edo) + edo) % edo === ((rootPitchClass % edo) + edo) % edo;
+          const stroke = isMuted ? "#0d0d0d" : isRoot ? "#ffffff" : isLit ? "#ffffff" : isDim ? "#3a3a3a" : hasAny ? "#0d0d0d" : "#111111";
+          const strokeW = isMuted ? 0.35 : isRoot ? 2.4 : isLit ? 2.0 : isDim ? 0.6 : 0.35;
+          const label = isMuted ? undefined : labelOf?.(key.pitch);
+          // lit keys are brightened, so use dark text on them; otherwise pick by base luminance
+          const textCol = isLit ? "#0a0a0a" : luminance(key.color_hex) > 140 ? "#0c0c0c" : "#f4f4f4";
 
           return (
-            <polygon
-              key={i}
-              points={hexPoints(key.x, key.y, HEX_RADIUS - 0.5)}
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeW}
-              style={{ cursor: onKeyClick ? "pointer" : "default", transition: "fill 0.18s, stroke 0.18s" }}
-              onClick={() => onKeyClick?.(key)}
-            />
+            <g key={i}>
+              <polygon
+                points={hexPoints(key.x, key.y, HEX_RADIUS - 0.5)}
+                fill={fill}
+                stroke={stroke}
+                strokeWidth={strokeW}
+                style={{ cursor: onKeyClick ? "pointer" : "default", transition: "fill 0.18s, stroke 0.18s" }}
+                onClick={(e) => onKeyClick?.(key, e)}
+              />
+              {label && (() => {
+                // Multi-word labels (the fully-spelled interval names, e.g.
+                // "Small Major 3rd") stack one word per line so they fit the
+                // hex; single tokens (codes / solfège) render at full size.
+                const words = label.split(" ");
+                const multi = words.length > 1;
+                const fs = HEX_RADIUS * (multi ? 0.3 : 0.52);
+                const lineH = fs * 1.08;
+                const y0 = key.y - (lineH * (words.length - 1)) / 2;
+                return (
+                  <text x={key.x} y={key.y} textAnchor="middle" dominantBaseline="central"
+                    fontSize={fs} fontWeight={700} fill={textCol}
+                    style={{ pointerEvents: "none", userSelect: "none" }}>
+                    {multi
+                      ? words.map((w, wi) => <tspan key={wi} x={key.x} y={y0 + wi * lineH}>{w}</tspan>)
+                      : label /* intervals by themselves: no size-prefix subscript */}
+                  </text>
+                );
+              })()}
+            </g>
           );
         })}
       </svg>

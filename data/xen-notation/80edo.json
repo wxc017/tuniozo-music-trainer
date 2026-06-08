@@ -1,0 +1,1659 @@
+{
+ "edo": 80,
+ "snapshot": "20250827102301",
+ "url": "https://en.xen.wiki/w/80edo",
+ "sections": [
+  {
+   "heading": "Contents",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Theory",
+   "level": 2,
+   "text": "80edo is the first edo that represents the 19-odd-limit tonality diamond consistently , though it barely manages to do so. Despite this, a large number of intervals in higher odd limits are consistent, and its patent val generally does well at approximating the 29-prime-limited harmonic series segments, such as modes 16 through 30 but especially modes 8 through 15. It achieves this much consistency with all primes in the 29-limit except 13 being sharp of just; the inconsistencies usually arise through not cancelling the over-sharpness of compound harmonics 21 , 27 , 35 , 45 , 49 , and their octave-equivalents, which may be seen as an interesting limitation. This means it can be used as a general-purpose approximate 29-limit system with a relatively manageable number of tones, with some care taken around inconsistency. In fact, it is almost consistent to the no-21 no-27 29-odd-limit , with the exception of 25/13 and its octave complement. Possible additions to this include 33 , 37 , 39 , and 41 . Thus, it can also model larger primes if one is willing to accept their sharpness, and for this purpose, it does well for its size at the no-31's 41-limit , or even the 43-limit if you are fine with 43/32 being slightly flat causing more inconsistencies.\nIf one wants higher precision as one goes to higher primes to try to convey the subtle harmonic qualities of those primes, 80et arguably fails in general, although many specific cases may be convincing. A promising alternative is using 80et as a model in which to fit higher-limit JI by way of approximating as much of the harmonic series as possible, for which it can model the 125-odd-limit quite well (corresponding to the 113-prime-limit), leading to an excellent Ringer scale described in the Ringer 80 section of this article ."
+  },
+  {
+   "heading": "As a tuning of other temperaments",
+   "level": 3,
+   "text": "80et tempers out 2048/2025 in the 5-limit; 1728/1715 , 3136/3125 , 4000/3969 , and 4375/4374 in the 7-limit ; 176/175 , 540/539 and 4000/3993 in the 11-limit ; 169/168 , 325/324 , 351/350 , 352/351 , 364/363 and 1001/1000 in the 13-limit ; 136/135 , 221/220 , 256/255 , 289/288 , 561/560 , 595/594 , 715/714 , 936/935 and 1275/1274 in the 17-limit ; 190/189 , 286/285 , 361/360 , 400/399 , 456/455 , 476/475 , 969/968 , 1331/1330 , 1445/1444 , 1521/1520 , 1540/1539 and 1729/1728 in the 19-limit ; 208/207 , 253/252 , 323/322 and 460/459 in the 23-limit ; and 320/319 in the 29-limit . The last comma is notable as it equates a sharp 29/16 with a near-perfect 20/11 , although this equivalence begins to make more sense when you consider the error cancellations with other sharp harmonics and as a way to give more reasonable interpretations to otherwise questionably mapped intervals. It provides the optimal patent val for 5-limit diaschismic , for 13-limit srutal , and for 7-, 11- and 13-limit bidia . It is a good tuning for various temperaments in canou family , especially in higher limits.\nAs an equal temperament, it is well-tuned for the important 11-limit and 17-limit half-octave-period temperament echidna , the 22 & 58 temperament, which affords great freedom in a 36-note mos and still many choices in a 22-note mos, offering a high-accuracy rank-2 detemper of 22edo , which in comparison conflates many important distinctions of the 11-limit. This is not insignificant as many abundant intervals of echidna, such as 11/10 , 9/7 and 17/16 , are tuned so accurately that they form 80-note consistent circles . Echidna extends srutal archagall , which is also tuned near-optimally for fiventeen – specifically, for the characteristic fiventeen pentad, 30:34:40:45:51:60, consisting of steps of 20/17 and 9/8 ~ 17/15 , and is the smallest edo to improve on the tuning of srutal archagall plus fiventeen after 34edo . In its representation of echidna, the least accurate tuning is that of 7/4 , which is (relatively) very sharp in 80edo, for which 58edo does better as a tuning of echidna, though much worse as a tuning for srutal archagall and especially fiventeen; one can reason this makes the 80edo tuning of echidna feel more like a detemper of 22edo, especially given the smaller step size between adjacent notes equated in 22edo."
+  },
+  {
+   "heading": "Potential for a general-purpose system",
+   "level": 3,
+   "text": "Though a strange tuning in lower prime limits, 80edo offers a very unique composite structure that can aid with familiarization/conceptualization by way of its subset edos of 2, 4, 5, 8, 10, 16 and 20. 80edo supports a plethora of multiperiod temperaments with accurate JI interval interpretations based on these edos; to see a fairly comprehensive list of these temperaments and of their most accurate JI interpretations with respect to integer multiples of their period, see #Consistent circles . These represent a large number of practically completely unexplored and novel high-limit temperaments with varying musical potential."
+  },
+  {
+   "heading": "Prime harmonics",
+   "level": 3,
+   "text": ""
+  },
+  {
+   "heading": "Subsets and supersets",
+   "level": 3,
+   "text": "Since 80 factors into primes as 2 4 × 5, 80edo has subset edos 2 , 4 , 5 , 8 , 10 , 16 , 20 , and 40 .\nAs a composite edo, the main subsets it lacks are subsets of 3 and 9 , but 9\\80 = 135 ¢ offers a good approximation to 1\\9 = 133.33… ¢, and instead of 1\\3 = 400 ¢ , it has 27\\80 = 405 ¢ as 19/15 ~ 24/19 , thus serving a similar function to the nestoria major third. As a result, 80edo is in some sense uniquely tasked with approximating small edos because it will often share subsets that can help make the approximation feel more regular and consistent by interpreting it as a near-equal multiperiod mos. This has the benefit of offering a relatively unexplored strategy of \"tempered detempering \", a sort of middle path between complete detempering to JI (which lacks the simplifications and unique comma pumping and structural opportunities of tempering) and not detempering the small edo at all (which can lead to challenging interpretation of harmony if one's goal is approximation to JI).\n80edo is notable in not only it is consistent in the 19-odd-limit, but a large number of its supersets are also consistent in at least 19-odd-limit, if not larger. These are 320 , 400 , 1600 , 1920 , 2000 , 2320 , 3920 , 4320 . Temperament mergers of these produce various 80th-octave temperaments ."
+  },
+  {
+   "heading": "Intervals",
+   "level": 2,
+   "text": "* Based on treating no-31's 37-limit as a 5-limit temperament; other approaches are also possible. Inconsistent interpretations in italic ."
+  },
+  {
+   "heading": "Notation",
+   "level": 2,
+   "text": "Notating 80edo in Sagittal (with diatonic whole tone equal to 14 edosteps, diatonic semitone equal to 5 edosteps):"
+  },
+  {
+   "heading": "Approximation to JI",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "23-odd-limit interval mappings",
+   "level": 3,
+   "text": "The following tables show how 23-odd-limit intervals are represented in 80edo. Prime harmonics are in bold ; inconsistent intervals are in italics ."
+  },
+  {
+   "heading": "Consistent circles",
+   "level": 3,
+   "text": "80edo is home to a staggering amount of consistent circles , both ones closing after generating all 80 notes and ones closing after generating a subset edo like 2, 4, 5, 8, 10, 16 or 20."
+  },
+  {
+   "heading": "Regular temperament properties",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Rank-2 temperaments",
+   "level": 3,
+   "text": "80et supports a profusion of 19-limit (and lower) rank-2 temperaments which have mostly not been explored.\n* Octave-reduced form , reduced to the first half-octave, and minimal form in parentheses if distinct"
+  },
+  {
+   "heading": "Detemperaments",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Ringer 80",
+   "level": 3,
+   "text": "80edo is a great essentially no-limit system for conceptualising and internalising harmonic series interval categories/structures through Ringer 80 which contains the entirety of the no-127's no-135's no-141's 145-odd-limit. An astounding ~84% of all intervals present are mapped consistently in Ringer 80. The Ringer 80 described below uses the best-performing val for 125-odd-limit consistency by a variety of metrics (squared error, sum of error, number of inconsistencies, number of inconsistencies if we require <25% error, etc.). The primes 31, 47, 53, 61, 67, 73, 79, 107, 109 are sharpened by one step compared to their flat patent val mapping (i.e. are mapped to their second-best mapping); all other primes are of the patent val. It is maybe worth noting that the least intuitive of these warts for prime 73 corresponds to getting the interval 73/63 to be mapped consistently, which is not insignificant because 80edo has an accurate enough approximation that it is practically a giant circle of 73/63's, among other such circles. Warting prime 73 also allows the introduction of the 145th harmonic which adds a lot of low-complexity and consistent intervals; specifically, all intervals made in ratio with the 145th harmonic that simplify are mapped consistently.\nThis scale has a few significant properties. Firstly, all the intervals that are inconsistent are mapped with strictly less than 1\\80 = 15 cents of error, so that guessing blindly by the pure size will never be wrong by more than that amount. Although this property is not as rare as it may sound it is still musically useful. Secondly, all of the \"filler harmonics\" beyond the 125-odd-limit fit in an obvious way; note how there are no warts beyond the 113-prime-limit (which the 125-odd-limit corresponds to due to the sizeable record prime gap from 113 to 127), meaning all composite harmonics were either already part of the 113-prime-limit, or if prime, the primes were patent val and sharp-tending. \"In an obvious way\" also means that every superparticular ( n + 1)/ n in the 125-odd-limit that was mapped to 2 steps is split into (2 n + 2)/(2 n + 1) and (2 n + 1)/(2 n ), retaining the lowest possible complexity and most elegant possible structure for a ringer scale . Finally, note that while composite odd harmonics start going missing after the 125th harmonic, prime harmonics are very much not lacking. This scale exists inside the no-127's no-151's no-163's 179-prime-limit, meaning that all primes up to and including 179 are present excluding only those three, making it full of prime flavour on top of its capability for representing high compositeness due to the 125-odd-limit corresponding to a record prime gap. Note that prime 127 cannot be included because to match the increasing trend of sharpness it would need to be warted, leading to 128/127 being tempered out.\nMode 63 of the harmonic series (corresponding to 125-odd-limit) with added odds from mode 63 × 2 = 126 in square brackets:\nThe above is split into 20 harmonics per line a.k.a. ~300¢ worth of harmonic content per line.\nIn lowest terms as a /105 scale corresponding to a primodal /53 scale, among other possible interpretations:\nThis form is useful for copy-pasting into tools that accept colon-separated harmonic series chord enumerations as scales.\nAs reduced, rooted intervals (16 intervals per line):"
+  },
+  {
+   "heading": "Scales",
+   "level": 2,
+   "text": "Terms: The names of these polymicrotonal scales are currently only used by Budjarn Lambeth .\n11-tone CPS (1-of-1,3,5,9,11,15,19,25,27,29,33)\nSome of its interesting subsets:\n11-tone CPS (10-of-1,3,5,9,11,15,19,25,27,29,33)\n12-tone CPS (1-of-3,5,9,11,15,19,25,27,29,33,37,41)\n12-tone CPS (11-of-3,5,9,11,15,19,25,27,29,33,37,41)\n15-tone CPS (1-of-1,3,5,9,11,15,19,25,27,29,33,37,41,55,57)\n15-tone CPS (14-of-1,3,5,9,11,15,19,25,27,29,33,37,41,55,57)"
+  },
+  {
+   "heading": "Music",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Modern renditions",
+   "level": 3,
+   "text": ""
+  },
+  {
+   "heading": "21st century",
+   "level": 3,
+   "text": ""
+  },
+  {
+   "heading": "Instruments",
+   "level": 2,
+   "text": ""
+  }
+ ],
+ "tables": [
+  {
+   "headers": [],
+   "rows": [
+    [
+     "← 79edo",
+     "80edo",
+     "81edo →"
+    ],
+    [
+     "Prime factorization",
+     "2 4 × 5"
+    ],
+    [
+     "Step size",
+     "15 ¢"
+    ],
+    [
+     "Fifth",
+     "47\\80 (705 ¢)"
+    ],
+    [
+     "Semitones (A1:m2)",
+     "9:5 (135 ¢ : 75 ¢)"
+    ],
+    [
+     "Consistency limit",
+     "19"
+    ],
+    [
+     "Distinct consistency limit",
+     "11"
+    ]
+   ],
+   "title": ""
+  },
+  {
+   "headers": [],
+   "rows": [
+    [
+     "← 79edo",
+     "80edo",
+     "81edo →"
+    ]
+   ],
+   "title": ""
+  },
+  {
+   "headers": [
+    "Harmonic",
+    "2",
+    "3",
+    "5",
+    "7",
+    "11",
+    "13",
+    "17",
+    "19",
+    "23",
+    "29",
+    "31",
+    "37",
+    "41",
+    "43"
+   ],
+   "rows": [
+    [
+     "Error",
+     "Absolute ( ¢ )",
+     "+0.00",
+     "+3.04",
+     "+3.69",
+     "+6.17",
+     "+3.68",
+     "-0.53",
+     "+0.04",
+     "+2.49",
+     "+1.73",
+     "+5.42",
+     "-5.04",
+     "+3.66",
+     "+5.94",
+     "-1.52"
+    ],
+    [
+     "Relative ( % )",
+     "+0.0",
+     "+20.3",
+     "+24.6",
+     "+41.2",
+     "+24.5",
+     "-3.5",
+     "+0.3",
+     "+16.6",
+     "+11.5",
+     "+36.2",
+     "-33.6",
+     "+24.4",
+     "+39.6",
+     "-10.1"
+    ],
+    [
+     "Steps ( reduced )",
+     "80 (0)",
+     "127 (47)",
+     "186 (26)",
+     "225 (65)",
+     "277 (37)",
+     "296 (56)",
+     "327 (7)",
+     "340 (20)",
+     "362 (42)",
+     "389 (69)",
+     "396 (76)",
+     "417 (17)",
+     "429 (29)",
+     "434 (34)"
+    ]
+   ],
+   "title": "Prime harmonics"
+  },
+  {
+   "headers": [
+    "Degree",
+    "Cents",
+    "Approximate Ratios*"
+   ],
+   "rows": [
+    [
+     "0",
+     "0",
+     "1/1"
+    ],
+    [
+     "1",
+     "15",
+     "64/63 , 85/84 , 91/90 , 92/91 , 96/95 , 99/98 , 100/99 , 115/114 , 120/119 , 121/120 , 126/125 , 144/143"
+    ],
+    [
+     "2",
+     "30",
+     "46/45 , 50/49 , 51/50 , 52/51 , 55/54 , 56/55 , 57/56 , 58/57 , 65/64 , 66/65 , 69/68 , 70/69 , 81/80"
+    ],
+    [
+     "3",
+     "45",
+     "34/33 , 36/35 , 37/36 , 38/37 , 39/38 , 40/39 , 45/44 , 49/48"
+    ],
+    [
+     "4",
+     "60",
+     "26/25 , 28/27 , 29/28 , 30/29 , 33/32 , 35/34"
+    ],
+    [
+     "5",
+     "75",
+     "22/21 , 23/22 , 24/23 , 25/24 , 27/26"
+    ],
+    [
+     "6",
+     "90",
+     "19/18 , 20/19 , 21/20 , 39/37"
+    ],
+    [
+     "7",
+     "105",
+     "16/15 , 17/16 , 18/17"
+    ],
+    [
+     "8",
+     "120",
+     "15/14"
+    ],
+    [
+     "9",
+     "135",
+     "13/12 , 14/13 , 27/25 , 40/37"
+    ],
+    [
+     "10",
+     "150",
+     "12/11"
+    ],
+    [
+     "11",
+     "165",
+     "11/10"
+    ],
+    [
+     "12",
+     "180",
+     "10/9 , 21/19 , 51/46"
+    ],
+    [
+     "13",
+     "195",
+     "19/17 , 28/25"
+    ],
+    [
+     "14",
+     "210",
+     "9/8 , 17/15 , 26/23 , 44/39"
+    ],
+    [
+     "15",
+     "225",
+     "8/7 , 25/22 , 33/29"
+    ],
+    [
+     "16",
+     "240",
+     "23/20 , 85/74"
+    ],
+    [
+     "17",
+     "255",
+     "15/13 , 22/19 , 29/25 , 37/32 , 81/70"
+    ],
+    [
+     "18",
+     "270",
+     "7/6 , 76/65"
+    ],
+    [
+     "19",
+     "285",
+     "13/11 , 20/17 , 33/28"
+    ],
+    [
+     "20",
+     "300",
+     "19/16 , 25/21 , 44/37"
+    ],
+    [
+     "21",
+     "315",
+     "6/5"
+    ],
+    [
+     "22",
+     "330",
+     "17/14 , 23/19 , 29/24 , 40/33 , 121/100"
+    ],
+    [
+     "23",
+     "345",
+     "11/9"
+    ],
+    [
+     "24",
+     "360",
+     "16/13"
+    ],
+    [
+     "25",
+     "375",
+     "21/17 , 36/29 , 46/37 , 57/46"
+    ],
+    [
+     "26",
+     "390",
+     "5/4 , 64/51"
+    ],
+    [
+     "27",
+     "405",
+     "19/15 , 24/19 , 29/23"
+    ],
+    [
+     "28",
+     "420",
+     "14/11 , 23/18 , 32/25 , 37/29 , 51/40"
+    ],
+    [
+     "29",
+     "435",
+     "9/7"
+    ],
+    [
+     "30",
+     "450",
+     "13/10 , 22/17 , 35/27 , 48/37"
+    ],
+    [
+     "31",
+     "465",
+     "17/13 , 55/42 , 72/55"
+    ],
+    [
+     "32",
+     "480",
+     "21/16 , 25/19 , 29/22 , 33/25 , 37/28"
+    ],
+    [
+     "33",
+     "495",
+     "4/3 , 85/64"
+    ],
+    [
+     "34",
+     "510",
+     "39/29 , 51/38"
+    ],
+    [
+     "35",
+     "525",
+     "19/14 , 23/17 , 65/48"
+    ],
+    [
+     "36",
+     "540",
+     "15/11 , 56/41 , 41/30 , 26/19"
+    ],
+    [
+     "37",
+     "555",
+     "11/8 , 29/21 , 40/29 , 51/37"
+    ],
+    [
+     "38",
+     "570",
+     "18/13 , 25/18 , 32/23"
+    ],
+    [
+     "39",
+     "585",
+     "7/5 , 38/27 , 52/37"
+    ],
+    [
+     "40",
+     "600",
+     "17/12 , 24/17 , 45/32 , 64/45 , 99/70 , 140/99"
+    ],
+    [
+     "…",
+     "…",
+     "…"
+    ]
+   ],
+   "title": "Intervals"
+  },
+  {
+   "headers": [
+    "Degree",
+    "−9",
+    "−8",
+    "−7",
+    "−6",
+    "−5",
+    "−4",
+    "−3",
+    "−2",
+    "−1",
+    "0",
+    "+1",
+    "+2",
+    "+3",
+    "+4",
+    "+5",
+    "+6",
+    "+7",
+    "+8",
+    "+9"
+   ],
+   "rows": [
+    [
+     "Evo",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠"
+    ],
+    [
+     "Revo",
+     " ⁠ ⁠",
+     " ⁠ ⁠  ⁠ ⁠",
+     " ⁠ ⁠  ⁠ ⁠",
+     " ⁠ ⁠  ⁠ ⁠",
+     " ⁠ ⁠  ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠",
+     " ⁠ ⁠  ⁠ ⁠",
+     " ⁠ ⁠  ⁠ ⁠",
+     " ⁠ ⁠  ⁠ ⁠",
+     " ⁠ ⁠  ⁠ ⁠",
+     " ⁠ ⁠"
+    ]
+   ],
+   "title": "Notation"
+  },
+  {
+   "headers": [
+    "Interval and complement",
+    "Error (abs, ¢ )",
+    "Error (rel, % )"
+   ],
+   "rows": [
+    [
+     "1/1, 2/1",
+     "0.000",
+     "0.0"
+    ],
+    [
+     "11/10, 20/11",
+     "0.004",
+     "0.0"
+    ],
+    [
+     "17/16, 32/17",
+     "0.045",
+     "0.3"
+    ],
+    [
+     "9/7, 14/9",
+     "0.084",
+     "0.6"
+    ],
+    [
+     "13/8, 16/13",
+     "0.528",
+     "3.5"
+    ],
+    [
+     "15/14, 28/15",
+     "0.557",
+     "3.7"
+    ],
+    [
+     "19/12, 24/19",
+     "0.558",
+     "3.7"
+    ],
+    [
+     "17/13, 26/17",
+     "0.572",
+     "3.8"
+    ],
+    [
+     "11/6, 12/11",
+     "0.637",
+     "4.2"
+    ],
+    [
+     "5/3, 6/5",
+     "0.641",
+     "4.3"
+    ],
+    [
+     "23/19, 38/23",
+     "0.761",
+     "5.1"
+    ],
+    [
+     "19/11, 22/19",
+     "1.195",
+     "8.0"
+    ],
+    [
+     "19/10, 20/19",
+     "1.199",
+     "8.0"
+    ],
+    [
+     "23/12, 24/23",
+     "1.319",
+     "8.8"
+    ],
+    [
+     "23/17, 34/23",
+     "1.681",
+     "11.2"
+    ],
+    [
+     "23/16, 32/23",
+     "1.726",
+     "11.5"
+    ],
+    [
+     "23/22, 44/23",
+     "1.956",
+     "13.0"
+    ],
+    [
+     "23/20, 40/23",
+     "1.961",
+     "13.1"
+    ],
+    [
+     "23/13, 26/23",
+     "2.253",
+     "15.0"
+    ],
+    [
+     "9/5, 10/9",
+     "2.404",
+     "16.0"
+    ],
+    [
+     "11/9, 18/11",
+     "2.408",
+     "16.1"
+    ],
+    [
+     "19/17, 34/19",
+     "2.442",
+     "16.3"
+    ],
+    [
+     "19/16, 32/19",
+     "2.487",
+     "16.6"
+    ],
+    [
+     "7/5, 10/7",
+     "2.488",
+     "16.6"
+    ],
+    [
+     "11/7, 14/11",
+     "2.492",
+     "16.6"
+    ],
+    [
+     "17/12, 24/17",
+     "3.000",
+     "20.0"
+    ],
+    [
+     "19/13, 26/19",
+     "3.015",
+     "20.1"
+    ],
+    [
+     "3/2, 4/3",
+     "3.045",
+     "20.3"
+    ],
+    [
+     "15/11, 22/15",
+     "3.049",
+     "20.3"
+    ],
+    [
+     "7/6, 12/7",
+     "3.129",
+     "20.9"
+    ],
+    [
+     "13/12, 24/13",
+     "3.573",
+     "23.8"
+    ],
+    [
+     "19/18, 36/19",
+     "3.603",
+     "24.0"
+    ],
+    [
+     "17/11, 22/17",
+     "3.637",
+     "24.2"
+    ],
+    [
+     "17/10, 20/17",
+     "3.642",
+     "24.3"
+    ],
+    [
+     "11/8, 16/11",
+     "3.682",
+     "24.5"
+    ],
+    [
+     "5/4, 8/5",
+     "3.686",
+     "24.6"
+    ],
+    [
+     "19/14, 28/19",
+     "3.687",
+     "24.6"
+    ],
+    [
+     "13/11, 22/13",
+     "4.210",
+     "28.1"
+    ],
+    [
+     "13/10, 20/13",
+     "4.214",
+     "28.1"
+    ],
+    [
+     "19/15, 30/19",
+     "4.244",
+     "28.3"
+    ],
+    [
+     "23/18, 36/23",
+     "4.364",
+     "29.1"
+    ],
+    [
+     "23/14, 28/23",
+     "4.448",
+     "29.7"
+    ],
+    [
+     "23/15, 30/23",
+     "5.006",
+     "33.4"
+    ],
+    [
+     "21/13, 26/21",
+     "5.253",
+     "35.0"
+    ],
+    [
+     "21/20, 40/21",
+     "5.533",
+     "36.9"
+    ],
+    [
+     "21/11, 22/21",
+     "5.537",
+     "36.9"
+    ],
+    [
+     "21/16, 32/21",
+     "5.781",
+     "38.5"
+    ],
+    [
+     "21/17, 34/21",
+     "5.825",
+     "38.8"
+    ],
+    [
+     "17/9, 18/17",
+     "6.045",
+     "40.3"
+    ],
+    [
+     "9/8, 16/9",
+     "6.090",
+     "40.6"
+    ],
+    [
+     "17/14, 28/17",
+     "6.130",
+     "40.9"
+    ],
+    [
+     "7/4, 8/7",
+     "6.174",
+     "41.2"
+    ],
+    [
+     "13/9, 18/13",
+     "6.618",
+     "44.1"
+    ],
+    [
+     "17/15, 30/17",
+     "6.687",
+     "44.6"
+    ],
+    [
+     "13/7, 14/13",
+     "6.702",
+     "44.7"
+    ],
+    [
+     "15/8, 16/15",
+     "6.731",
+     "44.9"
+    ],
+    [
+     "21/19, 38/21",
+     "6.732",
+     "44.9"
+    ],
+    [
+     "15/13, 26/15",
+     "7.259",
+     "48.4"
+    ],
+    [
+     "23/21, 42/23",
+     "7.493",
+     "50.0"
+    ]
+   ],
+   "title": "23-odd-limit interval mappings"
+  },
+  {
+   "headers": [
+    "Interval and complement",
+    "Error (abs, ¢ )",
+    "Error (rel, % )"
+   ],
+   "rows": [
+    [
+     "1/1, 2/1",
+     "0.000",
+     "0.0"
+    ],
+    [
+     "11/10, 20/11",
+     "0.004",
+     "0.0"
+    ],
+    [
+     "17/16, 32/17",
+     "0.045",
+     "0.3"
+    ],
+    [
+     "9/7, 14/9",
+     "0.084",
+     "0.6"
+    ],
+    [
+     "13/8, 16/13",
+     "0.528",
+     "3.5"
+    ],
+    [
+     "15/14, 28/15",
+     "0.557",
+     "3.7"
+    ],
+    [
+     "19/12, 24/19",
+     "0.558",
+     "3.7"
+    ],
+    [
+     "17/13, 26/17",
+     "0.572",
+     "3.8"
+    ],
+    [
+     "11/6, 12/11",
+     "0.637",
+     "4.2"
+    ],
+    [
+     "5/3, 6/5",
+     "0.641",
+     "4.3"
+    ],
+    [
+     "23/19, 38/23",
+     "0.761",
+     "5.1"
+    ],
+    [
+     "19/11, 22/19",
+     "1.195",
+     "8.0"
+    ],
+    [
+     "19/10, 20/19",
+     "1.199",
+     "8.0"
+    ],
+    [
+     "23/12, 24/23",
+     "1.319",
+     "8.8"
+    ],
+    [
+     "23/17, 34/23",
+     "1.681",
+     "11.2"
+    ],
+    [
+     "23/16, 32/23",
+     "1.726",
+     "11.5"
+    ],
+    [
+     "23/22, 44/23",
+     "1.956",
+     "13.0"
+    ],
+    [
+     "23/20, 40/23",
+     "1.961",
+     "13.1"
+    ],
+    [
+     "23/13, 26/23",
+     "2.253",
+     "15.0"
+    ],
+    [
+     "9/5, 10/9",
+     "2.404",
+     "16.0"
+    ],
+    [
+     "11/9, 18/11",
+     "2.408",
+     "16.1"
+    ],
+    [
+     "19/17, 34/19",
+     "2.442",
+     "16.3"
+    ],
+    [
+     "19/16, 32/19",
+     "2.487",
+     "16.6"
+    ],
+    [
+     "7/5, 10/7",
+     "2.488",
+     "16.6"
+    ],
+    [
+     "11/7, 14/11",
+     "2.492",
+     "16.6"
+    ],
+    [
+     "17/12, 24/17",
+     "3.000",
+     "20.0"
+    ],
+    [
+     "19/13, 26/19",
+     "3.015",
+     "20.1"
+    ],
+    [
+     "3/2, 4/3",
+     "3.045",
+     "20.3"
+    ],
+    [
+     "15/11, 22/15",
+     "3.049",
+     "20.3"
+    ],
+    [
+     "7/6, 12/7",
+     "3.129",
+     "20.9"
+    ],
+    [
+     "13/12, 24/13",
+     "3.573",
+     "23.8"
+    ],
+    [
+     "19/18, 36/19",
+     "3.603",
+     "24.0"
+    ],
+    [
+     "17/11, 22/17",
+     "3.637",
+     "24.2"
+    ],
+    [
+     "17/10, 20/17",
+     "3.642",
+     "24.3"
+    ],
+    [
+     "11/8, 16/11",
+     "3.682",
+     "24.5"
+    ],
+    [
+     "5/4, 8/5",
+     "3.686",
+     "24.6"
+    ],
+    [
+     "19/14, 28/19",
+     "3.687",
+     "24.6"
+    ],
+    [
+     "13/11, 22/13",
+     "4.210",
+     "28.1"
+    ],
+    [
+     "13/10, 20/13",
+     "4.214",
+     "28.1"
+    ],
+    [
+     "19/15, 30/19",
+     "4.244",
+     "28.3"
+    ],
+    [
+     "23/18, 36/23",
+     "4.364",
+     "29.1"
+    ],
+    [
+     "23/14, 28/23",
+     "4.448",
+     "29.7"
+    ],
+    [
+     "23/15, 30/23",
+     "5.006",
+     "33.4"
+    ],
+    [
+     "21/20, 40/21",
+     "5.533",
+     "36.9"
+    ],
+    [
+     "21/11, 22/21",
+     "5.537",
+     "36.9"
+    ],
+    [
+     "17/9, 18/17",
+     "6.045",
+     "40.3"
+    ],
+    [
+     "9/8, 16/9",
+     "6.090",
+     "40.6"
+    ],
+    [
+     "17/14, 28/17",
+     "6.130",
+     "40.9"
+    ],
+    [
+     "7/4, 8/7",
+     "6.174",
+     "41.2"
+    ],
+    [
+     "13/9, 18/13",
+     "6.618",
+     "44.1"
+    ],
+    [
+     "17/15, 30/17",
+     "6.687",
+     "44.6"
+    ],
+    [
+     "13/7, 14/13",
+     "6.702",
+     "44.7"
+    ],
+    [
+     "15/8, 16/15",
+     "6.731",
+     "44.9"
+    ],
+    [
+     "21/19, 38/21",
+     "6.732",
+     "44.9"
+    ],
+    [
+     "15/13, 26/15",
+     "7.259",
+     "48.4"
+    ],
+    [
+     "23/21, 42/23",
+     "7.493",
+     "50.0"
+    ],
+    [
+     "21/17, 34/21",
+     "9.175",
+     "61.2"
+    ],
+    [
+     "21/16, 32/21",
+     "9.219",
+     "61.5"
+    ],
+    [
+     "21/13, 26/21",
+     "9.747",
+     "65.0"
+    ]
+   ],
+   "title": "23-odd-limit interval mappings"
+  },
+  {
+   "headers": [
+    "Interval",
+    "Closing error",
+    "Consistency",
+    "1\\1",
+    "1\\2",
+    "1\\4",
+    "1\\5",
+    "1\\8",
+    "1\\10",
+    "1\\16",
+    "1\\20"
+   ],
+   "rows": [
+    [
+     "39/38",
+     "16.2%",
+     "Strong",
+     "Quartonic extension",
+     "Biquartonic",
+     "Quartiquart",
+     "Quintiquart extension",
+     "?",
+     "Decistearn , deca",
+     "?",
+     "Degrees"
+    ],
+    [
+     "17/16",
+     "23.8%",
+     "Strong",
+     "Septendesemi",
+     "Srutal archagall",
+     "Bidia",
+     "Pentorwell",
+     "80 & 104",
+     "Linus retraction",
+     "?",
+     "Degrees"
+    ],
+    [
+     "11/10",
+     "2.3%",
+     "Strong",
+     "Trienparapyth",
+     "Echidna , semisupermajor",
+     "?",
+     "Trisedodge",
+     "Octopus",
+     "Decistearn , deca",
+     "Hexadecoid",
+     "Degrees"
+    ],
+    [
+     "9/7",
+     "44.9%",
+     "Normal",
+     "Supermajor",
+     "Echidna , semisupermajor",
+     "?",
+     "?",
+     "Octopus",
+     "Decistearn , deca",
+     "Hexadecoid",
+     "Degrees"
+    ]
+   ],
+   "title": "Consistent circles"
+  },
+  {
+   "headers": [
+    "Interval",
+    "Closing error",
+    "Consistency",
+    "Associated edostep"
+   ],
+   "rows": [
+    [
+     "28/27",
+     "394.8%",
+     "Sub-weak",
+     "1\\20 = 4\\80"
+    ],
+    [
+     "29/28",
+     "100.2%",
+     "Sub-weak",
+     "1\\20 = 4\\80"
+    ],
+    [
+     "30/29",
+     "174.5%",
+     "Sub-weak",
+     "1\\20 = 4\\80"
+    ],
+    [
+     "10/9",
+     "320.5%",
+     "Sub-weak",
+     "3\\20 = 12\\80"
+    ],
+    [
+     "14/11",
+     "332.3%",
+     "Sub-weak",
+     "7\\20 = 28\\80"
+    ],
+    [
+     "51/40",
+     "79.6%",
+     "Weak",
+     "7\\20 = 28\\80"
+    ],
+    [
+     "41/30",
+     "105.8%",
+     "Sub-weak",
+     "9\\20 = 36\\80"
+    ],
+    [
+     "56/41",
+     "31.5%",
+     "Normal",
+     "9\\20 = 36\\80"
+    ],
+    [
+     "9/7 * 17/16",
+     "5.3%",
+     "Super-strong",
+     "9\\20 = 36\\80"
+    ]
+   ],
+   "title": "Consistent circles"
+  },
+  {
+   "headers": [
+    "Interval",
+    "Closing error",
+    "Consistency",
+    "Associated edostep",
+    "Temperaments"
+   ],
+   "rows": [
+    [
+     "15/14",
+     "37.1%",
+     "Normal",
+     "1\\10 = 8\\80",
+     "Decistearn , deca , linus"
+    ],
+    [
+     "16/13",
+     "35.2%",
+     "Normal",
+     "3\\10 = 24\\80",
+     "Decistearn , deca , linus"
+    ],
+    [
+     "69/56",
+     "93.6%",
+     "Weak",
+     "3\\10 = 24\\80",
+     "Decistearn"
+    ],
+    [
+     "85/69",
+     "69.3%",
+     "Weak",
+     "3\\10 = 24\\80",
+     "Decistearn"
+    ]
+   ],
+   "title": "Consistent circles"
+  },
+  {
+   "headers": [
+    "Interval",
+    "Closing error",
+    "Consistency",
+    "Associated edostep",
+    "Temperaments"
+   ],
+   "rows": [
+    [
+     "12/11",
+     "34.0%",
+     "Normal",
+     "1\\8 = 10\\80",
+     "Octopus , 11-limit octoid"
+    ],
+    [
+     "85/78",
+     "64.7%",
+     "Weak",
+     "1\\8 = 10\\80",
+     "Octopus , octoid"
+    ],
+    [
+     "13/10",
+     "224.7%",
+     "Sub-weak",
+     "3\\8 = 30\\80",
+     "Octopus"
+    ],
+    [
+     "35/27",
+     "38.7%",
+     "Normal",
+     "3\\8 = 30\\80",
+     "Octopus , 7-limit octoid"
+    ],
+    [
+     "22/17",
+     "194.0%",
+     "Sub-weak",
+     "3\\8 = 30\\80",
+     "Octopus"
+    ],
+    [
+     "48/37",
+     "32.6%",
+     "Normal",
+     "3\\8 = 30\\80",
+     "Octoid/octopus extension"
+    ],
+    [
+     "83/64",
+     "2.5%",
+     "Super-strong",
+     "3\\8 = 30\\80",
+     "Octoid/octopus extension"
+    ]
+   ],
+   "title": "Consistent circles"
+  },
+  {
+   "headers": [
+    "Interval",
+    "Closing error",
+    "Consistency",
+    "Associated edostep",
+    "Temperaments"
+   ],
+   "rows": [
+    [
+     "23/20",
+     "65.4%",
+     "Weak",
+     "1\\5 = 16\\80",
+     "Trisedodge , trisey add-23"
+    ],
+    [
+     "85/74",
+     "2.5%",
+     "Super-strong",
+     "1\\5 = 16\\80",
+     "29-limit add-37 trisey extension"
+    ],
+    [
+     "33/25",
+     "21.5%",
+     "Strong",
+     "2\\5 = 32\\80",
+     "Countdown"
+    ],
+    [
+     "37/28",
+     "83.9%",
+     "Weak",
+     "2\\5 = 32\\80",
+     "29-limit add-37 trisey extension"
+    ],
+    [
+     "95/72",
+     "2.8%",
+     "Super-strong",
+     "2\\5 = 32\\80",
+     "29-limit add-37 trisey extension"
+    ]
+   ],
+   "title": "Consistent circles"
+  },
+  {
+   "headers": [
+    "Interval",
+    "Closing error",
+    "Consistency",
+    "Associated edostep",
+    "Temperaments"
+   ],
+   "rows": [
+    [
+     "19/16",
+     "66.3%",
+     "Weak",
+     "1\\4 = 20\\80",
+     "Bidia"
+    ],
+    [
+     "25/21",
+     "49.2%",
+     "Normal",
+     "1\\4 = 20\\80",
+     "Bidia"
+    ],
+    [
+     "44/37",
+     "0.7%",
+     "Super-strong",
+     "1\\4 = 20\\80",
+     "Berylic , bidia extension"
+    ]
+   ],
+   "title": "Consistent circles"
+  },
+  {
+   "headers": [
+    "Subgroup",
+    "Comma list",
+    "Mapping",
+    "Optimal 8ve stretch (¢)",
+    "Tuning error"
+   ],
+   "rows": [
+    [
+     "Absolute (¢)",
+     "Relative (%)"
+    ],
+    [
+     "2.3",
+     "[ 127 -80 ⟩",
+     "[ ⟨ 80 127 ] ]",
+     "−0.961",
+     "0.960",
+     "6.40"
+    ],
+    [
+     "2.3.5",
+     "2048/2025, 390625000/387420489",
+     "[ ⟨ 80 127 186 ] ]",
+     "−1.169",
+     "0.837",
+     "5.59"
+    ],
+    [
+     "2.3.5.7",
+     "1728/1715, 2048/2025, 3136/3125",
+     "[ ⟨ 80 127 186 225 ] ]",
+     "−1.426",
+     "0.851",
+     "5.68"
+    ],
+    [
+     "2.3.5.7.11",
+     "176/175, 540/539, 896/891, 1331/1323",
+     "[ ⟨ 80 127 186 225 277 ] ]",
+     "−1.353",
+     "0.775",
+     "5.17"
+    ],
+    [
+     "2.3.5.7.11.13",
+     "169/168, 176/175, 325/324, 364/363, 540/539",
+     "[ ⟨ 80 127 186 225 277 296 ] ]",
+     "−1.105",
+     "0.901",
+     "6.01"
+    ],
+    [
+     "2.3.5.7.11.13.17",
+     "136/135, 169/168, 176/175, 221/220, 364/363, 540/539",
+     "[ ⟨ 80 127 186 225 277 296 327 ] ]",
+     "−0.949",
+     "0.917",
+     "6.12"
+    ],
+    [
+     "2.3.5.7.11.13.17.19",
+     "136/135, 169/168, 176/175, 190/189, 221/220, 364/363, 400/399",
+     "[ ⟨ 80 127 186 225 277 296 327 340 ] ]",
+     "−0.903",
+     "0.867",
+     "5.78"
+    ]
+   ],
+   "title": "Regular temperament properties"
+  },
+  {
+   "headers": [
+    "Periods per 8ve",
+    "Generator*",
+    "Cents*",
+    "Associated ratio*",
+    "Temperament"
+   ],
+   "rows": [
+    [
+     "1",
+     "1\\80",
+     "15",
+     "121/120",
+     "Yarman I"
+    ],
+    [
+     "1",
+     "3\\80",
+     "45",
+     "36/35~40/39",
+     "Quartonic"
+    ],
+    [
+     "1",
+     "9\\80",
+     "135",
+     "27/25",
+     "Superlimmal"
+    ],
+    [
+     "1",
+     "21\\80",
+     "315",
+     "6/5",
+     "Parakleismic / parkleismic / paradigmic"
+    ],
+    [
+     "1",
+     "29\\80",
+     "435",
+     "9/7",
+     "Supermajor"
+    ],
+    [
+     "1",
+     "31\\80",
+     "465",
+     "17/13",
+     "Semisept"
+    ],
+    [
+     "1",
+     "33\\80",
+     "495",
+     "4/3",
+     "Leapfrog"
+    ],
+    [
+     "1",
+     "39\\80",
+     "585",
+     "7/5",
+     "Pluto"
+    ],
+    [
+     "2",
+     "21\\80 (19\\80)",
+     "315 (285)",
+     "6/5 (33/28)",
+     "Semiparakleismic"
+    ],
+    [
+     "2",
+     "29\\80 (11\\80)",
+     "435 (165)",
+     "9/7 (11/10)",
+     "Echidna Semisupermajor"
+    ],
+    [
+     "2",
+     "33\\80 (7\\80)",
+     "495 (105)",
+     "4/3 (17/16)",
+     "Srutal"
+    ],
+    [
+     "4",
+     "33\\80 (7\\80)",
+     "495 (105)",
+     "4/3 (17/16)",
+     "Bidia"
+    ],
+    [
+     "5",
+     "15\\80 (1\\80)",
+     "225 (15)",
+     "8/7 (64/63)",
+     "Pentorwell"
+    ],
+    [
+     "5",
+     "37\\80 (5\\80)",
+     "555 (75)",
+     "11/8 (25/24)",
+     "Trisedodge / countdown"
+    ],
+    [
+     "8",
+     "39\\80 (1\\80)",
+     "585 (15)",
+     "7/5 (99/98~100/99)",
+     "Octopus"
+    ],
+    [
+     "10",
+     "21\\80 (3\\80)",
+     "315 (45)",
+     "6/5 (40/39)",
+     "Deca"
+    ],
+    [
+     "20",
+     "33\\80 (1\\80)",
+     "495 (15)",
+     "4/3 (99/98~100/99)",
+     "Degrees"
+    ]
+   ],
+   "title": "Rank-2 temperaments"
+  },
+  {
+   "headers": [],
+   "rows": [
+    [
+     "",
+     "This article or section contains multiple idiosyncratic terms . Such terms are used by only a few people and are not regularly used within the community. Terms: The names of these polymicrotonal scales are currently only used by Budjarn Lambeth ."
+    ]
+   ],
+   "title": "Scales"
+  }
+ ]
+}

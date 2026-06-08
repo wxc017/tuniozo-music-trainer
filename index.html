@@ -7,7 +7,17 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Music&display=swap" rel="stylesheet">
+    <!-- Bravura (SMuFL) — full musical-symbol coverage (Sagittal, arrows,
+         microtonal accidentals).  Used only as a glyph fallback so it never
+         replaces normal text. -->
+    <style>
+      @font-face {
+        font-family: 'Bravura';
+        src: url('https://cdn.jsdelivr.net/gh/steinbergmedia/bravura@master/redist/woff2/Bravura.woff2') format('woff2');
+        font-display: swap;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

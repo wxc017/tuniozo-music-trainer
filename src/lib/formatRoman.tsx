@@ -75,9 +75,12 @@ export function formatRomanNumeralWithFamily(label: string, familyPrefix: string
 // distinct from the chord-quality SUPERSCRIPT suffix that follows
 // the numeral (s3 / n3 / S3 / M7 / etc.).
 //
-// Match: any run of accidental characters (b / # / s / S / N / ♭ / ♯
-// / 𝄲 half-sharp / 𝄳 half-flat / ₛ / ˢ) before a Roman-numeral letter.
-const LEADING_PREFIX_RE = /^([bs#SN♭♯𝄲𝄳ₛˢ]+)([IiVvXx].*)$/;
+// Match: any run of accidental / size characters (b / # / s / l / S / L / N
+// / ♭ / ♯ / 𝄲 half-sharp / 𝄳 half-flat / ₛ / ˢ) before a Roman-numeral letter.
+// The size prefixes (s = small, l = large) only subscript when they sit in
+// front of an actual Roman numeral — standalone interval codes like "s5" or
+// "ln6" aren't followed by a Roman letter, so they're left untouched.
+const LEADING_PREFIX_RE = /^([bslSLN#♭♯𝄲𝄳ₛˢ]+)([IiVvXx].*)$/;
 
 function formatSingleRoman(part: string, key: number): React.ReactNode {
   let prefixSub: React.ReactNode = null;

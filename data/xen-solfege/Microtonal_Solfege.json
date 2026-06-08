@@ -1,0 +1,199 @@
+{
+ "title": "Microtonal_Solfege",
+ "snapshot": "20250810105213",
+ "url": "https://en.xen.wiki/w/Microtonal_Solfege",
+ "tables": [
+  {
+   "headers": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17"
+   ],
+   "rows": [
+    [
+     "C",
+     "^C / Db",
+     "C# / vD",
+     "D",
+     "^D / Eb",
+     "D# / vE",
+     "E",
+     "F",
+     "^F / Gb",
+     "F# / vG",
+     "G",
+     "^G / Ab",
+     "G# / vA",
+     "A",
+     "^A / Bb",
+     "A# / vB",
+     "B",
+     "C"
+    ],
+    [
+     "P1",
+     "^1 / m2",
+     "A1 / ~2",
+     "M2",
+     "^M2 / m3",
+     "A2 / ~3",
+     "M3",
+     "P4",
+     "~4 / d5",
+     "A4 / ~5",
+     "P5",
+     "^5 / m6",
+     "A5 / ~6",
+     "M6",
+     "^M6 / m7",
+     "A6 / ~7",
+     "M7",
+     "P8"
+    ],
+    [
+     "Do",
+     "Da / Ra",
+     "Di / Ru",
+     "Re",
+     "Ro / Me",
+     "Ri / Mu",
+     "Mi",
+     "Fa",
+     "Fu / Se",
+     "Fi / Su",
+     "So",
+     "Sa / Le",
+     "Si / Lu",
+     "La",
+     "Lo / Te",
+     "Li / Tu",
+     "Ti",
+     "Do"
+    ]
+   ],
+   "title": "Backwards-compatible solfeges"
+  },
+  {
+   "headers": [
+    "D-",
+    "Fr-",
+    "R-",
+    "N-",
+    "M-",
+    "F-",
+    "P-",
+    "Sh-",
+    "S-",
+    "Fl-",
+    "L-",
+    "Th-",
+    "T-",
+    "D-"
+   ],
+   "rows": [
+    [
+     "Do",
+     "flat Re",
+     "Re",
+     "flat Mi",
+     "Mi",
+     "Fa",
+     "sharp Fa",
+     "flat Sol",
+     "Sol",
+     "flat La",
+     "La",
+     "flat Ti",
+     "Ti",
+     "Do"
+    ]
+   ],
+   "title": "Uniform solfeges"
+  },
+  {
+   "headers": [
+    "1 vowel",
+    "",
+    "",
+    "-a = plain",
+    "",
+    ""
+   ],
+   "rows": [
+    [
+     "3 vowels",
+     "",
+     "-o = down",
+     "-a = plain",
+     "-u = up",
+     ""
+    ],
+    [
+     "4 vowels",
+     "-i = mid",
+     "-o = down",
+     "-a = plain",
+     "-u = up",
+     "-i = mid"
+    ],
+    [
+     "5 vowels",
+     "-e = dud",
+     "-o = down",
+     "-a = plain",
+     "-u = up",
+     "-i = dup"
+    ]
+   ],
+   "title": "Uniform solfeges"
+  },
+  {
+   "headers": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11"
+   ],
+   "rows": [
+    [
+     "Wa",
+     "Tu",
+     "Ti",
+     "Fo",
+     "Fa",
+     "Si",
+     "Se",
+     "E",
+     "Na",
+     "Te",
+     "Le",
+     "Wa"
+    ]
+   ],
+   "title": "Numeric solfeges"
+  }
+ ]
+}

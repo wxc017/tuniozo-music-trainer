@@ -406,6 +406,19 @@ export function buildTwoHandedVoicing(
   chordTonePcs: number[], extPcs: number[], rootPc: number, edo: number,
   style: TwoHandStyle, anchorLow: number, floor: number, ceil: number,
 ): number[] {
+  return buildTwoHandedVoicingHands(chordTonePcs, extPcs, rootPc, edo, style, anchorLow, floor, ceil).all;
+}
+
+/** Same as buildTwoHandedVoicing but also returns the left-hand (`lh`) and
+ *  right-hand (`rh`) note partition, so callers can isolate a single hand
+ *  (e.g. replay just the LH or RH).  Each style's hand boundary is the "·"
+ *  marked in the per-case comments below — it can't be recovered by
+ *  register alone (some styles interleave an upper-structure tone between
+ *  the two LH guide tones), so the split is tracked explicitly. */
+export function buildTwoHandedVoicingHands(
+  chordTonePcs: number[], extPcs: number[], rootPc: number, edo: number,
+  style: TwoHandStyle, anchorLow: number, floor: number, ceil: number,
+): { all: number[]; lh: number[]; rh: number[] } {
   const relRoot = (pc: number) => (((pc % edo) + edo) % edo - rootPc + edo) % edo;
   const O = edo;
 
@@ -463,45 +476,46 @@ export function buildTwoHandedVoicing(
   // spread between hands is encoded directly in the offsets, so compact
   // styles (block / drop voicings) and wide styles (shell / rootless) both
   // render through the same placement code below.
-  let offs: number[];
+  // Each style builds its left-hand (`lhOff`) and right-hand (`rhOff`)
+  // offset lists separately.  The "·" in each comment marks the hand
+  // boundary.  Keeping the two hands distinct here is what lets a caller
+  // replay one hand in isolation.
+  let lhOff: number[];
+  let rhOff: number[];
   switch (style) {
     case "shell-a":
       // 1 3 · 5 7 9 — Bud Powell A: root + 3rd low, 5/7/9 above.
-      offs = compact([0, thirdI, fifthI !== null ? O + fifthI : null, seventhI !== null ? O + seventhI : null, nineI]);
+      lhOff = compact([0, thirdI]);
+      rhOff = compact([fifthI !== null ? O + fifthI : null, seventhI !== null ? O + seventhI : null, nineI]);
       break;
     case "shell-b":
       // 1 7 · 3 5 9 — Bud Powell B: root + 7th low, 3/5/9 above.
-      offs = compact([0, seventhI ?? thirdI, thirdI !== null ? O + thirdI : null, fifthI !== null ? O + fifthI : null, nineI]);
+      lhOff = compact([0, seventhI ?? thirdI]);
+      rhOff = compact([thirdI !== null ? O + thirdI : null, fifthI !== null ? O + fifthI : null, nineI]);
       break;
     case "rootless-a":
       // 3 7 · 5 9 13 — TWO-HAND rootless A: LH guide tones (3-7),
       // RH upper structure (5-9-13) above.
-      offs = compact([
-        thirdI, seventhI,
-        fifthI !== null ? O + fifthI : null,
-        nineI, thirteenI,
-      ]);
+      lhOff = compact([thirdI, seventhI]);
+      rhOff = compact([fifthI !== null ? O + fifthI : null, nineI, thirteenI]);
       break;
     case "rootless-b":
       // 7 3 · 5 9 13 — TWO-HAND rootless B: LH inverted (7 then 3 an
       // octave up), RH upper structure.
-      offs = compact([
-        seventhI,
-        thirdI !== null ? O + thirdI : null,
-        fifthI !== null ? O + fifthI : null,
-        nineI, thirteenI,
-      ]);
+      lhOff = compact([seventhI, thirdI !== null ? O + thirdI : null]);
+      rhOff = compact([fifthI !== null ? O + fifthI : null, nineI, thirteenI]);
       break;
     case "ust": {
       // 1 3 7 · 9 11 13 — guide-tone shell low; upper-tension triad above.
       const tensions = compact([nineI, elevenI, thirteenI]);
-      const rh = tensions.length >= 2 ? tensions : compact([thirdI, fifthI, seventhI]).map(o => O + o);
-      offs = [...compact([0, thirdI, seventhI]), ...rh];
+      lhOff = compact([0, thirdI, seventhI]);
+      rhOff = tensions.length >= 2 ? tensions : compact([thirdI, fifthI, seventhI]).map(o => O + o);
       break;
     }
     case "block":
       // 7 · 1 3 5 7 — close 4-way with the top note doubled an octave below.
-      offs = closed.length > 0 ? [closed[closed.length - 1] - O, ...closed] : [0];
+      if (closed.length > 0) { lhOff = [closed[closed.length - 1] - O]; rhOff = closed; }
+      else { lhOff = [0]; rhOff = []; }
       break;
     case "sixway": {
       // 6 · 1 3 5 6 — like block but with the 6th in place of the 7th.
@@ -515,81 +529,94 @@ export function buildTwoHandedVoicing(
       else if (thirdI !== null && thirdI < Math.round(edo * 4 / 12)) sixthI = Math.round(edo * 8 / 12);
       else sixthI = Math.round(edo * 9 / 12);
       const closed6 = compact([0, thirdI, fifthI, sixthI]);
-      offs = closed6.length > 0 ? [closed6[closed6.length - 1] - O, ...closed6] : [0];
+      if (closed6.length > 0) { lhOff = [closed6[closed6.length - 1] - O]; rhOff = closed6; }
+      else { lhOff = [0]; rhOff = []; }
       break;
     }
     case "drop2":
       // 5 · 1 3 7 — close 4-way, 2nd-from-top dropped an octave.
       if (closed.length >= 2) {
         const idx = closed.length - 2;
-        offs = [closed[idx] - O, ...closed.filter((_, i) => i !== idx)];
-      } else offs = closed;
+        lhOff = [closed[idx] - O]; rhOff = closed.filter((_, i) => i !== idx);
+      } else { lhOff = []; rhOff = closed; }
       break;
     case "drop3":
       // 3 · 1 5 7 — close 4-way, 3rd-from-top dropped an octave.
       if (closed.length >= 3) {
         const idx = closed.length - 3;
-        offs = [closed[idx] - O, ...closed.filter((_, i) => i !== idx)];
+        lhOff = [closed[idx] - O]; rhOff = closed.filter((_, i) => i !== idx);
       } else if (closed.length >= 2) {
         // Triad fallback: drop the bottom (root).
-        offs = [closed[0] - O, ...closed.slice(1)];
-      } else offs = closed;
+        lhOff = [closed[0] - O]; rhOff = closed.slice(1);
+      } else { lhOff = []; rhOff = closed; }
       break;
     case "drop24":
       // 5 1 · 3 7 — close 4-way with the 2nd AND 4th from top dropped.
       if (closed.length >= 4) {
         const dropIdx = new Set([closed.length - 2, closed.length - 4]);
-        const dropped = closed.filter((_, i) => dropIdx.has(i)).map(n => n - O);
-        const kept = closed.filter((_, i) => !dropIdx.has(i));
-        offs = [...dropped, ...kept];
+        lhOff = closed.filter((_, i) => dropIdx.has(i)).map(n => n - O);
+        rhOff = closed.filter((_, i) => !dropIdx.has(i));
       } else if (closed.length >= 2) {
-        offs = [closed[0] - O, ...closed.slice(1)];  // graceful fallback
-      } else offs = closed;
+        lhOff = [closed[0] - O]; rhOff = closed.slice(1);  // graceful fallback
+      } else { lhOff = []; rhOff = closed; }
       break;
     case "spread":
       // 1 5 · 3 7 9 — open root+5 bass; 3rd/7th/9th spread above.  Use
       // the chord's actual 5th (b5 for dim, #5 for aug) so every tone
       // stays in-chord; only fall back to a literal P5 when the chord
       // genuinely has no 5th at all.
-      offs = compact([0, fifthI ?? Math.round(edo * 7 / 12), thirdI !== null ? O + thirdI : null, seventhI !== null ? O + seventhI : null, nineI]);
+      lhOff = compact([0, fifthI ?? Math.round(edo * 7 / 12)]);
+      rhOff = compact([thirdI !== null ? O + thirdI : null, seventhI !== null ? O + seventhI : null, nineI]);
       break;
     case "cluster":
       // 7 1 9 · 3 5 — close 2nd-based voicing.  7-1-9 form three notes
       // a 2nd apart low (Herbie-style cluster); 3rd / 5th land an octave
       // up above the cluster's top.
-      offs = compact([
-        seventhI,
-        O,
-        nineI,
-        thirdI !== null ? O + thirdI : null,
-        fifthI !== null ? O + fifthI : null,
-      ]);
+      lhOff = compact([seventhI, O, nineI]);
+      rhOff = compact([thirdI !== null ? O + thirdI : null, fifthI !== null ? O + fifthI : null]);
       break;
-    case "quartal":   offs = intervalStack(5, 4); break;   // 4-note P4 stack
-    case "quartal5":  offs = intervalStack(5, 5); break;   // 5-note P4 stack
-    case "quintal":   offs = intervalStack(7, 4); break;   // 4-note P5 stack
+    case "quartal":   { const st = intervalStack(5, 4); const h = Math.floor(st.length / 2); lhOff = st.slice(0, h); rhOff = st.slice(h); break; }   // 4-note P4 stack
+    case "quartal5":  { const st = intervalStack(5, 5); const h = Math.floor(st.length / 2); lhOff = st.slice(0, h); rhOff = st.slice(h); break; }   // 5-note P4 stack
+    case "quintal":   { const st = intervalStack(7, 4); const h = Math.floor(st.length / 2); lhOff = st.slice(0, h); rhOff = st.slice(h); break; }   // 4-note P5 stack
     default:
       // Fallback to a basic spread voicing.
-      offs = compact([0, fifthI, thirdI !== null ? O + thirdI : null, seventhI !== null ? O + seventhI : null, nineI]);
+      lhOff = compact([0, fifthI]);
+      rhOff = compact([thirdI !== null ? O + thirdI : null, seventhI !== null ? O + seventhI : null, nineI]);
       break;
   }
-  offs = [...new Set(offs)].sort((a, b) => a - b);
-  if (offs.length === 0) offs = compact([0, thirdI, fifthI]);
-  if (offs.length === 0) offs = [0];
+
+  // Merge the two hands into one offset list, tagging each with its hand.
+  // Dedupe by offset (an offset shared between hands collapses to a single
+  // note assigned to the LH, since the LH is built first).
+  const seenOff = new Set<number>();
+  let tagged: { o: number; lh: boolean }[] = [
+    ...lhOff.map(o => ({ o, lh: true })),
+    ...rhOff.map(o => ({ o, lh: false })),
+  ].filter(t => { if (seenOff.has(t.o)) return false; seenOff.add(t.o); return true; });
+  tagged.sort((a, b) => a.o - b.o);
+  if (tagged.length === 0) tagged = compact([0, thirdI, fifthI]).map(o => ({ o, lh: true }));
+  if (tagged.length === 0) tagged = [{ o: 0, lh: true }];
 
   // Place the voicing so its lowest note sits near anchorLow: pick the
   // root pitch nearest (anchorLow − lowestOffset), then add the offsets.
+  const offs = tagged.map(t => t.o);
   const minOff = Math.min(...offs);
   const target = anchorLow - minOff;
   let rootAbs = ((rootPc % edo) + edo) % edo;
   rootAbs += Math.round((target - rootAbs) / edo) * edo;
-  let all = offs.map(o => rootAbs + o).sort((a, b) => a - b);
+  // `offs` is ascending, so the mapped pitches are too — order stays
+  // aligned with `tagged`, letting us recover each note's hand after the
+  // whole-voicing octave shifts below.
+  let all = offs.map(o => rootAbs + o);
 
   // Octave-shift the whole voicing (internal spread preserved) so it fits
   // the keyboard.
   while (all.length && all[all.length - 1] > ceil && all[0] - edo >= floor) all = all.map(n => n - edo);
   while (all.length && all[0] < floor && all[all.length - 1] + edo <= ceil) all = all.map(n => n + edo);
-  return all;
+
+  const lh = all.filter((_, i) => tagged[i].lh);
+  const rh = all.filter((_, i) => !tagged[i].lh);
+  return { all, lh, rh };
 }
 
 // ── Bass-under-voicing (the "family 1" two-handed approach) ──────────
@@ -629,7 +656,23 @@ export function addBassUnder(
   rh: number[], chordTonePcs: number[], rootPc: number, edo: number,
   bass: BassVoicing, floor: number,
 ): number[] {
-  if (rh.length === 0) return rh;
+  return addBassUnderHands(rh, chordTonePcs, rootPc, edo, bass, floor).all;
+}
+
+/** Same as addBassUnder but also returns the left-hand bass (`lh`) and the
+ *  untouched right-hand voicing (`rh`) separately, so a caller can replay a
+ *  single hand in isolation.  The RH may be octave-lifted to clear the
+ *  bass, so `rh` here is the adjusted voicing actually sounded. */
+export function addBassUnderHands(
+  rh: number[], chordTonePcs: number[], rootPc: number, edo: number,
+  bass: BassVoicing, floor: number,
+  // Fixed target register for the LH bass root (e.g. ~2 octaves below the
+  // exercise low note), so the bass stays in a consistent keyboard-bass octave
+  // instead of tracking the RH voicing's bottom note.  When omitted, falls back
+  // to the legacy "place just below the RH" behaviour.
+  bassAnchor?: number,
+): { all: number[]; lh: number[]; rh: number[] } {
+  if (rh.length === 0) return { all: rh, lh: [], rh };
 
   // Pull interval offsets (above root) for whichever chord tones are present.
   const relRoot = (pc: number) => (((pc % edo) + edo) % edo - rootPc + edo) % edo;
@@ -677,19 +720,39 @@ export function addBassUnder(
   const rootPcMod = ((rootPc % edo) + edo) % edo;
   let rhAdj = [...rh];
   let bassRoot = rootPcMod;
-  for (let guard = 0; guard < 6; guard++) {
-    const rhBottom = Math.min(...rhAdj);
-    bassRoot = rootPcMod;
-    bassRoot += Math.floor((rhBottom - gap - maxOff - rootPcMod) / edo) * edo;
+  if (bassAnchor !== undefined) {
+    // Fixed register: anchor the bass root near `bassAnchor` (a typical low
+    // keyboard-bass octave), independent of the RH voicing/inversion.  Place the
+    // highest root at/below the anchor, clamp above the floor, then lift the RH
+    // up by octaves ONLY if it would actually collide with the bass.
+    bassRoot = rootPcMod + Math.floor((bassAnchor - rootPcMod) / edo) * edo;
     while (bassRoot < floor) bassRoot += edo;
-    if (bassRoot + maxOff < rhBottom) break;  // bass fits below RH
-    // Bass top still hits the RH bottom — lift the chord an octave and retry.
-    rhAdj = rhAdj.map(n => n + edo);
+    for (let guard = 0; guard < 6; guard++) {
+      const rhBottom = Math.min(...rhAdj);
+      if (bassRoot + maxOff < rhBottom) break;     // RH clears the bass
+      rhAdj = rhAdj.map(n => n + edo);             // lift RH an octave
+    }
+  } else {
+    // Legacy: place the bass a gap below the RH bottom (tracks the voicing).
+    for (let guard = 0; guard < 6; guard++) {
+      const rhBottom = Math.min(...rhAdj);
+      bassRoot = rootPcMod;
+      bassRoot += Math.floor((rhBottom - gap - maxOff - rootPcMod) / edo) * edo;
+      while (bassRoot < floor) bassRoot += edo;
+      if (bassRoot + maxOff < rhBottom) break;  // bass fits below RH
+      // Bass top still hits the RH bottom — lift the chord an octave and retry.
+      rhAdj = rhAdj.map(n => n + edo);
+    }
   }
 
   const lh = lhOff.map(o => bassRoot + o);
-  const all = [...lh, ...rhAdj].sort((a, b) => a - b);
-  return all.filter((n, i) => i === 0 || n !== all[i - 1]);
+  const merged = [...lh, ...rhAdj].sort((a, b) => a - b);
+  const all = merged.filter((n, i) => i === 0 || n !== merged[i - 1]);
+  return {
+    all,
+    lh: [...new Set(lh)].sort((a, b) => a - b),
+    rh: [...new Set(rhAdj)].sort((a, b) => a - b),
+  };
 }
 
 export function closedPosition(chord: number[], edo: number): number[] {

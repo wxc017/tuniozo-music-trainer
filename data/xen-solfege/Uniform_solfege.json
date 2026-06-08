@@ -1,0 +1,589 @@
+{
+ "title": "Uniform_solfege",
+ "snapshot": "20250828104153",
+ "url": "https://en.xen.wiki/w/Uniform_solfege",
+ "tables": [
+  {
+   "headers": [
+    "3-limit",
+    "Plain major scale",
+    "Da",
+    "Ra",
+    "Ma",
+    "Fa",
+    "Sa",
+    "La",
+    "Ta",
+    "Da"
+   ],
+   "rows": [
+    [
+     "Plain minor scale",
+     "Da",
+     "Ra",
+     "Na",
+     "Fa",
+     "Sa",
+     "Fla",
+     "Tha",
+     "Da"
+    ],
+    [
+     "5-limit",
+     "Downmajor scale",
+     "Da",
+     "Ra",
+     "Mo",
+     "Fa",
+     "Sa",
+     "Lo",
+     "To",
+     "Da"
+    ],
+    [
+     "Upminor scale",
+     "Da",
+     "Ra",
+     "Nu",
+     "Fa",
+     "Sa",
+     "Flu",
+     "Thu",
+     "Da"
+    ],
+    [
+     "7-limit",
+     "Upmajor scale",
+     "Da",
+     "Ra",
+     "Mu",
+     "Fa",
+     "Sa",
+     "Lu",
+     "Tu",
+     "Da"
+    ],
+    [
+     "Downminor scale",
+     "Da",
+     "Ra",
+     "No",
+     "Fa",
+     "Sa",
+     "Flo",
+     "Tho",
+     "Da"
+    ]
+   ],
+   "title": "Example scales"
+  },
+  {
+   "headers": [
+    "1 vowel",
+    "5, 7, 9, 12",
+    "",
+    "",
+    "-a = plain",
+    "",
+    ""
+   ],
+   "rows": [
+    [
+     "3 vowels",
+     "10, 13b-19, 22",
+     "",
+     "-o = down",
+     "-a = plain",
+     "-u = up",
+     ""
+    ],
+    [
+     "4 vowels",
+     "25, 27, 34, 41",
+     "-i = mid",
+     "-o = down",
+     "-a = plain",
+     "-u = up",
+     "-i = mid"
+    ],
+    [
+     "5 vowels",
+     "43, 46, 53, 60",
+     "-e = dud",
+     "-o = down",
+     "-a = plain",
+     "-u = up",
+     "-i = dup"
+    ]
+   ],
+   "title": "Solfeges for edos"
+  },
+  {
+   "headers": [
+    "",
+    "12",
+    "17",
+    "19",
+    "22",
+    "24",
+    "26",
+    "27",
+    "29",
+    "31",
+    "32",
+    "33",
+    "34",
+    "36",
+    "38",
+    "39",
+    "40",
+    "41",
+    "43",
+    "45",
+    "46",
+    "48",
+    "50",
+    "53",
+    "55",
+    "60"
+   ],
+   "rows": [
+    [
+     "ya",
+     "",
+     "(yo)",
+     "",
+     "yo",
+     "",
+     "",
+     "yo",
+     "yo",
+     "",
+     "",
+     "",
+     "yo",
+     "",
+     "",
+     "(yo)",
+     "",
+     "yo",
+     "",
+     "",
+     "yo",
+     "(yo)",
+     "",
+     "yo",
+     "",
+     "yo"
+    ],
+    [
+     "",
+     "(gu)",
+     "",
+     "gu",
+     "",
+     "",
+     "gu",
+     "gu",
+     "",
+     "",
+     "",
+     "gu",
+     "",
+     "",
+     "(gu)",
+     "",
+     "gu",
+     "",
+     "",
+     "gu",
+     "(gu)",
+     "",
+     "gu",
+     "",
+     "gu"
+    ],
+    [
+     "za",
+     "",
+     "",
+     "zo",
+     "",
+     "zo",
+     "zo",
+     "",
+     "zo",
+     "zo",
+     "",
+     "zo",
+     "zo",
+     "zo",
+     "zo",
+     "(zo)",
+     "",
+     "zo",
+     "zo",
+     "",
+     "zo",
+     "zo",
+     "",
+     "zo",
+     "",
+     ""
+    ],
+    [
+     "",
+     "",
+     "ru",
+     "",
+     "ru",
+     "ru",
+     "",
+     "ru",
+     "ru",
+     "",
+     "ru",
+     "ru",
+     "ru",
+     "ru",
+     "(ru)",
+     "",
+     "ru",
+     "ru",
+     "",
+     "ru",
+     "ru",
+     "",
+     "ru",
+     "",
+     ""
+    ],
+    [
+     "ila",
+     "(ilo)",
+     "ilo",
+     "",
+     "",
+     "ilo",
+     "",
+     "",
+     "",
+     "ilo",
+     "",
+     "",
+     "",
+     "(ilo)",
+     "(ilo)",
+     "",
+     "",
+     "",
+     "ilo",
+     "",
+     "",
+     "",
+     "ilo",
+     "",
+     "",
+     ""
+    ],
+    [
+     "(lu)",
+     "lu",
+     "",
+     "",
+     "lu",
+     "",
+     "",
+     "",
+     "lu",
+     "",
+     "",
+     "",
+     "(lu)",
+     "(lu)",
+     "",
+     "",
+     "",
+     "lu",
+     "",
+     "",
+     "",
+     "lu",
+     "",
+     "",
+     ""
+    ],
+    [
+     "tha",
+     "",
+     "tho",
+     "tho",
+     "",
+     "tho",
+     "tho",
+     "",
+     "",
+     "tho",
+     "",
+     "tho",
+     "",
+     "",
+     "tho",
+     "",
+     "tho",
+     "",
+     "",
+     "(tho)",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "thu",
+     "thu",
+     "",
+     "thu",
+     "thu",
+     "",
+     "",
+     "thu",
+     "",
+     "thu",
+     "",
+     "",
+     "thu",
+     "",
+     "thu",
+     "",
+     "",
+     "(thu)",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "title": "Correlations with color notation"
+  },
+  {
+   "headers": [
+    "-3",
+    "-2",
+    "-1",
+    "0",
+    "1",
+    "2",
+    "3"
+   ],
+   "rows": [
+    [
+     "trud",
+     "dud",
+     "down",
+     "plain",
+     "up",
+     "dup",
+     "trup"
+    ],
+    [
+     "-eyo",
+     "-e",
+     "-o",
+     "-a",
+     "-u",
+     "-i",
+     "-iyu"
+    ]
+   ],
+   "title": "Solfeges for rank-2 temperaments"
+  },
+  {
+   "headers": [
+    "",
+    "down",
+    "plain",
+    "up"
+   ],
+   "rows": [
+    [
+     "lift",
+     "-owi",
+     "-i",
+     "-uwi"
+    ],
+    [
+     "plain",
+     "-o",
+     "-a",
+     "-u"
+    ],
+    [
+     "drop",
+     "-owe",
+     "-e",
+     "-uwe"
+    ]
+   ],
+   "title": "Solfeges for rank-2 temperaments"
+  },
+  {
+   "headers": [
+    "-3",
+    "-2",
+    "-1",
+    "0",
+    "1",
+    "2",
+    "3"
+   ],
+   "rows": [
+    [
+     "ddd",
+     "dd",
+     "dim",
+     "plain",
+     "aug",
+     "AA",
+     "AAA"
+    ],
+    [
+     "-eyo",
+     "-e",
+     "-o",
+     "-a",
+     "-u",
+     "-i",
+     "-iyu"
+    ]
+   ],
+   "title": "Solfeges for rank-2 temperaments"
+  },
+  {
+   "headers": [
+    "",
+    "prime 2",
+    "prime 3",
+    "prime 5",
+    "prime 7",
+    "prime 11",
+    "prime 13",
+    "solfege string",
+    "alternates"
+   ],
+   "rows": [
+    [
+     "19-edo",
+     "0",
+     "1",
+     "4",
+     "-9",
+     "6",
+     "-4",
+     "MaThoPaFla",
+     "Tho=Lu"
+    ],
+    [
+     "22-edo",
+     "0",
+     "1",
+     "9",
+     "-2",
+     "-6",
+     "-9",
+     "RuThaShaTho",
+     "Ru=Sho, Tho=Pu"
+    ],
+    [
+     "31-edo",
+     "0",
+     "1",
+     "4",
+     "10",
+     "-13",
+     "15",
+     "MaLuShoSi",
+     "Sho=Mi, Si=The"
+    ],
+    [
+     "41-edo",
+     "0",
+     "1",
+     "-8",
+     "-14",
+     "-18",
+     "20",
+     "FoDeFlePi",
+     "Fle=Riyu, Pi=Deyo"
+    ],
+    [
+     "53-edo",
+     "0",
+     "1",
+     "-8",
+     "-14",
+     "23",
+     "20",
+     "FoDeRiyuPi",
+     "Riyu=Theye"
+    ]
+   ],
+   "title": "EDOs"
+  },
+  {
+   "headers": [
+    "",
+    "prime 5",
+    "prime 7",
+    "prime 11",
+    "prime 13",
+    "solfege string",
+    "alternates"
+   ],
+   "rows": [
+    [
+     "15-edo",
+     "vM3",
+     "m7",
+     "^4",
+     "(N/A)",
+     "MoThaFu",
+     ""
+    ],
+    [
+     "24-edo",
+     "M3",
+     "vm7",
+     "^4 or vA4",
+     "^m6 or vM6",
+     "MaThoPoLo",
+     "Po=Fu, Lo=Flu"
+    ],
+    [
+     "34-edo",
+     "vM3",
+     "(N/A)",
+     "^^4",
+     "^^m6",
+     "MeAPoLo",
+     "Po=Fu, Lo=Flu"
+    ],
+    [
+     "72-edo",
+     "vM3",
+     "vvm7",
+     "^ 3 P4 or v 3 A4",
+     "^ 3 m6 or v 3 M6",
+     "MoThePeyoLeyo",
+     "Peyo=Fiyu, Leyo=Fliyu"
+    ]
+   ],
+   "title": "EDOs"
+  }
+ ]
+}

@@ -1,0 +1,524 @@
+{
+ "title": "31edo_solfege",
+ "snapshot": "20250914000605",
+ "url": "https://en.xen.wiki/w/31edo_solfege",
+ "tables": [
+  {
+   "headers": [
+    "31edo",
+    "edosteps",
+    "solfege names",
+    "ups and downs names"
+   ],
+   "rows": [
+    [
+     "unisons",
+     "0-1",
+     "Da Du",
+     "P1 ^1",
+     "C ^C"
+    ],
+    [
+     "2nds",
+     "2-6",
+     "Fro Fra",
+     "Ro Ra Ru",
+     "vm2 m2",
+     "~2 M2 ^M2",
+     "vDb Db",
+     "vD D ^D"
+    ],
+    [
+     "3rds",
+     "7-11",
+     "No Na",
+     "Mo Ma Mu",
+     "vm3 m3",
+     "~3 M3 ^M3",
+     "vEb Eb",
+     "vE E ^E"
+    ],
+    [
+     "4ths",
+     "12-14",
+     "Fo Fa Fu/Po",
+     "v4 P4 ^4",
+     "vF F ^F/vF#"
+    ],
+    [
+     "tritones",
+     "15-16",
+     "Pa/Sho Pu/Sha",
+     "A4/vd5 ^A4/d5",
+     "F#/vGb ^F#/Gb"
+    ],
+    [
+     "5ths",
+     "17-19",
+     "So Sa Su",
+     "v5 P5 ^5",
+     "vG G ^G"
+    ],
+    [
+     "6ths",
+     "20-24",
+     "Flo Fla",
+     "Lo La Lu",
+     "vm6 m6",
+     "~6 M6 ^M6",
+     "vAb Ab",
+     "vA A ^A"
+    ],
+    [
+     "7ths",
+     "25-29",
+     "Tho Tha",
+     "To Ta Tu",
+     "vm7 m7",
+     "~7 M7 ^M7",
+     "vBb Bb",
+     "vB B ^B"
+    ],
+    [
+     "8ves",
+     "30-31",
+     "Do Da",
+     "v8 P8",
+     "vC C"
+    ]
+   ],
+   "title": "Uniform Solfege"
+  },
+  {
+   "headers": [
+    "31edo",
+    "solfege names",
+    "ups and downs names",
+    "edosteps"
+   ],
+   "rows": [
+    [
+     "1sns",
+     "Do Du",
+     "P1 ^1",
+     "0-1"
+    ],
+    [
+     "2nds",
+     "Ruh Re Ru Ra Ri",
+     "vm2 m2 ~2 M2 ^M2",
+     "2-6"
+    ],
+    [
+     "3rds",
+     "Muh Me Mu Ma Mi",
+     "vm3 m3 ~3 M3 ^M3",
+     "7-11"
+    ],
+    [
+     "4ths",
+     "Fuh Fo/Fe Fu",
+     "v4 P4 ^4",
+     "12-14"
+    ],
+    [
+     "tritones",
+     "Fa/Suh Fi/Se",
+     "A4/vd5 ^A4/d5",
+     "15-16"
+    ],
+    [
+     "5ths",
+     "Su So/Sa Si",
+     "v5 P5 ^5",
+     "17-19"
+    ],
+    [
+     "6ths",
+     "Luh Le Lu La Li",
+     "vm6 m6 ~6 M6 ^M6",
+     "20-24"
+    ],
+    [
+     "7ths",
+     "Tuh Te Tu Ta Ti",
+     "vm7 m7 ~7 M7 ^M7",
+     "25-29"
+    ],
+    [
+     "8ves",
+     "Duh Do (Du)",
+     "v8 P8 (^8)",
+     "30-31 (32)"
+    ]
+   ],
+   "title": "Consistent Solfege"
+  },
+  {
+   "headers": [
+    "Major scale",
+    "Do",
+    "Ra",
+    "Ma",
+    "Fo",
+    "So",
+    "La",
+    "Ta",
+    "Do"
+   ],
+   "rows": [
+    [
+     "Minor scale",
+     "Do",
+     "Ra",
+     "Me",
+     "Fo",
+     "So",
+     "Le",
+     "Te",
+     "Do"
+    ],
+    [
+     "Upmajor scale",
+     "Do",
+     "Ra",
+     "Mi",
+     "Fo",
+     "So",
+     "Li",
+     "Ti",
+     "Do"
+    ],
+    [
+     "Downminor scale",
+     "Do",
+     "Ra",
+     "Muh",
+     "Fo",
+     "So",
+     "Luh",
+     "Tuh",
+     "Do"
+    ],
+    [
+     "Mid scale",
+     "Do",
+     "Ra",
+     "Mu",
+     "Fo",
+     "So",
+     "Lu",
+     "Tu",
+     "Do"
+    ]
+   ],
+   "title": "Example scales"
+  },
+  {
+   "headers": [
+    "31edo",
+    "solfege names",
+    "ups and downs names",
+    "edosteps"
+   ],
+   "rows": [
+    [
+     "unisons",
+     "Do Da",
+     "P1 ^1",
+     "0-1"
+    ],
+    [
+     "2nds",
+     "Ru Ro Ra Re Ri",
+     "vm2 m2 ~2 M2 ^M2",
+     "2-6"
+    ],
+    [
+     "3rds",
+     "Mu Mo Ma Me Mi",
+     "vm3 m3 ~3 M3 ^M3",
+     "7-11"
+    ],
+    [
+     "4ths",
+     "Fu Fo Fa",
+     "v4 P4 ^4",
+     "12-14"
+    ],
+    [
+     "tritones",
+     "Fe/Su Fi/So",
+     "A4/vd5 ^A4/d5",
+     "15-16"
+    ],
+    [
+     "5ths",
+     "Sa Se Si",
+     "v5 P5 ^5",
+     "17-19"
+    ],
+    [
+     "6ths",
+     "Lu Lo La Le Li",
+     "vm6 m6 ~6 M6 ^M6",
+     "20-24"
+    ],
+    [
+     "7ths",
+     "Tu To Ta Te Ti",
+     "vm7 m7 ~7 M7 ^M7",
+     "25-29"
+    ],
+    [
+     "8ves",
+     "Du Do",
+     "v8 P8",
+     "30-31"
+    ]
+   ],
+   "title": "Kite Giedraitis's solfege"
+  },
+  {
+   "headers": [
+    "Major scale",
+    "Do",
+    "Re",
+    "Me",
+    "Fo",
+    "Se",
+    "Le",
+    "Te",
+    "Do"
+   ],
+   "rows": [
+    [
+     "Minor scale",
+     "Do",
+     "Re",
+     "Mo",
+     "Fo",
+     "Se",
+     "Lo",
+     "To",
+     "Do"
+    ],
+    [
+     "Upmajor scale",
+     "Do",
+     "Re",
+     "Mi",
+     "Fo",
+     "Se",
+     "Li",
+     "Ti",
+     "Do"
+    ],
+    [
+     "Downminor scale",
+     "Do",
+     "Re",
+     "Mu",
+     "Fo",
+     "Se",
+     "Lu",
+     "Tu",
+     "Do"
+    ],
+    [
+     "Mid scale",
+     "Do",
+     "Re",
+     "Ma",
+     "Fo",
+     "Se",
+     "La",
+     "Ta",
+     "Do"
+    ]
+   ],
+   "title": "Example scales"
+  },
+  {
+   "headers": [
+    "1sn",
+    "5th",
+    "2nd",
+    "6th",
+    "3rd",
+    "7th",
+    "4th",
+    "1sn"
+   ],
+   "rows": [
+    [
+     "Do",
+     "Se",
+     "Re",
+     "Le",
+     "Me",
+     "Te",
+     "Fe (Su)",
+     ""
+    ],
+    [
+     "",
+     "Su",
+     "Ru",
+     "Lu",
+     "Mu",
+     "Tu",
+     "Fu",
+     "Du"
+    ],
+    [
+     "Sa",
+     "Ra",
+     "La",
+     "Ma",
+     "Ta",
+     "Fa",
+     "Da"
+    ],
+    [
+     "Si",
+     "Ri",
+     "Li",
+     "Mi",
+     "Ti",
+     "Fi (So)",
+     ""
+    ],
+    [
+     "So",
+     "Ro",
+     "Lo",
+     "Mo",
+     "To",
+     "Fo",
+     "Do"
+    ]
+   ],
+   "title": "The circle of fifths"
+  },
+  {
+   "headers": [
+    "31edo",
+    "solfege names",
+    "ups and downs names",
+    "edosteps"
+   ],
+   "rows": [
+    [
+     "unisons",
+     "Do Di",
+     "P1 ^1",
+     "0-1"
+    ],
+    [
+     "2nds",
+     "Ro Ra Ru Re Ri",
+     "vm2 m2 ~2 M2 ^M2",
+     "2-6"
+    ],
+    [
+     "3rds",
+     "Ma Me Mu Mi Mo",
+     "vm3 m3 ~3 M3 ^M3",
+     "7-11"
+    ],
+    [
+     "4ths",
+     "Fe Fa Fu Fi",
+     "v4 P4 ^4 A4",
+     "12-15"
+    ],
+    [
+     "5ths",
+     "Se Su So (or Sol) Si",
+     "d5 v5 P5 ^5",
+     "16-19"
+    ],
+    [
+     "6ths",
+     "Lo Le Lu La Li",
+     "vm6 m6 ~6 M6 ^M6",
+     "20-24"
+    ],
+    [
+     "7ths",
+     "Ta Te Tu Ti To",
+     "vm7 m7 ~7 M7 ^M7",
+     "25-29"
+    ],
+    [
+     "8ves",
+     "Da Do",
+     "v8 P8",
+     "30-31"
+    ]
+   ],
+   "title": "Andrew Heathwaite's solfege"
+  },
+  {
+   "headers": [
+    "Major scale",
+    "Do",
+    "Re",
+    "Mi",
+    "Fa",
+    "Sol",
+    "La",
+    "Ti",
+    "Do"
+   ],
+   "rows": [
+    [
+     "Minor scale",
+     "Do",
+     "Re",
+     "Me",
+     "Fa",
+     "Sol",
+     "Le",
+     "Te",
+     "Do"
+    ],
+    [
+     "Upmajor scale",
+     "Do",
+     "Re",
+     "Mo",
+     "Fa",
+     "Sol",
+     "Li",
+     "To",
+     "Do"
+    ],
+    [
+     "Downminor scale",
+     "Do",
+     "Re",
+     "Ma",
+     "Fa",
+     "Sol",
+     "Lo",
+     "Ta",
+     "Do"
+    ],
+    [
+     "Mid scale",
+     "Do",
+     "Re",
+     "Mu",
+     "Fa",
+     "Sol",
+     "Lu",
+     "Tu",
+     "Do"
+    ]
+   ],
+   "title": "Example scales"
+  }
+ ]
+}

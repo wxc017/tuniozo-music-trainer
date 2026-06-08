@@ -18,6 +18,7 @@
 //   other        → MEANTONE_LIMIT_SECTIONS prime-limit fallback
 
 import { jiLimitGroupsForEdo } from "./jiTonalityFamilies";
+import { getScalesForEdo } from "./commonScales";
 
 export interface TonalityFamilyGroup {
   key: string;
@@ -185,6 +186,42 @@ export function tonalitySectionsForEdo(edo: number): TonalitySection[] {
         .map(f => ({ key: f.key, label: f.label, tonalities: f.tonalities })),
     }))
     .filter(sec => sec.families.length > 0);
+}
+
+// Sized-catalog picker (Tonal Audiation): sections = scale FAMILY (Ionian,
+// Dorian, …, Pentatonic, Symmetric, …), each split by interval LIMIT
+// (Ptolemaic / Septimal / Undecimal).  Built straight from getScalesForEdo so
+// the picker and the generated chord banks always list the same scale names.
+const SIZED_FAMILY_ORDER = ["Ionian", "Dorian", "Phrygian", "Lydian", "Mixolydian",
+  "Aeolian", "Locrian", "Neutral", "Harmonic Minor", "Melodic Minor", "Harmonic Major",
+  "Double Harmonic", "Pentatonic", "Symmetric", "Harmonic series", "Maqam & other"];
+const SIZED_FAMILY_COLOR: Record<string, string> = {
+  Ionian: "#6a9aca", Dorian: "#5a9ac0", Phrygian: "#8a6ac8", Lydian: "#caa050",
+  Mixolydian: "#c08050", Aeolian: "#9a6ac0", Locrian: "#c06090", Neutral: "#5ab9b0",
+  "Harmonic Minor": "#c09050", "Melodic Minor": "#c06090", "Harmonic Major": "#ca8040",
+  "Double Harmonic": "#e08040", Pentatonic: "#6aca8a", Symmetric: "#5ab9b0",
+  "Harmonic series": "#caa050", "Maqam & other": "#c06090",
+};
+
+export function sizedTonalitySections(edo: number): TonalitySection[] {
+  const byFam = new Map<string, Map<string, string[]>>();
+  for (const s of getScalesForEdo(edo, false)) {
+    const sp = s.group.split(" · ");
+    const fam = sp[0], lim = sp[1] ?? "";
+    if (!byFam.has(fam)) byFam.set(fam, new Map());
+    const lm = byFam.get(fam)!;
+    if (!lm.has(lim)) lm.set(lim, []);
+    lm.get(lim)!.push(s.name);
+  }
+  const order = (f: string) => { const i = SIZED_FAMILY_ORDER.indexOf(f); return i < 0 ? 99 : i; };
+  return [...byFam.keys()].sort((a, b) => order(a) - order(b)).map(fam => ({
+    key: fam,
+    label: fam.toUpperCase(),
+    color: SIZED_FAMILY_COLOR[fam] ?? "#8a8aa0",
+    families: [...byFam.get(fam)!.entries()].map(([lim, names]) => ({
+      key: `${fam}-${lim || "x"}`, label: lim || "Other", tonalities: names,
+    })),
+  }));
 }
 
 /** Back-compat: the flat per-EDO tonality family list used by older

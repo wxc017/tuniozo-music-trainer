@@ -326,10 +326,15 @@ export default function TranscriptionMode() {
   const checkpoints = track ? (checkpointsAll[track.id] ?? []) : [];
   const loop = track ? (loopsAll[track.id] ?? null) : null;
 
-  // ── Load the corpus index on mount ─────────────────────────────
+  // ── Corpus = ONLY what the user drags in ───────────────────────
+  // The bundled song library (public/transcriptions/*.json) is no longer
+  // loaded — per user, the corpus is just the folders/files they add.  We also
+  // pin the single visible tab ("Corpus") to the drag-in view.
   useEffect(() => {
-    loadIndex().then((idx: TxIndex) => { setCorpus(idx.items); setCorpusReady(true); }).catch(() => setCorpusReady(true));
-  }, []);
+    setCorpus([]);
+    setCorpusReady(true);
+    setSourceTab("files");
+  }, [setSourceTab]);
 
   // Clean up Rubber Band + AudioContext on unmount.
   useEffect(() => {
@@ -407,6 +412,29 @@ export default function TranscriptionMode() {
     setFolderEntries(prev => ({ ...prev, [folder.id]: entries }));
     setFolderNeedsRegrant(prev => ({ ...prev, [folder.id]: false }));
   };
+
+  // Re-scan every added folder so the list stays LIVE (new files, renames and
+  // deletions all show up) — the folder is not a one-time snapshot.
+  const refreshAllFolders = useCallback(async () => {
+    for (const folder of folders) {
+      try { await listFolder(folder); }
+      catch { setFolderNeedsRegrant(prev => ({ ...prev, [folder.id]: true })); }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folders]);
+
+  // Refresh whenever the user returns to the tab/window (e.g. after adding or
+  // renaming a file in Explorer) — the File System Access API has no change
+  // events, so re-scanning on focus keeps it current without polling.
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === "visible") void refreshAllFolders(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [refreshAllFolders]);
 
   const pickFolder = async () => {
     const w = window as unknown as { showDirectoryPicker?: (options?: { mode: "read" | "readwrite" }) => Promise<FileSystemDirectoryHandle> };
@@ -693,7 +721,13 @@ export default function TranscriptionMode() {
     mediaSrcRef.current = null;
     rbReadyRef.current = false;
     setRbStatus("idle");
-    audio.crossOrigin = "anonymous";
+    // crossOrigin="anonymous" is fine (and useful for Web Audio analysis) on the
+    // same-origin corpus URLs, but Chromium REFUSES to load a blob: URL when
+    // crossOrigin is set — a CORS check a blob can't satisfy — which silently
+    // leaves duration 0:00 and a blank waveform for folder / dropped files.  So
+    // only set it for http(s) sources.
+    if (track.src.startsWith("blob:")) audio.removeAttribute("crossorigin");
+    else audio.crossOrigin = "anonymous";
     audio.src = track.src;
     // Force-flush the previous track's buffered media. Without load() a
     // paused element resumes the OLD media on the next play() despite the
@@ -787,13 +821,27 @@ export default function TranscriptionMode() {
     ws.on("timeupdate", onTime);
     ws.on("play", onPlay);
     ws.on("pause", onPause);
+    // WaveSurfer decodes the WHOLE file to draw the static waveform, which can
+    // choke / be very slow on a long file (esp. on this emulated browser) and
+    // leave the player at 0:00.  So drive duration from the <audio> element's
+    // metadata (read instantly from the header) — the player (play/seek/time)
+    // works even if the waveform never finishes rendering.
+    const onMeta = () => { if (audio.duration && isFinite(audio.duration)) setDuration(audio.duration); };
+    audio.addEventListener("loadedmetadata", onMeta);
+    audio.addEventListener("durationchange", onMeta);
+    onMeta(); // in case metadata already loaded before the listener attached
+    const onWsError = (err: unknown) => { console.warn("WaveSurfer decode failed (player still works):", err); };
+    ws.on("error", onWsError);
 
     return () => {
       audio.pause();
+      audio.removeEventListener("loadedmetadata", onMeta);
+      audio.removeEventListener("durationchange", onMeta);
       ws.un("ready", onReady);
       ws.un("timeupdate", onTime);
       ws.un("play", onPlay);
       ws.un("pause", onPause);
+      ws.un("error", onWsError);
       ws.destroy();
       wsRef.current = null;
       track.cleanup?.();
@@ -1261,14 +1309,11 @@ export default function TranscriptionMode() {
         {/* ── LEFT: source picker ───────────────────────────────── */}
         <aside className="bg-[#0e0e0e] border border-[#1a1a1a] rounded-lg overflow-hidden flex flex-col" style={{ minHeight: 520 }}>
           <div className="flex border-b border-[#1a1a1a]">
-            {(["corpus", "recent", "files", "saved"] as SourceTab[]).map(t => (
-              <button key={t} onClick={() => setSourceTab(t)}
-                className={`flex-1 px-2 py-2 text-[10px] font-semibold tracking-widest uppercase transition-colors ${
-                  sourceTab === t ? "bg-[#1a1408] text-[#d4a050]" : "text-[#666] hover:text-[#aaa]"
-                }`}>
-                {t === "corpus" ? "Corpus" : t === "recent" ? "Recent" : t === "files" ? "Files" : "Saved"}
-              </button>
-            ))}
+            {/* Single tab — drag in folders/files; the bundled library, Recent
+                and Saved tabs were removed per user request. */}
+            <div className="flex-1 px-2 py-2 text-[10px] font-semibold tracking-widest uppercase bg-[#1a1408] text-[#d4a050]">
+              Corpus
+            </div>
           </div>
 
           {sourceTab === "corpus" && (
@@ -1347,6 +1392,11 @@ export default function TranscriptionMode() {
                   + Folder
                 </button>
                 <span className="text-[10px] text-[#666]">or drop files here</span>
+                {folders.length > 0 && (
+                  <button onClick={() => void refreshAllFolders()}
+                    title="Re-scan added folders for new / renamed / removed files"
+                    className="ml-auto px-2 py-1.5 text-[10px] text-[#888] hover:text-[#d4a050]">↻ Refresh</button>
+                )}
               </div>
               {(folders.length > 0 || dropped.length > 0) && (
                 <input
@@ -1649,9 +1699,9 @@ export default function TranscriptionMode() {
                   return (
                     <div className="flex items-center gap-2 flex-wrap">
                       <button onClick={() => runSplit(false)}
-                        title="Two-pass split: BS-Roformer for vocals, htdemucs_6s for the 5 instrument stems. Cleaner guitar/piano isolation than a single Demucs pass. ~2x the runtime; cached after first run."
+                        title="Single-pass htdemucs into 4 stems (vocals, drums, bass, other). Runs on CPU and is cached after the first run."
                         className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider bg-[#1a1a2e] border border-[#7173e6] text-[#9999ee] hover:bg-[#252550] rounded">
-                        ⌁ Split into 6 stems (BS-Roformer + htdemucs_6s ensemble)
+                        ⌁ Split into 4 stems (vocals · drums · bass · other)
                       </button>
                       {splitState.error && (
                         <span className="text-[10px] text-[#c66]" title={splitState.error}>(split failed — check dev console)</span>

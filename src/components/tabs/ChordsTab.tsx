@@ -25,11 +25,51 @@ import {
   getDegreeMap,
 } from "@/lib/edoData";
 import { syllableForEdoStep } from "@/lib/microtonalSolfege";
-import { getTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS, type TonalityBank, type ChordEntry, type ApproachKind } from "@/lib/tonalityBanks";
+import { getSizedTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABELS, type TonalityBank, type ChordEntry, type ApproachKind } from "@/lib/tonalityBanks";
 import { xenIntervalsForEdo, bankToScaleFamMode } from "@/lib/tonalityChordPool";
+import { getScalesForEdo } from "@/lib/commonScales";
 import { formatRomanNumeral, formatRomanNumeralWithFamily } from "@/lib/formatRoman";
+import { chordSymbol, sizedRoman } from "@/lib/chordNotation";
+import { notationLabel } from "@/lib/notationLabels";
+
+// Stack a chord's quality tones (step offsets from the root) as a notation
+// system's interval labels (e.g. SKULO "sm3 m7", Kite "^3 v7") — skipping the
+// unison, perfect 5th and octave (same convention as the sized chordSymbol).
+function systemStack(toneOffsets: number[], edo: number, system: string | undefined): string {
+  const fifth = Math.round((edo * 702) / 1200);
+  const seen = new Set<number>();
+  const out: string[] = [];
+  for (const o of toneOffsets) {
+    const k = (((o % edo) + edo) % edo);
+    if (k === 0 || k === fifth || seen.has(k)) continue;
+    seen.add(k);
+    out.push(notationLabel(edo, system, k));
+  }
+  return out.join(" ");
+}
+/** Roman numeral (traditional, with #/b) + the system's scale-degree stack. */
+function romanWithSystem(roman: string, toneOffsets: number[], edo: number, system: string | undefined): string {
+  const stack = systemStack(toneOffsets, edo, system);
+  return stack ? `${roman} ${stack}` : roman;
+}
+
+// Display a tonality/scale name in our sized system: keep Greek + proper-noun
+// names, translate the cryptic sub/super/neutral quality words.  Lookup keys
+// (the raw `t`) are untouched — this only changes what the user sees.
+const SIZED_ANCHOR_NAME: Record<string, string> = {
+  "Subminor Diatonic": "Diatonic Small Minor",
+  "Supermajor Diatonic": "Diatonic Large Major",
+  "Subharmonic Diatonic M7": "Diatonic Small Minor ♮7",
+  "Neutral Diatonic": "Diatonic Neutral",
+};
+function sizedTonalityName(t: string): string {
+  return SIZED_ANCHOR_NAME[t] ?? t
+    .replace(/\bSubminor\b/g, "Small Minor")
+    .replace(/\bSupermajor\b/g, "Large Major")
+    .replace(/\bSubharmonic\b/g, "Small Minor");
+}
 import { JI_LIMIT_GROUPS, jiLimitGroupsForEdo, familyAbbreviationForTonality } from "@/lib/jiTonalityFamilies";
-import { TONALITY_FAMILIES, tonalitySectionsForEdo, tonalityFamiliesForEdo, type TonalityFamilyGroup, type TonalitySection } from "@/lib/tonalityCatalog";
+import { TONALITY_FAMILIES, sizedTonalitySections, tonalityFamiliesForEdo, type TonalityFamilyGroup, type TonalitySection } from "@/lib/tonalityCatalog";
 import { JI_SCALE_NAMES, getJiScaleCents, getJiScaleDegrees } from "@/lib/jiScaleData";
 import { analyzeJiScale, COMMA_DRIFT_CATALOG } from "@/lib/jiChordAnalysis";
 import { chordQualityFromSteps, voicingFor } from "@/lib/jiLattice";
@@ -44,6 +84,7 @@ import LumatoneKeyboard from "@/components/LumatoneKeyboard";
 import type { LayoutResult, ComputedKey } from "@/lib/lumatoneLayout";
 import type { VisualizerType } from "@/App";
 import { piperSpeak, piperPrewarm } from "@/lib/piperSpeech";
+import { solfegeFor, speakSolfege } from "@/lib/solfegeGamut";
 import { heathwaiteIpa } from "@/lib/solfegeSpeech";
 import LatticeView from "@/components/LatticeView";
 
@@ -55,6 +96,23 @@ const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
 // loaded or the model fetch fails.  stopPropagation on mousedown/click
 // prevents the parent <button> (which plays the chord-tone pitch) from
 // firing simultaneously.
+/** Render a chord symbol with its sized-quality codes superscripted:
+ *  "lii sM3" → lii^(sM3).  Everything after the leading numeral (the first
+ *  space) is the quality stack. */
+// Render a roman numeral with a leading s/l SIZE prefix shown as a subscript
+// (e.g. "sIII" → ₛIII, "liii" → ₗiii).  Plain numerals pass through.
+function Numeral({ num }: { num: string }) {
+  const m = /^([sl])(.+)$/.exec(num);
+  if (!m) return <>{num}</>;
+  return <><sub className="text-[0.7em]">{m[1]}</sub>{m[2]}</>;
+}
+function ChordSym({ symbol }: { symbol: string }) {
+  const i = symbol.indexOf(" ");
+  const num = i < 0 ? symbol : symbol.slice(0, i);
+  const rest = i < 0 ? "" : symbol.slice(i + 1);
+  return <><Numeral num={num} />{rest && <sup className="text-[0.7em]">{rest}</sup>}</>;
+}
+
 function SaySpan({
   text, ipa, className, title,
 }: { text: string; ipa: string | null; className?: string; title?: string }) {
@@ -115,6 +173,9 @@ interface Props extends SharedHighlightProps {
   tabSettingsRef?: React.MutableRefObject<TabSettingsSnapshot | null>;
   answerButtons?: React.ReactNode;
   betaMode?: boolean;
+  /** Chosen notation system for this EDO; "Schulter"/undefined → sized chord
+   *  symbols, anything else → traditional roman numerals (I ii iii #/b). */
+  notationSystem?: string;
 }
 
 const REGISTER_MODES = ["Fixed Register","Random Bass Octave","Random Full Register"];
@@ -130,8 +191,11 @@ const REGISTER_MODES = ["Fixed Register","Random Bass Octave","Random Full Regis
 const STANDARD_THIRD_QUALITIES = new Set(["sus2", "min3", "maj3", "sus4"]);
 
 export default function ChordsTab({
-  tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.55, layoutPitchRange, tabSettingsRef, answerButtons, highlightedPitches, vizType, layout, onKeyClick, betaMode = false,
+  tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.55, layoutPitchRange, tabSettingsRef, answerButtons, highlightedPitches, vizType, layout, onKeyClick, betaMode = false, notationSystem,
 }: Props) {
+  // Schulter → our sized chord symbols; any other chosen notation → traditional
+  // roman numerals (I ii iii with #/b).
+  const useSchulter = !notationSystem || notationSystem === "Schulter";
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // ── Chord selection state ───────────────────────────────────────────
@@ -347,6 +411,9 @@ export default function ChordsTab({
   // walk on screen is synchronized with what the user hears.  -1
   // means no chord is active right now.
   const [currentChordIdx, setCurrentChordIdx] = useState(-1);
+  // Which Show-Answer card the user last clicked (kept highlighted alongside the
+  // chord it lights on the keyboard).
+  const [litCardIdx, setLitCardIdx] = useState<number | null>(null);
   // The transition currently being previewed for voice-leading
   // arrows.  When set to N, the harmonic lattice flashes arrows
   // showing the voice motion from chord N → chord N+1.  Driven by
@@ -491,7 +558,7 @@ export default function ChordsTab({
       // direct user feedback 2026-05-05: "i only have this tonality
       // selected but im see more then in the roman numerals").
       const visible = new Set<string>();
-      for (const section of tonalitySectionsForEdo(edo)) {
+      for (const section of sizedTonalitySections(edo)) {
         for (const fam of section.families) {
           for (const t of fam.tonalities) {
             if (banksByName[t]) visible.add(t);
@@ -586,7 +653,15 @@ export default function ChordsTab({
 
   // Tonality banks (one per mode) — Magic Mode is excluded from the new
   // multi-select picker; the family-grouped boxes only show real modes.
-  const tonalityBanks = useMemo(() => getTonalityBanks(edo, showSevenths), [edo, showSevenths]);
+  const tonalityBanks = useMemo(() => getSizedTonalityBanks(edo), [edo]);
+  // Actual scale steps for each sized tonality (name → steps), so preview
+  // playback and the keyboard highlight use the REAL scale, not a name→mode
+  // guess that doesn't recognise the sized names.
+  const sizedScaleByName = useMemo(() => {
+    const m = new Map<string, number[]>();
+    for (const s of getScalesForEdo(edo, false)) m.set(s.name, s.steps);
+    return m;
+  }, [edo]);
   const banksByName = useMemo(() => {
     const map: Record<string, TonalityBank> = {};
     for (const b of tonalityBanks) map[b.name] = b;
@@ -641,7 +716,10 @@ export default function ChordsTab({
     if (bank) {
       for (const level of bank.levels) {
         for (const entry of level.chords) {
-          if (entry.steps && !map[entry.label]) map[entry.label] = entry.steps;
+          // Explicit bank steps WIN over the generic base map — the sized banks
+          // carry scale-specific shapes (e.g. Small Major's I uses sM3, not the
+          // generic M3).  Curated banks use null-step refs and still fall back.
+          if (entry.steps) map[entry.label] = entry.steps;
         }
       }
     }
@@ -919,6 +997,11 @@ export default function ChordsTab({
     const k_ext = Math.max(0, targetNotes - shape.length);
 
     const scalePcs = new Set<number>();
+    // The selected scale's own degrees, so the voicing framework "sticks" to the
+    // scale — extensions stay in-scale by default regardless of which chords are
+    // ticked.  scaleRootsOverride is the loop's per-tonality scale roots.
+    const srcRoots = scaleRootsOverride !== undefined ? scaleRootsOverride : diatonicScaleRoots;
+    if (srcRoots) for (const r of srcRoots) scalePcs.add(((r % edo) + edo) % edo);
     const checkedRomans = Array.from(effectiveChecked).filter(r => currentChordMap[r]);
     for (const rn2 of checkedRomans) {
       for (const s of currentChordMap[rn2] ?? []) scalePcs.add(((s % edo) + edo) % edo);
@@ -952,14 +1035,17 @@ export default function ChordsTab({
         // 7th is carried by seventh-chord voicings, not as a generic ext.
         if (lbl === "7th") continue;
         for (const s of getExtLabelToSteps(edo)[lbl] ?? []) {
-          if (strict && matchedType && (matchedType.stable.length > 0 || matchedType.avoid.length > 0)) {
-            const relPc = ((s) % edo + edo) % edo;
-            if (extTendency === "Stable" && !matchedType.stable.includes(relPc)) continue;
-            if (extTendency === "Avoid"  && !matchedType.avoid.includes(relPc)) continue;
-          } else if (strict) {
+          if (strict) {
             const pc = ((rootStep + s) % edo + edo) % edo;
-            if (extTendency === "Stable" && !scalePcs.has(pc)) continue;
-            if (extTendency === "Avoid"  &&  scalePcs.has(pc)) continue;
+            const inScale = scalePcs.has(pc);
+            if (extTendency === "Avoid") {
+              if (inScale) continue;                       // deliberately seek out-of-scale tension
+            } else {
+              if (!inScale) continue;                      // Any / Stable: extensions stay in the scale
+              // Stable additionally restricts to the chord type's consonant set.
+              if (extTendency === "Stable" && matchedType && matchedType.stable.length > 0
+                  && !matchedType.stable.includes(((s % edo) + edo) % edo)) continue;
+            }
           }
           pool.push(s);
         }
@@ -1399,9 +1485,7 @@ export default function ChordsTab({
     await ensureAudio();
     frameTimers.current.forEach(id => clearTimeout(id));
     frameTimers.current = [];
-    const [fam, mode] = bankToScaleFamMode(tonality);
-    const map = getModeDegreeMap(edo, fam, mode);
-    const steps = Object.values(map).sort((a, b) => a - b);
+    const steps = (sizedScaleByName.get(tonality) ?? []).slice().sort((a, b) => a - b);
     if (steps.length === 0) return;
     const allSteps = [...steps, steps[0] + edo];   // append octave
     // Center the preview around the user's exercise range so it sits on
@@ -1436,7 +1520,7 @@ export default function ChordsTab({
       setPlayingTonality(null);
       playingTonalityTimer.current = null;
     }, holdStart + HOLD_MS);
-  }, [edo, tonicPc, lowestPitch, playVol, harmonyVol, ensureAudio, onHighlight]);
+  }, [edo, tonicPc, lowestPitch, playVol, harmonyVol, ensureAudio, onHighlight, sizedScaleByName]);
 
   const CHORD_BOOST = 2.2;
   const BASS_BOOST = 1.6;
@@ -1913,7 +1997,7 @@ export default function ChordsTab({
         </div>
         {!collapsedTonalities && (
         <div className="p-2 space-y-2">
-        {tonalitySectionsForEdo(edo).map(section => {
+        {sizedTonalitySections(edo).map(section => {
           // Filter families to those with at least one bank-backed
           // tonality available for this EDO; drop empty sections so the
           // picker doesn't render headers for limits with no scales.
@@ -1954,7 +2038,7 @@ export default function ChordsTab({
                               on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
                             }`}
                             style={on ? { backgroundColor: section.color + "30", borderColor: section.color, color: section.color } : {}}>
-                            {formatHalfAccidentals(t, edo)}
+                            {formatHalfAccidentals(sizedTonalityName(t), edo)}
                           </button>
                           <button onClick={(e) => { e.stopPropagation(); previewTonalityScale(t); }}
                             disabled={playingTonality === t}
@@ -2187,6 +2271,8 @@ export default function ChordsTab({
               familyPrefix={familyPrefix}
               bank={bank}
               edo={edo}
+              useSchulter={useSchulter}
+              notationSystem={notationSystem}
               chordMap={chordMap}
               checkedSet={new Set(checkedByTonality[t] ?? [])}
               toggleChord={(label) => toggleChordForTonality(t, label)}
@@ -2411,14 +2497,28 @@ export default function ChordsTab({
               // already in use.  Format mirrors jazz lead sheets:
               // chord on top of the slash, bass chord-tone below
               // (V/3 = V with its 3rd in bass, V/5 = V/its 5th, etc.).
-              const inversionLabel = bassNum && bassNum !== 1 ? `${c.roman}/${bassNum}` : null;
-              // Header label per direct user direction (2026-05-13):
-              //   "i just want the whole roman numral itself to dicate
-              //   that the base is an iversion" — slash notation
-              //   replaces the bare Roman entirely (no extra inversion
-              //   chip).  Root position uses the plain Roman; any
-              //   non-root bass renders as "<bassDegree>/<Roman>".
-              const headerLabel = inversionLabel ?? c.roman;
+              // Sized-interval chord symbol from the actual pitches (our
+              // notation): position numeral carrying the root's sized quality
+              // vs the tonic + stacked sized codes.  Correct in any EDO.
+              const rootCT = ((((c.chordRootPc - tonicPc) % edo) + edo) % edo) * 1200 / edo;
+              const sizedLabel = useSchulter
+                ? chordSymbol([rootCT, ...c.chordToneOffsets.map(o => rootCT + (o * 1200) / edo)])
+                : romanWithSystem(c.roman, c.chordToneOffsets, edo, notationSystem);
+              // Inversions: rather than an unreadable "/N" slash crammed into the
+              // superscript, re-root the symbol on the bass note so it reads as the
+              // chord/quality OF the inversion's root (per direct user direction).
+              let headerLabel = sizedLabel;
+              if (bassNum && bassNum !== 1 && c.pitches.length > 0) {
+                const bassCents = (lowestPc * 1200) / edo;
+                const voiced = c.pitches.map(p => bassCents + ((p - c.pitches[0]) * 1200) / edo);
+                headerLabel = useSchulter
+                  ? chordSymbol(voiced)
+                  : (() => {
+                      const stack = systemStack(c.pitches.map(p => p - c.pitches[0]), edo, notationSystem);
+                      const num = sizedRoman(bassCents);
+                      return stack ? `${num} ${stack}` : num;
+                    })();
+              }
               return (
                 <button key={i}
                   onClick={() => {
@@ -2437,7 +2537,7 @@ export default function ChordsTab({
                       numerals". */}
                   <div className="text-center mb-3">
                     <div className="text-[16px] font-bold leading-tight font-mono" style={{ color: "#c8a0e0" }}>
-                      {headerLabel}
+                      <ChordSym symbol={headerLabel} />
                     </div>
                   </div>
                   {/* Voicing notes — one cell per pitch (the actual
@@ -2453,7 +2553,7 @@ export default function ChordsTab({
                       {c.pitches.map((pitch, j) => {
                         const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
                         const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
-                        const degree = pythagoreanDegree(pcFromTonic);
+                        const degree = notationLabel(edo, notationSystem, pcFromTonic);
                         const oct = ctOctMap.get(pcFromTonic) ?? 0;
                         return (
                           <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#1a1a2a] border-[#2a2a3a] px-1 py-0.5">
@@ -2463,57 +2563,6 @@ export default function ChordsTab({
                         );
                       })}
                     </div>
-                    );
-                  })()}
-                  {/* Permutation rows — alternative voicings for the
-                      singer to practice per direct user direction
-                      (2026-05-13) "i still want all the permuations
-                      below".  N inversions (rotated voicings) +
-                      N retrogrades; each row labeled with slash-form
-                      inversion notation matching the header style.
-                      Descending (retrograde) rows append ↓. */}
-                  {(() => {
-                    const pcs = c.pitches.map(p => ((p - tonicPc) % edo + edo) % edo);
-                    // Skip inversions[0] — it's the played voicing
-                    // verbatim and would duplicate the row directly
-                    // above this block.  Per direct user direction
-                    // (2026-05-13) "for show target voicing
-                    // permuations the first once is unecessary".
-                    const inversions: number[][] = [];
-                    for (let k = 1; k < pcs.length; k++) {
-                      inversions.push([...pcs.slice(k), ...pcs.slice(0, k)]);
-                    }
-                    const rows = [
-                      ...inversions,
-                      ...inversions.map(inv => [...inv].reverse()),
-                    ];
-                    return (
-                      <div className="mt-3 pt-2 border-t border-[#2a2a3a] space-y-1">
-                        <div className="text-[8px] text-[#666] uppercase tracking-wider mb-1">Singing permutations</div>
-                        {rows.map((permPcs, ri) => {
-                          // PCs keep their inversion-derived octave
-                          // marks no matter what order they appear
-                          // in — per direct user direction "it
-                          // doesnt matter how they are rearranged
-                          // the +1's stay the same".
-                          const ctOctMap = ctOctavesForChord(c);
-                          return (
-                          <div key={ri} className="flex gap-1">
-                            {permPcs.map((pc, j) => {
-                              const solfege = heathwaiteTable ? heathwaiteTable[pc] ?? "—" : "—";
-                              const degree = pythagoreanDegree(pc);
-                              const oct = ctOctMap.get(pc) ?? 0;
-                              return (
-                                <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#141420] border-[#2a2a3a] px-0.5">
-                                  <span className="text-[9px] font-mono font-bold leading-tight text-[#9999ee]">{degree}{renderOctSup(oct)}</span>
-                                  <span className="text-[8px] leading-tight text-[#888]">{solfege}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          );
-                        })}
-                      </div>
                     );
                   })()}
                 </button>
@@ -2553,28 +2602,12 @@ export default function ChordsTab({
           return jiAnalysis[idx] ?? null;
         };
         return (
-          <div className="bg-[#1a1a0a] border border-[#3a3a1a] rounded p-3 space-y-3">
-            <div className="flex items-baseline gap-2 pb-1.5 border-b border-[#3a3a1a]">
-              <p className="text-[10px] text-[#888] font-semibold tracking-wider">LOOP</p>
-              <p className="text-[12px] text-[#c8a850] font-mono">
-                {(() => {
-                  const prefix = (edo === 41 || edo === 53) && fhAnswer.scaleTonality
-                    ? familyAbbreviationForTonality(fhAnswer.scaleTonality)
-                    : null;
-                  return fhAnswer.progression.map((rn, i) => (
-                    <Fragment key={i}>
-                      {i > 0 && " → "}
-                      {formatRomanNumeralWithFamily(rn, prefix)}
-                    </Fragment>
-                  ));
-                })()}
-              </p>
-              {fhAnswer.scaleTonality && (
-                <p className="text-[10px] text-[#888] ml-auto italic">
-                  Scale: {fhAnswer.scaleTonality}
-                </p>
-              )}
-            </div>
+          <div className="bg-[#0d0d0d] border border-[#222] rounded p-3 space-y-3">
+            {fhAnswer.scaleTonality && (
+              <div className="flex items-baseline pb-1.5 border-b border-[#222]">
+                <p className="text-[10px] text-[#888] ml-auto italic">Scale: {fhAnswer.scaleTonality}</p>
+              </div>
+            )}
             {/* Single-column body — chord-tone reveal stretches
                 full width.  The right-column live visualizer
                 mirror was removed; the App-level main visualizer
@@ -2722,10 +2755,38 @@ export default function ChordsTab({
               const bassIdx = chordToneOffsets.indexOf(bassOff);
               const bassNum = bassIdx >= 0 && bassIdx < CHORD_TONE_NUM_LOCAL.length
                 ? CHORD_TONE_NUM_LOCAL[bassIdx] : null;
-              const inversionLabel = bassNum && bassNum !== 1 ? `${chord.numeral}/${bassNum}` : null;
-              const headerLabel = inversionLabel ?? chord.numeral;
+              // Sized-interval chord symbol from the played pitches (our notation).
+              const rootCAns = ((((chord.chordRootPc - tonicForLabel) % edo) + edo) % edo) * 1200 / edo;
+              const sizedLabelAns = useSchulter
+                ? chordSymbol([rootCAns, ...chordToneOffsets.map(o => rootCAns + (o * 1200) / edo)])
+                : romanWithSystem(chord.numeral, chordToneOffsets, edo, notationSystem);
+              // Inversions: re-root on the bass note (chord/quality of the
+              // inversion's root) instead of an unreadable "/N" slash suffix.
+              let headerLabel = sizedLabelAns;
+              if (bassNum && bassNum !== 1 && allNotes.length > 0) {
+                const bassCents = (lowestPc * 1200) / edo;
+                const voiced = allNotes.map(n => bassCents + ((n - allNotes[0]) * 1200) / edo);
+                headerLabel = useSchulter
+                  ? chordSymbol(voiced)
+                  : (() => {
+                      const stack = systemStack(allNotes.map(n => n - allNotes[0]), edo, notationSystem);
+                      const num = sizedRoman(bassCents);
+                      return stack ? `${num} ${stack}` : num;
+                    })();
+              }
               return (
-              <div key={chord.index} className="rounded-lg border bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#5a5a8a] transition-colors p-3" style={{ minWidth: 220 }}>
+              <div key={chord.index} role="button" tabIndex={0}
+                onClick={async () => {
+                  setLitCardIdx(chord.index);
+                  await ensureAudio();
+                  audioEngine.playMultiVoice([{ frames: [chord.notes], noteDuration: 0.9, gain: playVol * harmonyVol * CHORD_BOOST }], edo, 0, 1);
+                  onHighlight(chord.notes);   // play this chord and keep it lit
+                }}
+                className={`rounded-lg border transition-colors p-3 cursor-pointer ${
+                  (chord.index - 1) === currentChordIdx || chord.index === litCardIdx
+                    ? "bg-[#15152b] border-[#7a7aca]"
+                    : "bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#5a5a8a]"
+                }`} style={{ minWidth: 220 }}>
                 {commaNote && (
                   <p className="text-[10px] text-[#cc6a8a] flex items-baseline gap-1.5 px-1.5 py-0.5 rounded border border-[#3a1a2a] bg-[#1a0a14] mb-2 flex-wrap">
                     <span className="font-semibold tracking-wider">COMMA FIX</span>
@@ -2742,29 +2803,49 @@ export default function ChordsTab({
                     header).  Slash-form for inversions ("V/3" = 1st inv etc.). */}
                 <div className="text-center mb-3">
                   <div className="text-[16px] font-bold leading-tight font-mono" style={{ color: "#c8a0e0" }}>
-                    {headerLabel}
+                    <ChordSym symbol={headerLabel} />
                   </div>
                 </div>
-                {/* Voicing notes — exact copy of Show Target's cell layout.
-                    Cells use flex-1 to fill the wider 220px card so they
-                    don't read as cramped. */}
-                <div className="flex gap-1">
+                {/* INTERVALS section — each tone's interval from the tonic; tap one
+                    to hear that single note (the card itself plays the whole chord). */}
+                <p className="text-[8px] text-[#666] font-semibold tracking-[0.15em] mb-0.5">INTERVALS</p>
+                <div className="flex gap-1 mb-2">
                   {allNotes.map((pitch, j) => {
                     const pc = ((pitch % edo) + edo) % edo;
                     const pcFromTonic = ((pitch - tonicForLabel) % edo + edo) % edo;
-                    const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
-                    const degree = pythDegree(pcFromTonic);
-                    // +N is the number of full octaves this pitch sits above
-                    // the LOWEST occurrence of its pitch class.  The first
-                    // occurrence (typically the LH bass) shows with no +N;
-                    // any RH double of the same pc shows +1 / +2 / etc.
+                    const degree = notationLabel(edo, notationSystem, pcFromTonic);
+                    // +N = full octaves above the LOWEST occurrence of this pc.
                     const low = lowestPerPc.get(pc) ?? pitch;
                     const oct = Math.floor((pitch - low) / edo);
                     return (
-                      <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#1a1a2a] border-[#2a2a3a] px-1 py-0.5">
+                      <button key={j}
+                        onClick={async e => {
+                          e.stopPropagation();
+                          await ensureAudio();
+                          audioEngine.playMultiVoice([{ frames: [[pitch]], noteDuration: 0.8, gain: playVol * harmonyVol * CHORD_BOOST }], edo, 0, 1);
+                          onHighlight([pitch]);
+                        }}
+                        title="Play this note"
+                        className="flex-1 min-w-0 text-center rounded border bg-[#14142a] border-[#2a2a3a] px-1 py-0.5 hover:border-[#5a5a8a]">
                         <span className="text-[10px] font-mono font-bold leading-tight text-[#9999ee]">{degree}{renderOctSup(oct)}</span>
-                        <span className="text-[9px] leading-tight text-[#aaa]">{solfege}</span>
-                      </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* SOLFÈGE section — separate from intervals; tap a syllable to hear
+                    it sung (same engine as the L-overlay / Interval Spectrum). */}
+                <p className="text-[8px] text-[#666] font-semibold tracking-[0.15em] mb-0.5">SOLFÈGE</p>
+                <div className="flex gap-1">
+                  {allNotes.map((pitch, j) => {
+                    const pcFromTonic = ((pitch - tonicForLabel) % edo + edo) % edo;
+                    const cell = solfegeFor((pcFromTonic * 1200) / edo);
+                    return (
+                      <button key={j}
+                        onClick={e => { e.stopPropagation(); speakSolfege(cell); }}
+                        title={`Hear "${cell.solfege}" /${cell.ipa}/`}
+                        className="flex-1 min-w-0 text-center rounded border bg-[#1a1a2a] border-[#2a2a3a] px-1 py-0.5 hover:border-[#5a5a8a] text-[10px] leading-tight text-[#cfc0e0]">
+                        {cell.solfege}
+                      </button>
                     );
                   })}
                 </div>
@@ -3003,7 +3084,7 @@ export default function ChordsTab({
                               : { borderColor: "#3a3a5a", color: "#888" }}
                           >
                             <span className="mr-0.5 text-[8px] opacity-60">[{i + 1}]</span>
-                            {formatRomanNumeralWithFamily(rn, familyPrefix)}
+                            {chordMap[rn]?.length ? <ChordSym symbol={chordSymbol(chordMap[rn].map(s => (s * 1200) / edo))} /> : formatRomanNumeralWithFamily(rn, familyPrefix)}
                           </button>
                         );
                       })}
@@ -3435,13 +3516,15 @@ const XEN_SHORT_LABEL: Record<string, string> = {
 function ChordSelectionPanel({
   tonality, accent, familyPrefix, bank, edo, chordMap, checkedSet, toggleChord, setLevel,
   collapsedLevels, toggleLevel, approachMap, toggleApproach,
-  xenMap, toggleXen, toggleXenStack,
+  xenMap, toggleXen, toggleXenStack, useSchulter = true, notationSystem,
 }: {
   tonality: string;
   accent: string;
   familyPrefix: string | null;
   bank: TonalityBank;
   edo: number;
+  useSchulter?: boolean;
+  notationSystem?: string;
   chordMap: Record<string, number[]>;
   checkedSet: Set<string>;
   toggleChord: (label: string) => void;
@@ -3477,7 +3560,7 @@ function ChordSelectionPanel({
   return (
     <div className="border rounded overflow-hidden" style={{ borderColor: accent + "40" }}>
       <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0a0a0a]">
-        <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent, textTransform: "none" }}>{formatHalfAccidentals(tonality, edo)}</span>
+        <span className="text-[11px] font-semibold tracking-wide" style={{ color: accent, textTransform: "none" }}>{formatHalfAccidentals(sizedTonalityName(tonality), edo)}</span>
       </div>
       <div className="space-y-2 p-2">
         {visibleLevels.map(level => {
@@ -3524,7 +3607,17 @@ function ChordSelectionPanel({
                             isChecked ? "" : "text-[#666] hover:text-[#888]"
                           }`}
                           style={isChecked ? { color: accent } : undefined}>
-                          {formatRomanNumeralWithFamily(entry.label, familyPrefix)}
+                          {(() => {
+                            const steps = entry.steps ?? chordMap[entry.label];
+                            const roman = formatRomanNumeralWithFamily(entry.label, familyPrefix);
+                            if (!steps || !steps.length) return roman;
+                            // Schulter → sized chord symbol; other notation → roman (#/b) +
+                            // the system's scale-degree symbols (s3, S3, Kite arrows…).
+                            if (useSchulter) return <ChordSym symbol={chordSymbol(steps.map(s => (s * 1200) / edo))} />;
+                            const root = steps[0];
+                            const stack = systemStack(steps.map(s => s - root), edo, notationSystem);
+                            return <>{roman}{stack && <span className="ml-1 text-[0.85em] opacity-90">{stack}</span>}</>;
+                          })()}
                         </button>
                         <div className="flex flex-col gap-0.5">
                           {showApproaches && (

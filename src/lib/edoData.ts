@@ -310,16 +310,16 @@ const INTERVAL_NAMES_41 = [
   "#5",                                                      // 25
   "s6",                                                      // 26
   "m6",                                                      // 27
-  "Clm6",                                                     // 28
+  "Cm6",                                                     // 28
   "n6",                                                      // 29
-  "Cl6",                                                      // 30
+  "CM6",                                                      // 30
   "M6",                                                      // 31
   "S6",                                                      // 32
   "s7",                                                      // 33
   "m7",                                                      // 34
-  "Clm7",                                                     // 35
+  "Cm7",                                                     // 35
   "n7",                                                      // 36
-  "Cl7",                                                      // 37
+  "CM7",                                                      // 37
   "M7",                                                      // 38
   "S7",                                                      // 39
   "b8",                                                      // 40
@@ -359,7 +359,7 @@ const INTERVAL_NAMES_53 = [
   "Cl2",                                                      //  8 (~181¢, 5-limit 10/9)
   "M2",                                                      //  9 (~204¢, Pyth 9/8)
   "S2",                                                      // 10 (~227¢, 8/7)
-  "S2↑",                                                     // 11 (~249¢, transitional)
+  "i3",                                                      // 11 (~249¢, interseptimal M2–m3)
   "s3",                                                      // 12 (~272¢, 7/6)
   "m3",                                                      // 13 (~294¢, Pyth 32/27)
   "Clm3",                                                     // 14 (~317¢, 5-limit 6/5)
@@ -390,7 +390,7 @@ const INTERVAL_NAMES_53 = [
   "Cl6",                                                      // 39 (~883¢, 5-limit 5/3)
   "M6",                                                      // 40 (~906¢, Pyth 27/16)
   "S6",                                                      // 41 (~928¢, 12/7)
-  "S6↑",                                                     // 42 (~951¢, transitional)
+  "i7",                                                      // 42 (~951¢, interseptimal M6–m7)
   "s7",                                                      // 43 (~974¢, 7/4)
   "m7",                                                      // 44 (~996¢, Pyth 16/9)
   "Clm7",                                                     // 45 (~1019¢, 5-limit 9/5)
@@ -404,10 +404,52 @@ const INTERVAL_NAMES_53 = [
   "8",                                                       // 53 (1200¢)
 ];
 
+// 34-EDO (2×17). Even steps follow the 17-EDO chain; the odd "second-ring"
+// steps land the just 5-limit intervals (6/5 at 9, 5/4 at 11, 8/5 at 23,
+// 5/3 at 25).  Lesser/Greater distinguish the two whole-tone / minor-7th sizes.
+const INTERVAL_NAMES_34 = [
+  "Unison",            // 0    0¢
+  "Aug Unison",        // 1   35¢  (♯1)
+  "Subminor 2nd",      // 2   71¢
+  "Minor 2nd",         // 3  106¢
+  "Neutral 2nd",       // 4  141¢
+  "Equable 2nd",       // 5  176¢  (equable heptatonic, 10/9)
+  "Major 2nd",         // 6  212¢ (9/8)
+  "Interseptimal 3rd", // 7  247¢ (M2–m3)
+  "Subminor 3rd",      // 8  282¢
+  "Minor 3rd",         // 9  318¢ (6/5)
+  "Neutral 3rd",       // 10 353¢ (11/9)
+  "Major 3rd",         // 11 388¢ (5/4)
+  "Supermajor 3rd",    // 12 424¢
+  "Interseptimal 4th", // 13 459¢ (M3–4)
+  "Perfect 4th",       // 14 494¢ (4/3)
+  "Superfourth",       // 15 529¢
+  "dim 5th",           // 16 565¢
+  "Tritone",           // 17 600¢
+  "Aug 4th",           // 18 635¢
+  "Subfifth",          // 19 671¢
+  "Perfect 5th",       // 20 706¢ (3/2)
+  "Interseptimal 6th", // 21 741¢ (5–m6)
+  "Subminor 6th",      // 22 776¢
+  "Minor 6th",         // 23 812¢ (8/5)
+  "Neutral 6th",       // 24 847¢
+  "Major 6th",         // 25 882¢ (5/3)
+  "Supermajor 6th",    // 26 918¢
+  "Interseptimal 7th", // 27 953¢ (M6–m7)
+  "Minor 7th",         // 28 988¢ (16/9)
+  "Equable 7th",       // 29 1024¢ (equable heptatonic, 9/5)
+  "Neutral 7th",       // 30 1059¢
+  "Major 7th",         // 31 1094¢ (15/8)
+  "Supermajor 7th",    // 32 1129¢
+  "dim Octave",        // 33 1165¢  (♭8)
+  "Octave",            // 34 1200¢
+];
+
 export function getIntervalNames(edo: number): string[] {
   if (edo === 12) return INTERVAL_NAMES_12;
   if (edo === 17) return INTERVAL_NAMES_17;
   if (edo === 19) return INTERVAL_NAMES_19;
+  if (edo === 34) return INTERVAL_NAMES_34;
   if (edo === 41) return INTERVAL_NAMES_41;
   if (edo === 53) return INTERVAL_NAMES_53;
   return INTERVAL_NAMES_31;
@@ -1476,6 +1518,16 @@ export function pcToNoteNameWithEnharmonic(pc: number, edo: number): string {
 export function getLayoutFile(edo: number): string {
   const base = import.meta.env.BASE_URL ?? "/";
   return `${base}lumatone_layout_${edo}edo.json`;
+}
+
+// Pastel `.ltn`-derived layouts used by the Lumatone visualizer / intervals
+// modes (separate from the shared layouts above so other tabs are unaffected).
+const PASTEL_LAYOUT_EDOS = [12, 31, 34, 53];
+export function getPastelLayoutFile(edo: number): string {
+  const base = import.meta.env.BASE_URL ?? "/";
+  return PASTEL_LAYOUT_EDOS.includes(edo)
+    ? `${base}lumatone_pastel_${edo}edo.json`
+    : `${base}lumatone_layout_${edo}edo.json`;
 }
 
 // ── Supported EDO list ────────────────────────────────────────────────

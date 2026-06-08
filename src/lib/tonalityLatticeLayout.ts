@@ -491,19 +491,24 @@ const SEMIS_TO_INTERVAL_CLASS: Record<number, number> = {
 // Indexed by 12-EDO-equivalent semitones modulo 12 — for 31-EDO we
 // quantize the EDO interval to its nearest 12-EDO semitone for
 // placement only (the actual pitch maths still uses the full EDO).
+// NOTE: these MUST match the modulation-spoke ray directions in
+// ModeLattice3D's MOD_SPOKES — the satellite knot has to land exactly where
+// the spoke the user clicked was pointing.  When the two tables disagreed,
+// +P5 looked right (both [1,0,0]) but the thirds' satellites flew off to a
+// different axis than their spoke, so −m3 / −M3 read as "not offset correctly".
 const PC_OFFSET_BY_SEMIS: Record<number, [number, number, number]> = {
   0:  [ 0,    0,    0],         // anchor
   7:  [ 1,    0,    0],         // +P5
   5:  [-1,    0,    0],         // +P4 (= −P5)
-  4:  [ 0,    1,    0],         // +M3
-  8:  [ 0,   -1,    0],         // −M3 (= +m6)
-  3:  [ 0,    0.7,  0.7],       // +m3
-  9:  [ 0,   -0.7, -0.7],       // −m3 (= +M6)
+  4:  [-0.7,  0,    0.7],       // +M3
+  8:  [ 0.7,  0,   -0.7],       // −M3 (= +m6)
+  3:  [ 0.7,  0,    0.7],       // +m3
+  9:  [-0.7,  0,   -0.7],       // −m3 (= +M6)
   2:  [ 0,    0,    1],         // +M2
   10: [ 0,    0,   -1],         // −M2 (= +m7)
   1:  [ 0.5,  0,    0.7],       // +m2
   11: [-0.5,  0,   -0.7],       // −m2 (= +M7)
-  6:  [ 0.7,  0,   -0.7],       // tritone
+  6:  [ 0.7,  0.5, -0.7],       // tritone
 };
 const PC_KNOT_SPACING = 100;
 

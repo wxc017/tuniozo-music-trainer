@@ -1,0 +1,1271 @@
+{
+ "edo": 26,
+ "snapshot": "20260206143216",
+ "url": "https://en.xen.wiki/w/26edo",
+ "sections": [
+  {
+   "heading": "Contents",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Theory",
+   "level": 2,
+   "text": "26edo has a perfect fifth of about 692 cents and tempers out 81/80 in the 5-limit , making it a very flat meantone tuning (0.088957 ¢ flat of the 4/9-comma meantone fifth) with a very soft diatonic scale .\nIn the 7-limit , it tempers out 50/49 , 525/512 , and 875/864 , and supports temperaments like injera , flattone , lemba , and doublewide . It really comes into its own as a higher-limit temperament, being the smallest equal division which represents the 13-odd-limit consistently . 26edo has a very good approximation of the harmonic seventh ( 7/4 ), as it is the denominator of a convergent to log 2 7.\n26edo's minor sixth (1.6158) is very close to φ ≈ 1.6180 (i.e. the golden ratio).\nWith a fifth of 15 steps, it can be equally divided into 3 or 5, supporting slendric temperament and bleu temperament respectively.\nThe structure of 26edo is an interesting beast, with various approaches relating it to various rank-2 temperaments.\nIts step of 46.2 ¢, as well as the octave-inverted and octave-equivalent versions of it, holds the distinction for having around the highest harmonic entropy possible. In other words, there is a common perception of quartertones as being the most dissonant intervals. This property is shared with all edos between around 20 and 30. Intervals smaller than this tend to be perceived as unison and are more consonant as a result; intervals larger than this have less \"tension\" and thus are also more consonant.\nThanks to its sevenths, 26edo is an ideal tuning for its size for metallic harmony ."
+  },
+  {
+   "heading": "Odd harmonics",
+   "level": 3,
+   "text": ""
+  },
+  {
+   "heading": "Subsets and supersets",
+   "level": 3,
+   "text": "26edo has 2edo and 13edo as subsets, of which 13edo is non-trivial, sharing the 2.9.5.21.11.13.17.19-subgroup with 26edo. Multiplying 26edo by 3 yields 78edo , which corrects several harmonics. 104edo is a notable dual-5s system. 130edo , 364edo , 494edo , and 624edo do well in approximating JI, though they are more complex."
+  },
+  {
+   "heading": "Intervals",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Interval quality and chord names in color notation",
+   "level": 3,
+   "text": "Using color notation , qualities can be loosely associated with colors:\nAll 26edo chords can be named using conventional methods, expanded to include augmented and diminished 2nd, 3rds, 6ths and 7ths. Spelling certain chords properly may require triple sharps and flats, especially if the tonic is anything other than the 11 keys in the Eb-C# range. Here are the zo, gu, yo and ru triads:\nFor a more complete list, see Ups and downs notation #Chord names in other EDOs ."
+  },
+  {
+   "heading": "Notation",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Sagittal notation",
+   "level": 3,
+   "text": "This notation uses the same sagittal sequence as EDOs 5 , 12 , and 19 , is a subset of the notation for 52-EDO , and is a superset of the notation for 13-EDO ."
+  },
+  {
+   "heading": "Evo flavor",
+   "level": 4,
+   "text": "Because it includes no Sagittal symbols, this Evo Sagittal notation is also a conventional notation."
+  },
+  {
+   "heading": "Revo flavor",
+   "level": 4,
+   "text": ""
+  },
+  {
+   "heading": "Approximation to JI",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "15-odd-limit interval mappings",
+   "level": 3,
+   "text": "The following tables show how 15-odd-limit intervals are represented in 26edo. Prime harmonics are in bold ; inconsistent intervals are in italics ."
+  },
+  {
+   "heading": "Approximation to irrational intervals",
+   "level": 2,
+   "text": "26edo approximates both acoustic phi (the golden ratio ) and pi quite accurately. Not until 1076edo do we find a better edo in terms of relative error on these intervals."
+  },
+  {
+   "heading": "Regular temperament properties",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Rank-2 Temperaments",
+   "level": 3,
+   "text": ""
+  },
+  {
+   "heading": "Hendec in 26et",
+   "level": 3,
+   "text": "Hendec , the 13-limit 26 & 46 temperament with generator ~10/9, concentrates the intervals of greatest accuracy in 26et into the lower ranges of complexity. It has a period of half an octave, with 13/12 reachable by four generators, 8/7 by two, 14/11 by one, 10/9 by one, and 11/8 by three. All of these are tuned to within 2.5 cents of accuracy."
+  },
+  {
+   "heading": "Commas",
+   "level": 3,
+   "text": "26et tempers out the following commas . This assumes the val ⟨ 26 41 60 73 90 96 ] ."
+  },
+  {
+   "heading": "Octave stretch or compression",
+   "level": 2,
+   "text": "26edo's simple primes with the most error - 3, 5 and 13 - are all tuned flat, so it can benefit from octave stretching . Some suitable stretched-octave 26edo tunings include 93ed12 or 100zpi ."
+  },
+  {
+   "heading": "Scales",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "MOS scales",
+   "level": 3,
+   "text": "Since the perfect 5th in 26edo spans 15 degrees, it can be divided into three equal parts (each approximately an 8/7) as well as five equal parts (each approximately a 13/12).\nThe former approach produces MOS at:\nand is excellent for 4:6:7 triads.\nThe latter produces MOS at:\nand is fairly well-supplied with 4:6:7:11:13 pentads. It also works well for more conventional (though further from Just) 6:7:9 triads, as well as 4:5:6 triads that use the worse mapping for 5 (making 5/4 the 415.38-cent interval)."
+  },
+  {
+   "heading": "Orgone temperament",
+   "level": 3,
+   "text": "Andrew Heathwaite first proposed orgone temperament to take advantage of 26edo's excellent 11 and 7 approximations. 7 degrees of 26edo is a wide minor third of approximately 323.077 cents, and that interval taken as a generator produces 7-tone and 11-tone MOS scales:\nThe primary triad for orgone temperament is 8:11:14 and its subharmonic inversion, which these scales have in abundance. 2g approximates 16:11 and 3g approximates 7:4 (and I would call that the definition of Orgone Temperament). That also implies that g approximates the difference between 7:4 and 16:11, which is 77:64, about 320.1 cents."
+  },
+  {
+   "heading": "Other scales",
+   "level": 3,
+   "text": ""
+  },
+  {
+   "heading": "Instruments",
+   "level": 2,
+   "text": "James Fenn's midi keyboard."
+  },
+  {
+   "heading": "Literature",
+   "level": 2,
+   "text": "Sword, Ron. **Icosihexaphonic Scales for Guitar**. IAAA Press. 2010 - A Guitar-scale thesaurus for 26-EDO."
+  },
+  {
+   "heading": "Music",
+   "level": 2,
+   "text": ""
+  },
+  {
+   "heading": "Modern renderings",
+   "level": 3,
+   "text": ""
+  },
+  {
+   "heading": "21st century",
+   "level": 3,
+   "text": ""
+  }
+ ],
+ "tables": [
+  {
+   "headers": [],
+   "rows": [
+    [
+     "← 25edo",
+     "26edo",
+     "27edo →"
+    ],
+    [
+     "Prime factorization",
+     "2 × 13"
+    ],
+    [
+     "Step size",
+     "46.1538 ¢"
+    ],
+    [
+     "Fifth",
+     "15\\26 (692.308 ¢)"
+    ],
+    [
+     "Semitones (A1:m2)",
+     "1:3 (46.15 ¢ : 138.5 ¢)"
+    ],
+    [
+     "Consistency limit",
+     "13"
+    ],
+    [
+     "Distinct consistency limit",
+     "5"
+    ]
+   ],
+   "title": ""
+  },
+  {
+   "headers": [],
+   "rows": [
+    [
+     "← 25edo",
+     "26edo",
+     "27edo →"
+    ]
+   ],
+   "title": ""
+  },
+  {
+   "headers": [
+    "Harmonic",
+    "3",
+    "5",
+    "7",
+    "9",
+    "11",
+    "13",
+    "15",
+    "17",
+    "19",
+    "21",
+    "23"
+   ],
+   "rows": [
+    [
+     "Error",
+     "Absolute ( ¢ )",
+     "-9.6",
+     "-17.1",
+     "+0.4",
+     "-19.3",
+     "+2.5",
+     "-9.8",
+     "+19.4",
+     "-12.6",
+     "-20.6",
+     "-9.2",
+     "+17.9"
+    ],
+    [
+     "Relative ( % )",
+     "-20.9",
+     "-37.0",
+     "+0.9",
+     "-41.8",
+     "+5.5",
+     "-21.1",
+     "+42.1",
+     "-27.4",
+     "-44.6",
+     "-20.0",
+     "+38.7"
+    ],
+    [
+     "Steps ( reduced )",
+     "41 (15)",
+     "60 (8)",
+     "73 (21)",
+     "82 (4)",
+     "90 (12)",
+     "96 (18)",
+     "102 (24)",
+     "106 (2)",
+     "110 (6)",
+     "114 (10)",
+     "118 (14)"
+    ]
+   ],
+   "title": "Odd harmonics"
+  },
+  {
+   "headers": [
+    "Degrees",
+    "Cents",
+    "Approximate ratios [ note 1 ]",
+    "Interval name",
+    "Example in D",
+    "SKULO Interval name",
+    "Example in D",
+    "Solfeges"
+   ],
+   "rows": [
+    [
+     "0",
+     "0.00",
+     "1/1",
+     "P1",
+     "D",
+     "P1",
+     "D",
+     "da",
+     "do"
+    ],
+    [
+     "1",
+     "46.15",
+     "33/32 , 49/48 , 36/35 , 25/24",
+     "A1",
+     "D#",
+     "A1, S1",
+     "D#, SD",
+     "du",
+     "di"
+    ],
+    [
+     "2",
+     "92.31",
+     "21/20 , 22/21 , 26/25",
+     "d2",
+     "Ebb",
+     "sm2",
+     "sEb",
+     "fro",
+     "rih"
+    ],
+    [
+     "3",
+     "138.46",
+     "12/11 , 13/12 , 14/13 , 16/15",
+     "m2",
+     "Eb",
+     "m2",
+     "Eb",
+     "fra",
+     "ru"
+    ],
+    [
+     "4",
+     "184.62",
+     "9/8 , 10/9 , 11/10",
+     "M2",
+     "E",
+     "M2",
+     "E",
+     "ra",
+     "re"
+    ],
+    [
+     "5",
+     "230.77",
+     "8/7 , 15/13",
+     "A2",
+     "E#",
+     "SM2",
+     "SE",
+     "ru",
+     "ri"
+    ],
+    [
+     "6",
+     "276.92",
+     "7/6 , 13/11 , 33/28",
+     "d3",
+     "Fb",
+     "sm3",
+     "sF",
+     "no",
+     "ma"
+    ],
+    [
+     "7",
+     "323.08",
+     "135/112 , 6/5",
+     "m3",
+     "F",
+     "m3",
+     "F",
+     "na",
+     "me"
+    ],
+    [
+     "8",
+     "369.23",
+     "5/4 , 11/9 , 16/13",
+     "M3",
+     "F#",
+     "M3",
+     "F#",
+     "ma",
+     "muh/mi"
+    ],
+    [
+     "9",
+     "415.38",
+     "9/7 , 14/11 , 33/26",
+     "A3",
+     "Fx",
+     "SM3",
+     "SF#",
+     "mu",
+     "maa"
+    ],
+    [
+     "10",
+     "461.54",
+     "21/16 , 13/10",
+     "d4",
+     "Gb",
+     "s4",
+     "sG",
+     "fo",
+     "fe"
+    ],
+    [
+     "11",
+     "507.69",
+     "75/56 , 4/3",
+     "P4",
+     "G",
+     "P4",
+     "G",
+     "fa",
+     "fa"
+    ],
+    [
+     "12",
+     "553.85",
+     "11/8 , 18/13",
+     "A4",
+     "G#",
+     "A4",
+     "G#",
+     "fu/pa",
+     "fu"
+    ],
+    [
+     "13",
+     "600.00",
+     "7/5 , 10/7",
+     "AA4, dd5",
+     "Gx, Abb",
+     "SA4, sd5",
+     "SG#, sAb",
+     "pu/sho",
+     "fi/se"
+    ],
+    [
+     "14",
+     "646.15",
+     "16/11 , 13/9",
+     "d5",
+     "Ab",
+     "d5",
+     "Ab",
+     "sha/so",
+     "su"
+    ],
+    [
+     "15",
+     "692.31",
+     "112/75 , 3/2",
+     "P5",
+     "A",
+     "P5",
+     "A",
+     "sa",
+     "sol"
+    ],
+    [
+     "16",
+     "738.46",
+     "32/21 , 20/13",
+     "A5",
+     "A#",
+     "S5",
+     "SA",
+     "su",
+     "si"
+    ],
+    [
+     "17",
+     "784.62",
+     "11/7 , 14/9",
+     "d6",
+     "Bbb",
+     "sm6",
+     "sBb",
+     "flo",
+     "leh"
+    ],
+    [
+     "18",
+     "830.77",
+     "13/8 , 8/5",
+     "m6",
+     "Bb",
+     "m6",
+     "Bb",
+     "fla",
+     "le/lu"
+    ],
+    [
+     "19",
+     "876.92",
+     "5/3 , 224/135",
+     "M6",
+     "B",
+     "M6",
+     "B",
+     "la",
+     "la"
+    ],
+    [
+     "20",
+     "923.08",
+     "12/7 , 22/13",
+     "A6",
+     "B#",
+     "SM6",
+     "SB",
+     "lu",
+     "li"
+    ],
+    [
+     "21",
+     "969.23",
+     "7/4 , 26/15",
+     "d7",
+     "Cb",
+     "sm7",
+     "sC",
+     "tho",
+     "ta"
+    ],
+    [
+     "22",
+     "1015.38",
+     "9/5 , 16/9 , 20/11",
+     "m7",
+     "C",
+     "m7",
+     "C",
+     "tha",
+     "te"
+    ],
+    [
+     "23",
+     "1061.54",
+     "11/6 , 13/7 , 15/8 , 24/13",
+     "M7",
+     "C#",
+     "M7",
+     "C#",
+     "ta",
+     "tu/ti"
+    ],
+    [
+     "24",
+     "1107.69",
+     "21/11 , 25/13 , 40/21",
+     "A7",
+     "Cx",
+     "SM7",
+     "SC#",
+     "tu",
+     "to"
+    ],
+    [
+     "25",
+     "1153.85",
+     "64/33 , 96/49 , 35/18 , 48/25",
+     "d8",
+     "Db",
+     "d8, s8",
+     "Db, sD",
+     "do",
+     "da"
+    ],
+    [
+     "26",
+     "1200.00",
+     "2/1",
+     "P8",
+     "D",
+     "P8",
+     "D",
+     "da",
+     "do"
+    ]
+   ],
+   "title": "Intervals"
+  },
+  {
+   "headers": [
+    "Quality",
+    "Color",
+    "Monzo Format",
+    "Examples"
+   ],
+   "rows": [
+    [
+     "diminished",
+     "zo",
+     "{a, b, 0, 1}",
+     "7/6, 7/4"
+    ],
+    [
+     "minor",
+     "fourthward wa",
+     "{a, b}, b < -1",
+     "32/27, 16/9"
+    ],
+    [
+     "\"",
+     "gu",
+     "{a, b, -1}",
+     "6/5, 9/5"
+    ],
+    [
+     "major",
+     "yo",
+     "{a, b, 1}",
+     "5/4, 5/3"
+    ],
+    [
+     "\"",
+     "fifthward wa",
+     "{a, b}, b > 1",
+     "9/8, 27/16"
+    ],
+    [
+     "augmented",
+     "ru",
+     "{a, b, 0, -1}",
+     "9/7, 12/7"
+    ]
+   ],
+   "title": "Interval quality and chord names in color notation"
+  },
+  {
+   "headers": [
+    "Color of the 3rd",
+    "JI chord",
+    "Notes as Edosteps",
+    "Notes of C Chord",
+    "Written Name",
+    "Spoken Name"
+   ],
+   "rows": [
+    [
+     "zo",
+     "6:7:9",
+     "0-6-15",
+     "C Ebb G",
+     "C(b3) or C(d3)",
+     "C flat-three or C dim-three"
+    ],
+    [
+     "gu",
+     "10:12:15",
+     "0-7-15",
+     "C Eb G",
+     "Cm",
+     "C minor"
+    ],
+    [
+     "yo",
+     "4:5:6",
+     "0-8-15",
+     "C E G",
+     "C",
+     "C major or C"
+    ],
+    [
+     "ru",
+     "14:18:21",
+     "0-9-15",
+     "C E# G",
+     "C(#3) or C(A3)",
+     "C sharp-three or C aug-three"
+    ]
+   ],
+   "title": "Interval quality and chord names in color notation"
+  },
+  {
+   "headers": [
+    "Interval and complement",
+    "Error (abs, ¢ )",
+    "Error (rel, % )"
+   ],
+   "rows": [
+    [
+     "1/1, 2/1",
+     "0.000",
+     "0.0"
+    ],
+    [
+     "13/12, 24/13",
+     "0.111",
+     "0.2"
+    ],
+    [
+     "7/4, 8/7",
+     "0.405",
+     "0.9"
+    ],
+    [
+     "11/7, 14/11",
+     "2.123",
+     "4.6"
+    ],
+    [
+     "9/5, 10/9",
+     "2.212",
+     "4.8"
+    ],
+    [
+     "11/8, 16/11",
+     "2.528",
+     "5.5"
+    ],
+    [
+     "13/10, 20/13",
+     "7.325",
+     "15.9"
+    ],
+    [
+     "5/3, 6/5",
+     "7.436",
+     "16.1"
+    ],
+    [
+     "13/9, 18/13",
+     "9.536",
+     "20.7"
+    ],
+    [
+     "3/2, 4/3",
+     "9.647",
+     "20.9"
+    ],
+    [
+     "13/8, 16/13",
+     "9.758",
+     "21.1"
+    ],
+    [
+     "7/6, 12/7",
+     "10.052",
+     "21.8"
+    ],
+    [
+     "13/7, 14/13",
+     "10.163",
+     "22.0"
+    ],
+    [
+     "11/6, 12/11",
+     "12.176",
+     "26.4"
+    ],
+    [
+     "13/11, 22/13",
+     "12.287",
+     "26.6"
+    ],
+    [
+     "15/11, 22/15",
+     "16.895",
+     "36.6"
+    ],
+    [
+     "15/13, 26/15",
+     "16.972",
+     "36.8"
+    ],
+    [
+     "5/4, 8/5",
+     "17.083",
+     "37.0"
+    ],
+    [
+     "7/5, 10/7",
+     "17.488",
+     "37.9"
+    ],
+    [
+     "15/14, 28/15",
+     "19.019",
+     "41.2"
+    ],
+    [
+     "9/8, 16/9",
+     "19.295",
+     "41.8"
+    ],
+    [
+     "15/8, 16/15",
+     "19.424",
+     "42.1"
+    ],
+    [
+     "11/10, 20/11",
+     "19.611",
+     "42.5"
+    ],
+    [
+     "9/7, 14/9",
+     "19.699",
+     "42.7"
+    ],
+    [
+     "11/9, 18/11",
+     "21.823",
+     "47.3"
+    ]
+   ],
+   "title": "15-odd-limit interval mappings"
+  },
+  {
+   "headers": [
+    "Interval and complement",
+    "Error (abs, ¢ )",
+    "Error (rel, % )"
+   ],
+   "rows": [
+    [
+     "1/1, 2/1",
+     "0.000",
+     "0.0"
+    ],
+    [
+     "13/12, 24/13",
+     "0.111",
+     "0.2"
+    ],
+    [
+     "7/4, 8/7",
+     "0.405",
+     "0.9"
+    ],
+    [
+     "11/7, 14/11",
+     "2.123",
+     "4.6"
+    ],
+    [
+     "9/5, 10/9",
+     "2.212",
+     "4.8"
+    ],
+    [
+     "11/8, 16/11",
+     "2.528",
+     "5.5"
+    ],
+    [
+     "13/10, 20/13",
+     "7.325",
+     "15.9"
+    ],
+    [
+     "5/3, 6/5",
+     "7.436",
+     "16.1"
+    ],
+    [
+     "13/9, 18/13",
+     "9.536",
+     "20.7"
+    ],
+    [
+     "3/2, 4/3",
+     "9.647",
+     "20.9"
+    ],
+    [
+     "13/8, 16/13",
+     "9.758",
+     "21.1"
+    ],
+    [
+     "7/6, 12/7",
+     "10.052",
+     "21.8"
+    ],
+    [
+     "13/7, 14/13",
+     "10.163",
+     "22.0"
+    ],
+    [
+     "11/6, 12/11",
+     "12.176",
+     "26.4"
+    ],
+    [
+     "13/11, 22/13",
+     "12.287",
+     "26.6"
+    ],
+    [
+     "15/13, 26/15",
+     "16.972",
+     "36.8"
+    ],
+    [
+     "5/4, 8/5",
+     "17.083",
+     "37.0"
+    ],
+    [
+     "7/5, 10/7",
+     "17.488",
+     "37.9"
+    ],
+    [
+     "9/8, 16/9",
+     "19.295",
+     "41.8"
+    ],
+    [
+     "11/10, 20/11",
+     "19.611",
+     "42.5"
+    ],
+    [
+     "9/7, 14/9",
+     "19.699",
+     "42.7"
+    ],
+    [
+     "11/9, 18/11",
+     "21.823",
+     "47.3"
+    ],
+    [
+     "15/8, 16/15",
+     "26.730",
+     "57.9"
+    ],
+    [
+     "15/14, 28/15",
+     "27.135",
+     "58.8"
+    ],
+    [
+     "15/11, 22/15",
+     "29.258",
+     "63.4"
+    ]
+   ],
+   "title": "15-odd-limit interval mappings"
+  },
+  {
+   "headers": [
+    "Interval",
+    "Error (abs, ¢ )"
+   ],
+   "rows": [
+    [
+     "2 ϕ / ϕ",
+     "0.858"
+    ],
+    [
+     "ϕ",
+     "2.321"
+    ],
+    [
+     "π",
+     "2.820"
+    ],
+    [
+     "2 ϕ",
+     "3.179"
+    ],
+    [
+     "π/ϕ",
+     "5.141"
+    ],
+    [
+     "2 ϕ / π",
+     "5.999"
+    ]
+   ],
+   "title": "Approximation to irrational intervals"
+  },
+  {
+   "headers": [
+    "Subgroup",
+    "Comma basis",
+    "Mapping",
+    "Optimal 8ve stretch (¢)",
+    "Tuning error"
+   ],
+   "rows": [
+    [
+     "Absolute (¢)",
+     "Relative (%)"
+    ],
+    [
+     "2.3",
+     "[ -41 26 ⟩",
+     "[ ⟨ 26 41 ] ]",
+     "+3.043",
+     "3.05",
+     "6.61"
+    ],
+    [
+     "2.3.5",
+     "81/80, 78125/73728",
+     "[ ⟨ 26 41 60 ] ]",
+     "+4.489",
+     "3.22",
+     "6.98"
+    ],
+    [
+     "2.3.5.7",
+     "50/49, 81/80, 405/392",
+     "[ ⟨ 26 41 60 73 ] ]",
+     "+3.324",
+     "3.44",
+     "7.45"
+    ],
+    [
+     "2.3.5.7.11",
+     "45/44, 50/49, 81/80, 99/98",
+     "[ ⟨ 26 41 60 73 90 ] ]",
+     "+2.509",
+     "3.48",
+     "7.53"
+    ],
+    [
+     "2.3.5.7.11.13",
+     "45/44, 50/49, 65/64, 78/77, 81/80",
+     "[ ⟨ 26 41 60 73 90 96 ] ]",
+     "+2.531",
+     "3.17",
+     "6.87"
+    ],
+    [
+     "2.3.5.7.11.13.17",
+     "45/44, 50/49, 65/64, 78/77, 81/80, 85/84",
+     "[ ⟨ 26 41 60 73 90 96 106 ] ]",
+     "+2.613",
+     "2.94",
+     "6.38"
+    ],
+    [
+     "2.3.5.7.11.13.17.19",
+     "45/44, 50/49, 57/56, 65/64, 78/77, 81/80, 85/84",
+     "[ ⟨ 26 41 60 73 90 96 106 110 ] ]",
+     "+2.894",
+     "2.85",
+     "6.18"
+    ]
+   ],
+   "title": "Regular temperament properties"
+  },
+  {
+   "headers": [
+    "Periods per 8ve",
+    "Generator",
+    "Temperaments"
+   ],
+   "rows": [
+    [
+     "1",
+     "1\\26",
+     "Quartonic / quarto"
+    ],
+    [
+     "1",
+     "3\\26",
+     "Glacier / bleu / jerome / secund"
+    ],
+    [
+     "1",
+     "5\\26",
+     "Cynder / mothra"
+    ],
+    [
+     "1",
+     "7\\26",
+     "Orgone / superkleismic"
+    ],
+    [
+     "1",
+     "9\\26",
+     "Wesley / roman"
+    ],
+    [
+     "1",
+     "11\\26",
+     "Flattone / flattertone"
+    ],
+    [
+     "2",
+     "1\\26",
+     "Elvis"
+    ],
+    [
+     "2",
+     "2\\26",
+     "Injera"
+    ],
+    [
+     "2",
+     "3\\26",
+     "Fifive / crepuscular"
+    ],
+    [
+     "2",
+     "4\\26",
+     "Dubbla Unidec / hendec"
+    ],
+    [
+     "2",
+     "5\\26",
+     "Lemba"
+    ],
+    [
+     "2",
+     "6\\26",
+     "Doublewide / cavalier"
+    ],
+    [
+     "13",
+     "1\\26",
+     "Triskaidekic"
+    ]
+   ],
+   "title": "Rank-2 Temperaments"
+  },
+  {
+   "headers": [
+    "Prime limit",
+    "Ratio [ note 1 ]",
+    "Monzo",
+    "Cents",
+    "Color name",
+    "Name(s)"
+   ],
+   "rows": [
+    [
+     "5",
+     "81/80",
+     "[ -4 4 -1 ⟩",
+     "21.51",
+     "Gu",
+     "Syntonic comma, Didymos comma, meantone comma"
+    ],
+    [
+     "5",
+     "(60 digits)",
+     "[ -17 62 -35 ⟩",
+     "0.23",
+     "Quadla-sepquingu",
+     "Senior comma"
+    ],
+    [
+     "7",
+     "525/512",
+     "[ -9 1 2 1 ⟩",
+     "43.41",
+     "Lazoyoyo",
+     "Avicennma, Avicenna's enharmonic diesis"
+    ],
+    [
+     "7",
+     "50/49",
+     "[ 1 0 2 -2 ⟩",
+     "34.98",
+     "Biruyo",
+     "Jubilisma, tritonic diesis"
+    ],
+    [
+     "7",
+     "875/864",
+     "[ -5 -3 3 1 ⟩",
+     "21.90",
+     "Zotriyo",
+     "Keema"
+    ],
+    [
+     "7",
+     "4000/3969",
+     "[ 5 -4 3 -2 ⟩",
+     "13.47",
+     "Sarurutriyo",
+     "Octagar comma"
+    ],
+    [
+     "7",
+     "1728/1715",
+     "[ 6 3 -1 -3 ⟩",
+     "13.07",
+     "Triru-agu",
+     "Orwellisma"
+    ],
+    [
+     "7",
+     "1029/1024",
+     "[ -10 1 0 3 ⟩",
+     "8.43",
+     "Latrizo",
+     "Gamelisma"
+    ],
+    [
+     "7",
+     "(12 digits)",
+     "[ -9 8 -4 2 ⟩",
+     "8.04",
+     "Labizogugu",
+     "Varunisma"
+    ],
+    [
+     "7",
+     "(18 digits)",
+     "[ -26 -1 1 9 ⟩",
+     "3.79",
+     "Latritrizo-ayo",
+     "Wadisma"
+    ],
+    [
+     "7",
+     "4375/4374",
+     "[ -1 -7 4 1 ⟩",
+     "0.40",
+     "Zoquadyo",
+     "Ragisma"
+    ],
+    [
+     "11",
+     "99/98",
+     "[ -1 2 0 -2 1 ⟩",
+     "17.58",
+     "Loruru",
+     "Mothwellsma"
+    ],
+    [
+     "11",
+     "100/99",
+     "[ 2 -2 2 0 -1 ⟩",
+     "17.40",
+     "Luyoyo",
+     "Ptolemisma"
+    ],
+    [
+     "11",
+     "65536/65219",
+     "[ 16 0 0 -2 -3 ⟩",
+     "8.39",
+     "Satrilu-aruru",
+     "Orgonisma"
+    ],
+    [
+     "11",
+     "385/384",
+     "[ -7 -1 1 1 1 ⟩",
+     "4.50",
+     "Lozoyo",
+     "Keenanisma"
+    ],
+    [
+     "11",
+     "441/440",
+     "[ -3 2 -1 2 -1 ⟩",
+     "3.93",
+     "Luzozogu",
+     "Werckisma"
+    ],
+    [
+     "11",
+     "3025/3024",
+     "[ -4 -3 2 -1 2 ⟩",
+     "0.57",
+     "Loloruyoyo",
+     "Lehmerisma"
+    ],
+    [
+     "11",
+     "9801/9800",
+     "[ -3 4 -2 -2 2 ⟩",
+     "0.18",
+     "Bilorugu",
+     "Kalisma, Gauss' comma"
+    ],
+    [
+     "13",
+     "105/104",
+     "[ -3 1 1 1 0 -1 ⟩",
+     "16.57",
+     "Thuzoyo",
+     "Animist comma"
+    ]
+   ],
+   "title": "Commas"
+  }
+ ]
+}

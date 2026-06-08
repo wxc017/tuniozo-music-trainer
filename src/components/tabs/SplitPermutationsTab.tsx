@@ -1,15 +1,20 @@
 // ── Split Permutations ─────────────────────────────────────────────
-// Pick a pulse count and see every musical grouping of those pulses
-// (e.g. 16 → "3+3+5+5", "5+5+6", "8+8" …) organised by musicality tier.
-// Each permutation has a 3-state status button (red ✕ / yellow ■ /
-// green ✓) you cycle through to track your practice progress; status
-// persists session-to-session per permutation string and starts as red
+// Pick a pulse count and see groupings of those pulses (e.g. 16 →
+// "3+3+5+5", "5+5+6" …).  The order is a triage heuristic — most
+// idiomatic / commonly-useful shapes first — NOT an objective musical
+// ranking; context (tempo, downbeat, the groove it resolves into)
+// decides what's actually musical.
+// Each permutation expands to the top auto-ranked mixed fills in R/L/K
+// terms (see splitMixes.ts) and has a 3-state status button (red ✕ /
+// yellow ■ / green ✓) you cycle to track practice progress; status
+// persists session-to-session per permutation string and starts red
 // (haven't got it yet) by default.
 
 import { useMemo, useState } from "react";
 import { useLS } from "@/lib/storage";
 import { allMusicalGroupings } from "@/lib/groupingSelector";
 import { canonicalCellName, CANONICAL_CELL_INFO } from "@/lib/musicalScoring";
+import { rankedMixes, spaciousFills } from "@/lib/splitMixes";
 
 // Default for every permutation that hasn't been touched yet is "red"
 // ("haven't got it") per direct user direction "have everything
@@ -36,6 +41,16 @@ export default function SplitPermutationsTab() {
   );
   // Which canonical-cell popup is open (null = none).
   const [popupCell, setPopupCell] = useState<string | null>(null);
+  // Which grouping rows are expanded to show their R/L/K voicings.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (key: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
 
   const cycleStatus = (key: string) => {
     setStatus(prev => {
@@ -125,7 +140,11 @@ export default function SplitPermutationsTab() {
 
       {/* ── Section 2: Permutations (flat list, sorted by musicality) ── */}
       <section>
-        <h3 className="text-xs font-semibold tracking-widest text-[#d4a050] uppercase mb-3">Permutations</h3>
+        <h3 className="text-xs font-semibold tracking-widest text-[#d4a050] uppercase mb-1">Permutations</h3>
+        <p className="text-[11px] text-[#777] mb-3 max-w-prose">
+          Ordered most-idiomatic first — a triage heuristic to keep the list manageable, <em>not</em> an objective musicality ranking.
+          Context (tempo, where the downbeat lands, the groove it resolves into) decides what's musical. Click a grouping for R/L/K voicings.
+        </p>
         {groupings.length === 0 ? (
           <p className="text-xs text-[#666]">No musical permutations for {pulses} pulses (max group {maxPart}) — try different values.</p>
         ) : totalShown === 0 ? (
@@ -135,27 +154,89 @@ export default function SplitPermutationsTab() {
             {shownKeys.map(key => {
               const s = status[key] ?? DEFAULT_STATUS;
               const p = STATUS_PALETTE[s];
-              const cell = canonicalCellName(key.split("+").map(n => parseInt(n, 10)));
+              const grouping = key.split("+").map(n => parseInt(n, 10));
+              const cell = canonicalCellName(grouping);
+              const isOpen = expanded.has(key);
               return (
-                <div key={key} className="flex items-center justify-between px-3 py-1.5 rounded border border-[#1a1a1a] bg-[#0e0e0e]">
-                  <span className="flex items-baseline gap-2 min-w-0">
-                    <span className="font-mono text-sm text-[#ddd] tracking-wide">{key}</span>
-                    {cell && (
+                <div key={key} className="rounded border border-[#1a1a1a] bg-[#0e0e0e] overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-1.5">
+                    <span className="flex items-baseline gap-2 min-w-0">
                       <button
-                        onClick={() => setPopupCell(cell)}
-                        title="Click for description"
-                        className="text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded border border-[#3a2e1a] bg-[#1a1408] text-[#d4a050] hover:bg-[#2a2010] hover:border-[#5a4a20] transition-colors cursor-pointer">
-                        {cell}
+                        onClick={() => toggleExpanded(key)}
+                        title={isOpen ? "Hide voicings" : "Show R/L/K voicings"}
+                        className="flex items-baseline gap-2 min-w-0 text-left cursor-pointer group">
+                        <span className="font-mono text-[10px] text-[#666] group-hover:text-[#d4a050] transition-colors">{isOpen ? "▾" : "▸"}</span>
+                        <span className="font-mono text-sm text-[#ddd] group-hover:text-white tracking-wide transition-colors">{key}</span>
                       </button>
-                    )}
-                  </span>
-                  <button
-                    onClick={() => cycleStatus(key)}
-                    title={`Status: ${p.name} — click to cycle (red ✕ → yellow ■ → green ✓)`}
-                    className="w-8 h-7 rounded inline-flex items-center justify-center text-sm font-bold leading-none cursor-pointer shrink-0"
-                    style={{ background: p.bg, border: `1px solid ${p.border}`, color: p.color }}>
-                    {p.label}
-                  </button>
+                      {cell && (
+                        <button
+                          onClick={() => setPopupCell(cell)}
+                          title="Click for description"
+                          className="text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded border border-[#3a2e1a] bg-[#1a1408] text-[#d4a050] hover:bg-[#2a2010] hover:border-[#5a4a20] transition-colors cursor-pointer">
+                          {cell}
+                        </button>
+                      )}
+                    </span>
+                    <button
+                      onClick={() => cycleStatus(key)}
+                      title={`Status: ${p.name} — click to cycle (red ✕ → yellow ■ → green ✓)`}
+                      className="w-8 h-7 rounded inline-flex items-center justify-center text-sm font-bold leading-none cursor-pointer shrink-0"
+                      style={{ background: p.bg, border: `1px solid ${p.border}`, color: p.color }}>
+                      {p.label}
+                    </button>
+                  </div>
+
+                  {isOpen && (
+                    <div className="border-t border-[#1a1a1a] bg-[#0a0a0a] px-3 py-2">
+                      <p className="text-[10px] text-[#666] mb-2">
+                        Top mixed fills — ranked for playability, kick placement, variety & phrasing (anchor/frame/resolve).
+                        Accent on the first note of each cell (gold). Starting points, not a strict ranking.
+                      </p>
+                      <ol className="flex flex-col gap-1.5">
+                        {rankedMixes(grouping).map((m, mi) => (
+                          <li key={m.cells.join("+")} className="flex items-baseline gap-2">
+                            <span className="text-[10px] text-[#555] w-4 shrink-0 text-right tabular-nums">{mi + 1}</span>
+                            <span className="min-w-0">
+                              <span className="font-mono text-sm tracking-wide">
+                                {m.cells.map((c, ci) => (
+                                  <span key={ci}>
+                                    {ci > 0 && <span className="text-[#444]">+</span>}
+                                    <span className="text-[#d4a050]">{c[0]}</span>
+                                    <span className="text-[#9a9a9a]">{c.slice(1)}</span>
+                                  </span>
+                                ))}
+                              </span>
+                              <span className="block text-[10px] text-[#666] tracking-wide">{m.devices.join(" · ")}</span>
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+
+                      <p className="text-[10px] text-[#666] mt-3 mb-2">
+                        Slow / spacious — "." is a rest. For ballad & half-time feels: hit the accents, leave the rest open.
+                      </p>
+                      <ol className="flex flex-col gap-1.5">
+                        {spaciousFills(grouping).map((f, fi) => (
+                          <li key={f.name} className="flex items-baseline gap-2" title={f.desc}>
+                            <span className="text-[10px] text-[#555] w-4 shrink-0 text-right tabular-nums">{fi + 1}</span>
+                            <span className="min-w-0">
+                              <span className="font-mono text-sm tracking-[0.25em]">
+                                {f.cells.map((c, ci) => (
+                                  <span key={ci}>
+                                    {ci > 0 && <span className="text-[#444] tracking-normal">+</span>}
+                                    {[...c].map((ch, chi) => (
+                                      <span key={chi} className={ch === "." ? "text-[#383838]" : ch === "K" ? "text-[#c8804a]" : "text-[#d4a050]"}>{ch}</span>
+                                    ))}
+                                  </span>
+                                ))}
+                              </span>
+                              <span className="block text-[10px] text-[#666] tracking-wide">{f.name}</span>
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
                 </div>
               );
             })}

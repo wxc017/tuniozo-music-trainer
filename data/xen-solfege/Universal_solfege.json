@@ -1,0 +1,861 @@
+{
+ "title": "Universal_solfege",
+ "snapshot": "20250811022613",
+ "url": "https://en.xen.wiki/w/Universal_Solfege",
+ "tables": [
+  {
+   "headers": [
+    "Interval",
+    "Class",
+    "Subcategory",
+    "Cent Range",
+    "Solfege",
+    "IPA"
+   ],
+   "rows": [
+    [
+     "Unison",
+     "",
+     "",
+     "0",
+     "A",
+     "a"
+    ],
+    [
+     "Comma",
+     "",
+     "",
+     "0-30",
+     "O",
+     "ɒ"
+    ],
+    [
+     "Dieses",
+     "",
+     "",
+     "30-60",
+     "Ee",
+     "i"
+    ],
+    [
+     "Second",
+     "Minor",
+     "Small",
+     "60-80",
+     "Sais",
+     "saɪs"
+    ],
+    [
+     "Middle",
+     "80-100",
+     "Sai",
+     "saɪ"
+    ],
+    [
+     "Large",
+     "100-125",
+     "Sail",
+     "saɪl"
+    ],
+    [
+     "Neutral",
+     "Small",
+     "125-135",
+     "Soos",
+     "sus"
+    ],
+    [
+     "Middle",
+     "135-160",
+     "Soo",
+     "su"
+    ],
+    [
+     "Large",
+     "160-170",
+     "Sool",
+     "sul"
+    ],
+    [
+     "Equable Heptatonic",
+     "160-182",
+     "Ha",
+     "ha"
+    ],
+    [
+     "Major",
+     "Small",
+     "180-200",
+     "Says",
+     "seɪs"
+    ],
+    [
+     "Middle",
+     "200-220",
+     "Say",
+     "seɪ"
+    ],
+    [
+     "Large",
+     "220-240",
+     "Sayl",
+     "seɪl"
+    ],
+    [
+     "Semifourth (Interseptimal Maj2-min3)",
+     "240-260",
+     "Fe",
+     "fɛ"
+    ],
+    [
+     "Thirds",
+     "Minor",
+     "Small",
+     "260-280",
+     "Thais",
+     "θaɪs"
+    ],
+    [
+     "Middle",
+     "280-300",
+     "Thai",
+     "θaɪ"
+    ],
+    [
+     "Large",
+     "300-330",
+     "Thail",
+     "θaɪl"
+    ],
+    [
+     "Neutral",
+     "Small",
+     "330-342",
+     "Thoos",
+     "θus"
+    ],
+    [
+     "Middle",
+     "342-360",
+     "Thoo",
+     "θu"
+    ],
+    [
+     "Large",
+     "360-372",
+     "Thool",
+     "θul"
+    ],
+    [
+     "Major",
+     "Small",
+     "372-400",
+     "Thays",
+     "θeɪs"
+    ],
+    [
+     "Middle",
+     "400-423",
+     "Thay",
+     "θeɪ"
+    ],
+    [
+     "Large",
+     "423-440",
+     "Thayl",
+     "θeɪl"
+    ],
+    [
+     "Semisixth (Interseptimal Maj3-4)",
+     "440-468",
+     "Ke",
+     "kɛ"
+    ],
+    [
+     "Fourths",
+     "Small",
+     "468-491",
+     "Fos",
+     "fɔs"
+    ],
+    [
+     "Middle",
+     "491-505",
+     "Fo",
+     "fɔ"
+    ],
+    [
+     "Large",
+     "505-528",
+     "Fol",
+     "fɔl"
+    ],
+    [
+     "Superfourths",
+     "528-560",
+     "Foo",
+     "fu"
+    ],
+    [
+     "Tritones",
+     "Small",
+     "560-577",
+     "Trais",
+     "traɪs"
+    ],
+    [
+     "Middle",
+     "577-623",
+     "Trai",
+     "traɪ"
+    ],
+    [
+     "Large",
+     "623-640",
+     "Trail",
+     "traɪl"
+    ],
+    [
+     "Subfifths",
+     "640-672",
+     "Fu",
+     "fʌ"
+    ],
+    [
+     "Fifths",
+     "Small",
+     "640-695",
+     "Fis",
+     "fɪs"
+    ],
+    [
+     "Middle",
+     "695-709",
+     "Fi",
+     "fɪ"
+    ],
+    [
+     "Large",
+     "709-732",
+     "Fil",
+     "fɪl"
+    ],
+    [
+     "Semitenth (Interseptimal 5-min6)",
+     "732-760",
+     "Te",
+     "tɛ"
+    ],
+    [
+     "Sixths",
+     "Minor",
+     "Small",
+     "760-777",
+     "Kais",
+     "kaɪs"
+    ],
+    [
+     "Middle",
+     "777-800",
+     "Kai",
+     "kaɪ"
+    ],
+    [
+     "Large",
+     "800-828",
+     "Kail",
+     "kaɪl"
+    ],
+    [
+     "Neutral",
+     "Small",
+     "828-840",
+     "Koos",
+     "kus"
+    ],
+    [
+     "Middle",
+     "840-858",
+     "Koo",
+     "ku"
+    ],
+    [
+     "Large",
+     "858-870",
+     "Kool",
+     "kul"
+    ],
+    [
+     "Major",
+     "Small",
+     "870-900",
+     "Kays",
+     "keɪs"
+    ],
+    [
+     "Middle",
+     "900-920",
+     "Kay",
+     "keɪ"
+    ],
+    [
+     "Large",
+     "920-940",
+     "Kayl",
+     "keɪl"
+    ],
+    [
+     "(Semitwelfth Interseptimal Maj6-min7)",
+     "940-960",
+     "Twe",
+     "twɛ"
+    ],
+    [
+     "Sevenths",
+     "Minor",
+     "Small",
+     "960-987",
+     "Vais",
+     "vaɪs"
+    ],
+    [
+     "Middle",
+     "987-1000",
+     "Vai",
+     "vaɪ"
+    ],
+    [
+     "Large",
+     "1000-1025",
+     "Vail",
+     "vaɪl"
+    ],
+    [
+     "Equable heptatonic",
+     "1018-1040",
+     "Ho",
+     "hɒ"
+    ],
+    [
+     "Neutral",
+     "Small",
+     "1030-1043",
+     "Voos",
+     "vus"
+    ],
+    [
+     "Middle",
+     "1043-1065",
+     "Voo",
+     "vu"
+    ],
+    [
+     "Large",
+     "1065-1075",
+     "Vool",
+     "vul"
+    ],
+    [
+     "Major",
+     "Small",
+     "1075-1100",
+     "Vays",
+     "veɪs"
+    ],
+    [
+     "Middle",
+     "1100-1120",
+     "Vay",
+     "veɪ"
+    ],
+    [
+     "Large",
+     "1120-1140",
+     "Vayl",
+     "veɪl"
+    ],
+    [
+     "Octave less diesis",
+     "1140-1170",
+     "Dee",
+     "di"
+    ],
+    [
+     "Octave less comma",
+     "1170-1200",
+     "Co",
+     "kɒ"
+    ],
+    [
+     "Octave",
+     "1200",
+     "A",
+     "a"
+    ]
+   ],
+   "title": "Full gamut"
+  },
+  {
+   "headers": [
+    "12edo 5L2s 5|1"
+   ],
+   "rows": [
+    [
+     "Cents",
+     "Solfege",
+     "Interval name"
+    ],
+    [
+     "0",
+     "A",
+     "Unison"
+    ],
+    [
+     "200",
+     "Say",
+     "Major Second"
+    ],
+    [
+     "400",
+     "Thay",
+     "Major Third"
+    ],
+    [
+     "500",
+     "Fo",
+     "Fourth"
+    ],
+    [
+     "700",
+     "Fi",
+     "Fifth"
+    ],
+    [
+     "900",
+     "Kay",
+     "Major Sixth"
+    ],
+    [
+     "1100",
+     "Vay",
+     "Major Seventh"
+    ],
+    [
+     "1200",
+     "A",
+     "Octave"
+    ]
+   ],
+   "title": "12edo diatonic (major mode)"
+  },
+  {
+   "headers": [
+    "31edo 5L2s 5|1"
+   ],
+   "rows": [
+    [
+     "Cents",
+     "Solfege",
+     "Interval name"
+    ],
+    [
+     "0",
+     "A",
+     "Unison"
+    ],
+    [
+     "193.548",
+     "Says",
+     "Small Major Second"
+    ],
+    [
+     "387.097",
+     "Thays",
+     "Small Major Third"
+    ],
+    [
+     "503.226",
+     "Fo",
+     "Fourth"
+    ],
+    [
+     "696.774",
+     "Fi",
+     "Fifth"
+    ],
+    [
+     "890.323",
+     "Kays",
+     "Small Major Sixth"
+    ],
+    [
+     "1083.871",
+     "Vays",
+     "Small Major Seventh"
+    ],
+    [
+     "1200",
+     "A",
+     "Octave"
+    ]
+   ],
+   "title": "31edo diatonic (major mode)"
+  },
+  {
+   "headers": [
+    "31edo 3L4s 3|3"
+   ],
+   "rows": [
+    [
+     "Cents",
+     "Solfege",
+     "Interval name"
+    ],
+    [
+     "0",
+     "A",
+     "Unison"
+    ],
+    [
+     "154.839",
+     "Soo",
+     "Neutral Second"
+    ],
+    [
+     "348.387",
+     "Thoo",
+     "Neutral Third"
+    ],
+    [
+     "503.226",
+     "Fo",
+     "Fourth"
+    ],
+    [
+     "696.774",
+     "Fi",
+     "Fifth"
+    ],
+    [
+     "851.613",
+     "Koo",
+     "Neutral Sixth"
+    ],
+    [
+     "1045.161",
+     "Voo",
+     "Neutral Seventh"
+    ],
+    [
+     "1200",
+     "A",
+     "Octave"
+    ]
+   ],
+   "title": "31edo mosh (bish mode)"
+  },
+  {
+   "headers": [
+    "24edo 3L4s 3|3"
+   ],
+   "rows": [
+    [
+     "Cents",
+     "Solfege",
+     "Interval name"
+    ],
+    [
+     "0",
+     "A",
+     "Unison"
+    ],
+    [
+     "150",
+     "Soo",
+     "Neutral Second"
+    ],
+    [
+     "350",
+     "Thoo",
+     "Neutral Third"
+    ],
+    [
+     "500",
+     "Fo",
+     "Fourth"
+    ],
+    [
+     "700",
+     "Fi",
+     "Fifth"
+    ],
+    [
+     "850",
+     "Koo",
+     "Neutral Sixth"
+    ],
+    [
+     "1050",
+     "Voo",
+     "Neutral Seventh"
+    ],
+    [
+     "1200",
+     "A",
+     "Octave"
+    ]
+   ],
+   "title": "24edo mosh (bish mode)"
+  },
+  {
+   "headers": [
+    "24edo 4L1s 2|2"
+   ],
+   "rows": [
+    [
+     "Cents",
+     "Solfege",
+     "Interval name"
+    ],
+    [
+     "0",
+     "A",
+     "Unison"
+    ],
+    [
+     "250",
+     "Fe",
+     "Semifourth"
+    ],
+    [
+     "500",
+     "Fo",
+     "Fourth"
+    ],
+    [
+     "700",
+     "Fi",
+     "Fifth"
+    ],
+    [
+     "950",
+     "Twe",
+     "Semitwelfth"
+    ],
+    [
+     "1200",
+     "A",
+     "Octave"
+    ]
+   ],
+   "title": "24edo manual (medial mode)"
+  },
+  {
+   "headers": [
+    "19edo 4L1s 2|2"
+   ],
+   "rows": [
+    [
+     "Cents",
+     "Solfege",
+     "Interval name"
+    ],
+    [
+     "0",
+     "A",
+     "Unison"
+    ],
+    [
+     "252.632",
+     "Fe",
+     "Semifourth"
+    ],
+    [
+     "505.263",
+     "Fol",
+     "Large Fourth"
+    ],
+    [
+     "694.737",
+     "Fis",
+     "Small Fifth"
+    ],
+    [
+     "947.368",
+     "Twe",
+     "Semitwelfth"
+    ],
+    [
+     "1200",
+     "A",
+     "Octave"
+    ]
+   ],
+   "title": "19edo manual (medial mode)"
+  },
+  {
+   "headers": [
+    "19edo 5L2s 5|1"
+   ],
+   "rows": [
+    [
+     "Cents",
+     "Solfege",
+     "Interval name"
+    ],
+    [
+     "0",
+     "A",
+     "Unison"
+    ],
+    [
+     "189.474",
+     "Says",
+     "Small Major Second"
+    ],
+    [
+     "378.947",
+     "Thays",
+     "Small Major Third"
+    ],
+    [
+     "505.263",
+     "Fol",
+     "Large Fourth"
+    ],
+    [
+     "694.737",
+     "Fis",
+     "Small Fifth"
+    ],
+    [
+     "884.211",
+     "Kays",
+     "Small Major Sixth"
+    ],
+    [
+     "1073.684",
+     "Vool",
+     "Large Neutral Seventh"
+    ],
+    [
+     "1200",
+     "A",
+     "Octave"
+    ]
+   ],
+   "title": "19edo diatonic (major mode)"
+  },
+  {
+   "headers": [
+    "Harmonics 8::16"
+   ],
+   "rows": [
+    [
+     "Cents",
+     "Solfege",
+     "Interval name"
+    ],
+    [
+     "0",
+     "A",
+     "Unison"
+    ],
+    [
+     "203.91",
+     "Say",
+     "Major Second"
+    ],
+    [
+     "386.314",
+     "Thays",
+     "Small Major Third"
+    ],
+    [
+     "551.318",
+     "Foo",
+     "Superfourth"
+    ],
+    [
+     "701.955",
+     "Fi",
+     "Fifth"
+    ],
+    [
+     "840.528",
+     "Koo",
+     "Neutral Sixth"
+    ],
+    [
+     "968.826",
+     "Vais",
+     "Small Minor Seventh"
+    ],
+    [
+     "1088.269",
+     "Vays",
+     "Small Major Seventh"
+    ],
+    [
+     "1200",
+     "A",
+     "Octave"
+    ]
+   ],
+   "title": "Harmonics 8::16"
+  },
+  {
+   "headers": [
+    "13edo 5L3s 5|2"
+   ],
+   "rows": [
+    [
+     "Cents",
+     "Solfege",
+     "Interval name"
+    ],
+    [
+     "0",
+     "A",
+     "Unison"
+    ],
+    [
+     "184.615",
+     "Says",
+     "Small Major Second"
+    ],
+    [
+     "276.923",
+     "Thais",
+     "Small Minor Third"
+    ],
+    [
+     "461.538",
+     "Ke",
+     "Semisixth"
+    ],
+    [
+     "646.154",
+     "Fu",
+     "Subfifth"
+    ],
+    [
+     "738.462",
+     "Te",
+     "Semitenth"
+    ],
+    [
+     "923.077",
+     "Kayl",
+     "Large Major Sixth"
+    ],
+    [
+     "1107.692",
+     "Vay",
+     "Major Seventh"
+    ]
+   ],
+   "title": "13edo oneirotonic (Celephaïsian mode)"
+  }
+ ]
+}

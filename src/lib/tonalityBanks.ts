@@ -7,6 +7,7 @@
 
 import { getChordShapes, getModeDegreeMap } from "./edoData";
 import { JI_FAMILY, JI_SCALE_NAMES } from "./jiScaleData";
+import { getScalesForEdo } from "./commonScales";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -85,6 +86,71 @@ export function getApproachChords(
       // Tritone-sub of V → also a dom7 (a half-step above the target)
       return [chord(`TT/${targetLabel}`, dom7(r + P5 + d5))];
   }
+}
+
+// ── Sized-catalog tonality banks (Tonal Audiation) ────────────────────
+// One bank per scale in the sized catalog (getScalesForEdo), with a triad
+// stacked on EVERY scale degree (classified maj/min/dim/aug, with a cent-zone
+// fallback for prime-altered thirds) plus a secondary dominant to each degree.
+// Labels are positional roman numerals (the real chord names are rendered from
+// the steps via chordSymbol); the bank NAME is the sized scale name.
+export function getSizedTonalityBanks(edo: number): TonalityBank[] {
+  const sh = getChordShapes(edo);
+  const { M3, m3, P5, d5, A1, m7 } = sh;
+  const aug5 = P5 + A1;
+  const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+  const c2 = (s: number) => (s / edo) * 1200;
+  const dom7 = (root: number) => [root, root + M3, root + P5, root + m7];
+  const banks: TonalityBank[] = [];
+  for (const sc of getScalesForEdo(edo, false)) {
+    const n = sc.steps.length;
+    if (n < 3) continue;
+    const triads: { label: string; steps: number[]; root: number }[] = [];
+    for (let i = 0; i < n; i++) {
+      const root = sc.steps[i];
+      const third = sc.steps[(i + 2) % n] + (i + 2 >= n ? edo : 0);
+      const fifth = sc.steps[(i + 4) % n] + (i + 4 >= n ? edo : 0);
+      const t3 = third - root, t5 = fifth - root;
+      let kind: "maj" | "min" | "dim" | "aug" | "other" = "other";
+      if (t3 === M3 && t5 === P5) kind = "maj";
+      else if (t3 === m3 && t5 === P5) kind = "min";
+      else if (t3 === m3 && t5 === d5) kind = "dim";
+      else if (t3 === M3 && t5 === aug5) kind = "aug";
+      else {                                            // cent-zone fallback for prime-altered thirds
+        const a = c2(t3), b = c2(t5);
+        const maj3 = a >= 355 && a < 480, min3 = a >= 220 && a < 355;
+        const p5 = b >= 670 && b < 740, dz = b >= 560 && b < 670, az = b >= 740 && b < 830;
+        if (maj3 && p5) kind = "maj"; else if (min3 && p5) kind = "min";
+        else if (min3 && dz) kind = "dim"; else if (maj3 && az) kind = "aug";
+      }
+      let r = ROMAN[i] ?? String(i + 1);
+      if (kind === "min" || kind === "dim") r = r.toLowerCase();
+      r += kind === "dim" ? "°" : kind === "aug" ? "+" : "";
+      triads.push({ label: r, steps: [root, third, fifth], root });
+    }
+    // Primary = the functional pillars: tonic (I) + the triads a perfect 4th
+    // (subdominant) and perfect 5th (dominant) above it.  Identify by the root's
+    // interval-from-tonic landing in the Perfect-4th / Perfect-5th region.  Modes
+    // without a perfect 4th/5th (Lydian #4, Locrian b5) keep only the pillar(s)
+    // that exist.  Everything else is Diatonic.
+    const isPillar = (root: number) => {
+      if (((root % edo) + edo) % edo === 0) return true;     // tonic
+      const c = (root / edo) * 1200;
+      return (c >= 468 && c <= 528) || (c >= 672 && c <= 732);
+    };
+    const primary = triads.filter(t => isPillar(t.root)).map(t => chord(t.label, t.steps));
+    const diatonic = triads.filter(t => !isPillar(t.root)).map(t => chord(t.label, t.steps));
+    const secDom = triads
+      .filter(t => ((t.root % edo) + edo) % edo !== 0)
+      .map(t => chord(`V/${t.label}`, dom7(t.root + P5)));
+    const levels: TonalityLevel[] = [
+      { name: "Primary", chords: primary },
+      { name: "Diatonic", chords: diatonic },
+    ];
+    if (secDom.length) levels.push({ name: "Secondary Dominants", chords: secDom });
+    banks.push({ name: sc.name, levels });
+  }
+  return banks;
 }
 
 // ── Build banks for a given EDO ───────────────────────────────────────

@@ -1,0 +1,202 @@
+{
+ "title": "29edo_solfege",
+ "snapshot": "20250213054839",
+ "url": "https://en.xen.wiki/w/29edo_solfege",
+ "tables": [
+  {
+   "headers": [
+    "29edo",
+    "edosteps",
+    "solfege names",
+    "ups and downs names"
+   ],
+   "rows": [
+    [
+     "unisons",
+     "0",
+     "Da",
+     "P1",
+     "C"
+    ],
+    [
+     "",
+     "1",
+     "Du/Fro",
+     "^1/vm2",
+     "^C/vDb"
+    ],
+    [
+     "2nds",
+     "2-5",
+     "Fra Fru",
+     "Ro Ra",
+     "m2 ^m2",
+     "vM2 M2",
+     "Db ^Db",
+     "vD D"
+    ],
+    [
+     "",
+     "6",
+     "Ru/No",
+     "^M2/vm3",
+     "^D/vEb"
+    ],
+    [
+     "3rds",
+     "7-10",
+     "Na Nu",
+     "Mo Ma",
+     "m3 ^m3",
+     "vM3 M3",
+     "Eb ^Eb",
+     "vE E"
+    ],
+    [
+     "",
+     "11",
+     "Mu/Fo",
+     "^M3/v4",
+     "^E/vF"
+    ],
+    [
+     "4ths",
+     "12-13",
+     "Fa Fu",
+     "P4 ^4",
+     "F ^F"
+    ],
+    [
+     "",
+     "14-15",
+     "Po/Sha Pa/Shu",
+     "vA4/d5 A4/^d5",
+     "vF#/Gb F#/^Gb"
+    ],
+    [
+     "5ths",
+     "16-17",
+     "So Sa",
+     "v5 P5",
+     "vG G"
+    ],
+    [
+     "",
+     "18",
+     "Su/Flo",
+     "^5/vm6",
+     "^G/vAb"
+    ],
+    [
+     "6ths",
+     "19-22",
+     "Fla Flu",
+     "Lo La",
+     "m6 ^m6",
+     "vM6 M6",
+     "Ab ^Ab",
+     "vA A"
+    ],
+    [
+     "",
+     "23",
+     "Lu/Tho",
+     "^M6/vm7",
+     "^A/vBb"
+    ],
+    [
+     "7ths",
+     "24-27",
+     "Tha Thu",
+     "To Ta",
+     "m7 ^m7",
+     "vM7 M7",
+     "Bb ^Bb",
+     "vB B"
+    ],
+    [
+     "",
+     "28",
+     "Tu/Do",
+     "^M7/v8",
+     "^B/vC"
+    ],
+    [
+     "8ves",
+     "29",
+     "Da",
+     "P8",
+     "C"
+    ]
+   ],
+   "title": "Uniform Solfege"
+  },
+  {
+   "headers": [
+    "29edo",
+    "edosteps",
+    "solfege names",
+    "ups and downs names"
+   ],
+   "rows": [
+    [
+     "unisons",
+     "0-1",
+     "Do Di",
+     "P1 ^1",
+     "C ^C"
+    ],
+    [
+     "2nds",
+     "2-6",
+     "Rih Ra Ru Re Raw",
+     "m2 ^m2 vM2 M2 ^M2",
+     "Db ^Db vD D ^D"
+    ],
+    [
+     "3rds",
+     "7-11",
+     "Meh Me Mi Maa Maw",
+     "m3 ^m3 vM3 M3 ^M3",
+     "Eb ^Eb vE E ^E"
+    ],
+    [
+     "4ths",
+     "12-14",
+     "Fa Fu Fi",
+     "P4 ^4 ^^4",
+     "F ^F ^^F"
+    ],
+    [
+     "5ths",
+     "15-18",
+     "Se Su So Saw",
+     "vv5 v5 P5 ^5",
+     "vvG vG G ^G"
+    ],
+    [
+     "6ths",
+     "19-23",
+     "Leh Le La Laa Law",
+     "m6 ^m6 vM6 M6 ^M6",
+     "Ab ^Ab vA A ^A"
+    ],
+    [
+     "7ths",
+     "24-27",
+     "Teh Te Ti Taa",
+     "m7 ^m7 vM7 M7",
+     "Bb ^Bb vB B"
+    ],
+    [
+     "8ves",
+     "28-29",
+     "Da Do",
+     "v8 P8",
+     "vC C"
+    ]
+   ],
+   "title": "Phylingual's solfege"
+  }
+ ]
+}

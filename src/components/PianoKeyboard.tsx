@@ -10,6 +10,9 @@ interface PianoKey {
 
 interface Props {
   highlightedPitches: Set<number>;
+  /** Pitch CLASSES (0–11) to render with a very dim glow — e.g. the underlying
+   *  scale shown faintly behind the lit chord tones. */
+  dimPitchClasses?: Set<number>;
   onKeyClick?: (key: { pitch: number; section: number; color_hex: string; x: number; y: number; midi_note: number; channel: number; local_key_index: number }) => void;
   pitchMin?: number;
   pitchMax?: number;
@@ -39,8 +42,12 @@ const PC_X: number[] = [
 
 const WHITES_PER_OCTAVE = 7;
 
-export default function PianoKeyboard({ highlightedPitches, onKeyClick, pitchMin = -27, pitchMax = 32 }: Props) {
+export default function PianoKeyboard({ highlightedPitches, dimPitchClasses, onKeyClick, pitchMin = -27, pitchMax = 32 }: Props) {
   const hasHighlight = highlightedPitches.size > 0;
+  const hasDim = !!dimPitchClasses && dimPitchClasses.size > 0;
+  const hasAny = hasHighlight || hasDim;
+  const isDimKey = (pitch: number) =>
+    hasDim && !highlightedPitches.has(pitch) && dimPitchClasses!.has(((pitch % 12) + 12) % 12);
 
   const { whiteKeys, blackKeys, totalW, totalH } = useMemo(() => {
     const WK_W = 22;
@@ -91,15 +98,17 @@ export default function PianoKeyboard({ highlightedPitches, onKeyClick, pitchMin
 
   const whiteFill = (k: PianoKey) => {
     const lit = highlightedPitches.has(k.pitch);
-    if (lit) return "#7cb8ff";
-    if (hasHighlight) return "#2a2a2a";
+    if (lit) return "#a8d4ff";                 // bright chord node
+    if (isDimKey(k.pitch)) return "#4c5f73";   // scale wash — ~45% of the lit colour
+    if (hasAny) return "#2a2a2a";
     return "#d4d4d4";
   };
 
   const blackFill = (k: PianoKey) => {
     const lit = highlightedPitches.has(k.pitch);
-    if (lit) return "#5a9fd4";
-    if (hasHighlight) return "#111";
+    if (lit) return "#8cc4f4";                 // bright chord node
+    if (isDimKey(k.pitch)) return "#3f586e";   // scale wash — ~45% of the lit colour
+    if (hasAny) return "#111";
     return "#1a1a1a";
   };
 

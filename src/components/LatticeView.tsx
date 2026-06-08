@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Line, Html } from "@react-three/drei";
 import * as THREE from "three";
-import { audioEngine, AudioEngine, DRONE_INSTRUMENTS, type DroneInstrument } from "@/lib/audioEngine";
+import { audioEngine, DRONE_INSTRUMENTS, type DroneInstrument } from "@/lib/audioEngine";
 import { useLS } from "@/lib/storage";
 import {
   NODES, GENERATOR_EDGES, COMMA_EDGES, OTONAL_EDGES, UTONAL_EDGES, OCTAVE_EDGES,
@@ -4684,6 +4684,8 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
 
   // ── Persistent drone (sampled instrument tonic) ─────────────────────
   const [latticeDroneInstrument, setLatticeDroneInstrument] = useLS<DroneInstrument>("lt_lattice_droneInstrument", "cello");
+  // Node-sound / options strip visibility — toggled with the "o" key, persisted.
+  const [showNodeOptions, setShowNodeOptions] = useLS<boolean>("lt_lattice_showNodeOptions", true);
   const [latticeDroneVol, setLatticeDroneVol] = useLS<number>("lt_lattice_droneVol", 0.5);
   const [internalDroneRoot, setLatticeDroneRoot] = useLS<number>("lt_lattice_droneRoot", 0); // 0-11 pitch class
   // Effective root used for note-name / HEJI / drone-freq computations.
@@ -4698,9 +4700,11 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
   // for rootPcToFreq() is 2^(3-4) = 0.5 (one octave below middle).
   const LATTICE_DRONE_OCT_MUL = 0.5;
   const [latticeDroneOn, setLatticeDroneOn] = useState(false);
-  // Snap stale catalog values to the default (see App.tsx for context).
+  // Lattice node sound is the Interval-Spectrum synth only (other instruments
+  // removed per direct user direction); force it regardless of any stored value.
   useEffect(() => {
-    if (!AudioEngine.isValidInstrument(latticeDroneInstrument)) setLatticeDroneInstrument("cello");
+    setLatticeDroneInstrument("additive");
+    audioEngine.setInstrument("additive");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -6167,6 +6171,8 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
+      if (e.key === "o" || e.key === "O") { e.preventDefault(); setShowNodeOptions(v => !v); return; }
+
       const key = e.key.toUpperCase();
       if (key !== "P" && key !== "L" && key !== "R") return;
 
@@ -6453,6 +6459,18 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
     }
   }, [latticeDroneOn, latticeDroneVol, latticeDroneRoot]);
 
+  // Delete key clears all sustained lattice notes.
+  useEffect(() => {
+    if (viewMode !== "lattice") return;
+    const h = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "Delete") { e.preventDefault(); clearDrone(); }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [viewMode, clearDrone]);
+
   const toggleGen = (p: number) => setShowGen(prev => ({ ...prev, [p]: !prev[p] }));
 
   const activeNode = hoveredNode || (droneNodes.size > 0 ? [...droneNodes][droneNodes.size - 1] : null);
@@ -6537,7 +6555,8 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
             to change instrument for the nodes').  The instrument
             selector below drives the sound that plays when the user
             clicks a node; no sustained drone runs in the background. */}
-        <div className="flex flex-wrap gap-2 items-center mb-3 py-1.5 px-2 rounded bg-[#0c0c0c] border border-[#1a1a1a]">
+        <div className="flex flex-wrap gap-2 items-center mb-3 py-1.5 px-2 rounded bg-[#0c0c0c] border border-[#1a1a1a]"
+          style={{ display: showNodeOptions ? undefined : "none" }}>
           {/* Instrument selector */}
           <label className="text-[10px] text-[#555] flex items-center gap-1">
             Node sound
@@ -6557,7 +6576,7 @@ export default function LatticeView({ externalHighlights, activeNodeKey, activeN
               }}
               className="bg-[#141414] border border-[#333] text-white text-xs rounded px-1.5 py-0.5"
             >
-              {DRONE_INSTRUMENTS.map(d => (
+              {DRONE_INSTRUMENTS.filter(d => d.id === "additive").map(d => (
                 <option key={d.id} value={d.id}>{d.label}</option>
               ))}
             </select>

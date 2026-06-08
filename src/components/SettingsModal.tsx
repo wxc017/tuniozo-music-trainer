@@ -9,6 +9,10 @@ import {
   reconnectFolder,
   disconnectFolder,
   saveNow as folderSyncSaveNow,
+  loadActiveSave,
+  saveCurrentAsNew,
+  switchSave,
+  deleteSave,
   type SyncStatus,
 } from "@/lib/folderSync";
 
@@ -52,6 +56,12 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
   // Folder sync state
   const [folderStatus, setFolderStatus] = useState<SyncStatus>({ state: "disconnected" });
   const [folderBusy, setFolderBusy] = useState(false);
+  // Shown after connecting to a folder that already contains saves: the user
+  // chooses to overwrite current data or save it under a new name.
+  const [pendingChoice, setPendingChoice] = useState<{ saves: string[]; active: string } | null>(null);
+  const [choiceNewOpen, setChoiceNewOpen] = useState(false); // name input in the connect prompt
+  const [panelNewOpen, setPanelNewOpen] = useState(false);   // name input in the connected panel
+  const [newSaveName, setNewSaveName] = useState("");
   useEffect(() => {
     let alive = true;
     const refresh = () => getFolderSyncStatus().then(s => { if (alive) setFolderStatus(s); });
@@ -165,13 +175,72 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
     flash("Pick a folder…");
     const res = await connectFolder();
     setFolderBusy(false);
-    if (res.ok) {
+    if (!res.ok) {
+      flash(res.error ?? "Failed to connect folder");
+      return;
+    }
+    if (res.hasExistingData) {
+      // Folder already has saves — ask before touching the current app data.
+      setChoiceNewOpen(false);
+      setNewSaveName("");
+      setPendingChoice({ saves: res.saves ?? [], active: res.active ?? "" });
+      flash("This folder already has saved data");
+    } else {
       flash("Folder connected — data will auto-save");
-      // If connectFolder loaded existing data, the UI needs to refresh
+      onDataImported();
+    }
+  };
+
+  // "Overwrite current data" — load the folder's active save into the app.
+  const handleLoadFolderData = async () => {
+    setFolderBusy(true);
+    flash("Loading folder data…");
+    const res = await loadActiveSave();
+    setFolderBusy(false);
+    if (res.ok) {
+      setPendingChoice(null);
+      flash("Loaded — reloading…");
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      flash(res.error ?? "Load failed");
+    }
+  };
+
+  // "Save under a different name" — add current data as a new named save.
+  const handleSaveAsNew = async (name: string) => {
+    setFolderBusy(true);
+    const res = await saveCurrentAsNew(name);
+    setFolderBusy(false);
+    if (res.ok) {
+      setPendingChoice(null);
+      setChoiceNewOpen(false);
+      setPanelNewOpen(false);
+      setNewSaveName("");
+      flash(`Saved as "${name.trim()}" — now auto-saving here`);
       onDataImported();
     } else {
-      flash(res.error ?? "Failed to connect folder");
+      flash(res.error ?? "Save failed");
     }
+  };
+
+  // Load a different existing save (from the connected-panel list).
+  const handleSwitchSave = async (name: string) => {
+    if (name === folderStatus.activeSave) return;
+    setFolderBusy(true);
+    flash(`Loading "${name}"…`);
+    const res = await switchSave(name);
+    setFolderBusy(false);
+    if (res.ok) {
+      flash(`Loaded "${name}" — reloading…`);
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      flash(res.error ?? "Could not switch save");
+    }
+  };
+
+  const handleDeleteSave = async (name: string) => {
+    const res = await deleteSave(name);
+    flash(res.ok ? `Deleted "${name}"` : (res.error ?? "Delete failed"));
   };
 
   const handleFolderReconnect = async () => {
@@ -197,6 +266,10 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
 
   const handleFolderDisconnect = async () => {
     await disconnectFolder();
+    setPendingChoice(null);
+    setPanelNewOpen(false);
+    setChoiceNewOpen(false);
+    setNewSaveName("");
     flash("Folder disconnected");
   };
 
@@ -320,6 +393,59 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
             <div>
               <h3 className="text-xs font-semibold text-[#5a8a5a] uppercase tracking-widest mb-3">Local Folder Sync</h3>
               <div className="space-y-2">
+                {pendingChoice ? (
+                  <>
+                    <div className="px-3 py-2 bg-[#2a1a0a] border border-[#5a3a1a] rounded-lg text-xs text-[#d89a4a]">
+                      This folder already has saved data
+                      {pendingChoice.saves.length > 0 && (
+                        <> ({pendingChoice.saves.length} save{pendingChoice.saves.length === 1 ? "" : "s"}: <span className="text-[#ffcf88]">{pendingChoice.saves.join(", ")}</span>)</>
+                      )}. Load it over what's currently in the app, or keep your current data and store it here under a new name.
+                    </div>
+                    <button
+                      onClick={handleLoadFolderData}
+                      disabled={folderBusy}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#1a1a1a] border border-[#5a8a5a] hover:border-[#7aaa7a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors text-left disabled:opacity-50"
+                    >
+                      <span className="text-base">↑</span>
+                      <div>
+                        <div className="font-medium">Load the folder's saved data</div>
+                        <div className="text-xs text-[#555]">Replaces what's currently in the app{pendingChoice.active ? ` (loads "${pendingChoice.active}")` : ""}</div>
+                      </div>
+                    </button>
+                    {!choiceNewOpen ? (
+                      <button
+                        onClick={() => { setChoiceNewOpen(true); setNewSaveName(""); }}
+                        disabled={folderBusy}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors text-left disabled:opacity-50"
+                      >
+                        <span className="text-base">＋</span>
+                        <div>
+                          <div className="font-medium">Save my current data as a new name…</div>
+                          <div className="text-xs text-[#555]">Keeps the existing saves; adds yours alongside</div>
+                        </div>
+                      </button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          autoFocus
+                          value={newSaveName}
+                          onChange={e => setNewSaveName(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter" && newSaveName.trim()) handleSaveAsNew(newSaveName); }}
+                          placeholder="Save name…"
+                          className="flex-1 px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] focus:border-[#5a8a5a] rounded-lg text-sm text-[#ccc] outline-none"
+                        />
+                        <button
+                          onClick={() => handleSaveAsNew(newSaveName)}
+                          disabled={folderBusy || !newSaveName.trim()}
+                          className="px-3 py-2 bg-[#1a2a1a] border border-[#2a4a2a] hover:border-[#5a8a5a] rounded-lg text-sm text-[#9ac99a] disabled:opacity-40"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
                 {folderStatus.state === "disconnected" && (
                   <button
                     onClick={handleFolderConnect}
@@ -329,7 +455,7 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
                     <span className="text-base">📁</span>
                     <div>
                       <div className="font-medium">Connect a folder on your computer</div>
-                      <div className="text-xs text-[#555]">Auto-saves practice log & data to a local file (lumatone_practice_data.json)</div>
+                      <div className="text-xs text-[#555]">Auto-saves all your data to a local file. One folder can hold multiple named saves.</div>
                     </div>
                   </button>
                 )}
@@ -363,6 +489,11 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
                       <div className="text-xs text-[#666]">
                         Connected: <span className="text-[#ccc]">{folderStatus.folderName}</span>
                       </div>
+                      {folderStatus.activeSave && (
+                        <div className="text-xs text-[#666] mt-1">
+                          Active save: <span className="text-[#9ac99a]">{folderStatus.activeSave}</span>
+                        </div>
+                      )}
                       <div className="text-xs text-[#555] mt-1">
                         {folderStatus.lastSaved
                           ? <>Last saved: <span className="text-[#aaa]">{new Date(folderStatus.lastSaved).toLocaleTimeString()}</span></>
@@ -372,6 +503,71 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
                         <div className="text-xs text-[#d87070] mt-1">Last error: {folderStatus.lastError}</div>
                       )}
                     </div>
+                    {folderStatus.saves && folderStatus.saves.length > 0 && (
+                      <div className="px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg space-y-0.5">
+                        <div className="text-[10px] uppercase tracking-widest text-[#555] mb-1">Saves in this folder</div>
+                        {folderStatus.saves.map(name => {
+                          const active = name === folderStatus.activeSave;
+                          return (
+                            <div key={name} className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleSwitchSave(name)}
+                                disabled={folderBusy}
+                                className={`flex-1 text-left text-sm px-2 py-1 rounded transition-colors disabled:opacity-50 ${active ? "text-[#9ac99a]" : "text-[#bbb] hover:text-white hover:bg-[#222]"}`}
+                              >
+                                {active ? "● " : "○ "}{name}
+                              </button>
+                              {!active && (
+                                <button
+                                  onClick={() => handleDeleteSave(name)}
+                                  title={`Delete "${name}"`}
+                                  className="text-[#555] hover:text-[#d87070] text-xs px-1"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {!panelNewOpen ? (
+                      <button
+                        onClick={() => { setPanelNewOpen(true); setNewSaveName(""); }}
+                        disabled={folderBusy}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors text-left disabled:opacity-50"
+                      >
+                        <span className="text-base">＋</span>
+                        <div>
+                          <div className="font-medium">New save…</div>
+                          <div className="text-xs text-[#555]">Store the current data under a new name in this folder</div>
+                        </div>
+                      </button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          autoFocus
+                          value={newSaveName}
+                          onChange={e => setNewSaveName(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter" && newSaveName.trim()) handleSaveAsNew(newSaveName); }}
+                          placeholder="Save name…"
+                          className="flex-1 px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] focus:border-[#5a8a5a] rounded-lg text-sm text-[#ccc] outline-none"
+                        />
+                        <button
+                          onClick={() => handleSaveAsNew(newSaveName)}
+                          disabled={folderBusy || !newSaveName.trim()}
+                          className="px-3 py-2 bg-[#1a2a1a] border border-[#2a4a2a] hover:border-[#5a8a5a] rounded-lg text-sm text-[#9ac99a] disabled:opacity-40"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => { setPanelNewOpen(false); setNewSaveName(""); }}
+                          className="px-2 text-[#555] hover:text-[#999] text-sm"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
                     <button
                       onClick={handleFolderSaveNow}
                       disabled={folderBusy}
@@ -380,7 +576,7 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
                       <span className="text-base">↓</span>
                       <div>
                         <div className="font-medium">Save now</div>
-                        <div className="text-xs text-[#555]">Force an immediate write</div>
+                        <div className="text-xs text-[#555]">Force an immediate write to the active save</div>
                       </div>
                     </button>
                     <button
@@ -389,6 +585,8 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
                     >
                       Disconnect folder
                     </button>
+                  </>
+                )}
                   </>
                 )}
               </div>

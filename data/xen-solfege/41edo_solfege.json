@@ -1,0 +1,701 @@
+{
+ "title": "41edo_solfege",
+ "snapshot": "20250804010836",
+ "url": "https://en.xen.wiki/w/41edo_solfege",
+ "tables": [
+  {
+   "headers": [
+    "41edo",
+    "edosteps",
+    "solfege",
+    "ups and downs names"
+   ],
+   "rows": [
+    [
+     "unisons",
+     "0-1",
+     "Da Du",
+     "P1 ^1",
+     "C ^C"
+    ],
+    [
+     "2nds",
+     "2-8",
+     "Fro Fra Fru",
+     "Ri Ro Ra Ru",
+     "vm2 m2 ^m2",
+     "~2 vM2 M2 ^M2",
+     "vDb Db ^Db",
+     "vvD vD D ^D"
+    ],
+    [
+     "3rds",
+     "9-15",
+     "No Na Nu",
+     "Mi Mo Ma Mu",
+     "vm3 m3 ^m3",
+     "~3 vM3 M3 ^M3",
+     "vEb Eb ^Eb",
+     "vvE vE E ^E"
+    ],
+    [
+     "4ths",
+     "16-18",
+     "Fo Fa Fu",
+     "v4 P4 ^4",
+     "vF F ^F"
+    ],
+    [
+     "tritones",
+     "19-22",
+     "Fi/Sho Po/Sha Pa/Shu Pu/Si",
+     "~4/vd5  vA4/d5  A4/^d5  ^A4/~5",
+     "^^F/vGb  vF#/Gb  F#/^Gb  ^F#/vvG"
+    ],
+    [
+     "5ths",
+     "23-25",
+     "So Sa Su",
+     "v5 P5 ^5",
+     "vG G ^G"
+    ],
+    [
+     "6ths",
+     "26-32",
+     "Flo Fla Flu",
+     "Li Lo La Lu",
+     "vm6 m6 ^m6",
+     "~6 vM6 M6 ^M6",
+     "vAb Ab ^Ab",
+     "vvA vA A ^A"
+    ],
+    [
+     "7ths",
+     "33-39",
+     "Tho Tha Thu",
+     "Ti To Ta Tu",
+     "vm7 m7 ^m7",
+     "~7 vM7 M7 ^M7",
+     "vBb Bb ^Bb",
+     "vvB vB B ^B"
+    ],
+    [
+     "8ves",
+     "40-41",
+     "Do Da",
+     "v8 P8",
+     "vC C"
+    ]
+   ],
+   "title": "Overview"
+  },
+  {
+   "headers": [
+    "3-limit",
+    "Plain major scale",
+    "Da",
+    "Ra",
+    "Ma",
+    "Fa",
+    "Sa",
+    "La",
+    "Ta",
+    "Da"
+   ],
+   "rows": [
+    [
+     "Plain minor scale",
+     "Da",
+     "Ra",
+     "Na",
+     "Fa",
+     "Sa",
+     "Fla",
+     "Tha",
+     "Da"
+    ],
+    [
+     "5-limit",
+     "Downmajor scale",
+     "Da",
+     "Ra",
+     "Mo",
+     "Fa",
+     "Sa",
+     "Lo",
+     "To",
+     "Da"
+    ],
+    [
+     "Upminor scale",
+     "Da",
+     "Ra",
+     "Nu",
+     "Fa",
+     "Sa",
+     "Flu",
+     "Thu",
+     "Da"
+    ],
+    [
+     "7-limit",
+     "Upmajor scale",
+     "Da",
+     "Ra",
+     "Mu",
+     "Fa",
+     "Sa",
+     "Lu",
+     "Tu",
+     "Da"
+    ],
+    [
+     "Downminor scale",
+     "Da",
+     "Ra",
+     "No",
+     "Fa",
+     "Sa",
+     "Flo",
+     "Tho",
+     "Da"
+    ],
+    [
+     "11-limit",
+     "Mid scale",
+     "Da",
+     "Ra",
+     "Mi",
+     "Fa",
+     "Sa",
+     "Li",
+     "Ti",
+     "Da"
+    ]
+   ],
+   "title": "Example scales & tags"
+  },
+  {
+   "headers": [
+    "Pa",
+    "So",
+    "Su",
+    "Fla",
+    "Li",
+    "La",
+    "Tho",
+    "Thu",
+    "To",
+    "Tu",
+    "Da",
+    ""
+   ],
+   "rows": [
+    [
+     "Ru",
+     "Na",
+     "Mi",
+     "Ma",
+     "Fo",
+     "Fu",
+     "Sha",
+     "Si",
+     "Sa",
+     "Flo",
+     "Flu",
+     "Lo",
+     "Lu",
+     "Tha",
+     "Ti",
+     "Ta",
+     "Do",
+     "Du",
+     "Fra",
+     "Ri"
+    ],
+    [
+     "Ti",
+     "Ta",
+     "Do",
+     "Du",
+     "Fra",
+     "Ri",
+     "Ra",
+     "No",
+     "Nu",
+     "Mo",
+     "Mu",
+     "Fa",
+     "Fi",
+     "Pa",
+     "So",
+     "Su",
+     "Fla",
+     "Li",
+     "La",
+     "Tho"
+    ],
+    [
+     "",
+     "Da",
+     "Fro",
+     "Fru",
+     "Ro",
+     "Ru",
+     "Na",
+     "Mi",
+     "Ma",
+     "Fo",
+     "Fu",
+     "Sha"
+    ]
+   ],
+   "title": "Kite Guitar fretboard"
+  },
+  {
+   "headers": [
+    "",
+    "d5",
+    "m2",
+    "m6",
+    "m3",
+    "m7",
+    "P4",
+    "P1",
+    "P5",
+    "M2",
+    "M6",
+    "M3",
+    "M7",
+    "A4 (d5)"
+   ],
+   "rows": [
+    [
+     "-a",
+     "",
+     "Da",
+     "Sa",
+     "Ra",
+     "La",
+     "Ma",
+     "Ta",
+     "Pa (Shu)"
+    ],
+    [
+     "-u",
+     "Shu",
+     "Fru",
+     "Flu",
+     "Nu",
+     "Thu",
+     "Fu",
+     "Du",
+     "Su",
+     "Ru",
+     "Lu",
+     "Mu",
+     "Tu",
+     "Pu (Si)"
+    ],
+    [
+     "-i",
+     "",
+     "Si",
+     "Ri",
+     "Li",
+     "Mi",
+     "Ti",
+     "Fi (Sho)"
+    ],
+    [
+     "-o",
+     "Sho",
+     "Fro",
+     "Flo",
+     "No",
+     "Tho",
+     "Fo",
+     "Do",
+     "So",
+     "Ro",
+     "Lo",
+     "Mo",
+     "To",
+     "Po (Sha)"
+    ],
+    [
+     "-a",
+     "Sha",
+     "Fra",
+     "Fla",
+     "Na",
+     "Tha",
+     "Fa",
+     "Da",
+     ""
+    ]
+   ],
+   "title": "The Circle of Fifths"
+  },
+  {
+   "headers": [
+    "41edo",
+    "solfege names",
+    "ups and downs names",
+    "edosteps"
+   ],
+   "rows": [
+    [
+     "unisons",
+     "Do Di",
+     "P1 ^1",
+     "0-1"
+    ],
+    [
+     "2nds",
+     "Ro Rih Ra Ru Reh Re Ri",
+     "vm2 m2 ^m2 ~2 vM2 M2 ^M2",
+     "2-8"
+    ],
+    [
+     "3rds",
+     "Ma Meh Me Mu Mi Maa Mo",
+     "vm3 m3 ^m3 ~3 vM3 M3 ^M3",
+     "9-15"
+    ],
+    [
+     "4ths",
+     "Fe Fa Fih Fu Fi",
+     "v4 P4 ^4 ~4 vA4",
+     "16-20"
+    ],
+    [
+     "5ths",
+     "Se Su Sih So (or Sol) Si",
+     "^d5 ~5 v5 P5 ^5",
+     "21-25"
+    ],
+    [
+     "6ths",
+     "Lo Leh Le Lu La Laa Li",
+     "vm6 m6 ^m6 ~6 vM6 M6 ^M6",
+     "26-32"
+    ],
+    [
+     "7ths",
+     "Ta Teh Te Tu Ti Taa To",
+     "vm7 m7 ^m7 ~7 vM7 M7 ^M7",
+     "33-39"
+    ],
+    [
+     "8ves",
+     "Da Do (Di)",
+     "v8 P8 (^8)",
+     "40-41 (42)"
+    ]
+   ],
+   "title": "Andrew Heathwaite's Solfege"
+  },
+  {
+   "headers": [
+    "3- limit",
+    "Plain major scale",
+    "Do",
+    "Re",
+    "Maa",
+    "Fa",
+    "Sol",
+    "Laa",
+    "Taa",
+    "Do"
+   ],
+   "rows": [
+    [
+     "Plain minor scale",
+     "Do",
+     "Re",
+     "Meh",
+     "Fa",
+     "Sol",
+     "Leh",
+     "Teh",
+     "Do"
+    ],
+    [
+     "5-limit",
+     "Downmajor scale",
+     "Do",
+     "Re",
+     "Mi",
+     "Fa",
+     "Sol",
+     "La",
+     "Ti",
+     "Do"
+    ],
+    [
+     "Upminor scale",
+     "Do",
+     "Re",
+     "Me",
+     "Fa",
+     "Sol",
+     "Le",
+     "Te",
+     "Do"
+    ],
+    [
+     "7-limit",
+     "Upmajor scale",
+     "Do",
+     "Re",
+     "Mo",
+     "Fa",
+     "Sol",
+     "Li",
+     "To",
+     "Do"
+    ],
+    [
+     "Downminor scale",
+     "Do",
+     "Re",
+     "Ma",
+     "Fa",
+     "Sol",
+     "Lo",
+     "Ta",
+     "Do"
+    ],
+    [
+     "11-limit",
+     "Mid scale",
+     "Do",
+     "Re",
+     "Mu",
+     "Fa",
+     "Sol",
+     "Lu",
+     "Tu",
+     "Do"
+    ]
+   ],
+   "title": "Example scales"
+  },
+  {
+   "headers": [
+    "41-edo steps",
+    "Harmononym",
+    "Ratio"
+   ],
+   "rows": [
+    [
+     "0",
+     "Ah",
+     "1/1"
+    ],
+    [
+     "1",
+     "Schup",
+     "64/63"
+    ],
+    [
+     "2",
+     "Chyzi",
+     "33/32"
+    ],
+    [
+     "3",
+     "Xcyli",
+     "135/128"
+    ],
+    [
+     "4",
+     "Fus",
+     "16/15"
+    ],
+    [
+     "5",
+     "Chyk",
+     "12/11"
+    ],
+    [
+     "6",
+     "Schuli",
+     "10/9"
+    ],
+    [
+     "7",
+     "Scy",
+     "9/8"
+    ],
+    [
+     "8",
+     "Pu",
+     "8/7"
+    ],
+    [
+     "9",
+     "Fumi",
+     "7/6"
+    ],
+    [
+     "10",
+     "Ju",
+     "32/27"
+    ],
+    [
+     "11",
+     "Chys",
+     "6/5"
+    ],
+    [
+     "12",
+     "Schuzi",
+     "11/9"
+    ],
+    [
+     "13",
+     "Ly",
+     "5/4"
+    ],
+    [
+     "14",
+     "Myk",
+     "14/11"
+    ],
+    [
+     "15",
+     "Scyp",
+     "9/7"
+    ],
+    [
+     "16",
+     "Chymi",
+     "21/16"
+    ],
+    [
+     "17",
+     "Fu",
+     "4/3"
+    ],
+    [
+     "18",
+     "Xcys",
+     "27/20"
+    ],
+    [
+     "19",
+     "Zy",
+     "11/8"
+    ],
+    [
+     "20",
+     "Sumi",
+     "7/5"
+    ],
+    [
+     "21",
+     "Lyp",
+     "10/7"
+    ],
+    [
+     "22",
+     "Tschu",
+     "16/11"
+    ],
+    [
+     "23",
+     "Juli",
+     "40/27"
+    ],
+    [
+     "24",
+     "Chy",
+     "3/2"
+    ],
+    [
+     "25",
+     "Fup",
+     "32/21"
+    ],
+    [
+     "26",
+     "Dry",
+     "25/16"
+    ],
+    [
+     "27",
+     "Puzi",
+     "11/7"
+    ],
+    [
+     "28",
+     "Su",
+     "8/5"
+    ],
+    [
+     "29",
+     "Scyk",
+     "18/11"
+    ],
+    [
+     "30",
+     "Fuli",
+     "5/3"
+    ],
+    [
+     "31",
+     "Xcy",
+     "27/16"
+    ],
+    [
+     "32",
+     "Chyp",
+     "12/7"
+    ],
+    [
+     "33",
+     "My",
+     "7/4"
+    ],
+    [
+     "34",
+     "Schu",
+     "16/9"
+    ],
+    [
+     "35",
+     "Scys",
+     "9/5"
+    ],
+    [
+     "36",
+     "Fuzi",
+     "11/6"
+    ],
+    [
+     "37",
+     "Chyli",
+     "15/8"
+    ],
+    [
+     "38",
+     "Jus",
+     "256/135"
+    ],
+    [
+     "39",
+     "Fuk",
+     "64/33"
+    ],
+    [
+     "40",
+     "Scymi",
+     "63/32"
+    ]
+   ],
+   "title": "Shasavistic harmononyms"
+  }
+ ]
+}

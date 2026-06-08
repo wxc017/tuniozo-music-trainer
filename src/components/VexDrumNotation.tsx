@@ -14,7 +14,16 @@ class DrumAccent extends Annotation {
     try {
       const note = (this as any).checkAttachedNote() as StaveNote;
       const ctx = this.checkContext();
-      const x = note.getAbsoluteX();
+      // Center the ">" horizontally over the notehead, not at the note's left
+      // edge (which left it sitting before the note — user: "accent is not
+      // above the note").  Fall back to getAbsoluteX if the head bounds aren't
+      // available.
+      const nh = note as unknown as { getNoteHeadBeginX?: () => number; getNoteHeadEndX?: () => number };
+      let x = note.getAbsoluteX();
+      try {
+        const b = nh.getNoteHeadBeginX?.(); const e = nh.getNoteHeadEndX?.();
+        if (typeof b === "number" && typeof e === "number") x = (b + e) / 2;
+      } catch { /* fall back to absolute x */ }
       // Drum-kit accents sit ABOVE the staff.  Anchor to the stave's top-text
       // line, not the stem tip: modifiers draw during voice.draw(), BEFORE the
       // beam extends the stems, so a stem-relative accent landed below the
@@ -26,7 +35,7 @@ class DrumAccent extends Annotation {
       const y = stave ? Math.min(staveY, stemY) : stemY;
       const prevFont = ctx.getFont();
       ctx.setFont("Arial", 14, "bold");
-      ctx.fillText(">", x - 2, y);
+      ctx.fillText(">", x - 5, y);   // shift left by ~half the glyph to centre
       ctx.setFont(prevFont);
     } catch { /* ignore render errors */ }
   }
@@ -48,10 +57,10 @@ class DrumTremolo extends Tremolo {
     const orig = note.getStemExtents.bind(note);
     note.getStemExtents = () => {
       const e = orig();
-      // Place marks above the notehead (baseY), independent of stem length.
-      // This keeps the tremolo visually attached to the note being doubled.
-      // Offset enough to clear the notehead entirely (notehead is ~8px tall).
-      return { ...e, topY: e.baseY - 24 };
+      // Place the slash on the stem just above the notehead, independent of
+      // stem length, so it reads as a double-stroke mark on the note rather
+      // than floating high above it (user: "double is offset too high up").
+      return { ...e, topY: e.baseY - 18 };
     };
     // Wrap in a scaled SVG group so the tremolo marks render smaller
     const ctx = this.checkContext();
@@ -261,6 +270,68 @@ function vfDurToSlots(dur: string, beatSize: number): number {
 // so its first beam closes the still-open group from across the barline.
 // Rests and non-beamable durations break the beam (standard notation: a beam
 // can't span a rest).
+// Beam by an explicit, possibly NON-uniform grouping (e.g. [3,3,5,5]) so each
+// accent group is its own beam.  Notes are assigned to a group by the slot
+// their onset falls in; a group boundary or a rest flushes the current beam.
+function buildBeamsByGroups(
+  notes: StaveNote[],
+  beatSize: number,
+  groups: number[],
+  // When true, (hidden) rests inside a group don't break the beam — the group's
+  // attacks beam as one unit while empty slots still occupy width.  Used by the
+  // subdivision rows, which render held cells as a 16th attack + hidden rests so
+  // their onsets line up on the same grid as the consistent-16th rows.
+  beamAcrossRests: boolean = false,
+): Beam[] {
+  const BEAMABLE = new Set(["8", "16", "32"]);
+  const starts: number[] = [];
+  { let acc = 0; for (const g of groups) { starts.push(acc); acc += g; } }
+  const groupIdForSlot = (slot: number): number => {
+    let id = 0;
+    for (let i = 0; i < starts.length; i++) { if (slot >= starts[i]) id = i; else break; }
+    return id;
+  };
+  const beams: Beam[] = [];
+  let group: StaveNote[] = [];
+  let slotCursor = 0;
+  let currentGroupId = 0;
+  const flush = () => {
+    if (group.length >= 2) {
+      try {
+        const beam = new Beam(group, false);
+        (beam as unknown as { renderOptions: { flatBeams: boolean } }).renderOptions.flatBeams = true;
+        beams.push(beam);
+      } catch { /* ignore */ }
+    }
+    group = [];
+  };
+  for (const n of notes) {
+    // getDuration() drops the dot, so a dotted-8th reads as "8" (2 slots) when
+    // it really spans 3 — that drift mis-assigns later notes to the wrong group
+    // and beams across boundaries.  Dots live as modifiers (Dot.buildAndAttach
+    // does NOT set any `.dots` field), so count them off the note to make
+    // vfDurToSlots exact.
+    const dots = Dot.getDots(n).length;
+    const durKey = n.getDuration() + (dots >= 1 ? "d" : "");
+    const noteSlots = vfDurToSlots(durKey, beatSize);
+    const startSlot = slotCursor;
+    if (noteSlots > 0) slotCursor += noteSlots;
+    const gid = groupIdForSlot(startSlot);
+    if (gid !== currentGroupId) { flush(); currentGroupId = gid; }
+    if (n.isRest()) {
+      // A rest breaks the beam (standard) unless we're beaming across the
+      // hidden rests of a subdivision row.
+      if (!beamAcrossRests) flush();
+    } else if (BEAMABLE.has(n.getDuration())) {
+      group.push(n);
+    } else {
+      flush();
+    }
+  }
+  flush();
+  return beams;
+}
+
 function buildBeamsByGrouping(
   notes: StaveNote[],
   beatSize: number,
@@ -482,9 +553,12 @@ function buildMergedVoice(
         } catch { /* ignore */ }
       }
 
-      // Double-stroke ghost → add DrumTremolo(2) below the notehead
+      // Double-stroke → one slash through the stem (a diddle = two strokes).
+      // Was DrumTremolo(2) (two slashes), which reads as a four-stroke roll
+      // — wrong for a double (user feedback). One slash matches the
+      // accent-double / tap-double interpretation marks.
       if (doubleGhostVI !== undefined || doubleNonGhostVI !== undefined) {
-        try { note.addModifier(new DrumTremolo(2)); } catch { /* ignore */ }
+        try { note.addModifier(new DrumTremolo(1)); } catch { /* ignore */ }
       }
 
       // Only split/tie when the chord is cymbal-only (every active voice is
@@ -562,6 +636,33 @@ function voiceTimeSig(beatSize: number, slotCount: number): { numBeats: number; 
   return { numBeats: Math.max(1, numBeats), beatValue: 4 };
 }
 
+// A flam: a small grace note joined to its main note by a slur (the "tie"
+// between the two notes).  No acciaccatura slash — that drew an oversized
+// diagonal line floating across the notehead; the user wants the connection in
+// the stem instead.  fontScale shrinks the whole ornament (notehead + stem +
+// slur) so it reads as a light grace tucked against the main note.
+function makeFlamGroup(key: string): GraceNoteGroup {
+  const g = new GraceNote({ keys: [key], duration: "8", stemDirection: 1 } as StaveNoteStruct);
+  // Shrink below the 2/3 grace default.  The notehead glyph scales with the
+  // note's fontInfo while the stem/flag/slur scale with fontScale, so reduce
+  // BOTH by the same factor (keeping proportions) and rebuild the noteheads so
+  // the smaller font reaches the glyph (buildNoteHeads runs once in the
+  // constructor, at the old size).
+  try {
+    const gg = g as unknown as {
+      fontScale: number; fontSizeInPoints: number;
+      setFontSize(s: number): void; buildNoteHeads(): void; setXShift(x: number): void;
+    };
+    const SHRINK = 0.78;
+    if (Number.isFinite(gg.fontSizeInPoints)) gg.setFontSize(gg.fontSizeInPoints * SHRINK);
+    gg.fontScale = gg.fontScale * SHRINK;
+    gg.buildNoteHeads();
+    gg.setXShift(6);   // tuck it toward the main note's stem
+  } catch { /* ignore */ }
+  // `true` → draw the slur from the grace note to its main note.
+  return new GraceNoteGroup([g], true);
+}
+
 // ── Accent & sticking annotation helper ──────────────────────────────────────
 function addAccentsAndStickings(
   upNotes: StaveNote[],
@@ -586,8 +687,16 @@ function addAccentsAndStickings(
   // individual stroke — needed for orchestrations where one stroke buzzes and
   // others in the same bar don't.
   buzzSet?: Set<number>,
+  // Per-NOTE flam: slots that get a slashed grace note (flam) regardless of
+  // the per-measure interpretation. Used for mixed orchestrations where only
+  // some accent groups are flammed.
+  flamSet?: Set<number>,
+  // Pitch key for grace notes (flams). Single-line renders pass "f/5" so the
+  // flam grace sits ON the line beside its main note instead of a third below
+  // (which read as "not close enough"). Defaults to the 5-line snare pitch.
+  snareKey: string = SN_KEY,
 ) {
-  const hasWork = accentSet.size > 0 || stickingMap.size > 0 || !!accentInterp || !!tapInterp || (!!buzzSet && buzzSet.size > 0);
+  const hasWork = accentSet.size > 0 || stickingMap.size > 0 || !!accentInterp || !!tapInterp || (!!buzzSet && buzzSet.size > 0) || (!!flamSet && flamSet.size > 0);
   if (!hasWork) return;
 
   const ghostSet = new Set(ghostHits.filter(s => s < slotCount));
@@ -623,6 +732,13 @@ function addAccentsAndStickings(
         try { note.addModifier(new DrumBuzzZ()); } catch { /* ignore */ }
       }
 
+      // Per-note flam (slashed grace note) — independent of interpretation.
+      if (flamSet?.has(pos)) {
+        try {
+          note.addModifier(makeFlamGroup(snareKey), 0);
+        } catch { /* ignore */ }
+      }
+
       // Sticking annotation
       if (stickingMap.has(pos)) {
         try {
@@ -637,8 +753,7 @@ function addAccentsAndStickings(
       if (isAccent && accentInterp) {
         try {
           if (accentInterp === "accent-flam") {
-            const g = new GraceNote({ keys: [SN_KEY], duration: "8", slash: true, stemDirection: 1 } as StaveNoteStruct);
-            const grp = new GraceNoteGroup([g], true);
+            const grp = makeFlamGroup(snareKey);
             note.addModifier(grp, 0);
           } else if (accentInterp === "accent-double") {
             // Double stroke: one slash through the stem
@@ -657,8 +772,7 @@ function addAccentsAndStickings(
             // Buzz roll: "z" above the notehead (standard notation)
             note.addModifier(new DrumBuzzZ());
           } else if (tapInterp === "tap-flam") {
-            const g = new GraceNote({ keys: [SN_KEY], duration: "8", slash: true, stemDirection: 1 } as StaveNoteStruct);
-            const grp = new GraceNoteGroup([g], true);
+            const grp = makeFlamGroup(snareKey);
             note.addModifier(grp, 0);
           } else if (tapInterp === "tap-double") {
             // Double stroke: one slash through the stem
@@ -885,6 +999,13 @@ export interface StripMeasureData {
   /** Per-note buzz "z" marks (slot indices).  Marks individual strokes as buzz
    *  / press strokes, independent of the per-measure accent/tap interpretation. */
   buzzHits?: number[];
+  /** Per-note flam marks (slot indices).  Adds a slashed grace note to those
+   *  strokes, independent of the per-measure interpretation — for mixed
+   *  orchestrations where only some accent groups are flammed. */
+  flamHits?: number[];
+  /** Explicit, possibly non-uniform beam grouping (e.g. [3,3,5,5]) so each
+   *  accent group beams on its own instead of by the default quarter beat. */
+  beamGroups?: number[];
   showRests?: boolean;
   hideGhostParens?: boolean;
   bassStemUp?: boolean;
@@ -1002,7 +1123,7 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
                 tomHits: mTomHits, crashHits: mCrashHits,
                 accentFlags: mAccentFlags, stickings: mStickings,
                 accentInterpretation: mAccentInterp, tapInterpretation: mTapInterp,
-                buzzHits: mBuzzHits,
+                buzzHits: mBuzzHits, flamHits: mFlamHits,
                 showRests: mShowRests, hideGhostParens: mHideGhostParens,
                 bassStemUp: mBassStemUp, footStemUp: mFootStemUp } = m;
         const snareDoubles = mSnareDoubleHits ?? [];
@@ -1062,7 +1183,9 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
 
         const upSnareGroup = [...snareHits, ...tomHits, ...crashHits, ...(mBassStemUp ? bassHits : [])];
         const buzzSet = new Set<number>((mBuzzHits ?? []).filter(s => s < slotCount));
-        addAccentsAndStickings(upNotes, ostinatoHits, upSnareGroup, ghostHits, slotCount, beatSize, accentSet, stickingMap, mAccentInterp, mTapInterp, tripletGroup3, mShortHits, buzzSet);
+        const flamSet = new Set<number>((mFlamHits ?? []).filter(s => s < slotCount));
+        const flamGraceKey = singleLine ? "f/5" : SN_KEY;
+        addAccentsAndStickings(upNotes, ostinatoHits, upSnareGroup, ghostHits, slotCount, beatSize, accentSet, stickingMap, mAccentInterp, mTapInterp, tripletGroup3, mShortHits, buzzSet, flamSet, flamGraceKey);
         addBassStickings(downNotes, mDownBassHits, slotCount, beatSize, stickingMap);
 
         const hasUp   = upNotes.some(n => !n.isRest());
@@ -1084,7 +1207,12 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
         // When a custom beam grouping is requested (e.g. 3 for a triplet-ostinato
         // phrase rendered as straight 16ths), beam by slot position and respect
         // the per-measure start offset so groupings carry across bar lines.
-        const allBeams = m.beamGrouping && m.beamGrouping > 0
+        const allBeams = m.beamGroups && m.beamGroups.length > 0
+          // Beam ONLY the up voice (hands / cymbals) by accent grouping; the
+          // down voice (bass drum, hi-hat foot) stays unbeamed — bass hits read
+          // as separate notes, not a beam (user: "bass notes shouldn't be beamed").
+          ? (hasUp ? buildBeamsByGroups(upNotes, beatSize, m.beamGroups!, m.beamAcrossRests ?? false) : [])
+          : m.beamGrouping && m.beamGrouping > 0
           ? beamSrcs.flatMap(arr => buildBeamsByGrouping(arr, beatSize, m.beamGrouping!, m.beamGroupingOffset ?? 0, m.beamAcrossRests ?? false))
           : beamSrcs.flatMap(arr => buildBeams(arr, beamSize));
         // Use the stave's own note area (already compensates for clef,

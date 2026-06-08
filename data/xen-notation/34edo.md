@@ -1,0 +1,242 @@
+# 34-EDO — Xenharmonic Wiki notation
+_snapshot 20260206220237 · https://en.xen.wiki/w/34edo_
+
+## Notation-related sections
+
+### Odd harmonics
+
+### Intervals
+( EUs : v 4 A1 and ^^d2)
+Chords can be named using ups and downs as C upminor, D downmajor seven, etc. See Ups and downs notation #Chord names in other EDOs .
+
+### Notation
+
+### Ups and downs notation
+34edo can be notated with ups and downs , spoken as up, dup, downsharp, sharp, upsharp etc. and down, dud, upflat etc. Note that dup is equivalent to dudsharp and dud is equivalent to dupflat.
+Alternative symbols for ups and downs notation uses sharps and flats with arrows, borrowed from extended Helmholtz–Ellis notation :
+
+### Sagittal notation
+This notation uses the same sagittal sequence as 41-EDO , and is a superset of the notation for 17-EDO .
+
+### Interval mappings
+The following tables show how 15-odd-limit intervals are represented in 34edo. Prime harmonics are in bold ; inconsistent intervals are in italics .
+Of particular interest is the fact that the 34d val allows all 15-odd-limit intervals to be mapped consistently except for 7/4 and 8/7.
+
+### Approximation to irrational intervals
+As a Fibonacci number, 34edo contains a fraction of an octave which is a close approximation to the logarithmic phi – 21 degrees of 34edo, approximately 741.2 ¢. Repeated iterations of this interval generates moment of symmetry scales with near-phi relationships between the step sizes. As a 2.3.5.13 temperament, the 21\34 generator is an approximate 20/13, and the temperament tempers out 512/507 and [ -6 2 6 0 0 -13 ⟩ . From the tempering of 512/507, two 16/13 neutral thirds are an approximate 3/2, defining an essentially tempered neutral triad with a sharp rather than a flat fifth. (On the other hand, the frequency ratio phi is ~ 833 ¢, and the equal divisions of octave approximating this interval closely are 13edo and 36edo .)
+
+## Tables (interval names + notation suffixes)
+
+### 
+| ← 33edo | 34edo | 35edo → |
+| Prime factorization | 2 × 17 |
+| Step size | 35.2941 ¢ |
+| Fifth | 20\34 (705.882 ¢) (→ 10\17 ) |
+| Semitones (A1:m2) | 4:2 (141.2 ¢ : 70.59 ¢) |
+| Consistency limit | 5 |
+| Distinct consistency limit | 5 |
+
+### 
+| ← 33edo | 34edo | 35edo → |
+
+### Odd harmonics
+| Harmonic | 3 | 5 | 7 | 9 | 11 | 13 | 15 | 17 | 19 | 21 | 23 | 25 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Error | Absolute ( ¢ ) | +3.9 | +1.9 | -15.9 | +7.9 | +13.4 | +6.5 | +5.8 | +0.9 | -15.2 | -12.0 | +7.0 | +3.8 |
+| Relative ( % ) | +11.1 | +5.4 | -45.0 | +22.3 | +37.9 | +18.5 | +16.6 | +2.6 | -43.0 | -33.9 | +19.9 | +10.9 |
+| Steps ( reduced ) | 54 (20) | 79 (11) | 95 (27) | 108 (6) | 118 (16) | 126 (24) | 133 (31) | 139 (3) | 144 (8) | 149 (13) | 154 (18) | 158 (22) |
+
+### Intervals
+|  | Cents | Approx. ratios [ note 1 ] | Ratios of 7 Using the 34 Val | Ratios of 7 Using the 34d Val | Ups and downs notation ( EUs : v 4 A1 and ^^d2) | Solfeges |
+|---|---|---|---|---|---|---|
+| 0 | 0.000 | 1/1 |  |  | P1 | perfect unison | D | da | do |
+| 1 | 35.294 | 81/80 , 128/125 , 51/50 | 28/27 , 64/63 | 36/35 | ^1, vm2 | up 1sn, downminor 2nd | ^D, vEb | du/fro | di |
+| 2 | 70.588 | 25/24 , 26/25 , 24/23 , 27/26 , 23/22 , 648/625 , 33/32 | 21/20 , 36/35 , 50/49 | 28/27 , 49/48 | ^^1, m2 | dup 1sn, minor 2nd | ^^D, Eb | fra | rih |
+| 3 | 105.882 | 17/16 , 18/17 , 16/15 | 14/13 | 15/14 , 21/20 | vA1, ^m2 | downaug 1sn, upminor 2nd | vD#, ^Eb | fru | ra |
+| 4 | 141.176 | 13/12 , 12/11 , 25/23 | 15/14 | 14/13 | A1, ~2 | aug 1sn, mid 2nd | D#, vvE | ri | ru |
+| 5 | 176.471 | 10/9 , 11/10 |  |  | vM2 | downmajor 2nd | vE | ro | reh |
+| 6 | 211.765 | 9/8 , 17/15 , 26/23 |  | 8/7 | M2 | major 2nd | E | ra | re |
+| 7 | 247.059 | 15/13 , 23/20 | 7/6 , 8/7 |  | ^M2, vm3 | upmajor 2nd, downminor 3rd | ^E, vF | ru/no | raw |
+| 8 | 282.353 | 20/17 , 75/64 , 27/23 , 13/11 |  | 7/6 | m3 | minor 3rd | F | na | meh |
+| 9 | 317.647 | 6/5 |  | 17/14 | ^m3 | upminor 3rd | ^F | nu | me |
+| 10 | 352.941 | 16/13 , 11/9 , 27/22 | 17/14 , 21/17 |  | ~3 | mid 3rd | ^^F | mi | mu |
+| 11 | 388.235 | 5/4 | 14/11 | 21/17 | vM3 | downmajor 3rd | vF# | mo | mi |
+| 12 | 423.529 | 51/40 , 32/25 , 23/18 |  | 9/7 , 14/11 | M3 | major 3rd | F# | ma | maa |
+| 13 | 458.824 | 13/10 , 30/23 , 17/13 , 22/17 | 9/7 , 21/16 |  | ^M3, v4 | upmajor 3rd, down 4th | ^F#, vG | mu/fo | maw |
+| 14 | 494.118 | 4/3 |  | 21/16 | P4 | 4th | G | fa | fa |
+| 15 | 529.412 | 27/20 , 34/25 , 15/11 , 23/17 |  |  | ^4 | up 4th | ^G | fu | fih |
+| 16 | 564.706 | 25/18 , 18/13 , 11/8 , 32/23 | 7/5 |  | ~4, d5 | mid 4th, dim 5th | ^^G, Ab | fi/sha | fu |
+| 17 | 600.000 | 45/32 , 64/45 , 17/12 , 24/17 |  | 7/5 , 10/7 | vA4, ^d5 | downaug 4th, updim 5th | vG#, ^Ab | po/shu | fi/se |
+| 18 | 635.294 | 36/25 , 13/9 , 16/11 , 23/16 | 10/7 |  | A4, ~5 | aug 4th, mid 5th | G#, vvA | pa/si | su |
+| 19 | 670.588 | 40/27 , 25/17 , 22/15 , 34/23 |  |  | v5 | down 5th | vA | so | sih |
+| 20 | 705.882 | 3/2 |  | 32/21 | P5 | perfect 5th | A | sa | sol |
+| 21 | 741.176 | 20/13 , 23/15 , 26/17 , 17/11 | 14/9 , 32/21 |  | ^5, vm6 | up 5th, downminor 6th | ^A, vBb | su/flo | saw |
+| 22 | 776.471 | 25/16 , 80/51 , 36/23 |  | 14/9 , 11/7 | m6 | minor 6th | Bb | fla | leh |
+| 23 | 811.765 | 8/5 | 11/7 | 34/21 | ^m6 | upminor 6th | ^Bb | flu | le |
+| 24 | 847.059 | 13/8 , 18/11 , 44/27 | 28/17 , 34/21 |  | ~6 | mid 6th | vvB | li | lu |
+| 25 | 882.353 | 5/3 |  | 28/17 | vM6 | downmajor 6th | vB | lo | la |
+| 26 | 917.647 | 17/10 , 128/75 , 46/27 , 22/13 |  | 12/7 | M6 | major 6th | B | la | laa |
+| 27 | 952.941 | 26/15 , 40/23 | 7/4 , 12/7 |  | ^M6, vm7 | upmajor 6th, downminor 7th | ^B, vC | lu/tho | law |
+| 28 | 988.235 | 16/9 , 30/17 , 23/13 |  | 7/4 | m7 | minor 7th | C | tha | teh |
+| 29 | 1023.529 | 9/5 , 20/11 |  |  | ^m7 | upminor 7th | ^C | thu | te |
+| 30 | 1058.824 | 24/13 , 11/6 , 46/25 | 28/15 | 13/7 | ~7 | mid 7th | ^^C | ti | tu |
+| 31 | 1094.118 | 32/17 , 17/9 , 15/8 | 13/7 | 28/15 , 40/21 | vM7 | downmajor 7th | vC# | to | ti |
+| 32 | 1129.412 | 48/25 , 25/13 , 23/12 , 625/324 , 64/33 | 40/21 , 35/18 , 49/25 | 27/14 , 96/49 | M7 | major 7th | C# | ta | taa |
+| 33 | 1164.706 | 160/81 , 125/64 , 100/51 | 27/14 , 63/32 | 35/18 | ^M7, v8 | upmajor 7th, down 8ve | vD | tu/do | da |
+| 34 | 1200.000 | 2/1 |  |  | P8 | 8ve | D | da | do |
+
+### Ups and downs notation
+| Step offset | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Sharp symbol |  |  |  |  |  |  |  |  |  |  |
+| Flat symbol |  |  |  |  |  |  |  |  |  |
+
+### Ups and downs notation
+| Step offset | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Sharp symbol |  |  |  |  |  |  |  |  |  |  |
+| Flat symbol |  |  |  |  |  |  |  |  |  |
+
+### Interval mappings
+| Interval and complement | Error (abs, ¢ ) | Error (rel, % ) |
+|---|---|---|
+| 1/1, 2/1 | 0.000 | 0.0 |
+| 15/13, 26/15 | 0.682 | 1.9 |
+| 13/9, 18/13 | 1.324 | 3.8 |
+| 5/4, 8/5 | 1.922 | 5.4 |
+| 5/3, 6/5 | 2.006 | 5.7 |
+| 13/12, 24/13 | 2.604 | 7.4 |
+| 3/2, 4/3 | 3.927 | 11.1 |
+| 13/10, 20/13 | 4.610 | 13.1 |
+| 11/9, 18/11 | 5.533 | 15.7 |
+| 15/8, 16/15 | 5.849 | 16.6 |
+| 9/5, 10/9 | 5.933 | 16.8 |
+| 11/7, 14/11 | 6.021 | 17.1 |
+| 13/8, 16/13 | 6.531 | 18.5 |
+| 13/11, 22/13 | 6.857 | 19.4 |
+| 15/11, 22/15 | 7.539 | 21.4 |
+| 9/8, 16/9 | 7.855 | 22.3 |
+| 11/6, 12/11 | 9.461 | 26.8 |
+| 11/10, 20/11 | 11.466 | 32.5 |
+| 9/7, 14/9 | 11.555 | 32.7 |
+| 13/7, 14/13 | 12.878 | 36.5 |
+| 11/8, 16/11 | 13.388 | 37.9 |
+| 15/14, 28/15 | 13.560 | 38.4 |
+| 7/6, 12/7 | 15.482 | 43.9 |
+| 7/4, 8/7 | 15.885 | 45.0 |
+| 7/5, 10/7 | 17.488 | 49.5 |
+
+### Interval mappings
+| Interval and complement | Error (abs, ¢ ) | Error (rel, % ) |
+|---|---|---|
+| 1/1, 2/1 | 0.000 | 0.0 |
+| 15/13, 26/15 | 0.682 | 1.9 |
+| 13/9, 18/13 | 1.324 | 3.8 |
+| 5/4, 8/5 | 1.922 | 5.4 |
+| 5/3, 6/5 | 2.006 | 5.7 |
+| 13/12, 24/13 | 2.604 | 7.4 |
+| 3/2, 4/3 | 3.927 | 11.1 |
+| 13/10, 20/13 | 4.610 | 13.1 |
+| 11/9, 18/11 | 5.533 | 15.7 |
+| 15/8, 16/15 | 5.849 | 16.6 |
+| 9/5, 10/9 | 5.933 | 16.8 |
+| 13/8, 16/13 | 6.531 | 18.5 |
+| 13/11, 22/13 | 6.857 | 19.4 |
+| 15/11, 22/15 | 7.539 | 21.4 |
+| 9/8, 16/9 | 7.855 | 22.3 |
+| 11/6, 12/11 | 9.461 | 26.8 |
+| 11/10, 20/11 | 11.466 | 32.5 |
+| 11/8, 16/11 | 13.388 | 37.9 |
+| 7/4, 8/7 | 15.885 | 45.0 |
+| 7/5, 10/7 | 17.806 | 50.5 |
+| 7/6, 12/7 | 19.812 | 56.1 |
+| 15/14, 28/15 | 21.734 | 61.6 |
+| 13/7, 14/13 | 22.416 | 63.5 |
+| 9/7, 14/9 | 23.739 | 67.3 |
+| 11/7, 14/11 | 29.273 | 82.9 |
+
+### Interval mappings
+| Interval and complement | Error (abs, ¢ ) | Error (rel, % ) |
+|---|---|---|
+| 1/1, 2/1 | 0.000 | 0.0 |
+| 15/13, 26/15 | 0.682 | 1.9 |
+| 13/9, 18/13 | 1.324 | 3.8 |
+| 5/4, 8/5 | 1.922 | 5.4 |
+| 5/3, 6/5 | 2.006 | 5.7 |
+| 13/12, 24/13 | 2.604 | 7.4 |
+| 3/2, 4/3 | 3.927 | 11.1 |
+| 13/10, 20/13 | 4.610 | 13.1 |
+| 11/9, 18/11 | 5.533 | 15.7 |
+| 15/8, 16/15 | 5.849 | 16.6 |
+| 9/5, 10/9 | 5.933 | 16.8 |
+| 11/7, 14/11 | 6.021 | 17.1 |
+| 13/8, 16/13 | 6.531 | 18.5 |
+| 13/11, 22/13 | 6.857 | 19.4 |
+| 15/11, 22/15 | 7.539 | 21.4 |
+| 9/8, 16/9 | 7.855 | 22.3 |
+| 11/6, 12/11 | 9.461 | 26.8 |
+| 11/10, 20/11 | 11.466 | 32.5 |
+| 9/7, 14/9 | 11.555 | 32.7 |
+| 13/7, 14/13 | 12.878 | 36.5 |
+| 11/8, 16/11 | 13.388 | 37.9 |
+| 15/14, 28/15 | 13.560 | 38.4 |
+| 7/6, 12/7 | 15.482 | 43.9 |
+| 7/5, 10/7 | 17.488 | 49.5 |
+| 7/4, 8/7 | 19.409 | 55.0 |
+
+### Regular temperament properties
+| Subgroup | Comma list | Mapping | Optimal 8ve stretch (¢) | Tuning error |
+|---|---|---|---|---|
+| Absolute (¢) | Relative (%) |
+| 2.3.5 | 2048/2025, 15625/15552 | [ ⟨ 34 54 79 ] ] | −1.10 | 1.03 | 2.92 |
+| 2.3.5.7 | 50/49, 64/63, 4375/4374 | [ ⟨ 34 54 79 96 ] ] (34d) | −2.56 | 2.66 | 7.57 |
+| 2.3.5.7.11 | 50/49, 64/63, 99/98, 243/242 | [ ⟨ 34 54 79 96 118 ] ] (34d) | −2.82 | 2.44 | 6.93 |
+| 2.3.5.7.11.13 | 50/49, 64/63, 78/77, 99/98, 144/143 | [ ⟨ 34 54 79 96 118 126 ] ] (34d) | −2.64 | 2.26 | 6.42 |
+| 2.3.5.7.11.13.17 | 50/49, 64/63, 78/77, 85/84, 99/98, 144/143 | [ ⟨ 34 54 79 96 118 126 139 ] ] (34d) | −2.30 | 2.26 | 6.41 |
+
+### Uniform maps
+| Min. size | Max. size | Wart notation | Map |
+|---|---|---|---|
+| 33.7547 | 33.8081 | 34cef | ⟨ 34 54 78 95 117 125 ] |
+| 33.8081 | 33.9149 | 34ef | ⟨ 34 54 79 95 117 125 ] |
+| 33.9149 | 33.9651 | 34e | ⟨ 34 54 79 95 117 126 ] |
+| 33.9651 | 34.0178 | 34 | ⟨ 34 54 79 95 118 126 ] |
+| 34.0178 | 34.1851 | 34d | ⟨ 34 54 79 96 118 126 ] |
+| 34.1851 | 34.2388 | 34dff | ⟨ 34 54 79 96 118 127 ] |
+
+### Rank-2 temperaments
+| Periods per 8ve | Generator | Cents | Mosses | Temperaments |
+|---|---|---|---|---|
+| 1 | 1\34 | 35.294 |  | Gammic |
+| 3\34 | 105.88 | 11L 1s 11L 12s |  |
+| 5\34 | 176.471 | 6L 1s 7L 6s 7L 13s | Tetracot , bunya (34d), modus (34d), monkey (34), wollemia (34) |
+| 7\34 | 247.059 | 5L 4s 5L 9s 5L 14s 5L 19s | Immunity (34), immunized (34d) |
+| 9\34 | 317.647 | 4L 3s 4L 7s 4L 11s 15L 4s | Hanson , keemun (34), catalan (34d), catakleismic (34d) |
+| 11\34 | 388.235 | 3L 7s 3L 10s 3L 13s 3L 16s 3L 19s 3L 22s | Würschmidt (34d), worschmidt (34) |
+| 13\34 | 458.824 | 3L 2s 5L 3s 8L 5s 13L 8s | Petrtri |
+| 15\34 | 529.412 | 2L 3s 2L 5s 7L 2s 9L 7s | Mabila |
+| 2 | 2\34 | 70.588 | 16L 2s | Vishnu |
+| 3\34 | 105.882 | 2L 6s 2L 8s 10L 2s 12L 10s | Srutal (34d), pajara (34d), diaschismic (34) |
+| 4\34 | 141.176 | 2L 6s 8L 2s 8L 10s | Fifive , crepuscular (34d), fifives (34) |
+| 5\34 | 176.471 | 6L 2s 6L 8s 14L 6s | Stratosphere |
+| 6\34 | 211.765 | 4L 2s 6L 4s 6L 10s 6L 16s | Antikythera |
+| 7\34 | 247.059 | 4L 2s 4L 6s 10L 4s | Tobago |
+| 8\34 | 282.353 | 2L 2s 4L 2s 4L 6s 4L 10s 4L 14s | Bikleismic |
+
+### Commas
+| Prime limit | Ratio [ note 2 ] | Monzo | Cents | Color name | Name |
+|---|---|---|---|---|---|
+| 3 | (18 digits) | [ 27 -17 ⟩ | 66.765 | Sasawa | 17-comma |
+| 5 | 20000/19683 | [ 5 -9 4 ⟩ | 27.660 | Saquadyo | Tetracot comma |
+| 5 | 2048/2025 | [ 11 -4 -2 ⟩ | 19.553 | Sagugu | Diaschisma |
+| 5 | (12 digits) | [ 17 1 -8 ⟩ | 11.445 | Saquadbigu | Würschmidt comma |
+| 5 | 15625/15552 | [ -6 -5 6 ⟩ | 8.107 | Tribiyo | Kleisma |
+| 5 | (20 digits) | [ 23 6 -14 ⟩ | 3.338 | Sasepbigu | Vishnuzma |
+| 7 | 1029/1000 | [ -3 1 -3 3 ⟩ | 49.492 | Trizogu | Keega |
+| 7 | 49/48 | [ -4 -1 0 2 ⟩ | 35.697 | Zozo | Semaphoresma, slendro diesis |
+| 7 | 875/864 | [ -5 -3 3 1 ⟩ | 21.902 | Zotriyo | Keema |
+| 7 | 126/125 | [ 1 2 -3 1 ⟩ | 13.795 | Zotrigu | Starling comma |
+| 11 | 100/99 | [ 2 -2 2 0 -1 ⟩ | 17.399 | Luyoyo | Ptolemisma |
+| 11 | 243/242 | [ -1 5 0 0 -2 ⟩ | 7.139 | Lulu | Rastma |
+| 11 | 385/384 | [ -7 -1 1 1 1 ⟩ | 4.503 | Lozoyo | Keenanisma |
+| 13 | 91/90 | [ -1 -2 -1 1 0 1 ⟩ | 19.120 | Thozogu | Superleap |

@@ -1,0 +1,451 @@
+// ── Useful scales per EDO (step sets) ───────────────────────────────
+// Curated from common practice + Xenharmonic Wiki.  Steps are 0-based scale
+// degrees within the octave for that EDO.  `group` buckets them for a tidy,
+// categorised picker.  31-EDO septimal/neutral diatonic parents are the
+// authoritative scales from the alteration-lattice engine; the rest are
+// derived from nearest just ratios.
+
+import { sizedScaleName } from "./sizedNaming";
+import { scaleLimit, fuzzyCode } from "./intervalCodes";
+
+export interface NamedScale { name: string; steps: number[]; group: string; }
+
+// ── MOS (moment-of-symmetry) scale generation ───────────────────────
+// The Xenharmonic Wiki's per-EDO "scales" are dominated by MOS scales: a chain
+// of one generator, octave-reduced, that yields exactly two step sizes (L > s).
+// We generate them deterministically for any EDO — equivalent to the wiki's MOS
+// listings — labelled by their TAMNAMS pattern (e.g. 5L2s) and common name.
+const MOS_NAMES: Record<string, string> = {
+  "2L3s": "Pentic (pentatonic)", "3L2s": "Antipentic",
+  "5L2s": "Diatonic", "2L5s": "Antidiatonic",
+  "4L3s": "Smitonic", "3L4s": "Mosh",
+  "5L3s": "Oneirotonic", "3L5s": "Checkertonic",
+  "1L4s": "Antimanual", "4L1s": "Manual",
+  "1L5s": "Antimachinoid", "5L1s": "Machinoid",
+  "6L1s": "Archeotonic", "1L6s": "Antiarcheotonic",
+  "4L5s": "Gramitonic", "5L4s": "Semiquartal",
+  "6L5s": "p-chromatic", "5L6s": "antipychromatic",
+  "7L5s": "m-chromatic", "2L9s": "joanatonic",
+};
+
+/** All single-period MOS scales of an EDO (5–10 notes), one per TAMNAMS pattern. */
+export function generateMosScales(edo: number): NamedScale[] {
+  const byPattern = new Map<string, NamedScale>();
+  const maxN = Math.min(10, edo - 1);
+  for (let g = 1; g < edo; g++) {
+    for (let n = 5; n <= maxN; n++) {
+      const notes: number[] = [];
+      for (let i = 0; i < n; i++) notes.push((i * g) % edo);
+      const sorted = [...new Set(notes)].sort((a, b) => a - b);
+      if (sorted.length !== n) continue;                 // generator didn't yield n notes
+      const sizes: number[] = [];
+      for (let i = 0; i < n; i++) sizes.push((((sorted[(i + 1) % n] - sorted[i]) % edo) + edo) % edo);
+      const distinct = [...new Set(sizes)];
+      if (distinct.length !== 2) continue;               // not a MOS (needs exactly 2 step sizes)
+      const L = Math.max(...distinct), s = Math.min(...distinct);
+      const a = sizes.filter(x => x === L).length, b = sizes.filter(x => x === s).length;
+      const pat = `${a}L${b}s`;
+      if (byPattern.has(pat)) continue;                  // keep one representative per pattern
+      const name = MOS_NAMES[pat] ? `${pat} · ${MOS_NAMES[pat]}` : pat;
+      byPattern.set(pat, { name, steps: sorted, group: `${n}-note MOS` });
+    }
+  }
+  return [...byPattern.values()].sort((x, y) => x.steps.length - y.steps.length || x.name.localeCompare(y.name));
+}
+
+// ── Named scales from JI degree templates ───────────────────────────
+// MOS only yields scale *shapes* (major & minor are modes of one MOS, and
+// septimal/neutral scales aren't MOS at all).  To surface the familiar named
+// scales for ANY EDO, we map each scale's just-intonation degrees to the
+// nearest EDO step.  Scales whose degrees collide at this EDO are skipped.
+interface ScaleTemplate { name: string; group: string; ratios: number[]; }
+const R = (n: number, d: number) => n / d;
+const TEMPLATES: ScaleTemplate[] = [
+  // Diatonic modes, the altered-minor families, and the septimal/neutral
+  // diatonics are all generated in getScalesForEdo (Greek-named modes +
+  // sized modal interchange).  TEMPLATES holds only the remaining proper-named
+  // scales that aren't simple diatonic rotations.
+  { group: "Septimal (7-limit)", name: "Harmonic (8–14)", ratios: [1, R(9,8), R(5,4), R(11,8), R(3,2), R(13,8), R(7,4)] },
+  { group: "Septimal (7-limit)", name: "Harm. 7th (4:5:6:7)", ratios: [1, R(5,4), R(3,2), R(7,4)] },
+  { group: "Septimal (7-limit)", name: "Harm. dominant", ratios: [1, R(9,8), R(5,4), R(4,3), R(3,2), R(5,3), R(7,4)] },
+  // Pentatonics are generated systematically in getScalesForEdo (sized flavours
+  // × all 5 modes).  Blues stays here — it's hexatonic, not a pentatonic mode.
+  { group: "Pentatonic", name: "Blues", ratios: [1, R(6,5), R(4,3), R(7,5), R(3,2), R(9,5)] },
+];
+
+// ── Systematic sized diatonic scales ────────────────────────────────
+// One diatonic scale per sized third-quality, so the picker carries the whole
+// "spectrum" of diatonics named the same way the keyboard labels intervals:
+// Diatonic Small Minor (7/6), Minor (32/27), Large Minor (6/5), Small Major
+// (5/4), Major (81/64), Large Major (9/7).  The 6th and 7th follow the third's
+// flavour, with the 2nd/4th/5th fixed.  EDOs too coarse to separate two
+// flavours simply collapse them (deduped by step set in getScalesForEdo).
+const SIZED_DIATONIC_FLAVORS: { name: string; third: number; sixth: number; seventh: number }[] = [
+  { name: "Diatonic Small Minor", third: 267, sixth: 765, seventh: 969 },  // 7/6, 14/9, 7/4
+  { name: "Diatonic Minor",       third: 294, sixth: 792, seventh: 996 },  // 32/27, 128/81, 16/9
+  { name: "Diatonic Large Minor", third: 316, sixth: 814, seventh: 1018 }, // 6/5, 8/5, 9/5
+  { name: "Diatonic Small Major", third: 386, sixth: 884, seventh: 1088 }, // 5/4, 5/3, 15/8
+  { name: "Diatonic Major",       third: 408, sixth: 906, seventh: 1110 }, // 81/64, 27/16, 243/128
+  { name: "Diatonic Large Major", third: 435, sixth: 933, seventh: 1137 }, // 9/7, 12/7, 27/14
+];
+const DIATONIC_FIXED = { second: 204, fourth: 498, fifth: 702 };
+
+// The diatonic family enumerated exhaustively: the six sized third-flavors plus
+// neutral, each generated through all 7 modes (4th/5th stay perfect, 6th/7th
+// follow the third).  Each scale is grouped by its actual interval limit, so a
+// neutral-diatonic mode with no neutral degree falls out of the Undecimal bucket
+// on its own.
+const DIATONIC_FAMILY_FLAVORS = [
+  ...SIZED_DIATONIC_FLAVORS,
+  { name: "Diatonic Neutral", third: 347, sixth: 853, seventh: 1049 },  // 11/9, 18/11, 11/6
+];
+
+// The diatonic catalog: each basic third-flavour PLUS single-degree alterations
+// of the 6th and 7th (the colour tones) to their other sized values — so Ionian
+// yields Small Major / Major / Large Major and tasteful tweaks like "Small
+// Major L7" or "Small Major M6".  The 2nd stays major and the 3rd defines the
+// flavour; only ONE colour degree moves at a time (no combinatorial blow-up).
+const DIATONIC_FLAVOR_TEMPLATES: { third: number; sixth: number; seventh: number }[] = (() => {
+  const bases = [
+    { third: 267, q: "m" }, { third: 294, q: "m" }, { third: 316, q: "m" },
+    { third: 386, q: "M" }, { third: 408, q: "M" }, { third: 435, q: "M" },
+    { third: 347, q: "n" },
+  ];
+  const SIXTH: Record<string, number[]>   = { m: [765, 792, 814],  M: [884, 906, 933],   n: [828, 853, 870] };
+  const SEVENTH: Record<string, number[]> = { m: [969, 996, 1018], M: [1088, 1110, 1137], n: [1030, 1049, 1075] };
+  // base size index (small / center / large of the third's quality)
+  const baseSize = (t: number) => t === 267 || t === 386 ? 0 : t === 316 || t === 435 ? 2 : 1;
+  const out: { third: number; sixth: number; seventh: number }[] = [];
+  const seen = new Set<string>();
+  const add = (third: number, sixth: number, seventh: number) => {
+    const k = `${third},${sixth},${seventh}`;
+    if (!seen.has(k)) { seen.add(k); out.push({ third, sixth, seventh }); }
+  };
+  for (const b of bases) {
+    const i = baseSize(b.third), s6 = SIXTH[b.q], s7 = SEVENTH[b.q];
+    add(b.third, s6[i], s7[i]);                       // the basic flavour
+    for (const six of s6) add(b.third, six, s7[i]);   // alter the 6th
+    for (const sev of s7) add(b.third, s6[i], sev);   // alter the 7th
+  }
+  return out;
+})();
+
+/** The full small→large family of diatonic scales for an EDO, named from their
+ *  actual degrees in the sized system (so coarse EDOs that can't separate two
+ *  flavours collapse them, and each name is accurate to what the EDO renders). */
+export function generateSizedDiatonics(edo: number): NamedScale[] {
+  const toStep = (cents: number) => ((Math.round((edo * cents) / 1200) % edo) + edo) % edo;
+  const out: NamedScale[] = [];
+  const seen = new Set<string>();
+  for (const f of SIZED_DIATONIC_FLAVORS) {
+    const steps = [0, DIATONIC_FIXED.second, f.third, DIATONIC_FIXED.fourth,
+      DIATONIC_FIXED.fifth, f.sixth, f.seventh].map(toStep).sort((a, b) => a - b);
+    if (new Set(steps).size !== 7) continue;          // degrees collided at this EDO
+    const k = steps.join(",");
+    if (seen.has(k)) continue;                         // flavour collapses to one already added
+    seen.add(k);
+    out.push({ name: sizedScaleName(steps, edo), steps, group: "Diatonic (sized)" });
+  }
+  return out;
+}
+
+function mapTemplate(edo: number, t: ScaleTemplate): NamedScale | null {
+  const steps = t.ratios.map(r => ((Math.round(edo * Math.log2(r)) % edo) + edo) % edo);
+  if (new Set(steps).size !== t.ratios.length) return null;   // degrees collided at this EDO
+  return { name: t.name, steps: [...steps].sort((a, b) => a - b), group: t.group };
+}
+
+// ── Mode rotations ──────────────────────────────────────────────────
+// All rotations of a parent scale; index i = mode position (rotation 0 =
+// Ionian/Major for the diatonic), so callers name each by its Greek mode.
+function rotations(parentSteps: number[], edo: number): number[][] {
+  const base = [...new Set(parentSteps.map(s => ((s % edo) + edo) % edo))].sort((a, b) => a - b);
+  const n = base.length;
+  return base.map((_, i) =>
+    base.map((_, j) => (((base[(i + j) % n] - base[i]) % edo) + edo) % edo).sort((a, b) => a - b));
+}
+
+// Altered-minor families, enumerated through all their modes.  Named by the
+// sized 3rd + family word ("Large Harmonic Minor"); grouped by interval limit.
+const MODAL_PARENTS: { name: string; group: string; ratios: number[] }[] = [
+  { name: "Harmonic Minor",  group: "Harmonic minor",  ratios: [1, R(9,8), R(6,5), R(4,3), R(3,2), R(8,5), R(15,8)] },
+  { name: "Melodic Minor",   group: "Melodic minor",   ratios: [1, R(9,8), R(6,5), R(4,3), R(3,2), R(5,3), R(15,8)] },
+  { name: "Harmonic Major",  group: "Harmonic major",  ratios: [1, R(9,8), R(5,4), R(4,3), R(3,2), R(8,5), R(15,8)] },
+  { name: "Double Harmonic", group: "Double harmonic", ratios: [1, R(16,15), R(5,4), R(4,3), R(3,2), R(8,5), R(15,8)] },
+];
+
+// Classify a 7-note diatonic-ish scale by its ACTUAL church mode, from its
+// degree qualities — so a subminor-flavour scale lands under Aeolian (its real
+// mode), not under "rotation 0 = Ionian".  Neutral-3rd scales aren't church
+// modes → "Neutral"; anything non-heptatonic → "Other".
+function diatonicFamily(steps: number[], edo: number): string {
+  const u = [...new Set(steps.map(s => ((s % edo) + edo) % edo))].sort((a, b) => a - b);
+  if (u.length !== 7) return "Other";
+  const c = (i: number) => (u[i] * 1200) / edo;
+  const second = c(1), third = c(2), fourth = c(3), fifth = c(4), sixth = c(5), seventh = c(6);
+  if (fifth < 660) return "Locrian";                        // diminished 5th
+  if (fourth > 528) return "Lydian";                        // augmented 4th
+  if (third >= 330 && third < 372) return "Neutral";        // neutral 3rd — not a church mode
+  if (third >= 372) return seventh >= 1060 ? "Ionian" : "Mixolydian";  // major 3rd
+  return second < 140 ? "Phrygian" : sixth >= 855 ? "Dorian" : "Aeolian";  // minor 3rd
+}
+const toStepC = (edo: number, c: number) => ((Math.round((edo * c) / 1200) % edo) + edo) % edo;
+
+// The 7 church modes (+ a neutral mode), each defined by its per-degree quality.
+// SIZE (small/center/large) scales the coloured 2/3/6/7 together; the 4th/5th are
+// perfect except Lydian's augmented 4th and Locrian's diminished 5th.
+const MODES_DEF: { name: string; two: string; three: string; six: string; sev: string; aug4?: boolean; dim5?: boolean }[] = [
+  { name: "Ionian",     two: "M", three: "M", six: "M", sev: "M" },
+  { name: "Dorian",     two: "M", three: "m", six: "M", sev: "m" },
+  { name: "Phrygian",   two: "m", three: "m", six: "m", sev: "m" },
+  { name: "Lydian",     two: "M", three: "M", six: "M", sev: "M", aug4: true },
+  { name: "Mixolydian", two: "M", three: "M", six: "M", sev: "m" },
+  { name: "Aeolian",    two: "M", three: "m", six: "m", sev: "m" },
+  { name: "Locrian",    two: "m", three: "m", six: "m", sev: "m", dim5: true },
+  { name: "Neutral",    two: "M", three: "n", six: "n", sev: "n" },
+];
+// Cents for each [quality][small, center, large].
+const QC: Record<string, number[]> = {
+  m2: [73, 90, 112],    M2: [182, 204, 231],
+  m3: [267, 294, 316],  M3: [386, 408, 435],   n3: [336, 349, 365],
+  m6: [765, 792, 814],  M6: [884, 906, 933],   n6: [834, 849, 864],
+  m7: [969, 996, 1018], M7: [1088, 1110, 1137], n7: [1037, 1049, 1070],
+};
+// Altered-minor families, by per-degree quality — same shape as MODES_DEF, so
+// they run through the same Small/Center/Large generator.
+const ALTERED_MODES: { name: string; two: string; three: string; six: string; sev: string; aug4?: boolean; dim5?: boolean }[] = [
+  { name: "Harmonic Minor",  two: "M", three: "m", six: "m", sev: "M" },  // 1 2 ♭3 4 5 ♭6 7
+  { name: "Melodic Minor",   two: "M", three: "m", six: "M", sev: "M" },  // 1 2 ♭3 4 5 6 7
+  { name: "Harmonic Major",  two: "M", three: "M", six: "m", sev: "M" },  // 1 2 3 4 5 ♭6 7
+  { name: "Double Harmonic", two: "m", three: "M", six: "m", sev: "M" },  // 1 ♭2 3 4 5 ♭6 7
+];
+// The five pentatonic modes, by present degree (quality + degree; "P" = perfect
+// 4th/5th, bare).  Sized like the diatonic modes.
+const PENTA_MODES: { name: string; degs: [string, number][] }[] = [
+  { name: "Major",    degs: [["M", 2], ["M", 3], ["P", 5], ["M", 6]] },  // 1 2 3 5 6
+  { name: "Egyptian", degs: [["M", 2], ["P", 4], ["P", 5], ["m", 7]] },  // 1 2 4 5 ♭7
+  { name: "Man Gong", degs: [["m", 3], ["P", 4], ["m", 6], ["m", 7]] },  // 1 ♭3 4 ♭6 ♭7
+  { name: "Ritusen",  degs: [["M", 2], ["P", 4], ["P", 5], ["M", 6]] },  // 1 2 4 5 6
+  { name: "Minor",    degs: [["m", 3], ["P", 4], ["P", 5], ["m", 7]] },  // 1 ♭3 4 5 ♭7
+];
+
+/** Every useful scale for an EDO, correct for THAT EDO.  The diatonic family is
+ *  the 6 sized third-flavors + neutral, each through all 7 modes, named
+ *  "[Greek mode] [Size][Quality] [off-base degrees]" and grouped by interval
+ *  limit (Ptolemaic / Septimal / Undecimal).  Altered-minor families, curated
+ *  maqamat, and harmonic-series / pentatonic templates also group by limit;
+ *  MOS shapes keep their own structural groups, always shown. */
+export function getScalesForEdo(edo: number | null, exhaustive = false): NamedScale[] {
+  if (edo == null) return [];
+  const out: NamedScale[] = [];
+  const seen = new Set<string>();
+  const add = (s: NamedScale | null) => {
+    if (!s) return;
+    const k = s.steps.join(",");
+    if (seen.has(k)) return;
+    seen.add(k); out.push(s);
+  };
+
+  // Group label = "<family> · <limit>", so the picker nests each family (Greek
+  // mode / altered family) on top, with its interval-limit sub-groups inside
+  // (e.g. "Ionian · Ptolemaic", "Dorian · Septimal").
+  const grp = (steps: number[], family: string) => `${family} · ${scaleLimit(steps, edo)}`;
+
+  // Map each spectrum code to its EDO step (the step whose fuzzyCode IS that
+  // code).  Degrees are then chosen to MATCH their sized names, so the centre
+  // minor 7th is the step that actually reads "m7" — not a fixed cents value
+  // that might round into the "lm7" band.
+  const codeStep = new Map<string, number>();
+  for (let s = 0; s < edo; s++) { const c = fuzzyCode((s * 1200) / edo); if (!codeStep.has(c)) codeStep.set(c, s); }
+  const SZL = ["s", "", "l"];                               // small / centre / large prefix
+  // The EDO step for a sized degree (e.g. small minor 7th).  Prefer the exact
+  // size; if that band has no step in this EDO (e.g. 50-EDO has no "ln7"), fall
+  // back to the nearest available size of the same quality — so a Large Neutral
+  // can still form from the largest neutral degrees that DO exist.
+  const degStep = (q: string, sz: number, deg: number) => {
+    for (const t of [sz, sz - 1, sz + 1, sz - 2, sz + 2])
+      if (t >= 0 && t <= 2) { const st = codeStep.get(SZL[t] + q + deg); if (st !== undefined) return st; }
+    return undefined;
+  };
+
+  // Emit one 7-note mode/family scale at a base size, with the 6th/7th optionally
+  // at other sizes (s6/s7) for exhaustive colours.  Degrees are code-matched so
+  // the name and pitches agree; the name is "[Size] [Mode]" plus any altered
+  // 6th/7th (e.g. "Dorian lm7").
+  const emitMode = (m: (typeof MODES_DEF)[number], size: number, s6: number, s7: number) => {
+    const modeWord = m.name === "Ionian" ? "Major" : m.name === "Neutral" ? undefined : m.name;
+    const d = [
+      0,
+      degStep(m.two, size, 2),
+      degStep(m.three, size, 3),
+      m.aug4 ? toStepC(edo, 590) : codeStep.get("4"),       // Lydian augmented 4th
+      m.dim5 ? toStepC(edo, 600) : codeStep.get("5"),       // Locrian diminished 5th
+      degStep(m.six, s6, 6),
+      degStep(m.sev, s7, 7),
+    ];
+    if (d.some(x => x === undefined)) return;
+    const steps = [...new Set(d as number[])].sort((a, b) => a - b);
+    if (steps.length !== 7) return;
+    const parts = [["Small", "", "Large"][size], modeWord ?? m.name].filter(Boolean);
+    if (s6 !== size) parts.push(SZL[s6] + m.six + "6");
+    if (s7 !== size) parts.push(SZL[s7] + m.sev + "7");
+    add({ name: parts.join(" "), steps, group: grp(steps, m.name) });
+  };
+
+  // 1. Diatonic family (church modes + neutral) — 3 sizes each; exhaustive adds
+  //    independent 6th/7th colour alterations.
+  for (const m of MODES_DEF) for (let size = 0; size < 3; size++) {
+    emitMode(m, size, size, size);                          // basic Small / Center / Large
+    if (exhaustive) {
+      for (let s = 0; s < 3; s++) emitMode(m, size, s, size);   // alter the 6th
+      for (let s = 0; s < 3; s++) emitMode(m, size, size, s);   // alter the 7th
+    }
+  }
+  // 2. Altered-minor families (Harmonic/Melodic Minor, Harmonic Major, Double
+  //    Harmonic) — the same 3 basic sizes per family (their fixed structure
+  //    defines the 7th, so no colour alterations).
+  for (const m of ALTERED_MODES) for (let size = 0; size < 3; size++) emitMode(m, size, size, size);
+  // 1b. Pentatonic family — the five pentatonic modes, 3 sizes each (named
+  //     "[Size] [Mode] Pentatonic").  Exhaustive adds single-degree colours.
+  for (const pm of PENTA_MODES) {
+    const emitPenta = (sizes: number[], base: number) => {
+      const d: (number | undefined)[] = [0];
+      pm.degs.forEach(([q, deg], i) => d.push(q === "P" ? codeStep.get(String(deg)) : degStep(q, sizes[i], deg)));
+      if (d.some(x => x === undefined)) return;
+      const steps = [...new Set(d as number[])].sort((a, b) => a - b);
+      if (steps.length !== 5) return;
+      const parts = [["Small", "", "Large"][base], pm.name, "Pentatonic"].filter(Boolean);
+      pm.degs.forEach(([q, deg], i) => { if (q !== "P" && sizes[i] !== base) parts.push(SZL[sizes[i]] + q + deg); });
+      add({ name: parts.join(" "), steps, group: grp(steps, "Pentatonic") });
+    };
+    for (let sz = 0; sz < 3; sz++) {
+      emitPenta(pm.degs.map(() => sz), sz);                 // basic Small / Center / Large
+      if (exhaustive) pm.degs.forEach(([q], i) => {
+        if (q === "P") return;
+        for (let a = 0; a < 3; a++) if (a !== sz) { const arr = pm.degs.map(() => sz); arr[i] = a; emitPenta(arr, sz); }
+      });
+    }
+  }
+  // 1c. Symmetric scales (period < octave) — whole-tone / augmented / octatonic.
+  //     Not single-generator MOS, so the framework families miss them; added for
+  //     any EDO whose octave divides evenly into the needed period.
+  const symScales: { name: string; div: number; cell: (p: number) => number[] }[] = [
+    { name: "Whole-tone", div: 6, cell: () => [0] },
+    { name: "Augmented",  div: 3, cell: p => [0, p - Math.round(edo / 12)] },   // m3 + semitone
+    { name: "Octatonic",  div: 4, cell: () => [0, Math.round((2 * edo) / 12)] }, // whole + half
+  ];
+  for (const sc of symScales) {
+    if (edo % sc.div !== 0) continue;
+    const p = edo / sc.div;
+    const cell = sc.cell(p);
+    if (cell.some(c => c < 0 || c >= p)) continue;            // degenerate at this EDO
+    const steps: number[] = [];
+    for (let k = 0; k < sc.div; k++) for (const c of cell) steps.push((k * p + c) % edo);
+    const uniq = [...new Set(steps.map(s => ((s % edo) + edo) % edo))].sort((a, b) => a - b);
+    if (uniq.length >= 5) add({ name: sc.name, steps: uniq, group: grp(uniq, "Symmetric") });
+  }
+  // 3. Proper-named scales: harmonic-series segments, pentatonics, blues, etc.
+  for (const t of TEMPLATES) {
+    const s = mapTemplate(edo, t);
+    if (s) add({ name: s.name, steps: s.steps, group: grp(s.steps, /pent|blues/i.test(s.name) ? "Pentatonic" : "Harmonic series") });
+  }
+  // 4. Curated per-EDO extras (maqamat & other proper-noun scales).
+  for (const s of SCALES_BY_EDO[edo] ?? []) add({ name: s.name, steps: s.steps, group: grp(s.steps, "Maqam & other") });
+  // 5. Every single-period MOS shape (aLbs / TAMNAMS), ALWAYS shown as its own
+  //    category even when its step set coincides with a named mode above.
+  const mosSeen = new Set<string>();
+  for (const m of generateMosScales(edo)) {
+    if (mosSeen.has(m.steps.join(","))) continue;
+    mosSeen.add(m.steps.join(","));
+    out.push(m);
+  }
+  return out;
+}
+
+export const SCALES_BY_EDO: Record<number, NamedScale[]> = {
+  12: [
+    { name: "Major", steps: [0, 2, 4, 5, 7, 9, 11], group: "Modes" },
+    { name: "Dorian", steps: [0, 2, 3, 5, 7, 9, 10], group: "Modes" },
+    { name: "Phrygian", steps: [0, 1, 3, 5, 7, 8, 10], group: "Modes" },
+    { name: "Lydian", steps: [0, 2, 4, 6, 7, 9, 11], group: "Modes" },
+    { name: "Mixolydian", steps: [0, 2, 4, 5, 7, 9, 10], group: "Modes" },
+    { name: "Nat. minor", steps: [0, 2, 3, 5, 7, 8, 10], group: "Modes" },
+    { name: "Locrian", steps: [0, 1, 3, 5, 6, 8, 10], group: "Modes" },
+    { name: "Harm. minor", steps: [0, 2, 3, 5, 7, 8, 11], group: "Minor / Jazz" },
+    { name: "Mel. minor", steps: [0, 2, 3, 5, 7, 9, 11], group: "Minor / Jazz" },
+    { name: "Harm. major", steps: [0, 2, 4, 5, 7, 8, 11], group: "Minor / Jazz" },
+    { name: "Major pent", steps: [0, 2, 4, 7, 9], group: "Pentatonic / Other" },
+    { name: "Minor pent", steps: [0, 3, 5, 7, 10], group: "Pentatonic / Other" },
+    { name: "Blues", steps: [0, 3, 5, 6, 7, 10], group: "Pentatonic / Other" },
+    { name: "Whole tone", steps: [0, 2, 4, 6, 8, 10], group: "Pentatonic / Other" },
+    { name: "Octatonic", steps: [0, 2, 3, 5, 6, 8, 9, 11], group: "Pentatonic / Other" },
+  ],
+  // 31-EDO meantone (whole tone 5\31, semitone 3\31, 5th 18\31)
+  31: [
+    { name: "Major", steps: [0, 5, 10, 13, 18, 23, 28], group: "Meantone modes" },
+    { name: "Dorian", steps: [0, 5, 8, 13, 18, 23, 26], group: "Meantone modes" },
+    { name: "Phrygian", steps: [0, 3, 8, 13, 18, 21, 26], group: "Meantone modes" },
+    { name: "Lydian", steps: [0, 5, 10, 15, 18, 23, 28], group: "Meantone modes" },
+    { name: "Mixolydian", steps: [0, 5, 10, 13, 18, 23, 26], group: "Meantone modes" },
+    { name: "Nat. minor", steps: [0, 5, 8, 13, 18, 21, 26], group: "Meantone modes" },
+    { name: "Locrian", steps: [0, 3, 8, 13, 16, 21, 26], group: "Meantone modes" },
+    { name: "Harm. minor", steps: [0, 5, 8, 13, 18, 21, 28], group: "Minor / Jazz" },
+    { name: "Mel. minor", steps: [0, 5, 8, 13, 18, 23, 28], group: "Minor / Jazz" },
+    { name: "Harm. major", steps: [0, 5, 10, 13, 18, 21, 28], group: "Minor / Jazz" },
+    // septimal (7-limit)
+    { name: "Diatonic Small Minor", steps: [0, 5, 7, 13, 18, 20, 25], group: "Septimal (7-limit)" },
+    { name: "Diatonic Large Major", steps: [0, 5, 11, 13, 18, 24, 29], group: "Septimal (7-limit)" },
+    { name: "Diatonic Small Minor (Major 7th)", steps: [0, 5, 7, 13, 18, 20, 28], group: "Septimal (7-limit)" },
+    { name: "Superlydian", steps: [0, 5, 11, 16, 18, 23, 29], group: "Septimal (7-limit)" },
+    { name: "Harmonic (8–14)", steps: [0, 5, 10, 14, 18, 22, 25], group: "Septimal (7-limit)" },
+    { name: "Harm. dominant", steps: [0, 5, 10, 13, 18, 23, 25], group: "Septimal (7-limit)" },
+    { name: "Septimal minor", steps: [0, 5, 7, 13, 18, 21, 25], group: "Septimal (7-limit)" },
+    { name: "Harm. 7th (4:5:6:7)", steps: [0, 10, 18, 25], group: "Septimal (7-limit)" },
+    { name: "Pentatonic Small Minor", steps: [0, 7, 13, 18, 25], group: "Septimal (7-limit)" },
+    { name: "Pentatonic Large Major", steps: [0, 6, 11, 18, 24], group: "Septimal (7-limit)" },
+    { name: "Septimal blues", steps: [0, 7, 13, 15, 18, 25], group: "Septimal (7-limit)" },
+    // neutral (11-limit) / maqam
+    { name: "Neutral diatonic", steps: [0, 5, 9, 13, 18, 22, 27], group: "Neutral (11-limit)" },
+    { name: "Mohajira", steps: [0, 4, 9, 13, 18, 22, 27], group: "Neutral (11-limit)" },
+    { name: "Rast", steps: [0, 5, 9, 13, 18, 23, 27], group: "Neutral (11-limit)" },
+    { name: "Suznak", steps: [0, 5, 9, 13, 18, 21, 28], group: "Neutral (11-limit)" },
+    { name: "Bayati", steps: [0, 4, 8, 13, 18, 21, 26], group: "Neutral (11-limit)" },
+    { name: "Sikah", steps: [0, 4, 9, 14, 18, 22, 27], group: "Neutral (11-limit)" },
+    { name: "Saba", steps: [0, 4, 8, 11, 18, 21, 26], group: "Neutral (11-limit)" },
+    { name: "Nikriz", steps: [0, 5, 8, 15, 18, 23, 26], group: "Neutral (11-limit)" },
+    { name: "Neutral pent", steps: [0, 9, 13, 18, 27], group: "Neutral (11-limit)" },
+    { name: "Major pent", steps: [0, 5, 10, 18, 23], group: "Pentatonic" },
+    { name: "Minor pent", steps: [0, 8, 13, 18, 26], group: "Pentatonic" },
+  ],
+  // 41-EDO: Pythagorean diatonic (T 7\41, s 3\41, 5th 24\41) + 5-limit just +
+  // septimal/neutral diatonics from nearest JI.
+  41: [
+    { name: "Major (Pyth)", steps: [0, 7, 14, 17, 24, 31, 38], group: "Diatonic (Pyth)" },
+    { name: "Dorian", steps: [0, 7, 10, 17, 24, 31, 34], group: "Diatonic (Pyth)" },
+    { name: "Phrygian", steps: [0, 3, 10, 17, 24, 27, 34], group: "Diatonic (Pyth)" },
+    { name: "Lydian", steps: [0, 7, 14, 21, 24, 31, 38], group: "Diatonic (Pyth)" },
+    { name: "Mixolydian", steps: [0, 7, 14, 17, 24, 31, 34], group: "Diatonic (Pyth)" },
+    { name: "Nat. minor (Pyth)", steps: [0, 7, 10, 17, 24, 27, 34], group: "Diatonic (Pyth)" },
+    { name: "Major (just)", steps: [0, 7, 13, 17, 24, 30, 37], group: "Just (5-limit)" },
+    { name: "Nat. minor (just)", steps: [0, 7, 11, 17, 24, 28, 35], group: "Just (5-limit)" },
+    { name: "Harm. minor", steps: [0, 7, 11, 17, 24, 28, 38], group: "Just (5-limit)" },
+    { name: "Mel. minor", steps: [0, 7, 11, 17, 24, 30, 37], group: "Just (5-limit)" },
+    // septimal (7-limit)
+    { name: "Diatonic Small Minor", steps: [0, 7, 9, 17, 24, 26, 33], group: "Septimal (7-limit)" },
+    { name: "Diatonic Large Major", steps: [0, 8, 15, 17, 24, 32, 39], group: "Septimal (7-limit)" },
+    { name: "Harmonic (8–14)", steps: [0, 7, 13, 19, 24, 29, 33], group: "Septimal (7-limit)" },
+    { name: "Harm. dominant", steps: [0, 7, 13, 17, 24, 30, 33], group: "Septimal (7-limit)" },
+    { name: "Septimal minor", steps: [0, 7, 9, 17, 24, 28, 33], group: "Septimal (7-limit)" },
+    { name: "Harm. 7th (4:5:6:7)", steps: [0, 13, 24, 33], group: "Septimal (7-limit)" },
+    { name: "Pentatonic Small Minor", steps: [0, 9, 17, 24, 33], group: "Septimal (7-limit)" },
+    { name: "Pentatonic Large Major", steps: [0, 8, 15, 24, 32], group: "Septimal (7-limit)" },
+    { name: "Septimal blues", steps: [0, 9, 17, 20, 24, 33], group: "Septimal (7-limit)" },
+    // neutral (11-limit)
+    { name: "Neutral diatonic", steps: [0, 7, 12, 17, 24, 29, 36], group: "Neutral (11-limit)" },
+    { name: "Rast", steps: [0, 7, 12, 17, 24, 30, 36], group: "Neutral (11-limit)" },
+    { name: "Bayati", steps: [0, 5, 11, 17, 24, 28, 35], group: "Neutral (11-limit)" },
+    { name: "Neutral pent", steps: [0, 12, 17, 24, 36], group: "Neutral (11-limit)" },
+    { name: "Major pent (just)", steps: [0, 7, 13, 24, 30], group: "Pentatonic" },
+    { name: "Minor pent (just)", steps: [0, 11, 17, 24, 35], group: "Pentatonic" },
+  ],
+};

@@ -159,6 +159,8 @@ interface Props {
   anchorKey: string | null;     // `${family}::${mode}` from ScalarTab
   playVol?: number;
   onActiveModeChange?: (node: LatticeNode | null) => void;
+  fillHeight?: boolean;         // fill the parent's height instead of a fixed 540px
+  embedded?: boolean;           // popup mode: no audio, no mixer/info/footer, Family view
 }
 
 // Harmonic-series default per-note gains.  Same logic as before:
@@ -865,7 +867,7 @@ function Scene({
   );
 }
 
-export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, playVol = 0.55, onActiveModeChange }: Props) {
+export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, playVol = 0.55, onActiveModeChange, fillHeight, embedded }: Props) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeNode, setActiveNode] = useState<LatticeNode | null>(null);
@@ -888,7 +890,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   // Which lattice variant to render: the alteration lattice (the
   // unified torus knot organised by alt-distance arcs) or the family
   // lattice (concentric rings, one per family, edges = 1-alt pairs).
-  const [latticeView, setLatticeView] = useState<"alteration" | "family">("alteration");
+  const [latticeView, setLatticeView] = useState<"alteration" | "family">(embedded ? "family" : "alteration");
   // Plain-click re-anchor: stores an internal lattice anchor that
   // overrides the picker prop.  When the user plain-clicks a node,
   // the lattice reorients with that node as "main scale" and arcs
@@ -1012,6 +1014,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
   }, [anchorKey, onActiveModeChange]);
 
   const startDroneFor = useCallback((node: LatticeNode, gains: number[]) => {
+    if (embedded) return;   // popup: highlight only, never sound
     audioEngine.stopDrone();
     // Map node's pc + scale steps to absolute pitches.  rootPitch is
     // the tonicPc-anchored absolute pitch in the user's range; we shift
@@ -1200,7 +1203,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
       : [40, 30, 80];
 
   return (
-    <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded overflow-hidden">
+    <div className={`bg-[#0a0a0a] border border-[#1a1a1a] rounded overflow-hidden${fillHeight ? " flex flex-col h-full" : ""}`}>
       <div className="px-3 py-2 flex items-center gap-2 flex-wrap border-b border-[#1a1a1a]">
         <div className="flex items-center gap-1 mr-2">
           <button
@@ -1252,7 +1255,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
         </button>
       </div>
 
-      <div style={{ height: 540, background: "#050b16" }}>
+      <div style={fillHeight ? { flex: "1 1 0%", minHeight: 0, background: "#050b16" } : { height: 540, background: "#050b16" }}>
         <Canvas camera={{ position: cameraPos, fov: 45 }}>
           <CameraReset resetKey={cameraResetKey} position={cameraPos} />
           <KeyboardPan />
@@ -1277,7 +1280,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
         </Canvas>
       </div>
 
-      {activeNode && (
+      {!embedded && activeNode && (
         <div className="px-3 py-2 border-t border-[#1a1a1a] bg-[#0d0d0d]">
           <div className="flex items-center gap-3 mb-2">
             <span className="text-[10px] tracking-wider font-semibold"
@@ -1316,7 +1319,7 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
 
       {/* Info strip — shows the active or hovered node's notes so the
           user can read them without zooming into the floating label. */}
-      {(() => {
+      {!embedded && (() => {
         const focus = activeNode
           ?? (hoveredId ? lattice.nodeMap.get(hoveredId) ?? null : null)
           ?? (anchorId  ? lattice.nodeMap.get(anchorId)  ?? null : null);
@@ -1340,14 +1343,16 @@ export default function ModeLattice3D({ edo, rootPitch, tonicPc, anchorKey, play
         );
       })()}
 
-      <div className="px-3 py-1.5 text-[9px] text-[#555] border-t border-[#1a1a1a] flex items-center gap-3">
-        <span>Click a node to drone it; <b>Ctrl+click</b> to show its modulation rays; <b>Shift+click</b> to focus the camera on it.  Drag to orbit, scroll to zoom, <b>WASD / arrow keys</b> to pan.  Click "+" to grow a key into the lattice; click "×" on the mid-edge to collapse it back.</span>
-        {activeNode && (
-          <span style={{ color: activeNode.family.color }}>
-            playing: {activeNode.key.name} {formatHalfAccidentals(activeNode.mode.name)}
-          </span>
-        )}
-      </div>
+      {!embedded && (
+        <div className="px-3 py-1.5 text-[9px] text-[#555] border-t border-[#1a1a1a] flex items-center gap-3">
+          <span>Click a node to drone it; <b>Ctrl+click</b> to show its modulation rays; <b>Shift+click</b> to focus the camera on it.  Drag to orbit, scroll to zoom, <b>WASD / arrow keys</b> to pan.  Click "+" to grow a key into the lattice; click "×" on the mid-edge to collapse it back.</span>
+          {activeNode && (
+            <span style={{ color: activeNode.family.color }}>
+              playing: {activeNode.key.name} {formatHalfAccidentals(activeNode.mode.name)}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

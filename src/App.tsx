@@ -7,12 +7,14 @@ import BassFretboard from "@/components/BassFretboard";
 import { computeLayout, LayoutResult, ComputedKey } from "@/lib/lumatoneLayout";
 import { audioEngine, AudioEngine, DRONE_INSTRUMENTS, type DroneInstrument } from "@/lib/audioEngine";
 import IntervalsTab from "@/components/tabs/IntervalsTab";
+import ConventionCheatSheet from "@/components/ConventionCheatSheet";
 import ChordsTab from "@/components/tabs/ChordsTab";
 import ScalarPermutationsTab from "@/components/tabs/ScalarPermutationsTab";
 import DroneTab from "@/components/tabs/DroneTab";
 import DroneContinuumTab from "@/components/tabs/DroneContinuumTab";
 import ScalarTab from "@/components/tabs/ScalarTab";
 import TranscriptionsTab from "@/components/tabs/TranscriptionsTab";
+import TranscriptionMode from "@/components/tabs/TranscriptionMode";
 import RhythmicAudiationTab from "@/components/tabs/RhythmicAudiationTab";
 
 
@@ -21,7 +23,11 @@ import PresetBar from "@/components/PresetBar";
 import DrumPatterns from "@/components/DrumPatterns";
 import SplitPermutationsTab from "@/components/tabs/SplitPermutationsTab";
 import ParadiddleOrchestrationsTab from "@/components/tabs/ParadiddleOrchestrationsTab";
-import TranscriptionMode from "@/components/tabs/TranscriptionMode";
+import ModulationBorrowingTab from "@/components/tabs/ModulationBorrowingTab";
+import { sizedCode } from "@/lib/chordNotation";
+import { notationLabel, solfegeLabel } from "@/lib/notationLabels";
+import NotationPicker from "@/components/NotationPicker";
+import IntervalSpectrumTab from "@/components/tabs/IntervalSpectrumTab";
 import ChordChart from "@/components/ChordChart";
 import Konnakol from "@/components/Konnakol";
 import VocalPercussion from "@/components/VocalPercussion";
@@ -36,6 +42,7 @@ const academicModules = import.meta.glob([
 ]);
 import LatticeView from "@/components/LatticeView";
 import IntervalBrowser from "@/components/IntervalBrowser";
+import LumatoneIntervalsTab from "@/components/tabs/LumatoneIntervalsTab";
 import MicrowaveMode from "@/components/MicrowaveMode";
 import TemperamentExplorer from "@/components/TemperamentExplorer";
 import MathLab from "@/components/MathLab";
@@ -144,6 +151,26 @@ function temperamentForEdo(edo: number): Temperament {
   return "meantone";  // 12, 19, 31, and any unassigned EDO defaults here
 }
 
+// Every EDO available in Tonal Audiation (one per imported Lumatone layout),
+// grouped by fifth-tuning family for the picker.  Selecting any of them works
+// for the intervals tab (sized-interval naming is EDO-agnostic); the chord/drone
+// infrastructure is still richest for the original meantone/pyth/schismatic set.
+const ALL_TONAL_EDOS = [
+  5, 7, 12, 17, 19, 22, 26, 27, 29, 31, 32, 33, 34, 35, 37, 39, 40, 41, 43, 45, 46, 47, 49, 50, 53,
+  55, 56, 63, 80, 81, 94,
+];
+const fifthCentsOf = (edo: number) => (Math.round(edo * Math.log2(1.5)) / edo) * 1200;
+const FIFTH_FAMILY_BANDS: { fam: string; color: string; lo: number; hi: number }[] = [
+  { fam: "FLATTONE",    color: "#9ad0ff", lo: 0,     hi: 694.5 },
+  { fam: "MEANTONE",    color: "#cfe6ff", lo: 694.5, hi: 700.5 },
+  { fam: "PYTHAGOREAN", color: "#e6cfa0", lo: 700.5, hi: 703.0 },
+  { fam: "SCHISMATIC",  color: "#cfe6cf", lo: 703.0, hi: 706.0 },
+  { fam: "SUPERPYTH",   color: "#e6a0c0", lo: 706.0, hi: 9999 },
+];
+const TONAL_EDO_GROUPS = FIFTH_FAMILY_BANDS
+  .map(b => ({ fam: b.fam, color: b.color, edos: ALL_TONAL_EDOS.filter(e => { const c = fifthCentsOf(e); return c >= b.lo && c < b.hi; }) }))
+  .filter(g => g.edos.length > 0);
+
 // ── Settings snapshot types (shared with tabs) ──────────────────────
 export interface SettingsGroup {
   label: string;
@@ -187,10 +214,13 @@ function ScalarExplorationLayout(props: {
   handleKeyClick: (k: ComputedKey) => void;
   handleHighlight: (pcs: number[]) => void;
   playVol: number;
+  notationByEdo: Record<number, string>;
+  solfegeByEdo: Record<number, string>;
+  onOpenNotation: () => void;
 }) {
   const {
     tonicPc, setTonicPc, lowestPitch, highestPitch, edo, vizType, highlighted, layout,
-    ensureAudio, handleKeyClick, handleHighlight, playVol,
+    ensureAudio, handleKeyClick, handleHighlight, playVol, notationByEdo, solfegeByEdo, onOpenNotation,
   } = props;
   // Lattice portal target — stored as state (not ref) so that when
   // the target div mounts, ScalarTab re-renders with a non-null
@@ -200,10 +230,30 @@ function ScalarExplorationLayout(props: {
   // that called setState every render, causing "Maximum update depth
   // exceeded" (App.tsx:220:60 in user's stack).
   const [latticeTarget, setLatticeTarget] = useState<HTMLDivElement | null>(null);
+  const [showIvOverlay, setShowIvOverlay] = useState(false);   // interval-label overlay
+  const [showSolfege, setShowSolfege] = useState(false);       // solfège overlay
   return (
     <>
       <div className="flex flex-col">
         <div id="main-visualizer" className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: 0 }}>
+          {edo !== 12 && (
+            <div className="flex justify-end gap-1 mb-1">
+              <button onClick={onOpenNotation}
+                className="px-2 py-0.5 rounded text-[10px] font-medium border bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff] transition-colors">
+                n: Notation / Solfège
+              </button>
+              <button onClick={() => { setShowIvOverlay(v => !v); setShowSolfege(false); }}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${showIvOverlay
+                  ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
+                {showIvOverlay ? "✓ " : ""}Intervals
+              </button>
+              <button onClick={() => { setShowSolfege(v => !v); setShowIvOverlay(false); }}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${showSolfege
+                  ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
+                {showSolfege ? "✓ " : ""}Solfège
+              </button>
+            </div>
+          )}
           {edo === 12 && vizType === "piano" ? (
             <PianoKeyboard highlightedPitches={highlighted}
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
@@ -215,6 +265,11 @@ function ScalarExplorationLayout(props: {
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
           ) : layout ? (
             <LumatoneKeyboard layout={layout} highlightedPitches={highlighted}
+              labelOf={(showIvOverlay || showSolfege) ? (pitch: number) => {
+                const ts = Math.round((tonicPc * edo) / 12);
+                const step = (((pitch - ts) % edo) + edo) % edo;
+                return showSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
+              } : undefined}
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
           ) : (
             <div className="bg-[#111] rounded-xl border border-[#222] h-36 flex items-center justify-center text-[#444] text-xs">
@@ -250,6 +305,44 @@ export default function App() {
   const [layout, setLayout] = useState<LayoutResult | null>(null);
   const [audioReady, setAudioReady] = useState(false);
   const [highlighted, setHighlighted] = useState<Set<number>>(new Set());
+  const [modShowIntervals, setModShowIntervals] = useState(false);  // interval-label overlay in Modulation tab
+  const [modShowSolfege, setModShowSolfege] = useState(false);      // solfège overlay in Modulation tab
+  // Per-EDO notation / solfège choice (the "n" popup); persisted.
+  const [notationByEdo, setNotationByEdo] = useState<Record<number, string>>(() => {
+    try { return JSON.parse(localStorage.getItem("notation_by_edo") || "{}"); } catch { return {}; }
+  });
+  const [solfegeByEdo, setSolfegeByEdo] = useState<Record<number, string>>(() => {
+    try { return JSON.parse(localStorage.getItem("solfege_by_edo") || "{}"); } catch { return {}; }
+  });
+  const [notationOpen, setNotationOpen] = useState(false);
+  const setNotation = useCallback((e: number, system: string) => {
+    setNotationByEdo(prev => {
+      const next = { ...prev, [e]: system };
+      try { localStorage.setItem("notation_by_edo", JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+  const setSolfege = useCallback((e: number, system: string) => {
+    setSolfegeByEdo(prev => {
+      const next = { ...prev, [e]: system };
+      try { localStorage.setItem("solfege_by_edo", JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+  // "n" opens the notation / solfège picker (ignored while typing).
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const t = ev.target as HTMLElement | null;
+      if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+      if (ev.key === "n" || ev.key === "N") { ev.preventDefault(); setNotationOpen(o => !o); }
+      else if (ev.key === "Escape") setNotationOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  // Pitch CLASSES rendered as a very dim wash behind the lit pitches — e.g.
+  // the underlying scale shown faintly when ChordsTab's Show Answer is open.
+  const [dimScalePcs, setDimScalePcs] = useState<Set<number>>(new Set());
   const [statusText, setStatusText] = useState<string>("");
   const [showPracticeLog, setShowPracticeLog] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -690,15 +783,29 @@ export default function App() {
   };
 
   // ── Keyboard highlight ─────────────────────────────────────────────
-  const handleHighlight = useCallback((pcs: number[]) => {
+  const handleHighlight = useCallback((pcs: number[], holdMs?: number) => {
     lastHighlightPcs.current = pcs;
     if (highlightTimer.current) clearTimeout(highlightTimer.current);
     setHighlighted(new Set(pcs));
-    // In Show Target mode keep the highlight on permanently; in Play Audio auto-clear after 3s
-    if (responseMode !== "Show Target (Sing It)") {
-      highlightTimer.current = setTimeout(() => setHighlighted(new Set()), 3000);
+    // holdMs lets a caller override the default auto-clear:
+    //   undefined → default (Show Target holds forever; Play Audio clears 3s)
+    //   <= 0      → hold until the next highlight replaces it (e.g. Show
+    //               Answer, where each chord must stay lit until the next
+    //               chord onsets and the last chord persists)
+    //   > 0       → clear after exactly holdMs
+    if (holdMs === undefined) {
+      if (responseMode !== "Show Target (Sing It)") {
+        highlightTimer.current = setTimeout(() => setHighlighted(new Set()), 3000);
+      }
+    } else if (holdMs > 0) {
+      highlightTimer.current = setTimeout(() => setHighlighted(new Set()), holdMs);
     }
   }, [responseMode]);
+
+  // Set (or clear, with []) the dim scale wash on the main visualizer.
+  const handleDimHighlight = useCallback((pcs: number[]) => {
+    setDimScalePcs(new Set(pcs));
+  }, []);
 
   const handleShowOnKeyboard = useCallback(() => {
     const pcs = lastHighlightPcs.current;
@@ -766,8 +873,14 @@ export default function App() {
   const handleKeyClick = useCallback(async (key: ComputedKey) => {
     await ensureAudio();
     audioEngine.playNote(key.pitch, edo, 1.0, 0.8);
-    setHighlighted(new Set([key.pitch]));
-    setTimeout(() => setHighlighted(new Set()), 1500);
+    // Don't wipe an active overlay (e.g. the chord highlight from Show Answer /
+    // Show Target) — only flash the clicked key when nothing is highlighted,
+    // and only clear it if it's still that lone clicked key (so a chord that
+    // appears during the flash isn't cleared).
+    if (highlighted.size === 0) {
+      setHighlighted(new Set([key.pitch]));
+      setTimeout(() => setHighlighted(cur => (cur.size === 1 && cur.has(key.pitch)) ? new Set() : cur), 1500);
+    }
     // Range-pick mode: the clicked pitch becomes the bound exactly — no
     // octave snapping. Step 1 sets the low bound, step 2 sets the high
     // bound (swapping if the user clicked them in reverse order so that
@@ -787,27 +900,17 @@ export default function App() {
         setRangePickStep(0);
       }
     }
-  }, [ensureAudio, edo, rangePickStep, lowestPitch, setLowestPitch, setHighestPitch]);
+  }, [ensureAudio, edo, rangePickStep, lowestPitch, setLowestPitch, setHighestPitch, highlighted]);
 
-  // ── Answer buttons injected into each tab next to its Show Answer ─
-  const answerButtons = (responseMode === "Play Audio" && awaitingAnswer) ? (
-    <div className="flex items-center gap-2 flex-shrink-0">
-      <span className="text-xs text-[#555]">Got it?</span>
-      <button onClick={() => handleAnswer(true)}
-        className="px-3 py-1 bg-[#1a3a1a] border border-[#3a6a3a] text-[#5cca5c] hover:bg-[#1e4a1e] rounded text-sm font-bold transition-colors">
-        ✓
-      </button>
-      <button onClick={() => handleAnswer(false)}
-        className="px-3 py-1 bg-[#3a1a1a] border border-[#6a3a3a] text-[#e06060] hover:bg-[#4a1e1e] rounded text-sm font-bold transition-colors">
-        ✗
-      </button>
-    </div>
-  ) : null;
+  // ── Answer buttons (removed per direct user direction) ─
+  // The "Got it? ✓ / ✗" self-grade prompt is gone; nothing is injected.
+  const answerButtons = null;
 
   // ── Shared props for every tab ─────────────────────────────────────
   const sharedTabProps = {
     tonicPc, lowestPitch, highestPitch, edo: edo,
     onHighlight: handleHighlight, responseMode,
+    onDimHighlight: handleDimHighlight,
     onResult: handleResult,
     onPlay: handlePlay,
     onAnswer: trackAnswer,
@@ -859,20 +962,25 @@ export default function App() {
                   <option value="simple-doc">Document</option>
                 </select>
               ) : (() => {
-                const SECTION_BUTTONS: { id: string; label: string; beta?: boolean }[] = [
-                  // Always-visible
-                  { id: "ear-trainer",          label: "Tonal Audiation" },
-                  { id: "transcription",        label: "Transcription" },
+                const SECTION_BUTTONS: { id: string; label: string; beta?: boolean; group?: string }[] = [
+                  // Ungrouped
                   { id: "drone-continuum",      label: "Drone Continuum",      beta: true },
-                  { id: "scalar-exploration",   label: "Scalar Explorations" },
-                  { id: "lattice",              label: "Harmonic Lattice" },
-                  { id: "drum-patterns",        label: "Drum Patterns" },
-                  { id: "permutations",         label: "Permutations" },
                   { id: "rhythm-audiation",     label: "Rhythmic Audiation",   beta: true },
                   { id: "melodic-patterns",     label: "Melodic Patterns",     beta: true },
-                  { id: "chord-chart",          label: "Chord Chart",          beta: true },
-                  { id: "temperament-explorer", label: "Temperament Explorer" },
-                  { id: "note-entry",           label: "Scoring" },
+                  { id: "chord-chart",          label: "Chord Chart",          group: "Sheet Music" },
+                  // Ear & Feel game mode
+                  { id: "ear-trainer",          label: "Tonal Audiation",      group: "Ear & Feel" },
+                  { id: "drum-patterns",        label: "Drum Patterns",        group: "Ear & Feel" },
+                  { id: "permutations",         label: "Permutations",         group: "Ear & Feel" },
+                  // Sheet Music game mode (transcription, scoring, chord charts)
+                  { id: "transcription",        label: "Transcription",        group: "Sheet Music" },
+                  { id: "note-entry",           label: "Scoring",              group: "Sheet Music" },
+                  // Analytical game mode
+                  { id: "lattice",              label: "Harmonic Lattice",       group: "Analytical" },
+                  { id: "scalar-exploration",   label: "Scalar Explorations",    group: "Analytical", beta: true },
+                  { id: "modulation",           label: "Modulation & Borrowing", group: "Analytical" },
+                  { id: "temperament-explorer", label: "Temperament Explorer",   group: "Analytical", beta: true },
+                  { id: "interval-spectrum",    label: "Interval Spectrum",      group: "Analytical" },
                   // Beta-gated
                   { id: "harmony-workshop",     label: "Harmony Workshop",     beta: true },
                   { id: "vocal-percussion",     label: "Vocal Percussion",     beta: true },
@@ -881,12 +989,13 @@ export default function App() {
                   { id: "uncommon-meters",      label: "Uncommon Meters",      beta: true },
                   { id: "konnakol",             label: "Solkattu",             beta: true },
                   { id: "phrase-decomposition", label: "Phrase Decomposition", beta: true },
-                  { id: "interval-browser",     label: "Interval Browser",     beta: true },
+                  { id: "interval-browser",     label: "Interval Browser",     group: "Analytical", beta: true },
+                  { id: "lumatone-intervals",   label: "Lumatone Intervals",   group: "Analytical", beta: true },
                   { id: "microwave",            label: "Microwave",            beta: true },
                 ];
                 const visible = SECTION_BUTTONS.filter(b => !b.beta || betaMode);
                 if (betaMathLab) visible.push({ id: "math-lab", label: "Math Lab", beta: true });
-                return visible.map(b => {
+                const renderBtn = (b: { id: string; label: string; beta?: boolean; group?: string }) => {
                   const active = section === b.id;
                   return (
                     <button
@@ -914,7 +1023,22 @@ export default function App() {
                       {b.label}
                     </button>
                   );
-                });
+                };
+                // Ungrouped sections render inline; grouped ones (game modes
+                // like "Analytical") render as a labelled, divided cluster.
+                const groupNames = visible.filter(b => b.group).map(b => b.group as string)
+                  .filter((g, i, a) => a.indexOf(g) === i);
+                return (
+                  <>
+                    {visible.filter(b => !b.group).map(renderBtn)}
+                    {groupNames.map(g => (
+                      <div key={g} className="flex items-center gap-1 pl-2 ml-1 border-l border-[#2a2a3a]">
+                        <span className="text-[9px] uppercase tracking-wider text-[#8888c0] font-semibold mr-0.5">{g}</span>
+                        {visible.filter(b => b.group === g).map(renderBtn)}
+                      </div>
+                    ))}
+                  </>
+                );
               })()}
             </div>
             <div className="flex items-center gap-2 ml-auto">
@@ -923,7 +1047,7 @@ export default function App() {
                 title="Stop all audio">
                 ■ Stop Audio
               </button>}
-              {!academicMode && <button onClick={() => setShowPracticeLog(true)}
+              {!academicMode && betaMode && <button onClick={() => setShowPracticeLog(true)}
                 className="px-2 py-1 bg-[#0e1a0e] border border-[#2a4a2a] text-[#5a8a5a] hover:text-[#7aaa7a] rounded text-xs transition-colors">
                 Practice Log
               </button>}
@@ -966,6 +1090,11 @@ export default function App() {
             />
             <div className="w-px h-4 bg-[#2a2a2a]" />
             <CountdownTimer />
+            <button onClick={() => setShowMetronomeTimer(false)}
+              title="Hide metronome & timer (re-enable in Settings)"
+              className="ml-1 text-[#555] hover:text-[#cc6666] text-xs px-1.5 py-0.5 rounded border border-[#2a2a2a] hover:border-[#5a2a2a] transition-colors">
+              ✕
+            </button>
           </div>}
 
           {/* Drone strip — only in Tonal Audiation (ear-trainer) per
@@ -1022,17 +1151,22 @@ export default function App() {
           <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 flex flex-col gap-2">
             {/* Top row: Tonic (shared) · Exercise range · Response mode · Play vol · ♪ Tonic */}
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1.5">
+              {/* Chords/Intervals show the Root in its own row BELOW the EDO
+                  picker (per direct user direction); other tabs keep it here. */}
+              {!(activeTab === "chords" || activeTab === "intervals") && (<>
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <label className="text-xs text-[#666]">Tonic</label>
-                <select value={tonicPc}
-                  onChange={e => setTonicPc(Number(e.target.value))}
-                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
-                  {Array.from({ length: edo }, (_, i) => (
-                    <option key={i} value={i}>{formatHalfAccidentals(pcToNoteNameWithEnharmonic(i, edo))}</option>
-                  ))}
-                </select>
+                {["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"].map((n, i) => (
+                  <button key={i} onClick={() => setTonicPc(i)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                      tonicPc === i ? "bg-[#7173e6] text-white border-[#7173e6]"
+                                    : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
+                    {n}
+                  </button>
+                ))}
               </div>
               <div className="w-px h-4 bg-[#2a2a2a]" />
+              </>)}
               <div className="flex items-center gap-1.5">
                 <label className="text-xs text-[#666]">Range</label>
                 <button onClick={() => setRangePickStep(s => s === 0 ? 1 : 0)}
@@ -1196,8 +1330,26 @@ export default function App() {
           after i pass by the last chords"). */}
       {section === "ear-trainer" && (
         <div id="main-visualizer" className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: 0 }}>
+          {edo !== 12 && (
+            <div className="flex justify-end gap-1 mb-1">
+              <button onClick={() => setNotationOpen(true)}
+                className="px-2 py-0.5 rounded text-[10px] font-medium border bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff] transition-colors">
+                n: Notation / Solfège
+              </button>
+              <button onClick={() => { setModShowIntervals(v => !v); setModShowSolfege(false); }}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${modShowIntervals
+                  ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
+                {modShowIntervals ? "✓ " : ""}Intervals
+              </button>
+              <button onClick={() => { setModShowSolfege(v => !v); setModShowIntervals(false); }}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${modShowSolfege
+                  ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
+                {modShowSolfege ? "✓ " : ""}Solfège
+              </button>
+            </div>
+          )}
           {edo === 12 && vizType === "piano" ? (
-            <PianoKeyboard highlightedPitches={highlighted}
+            <PianoKeyboard highlightedPitches={highlighted} dimPitchClasses={dimScalePcs}
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
           ) : edo === 12 && vizType === "guitar" ? (
             <GuitarFretboard highlightedPitches={highlighted}
@@ -1206,7 +1358,12 @@ export default function App() {
             <BassFretboard highlightedPitches={highlighted}
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
           ) : layout ? (
-            <LumatoneKeyboard layout={layout} highlightedPitches={highlighted}
+            <LumatoneKeyboard layout={layout} highlightedPitches={highlighted} dimPitchClasses={dimScalePcs} edo={edo}
+              labelOf={(modShowIntervals || modShowSolfege) ? (pitch: number) => {
+                const ts = Math.round((tonicPc * edo) / 12);
+                const step = ((((pitch - ts) % edo) + edo) % edo);
+                return modShowSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
+              } : undefined}
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
           ) : (
             <div className="bg-[#111] rounded-xl border border-[#222] h-36 flex items-center justify-center text-[#444] text-xs">
@@ -1254,6 +1411,9 @@ export default function App() {
           handleKeyClick={handleKeyClick}
           handleHighlight={handleHighlight}
           playVol={playVol}
+          notationByEdo={notationByEdo}
+          solfegeByEdo={solfegeByEdo}
+          onOpenNotation={() => setNotationOpen(true)}
         />
       )}
 
@@ -1316,6 +1476,77 @@ export default function App() {
                   : <ParadiddleOrchestrationsTab />}
               </>);
             })()}
+          </div>
+        </div>
+      )}
+
+      {section === "modulation" && (
+        <div className="flex-1 overflow-y-auto">
+          <div className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2">
+            <div className="flex justify-end gap-1 mb-1">
+              <button onClick={() => setNotationOpen(true)}
+                className="px-2 py-0.5 rounded text-[10px] font-medium border bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff] transition-colors">
+                n: Notation / Solfège
+              </button>
+              <button onClick={() => { setModShowIntervals(v => !v); setModShowSolfege(false); }}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${modShowIntervals
+                  ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
+                {modShowIntervals ? "✓ " : ""}Intervals
+              </button>
+              <button onClick={() => { setModShowSolfege(v => !v); setModShowIntervals(false); }}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${modShowSolfege
+                  ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
+                {modShowSolfege ? "✓ " : ""}Solfège
+              </button>
+            </div>
+            {edo === 12 && vizType === "piano" ? (
+              <PianoKeyboard highlightedPitches={highlighted}
+                onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
+            ) : layout ? (
+              <LumatoneKeyboard layout={layout} highlightedPitches={highlighted} maxHeight={360}
+                labelOf={(modShowIntervals || modShowSolfege) ? (pitch: number) => {
+                  const ts = Math.round((tonicPc * edo) / 12);
+                  const step = ((((pitch - ts) % edo) + edo) % edo);
+                  return modShowSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
+                } : undefined}
+                onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
+            ) : (
+              <div className="bg-[#111] rounded-xl border border-[#222] h-36 flex items-center justify-center text-[#444] text-xs">Loading keyboard…</div>
+            )}
+          </div>
+          <div className="px-4 py-4">
+            <div className="max-w-[1100px] mx-auto bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+              <ModulationBorrowingTab edo={edo} tonicPc={tonicPc} onHighlight={handleHighlight} ensureAudio={ensureAudio} setEdo={setEdo} setTonicPc={setTonicPc} notationSystem={notationByEdo[edo]} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notation / solfège picker — opened by the "n" key (or the Notation buttons). */}
+      {notationOpen && (
+        <NotationPicker edos={(() => {
+            // In the Interval Spectrum, the open EDOs are the ones typed there
+            // (persisted as "is_edos"); elsewhere it's the global EDO.
+            if (section === "interval-spectrum") {
+              try { const v = JSON.parse(localStorage.getItem("is_edos") || '""'); const n = String(v).match(/\d+/g)?.map(Number).filter(x => x >= 2 && x <= 200); if (n && n.length) return n; } catch { /* ignore */ }
+            }
+            return [edo];
+          })()} notation={notationByEdo} solfege={solfegeByEdo}
+          onNotation={setNotation} onSolfege={setSolfege} onClose={() => setNotationOpen(false)} />
+      )}
+
+      {section === "interval-spectrum" && (
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <div className="w-full bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+            <IntervalSpectrumTab notationByEdo={notationByEdo} solfegeByEdo={solfegeByEdo} onOpenNotation={() => setNotationOpen(true)} />
+          </div>
+        </div>
+      )}
+
+      {section === "lumatone-intervals" && (
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="w-full bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+            <LumatoneIntervalsTab />
           </div>
         </div>
       )}
@@ -1467,14 +1698,10 @@ export default function App() {
             like it is in scalar explorations".  Still gated to the
             chords tab; other Tonal Audiation tabs (intervals /
             mode-id / melody / etc.) keep the EDO selector hidden. */}
-        {activeTab === "chords" && <div className="flex gap-2 flex-wrap items-center mb-3">
+        {(activeTab === "chords" || activeTab === "intervals") && <div className="flex gap-2 flex-wrap items-center mb-3">
           <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">EDO</span>
           <div className="flex items-center gap-2 flex-wrap">
-            {([
-              { fam: "MEANTONE",    color: "#cfe6ff", edos: [12, 19, 31] },
-              { fam: "PYTHAGOREAN", color: "#e6cfa0", edos: [41]         },
-              { fam: "SCHISMATIC",  color: "#cfe6cf", edos: [53]         },
-            ] as const).map(group => (
+            {TONAL_EDO_GROUPS.map(group => (
               <div key={group.fam} className="flex items-center gap-1.5">
                 <span
                   className="text-[9px] font-semibold tracking-wider px-1 border-l border-[#2a2a2a]"
@@ -1512,6 +1739,18 @@ export default function App() {
             </>
           )}
         </div>}
+        {/* Root — placed directly below the EDO row for Chords/Intervals. */}
+        {(activeTab === "chords" || activeTab === "intervals") && <div className="flex gap-2 flex-wrap items-center mb-3">
+          <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">ROOT</span>
+          {["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"].map((n, i) => (
+            <button key={i} onClick={() => setTonicPc(i)}
+              className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                tonicPc === i ? "bg-[#7173e6] text-white border-[#7173e6]"
+                              : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
+              {n}
+            </button>
+          ))}
+        </div>}
         <div className="flex gap-1 flex-wrap items-center mb-4">
           <PresetBar onPresetLoaded={() => setTabKey(k => k + 1)} />
           <div className="w-px h-4 bg-[#2a2a2a]" />
@@ -1524,6 +1763,7 @@ export default function App() {
               {TAB_LABELS[t]}
             </button>
           ))}
+          <ConventionCheatSheet />
           <div className="ml-auto flex items-center gap-2">
             {(slotHistory.length > 0 || currentSlotStats.current.size > 0) && (
               <button
@@ -1883,7 +2123,7 @@ export default function App() {
           {activeTab === "chords" && (
             <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
               <h2 className="font-semibold mb-4">Chord Progressions</h2>
-              <ChordsTab key={tabKey} {...sharedTabProps} />
+              <ChordsTab key={tabKey} {...sharedTabProps} notationSystem={notationByEdo[edo]} />
             </div>
           )}
 

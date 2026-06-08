@@ -1,0 +1,318 @@
+# 22-EDO — Xenharmonic Wiki notation
+_snapshot 20260308205810 · https://en.xen.wiki/w/22edo_
+
+## Notation-related sections
+
+### Prime harmonics
+
+### Intervals
+
+### Notation
+
+### Ups and downs notation
+Spoken as up, downsharp, sharp, upsharp, etc. Note that downsharp can be respelled as dup (double-up), and upflat as dud.
+Standard Pythagorean chain-of-fifths notation can be used alongside ups (^) and downs (v), where a single up or down alters the pitch of a note by 1 EDOstep (1\22). Note that E♭ and D♯ are different notes and that E♭ is significantly lower in pitch than D♯.
+Treating ups and downs as "fused" with sharps and flats, and never appearing separately:
+Treating ups and downs as independent of sharps and flats, and sometimes appearing separately:
+A D downmajor scale with mandatory accidentals (no key signature), with minimal accidentals (only when needed to override the key signature), and with independent ups and downs.
+Alternatively, arrow accidentals from Helmholtz–Ellis notation can be used instead of independent ups and downs:
+If arrows are taken to have their own layer of enharmonic spellings, then in some cases certain notes may be best spelled with double arrows.
+Shown below is Paul Erlich 's "Tibia" in G, with independent ups and downs.
+
+### Sagittal notation
+This notation uses the same sagittal sequence as EDOs 15 and 29 , is a subset of the notations for EDOs 44 and 66 , and is a superset of the notation for 11-EDO .
+
+### Superpyth/Porcupine notation
+Superpyth/Porcupine notation is a system arising from both superpyth and porcupine temperament. It categorizes each 22edo interval as major and minor of one or both of those temperaments. s indicates superpyth and p indicates porcupine. Because p now represents porcupine and not perfect, P in perfect intervals is no longer used in this system. Instead the number is used without P and is read as either just the number or "Natural". Example: P5 becomes 5 or N5 = Perfect fifth becomes Natural fifth.
+
+### Porcupine notation
+Porcupine notation uses the porcupine generator to generate the notation as well. The 2nd and 7th are perfect, and the 4th and 5th are imperfect like the 3rd and 6th. The natural notes represent a chain of 2nds ABCDEFG. This is the only way to use a heptatonic notation without additional accidentals.
+The keyboard runs D * * E * * F * * G * * * A * * B * * C * * D .
+A score video demonstrating this type of notation using redefined sharp and flat symbols is available: Study #1 in Porcupine Temperament: "Flying Straight Down" (Microtonal/Xenharmonic) (2020) by John Moriarty . Note that the sharp of one note is lower than the flat of the next note, in contrast to sharps and flats in the diatonic notation with ups and downs described above.
+
+### Pentatonic notation
+In Pentatonic notation, the degrees are unison, subthird, fourthoid, fifthoid, subseventh and octoid. The natural notes represent a chain of 5ths FCGDA. This is the only way to use a chain-of-fifths notation without additional accidentals.
+The keyboard runs D * * * * F * * * G * * * A * * * * C * * * D .
+
+### Decatonic notation
+The Decatonic notation is based on Paul Erlich's decatonic scales. Unlike typical notation, the decatonic system is based on a scale of 10 tones rather than 7. This approach requires an entire re-learning of chords, intervals, and notation, but it allows 22EDO to be notated using only one pair of accidentals, and gives the opportunity to escape a heptatonic thinking pattern. The system is based on two chains of fifths: one represented by Latin letters, the other by Greek. The two chains can be looked at as two juxtaposed pentatonic scales.
+Chain 1: C G D A E
+Chain 2: γ δ α ε β
+The alphabet is, in ascending order: C δ D ε E γ G α A β C
+In this alphabet, a chain of fifths is preserved because equivalent Greek letters also represent fifths if they are the same as their Latin counterparts. For example G–D is a fifth, and so is γ–δ.
+
+### Comparison of 22edo notation systems
+
+### Interval mappings
+The following tables show how 15-odd-limit intervals are represented in 22edo. Prime harmonics are in bold ; inconsistent intervals are in italics .
+
+### Tetrachords
+
+### Chords
+Combining ups and downs notation with color notation , qualities can be loosely associated with colors:
+All 22edo chords can be named using ups and downs. Alterations are always enclosed in parentheses, additions never are. An up or down immediately after the chord root affects the 3rd, 6th, 7th, and/or the 11th (every other note of a stacked-3rds chord 6-1-3-5-7-9-11-13).Here are the zo, gu, yo, and ru triads:
+Examples:
+
+## Tables (interval names + notation suffixes)
+
+### 
+| ← 21edo | 22edo | 23edo → |
+| Prime factorization | 2 × 11 |
+| Step size | 54.5455 ¢ |
+| Fifth | 13\22 (709.091 ¢) |
+| Semitones (A1:m2) | 3:1 (163.6 ¢ : 54.55 ¢) |
+| Consistency limit | 11 |
+| Distinct consistency limit | 5 |
+
+### 
+| ← 21edo | 22edo | 23edo → |
+
+### Prime harmonics
+| Harmonic | 2 | 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 29 | 31 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Error | Absolute ( ¢ ) | +0.0 | +7.1 | -4.5 | +13.0 | -5.9 | -22.3 | +4.1 | -24.8 | +26.3 | +6.8 | +0.4 |
+| Relative ( % ) | +0.0 | +13.1 | -8.2 | +23.8 | -10.7 | -41.0 | +7.6 | -45.4 | +48.2 | +12.4 | +0.8 |
+| Steps ( reduced ) | 22 (0) | 35 (13) | 51 (7) | 62 (18) | 76 (10) | 81 (15) | 90 (2) | 93 (5) | 100 (12) | 107 (19) | 109 (21) |
+
+### Intervals
+| Degree | Cents | Approximate Ratios [ note 1 ] | Ups and downs notation ( EUs : v 3 A1 and ^^d2) | SKULO notation (K = 1) | Audio |
+|---|---|---|---|---|---|
+| 0 | 0.0 | 1/1 | perfect unison | P1 | D | perfect unison | P1 | D | https://en.xen.wiki/w/File:0-0.000c_P1.mp3 |
+| 1 | 54.5 | 36/35 , 34/33 , 33/32 , 32/31 | up-unison, minor 2nd | ^1, m2 | ^D, Eb | comma-wide unison, minor 2nd | K1, m2 | KD, Eb | https://en.xen.wiki/w/File:0-54.545c_22edo.mp3 |
+| 2 | 109.1 | 18/17 , 17/16 , 16/15 , 15/14 | downaug 1sn, upminor 2nd | vA1, ^m2 | vD#, ^Eb | classic minor 2nd | Km2 | KEb | https://en.xen.wiki/w/File:0-109.091c_11edo.mp3 |
+| 3 | 163.6 | 12/11 , 11/10 , 10/9 | aug 1sn, downmajor 2nd | A1, vM2 | D#, vE | classic/comma-narrow major 2nd | kM2 | kE | https://en.xen.wiki/w/File:0-163.636c_22edo.mp3 |
+| 4 | 218.2 | 9/8 , 17/15 , 8/7 | major 2nd | M2 | E | major 2nd | M2 | E | https://en.xen.wiki/w/File:0-218.182c_11edo.mp3 |
+| 5 | 272.7 | 20/17 , 7/6 | minor 3rd | m3 | F | minor 3rd | m3 | F | https://en.xen.wiki/w/File:0-272.727c_22edo.mp3 |
+| 6 | 327.3 | 6/5 , 17/14 , 11/9 | upminor 3rd | ^m3 | ^F | classic minor 3rd | Km3 | KF | https://en.xen.wiki/w/File:0-327.273c_11edo.mp3 |
+| 7 | 381.8 | 5/4 , 96/77 | downmajor 3rd | vM3 | vF# | classic major 3rd | kM3 | kF# | https://en.xen.wiki/w/File:0-381.818c_22edo.mp3 |
+| 8 | 436.4 | 14/11 , 9/7 , 22/17 | major 3rd | M3 | F# | major 3rd | M3 | F# | https://en.xen.wiki/w/File:0-436.364c_11edo.mp3 |
+| 9 | 490.9 | 4/3 | perfect 4th | P4 | G | perfect 4th | P4 | G | https://en.xen.wiki/w/File:0-490.909c_22edo.mp3 |
+| 10 | 545.5 | 15/11 , 11/8 | up-4th, dim 5th | ^4, d5 | ^G, Ab | comma-wide 4th | K4 | KG | https://en.xen.wiki/w/File:0-545.455c_11edo.mp3 |
+| 11 | 600.0 | 7/5 , 24/17 , 17/12 , 10/7 | downaug 4th, updim 5th | vA4, ^d5 | vG#, ^Ab | comma-narrow augmented 4th comma-wide diminished 5th | kA4 Kd5 | kG#, KAb | https://en.xen.wiki/w/File:0-600.000c_2edo.mp3 |
+| 12 | 654.5 | 16/11 , 22/15 | aug 4th, down-5th | A4, v5 | G#, vA | comma-narrow 5th | k5 | kA | https://en.xen.wiki/w/File:0-654.545c_11edo.mp3 |
+| 13 | 709.1 | 3/2 | perfect 5th | P5 | A | perfect 5th | P5 | A | https://en.xen.wiki/w/File:0-709.091c_22edo.mp3 |
+| 14 | 763.6 | 17/11 , 14/9 , 11/7 | minor 6th | m6 | Bb | minor 6th | m6 | Bb | https://en.xen.wiki/w/File:0-763.636c_11edo.mp3 |
+| 15 | 818.2 | 8/5 , 77/48 | upminor 6th | ^m6 | ^Bb | classic minor 6th | Km6 | KBb | https://en.xen.wiki/w/File:0-818.182c_22edo.mp3 |
+| 16 | 872.7 | 18/11 , 28/17 , 5/3 | downmajor 6th | vM6 | vB | classic major 6th | kM6 | kB | https://en.xen.wiki/w/File:0-872.727c_11edo.mp3 |
+| 17 | 927.3 | 17/10 , 12/7 | major 6th | M6 | B | major 6th | M6 | B | https://en.xen.wiki/w/File:0-927.273c_22edo.mp3 |
+| 18 | 981.8 | 7/4 , 30/17 , 16/9 | minor 7th | m7 | C | minor 7th | m7 | C | https://en.xen.wiki/w/File:0-981.818c_11edo.mp3 |
+| 19 | 1036.4 | 9/5 , 11/6 , 20/11 | upminor 7th, dim 8ve | ^m7, d8 | ^C, Db | classic minor 7th | Km7 | kC | https://en.xen.wiki/w/File:0-1036.364c_22edo.mp3 |
+| 20 | 1090.9 | 28/15 , 15/8 , 32/17 , 17/9 | downmajor 7th, updim 8ve | vM7, ^d8 | vC#, ^Db | classic major 7th | kM7 | kC# | https://en.xen.wiki/w/File:0-1090.909c_11edo.mp3 |
+| 21 | 1145.5 | 31/16 , 64/33 , 33/17 , 35/18 | major 7th, down 8ve | M7, v8 | C#, vD | major 7th / comma-narrow 8ve | M7 / k8 | C#, kD | https://en.xen.wiki/w/File:0-1145.455c_22edo.mp3 |
+| 22 | 1200.0 | 2/1 | perfect octave | P8 | D | perfect 8ve | P8 | D | https://en.xen.wiki/w/File:0-1200.000c_P8.mp3 |
+
+### Ups and downs notation
+| Step offset | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| Sharp symbol |  |  |  |  |  |  |  |  |
+| Flat symbol |  |  |  |  |  |  |  |
+
+### Ups and downs notation
+| Degree | Cents | Ups and downs notation |
+|---|---|---|
+| Diatonic Interval Names | Note Names |
+| 0 | 0.0 | Perfect unison (P1) | D |
+| 1 | 54.5 | Minor second (m2) Up unison (^1) | Eb ^D |
+| 2 | 109.1 | Upminor second (^m2) Downaugmented unison (vA1) Diminished third (d3) | ^Eb vD# Fb |
+| 3 | 163.6 | Downmajor second (vM2) Augmented unison (A1) | vE D# |
+| 4 | 218.2 | Major second (M2) Upaugmented unison (^A1) Downminor third (vm3) | E ^D# vF |
+| 5 | 272.7 | Upmajor second (^M2) Minor third (m3) | ^E F |
+| 6 | 327.3 | Upminor third (^m3) Diminished fourth (d4) | ^F Gb |
+| 7 | 381.8 | Downmajor third (vM3) Augmented second (A2) Updiminished fourth (^d4) | vF# E# ^Gb |
+| 8 | 436.4 | Major third (M3) Upaugmented second (^A2) Down fourth (v4) | F# ^E# vG |
+| 9 | 490.9 | Perfect fourth (P4) | G |
+| 10 | 545.5 | Up fourth (^4) Diminished fifth (d5) | ^G Ab |
+| 11 | 600.0 | Downaugmented fourth (vA4) Updiminished fifth (^d5) | vG# ^Ab |
+| 12 | 654.5 | Augmented fourth (A4) Down fifth (v5) | G# vA |
+| 13 | 709.1 | Perfect fifth (P5) | A |
+| 14 | 763.6 | Up fifth (^5) Minor sixth (m6) | ^A Bb |
+| 15 | 818.2 | Downaugmented fifth (vA5) Upminor sixth (^m6) | vA# ^Bb |
+| 16 | 872.7 | Augmented fifth (A5) Downmajor sixth (vM6) | A# vB |
+| 17 | 927.3 | Major sixth (M6) Upaugmented fifth (^A5) Downminor seventh (vm7) | B ^A# vC |
+| 18 | 981.8 | Minor seventh (m7) Upmajor sixth (^M6) Downdiminished octave (vd8) | C ^B vDb |
+| 19 | 1036.4 | Upminor seventh (^m7) Diminished octave (d8) | ^C Db |
+| 20 | 1090.9 | Downmajor seventh (vM7) Updiminished octave (^d8) Augmented sixth (A6) | vC# ^Db B# |
+| 21 | 1145.5 | Major seventh (M7) Down octave (v8) | C# vD |
+| 22 | 1200.0 | Perfect octave (P8) | D |
+
+### Ups and downs notation
+| Step offset | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| Sharp symbol |  |  |  |  |  |  |  |  |
+| Flat symbol |  |  |  |  |  |  |  |
+
+### Comparison of 22edo notation systems
+| Degree | Cents | Superpyth/Porcupine | Porcupine (Onyx) | Porcupine (Zarlino) | Pentatonic | Decatonic | Ups and Downs | SKULO interval names |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 0 | Natural Unison | 1 | perfect unison | P1 | D | perfect unison | P1 | C | perfect unison | P1 | D | natural 1st | N1 | C | perfect unison | P1 | D | perfect unison | P1 | D |
+| 1 | 55 | s-minor second | sm2 | aug unison | A1 | D# | augmented unison | A1 | C# | aug unison | A1 | D# | flat 2nd | f2 | C#, δb | up-unison, minor 2nd | ^1, m2 | ^D, Eb | comma-wide unison, minor 2nd | K1, m2 | KD, Eb |
+| 2 | 109 | p-diminished second | pd2 | dim 2nd | d2 | Eb | minor second | m2 | Db | double-aug unison, double-dim sub3rd | AA1, dds3 | Dx, Fb 3 | natural 2nd | N2 | δ | downaug 1sn, upminor 2nd | vA1, ^m2 | vD#, ^Eb | classic minor 2nd | Km2 | KEb |
+| 3 | 164 | p-minor second | pm2 | perfect 2nd | P2 | E | narrow major second | nM2 | D | dim sub3rd | ds3 | Fbb | sharp 2nd, flat 3rd | s2, f3 | δ#, Db | aug 1sn, downmajor 2nd | A1, vM2 | D#, vE | classic/comma-narrow major 2nd | kM2 | kE |
+| 4 | 218 | (s/p) Major second | M2 | aug 2nd | A2 | E# | wide major second | WM2 | D# | minor sub3rd | ms3 | Fb | natural 3rd | N3 | D | major 2nd | M2 | E | major 2nd | M2 | E |
+| 5 | 273 | s-minor third | sm3 | dim 3rd | d3 | Fb | wolf third | w3 | Ebb | major sub3rd | Ms3 | F | sharp 3rd | s3 | D# | minor 3rd | m3 | F | minor 3rd | m3 | F |
+| 6 | 327 | p-minor third | pm3 | minor 3rd | m3 | F | minor third | m3 | Eb | aug sub3rd | As3 | F# | flat 4th | f4 | εb | upminor 3rd | ^m3 | ^F | classic minor 3rd | Km3 | KF |
+| 7 | 382 | p-Major third | pM3 | major 3rd | M3 | F# | major third | M3 | E | double-aug sub3rd, double-dim 4thoid | AAs3, dd4d | Fx, Gbb | natural 4th | N4 | ε | downmajor 3rd | vM3 | vF# | classic major 3rd | kM3 | kF# |
+| 8 | 436 | s-Major third | sM3 | aug 3rd, dim 4th | A3, d4 | Fx, Gb | augmented third | A3 | E# | dim 4thoid | d4d | Gb | sharp 4th, flat 5th | s4, f5 | ε#, Eb | major 3rd | M3 | F# | major 3rd | M3 | F# |
+| 9 | 491 | Natural Fourth | 4, N4 | minor 4th | m4 | G | perfect fourth | P4 | F | perfect 4thoid | P4d | G | natural 5th | N5 | E | perfect 4th | P4 | G | perfect 4th | P4 | G |
+| 10 | 545 | p-Major fourth, s-dim fifth | pM4, sd5 | major 4th | M4 | G# | wolf fourth | w4 | F# | aug 4thoid | A4d | G# | sharp 5th, flat 6th | s5, f6 | E#, γb | up-4th, dim 5th | ^4, d5 | ^G, Ab | comma-wide 4th | K4 | KG |
+| 11 | 600 | p-Augmented Fourth, p-diminished Fifth, Half-Octave | A4, HO | aug 4th, dim 5th | A4, d5 | Gx, Abb | augmented fourth, diminished fifth | A4, d5 | F##, Gbb | double-aug 4thoid, double-dim 5thoid | AA4d, dd5d | Gx, Abb | natural 6th | N6 | γ | downaug 4th, updim 5th | vA4, ^d5 | vG#, ^Ab | comma-narrow augmented 4th comma-wide diminished 5th | kA4 Kd5 | kG#, KAb |
+| 12 | 655 | p-minor Fifth, s-aug Fourth | pm5, sA4 | minor 5th | m5 | Ab | wolf fifth | w5 | Gb | dim 5thoid | d5d | Ab | sharp 6th, flat 7th | s6, f7 | γ#, Gb | aug 4th, down-5th | A4, v5 | G#, vA | comma-narrow 5th | k5 | kA |
+| 13 | 709 | Natural Fifth | 5, N5 | major 5th | M5 | A | perfect fifth | P5 | G | perfect 5thoid | P5d | A | natural 7th | N7 | G | perfect 5th | P5 | A | perfect 5th | P5 | A |
+| 14 | 764 | s-minor sixth | sm6 | aug 5th, dim 6th | A5, d6 | A#, Bbb | diminished sixth | d6 | Abb | aug 5thoid | A5d | A# | sharp 7th | s7 | G# | minor 6th | m6 | Bb | minor 6th | m6 | Bb |
+| 15 | 818 | p-minor sixth | pm6 | minor 6th | m6 | Bb | minor sixth | m6 | Ab | double-aug 5thoid, double-dim sub7th | AA5d, dds7 | Ax, Cb 3 | flat 8th | f8 | αb | upminor 6th | ^m6 | ^Bb | classic minor 6th | Km6 | KBb |
+| 16 | 873 | p-Major sixth | pM6 | major 6th | M6 | B | major sixth | M6 | A | dim sub7th | ds7 | Cbb | natural 8th | N8 | α | downmajor 6th | vM6 | vB | classic major 6th | kM6 | kB |
+| 17 | 927 | s-Major sixth | sM6 | aug 6th | A6 | B# | wolf sixth | w6 | A# | minor sub7th | ms7 | Cb | sharp 8th, flat 9th | s8, f9 | α#, Ab | major 6th | M6 | B | major 6th | M6 | B |
+| 18 | 982 | (s/p) minor seventh | m7 | dim 7th | d7 | Cb | narrow minor seventh | nm7 | Bbb | major sub7th | Ms7 | C | natural 9th | N9 | A | minor 7th | m7 | C | minor 7th | m7 | C |
+| 19 | 1036 | p-Major seventh | pM7 | perfect 7th | P7 | C | wide minor seventh | Wm7 | Bb | aug sub7th | As7 | C# | sharp 9th, flat 10th | s9, f10 | A#, βb | upminor 7th, dim 8ve | ^m7, d8 | ^C, Db | classic minor 7th | Km7 | kC |
+| 20 | 1091 | p-Augmented seventh | pA7 | aug 7th | A7 | C# | major seventh | M7 | B | double-aug sub7th, double-dim octave | AAs7, dd8 | Cx, Dbb | natural 10th | N10 | β | downmajor 7th, updim 8ve | vM7, ^d8 | vC#, ^Db | classic major 7th | kM7 | kC# |
+| 21 | 1145 | s-Major seventh | sM7 | dim 8ve | d8 | Db | diminished octave | d8 | Cb | dim octave | d8 | Db | sharp 10th | s10 | β#, Cb | major 7th, down 8ve | M7, v8 | C#, vD | major 7th / comma-narrow 8ve | M7 / k8 | C#, kD |
+| 22 | 1200 | Octave | 8 | perfect octave | P8 | D | perfect octave | P8 | C | perfect octave | P8 | D | natural 11th | N11 | C | perfect octave | P8 | D | perfect 8ve | P8 | D |
+
+### Interval mappings
+| Interval and complement | Error (abs, ¢ ) | Error (rel, % ) |
+|---|---|---|
+| 1/1, 2/1 | 0.000 | 0.0 |
+| 9/7, 14/9 | 1.280 | 2.3 |
+| 11/10, 20/11 | 1.368 | 2.5 |
+| 15/8, 16/15 | 2.640 | 4.8 |
+| 5/4, 8/5 | 4.496 | 8.2 |
+| 7/6, 12/7 | 5.856 | 10.7 |
+| 11/8, 16/11 | 5.863 | 10.7 |
+| 3/2, 4/3 | 7.136 | 13.1 |
+| 15/11, 22/15 | 8.504 | 15.6 |
+| 15/14, 28/15 | 10.352 | 19.0 |
+| 5/3, 6/5 | 11.631 | 21.3 |
+| 7/4, 8/7 | 12.992 | 23.8 |
+| 11/6, 12/11 | 12.999 | 23.8 |
+| 9/8, 16/9 | 14.272 | 26.2 |
+| 13/11, 22/13 | 16.482 | 30.2 |
+| 7/5, 10/7 | 17.488 | 32.1 |
+| 13/10, 20/13 | 17.850 | 32.7 |
+| 13/9, 18/13 | 17.928 | 32.9 |
+| 9/5, 10/9 | 18.767 | 34.4 |
+| 11/7, 14/11 | 18.856 | 34.6 |
+| 13/7, 14/13 | 19.207 | 35.2 |
+| 11/9, 18/11 | 20.135 | 36.9 |
+| 13/8, 16/13 | 22.346 | 41.0 |
+| 15/13, 26/15 | 24.986 | 45.8 |
+| 13/12, 24/13 | 25.064 | 46.0 |
+
+### Interval mappings
+| Interval and complement | Error (abs, ¢ ) | Error (rel, % ) |
+|---|---|---|
+| 1/1, 2/1 | 0.000 | 0.0 |
+| 9/7, 14/9 | 1.280 | 2.3 |
+| 11/10, 20/11 | 1.368 | 2.5 |
+| 15/8, 16/15 | 2.640 | 4.8 |
+| 5/4, 8/5 | 4.496 | 8.2 |
+| 7/6, 12/7 | 5.856 | 10.7 |
+| 11/8, 16/11 | 5.863 | 10.7 |
+| 3/2, 4/3 | 7.136 | 13.1 |
+| 15/11, 22/15 | 8.504 | 15.6 |
+| 15/14, 28/15 | 10.352 | 19.0 |
+| 5/3, 6/5 | 11.631 | 21.3 |
+| 7/4, 8/7 | 12.992 | 23.8 |
+| 11/6, 12/11 | 12.999 | 23.8 |
+| 9/8, 16/9 | 14.272 | 26.2 |
+| 13/11, 22/13 | 16.482 | 30.2 |
+| 7/5, 10/7 | 17.488 | 32.1 |
+| 13/10, 20/13 | 17.850 | 32.7 |
+| 9/5, 10/9 | 18.767 | 34.4 |
+| 11/7, 14/11 | 18.856 | 34.6 |
+| 11/9, 18/11 | 20.135 | 36.9 |
+| 13/8, 16/13 | 22.346 | 41.0 |
+| 15/13, 26/15 | 24.986 | 45.8 |
+| 13/12, 24/13 | 29.482 | 54.0 |
+| 13/7, 14/13 | 35.338 | 64.8 |
+| 13/9, 18/13 | 36.618 | 67.1 |
+
+### Regular temperament properties
+| Subgroup | Comma list | Mapping | Optimal 8ve stretch (¢) | Tuning error |
+|---|---|---|---|---|
+| Absolute (¢) | Relative (%) |
+| 2.3 | [ 35 -22 ⟩ | [ ⟨ 22 35 ] ] | −2.25 | 2.25 | 4.12 |
+| 2.3.5 | 250/243, 2048/2025 | [ ⟨ 22 35 51 ] ] | −0.86 | 2.70 | 4.94 |
+| 2.3.5.7 | 50/49, 64/63, 245/243 | [ ⟨ 22 35 51 62 ] ] | −1.80 | 2.85 | 5.23 |
+| 2.3.5.7.11 | 50/49, 55/54, 64/63, 99/98 | [ ⟨ 22 35 51 62 76 ] ] | −1.11 | 2.90 | 5.33 |
+| 2.3.5.7.11.17 | 50/49, 55/54, 64/63, 85/84, 99/98 | [ ⟨ 22 35 51 62 76 90 ] ] | −1.09 | 2.65 | 4.87 |
+
+### Uniform maps
+| Min. size | Max. size | Wart notation | Map |
+|---|---|---|---|
+| 21.7671 | 21.8244 | 22dee | ⟨ 22 35 51 61 75 81 ] |
+| 21.8244 | 21.9067 | 22d | ⟨ 22 35 51 61 76 81 ] |
+| 21.9067 | 22.0244 | 22 | ⟨ 22 35 51 62 76 81 ] |
+| 22.0244 | 22.1135 | 22f | ⟨ 22 35 51 62 76 82 ] |
+| 22.1135 | 22.1798 | 22ef | ⟨ 22 35 51 62 77 82 ] |
+| 22.1798 | 22.2629 | 22cef | ⟨ 22 35 52 62 77 82 ] |
+
+### Commas
+| Prime limit | Ratio [ note 2 ] | Monzo | Cents | Color name | Name |
+|---|---|---|---|---|---|
+| 3 | (22 digits) | [ 35 -22 ⟩ | 156.98 | Trisawa | 22-comma |
+| 5 | 20480/19683 | [ 12 -9 1 ⟩ | 68.72 | Sayo | Superpyth comma |
+| 5 | 250/243 | [ 1 -5 3 ⟩ | 49.17 | Triyo | Porcupine comma |
+| 5 | 3125/3072 | [ -10 -1 5 ⟩ | 29.61 | Laquinyo | Magic comma |
+| 5 | 2048/2025 | [ 11 -4 -2 ⟩ | 19.55 | Sagugu | Diaschisma |
+| 5 | (14 digits) | [ -21 3 7 ⟩ | 10.06 | Lasepyo | Semicomma |
+| 5 | (20 digits) | [ 32 -7 -9 ⟩ | 9.49 | Sasa-tritrigu | Escapade comma |
+| 5 | (32 digits) | [ -53 10 16 ⟩ | 0.57 | Quadla-quadquadyo | Kwazy comma |
+| 7 | 50/49 | [ 1 0 2 -2 ⟩ | 34.98 | Biruyo | Jubilisma |
+| 7 | 64/63 | [ 6 -2 0 -1 ⟩ | 27.26 | Ru | Septimal comma |
+| 7 | 875/864 | [ -5 -3 3 1 ⟩ | 21.90 | Zotriyo | Keema |
+| 7 | 2430/2401 | [ 1 5 1 -4 ⟩ | 20.79 | Quadru-ayo | Nuwell comma |
+| 7 | 245/243 | [ 0 -5 1 2 ⟩ | 14.19 | Zozoyo | Sensamagic comma |
+| 7 | 1728/1715 | [ 6 3 -1 -3 ⟩ | 13.07 | Triru-agu | Orwellisma |
+| 7 | 225/224 | [ -5 2 2 -1 ⟩ | 7.71 | Ruyoyo | Marvel comma |
+| 7 | 10976/10935 | [ 5 -7 -1 3 ⟩ | 6.48 | Trizo-agu | Hemimage comma |
+| 7 | 6144/6125 | [ 11 1 -3 -2 ⟩ | 5.36 | Saruru-atrigu | Porwell comma |
+| 7 | 65625/65536 | [ -16 1 5 1 ⟩ | 2.35 | Lazoquinyo | Horwell comma |
+| 7 | (12 digits) | [ -6 -8 2 5 ⟩ | 1.12 | Quinzo-ayoyo | Wizma |
+| 11 | 99/98 | [ -1 2 0 -2 1 ⟩ | 17.58 | Loruru | Mothwellsma |
+| 11 | 100/99 | [ 2 -2 2 0 -1 ⟩ | 17.40 | Luyoyo | Ptolemisma |
+| 11 | 121/120 | [ -3 -1 -1 0 2 ⟩ | 14.37 | Lologu | Biyatisma |
+| 11 | 176/175 | [ 4 0 -2 -1 1 ⟩ | 9.86 | Lorugugu | Valinorsma |
+| 11 | 896/891 | [ 7 -4 0 1 -1 ⟩ | 9.69 | Saluzo | Pentacircle comma |
+| 11 | 65536/65219 | [ 16 0 0 -2 -3 ⟩ | 8.39 | Satrilu-aruru | Orgonisma |
+| 11 | 385/384 | [ -7 -1 1 1 1 ⟩ | 4.50 | Lozoyo | Keenanisma |
+| 11 | 540/539 | [ 2 3 1 -2 -1 ⟩ | 3.21 | Lururuyo | Swetisma |
+| 11 | 4000/3993 | [ 5 -1 3 0 -3 ⟩ | 3.03 | Triluyo | Wizardharry comma |
+| 11 | 9801/9800 | [ -3 4 -2 -2 2 ⟩ | 0.18 | Bilorugu | Kalisma |
+| 13 | 65/64 | [ -6 0 1 0 0 1 ⟩ | 26.84 | Thoyo | Wilsorma |
+| 13 | 78/77 | [ 1 1 0 -1 -1 1 ⟩ | 22.34 | Tholuru | Negustma |
+| 13 | 91/90 | [ -1 -2 -1 1 0 1 ⟩ | 19.13 | Thozogu | Superleap comma, biome comma |
+| 13 | 31213/31104 | [ -7 -5 0 4 0 1 ⟩ | 6.06 | Thoquadzo | Praveensma |
+| 31 | 125/124 | [ -2 0 3 0 0 0 0 0 0 0 -1 ⟩ | 13.91 | Thiwutriyo | Twizzler comma |
+
+### Rank-2 temperaments
+| Periods per 8ve | Generator | Temperaments |
+|---|---|---|
+| 1 | 1\22 | Escapade / escaped Chromo Ceratitid |
+| 1 | 3\22 | Porcupine |
+| 1 | 5\22 | Orwell (22) / blair (22) / winston (22f) |
+| 1 | 7\22 | Magic / telepathy |
+| 1 | 9\22 | Superpyth / suprapyth |
+| 2 | 1\22 | Shrutar / hemipaj Comic |
+| 2 | 2\22 | Srutal / pajara / pajarous |
+| 2 | 3\22 | Hedgehog / echidna |
+| 2 | 4\22 | Astrology Antikythera Wizard |
+| 2 | 5\22 | Doublewide / fleetwood |
+| 11 | 1\22 | Undeka Hendecatonic |
+
+### Chords
+| Quality | Color name | Monzo Format | Examples |
+|---|---|---|---|
+| minor | zo | [ a b 0 1 ⟩ | 7/6, 7/4 |
+| fourthward wa | [ a b ⟩ where b < −1 | 32/27, 16/9 |
+| upminor | gu | [ a b −1 ⟩ | 6/5, 9/5 |
+| downmajor | yo | [ a b 1 ⟩ | 5/4, 5/3 |
+| major | fifthward wa | [ a b ⟩ where b > 1 | 9/8, 27/16 |
+| ru | [ a b 0 −1 ⟩ | 9/7, 12/7 |
+
+### Chords
+| Color of the 3rd | JI Chord | Notes as edosteps | Notes of C chord | Written name | Spoken name |
+|---|---|---|---|---|---|
+| zo | 6:7:9 | 0-5-13 | C Eb G | Cm | C minor |
+| gu | 10:12:15 | 0-6-13 | C ^Eb G | C^m | C upminor |
+| yo | 4:5:6 | 0-7-13 | C vE G | Cv | C downmajor or C down |
+| ru | 14:18:21 | 0-8-13 | C E G | C | C major or C |

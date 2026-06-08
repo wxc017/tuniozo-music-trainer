@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import { audioEngine } from "@/lib/audioEngine";
+import { useDroneSynth } from "@/hooks/useDroneSynth";
 import { rootPcToFreq } from "@/lib/latticeEngine";
 import {
   XEN_INTERVALS_BY_LIMIT, XEN_AVAILABLE_LIMITS, XEN_INTERVALS_ALL,
@@ -128,7 +129,8 @@ const ROOT_NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A"
 export default function IntervalBrowser() {
   const [audioReady, setAudioReady] = useState(false);
   const [selectedLimit, setSelectedLimit] = useState<number | null>(null);
-  const [playingKeys, setPlayingKeys] = useState<Set<string>>(new Set());
+  // Per-interval drones use the shared additive synth (same as Interval Spectrum)
+  const { active: playingKeys, toggle: toggleVoice, stopAll: stopAllVoices } = useDroneSynth();
   const [search, setSearch] = useState("");
   const [rootPc, setRootPc] = useState(0);
   // Drone state — mirrors LatticeView pattern
@@ -176,31 +178,15 @@ export default function IntervalBrowser() {
   }
   prevDroneParamsRef.current = { rootPc, droneOctave, droneMode, droneVol };
 
-  // Toggle interval drone — plays just the interval (not root), multiple can be active
-  const toggleInterval = useCallback(async (interval: XenInterval) => {
-    await ensureAudio();
+  // Toggle interval drone — plays just the interval (not root), multiple can be active.
+  // Uses the shared additive synth (same voice as Interval Spectrum).
+  const toggleInterval = useCallback((interval: XenInterval) => {
     const key = `${interval.n}/${interval.d}`;
-    const ratio = interval.n / interval.d;
-    const baseFreq = rootPcToFreq(rootPc);
-    const freq = baseFreq * ratio;
+    const freq = rootPcToFreq(rootPc) * (interval.n / interval.d);
+    toggleVoice(key, freq);
+  }, [rootPc, toggleVoice]);
 
-    setPlayingKeys(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        audioEngine.stopIntervalDroneByKey(key);
-        next.delete(key);
-      } else {
-        audioEngine.startIntervalDrone(key, freq);
-        next.add(key);
-      }
-      return next;
-    });
-  }, [ensureAudio, rootPc]);
-
-  const stopAll = useCallback(() => {
-    audioEngine.stopAllIntervalDrones();
-    setPlayingKeys(new Set());
-  }, []);
+  const stopAll = useCallback(() => { stopAllVoices(); }, [stopAllVoices]);
 
   // Search results (across all limits) — supports note=X queries
   const searchResults = useMemo(() => {

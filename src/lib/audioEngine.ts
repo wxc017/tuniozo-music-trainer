@@ -432,7 +432,10 @@ export class AudioEngine {
   private additivePartials: Float32Array = (() => {
     const N = 33;
     const a = new Float32Array(N);
-    for (let k = 1; k <= 16; k++) a[k] = 1 / k;
+    // Match the Interval Spectrum drone's timbre (stacked sine partials):
+    // H1..H5 = 0.5, 0.15, 0.08, 0.04, 0.02.
+    const amps = [0.5, 0.15, 0.08, 0.04, 0.02];
+    for (let i = 0; i < amps.length; i++) a[i + 1] = amps[i];
     return a;
   })();
   // Reverb send (parallel wet path).  Dry signal flows playLimiter →
