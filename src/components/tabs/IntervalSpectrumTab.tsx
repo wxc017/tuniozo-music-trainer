@@ -510,7 +510,7 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
         <LumatoneVisualizer edos={edos} activeStepsByEdo={activeStepsByEdo} rootPc={rootPc}
           fullscreen onToggleStep={toggleEdoStep} onScaleVoices={setScaleVoicesMuted}
           notationByEdo={notationByEdo} solfegeByEdo={solfegeByEdo} onOpenNotation={onOpenNotation}
-          onSetRoot={setRootPc} mixer={mixerContent} onClose={() => setFullscreen(false)} />
+          mixer={mixerContent} onClose={() => setFullscreen(false)} />
       )}
     </div>
   );
