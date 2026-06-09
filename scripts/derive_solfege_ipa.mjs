@@ -1,0 +1,148 @@
+// ── Derive IPA for the singable syllables of the mined solfège systems ──────
+//
+// src/lib/solfegeSystems.ts holds 40 EDOs × 23 systems of per-step solfège
+// labels mined from the Xenharmonic Wiki, with NO pronunciation data.  This
+// script reads every label, drops the tokens that are interval names rather
+// than singable syllables (M2, P5, d4, "2nds", "Octave", "72edo", …), splits
+// compound/alternate cells ("Ra / Na", "Fu Po Sho", "Fra(Du)") into atomic
+// syllables, and maps each to IPA with a documented, deterministic
+// grapheme→IPA transducer.
+//
+// Output:
+//   src/lib/solfegeSyllableIpa.ts   — `SOLFEGE_SYLLABLE_IPA: Record<string,string>`
+//   scripts/solfege_ipa_report.md   — included (with confidence) + skipped
+//
+// This is DATA ONLY — no audio is downloaded and nothing is wired to speak.
+// Once the IPA looks right, the same download_solfege_mp3.mjs pipeline can
+// render these to mp3s on demand.
+//
+//   node scripts/derive_solfege_ipa.mjs
+//
+// ── Convention ──────────────────────────────────────────────────────────────
+// Sung-solfège vowels (matching the app's Heathwaite map):
+//   a→ɑː  e→ɛ  i→iː  o→oʊ  u→uː ; digraphs aa→ɑː aw→ɔː oo→uː ee→iː
+//   ai→aɪ ay→eɪ ah→ɑː eh→ɛ ih→ɪ uh→ʌ oh→oʊ ; y→aɪ
+// Onsets: sh→ʃ th→θ ch→tʃ tsch→tʃ sch→ʃ fr→fr fl→fl j→dʒ x→ks z→z (plain
+//   consonants map to themselves).  Trailing coda consonants/suffixes append
+//   (-k→k, -p→p, -s→s, -li→li, -mi→mi, -zi→zi).
+// Confidence is "low" when a syllable needs an ambiguous grapheme (sc, x, c,
+// y, j, sch/tsch) — i.e. Kite Giedraitis's / Phylingual's idiosyncratic sets.
+
+import { readFile, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const APP = resolve(__dirname, "..");
+
+// Tokens that are interval/degree names, not singable syllables → skipped.
+const SKIP_EXACT = new Set([
+  "major", "minor", "Neutral", "Octave", "Fourth", "Fifth", "Semifourth",
+  "Semitwelfth", "unisons", "tritones", "Bonus edo: 72edo",
+  "or", "and",                               // English connectors inside cells
+]);
+const isIntervalCode = (t) =>
+  /^(P|M|m|A+|d+)\d+$/.test(t) ||           // P4 M3 m2 A1 AA4 AAA4 d5 dd8 ddd5
+  /^\d/.test(t) ||                           // 2nds 3rds 8ves 72edo
+  /edo$/i.test(t);
+const isSkip = (t) => SKIP_EXACT.has(t) || isIntervalCode(t) || /^[A-G]$/.test(t);
+
+// ── Grapheme→IPA transducer ─────────────────────────────────────────────────
+// Pure left-to-right, longest-match transliteration: every grapheme maps to
+// IPA whether it sits in the onset, nucleus, or coda, so consonant clusters
+// (dr, tw, fl) and multi-syllable tokens (Chyli, Schuzi) fall out naturally.
+// Vowel+h digraphs (ah/eh/ih/uh/oh) carry the "silent h" spellings (Dih→/dɪ/,
+// Fuh→/fʌ/); they're listed before the single vowels and the consonant h.
+const GRAPHEMES = [        // longest first
+  ["tsch", "tʃ"], ["sch", "ʃ"], ["sh", "ʃ"], ["th", "θ"], ["ch", "tʃ"], ["ph", "f"],
+  ["aa", "ɑː"], ["aw", "ɔː"], ["oo", "uː"], ["ee", "iː"], ["ai", "aɪ"], ["ay", "eɪ"],
+  ["ah", "ɑː"], ["eh", "ɛ"], ["ih", "ɪ"], ["uh", "ʌ"], ["oh", "oʊ"],
+  ["a", "ɑː"], ["e", "ɛ"], ["i", "iː"], ["o", "oʊ"], ["u", "uː"], ["y", "aɪ"],
+  ["b", "b"], ["c", "k"], ["d", "d"], ["f", "f"], ["g", "ɡ"], ["h", "h"], ["j", "dʒ"],
+  ["k", "k"], ["l", "l"], ["m", "m"], ["n", "n"], ["p", "p"], ["r", "r"], ["s", "s"],
+  ["t", "t"], ["v", "v"], ["w", "w"], ["x", "ks"], ["z", "z"],
+];
+const AMBIGUOUS = /sc|x|c(?!h)|y|j|sch|tsch/i;   // markers of a low-confidence guess
+
+function transduce(token) {
+  let s = token.toLowerCase(), ipa = "", guard = 0;
+  while (s.length && guard++ < 24) {
+    const g = GRAPHEMES.find(([gr]) => s.startsWith(gr));
+    if (!g) { s = s.slice(1); continue; }    // unknown char — skip it
+    ipa += g[1]; s = s.slice(g[0].length);
+  }
+  return ipa;
+}
+
+async function main() {
+  const src = await readFile(resolve(APP, "src/lib/solfegeSystems.ts"), "utf8");
+
+  // raw cell values
+  const cells = new Set();
+  for (const m of src.matchAll(/"\d+":\s*"([^"]+)"/g)) cells.add(m[1]);
+
+  // decompose into atomic singable syllables
+  const atoms = new Set();
+  const skipped = new Set();
+  for (const cell of cells) {
+    for (const raw of cell.split(/[\s()/]+/)) {
+      const t = raw.trim();
+      if (!t) continue;
+      if (isSkip(t)) { skipped.add(t); continue; }
+      atoms.add(t);
+    }
+  }
+
+  const ipaMap = {};
+  const low = [];
+  for (const a of [...atoms].sort((x, y) => x.localeCompare(y))) {
+    const ipa = transduce(a);
+    if (!ipa) { skipped.add(a); continue; }
+    ipaMap[a] = ipa;
+    if (AMBIGUOUS.test(a)) low.push(`${a} → /${ipa}/`);
+  }
+
+  // ── write the TS module ──
+  const entries = Object.keys(ipaMap).sort((a, b) => a.localeCompare(b))
+    .map(k => `  ${JSON.stringify(k)}: ${JSON.stringify(ipaMap[k])},`).join("\n");
+  const ts =
+`// AUTO-GENERATED by scripts/derive_solfege_ipa.mjs — do not edit by hand.
+// IPA for the singable syllables of the mined per-EDO solfège systems in
+// solfegeSystems.ts.  Interval-label tokens (M2, P5, "2nds", "Octave", …) are
+// intentionally excluded.  Keyed by the exact syllable token as it appears in
+// SOLFEGE_SYSTEMS.  Generated with the sung-solfège convention documented in
+// the deriver script.  ${Object.keys(ipaMap).length} syllables.
+export const SOLFEGE_SYLLABLE_IPA: Record<string, string> = {
+${entries}
+};
+`;
+  await writeFile(resolve(APP, "src/lib/solfegeSyllableIpa.ts"), ts);
+
+  // ── write the report ──
+  const report =
+`# Solfège-syllable IPA — derivation report
+
+Generated by \`scripts/derive_solfege_ipa.mjs\` from \`src/lib/solfegeSystems.ts\`.
+
+- raw cells: **${cells.size}**
+- singable syllables mapped: **${Object.keys(ipaMap).length}**
+- skipped (interval labels / non-syllables): **${skipped.size}**
+- low-confidence (ambiguous graphemes — please eyeball): **${low.length}**
+
+## Low-confidence — review these
+${low.length ? low.map(l => `- ${l}`).join("\n") : "_none_"}
+
+## Skipped tokens
+${[...skipped].sort((a,b)=>a.localeCompare(b)).map(s => `\`${s}\``).join(" ")}
+
+## All mapped syllables
+${Object.keys(ipaMap).sort((a,b)=>a.localeCompare(b)).map(k => `- ${k} → /${ipaMap[k]}/`).join("\n")}
+`;
+  await writeFile(resolve(__dirname, "solfege_ipa_report.md"), report);
+
+  console.log(`cells=${cells.size}  mapped=${Object.keys(ipaMap).length}  skipped=${skipped.size}  low-confidence=${low.length}`);
+  console.log(`→ src/lib/solfegeSyllableIpa.ts`);
+  console.log(`→ scripts/solfege_ipa_report.md`);
+}
+
+main().catch(e => { console.error(e); process.exit(1); });
