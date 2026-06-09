@@ -297,8 +297,12 @@ export function getScalesForEdo(edo: number | null, exhaustive = false): NamedSc
     if (steps.length !== 7) return;
     // Name from the ACTUAL rendered sizes: the exact-matched 3rd sets the base
     // size; the 6th/7th get a suffix only when their real size differs from it.
-    const six6 = actualSize(d[5] as number), sev7 = actualSize(d[6] as number);
+    const two2 = actualSize(d[1] as number), six6 = actualSize(d[5] as number), sev7 = actualSize(d[6] as number);
     const parts = [["Small", "", "Large"][size], modeWord ?? m.name].filter(Boolean);
+    // Specify any coloured degree whose ACTUAL size differs from the base size
+    // (the EDO couldn't render it at the base size).  The 3rd is exact-matched,
+    // so it always defines the base and never needs a suffix.
+    if (two2 !== size) parts.push(SZL[two2] + m.two + "2");
     if (six6 !== size) parts.push(SZL[six6] + m.six + "6");
     if (sev7 !== size) parts.push(SZL[sev7] + m.sev + "7");
     add({ name: parts.join(" "), steps, group: grp(steps, m.name) });
