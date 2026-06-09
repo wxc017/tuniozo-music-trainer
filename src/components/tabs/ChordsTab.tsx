@@ -161,7 +161,7 @@ interface Props extends SharedHighlightProps {
   lowestPitch: number;
   highestPitch: number;
   edo: number;
-  onHighlight: (pcs: number[]) => void;
+  onHighlight: (pcs: number[], holdMs?: number) => void;
   responseMode: string;
   onResult: (text: string) => void;
   onPlay: (optionKey: string, label: string) => void;
@@ -2804,7 +2804,7 @@ export default function ChordsTab({
                   setLitCardIdx(chord.index);
                   await ensureAudio();
                   audioEngine.playMultiVoice([{ frames: [chord.notes], noteDuration: 0.9, gain: playVol * harmonyVol * CHORD_BOOST }], edo, 0, 1);
-                  onHighlight(chord.notes);   // play this chord and keep it lit
+                  onHighlight(chord.notes, 0);   // hold lit indefinitely (until another highlight replaces it)
                 }}
                 className={`rounded-lg border transition-colors p-3 cursor-pointer ${
                   (chord.index - 1) === currentChordIdx || chord.index === litCardIdx
