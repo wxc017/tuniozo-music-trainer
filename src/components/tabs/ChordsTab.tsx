@@ -2404,7 +2404,6 @@ export default function ChordsTab({
           Clicking a card highlights that chord's voicing on the
           visualizer. */}
       {targetChordInfo && (() => {
-        const heathwaiteTable = getHeathwaiteSolfege(edo);
         // Pythagorean fifth size per EDO — drives the chain-of-fifths
         // degree-name algorithm below.  Per direct user direction
         // (2026-05-13) "for microtonal degrees use pythagoreon naming
@@ -2546,7 +2545,9 @@ export default function ChordsTab({
                   {/* Voicing notes — one cell per pitch (the actual
                       voicing).  Degree (top, +<sup>N</sup> if the
                       chord tone is rotated up an octave by the
-                      inversion) + Andrew Heathwaite solfege (bottom).
+                      inversion) + Universal (microtonal) solfège
+                      (bottom) — defined for every EDO, so a real
+                      syllable always shows (no "—" placeholder).
                       The +N is the same regardless of which row a PC
                       appears in (see ctOctavesForChord). */}
                   {(() => {
@@ -2555,7 +2556,7 @@ export default function ChordsTab({
                     <div className="flex gap-1">
                       {c.pitches.map((pitch, j) => {
                         const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
-                        const solfege = heathwaiteTable ? heathwaiteTable[pcFromTonic] ?? "—" : "—";
+                        const solfege = solfegeFor((pcFromTonic * 1200) / edo).solfege;
                         const degree = notationLabel(edo, notationSystem, pcFromTonic);
                         const oct = ctOctMap.get(pcFromTonic) ?? 0;
                         return (
