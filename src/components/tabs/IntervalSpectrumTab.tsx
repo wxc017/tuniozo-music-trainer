@@ -223,6 +223,50 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
   const PANELS: ReadonlyArray<["families" | "rings" | "database", string]> =
     [["families", "Families"], ["rings", "Rings"], ["database", "Interval Database"]];
 
+  // Per-note volume mixer content — shared by the floating panel (when the
+  // Lumatone overlay is closed) and a column inside the L overlay itself, so
+  // the user can adjust voice levels without leaving fullscreen.
+  const mixerContent = voiceGroups.length === 0 ? null : (
+    <>
+      {chordSym && (
+        <div className="mb-1.5 px-1.5 py-1 rounded bg-[#0d0d14] border border-[#2a2a3a] text-[#cfe6ff] text-sm font-bold tracking-wide text-center">
+          {chordSym}
+        </div>
+      )}
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10px] font-semibold text-[#aaa] uppercase tracking-wider">Volume</span>
+        <span className="text-[9px] text-[#666]">{voiceGroups.length}</span>
+      </div>
+      <div className="text-[8px] text-[#666] mb-1.5">1–9 mute · ⌫+# remove · ⌫ clear</div>
+      <div className="flex flex-col gap-1.5">
+        {voiceGroups.map((g, i) => {
+          const k0 = g.keys[0];
+          const v = vols[k0] ?? gainByKey.current.get(k0) ?? DEFAULT_VOICE_GAIN;
+          const isMuted = k0 in muted;
+          const label = g.keys.map(labelForKey).join(" ");
+          return (
+            <div key={k0} className="flex items-center gap-1.5">
+              {i < 9 && (
+                <button onClick={() => toggleMuteGroup(g.keys)}
+                  title={isMuted ? "unmute" : "mute"}
+                  className={`shrink-0 w-4 h-4 rounded text-[9px] leading-none border ${isMuted
+                    ? "bg-[#3a2020] border-[#5a3030] text-[#cc8080]"
+                    : "bg-[#1a1a22] border-[#2a2a3a] text-[#8888c0]"}`}>{i + 1}</button>
+              )}
+              <span className={`text-[10px] w-14 shrink-0 truncate ${isMuted ? "text-[#666] line-through" : "text-[#bbb]"}`}
+                title={label}>{label}</span>
+              <input type="range" min={0} max={0.25} step={0.005} value={v}
+                onChange={e => { setGroupVol(g.keys, parseFloat(e.target.value)); if (isMuted) unmuteState(g.keys); }}
+                className="flex-1 min-w-0" style={{ accentColor: isMuted ? "#664" : "#7173e6" }} />
+              <button onClick={() => removeGroup(g.keys)} title="remove"
+                className="shrink-0 text-[#666] hover:text-[#cc6666] text-xs leading-none">✕</button>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-[#e0a040]">Interval Spectrum</h2>
@@ -454,46 +498,11 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
         </div>
       </div>
 
-      {/* Per-note volume mixer — floats while voices sound; same-pitch voices
-          merge into one row, ordered low→high. */}
-      {voiceGroups.length > 0 && (
+      {/* Per-note volume mixer — floats while voices sound (when the L overlay
+          is closed; inside the overlay it renders as its own column). */}
+      {!fullscreen && mixerContent && (
         <div className="fixed top-1/2 right-6 -translate-y-1/2 z-30 w-52 max-h-[70vh] overflow-auto bg-[#111] border border-[#2a2a2a] rounded-lg shadow-xl p-2">
-          {chordSym && (
-            <div className="mb-1.5 px-1.5 py-1 rounded bg-[#0d0d14] border border-[#2a2a3a] text-[#cfe6ff] text-sm font-bold tracking-wide text-center">
-              {chordSym}
-            </div>
-          )}
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-semibold text-[#aaa] uppercase tracking-wider">Volume</span>
-            <span className="text-[9px] text-[#666]">{voiceGroups.length}</span>
-          </div>
-          <div className="text-[8px] text-[#666] mb-1.5">1–9 mute · ⌫+# remove · ⌫ clear</div>
-          <div className="flex flex-col gap-1.5">
-            {voiceGroups.map((g, i) => {
-              const k0 = g.keys[0];
-              const v = vols[k0] ?? gainByKey.current.get(k0) ?? DEFAULT_VOICE_GAIN;
-              const isMuted = k0 in muted;
-              const label = g.keys.map(labelForKey).join(" ");
-              return (
-                <div key={k0} className="flex items-center gap-1.5">
-                  {i < 9 && (
-                    <button onClick={() => toggleMuteGroup(g.keys)}
-                      title={isMuted ? "unmute" : "mute"}
-                      className={`shrink-0 w-4 h-4 rounded text-[9px] leading-none border ${isMuted
-                        ? "bg-[#3a2020] border-[#5a3030] text-[#cc8080]"
-                        : "bg-[#1a1a22] border-[#2a2a3a] text-[#8888c0]"}`}>{i + 1}</button>
-                  )}
-                  <span className={`text-[10px] w-14 shrink-0 truncate ${isMuted ? "text-[#666] line-through" : "text-[#bbb]"}`}
-                    title={label}>{label}</span>
-                  <input type="range" min={0} max={0.25} step={0.005} value={v}
-                    onChange={e => { setGroupVol(g.keys, parseFloat(e.target.value)); if (isMuted) unmuteState(g.keys); }}
-                    className="flex-1 min-w-0" style={{ accentColor: isMuted ? "#664" : "#7173e6" }} />
-                  <button onClick={() => removeGroup(g.keys)} title="remove"
-                    className="shrink-0 text-[#666] hover:text-[#cc6666] text-xs leading-none">✕</button>
-                </div>
-              );
-            })}
-          </div>
+          {mixerContent}
         </div>
       )}
 
@@ -501,7 +510,7 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
         <LumatoneVisualizer edos={edos} activeStepsByEdo={activeStepsByEdo} rootPc={rootPc}
           fullscreen onToggleStep={toggleEdoStep} onScaleVoices={setScaleVoicesMuted}
           notationByEdo={notationByEdo} solfegeByEdo={solfegeByEdo} onOpenNotation={onOpenNotation}
-          onSetRoot={setRootPc} onClose={() => setFullscreen(false)} />
+          onSetRoot={setRootPc} mixer={mixerContent} onClose={() => setFullscreen(false)} />
       )}
     </div>
   );

@@ -4,7 +4,7 @@
 // also have a layout file), and only lights nodes belonging to the EDO whose
 // keyboard is shown — i.e. the 12-EDO board reflects 12-EDO nodes only.
 
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import LumatoneKeyboard from "@/components/LumatoneKeyboard";
 import { computeLayout, type LayoutResult, type LumatoneData, type ComputedKey } from "@/lib/lumatoneLayout";
 import { getLayoutFile } from "@/lib/edoData";
@@ -53,7 +53,7 @@ const AVAILABLE_LAYOUTS = [
 const LATTICE_EDOS = [12, 31, 41];
 const EMPTY_PITCHES: Set<number> = new Set();
 
-export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, fullscreen, onToggleStep, onScaleVoices, onClose, notationByEdo = {}, solfegeByEdo = {}, onOpenNotation, onSetRoot }: {
+export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, fullscreen, onToggleStep, onScaleVoices, onClose, notationByEdo = {}, solfegeByEdo = {}, onOpenNotation, onSetRoot, mixer }: {
   edos: number[];
   /** edo -> active step numbers (0..edo) currently sounding for that EDO */
   activeStepsByEdo: Record<number, number[]>;
@@ -63,6 +63,8 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
   onToggleStep: (edo: number, step: number) => void;
   /** Ctrl/⌘-click a key → set it as the key's root (12-EDO pitch class). */
   onSetRoot?: (pc: number) => void;
+  /** Per-voice volume mixer, rendered as a column inside the overlay. */
+  mixer?: ReactNode;
   /** picking a scale: turn its steps on as voices but muted (replaces edo's voices) */
   onScaleVoices?: (edo: number, steps: number[]) => void;
   /** chosen notation / solfège system per EDO (from the "n" picker) */
@@ -296,6 +298,11 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
           <div className="flex-1 min-h-0 flex flex-col gap-3">
             <div className={`min-h-0 flex gap-3 ${showLattice && latticeOk ? "h-[44%]" : "flex-1"}`}>
               {board}
+              {mixer && (
+                <div className="w-52 shrink-0 min-h-0 overflow-auto border-l border-[#1e1e1e] pl-3">
+                  {mixer}
+                </div>
+              )}
               <div className="w-72 shrink-0 min-h-0 overflow-auto border-l border-[#1e1e1e] pl-3">
                 <SolfegePanel edo={edo} scale={scale} setScale={setScale} onPickScale={onPickScale} />
               </div>
