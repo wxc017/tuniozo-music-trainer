@@ -2502,7 +2502,10 @@ export default function ChordsTab({
               // Sized-interval chord symbol from the actual pitches (our
               // notation): position numeral carrying the root's sized quality
               // vs the tonic + stacked sized codes.  Correct in any EDO.
-              const rootCT = ((((c.chordRootPc - tonicPc) % edo) + edo) % edo) * 1200 / edo;
+              // chordRootPc is already tonic-relative (see Show Answer note) —
+              // its value IS the root's interval from the tonic, so don't
+              // subtract tonicPc (that broke labels in any key but C).
+              const rootCT = (((c.chordRootPc % edo) + edo) % edo) * 1200 / edo;
               const sizedLabel = useSchulter
                 ? chordSymbol([rootCT, ...c.chordToneOffsets.map(o => rootCT + (o * 1200) / edo)])
                 : romanWithSystem(c.roman, c.chordToneOffsets, edo, notationSystem);
@@ -2772,7 +2775,12 @@ export default function ChordsTab({
               const bassNum = bassIdx >= 0 && bassIdx < CHORD_TONE_NUM_LOCAL.length
                 ? CHORD_TONE_NUM_LOCAL[bassIdx] : null;
               // Sized-interval chord symbol from the played pitches (our notation).
-              const rootCAns = ((((chord.chordRootPc - tonicForLabel) % edo) + edo) % edo) * 1200 / edo;
+              // chordRootPc is ALREADY the chord root's interval from the tonic
+              // (derived from the tonic-relative applied shape), so it is the
+              // root's cents directly — do NOT subtract the absolute tonic pc
+              // again (that shifted every degree by −tonicPc, so labels were
+              // only correct in C; e.g. the tonic chord read as ₗVII in D).
+              const rootCAns = (((chord.chordRootPc % edo) + edo) % edo) * 1200 / edo;
               const sizedLabelAns = useSchulter
                 ? chordSymbol([rootCAns, ...chordToneOffsets.map(o => rootCAns + (o * 1200) / edo)])
                 : romanWithSystem(chord.numeral, chordToneOffsets, edo, notationSystem);
