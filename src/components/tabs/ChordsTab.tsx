@@ -2556,13 +2556,25 @@ export default function ChordsTab({
                     <div className="flex gap-1">
                       {c.pitches.map((pitch, j) => {
                         const pcFromTonic = ((pitch - tonicPc) % edo + edo) % edo;
-                        const solfege = solfegeFor((pcFromTonic * 1200) / edo).solfege;
+                        const cell = solfegeFor((pcFromTonic * 1200) / edo);
                         const degree = notationLabel(edo, notationSystem, pcFromTonic);
                         const oct = ctOctMap.get(pcFromTonic) ?? 0;
                         return (
                           <div key={j} className="flex flex-col items-center flex-1 min-w-0 rounded border bg-[#1a1a2a] border-[#2a2a3a] px-1 py-0.5">
                             <span className="text-[10px] font-mono font-bold leading-tight text-[#9999ee]">{degree}{renderOctSup(oct)}</span>
-                            <span className="text-[9px] leading-tight text-[#aaa]">{solfege}</span>
+                            {/* Tap the syllable to hear it sung (Polly mp3 →
+                                piper/Web-Speech fallback).  role=button span,
+                                not a real <button>, since the whole card is
+                                already a <button>; stopPropagation keeps the
+                                card's highlight-pitches click from firing. */}
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onMouseDown={e => e.stopPropagation()}
+                              onClick={e => { e.stopPropagation(); e.preventDefault(); speakSolfege(cell); }}
+                              title={`Hear "${cell.solfege}" /${cell.ipa}/`}
+                              className="text-[9px] leading-tight text-[#cfc0e0] cursor-pointer hover:underline"
+                            >{cell.solfege}</span>
                           </div>
                         );
                       })}
