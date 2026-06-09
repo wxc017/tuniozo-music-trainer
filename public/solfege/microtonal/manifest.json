@@ -1,408 +1,234 @@
 [
   {
     "ipa": "a",
-    "file": "a.mp3",
-    "labels": [
-      "A"
-    ]
+    "file": "a.mp3"
   },
   {
     "ipa": "ɒ",
-    "file": "%C9%92.mp3",
-    "labels": [
-      "O"
-    ]
+    "file": "-0252.mp3"
   },
   {
     "ipa": "di",
-    "file": "di.mp3",
-    "labels": [
-      "Dee"
-    ]
+    "file": "di.mp3"
   },
   {
     "ipa": "fɛ",
-    "file": "f%C9%9B.mp3",
-    "labels": [
-      "Fe"
-    ]
+    "file": "f-025b.mp3"
   },
   {
     "ipa": "fɪ",
-    "file": "f%C9%AA.mp3",
-    "labels": [
-      "Fi"
-    ]
+    "file": "f-026a.mp3"
   },
   {
     "ipa": "fɪl",
-    "file": "f%C9%AAl.mp3",
-    "labels": [
-      "Fil"
-    ]
+    "file": "f-026al.mp3"
   },
   {
     "ipa": "fɪs",
-    "file": "f%C9%AAs.mp3",
-    "labels": [
-      "Fis"
-    ]
+    "file": "f-026as.mp3"
   },
   {
     "ipa": "fɔ",
-    "file": "f%C9%94.mp3",
-    "labels": [
-      "Fo"
-    ]
+    "file": "f-0254.mp3"
   },
   {
     "ipa": "fɔl",
-    "file": "f%C9%94l.mp3",
-    "labels": [
-      "Fol"
-    ]
+    "file": "f-0254l.mp3"
   },
   {
     "ipa": "fɔs",
-    "file": "f%C9%94s.mp3",
-    "labels": [
-      "Fos"
-    ]
+    "file": "f-0254s.mp3"
   },
   {
     "ipa": "fu",
-    "file": "fu.mp3",
-    "labels": [
-      "Foo"
-    ]
+    "file": "fu.mp3"
   },
   {
     "ipa": "fʌ",
-    "file": "f%CA%8C.mp3",
-    "labels": [
-      "Fu"
-    ]
+    "file": "f-028c.mp3"
   },
   {
     "ipa": "ha",
-    "file": "ha.mp3",
-    "labels": [
-      "Ha"
-    ]
+    "file": "ha.mp3"
   },
   {
     "ipa": "hɒ",
-    "file": "h%C9%92.mp3",
-    "labels": [
-      "Ho"
-    ]
+    "file": "h-0252.mp3"
   },
   {
     "ipa": "i",
-    "file": "i.mp3",
-    "labels": [
-      "Ee"
-    ]
+    "file": "i.mp3"
   },
   {
     "ipa": "kaɪ",
-    "file": "ka%C9%AA.mp3",
-    "labels": [
-      "Kai"
-    ]
+    "file": "ka-026a.mp3"
   },
   {
     "ipa": "kaɪl",
-    "file": "ka%C9%AAl.mp3",
-    "labels": [
-      "Kail"
-    ]
+    "file": "ka-026al.mp3"
   },
   {
     "ipa": "kaɪs",
-    "file": "ka%C9%AAs.mp3",
-    "labels": [
-      "Kais"
-    ]
+    "file": "ka-026as.mp3"
   },
   {
     "ipa": "kɒ",
-    "file": "k%C9%92.mp3",
-    "labels": [
-      "Co"
-    ]
+    "file": "k-0252.mp3"
   },
   {
     "ipa": "keɪ",
-    "file": "ke%C9%AA.mp3",
-    "labels": [
-      "Kay"
-    ]
+    "file": "ke-026a.mp3"
   },
   {
     "ipa": "keɪl",
-    "file": "ke%C9%AAl.mp3",
-    "labels": [
-      "Kayl"
-    ]
+    "file": "ke-026al.mp3"
   },
   {
     "ipa": "keɪs",
-    "file": "ke%C9%AAs.mp3",
-    "labels": [
-      "Kays"
-    ]
+    "file": "ke-026as.mp3"
   },
   {
     "ipa": "kɛ",
-    "file": "k%C9%9B.mp3",
-    "labels": [
-      "Ke"
-    ]
+    "file": "k-025b.mp3"
   },
   {
     "ipa": "ku",
-    "file": "ku.mp3",
-    "labels": [
-      "Koo"
-    ]
+    "file": "ku.mp3"
   },
   {
     "ipa": "kul",
-    "file": "kul.mp3",
-    "labels": [
-      "Kool"
-    ]
+    "file": "kul.mp3"
   },
   {
     "ipa": "kus",
-    "file": "kus.mp3",
-    "labels": [
-      "Koos"
-    ]
+    "file": "kus.mp3"
   },
   {
     "ipa": "saɪ",
-    "file": "sa%C9%AA.mp3",
-    "labels": [
-      "Sai"
-    ]
+    "file": "sa-026a.mp3"
   },
   {
     "ipa": "saɪl",
-    "file": "sa%C9%AAl.mp3",
-    "labels": [
-      "Sail"
-    ]
+    "file": "sa-026al.mp3"
   },
   {
     "ipa": "saɪs",
-    "file": "sa%C9%AAs.mp3",
-    "labels": [
-      "Sais"
-    ]
+    "file": "sa-026as.mp3"
   },
   {
     "ipa": "seɪ",
-    "file": "se%C9%AA.mp3",
-    "labels": [
-      "Say"
-    ]
+    "file": "se-026a.mp3"
   },
   {
     "ipa": "seɪl",
-    "file": "se%C9%AAl.mp3",
-    "labels": [
-      "Sayl"
-    ]
+    "file": "se-026al.mp3"
   },
   {
     "ipa": "seɪs",
-    "file": "se%C9%AAs.mp3",
-    "labels": [
-      "Says"
-    ]
+    "file": "se-026as.mp3"
   },
   {
     "ipa": "su",
-    "file": "su.mp3",
-    "labels": [
-      "Soo"
-    ]
+    "file": "su.mp3"
   },
   {
     "ipa": "sul",
-    "file": "sul.mp3",
-    "labels": [
-      "Sool"
-    ]
+    "file": "sul.mp3"
   },
   {
     "ipa": "sus",
-    "file": "sus.mp3",
-    "labels": [
-      "Soos"
-    ]
+    "file": "sus.mp3"
   },
   {
     "ipa": "tɛ",
-    "file": "t%C9%9B.mp3",
-    "labels": [
-      "Te"
-    ]
+    "file": "t-025b.mp3"
   },
   {
     "ipa": "traɪ",
-    "file": "tra%C9%AA.mp3",
-    "labels": [
-      "Trai"
-    ]
+    "file": "tra-026a.mp3"
   },
   {
     "ipa": "traɪl",
-    "file": "tra%C9%AAl.mp3",
-    "labels": [
-      "Trail"
-    ]
+    "file": "tra-026al.mp3"
   },
   {
     "ipa": "traɪs",
-    "file": "tra%C9%AAs.mp3",
-    "labels": [
-      "Trais"
-    ]
+    "file": "tra-026as.mp3"
   },
   {
     "ipa": "twɛ",
-    "file": "tw%C9%9B.mp3",
-    "labels": [
-      "Twe"
-    ]
+    "file": "tw-025b.mp3"
   },
   {
     "ipa": "vaɪ",
-    "file": "va%C9%AA.mp3",
-    "labels": [
-      "Vai"
-    ]
+    "file": "va-026a.mp3"
   },
   {
     "ipa": "vaɪl",
-    "file": "va%C9%AAl.mp3",
-    "labels": [
-      "Vail"
-    ]
+    "file": "va-026al.mp3"
   },
   {
     "ipa": "vaɪs",
-    "file": "va%C9%AAs.mp3",
-    "labels": [
-      "Vais"
-    ]
+    "file": "va-026as.mp3"
   },
   {
     "ipa": "veɪ",
-    "file": "ve%C9%AA.mp3",
-    "labels": [
-      "Vay"
-    ]
+    "file": "ve-026a.mp3"
   },
   {
     "ipa": "veɪl",
-    "file": "ve%C9%AAl.mp3",
-    "labels": [
-      "Vayl"
-    ]
+    "file": "ve-026al.mp3"
   },
   {
     "ipa": "veɪs",
-    "file": "ve%C9%AAs.mp3",
-    "labels": [
-      "Vays"
-    ]
+    "file": "ve-026as.mp3"
   },
   {
     "ipa": "vu",
-    "file": "vu.mp3",
-    "labels": [
-      "Voo"
-    ]
+    "file": "vu.mp3"
   },
   {
     "ipa": "vul",
-    "file": "vul.mp3",
-    "labels": [
-      "Vool"
-    ]
+    "file": "vul.mp3"
   },
   {
     "ipa": "vus",
-    "file": "vus.mp3",
-    "labels": [
-      "Voos"
-    ]
+    "file": "vus.mp3"
   },
   {
     "ipa": "θaɪ",
-    "file": "%CE%B8a%C9%AA.mp3",
-    "labels": [
-      "Thai"
-    ]
+    "file": "-03b8a-026a.mp3"
   },
   {
     "ipa": "θaɪl",
-    "file": "%CE%B8a%C9%AAl.mp3",
-    "labels": [
-      "Thail"
-    ]
+    "file": "-03b8a-026al.mp3"
   },
   {
     "ipa": "θaɪs",
-    "file": "%CE%B8a%C9%AAs.mp3",
-    "labels": [
-      "Thais"
-    ]
+    "file": "-03b8a-026as.mp3"
   },
   {
     "ipa": "θeɪ",
-    "file": "%CE%B8e%C9%AA.mp3",
-    "labels": [
-      "Thay"
-    ]
+    "file": "-03b8e-026a.mp3"
   },
   {
     "ipa": "θeɪl",
-    "file": "%CE%B8e%C9%AAl.mp3",
-    "labels": [
-      "Thayl"
-    ]
+    "file": "-03b8e-026al.mp3"
   },
   {
     "ipa": "θeɪs",
-    "file": "%CE%B8e%C9%AAs.mp3",
-    "labels": [
-      "Thays"
-    ]
+    "file": "-03b8e-026as.mp3"
   },
   {
     "ipa": "θu",
-    "file": "%CE%B8u.mp3",
-    "labels": [
-      "Thoo"
-    ]
+    "file": "-03b8u.mp3"
   },
   {
     "ipa": "θul",
-    "file": "%CE%B8ul.mp3",
-    "labels": [
-      "Thool"
-    ]
+    "file": "-03b8ul.mp3"
   },
   {
     "ipa": "θus",
-    "file": "%CE%B8us.mp3",
-    "labels": [
-      "Thoos"
-    ]
+    "file": "-03b8us.mp3"
   }
 ]

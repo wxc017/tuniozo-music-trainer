@@ -161,8 +161,12 @@ export interface PiperSpeakOptions {
 // the user hears the exact recorded pronunciation (ipa-reader.com's voice),
 // falling back to piper → Web Speech only when no mp3 is present.
 const LOCAL_MP3_BASE = (import.meta.env.BASE_URL ?? "/") + "solfege/";
+// Pure-ASCII, percent-free filename slug — see scripts/download_solfege_mp3.mjs.
+// Must stay identical to the script's ipaSlug() (and solfegeGamut.ts's).
+const ipaSlug = (ipa: string) =>
+  Array.from(ipa).map(c => /[A-Za-z0-9]/.test(c) ? c : "-" + c.codePointAt(0)!.toString(16).padStart(4, "0")).join("");
 const localMp3Url = (system: string, ipa: string) =>
-  `${LOCAL_MP3_BASE}${system}/${encodeURIComponent(ipa)}.mp3`;
+  `${LOCAL_MP3_BASE}${system}/${ipaSlug(ipa)}.mp3`;
 // `${system}:${ipa}` -> known-present.  Avoids re-probing missing files.
 const localMp3Status = new Map<string, boolean>();
 

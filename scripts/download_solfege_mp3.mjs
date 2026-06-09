@@ -46,7 +46,14 @@ const REGION = process.env.AWS_REGION || "us-west-2";
 const VOICE = process.env.VOICE || "Salli";
 const FORCE = !!process.env.FORCE;
 
-const fileFor = (ipa) => encodeURIComponent(ipa) + ".mp3";
+// Filename slug: pure-ASCII, percent-free, so it survives a static server
+// URL-decoding the request path (encodeURIComponent's "%CA%8A" would decode
+// back to a unicode char and miss the file).  Non-alphanumerics → "-<hex>"
+// (zero-padded to 4) — deterministic and injective.  MUST match ipaSlug() in
+// src/lib/solfegeGamut.ts and src/lib/piperSpeech.ts.
+const ipaSlug = (ipa) =>
+  Array.from(ipa).map(c => /[A-Za-z0-9]/.test(c) ? c : "-" + c.codePointAt(0).toString(16).padStart(4, "0")).join("");
+const fileFor = (ipa) => ipaSlug(ipa) + ".mp3";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const exists = (p) => access(p).then(() => true).catch(() => false);
 const sha256hex = (d) => createHash("sha256").update(d).digest("hex");

@@ -126,7 +126,11 @@ function speechFallback(text: string): void {
 // public/solfege/microtonal/<encodeURIComponent(ipa)>.mp3, keyed by IPA.
 // These are checked FIRST — they're exact and need no network/Polly.
 const LOCAL_MP3_BASE = (import.meta.env.BASE_URL ?? "/") + "solfege/microtonal/";
-const localMp3Url = (ipa: string) => LOCAL_MP3_BASE + encodeURIComponent(ipa) + ".mp3";
+// Pure-ASCII, percent-free filename slug — see scripts/download_solfege_mp3.mjs.
+// Must stay identical to the script's ipaSlug() (and piperSpeech.ts's).
+const ipaSlug = (ipa: string) =>
+  Array.from(ipa).map(c => /[A-Za-z0-9]/.test(c) ? c : "-" + c.codePointAt(0)!.toString(16).padStart(4, "0")).join("");
+const localMp3Url = (ipa: string) => LOCAL_MP3_BASE + ipaSlug(ipa) + ".mp3";
 // remember which IPAs actually have a local mp3 so we don't re-probe.
 const localMp3Status = new Map<string, boolean>();
 
