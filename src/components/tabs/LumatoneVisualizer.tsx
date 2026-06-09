@@ -4,7 +4,7 @@
 // also have a layout file), and only lights nodes belonging to the EDO whose
 // keyboard is shown — i.e. the 12-EDO board reflects 12-EDO nodes only.
 
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import LumatoneKeyboard from "@/components/LumatoneKeyboard";
 import { computeLayout, type LayoutResult, type LumatoneData, type ComputedKey } from "@/lib/lumatoneLayout";
 import { getLayoutFile } from "@/lib/edoData";
@@ -53,7 +53,7 @@ const AVAILABLE_LAYOUTS = [
 const LATTICE_EDOS = [12, 31, 41];
 const EMPTY_PITCHES: Set<number> = new Set();
 
-export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, fullscreen, onToggleStep, onScaleVoices, onClose, notationByEdo = {}, solfegeByEdo = {}, onOpenNotation }: {
+export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, fullscreen, onToggleStep, onScaleVoices, onClose, notationByEdo = {}, solfegeByEdo = {}, onOpenNotation, onSetRoot }: {
   edos: number[];
   /** edo -> active step numbers (0..edo) currently sounding for that EDO */
   activeStepsByEdo: Record<number, number[]>;
@@ -61,6 +61,8 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
   fullscreen?: boolean;
   /** drone/un-drone the spectrum's own voice for (edo, step) — bidirectional */
   onToggleStep: (edo: number, step: number) => void;
+  /** Ctrl/⌘-click a key → set it as the key's root (12-EDO pitch class). */
+  onSetRoot?: (pc: number) => void;
   /** picking a scale: turn its steps on as voices but muted (replaces edo's voices) */
   onScaleVoices?: (edo: number, steps: number[]) => void;
   /** chosen notation / solfège system per EDO (from the "n" picker) */
@@ -194,9 +196,16 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
     return set;
   }, [layout, steps, edo, rootPc, scale, activeStepsByEdo]);
 
-  const onKey = (key: ComputedKey) => {
+  const onKey = (key: ComputedKey, e: MouseEvent) => {
     if (edo === null) return;
     const pc = ((key.pitch % edo) + edo) % edo;
+    // Ctrl/⌘-click sets this key as the root (tonic) of the key, rather than
+    // droning it.  rootPc is a 12-EDO pitch class, so snap the node's pitch
+    // to the nearest semitone (matching the spectrum's root convention).
+    if (e.ctrlKey || e.metaKey) {
+      onSetRoot?.(((Math.round((pc * 12) / edo)) % 12 + 12) % 12);
+      return;
+    }
     const rootStep = Math.round((rootPc * edo) / 12);
     const step = (((pc - rootStep) % edo) + edo) % edo;
     // A key is "on" if it's droning OR selected.  Toggle BOTH together so a
@@ -262,7 +271,7 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
           {showLattice ? "▾ Lattice" : "▸ Lattice"}
         </button>
       )}
-      {edo !== null && <span className="text-[10px] text-[#555]">{steps.length} sounding · click a key to drone</span>}
+      {edo !== null && <span className="text-[10px] text-[#555]">{steps.length} sounding · click a key to drone{onSetRoot ? " · ⌘/Ctrl-click = root" : ""}</span>}
       {fullscreen && <span className="text-[10px] text-[#555]">press L or Esc to exit</span>}
       <button onClick={onClose} className="ml-auto text-[#999] hover:text-[#cc6666] text-lg leading-none">✕</button>
     </div>
