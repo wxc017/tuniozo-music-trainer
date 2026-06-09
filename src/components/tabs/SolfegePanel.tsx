@@ -83,7 +83,7 @@ export default function SolfegePanel({ edo, scale, setScale, onPickScale }: {
         <span className="text-[11px] font-light text-[#aaa] uppercase tracking-[0.18em]">Solfège · {edo}-EDO</span>
         <button onClick={playScale} disabled={!selected.length}
           className={`${hbtn} bg-[#10240e] border-[#2a4a2a] text-[#7aaa7a] hover:text-[#aaffaa] disabled:opacity-40`}>▶ Play</button>
-        <button onClick={() => setScale(new Set())} disabled={!selected.length}
+        <button onClick={() => { setScale(new Set()); onPickScale?.(null); }} disabled={!selected.length}
           className={`${hbtn} bg-[#1a1010] border-[#3a2020] text-[#cc8080] hover:text-[#ffaaaa] disabled:opacity-40`}>Clear</button>
       </div>
 
