@@ -743,7 +743,7 @@ export default function ScalarTab({
                       const ipa = solfegeKind === "microtonal"
                         ? microtonal.ipa
                         : heathwaiteIpa(labelText);
-                      piperSpeak(labelText, ipa ? { ipa } : undefined);
+                      piperSpeak(labelText, ipa ? { ipa, system: solfegeKind } : undefined);
                     }}
                     className="inline-block bg-white/5 border border-white/10 rounded px-2 py-0.5 text-base font-bold cursor-pointer hover:underline"
                     style={{ color: activeFamilyColor }}

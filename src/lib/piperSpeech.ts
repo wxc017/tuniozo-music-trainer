@@ -145,10 +145,45 @@ async function piperGenerateCached(text: string): Promise<string | null> {
 }
 
 export interface PiperSpeakOptions {
-  /** Optional IPA reference; ignored by piper (it phonemizes internally
-   *  via eSpeak) but useful as a fallback hint for the Web Speech path
-   *  when piper isn't available. */
+  /** Optional IPA reference.  When supplied together with `system`, a
+   *  pre-rendered Polly mp3 (public/solfege/<system>/<ipa>.mp3) is played
+   *  in preference to piper.  Also used as a fallback hint for the Web
+   *  Speech path when neither mp3 nor piper is available. */
   ipa?: string;
+  /** Which solfège system the syllable belongs to — selects the mp3
+   *  folder (public/solfege/microtonal/ vs heathwaite/).  Omit if no
+   *  bundled mp3 exists; piper/Web-Speech will handle it. */
+  system?: "microtonal" | "heathwaite";
+}
+
+// ── Pre-rendered Polly mp3s, keyed by IPA, one folder per solfège system ──
+// Downloaded via scripts/download_solfege_mp3.mjs.  Checked before piper so
+// the user hears the exact recorded pronunciation (ipa-reader.com's voice),
+// falling back to piper → Web Speech only when no mp3 is present.
+const LOCAL_MP3_BASE = (import.meta.env.BASE_URL ?? "/") + "solfege/";
+const localMp3Url = (system: string, ipa: string) =>
+  `${LOCAL_MP3_BASE}${system}/${encodeURIComponent(ipa)}.mp3`;
+// `${system}:${ipa}` -> known-present.  Avoids re-probing missing files.
+const localMp3Status = new Map<string, boolean>();
+
+/** Try to play the bundled mp3 for a syllable.  Resolves true if it played,
+ *  false if no such file exists (so the caller can fall back). */
+function playLocalMp3(system: string, ipa: string): Promise<boolean> {
+  return new Promise(resolve => {
+    if (typeof Audio === "undefined") { resolve(false); return; }
+    const key = `${system}:${ipa}`;
+    if (localMp3Status.get(key) === false) { resolve(false); return; }
+    const a = new Audio(localMp3Url(system, ipa));
+    let settled = false;
+    const done = (played: boolean) => {
+      if (settled) return;
+      settled = true;
+      localMp3Status.set(key, played);
+      resolve(played);
+    };
+    a.addEventListener("error", () => done(false));
+    a.play().then(() => done(true)).catch(() => done(false));
+  });
 }
 
 /** Default playback rate for piper output.  The model's natural
@@ -169,6 +204,11 @@ const PIPER_PLAYBACK_RATE = 0.85;
  *  the eSpeak en-US rules already pronounce as the intended IPA fixes
  *  it without bypassing piper's pipeline. */
 export async function piperSpeak(text: string, options: PiperSpeakOptions = {}): Promise<void> {
+  // Prefer the exact pre-rendered Polly mp3 when we know the IPA + system.
+  if (options.ipa && options.system) {
+    const played = await playLocalMp3(options.system, options.ipa);
+    if (played) return;
+  }
   const speak = options.ipa ? ipaToEnglishOrtho(options.ipa) : text;
   const url = await piperGenerateCached(speak);
   if (!url) {

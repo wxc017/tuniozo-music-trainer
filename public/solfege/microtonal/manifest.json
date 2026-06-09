@@ -1,0 +1,408 @@
+[
+  {
+    "ipa": "a",
+    "file": "a.mp3",
+    "labels": [
+      "A"
+    ]
+  },
+  {
+    "ipa": "ɒ",
+    "file": "%C9%92.mp3",
+    "labels": [
+      "O"
+    ]
+  },
+  {
+    "ipa": "di",
+    "file": "di.mp3",
+    "labels": [
+      "Dee"
+    ]
+  },
+  {
+    "ipa": "fɛ",
+    "file": "f%C9%9B.mp3",
+    "labels": [
+      "Fe"
+    ]
+  },
+  {
+    "ipa": "fɪ",
+    "file": "f%C9%AA.mp3",
+    "labels": [
+      "Fi"
+    ]
+  },
+  {
+    "ipa": "fɪl",
+    "file": "f%C9%AAl.mp3",
+    "labels": [
+      "Fil"
+    ]
+  },
+  {
+    "ipa": "fɪs",
+    "file": "f%C9%AAs.mp3",
+    "labels": [
+      "Fis"
+    ]
+  },
+  {
+    "ipa": "fɔ",
+    "file": "f%C9%94.mp3",
+    "labels": [
+      "Fo"
+    ]
+  },
+  {
+    "ipa": "fɔl",
+    "file": "f%C9%94l.mp3",
+    "labels": [
+      "Fol"
+    ]
+  },
+  {
+    "ipa": "fɔs",
+    "file": "f%C9%94s.mp3",
+    "labels": [
+      "Fos"
+    ]
+  },
+  {
+    "ipa": "fu",
+    "file": "fu.mp3",
+    "labels": [
+      "Foo"
+    ]
+  },
+  {
+    "ipa": "fʌ",
+    "file": "f%CA%8C.mp3",
+    "labels": [
+      "Fu"
+    ]
+  },
+  {
+    "ipa": "ha",
+    "file": "ha.mp3",
+    "labels": [
+      "Ha"
+    ]
+  },
+  {
+    "ipa": "hɒ",
+    "file": "h%C9%92.mp3",
+    "labels": [
+      "Ho"
+    ]
+  },
+  {
+    "ipa": "i",
+    "file": "i.mp3",
+    "labels": [
+      "Ee"
+    ]
+  },
+  {
+    "ipa": "kaɪ",
+    "file": "ka%C9%AA.mp3",
+    "labels": [
+      "Kai"
+    ]
+  },
+  {
+    "ipa": "kaɪl",
+    "file": "ka%C9%AAl.mp3",
+    "labels": [
+      "Kail"
+    ]
+  },
+  {
+    "ipa": "kaɪs",
+    "file": "ka%C9%AAs.mp3",
+    "labels": [
+      "Kais"
+    ]
+  },
+  {
+    "ipa": "kɒ",
+    "file": "k%C9%92.mp3",
+    "labels": [
+      "Co"
+    ]
+  },
+  {
+    "ipa": "keɪ",
+    "file": "ke%C9%AA.mp3",
+    "labels": [
+      "Kay"
+    ]
+  },
+  {
+    "ipa": "keɪl",
+    "file": "ke%C9%AAl.mp3",
+    "labels": [
+      "Kayl"
+    ]
+  },
+  {
+    "ipa": "keɪs",
+    "file": "ke%C9%AAs.mp3",
+    "labels": [
+      "Kays"
+    ]
+  },
+  {
+    "ipa": "kɛ",
+    "file": "k%C9%9B.mp3",
+    "labels": [
+      "Ke"
+    ]
+  },
+  {
+    "ipa": "ku",
+    "file": "ku.mp3",
+    "labels": [
+      "Koo"
+    ]
+  },
+  {
+    "ipa": "kul",
+    "file": "kul.mp3",
+    "labels": [
+      "Kool"
+    ]
+  },
+  {
+    "ipa": "kus",
+    "file": "kus.mp3",
+    "labels": [
+      "Koos"
+    ]
+  },
+  {
+    "ipa": "saɪ",
+    "file": "sa%C9%AA.mp3",
+    "labels": [
+      "Sai"
+    ]
+  },
+  {
+    "ipa": "saɪl",
+    "file": "sa%C9%AAl.mp3",
+    "labels": [
+      "Sail"
+    ]
+  },
+  {
+    "ipa": "saɪs",
+    "file": "sa%C9%AAs.mp3",
+    "labels": [
+      "Sais"
+    ]
+  },
+  {
+    "ipa": "seɪ",
+    "file": "se%C9%AA.mp3",
+    "labels": [
+      "Say"
+    ]
+  },
+  {
+    "ipa": "seɪl",
+    "file": "se%C9%AAl.mp3",
+    "labels": [
+      "Sayl"
+    ]
+  },
+  {
+    "ipa": "seɪs",
+    "file": "se%C9%AAs.mp3",
+    "labels": [
+      "Says"
+    ]
+  },
+  {
+    "ipa": "su",
+    "file": "su.mp3",
+    "labels": [
+      "Soo"
+    ]
+  },
+  {
+    "ipa": "sul",
+    "file": "sul.mp3",
+    "labels": [
+      "Sool"
+    ]
+  },
+  {
+    "ipa": "sus",
+    "file": "sus.mp3",
+    "labels": [
+      "Soos"
+    ]
+  },
+  {
+    "ipa": "tɛ",
+    "file": "t%C9%9B.mp3",
+    "labels": [
+      "Te"
+    ]
+  },
+  {
+    "ipa": "traɪ",
+    "file": "tra%C9%AA.mp3",
+    "labels": [
+      "Trai"
+    ]
+  },
+  {
+    "ipa": "traɪl",
+    "file": "tra%C9%AAl.mp3",
+    "labels": [
+      "Trail"
+    ]
+  },
+  {
+    "ipa": "traɪs",
+    "file": "tra%C9%AAs.mp3",
+    "labels": [
+      "Trais"
+    ]
+  },
+  {
+    "ipa": "twɛ",
+    "file": "tw%C9%9B.mp3",
+    "labels": [
+      "Twe"
+    ]
+  },
+  {
+    "ipa": "vaɪ",
+    "file": "va%C9%AA.mp3",
+    "labels": [
+      "Vai"
+    ]
+  },
+  {
+    "ipa": "vaɪl",
+    "file": "va%C9%AAl.mp3",
+    "labels": [
+      "Vail"
+    ]
+  },
+  {
+    "ipa": "vaɪs",
+    "file": "va%C9%AAs.mp3",
+    "labels": [
+      "Vais"
+    ]
+  },
+  {
+    "ipa": "veɪ",
+    "file": "ve%C9%AA.mp3",
+    "labels": [
+      "Vay"
+    ]
+  },
+  {
+    "ipa": "veɪl",
+    "file": "ve%C9%AAl.mp3",
+    "labels": [
+      "Vayl"
+    ]
+  },
+  {
+    "ipa": "veɪs",
+    "file": "ve%C9%AAs.mp3",
+    "labels": [
+      "Vays"
+    ]
+  },
+  {
+    "ipa": "vu",
+    "file": "vu.mp3",
+    "labels": [
+      "Voo"
+    ]
+  },
+  {
+    "ipa": "vul",
+    "file": "vul.mp3",
+    "labels": [
+      "Vool"
+    ]
+  },
+  {
+    "ipa": "vus",
+    "file": "vus.mp3",
+    "labels": [
+      "Voos"
+    ]
+  },
+  {
+    "ipa": "θaɪ",
+    "file": "%CE%B8a%C9%AA.mp3",
+    "labels": [
+      "Thai"
+    ]
+  },
+  {
+    "ipa": "θaɪl",
+    "file": "%CE%B8a%C9%AAl.mp3",
+    "labels": [
+      "Thail"
+    ]
+  },
+  {
+    "ipa": "θaɪs",
+    "file": "%CE%B8a%C9%AAs.mp3",
+    "labels": [
+      "Thais"
+    ]
+  },
+  {
+    "ipa": "θeɪ",
+    "file": "%CE%B8e%C9%AA.mp3",
+    "labels": [
+      "Thay"
+    ]
+  },
+  {
+    "ipa": "θeɪl",
+    "file": "%CE%B8e%C9%AAl.mp3",
+    "labels": [
+      "Thayl"
+    ]
+  },
+  {
+    "ipa": "θeɪs",
+    "file": "%CE%B8e%C9%AAs.mp3",
+    "labels": [
+      "Thays"
+    ]
+  },
+  {
+    "ipa": "θu",
+    "file": "%CE%B8u.mp3",
+    "labels": [
+      "Thoo"
+    ]
+  },
+  {
+    "ipa": "θul",
+    "file": "%CE%B8ul.mp3",
+    "labels": [
+      "Thool"
+    ]
+  },
+  {
+    "ipa": "θus",
+    "file": "%CE%B8us.mp3",
+    "labels": [
+      "Thoos"
+    ]
+  }
+]

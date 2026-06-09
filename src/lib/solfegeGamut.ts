@@ -121,13 +121,13 @@ function speechFallback(text: string): void {
   window.speechSynthesis.speak(u);
 }
 
-// Pre-rendered syllable mp3s (e.g. downloaded from ipa-reader.com) live in
-// public/solfege/<solfege-lowercased>.mp3.  These are checked FIRST — they're
-// exact and need no network/Polly.  See public/solfege/README.md for the list.
-const LOCAL_MP3_BASE = (import.meta.env.BASE_URL ?? "/") + "solfege/";
-const localMp3Url = (solfege: string) =>
-  LOCAL_MP3_BASE + solfege.toLowerCase().replace(/[^a-z0-9]/g, "") + ".mp3";
-// remember which syllables actually have a local mp3 so we don't re-probe.
+// Pre-rendered syllable mp3s (downloaded from Amazon Polly — ipa-reader.com's
+// engine — via scripts/download_solfege_mp3.mjs) live in
+// public/solfege/microtonal/<encodeURIComponent(ipa)>.mp3, keyed by IPA.
+// These are checked FIRST — they're exact and need no network/Polly.
+const LOCAL_MP3_BASE = (import.meta.env.BASE_URL ?? "/") + "solfege/microtonal/";
+const localMp3Url = (ipa: string) => LOCAL_MP3_BASE + encodeURIComponent(ipa) + ".mp3";
+// remember which IPAs actually have a local mp3 so we don't re-probe.
 const localMp3Status = new Map<string, boolean>();
 
 function remoteOrSpeech(cell: { solfege: string; ipa: string }): void {
@@ -147,15 +147,15 @@ function remoteOrSpeech(cell: { solfege: string; ipa: string }): void {
 }
 
 /** Speak a solfège syllable.  Order of preference:
- *  1. a bundled mp3 at public/solfege/<name>.mp3 (exact, offline);
+ *  1. a bundled mp3 at public/solfege/microtonal/<ipa>.mp3 (exact, offline);
  *  2. your AWS-Polly endpoint (VITE_IPA_ENDPOINT) if set;
  *  3. the browser's speech synth on the solfège spelling. */
 export function speakSolfege(cell: { solfege: string; ipa: string }): void {
   if (typeof Audio === "undefined") { remoteOrSpeech(cell); return; }
-  if (localMp3Status.get(cell.solfege) === false) { remoteOrSpeech(cell); return; }
-  const a = new Audio(localMp3Url(cell.solfege));
+  if (localMp3Status.get(cell.ipa) === false) { remoteOrSpeech(cell); return; }
+  const a = new Audio(localMp3Url(cell.ipa));
   let fellBack = false;
-  const fallback = () => { if (!fellBack) { fellBack = true; localMp3Status.set(cell.solfege, false); remoteOrSpeech(cell); } };
+  const fallback = () => { if (!fellBack) { fellBack = true; localMp3Status.set(cell.ipa, false); remoteOrSpeech(cell); } };
   a.addEventListener("error", fallback);
-  a.play().then(() => { localMp3Status.set(cell.solfege, true); }).catch(fallback);
+  a.play().then(() => { localMp3Status.set(cell.ipa, true); }).catch(fallback);
 }

@@ -1,83 +1,110 @@
-// ── Download solfège syllable mp3s (AWS Polly, ipa-reader.com's backend) ──
-// Reads App/public/solfege/manifest.json (solfège → IPA) and saves one mp3 per
-// syllable into App/public/solfege/<name>.mp3, which speakSolfege() then plays
-// before any fallback.
+// ── Download every solfège syllable as an mp3 (AWS Polly — ipa-reader.com's engine) ──
 //
-// ipa-reader.com calls AWS Polly straight from the browser using a public
-// Cognito identity pool + SSML <phoneme alphabet="ipa">.  This script does the
-// same with zero dependencies: it SigV4-signs the Polly SynthesizeSpeech
-// requests itself (no aws-sdk needed).
+// ipa-reader.com is just a thin browser front-end for Amazon Polly's
+// <phoneme alphabet="ipa"> SSML.  Its old public Cognito pool no longer grants
+// polly:SynthesizeSpeech (returns 403 as of 2026), so this script calls Polly
+// directly with YOUR AWS credentials and SigV4-signs the requests itself (no
+// aws-sdk dependency).
 //
-// CREDENTIALS — two ways:
-//   1) YOUR AWS account (recommended; free tier = 5M chars/mo, this needs ~300):
-//        export AWS_ACCESS_KEY_ID=...   export AWS_SECRET_ACCESS_KEY=...
-//        node scripts/download_solfege_mp3.mjs
-//      The IAM user/role just needs the `polly:SynthesizeSpeech` permission.
-//   2) ipa-reader.com's public Cognito pool (no AWS account) — NOTE: as of
-//      2026 their unauth role no longer grants polly:SynthesizeSpeech, so this
-//      returns 403.  Left in as a fallback in case they re-open it.
+// It collects every IPA string the app can actually speak — the microtonal
+// gamut (src/lib/solfegeGamut.ts) AND the Heathwaite Do/Re/Mi system
+// (HEATHWAITE_IPA in src/lib/solfegeSpeech.ts) — straight from source, dedupes
+// each system, and writes one mp3 per unique IPA into a folder PER SYSTEM:
 //
-//   VOICE=Joanna node scripts/download_solfege_mp3.mjs # any Polly voice
-//   FORCE=1 node scripts/download_solfege_mp3.mjs      # re-download existing
-//   AWS_REGION=us-east-1 node scripts/download_solfege_mp3.mjs
+//     public/solfege/microtonal/<encodeURIComponent(ipa)>.mp3
+//     public/solfege/heathwaite/<encodeURIComponent(ipa)>.mp3
+//
+// Separate folders keep the two systems from colliding (e.g. microtonal "Fi"
+// /fɪ/ vs Heathwaite "Fi" /fiː/), and within a folder files are keyed by IPA
+// (not spelling) so identical sounds share one file.  The frontend
+// (solfegeGamut.ts / piperSpeech.ts) resolves the same name via
+// `solfege/<system>/<encodeURIComponent(ipa)>.mp3`.
+//
+// USAGE (PowerShell):
+//     $env:AWS_ACCESS_KEY_ID="AKIA..."
+//     $env:AWS_SECRET_ACCESS_KEY="..."
+//     $env:VOICE="Salli"        # any Polly voice — Salli (ipa-reader default) / Brian / Joanna / Matthew …
+//     node scripts/download_solfege_mp3.mjs
+//
+//     $env:FORCE="1"            # re-download files that already exist
+//     $env:AWS_REGION="us-west-2"
+//
+// The IAM user needs only the `polly:SynthesizeSpeech` permission
+// (AmazonPollyReadOnlyAccess).  Polly's free tier (5M chars/mo) covers this
+// ~10x over — the whole set is well under 1000 characters.
 
 import { readFile, writeFile, mkdir, access } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, createHmac } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUT_DIR = resolve(__dirname, "../public/solfege");
-const MANIFEST = join(OUT_DIR, "manifest.json");
+const APP = resolve(__dirname, "..");
+const SOLFEGE_DIR = resolve(APP, "public/solfege");
 
 const REGION = process.env.AWS_REGION || "us-west-2";
-const IDENTITY_POOL_ID = "us-west-2:42521701-f77a-4555-8b1c-e160ad0210da"; // ipa-reader.com's public pool
-const VOICE = process.env.VOICE || "Brian";
+const VOICE = process.env.VOICE || "Salli";
 const FORCE = !!process.env.FORCE;
 
-const fileFor = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "") + ".mp3";
+const fileFor = (ipa) => encodeURIComponent(ipa) + ".mp3";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const exists = (p) => access(p).then(() => true).catch(() => false);
 const sha256hex = (d) => createHash("sha256").update(d).digest("hex");
 const hmac = (k, d) => createHmac("sha256", k).update(d).digest();
 
-// ── Cognito: unauthenticated temporary credentials (public, no signing) ──
-async function cognito(target, body) {
-  const res = await fetch(`https://cognito-identity.${REGION}.amazonaws.com/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-amz-json-1.1", "X-Amz-Target": `AWSCognitoIdentityService.${target}` },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Cognito ${target} HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  return res.json();
-}
-async function getCredentials() {
-  // Prefer real AWS credentials from the environment (these can actually call Polly).
-  if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-    console.log("Using AWS credentials from environment.");
-    return {
-      ak: process.env.AWS_ACCESS_KEY_ID,
-      sk: process.env.AWS_SECRET_ACCESS_KEY,
-      token: process.env.AWS_SESSION_TOKEN || "",
-    };
+// ── Collect every IPA the app can speak, straight from source ──────────────
+// Returns one `ipa -> Set<label>` map per solfège system.
+async function collectSyllables() {
+  const newMap = () => new Map();
+  const add = (map, ipa, label) => {
+    if (!ipa) return;
+    if (!map.has(ipa)) map.set(ipa, new Set());
+    if (label) map.get(ipa).add(label);
+  };
+
+  // Microtonal gamut — `{ solfege: "Sais", ipa: "saɪs", ... }`
+  const microtonal = newMap();
+  const gamut = await readFile(resolve(APP, "src/lib/solfegeGamut.ts"), "utf8");
+  for (const m of gamut.matchAll(/solfege:\s*"([^"]+)"[^}]*?ipa:\s*"([^"]+)"/g)) {
+    add(microtonal, m[2], m[1]);
   }
-  console.log(`No AWS_* env creds — falling back to ipa-reader's Cognito pool (${IDENTITY_POOL_ID}).`);
-  const { IdentityId } = await cognito("GetId", { IdentityPoolId: IDENTITY_POOL_ID });
-  const { Credentials } = await cognito("GetCredentialsForIdentity", { IdentityId });
-  return { ak: Credentials.AccessKeyId, sk: Credentials.SecretKey, token: Credentials.SessionToken };
+
+  // Heathwaite solfège — the HEATHWAITE_IPA object in solfegeSpeech.ts
+  const heathwaite = newMap();
+  const speech = await readFile(resolve(APP, "src/lib/solfegeSpeech.ts"), "utf8");
+  const block = speech.match(/const HEATHWAITE_IPA[^{]*\{([\s\S]*?)\n\};/);
+  if (block) {
+    for (const m of block[1].matchAll(/(\w+):\s*"([^"]+)"/g)) add(heathwaite, m[2], m[1]);
+  }
+
+  return { microtonal, heathwaite };
 }
 
-// ── SigV4-signed Polly SynthesizeSpeech ──
+// ── Polly credentials (env only — no public Cognito fallback; it 403s now) ──
+function getCredentials() {
+  const ak = process.env.AWS_ACCESS_KEY_ID;
+  const sk = process.env.AWS_SECRET_ACCESS_KEY;
+  if (!ak || !sk) {
+    throw new Error(
+      "No AWS credentials. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY " +
+      "(IAM user with polly:SynthesizeSpeech)."
+    );
+  }
+  return { ak, sk, token: process.env.AWS_SESSION_TOKEN || "" };
+}
+
+// ── SigV4-signed Polly SynthesizeSpeech ────────────────────────────────────
 async function pollySynthesize(creds, ipa, voiceId) {
   const host = `polly.${REGION}.amazonaws.com`;
   const path = "/v1/speech";
+  // Match ipa-reader.com's polly.js: a bare <phoneme> element, no <speak> wrap.
   const payload = JSON.stringify({
     OutputFormat: "mp3", SampleRate: "16000",
     Text: `<phoneme alphabet='ipa' ph='${ipa.replace(/\//g, "")}'></phoneme>`,
     TextType: "ssml", VoiceId: voiceId,
   });
   const now = new Date();
-  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "");   // 20240101T000000Z
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "");   // 20260609T123456Z
   const dateStamp = amzDate.slice(0, 8);
   const payloadHash = sha256hex(payload);
 
@@ -107,31 +134,50 @@ async function pollySynthesize(creds, ipa, voiceId) {
   return Buffer.from(await res.arrayBuffer());
 }
 
-async function main() {
-  await mkdir(OUT_DIR, { recursive: true });
-  const manifest = JSON.parse(await readFile(MANIFEST, "utf8"));
-  const entries = Object.entries(manifest);
-  console.log(`Fetching Cognito credentials (pool ${IDENTITY_POOL_ID})…`);
-  const creds = await getCredentials();
-  console.log(`${entries.length} syllables · voice=${VOICE} · region=${REGION}\n`);
+async function downloadSystem(creds, system, byIpa) {
+  const dir = resolve(SOLFEGE_DIR, system);
+  await mkdir(dir, { recursive: true });
+  const entries = [...byIpa.entries()];   // [ipa, Set<label>]
+  console.log(`\n[${system}] ${entries.length} unique IPA syllables → public/solfege/${system}/`);
 
+  const manifest = [];
   let ok = 0, skip = 0, fail = 0;
-  for (const [solfege, ipa] of entries) {
-    const out = join(OUT_DIR, fileFor(solfege));
-    if (!FORCE && (await exists(out))) { console.log(`skip  ${solfege}`); skip++; continue; }
+  for (const [ipa, labels] of entries) {
+    const file = fileFor(ipa);
+    const out = resolve(dir, file);
+    const labelStr = [...labels].join("/") || "—";
+    manifest.push({ ipa, file, labels: [...labels] });
+    if (!FORCE && (await exists(out))) { console.log(`skip  ${labelStr}`); skip++; continue; }
     try {
       const buf = await pollySynthesize(creds, ipa, VOICE);
       if (buf.length < 200) throw new Error(`tiny file (${buf.length} B)`);
       await writeFile(out, buf);
-      console.log(`ok    ${solfege.padEnd(6)} /${ipa}/  → ${fileFor(solfege)} (${buf.length} B)`);
+      console.log(`ok    ${labelStr.padEnd(14)} /${ipa}/  → ${file} (${buf.length} B)`);
       ok++;
     } catch (e) {
-      console.warn(`FAIL  ${solfege.padEnd(6)} /${ipa}/  — ${e.message}`);
+      console.warn(`FAIL  ${labelStr.padEnd(14)} /${ipa}/  — ${e.message}`);
       fail++;
     }
-    await sleep(150);
+    await sleep(120);
   }
-  console.log(`\ndone — ${ok} downloaded, ${skip} skipped, ${fail} failed`);
+
+  manifest.sort((a, b) => a.ipa.localeCompare(b.ipa));
+  await writeFile(resolve(dir, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
+  console.log(`[${system}] ${ok} downloaded, ${skip} skipped, ${fail} failed`);
+  return { ok, skip, fail };
+}
+
+async function main() {
+  const creds = getCredentials();
+  const systems = await collectSyllables();
+  console.log(`voice=${VOICE} · region=${REGION}`);
+
+  const totals = { ok: 0, skip: 0, fail: 0 };
+  for (const [system, byIpa] of Object.entries(systems)) {
+    const r = await downloadSystem(creds, system, byIpa);
+    totals.ok += r.ok; totals.skip += r.skip; totals.fail += r.fail;
+  }
+  console.log(`\nTOTAL — ${totals.ok} downloaded, ${totals.skip} skipped, ${totals.fail} failed`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

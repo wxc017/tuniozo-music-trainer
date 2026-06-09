@@ -1,78 +1,47 @@
-# Solfège audio (drop-in mp3s)
+# Solfège audio (pre-rendered mp3s)
 
-The app plays each solfège syllable from a bundled mp3 **if present in this
-folder**, before falling back to the Polly endpoint or browser speech.
+The app plays each solfège syllable from a bundled mp3 **if present**, before
+falling back to piper-wasm or the browser's speech voice. These are generated
+from **Amazon Polly** (the same engine ipa-reader.com uses) by
+`scripts/download_solfege_mp3.mjs`.
 
-## How to populate
+## Layout — one folder per solfège system
 
-1. Go to **https://ipa-reader.com/**, pick a voice you like (keep it consistent).
-2. For each row below, paste the **IPA** into the box, generate, and **download**
-   the mp3.
-3. Rename the file to the **Filename** in the last column and drop it in this
-   folder (`App/public/solfege/`).
+```
+public/solfege/
+  microtonal/   # the Universal / interval-spectrum gamut (Sais, Thay, Vail …)
+  heathwaite/   # Andrew Heathwaite's Do-Re-Mi system (Do, Re, Mi, Ra, Du …)
+```
 
-Filenames are the syllable, lower-cased, letters/digits only, `.mp3`.
-You don't have to do all of them — any syllable without an mp3 just falls back.
+Within each folder, files are named by their **IPA**, URL-encoded:
 
-| Syllable | IPA   | Filename     |
-|----------|-------|--------------|
-| A        | a     | a.mp3        |
-| O        | ɒ     | o.mp3        |
-| Ee       | i     | ee.mp3       |
-| Sais     | saɪs  | sais.mp3     |
-| Sai      | saɪ   | sai.mp3      |
-| Sail     | saɪl  | sail.mp3     |
-| Soos     | sus   | soos.mp3     |
-| Soo      | su    | soo.mp3      |
-| Sool     | sul   | sool.mp3     |
-| Ha       | ha    | ha.mp3       |
-| Says     | seɪs  | says.mp3     |
-| Say      | seɪ   | say.mp3      |
-| Sayl     | seɪl  | sayl.mp3     |
-| Fe       | fɛ    | fe.mp3       |
-| Thais    | θaɪs  | thais.mp3    |
-| Thai     | θaɪ   | thai.mp3     |
-| Thail    | θaɪl  | thail.mp3    |
-| Thoos    | θus   | thoos.mp3    |
-| Thoo     | θu    | thoo.mp3     |
-| Thool    | θul   | thool.mp3    |
-| Thays    | θeɪs  | thays.mp3    |
-| Thay     | θeɪ   | thay.mp3     |
-| Thayl    | θeɪl  | thayl.mp3    |
-| Ke       | kɛ    | ke.mp3       |
-| Fos      | fɔs   | fos.mp3      |
-| Fo       | fɔ    | fo.mp3       |
-| Fol      | fɔl   | fol.mp3      |
-| Foo      | fu    | foo.mp3      |
-| Trais    | traɪs | trais.mp3    |
-| Trai     | traɪ  | trai.mp3     |
-| Trail    | traɪl | trail.mp3    |
-| Fu       | fʌ    | fu.mp3       |
-| Fis      | fɪs   | fis.mp3      |
-| Fi       | fɪ    | fi.mp3       |
-| Fil      | fɪl   | fil.mp3      |
-| Te       | tɛ    | te.mp3       |
-| Kais     | kaɪs  | kais.mp3     |
-| Kai      | kaɪ   | kai.mp3      |
-| Kail     | kaɪl  | kail.mp3     |
-| Koos     | kus   | koos.mp3     |
-| Koo      | ku    | koo.mp3      |
-| Kool     | kul   | kool.mp3     |
-| Kays     | keɪs  | kays.mp3     |
-| Kay      | keɪ   | kay.mp3      |
-| Kayl     | keɪl  | kayl.mp3     |
-| Twe      | twɛ   | twe.mp3      |
-| Vais     | vaɪs  | vais.mp3     |
-| Vai      | vaɪ   | vai.mp3      |
-| Vail     | vaɪl  | vail.mp3     |
-| Ho       | hɒ    | ho.mp3       |
-| Voos     | vus   | voos.mp3     |
-| Voo      | vu    | voo.mp3      |
-| Vool     | vul   | vool.mp3     |
-| Vays     | veɪs  | vays.mp3     |
-| Vay      | veɪ   | vay.mp3      |
-| Vayl     | veɪl  | vayl.mp3     |
-| Dee      | di    | dee.mp3      |
-| Co       | kɒ    | co.mp3       |
+```
+<encodeURIComponent(ipa)>.mp3      e.g.  doʊ → do%CA%8A.mp3 ,  saɪs → sa%C9%AAs.mp3
+```
 
-A machine-readable copy is in `manifest.json` (solfège → IPA).
+Keying by IPA (not spelling) means identical sounds share one file, and the two
+systems never collide (e.g. microtonal "Fi" /fɪ/ vs Heathwaite "Fi" /fiː/ live
+in separate folders). Each folder's `manifest.json` lists every `{ ipa, file,
+labels }` for reference.
+
+The frontend resolves the same path:
+- `solfegeGamut.ts` → `solfege/microtonal/<ipa>.mp3`
+- `piperSpeech.ts`  → `solfege/<system>/<ipa>.mp3`
+
+## How to (re)generate
+
+The IPA lists are read straight from source (`src/lib/solfegeGamut.ts` and the
+`HEATHWAITE_IPA` map in `src/lib/solfegeSpeech.ts`), so they can't drift. You
+need AWS credentials for an IAM user with `polly:SynthesizeSpeech`
+(`AmazonPollyReadOnlyAccess`); Polly's free tier covers this many times over.
+
+```powershell
+$env:AWS_ACCESS_KEY_ID="AKIA..."
+$env:AWS_SECRET_ACCESS_KEY="..."
+$env:VOICE="Salli"     # any Polly voice; Salli is ipa-reader.com's default
+node scripts/download_solfege_mp3.mjs
+
+$env:FORCE="1"         # re-download files that already exist
+```
+
+Any syllable missing an mp3 simply falls back to piper / the browser voice.
