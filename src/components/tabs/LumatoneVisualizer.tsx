@@ -4,7 +4,7 @@
 // also have a layout file), and only lights nodes belonging to the EDO whose
 // keyboard is shown — i.e. the 12-EDO board reflects 12-EDO nodes only.
 
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LumatoneKeyboard from "@/components/LumatoneKeyboard";
 import { computeLayout, type LayoutResult, type LumatoneData, type ComputedKey } from "@/lib/lumatoneLayout";
 import { getLayoutFile } from "@/lib/edoData";
@@ -121,7 +121,6 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
     return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen, edo, activeStepsByEdo, onToggleStep]);
   useEffect(() => {
-    setScale(new Set());                                          // reset scale on EDO change
     if (edo === null) { setLayout(null); return; }
     let alive = true;
     setLayout(null);
@@ -131,6 +130,24 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
       .catch(() => { if (alive) setLayout(null); });
     return () => { alive = false; };
   }, [edo]);
+
+  // Auto-select the sounding notes as solfège syllables, so the panel reflects
+  // whatever scale is already droning (e.g. loaded from the spectrum before
+  // pressing L) instead of forcing a manual Ctrl-click.  On EDO change / first
+  // mount we seed the selection from the sounding set; while staying on one EDO
+  // we only ADD newly-sounding steps — never resurrecting ones the user just
+  // removed (Clear / un-drone update `scale` synchronously, but the parent's
+  // sounding set lags by a render, so a blind re-sync would undo the removal).
+  const prevSounding = useRef<{ edo: number | null; steps: Set<number> }>({ edo: null, steps: new Set() });
+  useEffect(() => {
+    if (edo === null) return;
+    const sounding = new Set(activeStepsByEdo[edo] ?? []);
+    const prev = prevSounding.current;
+    prevSounding.current = { edo, steps: sounding };
+    if (prev.edo !== edo) { setScale(new Set(sounding)); return; }   // seed on EDO change / mount
+    const added = [...sounding].filter(s => !prev.steps.has(s));
+    if (added.length) setScale(p => { const n = new Set(p); added.forEach(s => n.add(s)); return n; });
+  }, [edo, activeStepsByEdo]);
 
   const steps = edo !== null ? (activeStepsByEdo[edo] ?? []) : [];
   // Light ONE key per sounding/selected note — the instance at the note's own
