@@ -234,7 +234,11 @@ export function assembleCycle(cycle: GrooveCycle, pointVoices: PointVoices[]): A
       for (const h of vp.hits) fn(off + h, dbl.has(h));
     };
     place(voices.bass,        abs => { bassHits.push(abs); });
-    place(voices.snareAccent, (abs, d) => { snareHits.push(abs); accentFlags[abs] = true; if (d) snareDoubleHits.push(abs); });
+    // Snare notes are accented (>) only on a pulse DOWNBEAT (abs === off), not on
+    // every stroke — so a backbeat still reads as an accent, but a dense bell /
+    // clave mapped onto the snare shows its off-beat strokes plain instead of a
+    // wall of accents on every note.
+    place(voices.snareAccent, (abs, d) => { snareHits.push(abs); if (abs === off) accentFlags[abs] = true; if (d) snareDoubleHits.push(abs); });
     place(voices.snareGhost,  (abs, d) => { ghostHits.push(abs); if (d) ghostDoubleHits.push(abs); });
     place(voices.hatClosed,   abs => { hatHits.push(abs); });
     place(voices.hatOpen,     abs => { hatHits.push(abs); hatOpenHits.push(abs); });
