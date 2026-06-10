@@ -1,0 +1,1186 @@
+[
+  {
+    "name": "Soleá",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 5, 7, 9],
+      "snareGhost": [3, 4, 8, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The 'mother' palo: a slow, solemn 12-count compás with palmas accents on 3, 6, 8, 10 and 12. The amalgam of 3/4 and 6/8 gives the cante jondo its gravity.",
+    "source": "https://chromatone.center/theory/rhythm/system/flamenco/ ; https://www.studioflamenco.com/soleares"
+  },
+  {
+    "name": "Bulerías",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 7],
+      "snareAccent": [0, 2, 5, 7, 9],
+      "snareGhost": [1, 3, 8, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The fastest, most festive 12-count palo of Jerez, often felt starting on 12 with palmas on 12, 3, 6, 8 and 10. Highly syncopated, ideal for jaleo and the fin de fiesta.",
+    "source": "https://www.studioflamenco.com/about2-c1l30 ; https://tablaoflamenco1911.com/en/flamenco-compas-and-rhythm/"
+  },
+  {
+    "name": "Alegrías",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 5, 7, 9],
+      "snareGhost": [3, 4, 10, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The bright, major-key cantiña of Cádiz, sharing the soleá 12-count but lively and joyful, with palmas on 3, 6, 8, 10 and 12 driving the dance and its silencio.",
+    "source": "https://www.studioflamenco.com/about2-cgzh ; https://tablaoflamenco1911.com/en/flamenco-compas-and-rhythm/"
+  },
+  {
+    "name": "Seguiriya",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 7],
+      "snareAccent": [0, 2, 4, 7, 10],
+      "snareGhost": [1, 3, 5, 8, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 7]
+    },
+    "desc": "The tragic deep-song palo with a distinctive 12-count amalgam (2+2+3+3+2), accents falling on 1, 3, 5, 8 and 11 — a completely different feel from the soleá cycle.",
+    "source": "https://ravennaflamenco.com/palos/seguiriya/ ; https://en.wikipedia.org/wiki/Siguiriyas"
+  },
+  {
+    "name": "Guajira",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 5, 7, 9],
+      "snareGhost": [3, 8, 10, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A major-key cante de ida y vuelta from Cuba, following a soleá-like 12-count with accents on 3, 6, 8, 10 and 12, swaying between 6/8 and 3/4 in a lilting hemiola.",
+    "source": "https://en.wikipedia.org/wiki/Guajira_(flamenco) ; https://www.studioflamenco.com/guajiras"
+  },
+  {
+    "name": "Peteneras",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 5, 7, 9],
+      "snareGhost": [3, 4, 10, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "An ill-omened intermedio cante in a 12-count that alternates 6/8 and 3/4 bars, with accents on 3, 6, 8, 10 and 12 much like the cantiñas family.",
+    "source": "https://en.wikipedia.org/wiki/Palo_(flamenco) ; https://chromatone.center/theory/rhythm/system/flamenco/"
+  },
+  {
+    "name": "Caña",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 5, 7, 9],
+      "snareGhost": [3, 4, 8, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "One of the oldest palos, an ancestor of the soleá sharing its solemn 12-count with palmas on 3, 6, 8, 10 and 12 and a melismatic ¡ay! refrain.",
+    "source": "https://en.wikipedia.org/wiki/Palo_(flamenco) ; https://richterguitar.com/flamenco-guitar/flamenco-guitar-toques-and-palos/"
+  },
+  {
+    "name": "Polo",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 5, 7, 9],
+      "snareGhost": [1, 3, 8, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A close sibling of the caña built on the soleá 12-count (accents 3, 6, 8, 10, 12), distinguished by its long melismatic 'ole' passages.",
+    "source": "https://en.wikipedia.org/wiki/Palo_(flamenco) ; https://chromatone.center/theory/rhythm/system/flamenco/"
+  },
+  {
+    "name": "Cantiñas",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 5, 7, 9],
+      "snareGhost": [3, 4, 10, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The festive Cádiz family (parent of alegrías, romeras, mirabrás) in a bright soleá 12-count with accents on 3, 6, 8, 10 and 12.",
+    "source": "https://en.wikipedia.org/wiki/Palo_(flamenco) ; https://richterguitar.com/flamenco-guitar/flamenco-guitar-toques-and-palos/"
+  },
+  {
+    "name": "Bulería por Soleá",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 5, 7, 9],
+      "snareGhost": [3, 8, 10, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Soleá por bulería: a mid-tempo bridge between soleá and bulerías keeping the 12-count with accents on 3, 6, 8, 10 and 12 at a lighter, more flowing pace.",
+    "source": "https://www.studioflamenco.com/solea-por-bulerias ; https://richterguitar.com/flamenco-guitar/flamenco-guitar-toques-and-palos/"
+  },
+  {
+    "name": "Tangos Flamencos",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [3, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "An earthy binary palo in two sets of four, the first beat of each subdued and the accents landing on the backbeats (counts 2 and 4), a foundation of flamenco festero.",
+    "source": "https://en.wikipedia.org/wiki/Tango_(flamenco) ; https://www.studioflamenco.com/tangos-flamencos"
+  },
+  {
+    "name": "Tientos",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The slow, solemn cousin of tangos in the same binary compás with accents on 2 and 4; traditionally accelerates into a tango at its close.",
+    "source": "https://en.wikipedia.org/wiki/Tango_(flamenco) ; https://richterguitar.com/flamenco-guitar/flamenco-guitar-toques-and-palos/"
+  },
+  {
+    "name": "Tanguillo",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The playful carnival tango of Cádiz, a fast binary tanguillo with a bouncing tresillo push and backbeat accents, sung with witty coplas at Carnaval.",
+    "source": "https://en.wikipedia.org/wiki/Tango_(flamenco) ; https://richterguitar.com/flamenco-guitar/flamenco-guitar-toques-and-palos/"
+  },
+  {
+    "name": "Tientos-Tangos Garrotín",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [3, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "Garrotín: a cheerful catalano-Andalusian palo of the tangos family in binary 4/4 with backbeat accents, popularised by La Niña de los Peines.",
+    "source": "https://en.wikipedia.org/wiki/Palo_(flamenco) ; https://richterguitar.com/flamenco-guitar/flamenco-guitar-toques-and-palos/"
+  },
+  {
+    "name": "Rumba Flamenca",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 6],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 4, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [3, 7],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The Catalan rumba, a 4/4 cante de ida y vuelta with a syncopated tresillo-derived guitar and palmas, the most danceable festero palo with backbeat accents.",
+    "source": "https://en.wikipedia.org/wiki/Palo_(flamenco) ; https://richterguitar.com/flamenco-guitar/flamenco-guitar-toques-and-palos/"
+  },
+  {
+    "name": "Fandango",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 6],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The free, ternary fandango in 3/4, sung in coplas of six lines; bars of three with strong downbeats underpin the verse-and-falseta structure.",
+    "source": "https://richterguitar.com/flamenco-guitar/flamenco-guitar-toques-and-palos/ ; https://en.wikipedia.org/wiki/Palo_(flamenco)"
+  },
+  {
+    "name": "Fandangos de Huelva",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The measured, danceable fandango of Huelva in a strict ternary compás, brighter and more rhythmic than the free fandango, with steady triple accents.",
+    "source": "https://richterguitar.com/flamenco-guitar/flamenco-guitar-toques-and-palos/ ; https://en.wikipedia.org/wiki/Palo_(flamenco)"
+  },
+  {
+    "name": "Sevillanas",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The four-copla folk dance of the Seville feria, notated in 3/4 like the fandango, with castanets and a lively ternary lilt across each seguidilla.",
+    "source": "https://richterguitar.com/flamenco-guitar/flamenco-guitar-toques-and-palos/ ; https://en.wikipedia.org/wiki/Palo_(flamenco)"
+  },
+  {
+    "name": "Farruca",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A Galician-rooted palo in 4/4, minor and dramatic, danced almost exclusively by men with powerful zapateado over a binary compás and backbeat accents.",
+    "source": "https://en.wikipedia.org/wiki/Palo_(flamenco) ; https://richterguitar.com/flamenco-guitar/flamenco-guitar-toques-and-palos/"
+  },
+  {
+    "name": "Zapateado",
+    "region": "European",
+    "genre": "Flamenco",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 6],
+      "snareGhost": [2, 4, 8, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A virtuosic percussive dance in 6/8 built entirely around the dancer's foot rhythms (zapato = shoe), the heelwork itself supplying the melody and accents.",
+    "source": "https://en.wikipedia.org/wiki/Palo_(flamenco) ; https://richterguitar.com/flamenco-guitar/flamenco-guitar-toques-and-palos/"
+  },
+  {
+    "name": "Jota Aragonesa",
+    "region": "European",
+    "genre": "Iberian",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Spain's fast triple-time national dance, with energetic jumps, strong singing and castanets; bars of 3/4 carry the driving ternary accents.",
+    "source": "https://www.polyglottistlanguageacademy.com/language-culture-travelling-blog/2025/3/12/traditional-spanish-dances-beyond-flamenco-sevillanas-sardanas-and-more"
+  },
+  {
+    "name": "Muñeira",
+    "region": "European",
+    "genre": "Iberian",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 6],
+      "snareGhost": [2, 4, 8, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The lively Galician/Asturian bagpipe dance in 6/8, driven by gaita, tamboril and pandeireta with two strong dotted pulses per bar.",
+    "source": "https://en.wikipedia.org/wiki/Mui%C3%B1eira"
+  },
+  {
+    "name": "Sardana",
+    "region": "European",
+    "genre": "Iberian",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 6],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The Catalan circle dance of unity played by a cobla, alternating short curts and long llargs phrases over a measured duple-compound pulse.",
+    "source": "https://www.polyglottistlanguageacademy.com/language-culture-travelling-blog/2025/3/12/traditional-spanish-dances-beyond-flamenco-sevillanas-sardanas-and-more"
+  },
+  {
+    "name": "Fado",
+    "region": "European",
+    "genre": "Iberian",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "Portugal's melancholic urban song, typically in a stately 4/4 (fado corrido) accompanied by the Portuguese guitarra, with downbeat-driven saudade.",
+    "source": "https://talkpal.ai/culture/spanish-regional-music-for-language-insights/"
+  },
+  {
+    "name": "Vira",
+    "region": "European",
+    "genre": "Iberian",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 6],
+      "snareGhost": [2, 4, 8, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A fast Portuguese folk dance in 6/8 from the Minho region, related to the muñeira, with whirling couples over two strong dotted beats.",
+    "source": "https://talkpal.ai/culture/spanish-regional-music-for-language-insights/"
+  },
+  {
+    "name": "Corridinho",
+    "region": "European",
+    "genre": "Iberian",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A brisk Algarvian polka-like couple dance in fast 2/4, with quick running steps and an offbeat accordion drive.",
+    "source": "https://talkpal.ai/culture/spanish-regional-music-for-language-insights/"
+  },
+  {
+    "name": "Pasodoble",
+    "region": "European",
+    "genre": "Iberian",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The Spanish bullfight march in crisp 2/4, with trumpets and drums evoking the paseíllo; strong on-the-beat accents mimic the matador's stride.",
+    "source": "https://talkpal.ai/culture/spanish-regional-music-for-language-insights/"
+  },
+  {
+    "name": "Bourrée 2-temps",
+    "region": "European",
+    "genre": "French",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The duple bourrée of Berry, Bourbonnais and Charolais in 2/4, with a characteristic three-placement step driving each two-beat bar.",
+    "source": "https://www.accrofolk.net/danses-folks/bourree"
+  },
+  {
+    "name": "Bourrée 3-temps",
+    "region": "European",
+    "genre": "French",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The triple bourrée of Auvergne and Haut-Berry in 3/4, with three equal placements per bar and a slight lift on the third beat.",
+    "source": "https://www.accrofolk.net/danses-folks/bourree"
+  },
+  {
+    "name": "Gavotte",
+    "region": "European",
+    "genre": "French",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The Breton chain dance in duple time, danced arm-in-arm in an open or closed line with a steady, grounded tread.",
+    "source": "https://www.accrofolk.net/danses-folks/gavotte"
+  },
+  {
+    "name": "An Dro",
+    "region": "European",
+    "genre": "French",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A Breton round dance in even duple time, dancers linked by little fingers swaying in a continuous chain with a smooth swinging pulse.",
+    "source": "https://www.folkinspiration.org/post/starters-guide-to-balfolk-part1 ; https://www.melodigging.com/genre/french-folk-music"
+  },
+  {
+    "name": "Hanter Dro",
+    "region": "European",
+    "genre": "French",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 6],
+      "snareGhost": [2, 4, 8, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A Breton 'half-turn' round dance in a swaying triple-felt pulse, gentler than the an dro, danced with hands on neighbours' lower backs.",
+    "source": "https://www.folkinspiration.org/post/starters-guide-to-balfolk-part1"
+  },
+  {
+    "name": "Plinn",
+    "region": "European",
+    "genre": "French",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A Breton fisel/plinn gavotte-family chain dance from the Centre-Bretagne, in brisk duple time with a tight, bouncing step.",
+    "source": "https://www.melodigging.com/genre/french-folk-music"
+  },
+  {
+    "name": "Ridée",
+    "region": "European",
+    "genre": "French",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A Breton round dance (ridée 6 temps) of the Vannetais, danced in a chain with a rocking duple pulse and crossing steps.",
+    "source": "https://www.melodigging.com/genre/french-folk-music"
+  },
+  {
+    "name": "Scottish (Schottische)",
+    "region": "European",
+    "genre": "French",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The balfolk schottische, a 4/4 couple dance with a step-step-step-hop pattern and a relaxed backbeat lift.",
+    "source": "https://www.folkinspiration.org/post/starters-guide-to-balfolk-part1 ; http://www.lacampanule.fr/musiques_et_danses.php?danse=11"
+  },
+  {
+    "name": "Mazurka (Balfolk)",
+    "region": "European",
+    "genre": "French",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [4, 8],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The folk mazurka in triple meter with characteristic accents on the second or third beat and dotted, syncopated figures driving the turning couple dance.",
+    "source": "https://www.accrofolk.net/danses-folks/mazurka"
+  },
+  {
+    "name": "Valse Musette",
+    "region": "European",
+    "genre": "French",
+    "length": 12,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0],
+      "snareGhost": [4, 8],
+      "hatClosed": [0, 4, 8],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "The Parisian accordion waltz in fast 3/4, bass on beat one and chords on two and three, lilting through the bal-musette.",
+    "source": "https://www.melodigging.com/genre/french-folk-music"
+  },
+  {
+    "name": "Rondeau",
+    "region": "European",
+    "genre": "French",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The Gascon rondeau (rondeau de Samadet), a chain dance in lively duple time with a swinging walking step around the circle.",
+    "source": "https://www.melodigging.com/genre/french-folk-music"
+  },
+  {
+    "name": "Polska (Slängpolska)",
+    "region": "European",
+    "genre": "Nordic",
+    "length": 12,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 8],
+      "snareGhost": [4, 6, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "A Swedish sixteenth-note polska danced largely in place, in 3/4 with weight on beats one and three and a characteristically weak second beat.",
+    "source": "https://en.wikipedia.org/wiki/Sl%C3%A4ngpolska ; https://www.norbeck.nu/swedtrad/"
+  },
+  {
+    "name": "Triolpolska",
+    "region": "European",
+    "genre": "Nordic",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 8],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "A Swedish triplet polska whose 3/4 beats subdivide into triplets, giving a flowing rolling feel distinct from the sixteenth-note slängpolska.",
+    "source": "https://en.wikipedia.org/wiki/Polska_(dance) ; https://www.norbeck.nu/swedtrad/"
+  },
+  {
+    "name": "Springar (Telemark)",
+    "region": "European",
+    "genre": "Nordic",
+    "length": 12,
+    "voices": {
+      "bass": [0, 5, 9],
+      "snareAccent": [0, 9],
+      "snareGhost": [3, 7, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "The asymmetric Telemark springar in uneven 3-time — long, long, short — danced to the Hardanger fiddle with each beat of unequal length.",
+    "source": "https://socalfolkdance.org/dances/T/Telespringer-Telegangar_(Lester).pdf ; https://en.wikipedia.org/wiki/Bygdedans"
+  },
+  {
+    "name": "Springar (Valdres)",
+    "region": "European",
+    "genre": "Nordic",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 8],
+      "snareAccent": [3, 8],
+      "snareGhost": [1, 6, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "The Valdres springar in asymmetric 3-time — short, longer, long — with the stress on the second beat, a regional dialect of the Hardanger-fiddle tradition.",
+    "source": "https://www.folkemusikk.custompublish.com/norwegian-traditional-music.137786.en.html ; https://en.wikipedia.org/wiki/Bygdedans"
+  },
+  {
+    "name": "Gangar",
+    "region": "European",
+    "genre": "Nordic",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 6],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A Norwegian walking couple dance in 6/8, calmer than the springar, sharing its figures but in even compound-duple time.",
+    "source": "https://en.wikipedia.org/wiki/Bygdedans ; https://www.hfaa.org/about-the-hardanger-fiddle/Dances"
+  },
+  {
+    "name": "Halling",
+    "region": "European",
+    "genre": "Nordic",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A Norwegian acrobatic solo men's dance in 2/4 or 6/8, building to the high hat-kick (kast), played on Hardanger fiddle with strong even beats.",
+    "source": "https://en.wikipedia.org/wiki/Bygdedans ; https://www.hfaa.org/about-the-hardanger-fiddle/Dances"
+  },
+  {
+    "name": "Schottis",
+    "region": "European",
+    "genre": "Nordic",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The Swedish schottis, a 4/4 couple dance with a step-step-step-hop figure and a relaxed backbeat, a staple of the gammaldans repertoire.",
+    "source": "https://www.norbeck.nu/swedtrad/ ; https://socalfolkdance.org/articles/scandinavian_dance_terms_tracie.htm"
+  },
+  {
+    "name": "Snoa",
+    "region": "European",
+    "genre": "Nordic",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A smooth, fairly slow Swedish polka in 2/4 used for the turning couple dance of the same name in the gammaldans tradition.",
+    "source": "https://www.norbeck.nu/swedtrad/ ; https://socalfolkdance.org/articles/scandinavian_dance_terms_tracie.htm"
+  },
+  {
+    "name": "Finnish Polkka",
+    "region": "European",
+    "genre": "Nordic",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The Finnish polkka, a brisk 2/4 couple dance from the pelimanni tradition, driven by accordion and fiddle with a punchy offbeat.",
+    "source": "https://www.norbeck.nu/swedtrad/"
+  },
+  {
+    "name": "Saltarello",
+    "region": "European",
+    "genre": "Italian",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 6],
+      "snareGhost": [2, 4, 8, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A leaping central-Italian dance from Marche, Lazio and Abruzzo in fast 6/8, the tamburello bouncing triplets under whirling jumps.",
+    "source": "https://en.wikipedia.org/wiki/Tarantella ; https://francescoturrisi.substack.com/p/a-brief-introduction-to-the-italian"
+  },
+  {
+    "name": "Tammurriata",
+    "region": "European",
+    "genre": "Italian",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 4, 8, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A Campanian branch of the tarantella in lively 6/8 or 12/8, driven by the large jingling tammorra frame drum and call-and-response song.",
+    "source": "https://www.melodigging.com/genre/tammurriata ; https://en.wikipedia.org/wiki/Tarantella"
+  },
+  {
+    "name": "Tarantella",
+    "region": "European",
+    "genre": "Italian",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 6],
+      "snareGhost": [2, 4, 8, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [3, 9],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The southern-Italian tarantella in fast compound-duple 6/8, propelled by sharp tamburello rolls and a relentless upbeat triplet pulse.",
+    "source": "https://en.wikipedia.org/wiki/Tarantella ; https://www.melodigging.com/genre/tarantella"
+  },
+  {
+    "name": "Pizzica",
+    "region": "European",
+    "genre": "Italian",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [1, 2, 4, 5, 7, 8, 10, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The Salentine pizzica tarantata, a very fast 6/8 trance rhythm of Puglia born as music therapy against the tarantula's bite, with dense tambourine triplets.",
+    "source": "https://www.evdomovima.org/en/tarantella/ ; https://en.wikipedia.org/wiki/Tarantella"
+  },
+  {
+    "name": "Villanella",
+    "region": "European",
+    "genre": "Italian",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A light Neapolitan village song-dance in simple duple time, the rustic 'little country song' that fed into the wider canzone napoletana.",
+    "source": "https://en.wikipedia.org/wiki/Tarantella"
+  },
+  {
+    "name": "Csárdás",
+    "region": "European",
+    "genre": "Hungarian",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The Hungarian national couple dance in 2/4, alternating slow lassú and fast friss sections with a strong offbeat 'dűvő' accompaniment.",
+    "source": "https://en.wikipedia.org/wiki/Hungarian_folk_music ; https://www.melodigging.com/genre/verbunkos"
+  },
+  {
+    "name": "Verbunkos",
+    "region": "European",
+    "genre": "Hungarian",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The Hungarian military recruiting dance in dignified 4/4, with dotted 'snap' figures and a stately accelerating structure that fathered the csárdás.",
+    "source": "https://www.melodigging.com/genre/verbunkos ; https://en.wikipedia.org/wiki/Hungarian_folk_music"
+  },
+  {
+    "name": "Freylekhs",
+    "region": "European",
+    "genre": "Klezmer",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The quintessential Jewish circle dance in 2/4, a cheerful 'two-step' with a bouncing oom-pah and offbeat accent, the core of the simcha repertoire.",
+    "source": "https://www.iemj.org/en/les-danses-klezmer/ ; https://www.ilanacravitz.com/post/accompanying-rhythm-patterns"
+  },
+  {
+    "name": "Bulgar",
+    "region": "European",
+    "genre": "Klezmer",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 4, 6],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A lively Bessarabian-derived klezmer dance close to the freylekhs, in 8/8 felt 3+3+2, the dominant tune type of American klezmer.",
+    "source": "https://www.iemj.org/en/les-danses-klezmer/ ; https://klezmerrevival.weebly.com/dances-and-dance-rhythms.html"
+  },
+  {
+    "name": "Hora / Zhok",
+    "region": "European",
+    "genre": "Klezmer",
+    "length": 12,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 8],
+      "snareGhost": [4, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The Romanian-derived klezmer hora (zhok) in slow 3/8, the accompaniment striking beats one and three and omitting two for a limping, lurching gait.",
+    "source": "https://jewish-music.huji.ac.il/content/hora-lkt ; https://www.iemj.org/en/les-danses-klezmer/"
+  },
+  {
+    "name": "Sher",
+    "region": "European",
+    "genre": "Klezmer",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A klezmer square/contra dance in 2/4 at freylekhs tempo, danced by couples in a 'scissors' figure with the same bouncing offbeat accompaniment.",
+    "source": "https://www.iemj.org/en/les-danses-klezmer/ ; https://klezmerrevival.weebly.com/dances-and-dance-rhythms.html"
+  },
+  {
+    "name": "Terkisher",
+    "region": "European",
+    "genre": "Klezmer",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 4, 7],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A klezmer dance in an Ottoman 'Turkish' style, a 4/4 with a habanera-like dotted bass figure and an oriental Ashkenazic flavour.",
+    "source": "https://www.iemj.org/en/les-danses-klezmer/ ; https://klezmerguide.com/guide.html"
+  },
+  {
+    "name": "Khosidl",
+    "region": "European",
+    "genre": "Klezmer",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A dignified, slower Hasidic-style klezmer dance in 2/4 or 4/4, more stately and embellished than the freylekhs, danced solemnly in a circle.",
+    "source": "https://www.iemj.org/en/les-danses-klezmer/ ; https://klezmerguide.com/guide.html"
+  },
+  {
+    "name": "Sirba",
+    "region": "European",
+    "genre": "Klezmer",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [3, 7],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A fast Romanian-derived klezmer dance in 2/4 marked by rapid triplet runs and galloping sixteenth figures over a driving duple pulse.",
+    "source": "https://www.iemj.org/en/les-danses-klezmer/ ; https://klezmerrevival.weebly.com/dances-and-dance-rhythms.html"
+  },
+  {
+    "name": "Honga",
+    "region": "European",
+    "genre": "Klezmer",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A moderate klezmer/Romanian couple dance in 2/4, related to the hangu, with a steady walking pulse and offbeat accompaniment.",
+    "source": "https://www.iemj.org/en/les-danses-klezmer/ ; https://klezmerguide.com/guide.html"
+  },
+  {
+    "name": "Kozachok",
+    "region": "European",
+    "genre": "Klezmer",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [3, 7],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A fast Ukrainian-derived klezmer dance in 2/4 that accelerates, with vigorous footwork over a relentless oom-pah and offbeat snap.",
+    "source": "https://www.iemj.org/en/les-danses-klezmer/ ; https://klezmerrevival.weebly.com/dances-and-dance-rhythms.html"
+  },
+  {
+    "name": "Doina",
+    "region": "European",
+    "genre": "Klezmer",
+    "length": 8,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0],
+      "snareGhost": [],
+      "hatClosed": [0, 4],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "A rhapsodic, rubato klezmer lament of Romanian origin, sung or played freely without a fixed pulse, typically a prelude before a hora or bulgar.",
+    "source": "https://www.iemj.org/en/les-danses-klezmer/ ; https://klezmerguide.com/guide.html"
+  },
+  {
+    "name": "Reel",
+    "region": "European",
+    "genre": "Celtic",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The most common Irish tune type, in 4/4 of running eighth notes with accents on the first and third beats, played fast and smooth.",
+    "source": "https://www.tradschool.com/en/irish-music/tune-types-in-irish-traditional-music/ ; https://www.irishtune.info/rhythm/"
+  },
+  {
+    "name": "Jig",
+    "region": "European",
+    "genre": "Celtic",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 6],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The double jig in 6/8, six eighth notes felt in two groups of three with emphasis on beats one and four and a subtle swung lilt.",
+    "source": "https://www.tradschool.com/en/irish-music/tune-types-in-irish-traditional-music/ ; https://folkworks.org/article/guide-to-irish-tune-types/"
+  },
+  {
+    "name": "Slip Jig",
+    "region": "European",
+    "genre": "Celtic",
+    "length": 9,
+    "voices": {
+      "bass": [0, 3, 6],
+      "snareAccent": [0, 3, 6],
+      "snareGhost": [2, 5, 8],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      "hatOpen": [],
+      "hhFoot": [0, 3, 6]
+    },
+    "desc": "A graceful Irish tune type in 9/8, nine eighth notes felt in three groups of three, lighter and more lilting than the double jig.",
+    "source": "https://www.tradschool.com/en/irish-music/tune-types-in-irish-traditional-music/ ; https://www.irishtune.info/rhythm/"
+  },
+  {
+    "name": "Hornpipe",
+    "region": "European",
+    "genre": "Celtic",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 8],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "An Irish tune type in 4/4 played slower than a reel with a heavy dotted swing, giving its bouncy, jovial 'long-short' lilt across sixteen subdivisions.",
+    "source": "https://www.tradschool.com/en/irish-music/tune-types-in-irish-traditional-music/ ; https://www.irishtune.info/rhythm/"
+  },
+  {
+    "name": "Polka (Irish)",
+    "region": "European",
+    "genre": "Celtic",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The Sliabh Luachra polka in lively 2/4, typically 32 bars AABB and played fast with a punchy offbeat accent.",
+    "source": "https://www.tradschool.com/en/irish-music/tune-types-in-irish-traditional-music/ ; https://roaringwaterjournal.com/2016/05/08/slides-or-jigs-polkas-or-reels/"
+  },
+  {
+    "name": "Slide",
+    "region": "European",
+    "genre": "Celtic",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 6],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A Sliabh Luachra tune type in fast 12/8 felt in four, brighter and quicker than a 6/8 jig with the accent on beats one and three.",
+    "source": "https://www.tradschool.com/en/irish-music/tune-types-in-irish-traditional-music/ ; https://roaringwaterjournal.com/2016/05/08/slides-or-jigs-polkas-or-reels/"
+  },
+  {
+    "name": "Strathspey",
+    "region": "European",
+    "genre": "Celtic",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [1, 3, 5, 7],
+      "snareGhost": [0, 2, 4, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The Scottish strathspey in 4/4, defined by the 'Scotch snap' — a short sixteenth followed by a dotted eighth — giving a sharp, jerky dotted feel.",
+    "source": "https://rscds.org/learn/music-resources/types-tunes/strathspeys ; https://en.wikipedia.org/wiki/Strathspey_(dance)"
+  },
+  {
+    "name": "March (Celtic)",
+    "region": "European",
+    "genre": "Celtic",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A Scottish/Irish 4/4 pipe march with firm on-the-beat accents and a steady marching tread, often played with dotted pointing.",
+    "source": "https://rscds.org/learn/music-resources/types-tunes ; https://www.irishtune.info/rhythm/"
+  },
+  {
+    "name": "Rant",
+    "region": "European",
+    "genre": "Celtic",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A Northumbrian/Border reel-type tune in 4/4 used for rant figure dances, played crisply with strong first-and-third-beat accents.",
+    "source": "https://rscds.org/learn/music-resources/types-tunes ; https://www.irishtune.info/rhythm/"
+  },
+  {
+    "name": "Three-Two",
+    "region": "European",
+    "genre": "Celtic",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8]
+    },
+    "desc": "An old Northumbrian/Scottish hornpipe in 3/2, three half-note beats per bar giving a stately rolling triple-time swing.",
+    "source": "https://www.irishtune.info/rhythm/ ; https://rscds.org/learn/music-resources/types-tunes"
+  }
+]
