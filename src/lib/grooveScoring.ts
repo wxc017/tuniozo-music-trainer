@@ -411,6 +411,37 @@ interface VaryOpts {
   damp?: number;
 }
 
+/** Per-point hi-hat-foot (left-foot pedal) ostinato shapes. */
+type FootShape = "none" | "backbeat" | "downbeats" | "offbeats" | "down+up";
+function footOstinato(shape: FootShape, sizes: number[]): number[][] {
+  return sizes.map((s, i) => {
+    const mid = Math.min(s - 1, Math.max(1, Math.round(s / 2)));
+    switch (shape) {
+      case "backbeat":  return i % 2 === 1 ? [0] : [];   // foot "chick" on 2 & 4
+      case "downbeats": return [0];                       // quarter-note foot
+      case "offbeats":  return [mid];                     // foot on the "and"
+      case "down+up":   return mid > 0 ? [0, mid] : [0];
+      default:          return [];
+    }
+  });
+}
+
+/** Per-point bass-drum ostinato shapes (added on top of any existing kick). */
+type BassOstShape = "none" | "four" | "down+mid" | "eighths" | "sixteenths" | "gallop";
+function bassOstinato(shape: BassOstShape, sizes: number[]): number[][] {
+  return sizes.map((s) => {
+    const mid = Math.min(s - 1, Math.max(1, Math.round(s / 2)));
+    switch (shape) {
+      case "four":       return [0];                              // four-on-the-floor
+      case "down+mid":   return mid > 0 ? [0, mid] : [0];
+      case "eighths":    return seq(s).filter(x => x % 2 === 0);  // 8th double-bass
+      case "sixteenths": return seq(s);                           // 16th double-bass
+      case "gallop":     return s >= 2 ? [0, s - 1] : [0];        // kick + pickup
+      default:           return [];
+    }
+  });
+}
+
 function varyGroove(src: PointVoices[], cycle: GrooveCycle, opts: VaryOpts = {}): PointVoices[] {
   const sizes = cycle.points.map(p => p.subPulses);
   const keep = new Set(opts.preserve ?? []);
@@ -501,6 +532,41 @@ function varyGroove(src: PointVoices[], cycle: GrooveCycle, opts: VaryOpts = {})
       }
     }
   }
+
+  // 6. LEFT-FOOT (hi-hat pedal) ostinato — the missing left-foot action.  A real
+  //    chance every generation so a foot voice regularly appears; additive, so it
+  //    never disturbs the hands.  Spread of shapes for breadth.
+  if (!keep.has("hhFoot") && chance(0.7 * damp)) {
+    const foot = footOstinato(pick<FootShape>(["backbeat", "backbeat", "downbeats", "offbeats", "down+up", "none"]), sizes);
+    pv.forEach((p, i) => { if (foot[i].length) p.hhFoot = { hits: foot[i], doubles: [] }; else delete p.hhFoot; });
+  }
+
+  // 7. BASS ostinato — lay a repeating kick foundation (four-on-floor, 8th/16th
+  //    double-bass, gallop) on top of the existing kick for variety; only when
+  //    the kick isn't a preserved style skeleton.  Bass bias = busier + likelier.
+  if (!keep.has("bass") && chance((bias.has("bass") ? 0.6 : 0.32) * damp)) {
+    const shapes: BassOstShape[] = bias.has("bass")
+      ? ["eighths", "sixteenths", "down+mid", "gallop", "four"]
+      : ["four", "down+mid", "eighths", "none", "none"];
+    const bassO = bassOstinato(pick(shapes), sizes);
+    pv.forEach((p, i) => {
+      if (!bassO[i].length) return;
+      const cur = new Set(p.bass?.hits ?? []);
+      for (const s of bassO[i]) cur.add(s);
+      p.bass = { hits: [...cur].sort((a, b) => a - b), doubles: p.bass?.doubles ?? [] };
+    });
+  }
+
+  // 8. No ghost on a kick — a parenthesised ghost stacked on the bass drum reads
+  //    as nonsense; drop any ghost that lands on a bass hit (covers the source
+  //    groove and any kick added above).
+  pv.forEach(p => {
+    if (!p.snareGhost) return;
+    const bassSet = new Set(p.bass?.hits ?? []);
+    const cleaned = p.snareGhost.hits.filter(h => !bassSet.has(h));
+    if (cleaned.length) p.snareGhost = { hits: cleaned, doubles: (p.snareGhost.doubles ?? []).filter(d => cleaned.includes(d)) };
+    else delete p.snareGhost;
+  });
 
   return pv;
 }

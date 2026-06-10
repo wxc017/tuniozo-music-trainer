@@ -445,8 +445,8 @@ function splitSlots(slots: number, beatSize: number, tripletGroup3 = false): str
   return result;
 }
 
-function makeRest(dur: string, stemDir: number, visible = false): StaveNote {
-  const n = new StaveNote({ keys: [REST_KEY], duration: dur + "r", stemDirection: stemDir });
+function makeRest(dur: string, stemDir: number, visible = false, key: string = REST_KEY): StaveNote {
+  const n = new StaveNote({ keys: [key], duration: dur + "r", stemDirection: stemDir });
   if (dur.includes("d")) { try { Dot.buildAndAttach([n], { all: true }); } catch { /* ignore */ } }
   if (!visible) n.setStyle({ fillStyle: "transparent", strokeStyle: "transparent" });
   return n;
@@ -490,6 +490,13 @@ function buildMergedVoice(
   // kick = quarter, off-beat kick = eighth) instead of sustained half/whole
   // notes or fragmented sub-beat rests.
   capToBeat:        boolean  = false,
+  // Draw the rest BEFORE the first hit even when showRests is off — so a voice
+  // that enters off the downbeat (e.g. a bass on the "and") shows where it starts
+  // without cluttering the bar with its trailing rests.
+  showLeadingRest:  boolean  = false,
+  // Staff position for this voice's rests.  The down (bass) voice uses a lower
+  // pitch so its rest sits below the up-voice rest — each voice shows its own.
+  restKey:          string   = REST_KEY,
 ): { notes: StaveNote[]; xPatches: XPatch[]; tieChains: number[][] } {
   const allHits = new Set<number>();
   hitArrays.forEach(arr => arr.filter(s => s < slotCount).forEach(s => allHits.add(s)));
@@ -500,8 +507,8 @@ function buildMergedVoice(
   const tieChains: number[][] = [];
   let cursor = 0;
 
-  const fillRests = (gap: number) => {
-    for (const rd of splitSlots(gap, beatSize, tripletGroup3)) notes.push(makeRest(rd, stemDir, showRests));
+  const fillRests = (gap: number, visible: boolean = showRests) => {
+    for (const rd of splitSlots(gap, beatSize, tripletGroup3)) notes.push(makeRest(rd, stemDir, visible, restKey));
   };
 
   for (let hi = 0; hi < sortedHits.length; hi++) {
@@ -509,7 +516,9 @@ function buildMergedVoice(
     const nextPos = hi + 1 < sortedHits.length ? sortedHits[hi + 1] : slotCount;
 
     if (cursor < pos) {
-      fillRests(pos - cursor);
+      // The rest before the FIRST hit is shown when showLeadingRest is set even
+      // if the voice otherwise hides rests — marks where an off-beat entry begins.
+      fillRests(pos - cursor, hi === 0 ? (showRests || showLeadingRest) : showRests);
     }
 
     const activeVIs = hitArrays
@@ -617,7 +626,7 @@ function buildMergedVoice(
           // Under tripletGroup3 this means slotsToVfDur still emitted a short
           // head note (e.g. "8") and we need to fill the remainder; use
           // non-triplet splitting so the rests use their natural durations.
-          for (const rd of splitSlots(extra, beatSize, false)) notes.push(makeRest(rd, stemDir, showRests));
+          for (const rd of splitSlots(extra, beatSize, false)) notes.push(makeRest(rd, stemDir, showRests, restKey));
         }
       }
     }
@@ -1129,8 +1138,12 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
     el.innerHTML = "";
 
     const CLEF_EXTRA = showClef ? 40 : 0;
+    // Symmetric beats format every beat's notes to the same span; the LAST beat
+    // also carries the END barline, so give it extra box room or its final
+    // note/accent collides with the barline and clips at the edge.
+    const endPad = equalBeatWidth ? 22 : 0;
     const mw = (i: number) => measureWidths?.[i] ?? measureWidth;
-    const totalW     = CLEF_EXTRA + measures.reduce((sum, _, i) => sum + mw(i), 0);
+    const totalW     = CLEF_EXTRA + endPad + measures.reduce((sum, _, i) => sum + mw(i), 0);
     const staveY     = staveYProp ?? computeStaveY(height);
 
     try {
@@ -1158,7 +1171,7 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
         const isLast  = idx === measures.length - 1;
         const thisMW = mw(idx);
         const x = xCursor;
-        const w = (isFirst && !clefGutter) ? thisMW + CLEF_EXTRA : thisMW;
+        const w = ((isFirst && !clefGutter) ? thisMW + CLEF_EXTRA : thisMW) + (isLast ? endPad : 0);
 
         const stave = new Stave(x, staveY, w);
         if (singleLine) {
@@ -1247,7 +1260,7 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
           [mDownBassHits, mDownFootHits],
           [mDownBassDoubles, hhFootOpen],
           slotCount, beatSize, [], m.downShowRests ?? mShowRests ?? false, false, [0],
-          false, m.downShortHits ?? mShortHits, m.capToBeat ?? false,
+          false, m.downShortHits ?? mShortHits, m.capToBeat ?? false, true, BD_KEY,
         );
 
         const upSnareGroup = [...snareHits, ...tomHits, ...crashHits, ...(mBassStemUp ? bassHits : [])];
@@ -1272,6 +1285,16 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
         const beamSrcs: StaveNote[][] = [];
         if (hasUp)   { voices.push(makeVoice(upNotes));   beamSrcs.push(upNotes); }
         if (hasDown) { voices.push(makeVoice(downNotes)); beamSrcs.push(downNotes); }
+        // Even-grid spacer: a HIDDEN steady 16th flow that adds a tick context at
+        // every slot so notes land on an even grid while keeping their natural
+        // values (eighths etc.).  It is formatted but NOT joined with the visible
+        // voices — joining would let VexFlow collision-shift the bass off its
+        // alignment — and never drawn, so it's purely a spacing scaffold.
+        let spacerVoice: Voice | null = null;
+        if (equalBeatWidth && slotCount > 1) {
+          const [gridUnit] = slotsToVfDur(1, beatSize);
+          spacerVoice = makeVoice(Array.from({ length: slotCount }, () => makeRest(gridUnit, -1, false)));
+        }
 
         // When a custom beam grouping is requested (e.g. 3 for a triplet-ostinato
         // phrase rendered as straight 16ths), beam by slot position and respect
@@ -1305,7 +1328,9 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
           // same meter lays notes out at the same fractional positions
           // regardless of hit density or beam grouping.
           const formatter = new Formatter({ softmaxFactor: 1 } as unknown as never);
-          formatter.joinVoices(voices).format(voices, fmtW);
+          formatter.joinVoices(voices);
+          if (spacerVoice) formatter.joinVoices([spacerVoice]);
+          formatter.format(spacerVoice ? [...voices, spacerVoice] : voices, fmtW);
           [...upPatches, ...downPatches].forEach(p => applyXHead(p.note.noteHeads[p.headIndex], p.isOpen));
           voices.forEach(v => v.draw(ctx, stave));
           allBeams.forEach(b => b.setContext(ctx).draw());

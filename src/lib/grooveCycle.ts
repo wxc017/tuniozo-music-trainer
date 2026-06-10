@@ -223,6 +223,14 @@ export function assembleCycle(cycle: GrooveCycle, pointVoices: PointVoices[]): A
   const pulseSizes = cycle.points.map(p => p.subPulses);
   const totalSlots = cycleTotalSlots(cycle);
   const accentFlags = new Array<boolean>(totalSlots).fill(false);
+  // Accent policy: a SPARSE snareAccent line (a clave or backbeat — its strokes
+  // ARE the accents) is accented on every stroke.  A DENSE line (a running
+  // bell / cáscara timeline) would read as "all accented" if every stroke got a
+  // >, so it's accented only on the beat heads — a couple of natural emphases,
+  // the way a bell actually feels — not a wall of accents.
+  const snareAccentTotal = pointVoices.reduce((n, pv) => n + (pv?.snareAccent?.hits.length ?? 0), 0);
+  const denseAccent = snareAccentTotal > cycle.points.length * 1.3;
+  const pulseHeads = new Set(offs);
 
   cycle.points.forEach((_p, i) => {
     const off = offs[i];
@@ -238,7 +246,7 @@ export function assembleCycle(cycle: GrooveCycle, pointVoices: PointVoices[]): A
     // on its OWN strokes — which are mostly off-beats (the 3 & a of a 3-2 son
     // clave) — not just downbeats, and a backbeat is an accent too.  (snareGhost
     // is the un-accented/ghosted voice.)
-    place(voices.snareAccent, (abs, d) => { snareHits.push(abs); accentFlags[abs] = true; if (d) snareDoubleHits.push(abs); });
+    place(voices.snareAccent, (abs, d) => { snareHits.push(abs); if (!denseAccent || pulseHeads.has(abs)) accentFlags[abs] = true; if (d) snareDoubleHits.push(abs); });
     place(voices.snareGhost,  (abs, d) => { ghostHits.push(abs); if (d) ghostDoubleHits.push(abs); });
     place(voices.hatClosed,   abs => { hatHits.push(abs); });
     place(voices.hatOpen,     abs => { hatHits.push(abs); hatOpenHits.push(abs); });
