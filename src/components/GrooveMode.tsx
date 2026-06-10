@@ -1,24 +1,24 @@
 /**
  * GrooveMode.tsx — "Groove Permutations" sub-mode for Drum Patterns.
  *
- * Define a CYCLE (pulses × per-pulse sub-pulses, uniform or additive 3-2-2).
- * Every voice — bass, snare, ghost, hi-hat, open-hat, left-foot — has its own
- * permutation pool; a VOICE SELECTOR above the pool picks which one you browse.
- * Click a placement to drop it into the selected point, or apply an OSTINATO
- * (any shape, wide variety) to every point at once — so left-foot + bass can
- * ride a fixed ostinato while snare + hi-hat are permuted on top.  32nd
- * double-strokes appear as pool options for snare/ghost.
+ * Define a CYCLE (pulses × per-pulse sub-pulses, uniform or additive 3-2-2),
+ * pick a tradition/feel, and hit Generate to draw a RANDOM real-world groove of
+ * that length + style and hear it played a new way each time.  The library
+ * groove is only scaffolding — the engine keeps its style skeleton and re-rolls
+ * the playing on top (ghosts, hi-hat subdivision, pushed kicks, open-hat
+ * accents, 32nd ornaments) so the goal of the mode — exposure to as many
+ * grooves and as much vocabulary as possible — is met by just regenerating.
+ * Save any result, or load a reference groove from the library browser below.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { VexDrumStrip } from "@/components/VexDrumNotation";
 import {
-  LayerVoice, LAYER_VOICES, VOICE_META, PointVoices, VoicePlacement,
+  PointVoices,
   SUB_PULSE_SIZES,
   makeCycle, isUniform, assembleCycle, cycleToStripMeasures,
-  voicePermDensities, enumerateVoicePerms,
 } from "@/lib/grooveCycle";
-import { assembleMusicalCycle, generateInStyle, scoreGroove, grooveToPointVoices } from "@/lib/grooveScoring";
+import { generateInStyle, scoreGroove, grooveToPointVoices } from "@/lib/grooveScoring";
 import { nearestLibraryGroove, GROOVE_LIBRARY, REGIONS, genresForRegion, type LibraryMatch, type Region, type LibraryGroove } from "@/lib/grooveLibrary";
 import { cycleTotalSlots } from "@/lib/grooveCycle";
 import {
@@ -26,8 +26,6 @@ import {
 } from "@/lib/grooveStore";
 
 type Aesthetic = "musical" | "awkward" | "both";
-
-const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
 /** Factor a library groove's slot count into editor pulse sizes (each 2..7),
  *  preferring a uniform sixteenth-style grouping, falling back to an additive
@@ -41,45 +39,11 @@ function factorSizes(L: number): number[] {
   return parts;
 }
 
-/* ── Mini placement card ───────────────────────────────────────────────── */
-function PermCard({ voice, size, hits, doubles, label, selected, onClick }: {
-  voice: LayerVoice; size: number; hits: number[]; doubles: number[]; label: string;
-  selected: boolean; onClick: () => void;
-}) {
-  const DOT = 12, GAP = 4, PAD = 6;
-  const cardW = size * (DOT + GAP) - GAP + PAD * 2;
-  const color = VOICE_META[voice].color;
-  const hitSet = new Set(hits), dblSet = new Set(doubles);
-  return (
-    <button onClick={onClick} title={label} style={{
-      width: cardW, flexShrink: 0, padding: "6px 0 5px", borderRadius: 6,
-      border: `1.5px solid ${selected ? color : "#222"}`,
-      background: selected ? color + "22" : "#0e0e0e", cursor: "pointer",
-      display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-    }}>
-      <div style={{ display: "flex", gap: GAP, padding: `0 ${PAD}px` }}>
-        {range(size).map(i => (
-          <div key={i} style={{
-            position: "relative", width: DOT, height: DOT, borderRadius: "50%",
-            background: hitSet.has(i) ? color : "transparent",
-            border: `1.5px solid ${hitSet.has(i) ? color : "#2a2a2a"}`,
-          }}>
-            {dblSet.has(i) && <span style={{ position: "absolute", top: 1, bottom: 1, left: "50%", width: 1.5, marginLeft: -0.75, background: "#0e0e0e" }} />}
-          </div>
-        ))}
-      </div>
-      <span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: selected ? color : "#555" }}>{label}</span>
-    </button>
-  );
-}
-
 export default function GrooveMode() {
   const [sizes, setSizes] = useState<number[]>([4, 4, 4, 4]);
   const [aesthetic, setAesthetic] = useState<Aesthetic>("musical");
   const [region, setRegion] = useState<Region | "Any">("Any");
   const [genre, setGenre] = useState<string>("");
-  const [selVoice, setSelVoice] = useState<LayerVoice>("snareAccent");
-  const [selPoint, setSelPoint] = useState(0);
   const [pointVoices, setPointVoices] = useState<PointVoices[]>(() => sizes.map(() => ({})));
   const [genMatch, setGenMatch] = useState<LibraryMatch | null>(null);
 
@@ -88,15 +52,8 @@ export default function GrooveMode() {
   // Keep pointVoices aligned to the pulse count.
   useEffect(() => {
     setPointVoices(prev => sizes.map((_s, i) => prev[i] ?? {}));
-    setSelPoint(p => Math.min(p, sizes.length - 1));
     setGenMatch(null);
   }, [sizes]);
-
-  const [openDensities, setOpenDensities] = useState<Set<number>>(new Set([1, 2]));
-  const toggleDensity = (k: number) => setOpenDensities(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
-
-  const curSize = sizes[selPoint] ?? 4;
-  const densities = useMemo(() => voicePermDensities(curSize), [curSize]);
 
   const assembled = useMemo(() => assembleCycle(cycle, pointVoices), [cycle, pointVoices]);
   const measures = useMemo(() => cycleToStripMeasures(cycle, pointVoices), [cycle, pointVoices]);
@@ -105,43 +62,14 @@ export default function GrooveMode() {
   const rationale = genMatch ?? match;
   const uniform = isUniform(cycle);
 
-  // ── Actions ─────────────────────────────────────────────────────────────
-  // Clicking a pool card always sets the selected voice on the selected point.
-  const placeVoice = useCallback((hits: number[], doubles: number[]) => {
-    setPointVoices(prev => prev.map((pv, i) => (i === selPoint ? { ...pv, [selVoice]: { hits, doubles } } : pv)));
-    setGenMatch(null);
-  }, [selPoint, selVoice]);
-
-  // Repeat the current point's selected-voice pattern on EVERY point (ostinato).
-  const repeatOnAll = useCallback(() => {
-    setPointVoices(prev => {
-      const src = prev[selPoint]?.[selVoice];
-      return prev.map((pv, i) => {
-        const next = { ...pv };
-        if (!src || src.hits.length === 0) delete next[selVoice];
-        else next[selVoice] = { hits: src.hits.filter(h => h < sizes[i]), doubles: (src.doubles ?? []).filter(h => h < sizes[i]) };
-        return next;
-      });
-    });
-    setGenMatch(null);
-  }, [selPoint, selVoice, sizes]);
-
-  const clearVoiceAll = useCallback(() => {
-    setPointVoices(prev => prev.map(pv => { const n = { ...pv }; delete n[selVoice]; return n; }));
-    setGenMatch(null);
-  }, [selVoice]);
-
-  const clearPoint = useCallback(() => {
-    setPointVoices(prev => prev.map((pv, i) => (i === selPoint ? {} : pv)));
-    setGenMatch(null);
-  }, [selPoint]);
-
   const total = cycleTotalSlots(cycle);
   const genreOpts = useMemo(() => genresForRegion(region, total), [region, total]);
   const generate = useCallback(() => {
-    const res = region === "Any"
-      ? assembleMusicalCycle(cycle, { mode: aesthetic, candidates: 260 })
-      : generateInStyle(cycle, { region, genre: genre || undefined, mode: aesthetic });
+    const res = generateInStyle(cycle, {
+      region: region === "Any" ? undefined : region,
+      genre: genre || undefined,
+      mode: aesthetic,
+    });
     setPointVoices(res.pointVoices);
     setGenMatch(res.match);
   }, [cycle, aesthetic, region, genre, total]);
@@ -186,7 +114,6 @@ export default function GrooveMode() {
   });
   const lbl: React.CSSProperties = { fontSize: 10, letterSpacing: 2, color: "#666", fontWeight: 700 };
   const stripW = Math.min(1500, Math.max(420, assembled.totalSlots * 34));
-  const curPlacement: VoicePlacement | undefined = pointVoices[selPoint]?.[selVoice];
 
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "12px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
@@ -228,8 +155,8 @@ export default function GrooveMode() {
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
         <span style={lbl}>SUB-PULSES / PULSE</span>
         {sizes.map((s, i) => (
-          <button key={i} onClick={() => { setSelPoint(i); cyclePulse(i); }} title="click to change size"
-            style={{ ...chip(selPoint === i), fontFamily: "monospace", minWidth: 26 }}>{s}</button>
+          <button key={i} onClick={() => cyclePulse(i)} title="click to change size"
+            style={{ ...chip(false), fontFamily: "monospace", minWidth: 26 }}>{s}</button>
         ))}
         <span style={{ fontSize: 10, color: "#555" }}>e.g. 3-2-2 · 3-4-5 · 6-8-8 — click a number to change it</span>
       </div>
@@ -237,13 +164,7 @@ export default function GrooveMode() {
       {/* ── Assembled cycle + rationale ────────────────────────────────── */}
       <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: 8, padding: 12 }}>
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <VexDrumStrip measures={measures} measureWidth={uniform ? stripW : Math.max(90, stripW / sizes.length)} height={140} showClef oneBeatPerBar={!uniform} />
-        </div>
-        <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 6, flexWrap: "wrap" }}>
-          {sizes.map((_, i) => (
-            <button key={i} onClick={() => setSelPoint(i)} style={{ ...chip(selPoint === i), fontFamily: "monospace", minWidth: 28 }}>{i + 1}</button>
-          ))}
-          <button onClick={clearPoint} style={{ ...chip(false, "#a55"), marginLeft: 8 }}>clear point</button>
+          <VexDrumStrip measures={measures} measureWidth={uniform ? stripW : Math.max(90, stripW / sizes.length)} height={210} showClef oneBeatPerBar={!uniform} />
         </div>
         <div style={{ marginTop: 8, fontSize: 12, color: "#888", textAlign: "center" }}>
           {rationale ? (
@@ -258,70 +179,6 @@ export default function GrooveMode() {
         </div>
         <div style={{ textAlign: "center", marginTop: 8 }}>
           <button onClick={saveCurrent} style={chip(false, "#50b080")}>★ Save groove</button>
-        </div>
-      </div>
-
-      {/* ── Voice selector (above the pool) ────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <span style={lbl}>VOICE</span>
-        {LAYER_VOICES.map(v => (
-          <button key={v} onClick={() => setSelVoice(v)} style={{
-            ...chip(selVoice === v, VOICE_META[v].color),
-            display: "flex", alignItems: "center", gap: 5,
-          }}>
-            <span style={{ width: 9, height: 9, borderRadius: "50%", background: VOICE_META[v].color, display: "inline-block" }} />
-            {VOICE_META[v].label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── How placement works (plain instruction, no hidden mode) ─────── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 11, color: "#888" }}>
-        <span>
-          Click a <b style={{ color: VOICE_META[selVoice].color }}>{VOICE_META[selVoice].label.toLowerCase()}</b> pattern below
-          to set it on <b style={{ color: "#7fd4e4" }}>point {selPoint + 1}</b>.
-        </span>
-        <button onClick={repeatOnAll} style={chip(false, VOICE_META[selVoice].color)} title="copy this point's pattern to every point">
-          ↻ repeat on all points (ostinato)
-        </button>
-        <button onClick={clearVoiceAll} style={chip(false, "#a55")}>clear {VOICE_META[selVoice].label.toLowerCase()} everywhere</button>
-      </div>
-
-      {/* ── Per-voice permutation pool ─────────────────────────────────── */}
-      <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, letterSpacing: 2, color: "#888", fontWeight: 700 }}>
-            {VOICE_META[selVoice].label.toUpperCase()} PERMUTATIONS · point {selPoint + 1} · group of {curSize}
-          </span>
-          {VOICE_META[selVoice].doublable && <span style={{ fontSize: 10, color: "#777" }}>= split = two 32nds</span>}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {densities.filter(d => d.density > 0).map(({ density, count }) => {
-            const open = openDensities.has(density);
-            const CAP = 160;
-            const perms = open ? enumerateVoicePerms(curSize, density, selVoice, { includeDoubles: true, maxPerNode: CAP }) : [];
-            return (
-              <div key={density} style={{ border: "1px solid #1a1a1a", borderRadius: 6, overflow: "hidden" }}>
-                <button onClick={() => toggleDensity(density)} style={{
-                  width: "100%", textAlign: "left", padding: "7px 12px", cursor: "pointer",
-                  background: open ? "#0d1416" : "#0c0c0c", border: "none", display: "flex", alignItems: "center", gap: 10,
-                  color: open ? "#7fd4e4" : "#777", fontSize: 12, fontWeight: 700,
-                }}>
-                  <span style={{ width: 12 }}>{open ? "▾" : "▸"}</span>
-                  <span>{density} note{density !== 1 ? "s" : ""}</span>
-                  <span style={{ color: "#555", fontWeight: 400, fontSize: 11 }}>{count.toLocaleString()} placements{VOICE_META[selVoice].doublable ? " + 32nd splits" : ""}</span>
-                </button>
-                {open && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: 10, background: "#070707" }}>
-                    {perms.map(p => {
-                      const sel = !!curPlacement && curPlacement.hits.join(",") === p.hits.join(",") && (curPlacement.doubles ?? []).join(",") === p.doubles.join(",");
-                      return <PermCard key={p.id} voice={selVoice} size={curSize} hits={p.hits} doubles={p.doubles} label={p.label} selected={sel} onClick={() => placeVoice(p.hits, p.doubles)} />;
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
         </div>
       </div>
 

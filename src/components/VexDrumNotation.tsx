@@ -30,8 +30,13 @@ class DrumAccent extends Annotation {
       // finished beam (per user: "accent not above the beam").  We still clear
       // a taller stem/beam by taking whichever is higher.
       const stave = note.getStave();
+      // Beams extend the stems UPWARD after modifiers draw, so a beamed note
+      // needs extra headroom or the accent lands inside the finished beam
+      // (per user: "accent ... its in the beam").  Unbeamed notes keep the
+      // original clearance so other drum modes are unchanged.
+      const beamed = !!(note as unknown as { beam?: unknown }).beam;
       const staveY = stave ? stave.getYForTopText(1) - 6 : Infinity;
-      const stemY  = note.getStemExtents().topY - 12;
+      const stemY  = note.getStemExtents().topY - (beamed ? 26 : 12);
       const y = stave ? Math.min(staveY, stemY) : stemY;
       const prevFont = ctx.getFont();
       ctx.setFont("Arial", 14, "bold");
@@ -469,6 +474,11 @@ function buildMergedVoice(
   // this cap, sparse hits render as dotted 8ths/8ths and the formatter
   // allocates uneven widths that make adjacent notes overlap visually.
   shortHits:        boolean  = false,
+  // When true, a hit holds only to the END OF ITS BEAT (max a quarter note),
+  // then rests fill the remainder — clean beat-aligned kick notation (downbeat
+  // kick = quarter, off-beat kick = eighth) instead of sustained half/whole
+  // notes or fragmented sub-beat rests.
+  capToBeat:        boolean  = false,
 ): { notes: StaveNote[]; xPatches: XPatch[]; tieChains: number[][] } {
   const allHits = new Set<number>();
   hitArrays.forEach(arr => arr.filter(s => s < slotCount).forEach(s => allHits.add(s)));
@@ -500,7 +510,8 @@ function buildMergedVoice(
     // as a dotted 8th + 16th beamed together. shortHits forces every hit
     // short (single 16th + trailing rest), which K/S tile galleries and
     // ostinato patterns flagged for visible rests request explicitly.
-    const noteDur = shortHits ? 1 : nextPos - pos;
+    const beatCap = capToBeat ? beatSize - (pos % beatSize) : Infinity;
+    const noteDur = shortHits ? 1 : Math.min(nextPos - pos, beatCap);
 
     // Check if any ghost voice at this position has double-stroke
     const doubleGhostVI = activeVIs
@@ -1031,6 +1042,11 @@ export interface StripMeasureData {
    *  instead of holding through to the next hit. Useful for bare K/S pattern
    *  tiles where the sustained-note rendering makes sparse hits overlap. */
   shortHits?: boolean;
+  /** Like `shortHits` but only for the DOWN voice (kick + hi-hat foot). Lets the
+   *  hands/cymbals keep natural note values (eighth + two sixteenths) while the
+   *  kick renders as short quarter/eighth/sixteenth hits instead of sustained
+   *  half/whole notes. Falls back to `shortHits` when unset. */
+  downShortHits?: boolean;
   /** When true, beam groups span across rests instead of breaking at each
    *  rest. Combined with shortHits + showRests:false this yields the
    *  "4/5/6/7 attacks all beamed as one group, with empty slots still
@@ -1178,7 +1194,7 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
           [mDownBassHits, mDownFootHits],
           [mDownBassDoubles, hhFootOpen],
           slotCount, beatSize, [], mShowRests ?? false, false, [0],
-          false, mShortHits,
+          false, m.downShortHits ?? mShortHits,
         );
 
         const upSnareGroup = [...snareHits, ...tomHits, ...crashHits, ...(mBassStemUp ? bassHits : [])];

@@ -19,6 +19,7 @@ import IndependenceStudy, { IndependenceStudyStrip } from "@/components/Independ
 import { StickingMeasureData } from "@/lib/stickingsData";
 import { IndependenceMeasureData, IndependenceGrid } from "@/lib/independenceData";
 import TransformMode from "@/components/TransformMode";
+import GrooveMode from "@/components/GrooveMode";
 import { TransformPattern } from "@/lib/transformData";
 import ExportDialog from "@/components/ExportDialog";
 import type { ExportSection } from "@/components/ExportDialog";
@@ -1599,7 +1600,7 @@ export default function DrumPatterns({
   betaMode?: boolean;
   restoreTrigger?: number;
 }) {
-  const [mode, setMode] = useState<"ostinato" | "accent" | "stickings" | "independence" | "transform" | "interplay">("ostinato");
+  const [mode, setMode] = useState<"ostinato" | "accent" | "stickings" | "independence" | "transform" | "interplay" | "groove">("ostinato");
 
   // ── Transform state ─────────────────────────────────────────────────────
   const [transformSource, setTransformSource] = useState<TransformPattern[]>([]);
@@ -3118,6 +3119,16 @@ export default function DrumPatterns({
           }}>
           Pattern Ostinatos
         </button>
+        <button onClick={() => setMode("groove")}
+          style={{
+            padding: "8px 16px", fontSize: 10, fontWeight: 700, letterSpacing: 3,
+            textTransform: "uppercase", cursor: "pointer",
+            border: "none", borderBottom: mode === "groove" ? "2px solid #50b0c0" : "2px solid transparent",
+            background: mode === "groove" ? "#08141a" : "transparent",
+            color: mode === "groove" ? "#50b0c0" : "#3a3a3a",
+          }}>
+          Groove Permutations
+        </button>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, paddingRight: 8 }}>
           <button
             onClick={() => setShowExport(true)}
@@ -3130,7 +3141,7 @@ export default function DrumPatterns({
           <PracticeLogSaveBar
             mode={mode === "ostinato" ? "drum-ostinato" : mode === "accent" ? "accent-study" : mode === "independence" ? "independence-study" : mode === "transform" ? "drum-ostinato" : "stickings-study"}
             label={mode === "ostinato" ? "Drum Patterns · Ostinato" : mode === "accent" ? "Drum Patterns · Accent Study" : mode === "independence" ? "Drum Patterns · Independence" : mode === "transform" ? "Drum Patterns · Transform" : "Drum Patterns · Stickings"}
-            hideRatingAndLog={mode === "accent" || mode === "stickings" || mode === "independence" || mode === "transform" || mode === "interplay"}
+            hideRatingAndLog={mode === "accent" || mode === "stickings" || mode === "independence" || mode === "transform" || mode === "interplay" || mode === "groove"}
             sourceOptions={[
               { value: "drum-ostinato",       label: "Ostinato" },
               { value: "accent-study",        label: "Accent Study" },
@@ -3530,6 +3541,11 @@ export default function DrumPatterns({
             }
           }}
         />
+      </div>
+
+      {/* ══ GROOVE PERMUTATIONS MODE CONTENT ═══════════════════════════════ */}
+      <div style={{ display: mode === "groove" ? "flex" : "none", flex: 1, minHeight: 0, flexDirection: "column", overflow: "hidden" }}>
+        {mode === "groove" && <GrooveMode />}
       </div>
 
       {/* ══ K/S INTERPLAY MODE CONTENT ═════════════════════════════════════ */}

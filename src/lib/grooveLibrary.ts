@@ -256,31 +256,34 @@ function rotate(onsets: number[], r: number, length: number): number[] {
 }
 
 /**
- * Similarity ∈ [0,1] of an assembled cycle to a library groove.  Only the
- * defining voices (bass, snareAccent) are compared, rotation-aware (claves and
- * bells are identities up to rotation).  Lengths must match for a real score;
- * different lengths return 0.
+ * Similarity ∈ [0,1] of an assembled cycle to a library groove.  Compares EVERY
+ * voice the entry defines (bass, snare, hi-hat, ghost, foot, open-hat) under a
+ * single consistent rotation — so a plain backbeat no longer scores 100% on a
+ * brush-swing entry just because their snares align; the hat/ghost/foot must
+ * line up too.  Lengths must match; different lengths return 0.
  */
 export function grooveSimilarity(a: AssembledCycle, g: LibraryGroove): number {
   if (a.totalSlots !== g.length) return 0;
   const length = g.length;
-  // The two structurally-defining voices for most grooves.
-  const candBass = a.bassHits;
-  const candSnare = a.snareHits;
-  const libBass = g.voices.bass ?? [];
-  const libSnare = g.voices.snareAccent ?? [];
 
-  // Weight toward whichever voice the library entry actually defines.
-  const bassW = libBass.length > 0 ? 1 : 0;
-  const snareW = libSnare.length > 0 ? 1 : 0;
-  const wSum = bassW + snareW;
-  if (wSum === 0) return 0;
+  // Each defined voice contributes, weighted by how structurally defining it is.
+  const comps: { cand: number[]; lib: number[]; w: number }[] = [];
+  const add = (cand: number[], lib: number[] | undefined, w: number) => {
+    if (lib && lib.length > 0) comps.push({ cand, lib, w });
+  };
+  add(a.bassHits, g.voices.bass, 1.0);
+  add(a.snareHits, g.voices.snareAccent, 1.0);
+  add(a.hatHits, g.voices.hatClosed, 0.8);
+  add(a.ghostHits, g.voices.snareGhost, 0.5);
+  add(a.hhFootHits, g.voices.hhFoot, 0.5);
+  add(a.hatOpenHits, g.voices.hatOpen, 0.4);
+  if (comps.length === 0) return 0;
 
   let best = 0;
   for (let r = 0; r < length; r++) {
-    const bScore = bassW ? onsetF1(rotate(candBass, r, length), libBass) : 0;
-    const sScore = snareW ? onsetF1(rotate(candSnare, r, length), libSnare) : 0;
-    const combined = (bScore * bassW + sScore * snareW) / wSum;
+    let num = 0, den = 0;
+    for (const c of comps) { num += c.w * onsetF1(rotate(c.cand, r, length), c.lib); den += c.w; }
+    const combined = num / den;
     if (combined > best) best = combined;
   }
   return best;
@@ -291,10 +294,27 @@ export interface LibraryMatch {
   similarity: number;
 }
 
+/** Library indexed by cycle length — matching only ever needs same-length
+ *  entries (similarity is 0 across lengths), so this avoids scanning all ~14k
+ *  entries on every call.  Built lazily, once. */
+let _byLength: Map<number, LibraryGroove[]> | null = null;
+function libraryByLength(): Map<number, LibraryGroove[]> {
+  if (!_byLength) {
+    _byLength = new Map();
+    for (const g of GROOVE_LIBRARY) {
+      const arr = _byLength.get(g.length);
+      if (arr) arr.push(g); else _byLength.set(g.length, [g]);
+    }
+  }
+  return _byLength;
+}
+
 /** The nearest library groove to an assembled cycle (or null if none align). */
 export function nearestLibraryGroove(a: AssembledCycle): LibraryMatch | null {
+  const pool = libraryByLength().get(a.totalSlots);
+  if (!pool) return null;
   let best: LibraryMatch | null = null;
-  for (const g of GROOVE_LIBRARY) {
+  for (const g of pool) {
     const sim = grooveSimilarity(a, g);
     if (sim > 0 && (!best || sim > best.similarity)) best = { groove: g, similarity: sim };
   }
@@ -316,4 +336,18 @@ export function libraryByRegion(): Record<Region, LibraryGroove[]> {
   const out = { African: [], Latin: [], Asian: [], European: [], American: [] } as Record<Region, LibraryGroove[]>;
   for (const g of GROOVE_LIBRARY) out[g.region].push(g);
   return out;
+}
+
+export const REGIONS: Region[] = ["African", "Latin", "Asian", "European", "American"];
+
+/** Distinct genres available for a region (optionally only at a given cycle
+ *  length), sorted — used to populate the tradition/style picker. */
+export function genresForRegion(region: Region | "Any", length?: number): string[] {
+  const set = new Set<string>();
+  for (const g of GROOVE_LIBRARY) {
+    if (region !== "Any" && g.region !== region) continue;
+    if (length !== undefined && g.length !== length) continue;
+    set.add(g.genre);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
 }

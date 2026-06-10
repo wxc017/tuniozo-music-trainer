@@ -16,9 +16,16 @@ export const UNIVERSAL_SOLFEGE = "Universal Solfège";
 const tidyNames = (names: string[]): string[] => names.filter(n => !/ \d+$/.test(n));
 
 export function notationsForEdo(edo: number): string[] {
-  // A "Solfège" entry is a solfège, not an interval notation — keep it out of
-  // the notation list (it still appears under the Solfège section).
-  return [SCHULTER, ...tidyNames((NOTATION_SYSTEMS[edo] ?? []).map(s => s.name).filter(n => !/solf[eè]ge/i.test(n)))];
+  // Every surfaced system must be attributable to a known author/convention —
+  // per direct user direction.  This drops mining artifacts ("System 1/2",
+  // whose labels are raw cent deviations), generic names ("Notation"), and
+  // mis-mined or unattributable entries ("Armodue notation", "Circle-of-fifths",
+  // "Porcupine", …).  Solfège-kind entries belong under the Solfège section.
+  const mined = (NOTATION_SYSTEMS[edo] ?? [])
+    .filter(s => s.kind === "notation")
+    .map(s => s.name)
+    .filter(n => authorFor(n) !== null);
+  return [SCHULTER, ...tidyNames(mined)];
 }
 /** Solfège systems available for an EDO (Universal first, then mined). */
 export function solfegesForEdo(edo: number): string[] {
@@ -57,6 +64,7 @@ const AUTHORS: [RegExp, string][] = [
   [/stein.?zimmermann|gould/i, "Stein, Zimmermann & Gould"],
   [/^extended pythagorean/i, "Pythagorean (traditional)"],
   [/heathwaite/i, "Andrew Heathwaite"],
+  [/decatonic/i, "Paul Erlich"],
 ];
 /** Attribution for a system name.  Names that credit a person possessively
  *  ("Kite Giedraitis's solfege") yield that person; otherwise a known-author
