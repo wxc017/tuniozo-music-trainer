@@ -1,0 +1,594 @@
+[
+  {
+    "name": "Tahitian Tamau (Ground Beat)",
+    "region": "Asian",
+    "genre": "Tahitian otea / pahu-toere (French Polynesia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 2, 4, 6, 8, 10, 12, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The tamau is the unbroken ground pulse that underpins every Tahitian otea: the low sharkskin pahu (tariparau) marks the quarter beats while the high toere slit-drum lays a steady running ostinato of eighths over it. Bass = pahu, snareAccent = toere.",
+    "source": "https://en.wikipedia.org/wiki/Tahitian_drumming"
+  },
+  {
+    "name": "Tahitian Napoko",
+    "region": "Asian",
+    "genre": "Tahitian otea pehe (French Polynesia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 1, 3, 4, 6, 8, 9, 11, 12, 14],
+      "snareGhost": [2, 5, 7, 10, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Napoko is one of the named toere phrases (pehe) pieced together to build an otea; its syncopated short-short-long cell repeats over the pahu half-bar pulse, the high toere ostinato cuing dancers. Bass = pahu, snareAccent = toere.",
+    "source": "https://www.allaroundthisworld.com/tahitian-drumming-vocabulary/"
+  },
+  {
+    "name": "Tahitian Toma (Cadence)",
+    "region": "Asian",
+    "genre": "Tahitian otea pehe (French Polynesia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 2, 3, 6, 8, 10, 11, 14, 15],
+      "snareGhost": [1, 4, 5, 7, 9, 12, 13],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [12],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The toma is the closing pattern of a pehe: it signals tempo changes and choreographic cues to the dancers, the toere driving toward a marked cadence over the steady pahu. Bass = pahu, snareAccent = toere.",
+    "source": "https://en.wikipedia.org/wiki/Tahitian_drumming"
+  },
+  {
+    "name": "Tahitian Pahae",
+    "region": "Asian",
+    "genre": "Tahitian otea pehe (French Polynesia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [0, 1, 2, 4, 6, 8, 9, 10, 12, 14],
+      "snareGhost": [3, 5, 7, 11, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Pahae is a flexible toere phrase in the Tahitian percussion vocabulary, its broken-triplet feel filling the spaces of the ground beat; assembled like a word into the otea 'sentence'. Bass = pahu, snareAccent = toere.",
+    "source": "https://jaced.com/2009/09/07/tahitian-percussion-vocabulary/"
+  },
+  {
+    "name": "Tahitian Paea",
+    "region": "Asian",
+    "genre": "Tahitian otea pehe (French Polynesia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 3, 4, 7, 8, 11, 12, 15],
+      "snareGhost": [1, 2, 5, 6, 9, 10, 13, 14],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Paea is a named toere ostinato accenting the and-of-each-beat to create a galloping cross-rhythm against the pahu quarters, a staple cell in Heiva otea repertoire. Bass = pahu, snareAccent = toere.",
+    "source": "https://www.allaroundthisworld.com/tahitian-drumming-vocabulary/"
+  },
+  {
+    "name": "Tahitian Puara-Ta",
+    "region": "Asian",
+    "genre": "Tahitian otea pehe (French Polynesia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 1, 2, 3, 6, 8, 9, 10, 11, 14],
+      "snareGhost": [4, 5, 7, 12, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Puara-ta is a dense toere phrase from the named pehe vocabulary, packing four-stroke runs that contribute to the 'thick river of notes' when split across players. Bass = pahu, snareAccent = toere.",
+    "source": "https://jaced.com/2009/09/07/tahitian-percussion-vocabulary/"
+  },
+  {
+    "name": "Tahitian Takoto",
+    "region": "Asian",
+    "genre": "Tahitian otea pehe (French Polynesia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 4, 5, 8, 12, 13],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Takoto ('to lie down') is a sparser named toere cell that opens space in the texture, often used as a contrasting part so a second group of drummers can fill the gaps. Bass = pahu, snareAccent = toere.",
+    "source": "https://www.allaroundthisworld.com/tahitian-drumming-vocabulary/"
+  },
+  {
+    "name": "Tahitian Mati",
+    "region": "Asian",
+    "genre": "Tahitian otea pehe (French Polynesia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 1, 4, 5, 8, 9, 12, 13],
+      "snareGhost": [2, 3, 6, 7, 10, 11, 14, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Mati is a named toere phrase built on paired strokes at the head of each beat, a bright clipped motif used to lock a section together over the pahu pulse. Bass = pahu, snareAccent = toere.",
+    "source": "https://jaced.com/2009/09/07/tahitian-percussion-vocabulary/"
+  },
+  {
+    "name": "Tahitian Bora Bora",
+    "region": "Asian",
+    "genre": "Tahitian otea pehe (French Polynesia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 2, 4, 5, 7, 8, 10, 12, 13, 15],
+      "snareGhost": [1, 3, 6, 9, 11, 14],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The 'Bora Bora' pehe is a regional named toere phrase in the Tahitian vocabulary, an off-beat-leaning ostinato evoking the Leeward-island style. Bass = pahu, snareAccent = toere.",
+    "source": "https://www.allaroundthisworld.com/tahitian-drumming-vocabulary/"
+  },
+  {
+    "name": "Tahitian Fa'arapu",
+    "region": "Asian",
+    "genre": "Tahitian otea / hip-shake (French Polynesia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "snareGhost": [],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Fa'arapu is the fast continuous toere roll that accompanies the rapid circular hip-shaking figure of the same name; an unbroken stream of sixteenths over the pahu, signalling the dancers to whirl. Bass = pahu, snareAccent = toere.",
+    "source": "https://en.wikipedia.org/wiki/'ote'a"
+  },
+  {
+    "name": "Tahitian Otea Part A / Part B Interlock",
+    "region": "Asian",
+    "genre": "Tahitian otea ensemble (French Polynesia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 2, 4, 6, 8, 10, 12, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "In a full otea, one group of toere plays Part A on the beats while a second group fills the off-beats (Part B), so eight one-handed players sound like a single woody drum-roll. Bass = pahu ground, snareAccent = combined toere stream.",
+    "source": "https://jaced.com/2009/09/07/tahitian-percussion-vocabulary/"
+  },
+  {
+    "name": "Cook Islands Ura Pa'u Drum Dance",
+    "region": "Asian",
+    "genre": "Cook Islands ura pa'u (Rarotonga)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 2, 3, 6, 8, 10, 11, 14],
+      "snareGhost": [1, 4, 5, 7, 9, 12, 13, 15],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The ura pa'u is the fast Cook Islands drum dance: the deep pate/pa'u skin drum lays the heartbeat while interlocking tokere slit-drums drive the dancers' rapid hip rotations to a dramatic finish. Bass = pa'u, snareAccent = tokere.",
+    "source": "https://ezytravellers.com/travel-articles/ura-the-heartbeat-of-cook-islands-culture/"
+  },
+  {
+    "name": "Cook Islands Tokere Interlock (Tini Ka'ara)",
+    "region": "Asian",
+    "genre": "Cook Islands drum ensemble (Rarotonga)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 3, 4, 7, 8, 11, 12, 15],
+      "snareGhost": [1, 2, 5, 6, 9, 10, 13, 14],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "In a tini ka'ara ensemble three sizes of tokere (taki, tangarongaro, mamaiti) interlock at different pitches above the pate; their rhythms directly direct dancers' body and hand movements. Bass = pate, snareAccent = high tokere.",
+    "source": "https://collections.tepapa.govt.nz/object/272708"
+  },
+  {
+    "name": "Cook Islands Pate Fast Roll",
+    "region": "Asian",
+    "genre": "Cook Islands pate drumming (Rarotonga)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 1, 2, 3, 4, 5, 6, 7],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A driving fast pate roll typical of Cook Islands drum dance climaxes: a continuous high slit-drum stream over a half-bar pa'u pulse, used as the actions of the dancers grow short and rapid. Bass = pa'u, snareAccent = pate.",
+    "source": "https://drifttravel.com/dance-to-the-beat-of-the-cook-islands/"
+  },
+  {
+    "name": "Samoan Pate-Lali Interlock",
+    "region": "Asian",
+    "genre": "Samoan slit-drum (Samoa)",
+    "length": 8,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [4],
+      "snareGhost": [1, 2, 3, 5, 6, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The classic Samoan two-drum interlock: the large logo/lali sounds the loud, strong stroke on beat 1 while the higher, weaker pate answers on beat 3, framing siva song and dance. Bass = lali, snareAccent = pate.",
+    "source": "https://wmic.net/samoa-pate-slit-drum/"
+  },
+  {
+    "name": "Samoan Pate Fast Ostinato",
+    "region": "Asian",
+    "genre": "Samoan pate drumming (Samoa)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 2, 4, 6, 8, 10, 12, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "A fast pate ostinato made from a single hollowed Miro-wood log drum, its loud distinctive crack carrying the pulse for siva and group dances. Bass = lali, snareAccent = pate.",
+    "source": "https://en.wikipedia.org/wiki/Pate_(instrument)"
+  },
+  {
+    "name": "Samoan Fa'ataupati (Slap Dance)",
+    "region": "Asian",
+    "genre": "Samoan body percussion (Samoa)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 3, 6, 10, 11, 14],
+      "snareGhost": [1, 5, 7, 9, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The fa'ataupati is the male Samoan slap dance born from swatting mosquitoes: forceful hand-slaps on chest, thighs and arms create a syncopated body-percussion rhythm with stamped accents. Bass = thigh/floor stamp, snareAccent = body slap.",
+    "source": "https://en.wikipedia.org/wiki/Fa'ataupati"
+  },
+  {
+    "name": "Samoan Sasa",
+    "region": "Asian",
+    "genre": "Samoan group action dance (Samoa)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 2, 4, 6, 8, 10, 12, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Sasa ('to strike') is the seated/standing group dance whose unison hand-claps and strikes to body and floor are driven by the pate; rapid synchronized accents symbolise community cooperation. Bass = lali, snareAccent = clap/strike with pate.",
+    "source": "https://thekokosamoa.com/blogs/recipes/the-rhythm-of-fa%CA%BBa-samoa-deciphering-the-power-and-grace-of-samoan-dance"
+  },
+  {
+    "name": "Samoan Ma'ulu'ulu",
+    "region": "Asian",
+    "genre": "Samoan seated narrative dance (Samoa)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Ma'ulu'ulu is a gentle seated narrative dance: performers sit cross-legged, rock the torso and illustrate the sung text with finger and arm gestures over a calm pate pulse. Bass = lali, snareAccent = pate.",
+    "source": "https://scholarspace.manoa.hawaii.edu/items/1cbf5502-bab7-4a3a-9d64-fc9801c1b328"
+  },
+  {
+    "name": "Samoan Lali Tatasi-Talua",
+    "region": "Asian",
+    "genre": "Samoan lali drumming (Samoa)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 3, 6, 7, 10, 11, 14, 15],
+      "snareGhost": [1, 5, 9, 13],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Lali are played in pairs: one drummer beats the larger Tatasi on the strong beats while the second plays the smaller lali in the answering pattern called Talua, traditionally used to call and announce. Bass = Tatasi (large lali), snareAccent = Talua (small lali).",
+    "source": "https://en.wikipedia.org/wiki/Pate_(instrument)"
+  },
+  {
+    "name": "Tongan Nafa Lakalaka",
+    "region": "Asian",
+    "genre": "Tongan nafa drumming (Tonga)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "One to five nafa drums of different sizes, struck with soft-headed sticks, lay the measured beat for the lakalaka and ma'ulu'ulu sung dances; large drum on the beat, smaller on the off-beat. Bass = large nafa, snareAccent = small nafa.",
+    "source": "https://blog.tepapa.govt.nz/2013/09/05/tongan-language-week-2013-nafa-and-nafa-the-drum-beats-of-tonga/"
+  },
+  {
+    "name": "Tongan Me'etu'upaki (Paddle Dance)",
+    "region": "Asian",
+    "genre": "Tongan paddle-club dance (Tonga)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 2, 4, 6, 8, 10, 12, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "In the ancient me'etu'upaki paddle-club dance the dance master beats a small lali slit-drum to keep time while dancers sing; the tempo starts slow and accelerates toward the climax. Bass = lali, snareAccent = quickening pulse.",
+    "source": "https://en.wikipedia.org/wiki/Me%CA%BBetu%CA%BBupaki"
+  },
+  {
+    "name": "Tongan Lali Signal Call",
+    "region": "Asian",
+    "genre": "Tongan lali slit-drum (Tonga)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 8, 11, 14],
+      "snareAccent": [1, 4, 7, 9, 12, 15],
+      "snareGhost": [2, 5, 10, 13],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The lali, gouged from a hardwood log (the bigger the branch, the deeper the tone), beats a rolling call traditionally used to summon villagers and announce ceremonies. Bass = large lali, snareAccent = small lali.",
+    "source": "https://www.polynesia.com/blog/laughing-to-the-beat-tongan-drumming"
+  },
+  {
+    "name": "Maori Haka Stamp & Slap",
+    "region": "Asian",
+    "genre": "Maori haka body percussion (Aotearoa NZ)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 5, 7, 10, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The haka is declaimed in triple metre with heavy foot-stamping (waewae takahia) and rhythmic slaps to chest, thighs and arms creating built-in percussion under the chanted, called-and-response leader's voice. Bass = foot stamp, snareAccent = body slap.",
+    "source": "https://en.wikipedia.org/wiki/Kapa_haka"
+  },
+  {
+    "name": "Maori Poi Strike Rhythm",
+    "region": "Asian",
+    "genre": "Maori poi (Aotearoa NZ)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 3, 6, 9, 12, 15],
+      "snareGhost": [2, 5, 8, 11, 14],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "In poi the swung ball is struck against the hand or body to punctuate direction changes; the percussive thwack is an integral compositional element over a steady danceable pulse for waiata-a-ringa. Bass = ground pulse, snareAccent = poi strike.",
+    "source": "https://en.wikipedia.org/wiki/M%C4%81ori_music"
+  },
+  {
+    "name": "Maori Pate (Slit Drum)",
+    "region": "Asian",
+    "genre": "Maori pate drumming (Aotearoa NZ)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 2, 3, 5, 6],
+      "snareGhost": [1, 4, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The pate, a small wooden slit drum, was struck to keep an interlocking pulse in some Maori and wider Polynesian performance; bright high strokes punctuate the song's beat. Bass = pulse, snareAccent = pate.",
+    "source": "https://collections.tepapa.govt.nz/object/231672"
+  },
+  {
+    "name": "Hawaiian Ipu Heke (Hula Kahiko)",
+    "region": "Asian",
+    "genre": "Hawaiian hula kahiko ipu (Hawaii)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 3, 6, 7],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The ho'opa'a strikes the double-gourd ipu heke to a steady chant: a deep thump (gourd on the mat) on the beat answered by lighter finger slaps on the off-beats, marking time for hula kahiko. Bass = ipu thump, snareAccent = finger slap.",
+    "source": "https://hawaiialive.org/ipu-heke/"
+  },
+  {
+    "name": "Hawaiian Pahu (Sharkskin Drum)",
+    "region": "Asian",
+    "genre": "Hawaiian hula pahu (Hawaii)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 6, 8, 14],
+      "snareGhost": [2, 4, 10, 12],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The sacred pahu, carved from a coconut trunk with a sharkskin head, is played with palms and fingers; its measured beat guides hula dancers and dictates the pace of the sacred kahiko. Bass = open palm tone, snareAccent = rim/finger slap.",
+    "source": "https://keolamagazine.com/culture/hula-instruments/"
+  },
+  {
+    "name": "Hawaiian Pu'ili & 'Uli'uli",
+    "region": "Asian",
+    "genre": "Hawaiian hula implements (Hawaii)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 2, 4, 6, 8, 10, 12, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Split-bamboo pu'ili rattle-sticks struck on the body and partners, and the gourd-and-feather 'uli'uli shaken to the chant, add a continuous rustling eighth-note layer over the ipu pulse in hula. Bass = ipu pulse, snareAccent = pu'ili/'uli'uli strike.",
+    "source": "https://www.kaahelehawaii.com/implements-of-the-hula/"
+  },
+  {
+    "name": "Fijian Derua Stamping Tubes",
+    "region": "Asian",
+    "genre": "Fijian meke (Fiji)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Derua, hollow bamboo tubes stamped on mats or the earth, create deep resonant polyrhythms that guide every movement of the Fijian meke; differing tube lengths give differing pitches. Bass = long derua, snareAccent = short derua.",
+    "source": "https://www.fijieco.com/places/culture-traditions/meke-traditional-dance-performance"
+  },
+  {
+    "name": "Fijian Lali & Cobo (Meke)",
+    "region": "Asian",
+    "genre": "Fijian meke (Fiji)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 2, 4, 6, 8, 10, 12, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "In the meke the hardwood lali drum lays the foundation while cobo, cupped rhythmic hand-clapping by the seated chorus, fills a continuous off-beat layer to drive the danced storytelling. Bass = lali, snareAccent = cobo clap.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_Fiji"
+  },
+  {
+    "name": "PNG Kundu Hourglass Drum",
+    "region": "Asian",
+    "genre": "Papua New Guinea singsing (PNG)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 3, 4, 7, 8, 11, 12, 15],
+      "snareGhost": [1, 2, 5, 6, 9, 10, 13, 14],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The kundu, an hourglass hand-drum with a lizard- or possum-skin head, is carried and beaten in unison by rows of dancers to drive the singsing; its galloping pulse paces the chanted dance. Bass = open belly tone, snareAccent = edge strike.",
+    "source": "https://en.wikipedia.org/wiki/Kundu_(drum)"
+  },
+  {
+    "name": "PNG Garamut Signal Rhythm",
+    "region": "Asian",
+    "genre": "Papua New Guinea garamut (PNG)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 2, 5, 8, 10, 13],
+      "snareAccent": [1, 4, 7, 9, 12, 15],
+      "snareGhost": [3, 6, 11, 14],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The garamut, a log slit-gong struck near the slit and on the sides, beats clan-specific patterns that carry messages for kilometres and also rhythm the singsing; struck with one or two sticks. Bass = side/low strike, snareAccent = slit/high strike.",
+    "source": "https://en.wikipedia.org/wiki/Garamut"
+  },
+  {
+    "name": "Solomon Islands 'Au Paina Panpipe Ensemble",
+    "region": "Asian",
+    "genre": "'Are'are panpipe ensemble (Solomon Islands)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The 'au paina is one of the prestigious 'Are'are bamboo panpipe ensembles of Malaita, performed only for major ancestor-cult festivals; players hocket interlocking pipe figures over a stamped pulse. Bass = bass pipes, snareAccent = upper interlocking pipes.",
+    "source": "https://www.der.org/resources/guides/are-are-music-study-guide.pdf"
+  },
+  {
+    "name": "Solomon Islands Bamboo Band Stomp",
+    "region": "Asian",
+    "genre": "Solomon Islands bamboo band (Solomon Islands)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "Solomon Islands bamboo bands strike tuned open-ended bamboo tubes with rubber sandals, the deep bass tubes on the beat and shorter tubes filling between, a festival sound of the islands. Bass = long bass tube, snareAccent = short tube.",
+    "source": "https://www.britannica.com/art/Oceanic-music/The-Solomon-Islands"
+  },
+  {
+    "name": "Aboriginal Bilma Clapsticks (Wangga)",
+    "region": "Asian",
+    "genre": "Aboriginal Australian clapsticks (Arnhem Land)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 1, 2, 3, 4, 5, 6, 7],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "Bilma (bimli) clapsticks keep a precise even beat accompanying the didgeridoo in Yolngu ceremony; in the Wangga genre the song-man introduces the sticks over the drone, the pattern handed down for generations. Bass = didgeridoo accent, snareAccent = clapstick.",
+    "source": "https://en.wikipedia.org/wiki/Clapstick"
+  },
+  {
+    "name": "Aboriginal Fast Clapstick Ostinato (Corroboree)",
+    "region": "Asian",
+    "genre": "Aboriginal Australian corroboree (Australia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "snareGhost": [],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "In fast corroboree songs the clapsticks drive a rapid continuous ostinato locked to the didgeridoo's fast-tongued rhythmic drone, maintaining the chant's tempo for the dancers. Bass = didgeridoo pulse, snareAccent = fast clapsticks.",
+    "source": "https://en.wikipedia.org/wiki/Didgeridoo"
+  }
+]
