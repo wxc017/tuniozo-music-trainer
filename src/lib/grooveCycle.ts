@@ -267,13 +267,13 @@ export function cycleToStripData(cycle: GrooveCycle, pointVoices: PointVoices[])
     snareDoubleHits: a.snareDoubleHits,
     accentFlags: a.accentFlags,
     slotOverride: a.totalSlots,
-    beamGroups: a.pulseSizes,
-    // Even grid: every slot is a single-slot attack of equal width, beamed
-    // across empty slots (no isolated flags, no sustained half/whole notes),
-    // empty slots left blank but width-preserving — a symmetric permutation
-    // lattice that lines up column-for-column across the bar.
-    shortHits: true,
-    beamAcrossRests: true,
+    // Natural drum note values: each hit holds to the next onset in its voice,
+    // capped to the end of its beat (max a quarter).  So an 8th-note hi-hat
+    // reads as eighths, a kick on slot 0 with another on slot 3 reads as a
+    // dotted-8th + 16th beamed together, and a kick on a beat reads as a
+    // quarter — standard kit notation, not a flat 16th lattice.  Beat-aligned
+    // beaming (default) keeps each beat's notes in their own beam.
+    capToBeat: true,
     showRests: false,
   };
 }
@@ -300,8 +300,7 @@ export function cycleToStripMeasures(cycle: GrooveCycle, pointVoices: PointVoice
       snareDoubleHits: local(a.snareDoubleHits),
       accentFlags: a.accentFlags.slice(lo, hi),
       slotOverride: p.subPulses,
-      shortHits: true,
-      beamAcrossRests: true,
+      capToBeat: true,
       showRests: false,
     } as StripMeasureData;
   });

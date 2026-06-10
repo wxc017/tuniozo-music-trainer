@@ -706,6 +706,10 @@ function addAccentsAndStickings(
   // flam grace sits ON the line beside its main note instead of a third below
   // (which read as "not close enough"). Defaults to the 5-line snare pitch.
   snareKey: string = SN_KEY,
+  // Mirror buildMergedVoice's capToBeat: when a hit is held only to the end of
+  // its beat, the note-index walk must advance over the capped head note plus
+  // the beat-remainder rests, or accents land on the wrong StaveNote.
+  capToBeat: boolean = false,
 ) {
   const hasWork = accentSet.size > 0 || stickingMap.size > 0 || !!accentInterp || !!tapInterp || (!!buzzSet && buzzSet.size > 0) || (!!flamSet && flamSet.size > 0);
   if (!hasWork) return;
@@ -799,6 +803,15 @@ function addAccentsAndStickings(
       // Hit is a fixed 1-slot attack; remaining slots are rest notes.
       const gap = noteDur - 1;
       if (gap > 0) noteIdx += splitSlots(gap, beatSize, tripletGroup3).length;
+    } else if (capToBeat) {
+      // Held only to the end of its beat: a capped head note (+ any sub-beat
+      // remainder rests) then beat-remainder rests up to the next hit.
+      const beatCap = beatSize - (pos % beatSize);
+      const capped = Math.min(noteDur, beatCap);
+      const [, extraInHead] = slotsToVfDur(capped, beatSize, tripletGroup3);
+      if (extraInHead > 0) noteIdx += splitSlots(extraInHead, beatSize, tripletGroup3).length;
+      const restGap = noteDur - capped;
+      if (restGap > 0) noteIdx += splitSlots(restGap, beatSize, tripletGroup3).length;
     } else {
       const [, extra] = slotsToVfDur(noteDur, beatSize, tripletGroup3);
       if (extra > 0) noteIdx += splitSlots(extra, beatSize, tripletGroup3).length;
@@ -1047,6 +1060,12 @@ export interface StripMeasureData {
    *  kick renders as short quarter/eighth/sixteenth hits instead of sustained
    *  half/whole notes. Falls back to `shortHits` when unset. */
   downShortHits?: boolean;
+  /** When true, every hit holds only to the END OF ITS BEAT (max a quarter
+   *  note), then rests fill the remainder — clean beat-aligned kit notation: an
+   *  8th-note hi-hat reads as eighths, a kick on slot 0 + slot 3 reads as a
+   *  dotted-8th + 16th, a kick on a beat reads as a quarter.  Applied to both
+   *  voices. */
+  capToBeat?: boolean;
   /** When true, beam groups span across rests instead of breaking at each
    *  rest. Combined with shortHits + showRests:false this yields the
    *  "4/5/6/7 attacks all beamed as one group, with empty slots still
@@ -1183,7 +1202,7 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
         const { notes: upNotes,   xPatches: upPatches, tieChains: upTieChains } = buildMergedVoice(
           mUpKeys, 1, mUpXFlags, mUpHits, mUpOpens,
           slotCount, beatSize, [3], mShowRests ?? false, mHideGhostParens ?? false, mUpDoubleI,
-          tripletGroup3, mShortHits,
+          tripletGroup3, mShortHits, m.capToBeat ?? false,
         );
         const mDownBassHits = mBassStemUp ? [] : bassHits;
         const mDownBassDoubles = mBassStemUp ? [] : bassDoubles;
@@ -1194,14 +1213,14 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
           [mDownBassHits, mDownFootHits],
           [mDownBassDoubles, hhFootOpen],
           slotCount, beatSize, [], mShowRests ?? false, false, [0],
-          false, m.downShortHits ?? mShortHits,
+          false, m.downShortHits ?? mShortHits, m.capToBeat ?? false,
         );
 
         const upSnareGroup = [...snareHits, ...tomHits, ...crashHits, ...(mBassStemUp ? bassHits : [])];
         const buzzSet = new Set<number>((mBuzzHits ?? []).filter(s => s < slotCount));
         const flamSet = new Set<number>((mFlamHits ?? []).filter(s => s < slotCount));
         const flamGraceKey = singleLine ? "f/5" : SN_KEY;
-        addAccentsAndStickings(upNotes, ostinatoHits, upSnareGroup, ghostHits, slotCount, beatSize, accentSet, stickingMap, mAccentInterp, mTapInterp, tripletGroup3, mShortHits, buzzSet, flamSet, flamGraceKey);
+        addAccentsAndStickings(upNotes, ostinatoHits, upSnareGroup, ghostHits, slotCount, beatSize, accentSet, stickingMap, mAccentInterp, mTapInterp, tripletGroup3, mShortHits, buzzSet, flamSet, flamGraceKey, m.capToBeat ?? false);
         addBassStickings(downNotes, mDownBassHits, slotCount, beatSize, stickingMap);
 
         const hasUp   = upNotes.some(n => !n.isRest());
