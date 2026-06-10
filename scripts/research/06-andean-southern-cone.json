@@ -1,0 +1,754 @@
+[
+  {
+    "name": "Candombe — Madera (Clave)",
+    "region": "Latin",
+    "genre": "Candombe",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 3, 6, 10, 12],
+      "snareGhost": [4, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The Afro-Uruguayan candombe timeline struck on the wooden drum shell, dividing the 16-pulse cycle irregularly as 3+3+4+2+4 with only two strokes landing on the beat. It governs the entire cuerda of three drums.",
+    "source": "Jure & Rocamora, 'Clave patterns in Uruguayan Candombe drumming' (candombeando.uy / iie.fing.edu.uy/~rocamora/phdthesis/candombe.html)"
+  },
+  {
+    "name": "Candombe — Chico (steady high drum)",
+    "region": "Latin",
+    "genre": "Candombe",
+    "length": 16,
+    "voices": {
+      "bass": [],
+      "snareAccent": [1, 5, 9, 13],
+      "snareGhost": [2, 3, 6, 7, 10, 11, 14, 15],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "The chico defines the tatum, a rapid continuous pulse, but tellingly does not articulate the pulse falling on the beat — its strongest accent lands on the second tatum of each beat, giving candombe its forward lean.",
+    "source": "Rocamora PhD thesis, Universidad de la República (iie.fing.edu.uy/~rocamora/phdthesis/candombe.html)"
+  },
+  {
+    "name": "Candombe — Piano (low drum)",
+    "region": "Latin",
+    "genre": "Candombe",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 10, 12],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [7, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The piano drum plays the lowest, most syncopated voice; its pattern is congruent with the madera clave, reinforcing the four-beat cycle with heavy downbeat emphasis.",
+    "source": "Rocamora PhD thesis (iie.fing.edu.uy/~rocamora/phdthesis/candombe.html); Jure & Rocamora 2017"
+  },
+  {
+    "name": "Candombe — Repique (improvising drum)",
+    "region": "Latin",
+    "genre": "Candombe",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [2, 3, 6, 7, 10, 11, 14],
+      "snareGhost": [0, 4, 8, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [3, 11],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The medium-pitched repique has the greatest freedom of the cuerda, weaving syncopated variations and the madera between phrases to generate surprise and variety over the chico and piano.",
+    "source": "Rocamora PhD thesis (iie.fing.edu.uy/~rocamora/phdthesis/candombe.html)"
+  },
+  {
+    "name": "Candombe Porteño (Buenos Aires)",
+    "region": "Latin",
+    "genre": "Candombe",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 10],
+      "snareAccent": [0, 3, 6, 10, 12],
+      "snareGhost": [4, 8, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The Afro-Argentine candombe of Buenos Aires, played on llamador (bass) and repicador (sharp) drums; through the milonga it is a recognized root of tango.",
+    "source": "Wikipedia 'Candombe'; turismo.buenosaires.gob.ar 'Discover the rhythm of the city's roots'"
+  },
+  {
+    "name": "Marinera Norteña",
+    "region": "Latin",
+    "genre": "Marinera",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Peru's national coastal courtship dance from the north, built on the 6/8–3/4 sesquiáltera: guitar and cajón outline the compound-duple 6/8 against a triple-meter 3/4 bass pulse.",
+    "source": "Wikipedia 'Marinera'; Smithsonian Folklife Festival 'Marinera Dance'"
+  },
+  {
+    "name": "Marinera Limeña (de salón)",
+    "region": "Latin",
+    "genre": "Marinera",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [1, 7, 10],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The refined Lima salon marinera, slower and more elegant than the northern form, keeping the same 6/8 lilt with sesquiáltera between the guitar's 6/8 and a 3/4 cajón pulse.",
+    "source": "Wikipedia 'Marinera'; mundoandino.com 'Marinera'"
+  },
+  {
+    "name": "Tondero",
+    "region": "Latin",
+    "genre": "Tondero",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [9],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A fast northern-Peruvian coastal dance close kin to the marinera; its accelerating cajón 'golpe de tierra' repique drives a 6/8-against-3/4 sesquiáltera.",
+    "source": "Wikipedia 'Tondero'; illapa.com 'Typical Dances of the Peruvian Coast'"
+  },
+  {
+    "name": "Festejo",
+    "region": "Latin",
+    "genre": "Festejo",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 5, 7, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [3, 9],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The festive Afro-Peruvian dance whose cajón 'golpe' drives a 6/8 accent pattern over a 3/4 frame, with cajita and quijada answering; percussion is the rhythmic core.",
+    "source": "Wikipedia 'Festejo'; Cal Performances program notes 'Perú Negro'"
+  },
+  {
+    "name": "Landó",
+    "region": "Latin",
+    "genre": "Landó",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 5, 6, 9, 11],
+      "snareGhost": [2, 7, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A slow, sensual Afro-Peruvian form whose ambiguous subdivision is most accurately felt in 12/8; the cajón weaves between 6/4 and 3/4 readings, the deepest sesquiáltera of the coast.",
+    "source": "Toussaint et al., 'The Geometry of the Peruvian Landó' (ResearchGate); Morales, 'Afro-Peruvian Percussion Ensemble' (Sher Music)"
+  },
+  {
+    "name": "Zamacueca",
+    "region": "Latin",
+    "genre": "Zamacueca",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The 19th-century Afro-Peruvian ancestor of marinera and Chilean cueca, notated in 12/8 or 6/4, with cajón outlining the 6/8-versus-3/4 hemiola at the heart of the cueca family.",
+    "source": "pancocojams.blogspot.com 'Zamacueca & Festejo'; Morales, 'Afro-Peruvian Percussion Ensemble' (Sher Music)"
+  },
+  {
+    "name": "Vals Criollo (Peruvian Waltz)",
+    "region": "Latin",
+    "genre": "Vals Criollo",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [3, 6, 9, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "The Peruvian creole waltz in 3/4 with the guitar's 'tundete' bordón-on-1 pattern and Afro-Peruvian cajón syncopation; subtle hemiola (3/4 against 6/8) gives it sway.",
+    "source": "'Patrones rítmicos del vals criollo peruano' (ResearchGate); fertur-travel.com 'Vals Peruano'"
+  },
+  {
+    "name": "Huayno (Peruvian)",
+    "region": "Latin",
+    "genre": "Huayno",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 2, 4, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The quintessential Andean highland dance in brisk duple meter with a strong downbeat, bright pentatonic melodies and the characteristic short-long huayno galloping cell.",
+    "source": "Wikipedia 'Music of Peru'; melodigging.com 'Huayno'"
+  },
+  {
+    "name": "Yaraví (Harawi)",
+    "region": "Latin",
+    "genre": "Yaraví",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 6],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "A slow, plaintive Andean song of pre-Hispanic harawi origin, freely metered across 2/4, 3/4 and 4/4; here a languid triple-time lament that often precedes a huayno.",
+    "source": "Wikipedia 'Music of Peru'; melodigging.com 'Huayno' (harawi)"
+  },
+  {
+    "name": "Cueca Chilena",
+    "region": "Latin",
+    "genre": "Cueca",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Chile's national courtship dance, the textbook sesquiáltera: guitar and palmas strum a 6/8 while the bombo and harp bass mark a 3/4, the two meters in constant tension.",
+    "source": "Wikipedia 'Cueca'; Berklee PULSE 'Basic Cueca Guitar Strumming Pattern'; marcachile.cl 'Types of Cueca'"
+  },
+  {
+    "name": "Cueca Nortina",
+    "region": "Latin",
+    "genre": "Cueca",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [1, 7, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [3, 9],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The instrumental, wordless cueca of northern Chile driven by brass bands, bombo and trumpet, keeping the 6/8-versus-3/4 hemiola of the southern sung cueca.",
+    "source": "Wikipedia 'Cueca'; marcachile.cl 'La cueca, espejo de nuestra diversidad cultural'"
+  },
+  {
+    "name": "Tonada Chilena",
+    "region": "Latin",
+    "genre": "Tonada",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [5, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "A lyrical strophic song of central Chile at moderate-to-slow tempo, carried by guitar and arpa chilena, alternating Iberian sesquiáltera with a plain 3/4.",
+    "source": "melodigging.com 'Tonada Chilena'; musicadechile.org 'La Tonada'"
+  },
+  {
+    "name": "Chacarera",
+    "region": "Latin",
+    "genre": "Chacarera",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [3, 9],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The energetic dance of Santiago del Estero: the bombo legüero pounds rim-and-head accents in 6/8 while the guitar syncopates and the bass implies 3/4, a textbook hemiola at ~130 bpm.",
+    "source": "Wikipedia/Argentine folklore sources; tango-dj.at 'Chacarera'; UNLP 'Bombo legüero' thesis (sedici.unlp.edu.ar)"
+  },
+  {
+    "name": "Chacarera Doble",
+    "region": "Latin",
+    "genre": "Chacarera",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [1, 2, 5, 7, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [3, 9],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The longer, more driving variant of the chacarera with extended phrases; the bombo legüero intensifies the 6/8-over-3/4 sesquiáltera of the standard form.",
+    "source": "tango-dj.at 'Chacarera'; UNLP 'Bombo legüero' methodological thesis (sedici.unlp.edu.ar)"
+  },
+  {
+    "name": "Zamba (Argentine)",
+    "region": "Latin",
+    "genre": "Zamba",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [5, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A slow, graceful handkerchief dance descended from the zamacueca; flowing 6/8 guitar arpeggios over soft bombo, keeping a gentler 6/8-versus-3/4 lilt than the chacarera.",
+    "source": "Argentine folklore sources (argentina-excepcion.com; wander-argentina.com 'Argentine Folk Music')"
+  },
+  {
+    "name": "Gato",
+    "region": "Latin",
+    "genre": "Gato",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [9],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A lively, witty Argentine couple dance sharing the chacarera's binary-versus-ternary game; rapid 6/8 guitar and bombo against an implied 3/4 bass.",
+    "source": "tangoallegria.it 'Argentine Dances'; melodigging.com 'Folklore Argentino'"
+  },
+  {
+    "name": "Escondido",
+    "region": "Latin",
+    "genre": "Escondido",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 7, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [3, 9],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A playful 'hide-and-seek' dance kin to the gato, sharing the chacarera's 6/8-over-3/4 sesquiáltera with characteristic bombo accents and choreographic pauses.",
+    "source": "scribd 'Argentine Folk Rhythms Workshop Guide'; tangoallegria.it 'Argentine Dances'"
+  },
+  {
+    "name": "Malambo",
+    "region": "Latin",
+    "genre": "Malambo",
+    "length": 12,
+    "voices": {
+      "bass": [0, 2, 4, 6, 8, 10],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [1, 5, 7, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The intense solo gaucho zapateo: relentless percussive footwork answered by a driving bombo legüero in 6/8, the dancer's heels cutting across the 3/4 accent grid.",
+    "source": "Argentine folklore sources (argentine-tango.net 'chacarera, zamba, malambo'); fr.wikipedia 'Bombo (instrument)'"
+  },
+  {
+    "name": "Milonga Campera",
+    "region": "Latin",
+    "genre": "Milonga",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 5, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The slow rural milonga of the Buenos Aires pampas, sung by payadores over a single guitar's bordoneo with the 3-3-2 habanera-derived bass cell.",
+    "source": "Wikipedia 'Milonga (music)'; pianospuch.com.ar 'Milonga Campera'"
+  },
+  {
+    "name": "Milonga Ciudadana (Porteña)",
+    "region": "Latin",
+    "genre": "Milonga",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 4, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The faster urban milonga of tango orchestras, built on the habanera cell (dotted-eighth, sixteenth, two eighths) that gives milonga porteña its definitive bounce.",
+    "source": "tangotopics.com 'Habanera Rhythm'; adamtully.com 'Rhythms or Genres in tango'"
+  },
+  {
+    "name": "Tango — Habanera (Guardia Vieja)",
+    "region": "Latin",
+    "genre": "Tango",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 4, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [2],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "Early 'dos por cuatro' tango of the old guard, danced over the habanera bass cell inherited from the milonga, naturally notated in 2/4.",
+    "source": "symposium.music.org 'Music Theory and the Tango'; tangology101.com 'Structure of Argentine Tango'"
+  },
+  {
+    "name": "Tango — Marcato (4/4)",
+    "region": "Latin",
+    "genre": "Tango",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 8],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "The driving 'marcato in 4' of the dance orchestras (Di Sarli, D'Arienzo): an accented quarter-note pulse on every beat that dancers walk to in the basic step.",
+    "source": "adamtully.com 'Rhythms or Genres in tango'; tangology101.com 'Structure of Argentine Tango Part 2'"
+  },
+  {
+    "name": "Tango — Yumba (Pugliese)",
+    "region": "Latin",
+    "genre": "Tango",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11],
+      "snareAccent": [0, 8],
+      "snareGhost": [4, 6, 12, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Osvaldo Pugliese's dramatic 'yumba' accent: a heavy syncopated push-pull where bass and piano stab just ahead of beats 1 and 3, then release, giving the orchestra its lurching intensity.",
+    "source": "adamtully.com 'Rhythms or Genres in tango'; Emory Music 'Faces of Tango'"
+  },
+  {
+    "name": "Vals Criollo Argentino (Tango Waltz)",
+    "region": "Latin",
+    "genre": "Vals",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0],
+      "snareGhost": [4, 8],
+      "hatClosed": [0, 4, 8],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "The Argentine tango-waltz (vals criollo) in lilting 3/4, with the bass on the strong first beat and a gentle one-two-three sway under flowing melodic lines.",
+    "source": "adamtully.com 'Rhythms or Genres in tango'; Wikipedia 'Vals criollo'"
+  },
+  {
+    "name": "Carnavalito",
+    "region": "Latin",
+    "genre": "Carnavalito",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 2, 4, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The festive Andean round-dance of northwest Argentina and Bolivia in bright duple meter, driven by caja, bombo, charango and quena with a relentless huayno-like pulse.",
+    "source": "Argentine/Andean folklore sources (melodigging.com 'Folklore Argentino'); Wikipedia 'Carnavalito'"
+  },
+  {
+    "name": "Caporales",
+    "region": "Latin",
+    "genre": "Caporales",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 2, 4, 6],
+      "snareGhost": [3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [2, 6],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The athletic Bolivian carnival dance born from the Afro-Andean saya of the Yungas; brass bands and bombo drive a syncopated duple groove with the famous off-beat caporales kick.",
+    "source": "Wikipedia 'Music of Bolivia'; bolivianthoughts.com 'Bolivian folklore 101: Caporales'"
+  },
+  {
+    "name": "Saya (Afro-Bolivian)",
+    "region": "Latin",
+    "genre": "Saya",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 4, 6]
+    },
+    "desc": "The percussive Afro-Bolivian saya of the Yungas, whose interlocking bombos sound a 'double palpitation' over call-and-response song; the rhythmic root of caporales.",
+    "source": "Wikipedia 'Music of Bolivia'; guidebolivia.com 'Traditional dances of Bolivia'"
+  },
+  {
+    "name": "Tinku",
+    "region": "Latin",
+    "genre": "Tinku",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 4, 6]
+    },
+    "desc": "The combative ritual dance-music of northern Potosí: a loud, constant warlike bombo beat in duple meter under charangos and zampoñas, mirroring the stomping 'encounter'.",
+    "source": "Wikipedia 'Music of Bolivia'; guidebolivia.com 'Traditional dances of Bolivia'"
+  },
+  {
+    "name": "Morenada",
+    "region": "Latin",
+    "genre": "Morenada",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [3, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [2, 6],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The stately, heavy-stepping Afro-Andean dance of Oruro carnival; brass and the deep wankara/bombo dictate a slow, dragging duple march evoking enslaved Africans' chained gait.",
+    "source": "Wikipedia 'Music of Bolivia'; remote-expeditions.com 'Music a Dances in Bolivia'"
+  },
+  {
+    "name": "Diablada",
+    "region": "Latin",
+    "genre": "Diablada",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 2, 4, 6],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [3, 7],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The masked 'dance of the devils' that is the emblem of Oruro carnival; brass bands and bombo march a vigorous duple meter staging the battle of good against evil.",
+    "source": "Wikipedia 'Music of Bolivia'; guidebolivia.com 'Traditional dances of Bolivia'"
+  },
+  {
+    "name": "Tobas",
+    "region": "Latin",
+    "genre": "Tobas",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [1, 3, 5, 7],
+      "hhFoot": [0, 2, 4, 6]
+    },
+    "desc": "An energetic Bolivian dance depicting eastern-lowland jungle tribes, with abrupt leaping steps over a fast, pounding duple bombo drive.",
+    "source": "Wikipedia 'Music of Bolivia'; guidebolivia.com 'Traditional dances of Bolivia'"
+  },
+  {
+    "name": "Huayño (Bolivian)",
+    "region": "Latin",
+    "genre": "Huayño",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 2, 4, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The Bolivian highland huayño, a popular 2/4 Altiplano dance with a strong downbeat and the short-long galloping cell, underpinning charango and zampoña melodies.",
+    "source": "Wikipedia 'Music of Bolivia'; melodigging.com 'Bolivian Huayño'"
+  },
+  {
+    "name": "Sanjuanito",
+    "region": "Latin",
+    "genre": "Sanjuanito",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 2, 4, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "Ecuador's emblematic indigenous highland dance in lively 2/4, festive and processional, with bombo and rondador over a strong duple downbeat.",
+    "source": "ecuadorianmusic.wordpress.com 'Highlands'; UTN repository 'Pasacalle, Sanjuanito y Bomba'"
+  },
+  {
+    "name": "Bomba del Chota",
+    "region": "Latin",
+    "genre": "Bomba",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 5, 7, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The Afro-Ecuadorian dance of the Chota Valley, its bomba drum laying a 6/8 accent against a 3/4 pulse — a sesquiáltera shared with the Andean-Afro coast.",
+    "source": "Wikipedia 'Bomba (Ecuador)'; allaroundthisworld.com 'Ecuador: Bomba del Chota'"
+  },
+  {
+    "name": "Albazo",
+    "region": "Latin",
+    "genre": "Albazo",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [3, 9],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A lively Ecuadorian highland genre traditionally played at dawn, built on a 6/8 guitar and bombo pattern crossing a 3/4 bass in characteristic sesquiáltera.",
+    "source": "ecuadorianmusic.wordpress.com 'Highlands'; UAzuay '07183' (pasillo, albazo)"
+  },
+  {
+    "name": "Pasillo Ecuatoriano",
+    "region": "Latin",
+    "genre": "Pasillo",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [3, 6, 9, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "Ecuador's melancholic national song genre in slow 3/4, descended from the European waltz, with arpeggiated guitar and gentle hemiolic sway under sentimental melodies.",
+    "source": "walnutcreekband.org 'Folk Music From Ecuador'; UAzuay '07183' (pasillo, albazo)"
+  },
+  {
+    "name": "Polka Paraguaya (Polca)",
+    "region": "Latin",
+    "genre": "Polka Paraguaya",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Paraguay's signature dance: a strong sesquiáltera where the bass marks a simple triple 3/4 while harp and guitar melodies group the bar as compound-duple 6/8.",
+    "source": "Wikipedia 'Paraguayan polka'; Smithsonian Folkways 'Colorful Genres in Harp music from Paraguay'"
+  },
+  {
+    "name": "Galopa Paraguaya",
+    "region": "Latin",
+    "genre": "Polka Paraguaya",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [1, 5, 7, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [3, 9],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A faster, more festive variant of the polka paraguaya played by galoperas; the binary-ternary overlap intensifies into a driving 6/8-against-3/4 gallop.",
+    "source": "Wikipedia 'Paraguayan polka'; musicaparaguaya.jimdofree.com 'Types of folk music'"
+  },
+  {
+    "name": "Guarania",
+    "region": "Latin",
+    "genre": "Guarania",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [5, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "José Asunción Flores's slow, melancholic Paraguayan genre, drawing the polka's binary-ternary overlap down to a brooding 6/8 with a gentle 3/4 undertow.",
+    "source": "Wikipedia 'Music of Paraguay'; musicaparaguaya.jimdofree.com 'Types of folk music'"
+  },
+  {
+    "name": "Pasillo Lento (Colombo-Andean)",
+    "region": "Latin",
+    "genre": "Pasillo",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 4, 8],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "The slow salon pasillo of the northern Andes in 3/4, with a tres-against-dos hemiola felt against the guitar bordón, kin to the Ecuadorian and Venezuelan forms.",
+    "source": "walnutcreekband.org 'Folk Music From Ecuador'; ecuadorianmusic.wordpress.com 'Highlands'"
+  },
+  {
+    "name": "Cueca Brava (Urbana)",
+    "region": "Latin",
+    "genre": "Cueca",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 7, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [3, 9],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The urban 'cueca brava' of Santiago's working-class quarters, sung by cuequeros over piano, guitar and panderos, keeping the 6/8-versus-3/4 sesquiáltera at brisk tempo.",
+    "source": "marcachile.cl 'Types of Cueca'; Wikipedia 'Cueca'"
+  },
+  {
+    "name": "Vidala",
+    "region": "Latin",
+    "genre": "Vidala",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 6],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A solemn pre-Hispanic-rooted song of northwest Argentina, sung in thirds over the steady pulse of the caja vidalera; a slow ternary lament inside the 6/8–3/4 frame.",
+    "source": "melodigging.com 'Folklore Argentino'; UNLP 'Bombo legüero' thesis (sedici.unlp.edu.ar)"
+  }
+]
