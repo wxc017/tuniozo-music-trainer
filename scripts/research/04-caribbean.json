@@ -1,0 +1,935 @@
+[
+  {
+    "name": "Yanvalou",
+    "region": "Latin",
+    "genre": "Haitian Vodou (Rada)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 5, 7],
+      "snareAccent": [0, 4, 7, 9],
+      "snareGhost": [1, 3, 8, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hhFoot": [0, 3, 6, 9]
+    },
+    "desc": "The undulating 12/8 Rada invocation rhythm for the serpent-spirit Danbala, the manman drum weaving across a seven-stroke ogan bell. Its three-over-four bell is a Haitian signature timeline.",
+    "source": "https://en.wikipedia.org/wiki/Haitian_Vodou_drumming ; https://www.lakoubrooklyn.com/blog/2017/11/22/rhythms-without-end-haitian-vodou-drum-music"
+  },
+  {
+    "name": "Mayi (Mahi)",
+    "region": "Latin",
+    "genre": "Haitian Vodou (Rada)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 7, 10],
+      "snareAccent": [0, 4, 7, 11],
+      "snareGhost": [2, 5, 9],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A driving 12/8 Rada rhythm named for the Mahi people of Dahomey, faster and more vertical than yanvalou under the same bell. The katabou answers on the offbeat triplet partials.",
+    "source": "https://en.wikipedia.org/wiki/Haitian_Vodou_drumming ; https://www.lakoubrooklyn.com/blog/2017/11/22/rhythms-without-end-haitian-vodou-drum-music"
+  },
+  {
+    "name": "Nago",
+    "region": "Latin",
+    "genre": "Haitian Vodou (Rada)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 7, 10],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hhFoot": [0, 4, 8]
+    },
+    "desc": "The martial 12/8 rhythm of the Nago (Yoruba-derived) Ogou warrior spirits, played on Rada drums with proud square accents. It carries the fierce, processional energy of the lwa of iron and war.",
+    "source": "https://en.wikipedia.org/wiki/Haitian_Vodou_drumming ; https://www.lakoubrooklyn.com/blog/2017/11/22/rhythms-without-end-haitian-vodou-drum-music"
+  },
+  {
+    "name": "Ibo",
+    "region": "Latin",
+    "genre": "Haitian Vodou (Rada)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 5, 7, 11],
+      "snareGhost": [2, 4, 8, 10],
+      "hatClosed": [0, 3, 6, 9],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A proud 12/8 rhythm of the Ibo nation lwa, marked by a clipped, dignified bell that drives a slightly faster compound pulse. Danced upright to honour the aloof, aristocratic Ibo spirits.",
+    "source": "https://en.wikipedia.org/wiki/Haitian_Vodou_drumming ; https://www.lakoubrooklyn.com/blog/2017/11/22/rhythms-without-end-haitian-vodou-drum-music"
+  },
+  {
+    "name": "Zepòl",
+    "region": "Latin",
+    "genre": "Haitian Vodou (Rada)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 2, 6, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [1, 4, 7, 10],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A fast 'shoulder' (zepòl) dance rhythm in 12/8, structurally linked to the Ewe agbekor war music, animating the upper body in jerking shrugs. One of the quickest Rada-family grooves.",
+    "source": "https://en.wikipedia.org/wiki/Haitian_Vodou_drumming"
+  },
+  {
+    "name": "Petwo",
+    "region": "Latin",
+    "genre": "Haitian Vodou (Petwo)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 10, 13],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The fiery, binary New-World Petwo rhythm born on Haitian soil, hot and aggressive with cracking whip-like accents for the volatile Petwo lwa. Its straight 4/4 pulse contrasts the ternary Rada family.",
+    "source": "https://en.wikipedia.org/wiki/Haitian_Vodou_drumming ; https://www.lakoubrooklyn.com/blog/2017/11/22/rhythms-without-end-haitian-vodou-drum-music"
+  },
+  {
+    "name": "Kongo",
+    "region": "Latin",
+    "genre": "Haitian Vodou (Kongo)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [3, 7, 11, 15],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "A sensual, swaying binary rhythm of the Kongo nation lwa, favouring 4/4 over the compound Rada meters, with hip-rolling syncopation. Among the few Vodou rhythms played duple rather than in 12/8.",
+    "source": "https://en.wikipedia.org/wiki/Haitian_Vodou_drumming ; https://en-academic.com/dic.nsf/enwiki/7930526"
+  },
+  {
+    "name": "Banda",
+    "region": "Latin",
+    "genre": "Haitian Vodou (Gede)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 8, 11, 14],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The hip-thrusting Petwo-family rhythm of the Gede death spirits, played for Baron Samedi with lewd, pelvic dance moves. A fast binary groove built on a tresillo-leaning kick.",
+    "source": "https://en.wikipedia.org/wiki/Haitian_Vodou_drumming ; https://www.lakoubrooklyn.com/blog/2017/11/22/rhythms-without-end-haitian-vodou-drum-music"
+  },
+  {
+    "name": "Djouba (Matinik)",
+    "region": "Latin",
+    "genre": "Haitian Vodou (Djouba)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [5, 6, 13, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The earthy peasant rhythm honouring Kouzen Zaka, the agrarian lwa, performed on Petwo drums with a rustic martinique-derived swing. A binary groove tied to Haiti's farming traditions.",
+    "source": "https://en.wikipedia.org/wiki/Haitian_Vodou_drumming"
+  },
+  {
+    "name": "Rara",
+    "region": "Latin",
+    "genre": "Haitian rara (procession)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 3, 6, 8, 11, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The Lenten street-processional music of Haiti, propelled by tanbou, bamboo vaksen horns and graj scrapers in a marching tresillo. A rowdy carnival cousin of Vodou ceremonial drumming.",
+    "source": "https://zafenou.com/haitian-music-complete-kompa-rara-arts-and-culture/"
+  },
+  {
+    "name": "Méringue",
+    "region": "Latin",
+    "genre": "Haitian méringue",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [6, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The 19th-century Haitian salon dance rooted in the contredanse and a quintuplet cinquillo cell, ancestor of konpa. Its elegant 2/4 lilt blends European courtliness with Afro-Haitian syncopation.",
+    "source": "https://zafenou.com/haitian-music-complete-kompa-rara-arts-and-culture/"
+  },
+  {
+    "name": "Konpa Dirèk",
+    "region": "Latin",
+    "genre": "Haitian konpa",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The smooth modern Haitian dance groove codified by Nemours Jean-Baptiste in 1955, riding a steady 2/4 with a syncopated bass ostinato nudging the beat. The flagship pop rhythm of Francophone Caribbean dancefloors.",
+    "source": "https://www.konpa.info/en/compas ; https://zafenou.com/haitian-music-complete-kompa-rara-arts-and-culture/"
+  },
+  {
+    "name": "Rabòday",
+    "region": "Latin",
+    "genre": "Haitian rabòday",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 10, 13],
+      "snareAccent": [4, 12],
+      "snareGhost": [7, 15],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "A contemporary electronic Haitian street style built on Petwo-derived rhythmic cells with punchy digital drums. Carnival energy translated into a modern dancehall-adjacent groove.",
+    "source": "https://zafenou.com/haitian-music-complete-kompa-rara-arts-and-culture/"
+  },
+  {
+    "name": "Bomba Sicá",
+    "region": "Latin",
+    "genre": "Puerto Rican bomba",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [0, 3, 6, 8, 11, 14],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The most common bomba seis, built on a 3+3+2 tresillo with a steady buleador while the subidor converses with the dancer's piquetes. The signature Afro-Puerto Rican barrel-drum groove.",
+    "source": "https://en.wikipedia.org/wiki/Bomba_(Puerto_Rico) ; http://www.alexpertout.com/lbomba.htm"
+  },
+  {
+    "name": "Bomba Yubá",
+    "region": "Latin",
+    "genre": "Puerto Rican bomba",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 7, 10],
+      "snareAccent": [0, 2, 4, 5, 7, 9, 11],
+      "snareGhost": [1, 6, 8],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The principal compound-meter (6/8) bomba seis, played at a moderately fast tempo whose ternary feel challenges dancers and drummers alike. The deepest, most African-leaning of the bomba family.",
+    "source": "https://en.wikipedia.org/wiki/Bomba_(Puerto_Rico) ; https://folkways.si.edu/puerto-rican-bomba-plena-shared-traditions-distinct-rhythms/latin-world/music/article/smithsonian"
+  },
+  {
+    "name": "Bomba Holandé",
+    "region": "Latin",
+    "genre": "Puerto Rican bomba",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 3, 6, 8, 11, 14],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "One of the fastest bomba styles, traced to Dutch-Caribbean slave cultures of Curaçao, Aruba and St. Croix. A breakneck duple seis driving an urgent tresillo accent.",
+    "source": "https://en.wikipedia.org/wiki/Bomba_(Puerto_Rico)"
+  },
+  {
+    "name": "Bomba Cuembé",
+    "region": "Latin",
+    "genre": "Puerto Rican bomba",
+    "length": 16,
+    "voices": {
+      "bass": [0, 5, 8, 13],
+      "snareAccent": [0, 3, 6, 8, 11, 14],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The second most common bomba seis after sicá, a relaxed mid-tempo groove with sub-styles balancé and gracimá. Its swaying cinquillo-cell feel makes it a favourite for social dancing.",
+    "source": "https://en.wikipedia.org/wiki/Bomba_(Puerto_Rico)"
+  },
+  {
+    "name": "Bomba Leró",
+    "region": "Latin",
+    "genre": "Puerto Rican bomba",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 7, 9],
+      "snareAccent": [0, 2, 4, 5, 7, 9, 11],
+      "snareGhost": [3, 8, 10],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A slow southern bomba seis from the Ponce region, its name a creole contraction of the French 'le rose' circle dance. A stately 6/8 groove from Puerto Rico's deep south coast.",
+    "source": "https://en.wikipedia.org/wiki/Bomba_(Puerto_Rico)"
+  },
+  {
+    "name": "Bomba Gracimá",
+    "region": "Latin",
+    "genre": "Puerto Rican bomba",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11],
+      "snareAccent": [0, 3, 6, 8, 11, 14],
+      "snareGhost": [5, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "A cuembé sub-style bomba seis with its own distinct buleador ostinato and dancer-led conversation. A regional variant prized in the bomba canon for its lilting binary push.",
+    "source": "https://en.wikipedia.org/wiki/Bomba_(Puerto_Rico)"
+  },
+  {
+    "name": "Bomba Corvé",
+    "region": "Latin",
+    "genre": "Puerto Rican bomba",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 2, 4, 5, 7, 9, 11],
+      "snareGhost": [1, 8, 10],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A bomba seis whose name echoes the French 'corvée' forced-labour origins, danced in compound meter. One of the deep-tradition seises kept alive by Puerto Rico's bomba families.",
+    "source": "https://en.wikipedia.org/wiki/Bomba_(Puerto_Rico) ; https://www.evergreen.edu/catalog/offering/introduction-to-puerto-rican-bomba-percussion-song-dance-and-batey-44048"
+  },
+  {
+    "name": "Plena",
+    "region": "Latin",
+    "genre": "Puerto Rican plena",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 3, 5, 8, 11, 13],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The 'sung newspaper' of working-class Puerto Rico, played on layered hand-held panderetas: seguidor bass, punteador middle and requinto lead. A 2/4 street rhythm narrating everyday news and gossip.",
+    "source": "https://en.wikipedia.org/wiki/Plena ; https://en.wikipedia.org/wiki/Pandereta_plenera"
+  },
+  {
+    "name": "Danza",
+    "region": "Latin",
+    "genre": "Puerto Rican danza",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 3, 5, 8, 12],
+      "snareGhost": [4, 11, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The refined 19th-century Puerto Rican salon dance whose melodic bass lines elaborate the five-note cinquillo cell over a genteel 2/4. The classical cousin of the island's Afro-Caribbean folk rhythms.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_Puerto_Rico ; https://grokipedia.com/page/Danza"
+  },
+  {
+    "name": "Seis",
+    "region": "Latin",
+    "genre": "Puerto Rican jíbaro seis",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [3, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The cuatro-driven jíbaro country music of Puerto Rico's mountain interior, sung in décima verse over a güiro-scraped tresillo. The Spanish-rooted folk counterpart to coastal bomba and plena.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_Puerto_Rico"
+  },
+  {
+    "name": "Merengue Derecho",
+    "region": "Latin",
+    "genre": "Dominican merengue",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The fast straight-ahead Dominican merengue, accordion-led with the tambora's hand-and-stick figure under a relentless güira sixteenth-note saw. The national dance rhythm of the Dominican Republic.",
+    "source": "https://www.barcelo.com/guia-turismo/en/dominican-republic/dominican-republic/things-to-do/merengue-bachata/ ; https://www.numberanalytics.com/blog/the-ultimate-guide-to-merengue-in-music-and-dance"
+  },
+  {
+    "name": "Pambiche",
+    "region": "Latin",
+    "genre": "Dominican merengue",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [3, 6, 11, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The slower, more relaxed 'merengue apambichao' where dancers stay embraced, its tambora syncopation looser than the derecho. A laid-back northern Cibao variant of merengue.",
+    "source": "https://www.lumbeat.com/afro-latin-drum-machine/dominican-rhythms.html ; https://www.barcelo.com/guia-turismo/en/dominican-republic/dominican-republic/things-to-do/merengue-bachata/"
+  },
+  {
+    "name": "Bachata",
+    "region": "Latin",
+    "genre": "Dominican bachata",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [3, 7, 11, 15],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "The romantic Dominican guitar music with its bongo martillo and güira, the fourth-beat accent giving the dance its signature hip-pop. Born in the early 20th century from bolero and Cuban son.",
+    "source": "https://en.wikipedia.org/wiki/Bachata_(music) ; https://www.salsavida.com/articles/history-of-bachata-dance-music/"
+  },
+  {
+    "name": "Palos (Atabales)",
+    "region": "Latin",
+    "genre": "Dominican palos",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 5, 7, 10],
+      "snareAccent": [0, 2, 4, 5, 7, 9, 11],
+      "snareGhost": [1, 6, 8],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The sacred long-drum (atabales) music of Dominican folk-Catholic saint festivals and cofradías, deeply Afro-Dominican and largely in compound meter. The spiritual ceremonial drumming of the DR.",
+    "source": "https://www.barcelo.com/guia-turismo/en/dominican-republic/dominican-republic/things-to-do/merengue-bachata/"
+  },
+  {
+    "name": "Gagá",
+    "region": "Latin",
+    "genre": "Dominican gagá",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 3, 6, 8, 11, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The Dominican Holy-Week processional music of the bateyes, the cross-border cousin of Haitian rara with bamboo trumpets and marching drums. A defiant Afro-Dominican Lenten street rhythm.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_the_Dominican_Republic"
+  },
+  {
+    "name": "Salve",
+    "region": "Latin",
+    "genre": "Dominican salve",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 7, 10],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The hybrid sacred-secular song-form sung to the Virgin in Dominican folk-Catholic vigils, its Africanized variants driven by panderos and balsié in compound time. The most ubiquitous Dominican religious rhythm.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_the_Dominican_Republic"
+  },
+  {
+    "name": "Pri-Prí",
+    "region": "Latin",
+    "genre": "Dominican pri-prí",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [3, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The southern Dominican 'merengue palo echao' from the Villa Mella region, an accordion-and-balsié folk groove leaning on a tresillo kick. A rootsy rural cousin of mainstream merengue.",
+    "source": "https://www.barcelo.com/guia-turismo/en/dominican-republic/dominican-republic/things-to-do/merengue-bachata/"
+  },
+  {
+    "name": "Sarandunga",
+    "region": "Latin",
+    "genre": "Dominican sarandunga",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 2, 4, 5, 7, 9, 11],
+      "snareGhost": [1, 8, 10],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The devotional drum-and-dance tradition of Baní honouring San Juan Bautista, played on three small tamboras and a güira in lively compound meter. A tightly localized Afro-Dominican festival rhythm.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_the_Dominican_Republic"
+  },
+  {
+    "name": "Mento",
+    "region": "Latin",
+    "genre": "Jamaican mento",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [12],
+      "snareGhost": [4, 6, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Jamaica's rural acoustic precursor to ska, with banjo, rhumba box and a relaxed afterbeat lilt that emphasizes the final beat of the bar. The folk root from which all later Jamaican pop grew.",
+    "source": "https://en.wikipedia.org/wiki/Ska ; https://routledgetextbooks.com/textbooks/9781138684478/globe/globe114.php"
+  },
+  {
+    "name": "Nyabinghi",
+    "region": "Latin",
+    "genre": "Jamaican Nyabinghi",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 8],
+      "snareGhost": [4, 12],
+      "hatClosed": [2, 6, 10, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The Rastafari hand-drumming heartbeat in 4/4: the thunder bass open on beat 1 and damped on beat 3, the funde holding the offbeat one-two, the repeater improvising. The sacred ancestor of reggae's one-drop.",
+    "source": "https://en.wikipedia.org/wiki/Nyabinghi_rhythm ; https://blog.zzounds.com/2018/04/27/foundational-beats-reggae-drums/"
+  },
+  {
+    "name": "Ska",
+    "region": "Latin",
+    "genre": "Jamaican ska",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [2, 6, 10, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The bouncy early-1960s Jamaican beat with its choppy guitar skank on the offbeats and a walking bass, born of mento meeting American R&B. The first great Jamaican pop rhythm.",
+    "source": "https://en.wikipedia.org/wiki/Ska ; https://en.wikipedia.org/wiki/Ska_stroke"
+  },
+  {
+    "name": "Rocksteady",
+    "region": "Latin",
+    "genre": "Jamaican rocksteady",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [14],
+      "hatClosed": [2, 6, 10, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The slowed-down, soul-tinged 1966 successor to ska, with a relaxed backbeat, sparser bass and the skank still riding the offbeats. The bridge from ska to roots reggae.",
+    "source": "https://en.wikipedia.org/wiki/Reggae ; https://blog.zzounds.com/2018/04/27/foundational-beats-reggae-drums/"
+  },
+  {
+    "name": "Reggae One Drop",
+    "region": "Latin",
+    "genre": "Jamaican reggae",
+    "length": 16,
+    "voices": {
+      "bass": [8],
+      "snareAccent": [8],
+      "snareGhost": [4, 12],
+      "hatClosed": [2, 6, 10, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The classic roots-reggae feel: kick and rim-shot landing together on beat 3 with beat 1 left empty, the skank hats barking on every offbeat. The defining groove of Bob Marley-era reggae.",
+    "source": "https://en.wikipedia.org/wiki/One_drop_rhythm ; https://rhythmnotes.net/reggae-drum-beats/"
+  },
+  {
+    "name": "Reggae Rockers",
+    "region": "Latin",
+    "genre": "Jamaican reggae",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [2, 6, 10, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The driving Sly-Dunbar 1970s rockers feel, adding a kick on beat 1 to the one-drop for a more insistent, four-square push. A heavier alternative to the one-drop.",
+    "source": "https://blog.zzounds.com/2018/04/27/foundational-beats-reggae-drums/ ; https://rhythmnotes.net/reggae-drum-beats/"
+  },
+  {
+    "name": "Reggae Steppers",
+    "region": "Latin",
+    "genre": "Jamaican reggae",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [2, 6, 10, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The militant 'steppers' feel with a four-on-the-floor kick driving the riddim relentlessly forward under an offbeat skank. The most propulsive of the roots-reggae drum styles.",
+    "source": "https://blog.zzounds.com/2018/04/27/foundational-beats-reggae-drums/ ; https://en.wikipedia.org/wiki/Nyabinghi_rhythm"
+  },
+  {
+    "name": "Dub",
+    "region": "Latin",
+    "genre": "Jamaican dub",
+    "length": 16,
+    "voices": {
+      "bass": [8],
+      "snareAccent": [8],
+      "snareGhost": [4],
+      "hatOpen": [6, 14],
+      "hatClosed": [2, 10],
+      "hhFoot": [0, 8]
+    },
+    "desc": "King Tubby and Lee Perry's studio art-form: a spacious one-drop drenched in reverb and tape delay, with instruments dropping in and out and open-hat splashes. Reggae remixed into cavernous soundscape.",
+    "source": "https://en.wikipedia.org/wiki/Reggae ; https://blog.zzounds.com/2018/04/27/foundational-beats-reggae-drums/"
+  },
+  {
+    "name": "Dancehall (Sleng Teng)",
+    "region": "Latin",
+    "genre": "Jamaican dancehall",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 10],
+      "snareAccent": [4, 12],
+      "snareGhost": [3, 8, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The 1985 digital riddim from a Casiotone MT-40 'rock' preset that birthed dancehall, built on a dotted, lurching shape rather than a 2-and-4 backbeat. The single most versioned riddim in Jamaican history.",
+    "source": "https://en.wikipedia.org/wiki/Sleng_Teng ; https://www.nippon.com/en/japan-topics/g02027/"
+  },
+  {
+    "name": "Ragga",
+    "region": "Latin",
+    "genre": "Jamaican ragga",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 10, 13],
+      "snareAccent": [4, 12],
+      "snareGhost": [8, 15],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The fully digital branch of dancehall foregrounding synthesized sub-bass, drum-machine riddims and rapid-fire patois toasting. The mid-1980s electronic evolution of Jamaican sound-system music.",
+    "source": "https://www.melodigging.com/genre/ragga ; https://en.wikipedia.org/wiki/Sleng_Teng"
+  },
+  {
+    "name": "Calypso",
+    "region": "Latin",
+    "genre": "Trinidadian calypso",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 8, 11, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The lilting Trinidadian carnival song-form, ancestor of soca, built on a son-clave-leaning kick and a bright backbeat. The voice of social commentary and calypsonian wit.",
+    "source": "https://www.totaldrummer.com/soca-calypso-drum-beat/ ; https://en.wikipedia.org/wiki/Music_of_Trinidad_and_Tobago"
+  },
+  {
+    "name": "Soca",
+    "region": "Latin",
+    "genre": "Trinidadian soca",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 7, 12, 15],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14],
+      "hatOpen": [3, 7, 11, 15],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Lord Shorty's 1970s 'soul of calypso' fusion: a four-on-the-floor kick under a syncopated snare, hats playing three sixteenths and opening on the fourth. The driving engine of modern Carnival.",
+    "source": "https://www.totaldrummer.com/soca-calypso-drum-beat/ ; https://thesocasource.com/what-is-soca-music/"
+  },
+  {
+    "name": "Chutney Soca",
+    "region": "Latin",
+    "genre": "Trinidadian chutney",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 7, 10, 14, 15],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The Indo-Caribbean fusion of dholak-and-dhantal beats with the soca engine, born of Trinidad's Bhojpuri heritage. A whirling sixteenth-note dance rhythm bridging India and the Caribbean.",
+    "source": "https://en.wikipedia.org/wiki/Chutney_music ; https://en.wikipedia.org/wiki/Music_of_Trinidad_and_Tobago"
+  },
+  {
+    "name": "Parang",
+    "region": "Latin",
+    "genre": "Trinidadian parang",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Trinidad's Spanish-language Christmas serenading music from Paramin and Lopinot, rooted in Venezuelan aguinaldo with cuatro, maracas and a 6/8 hemiola feel. The festive parranda tradition of the hills.",
+    "source": "https://en.wikipedia.org/wiki/Parang ; https://travelpulse.com/opinions/blog/parang-primer-the-foundations-of-trinidad-and-tobagos-holiday-music-tradition.html"
+  },
+  {
+    "name": "Steelpan (Engine Room)",
+    "region": "Latin",
+    "genre": "Trinidadian steelband",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 3, 6, 10, 11, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [3, 7, 11, 15],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The driving 'engine room' percussion section of a Carnival steelband, with iron, scratchers and brake-drums laying down a relentless soca-calypso pulse beneath the pans. The rhythmic heart of pan-on-the-road.",
+    "source": "https://kaitlinbove.com/steelpan ; https://en.wikipedia.org/wiki/Music_of_Trinidad_and_Tobago"
+  },
+  {
+    "name": "Punta",
+    "region": "Latin",
+    "genre": "Garifuna (Belize/Honduras)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The most popular Garifuna rhythm, a fast hip-swivelling dance with the segunda bass drum holding steady while the primero improvises faster fills. The signature beat of the Central American Garinagu.",
+    "source": "https://en.wikipedia.org/wiki/Punta ; https://www.warasadrumschool.com/garifuna-culture/garifuna-music/"
+  },
+  {
+    "name": "Paranda",
+    "region": "Latin",
+    "genre": "Garifuna (Belize/Honduras)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [6, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The slower, soulful Garifuna song-form sung by male paranderos over acoustic guitar and gentle drums, telling stories of love and struggle. The bluesy, contemplative side of Garifuna music.",
+    "source": "https://www.warasadrumschool.com/garifuna-culture/garifuna-music/ ; https://www.travelbelize.org/blog/the-rhythms-of-garifuna-music-in-belize/"
+  },
+  {
+    "name": "Hunguhungu",
+    "region": "Latin",
+    "genre": "Garifuna (Belize/Honduras)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A Garifuna circle dance in a swaying three-beat compound meter, often combined with punta in ceremony. Its rolling 6/8 lilt accompanies communal ritual gatherings.",
+    "source": "https://www.last.fm/tag/garifuna/wiki ; https://www.warasadrumschool.com/garifuna-culture/garifuna-music/"
+  },
+  {
+    "name": "Chumba",
+    "region": "Latin",
+    "genre": "Garifuna (Belize/Honduras)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 7, 10],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A solo Garifuna mime-dance in a three-beat rhythm, frequently paired with hunguhungu, in which the dancer playfully interprets the song's story. A theatrical, individual showcase within the Garifuna repertoire.",
+    "source": "https://www.louisianafolklife.org/lt/articles_essays/garifuna.html ; https://www.warasadrumschool.com/garifuna-culture/garifuna-music/"
+  },
+  {
+    "name": "Junkanoo",
+    "region": "Latin",
+    "genre": "Bahamian junkanoo",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The explosive Bahamian carnival parade music of goatskin goombay drums, cowbells, whistles and brass, with cowbells ringing on the offbeats over a marching kick. The riotous street pulse of Boxing Day and New Year.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_the_Bahamas ; https://www.nassauparadiseisland.com/blog/dance-to-the-music-of-the-junkanoo-carnival"
+  },
+  {
+    "name": "Rake-and-Scrape",
+    "region": "Latin",
+    "genre": "Bahamian rake-and-scrape",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The Bahamian folk groove driven by a carpenter's saw scraped with a screwdriver, a goombay drum and accordion, accompanying the quadrille and heel-toe polka. The rural Family-Islands dance rhythm.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_the_Bahamas ; https://islandhopperguides.com/bahamas/bahamian-culture/rake-and-scrape-rhythms-the-story-behind-the-bahamas-unique-musical-sound/"
+  },
+  {
+    "name": "Léwòz",
+    "region": "Latin",
+    "genre": "Guadeloupean gwoka",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 3, 10, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The most complex of the seven gwoka rhythms, a moderate-tempo incantation groove tied to the 18th-century maroon resistance societies. The intense centerpiece of the Guadeloupean léwòz gathering.",
+    "source": "https://en.wikipedia.org/wiki/Gwo_ka ; https://mulaogwada.com/les-7-rythmes-du-gwoka/"
+  },
+  {
+    "name": "Kaladja",
+    "region": "Latin",
+    "genre": "Guadeloupean gwoka",
+    "length": 12,
+    "voices": {
+      "bass": [0, 5, 7],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 8, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The slow, sorrowful gwoka rhythm of heartbreak and the struggle in love, swaying in a heavy compound feel. The most plaintive of the seven Guadeloupean rhythms.",
+    "source": "https://en.wikipedia.org/wiki/Gwo_ka ; https://mulaogwada.com/les-7-rythmes-du-gwoka/"
+  },
+  {
+    "name": "Toumblak",
+    "region": "Latin",
+    "genre": "Guadeloupean gwoka",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The fast, joyous gwoka rhythm of love, fertility and sensuality, the most widely known of the seven with a bouncing duple drive. The crowd-pleasing celebratory groove of gwoka.",
+    "source": "https://en.wikipedia.org/wiki/Gwo_ka ; https://mulaogwada.com/les-7-rythmes-du-gwoka/"
+  },
+  {
+    "name": "Graj",
+    "region": "Latin",
+    "genre": "Guadeloupean gwoka",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [1, 5, 9, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "A steady work-rhythm of gwoka whose movements mime the grating of cassava into flour, slower than toumblak. The agricultural labour song of Guadeloupe's countryside.",
+    "source": "https://en.wikipedia.org/wiki/Gwo_ka ; https://mulaogwada.com/les-7-rythmes-du-gwoka/"
+  },
+  {
+    "name": "Woulé",
+    "region": "Latin",
+    "genre": "Guadeloupean gwoka",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The slow, deep gwoka 'creole waltz' in three time, danced to gently mock the planters' European ballroom steps. The graceful ternary rhythm of the seven.",
+    "source": "https://en.wikipedia.org/wiki/Gwo_ka ; https://mulaogwada.com/les-7-rythmes-du-gwoka/"
+  },
+  {
+    "name": "Padjabèl",
+    "region": "Latin",
+    "genre": "Guadeloupean gwoka",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [1, 5, 7, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A humorous work-dance of gwoka recalling the jerking movements of sugarcane cutting and women's liberation from bondage. A spirited rhythm of plantation memory and pride.",
+    "source": "https://en.wikipedia.org/wiki/Gwo_ka ; https://mulaogwada.com/les-7-rythmes-du-gwoka/"
+  },
+  {
+    "name": "Mendé",
+    "region": "Latin",
+    "genre": "Guadeloupean gwoka",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 3, 6, 8, 11, 14],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The last gwoka rhythm to arrive, brought by post-abolition Congo contract workers, a fast carnival-and-parade groove of collective celebration. The most outward-facing, festive rhythm of the seven.",
+    "source": "https://en.wikipedia.org/wiki/Gwo_ka ; https://mulaogwada.com/les-7-rythmes-du-gwoka/"
+  },
+  {
+    "name": "Bélé",
+    "region": "Latin",
+    "genre": "Martinican bélé",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 3, 5, 8, 11, 13],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The Martinican drum-and-dance tradition in which the tibwa sticks beat the cinquillo on bamboo while the tambour bélé marks the accents and improvises. The deep Afro-Creole root of Martinican music.",
+    "source": "https://en.wikipedia.org/wiki/Tambour_b%C3%A9l%C3%A9 ; https://en.wikipedia.org/wiki/Music_of_Martinique"
+  },
+  {
+    "name": "Biguine",
+    "region": "Latin",
+    "genre": "Martinican biguine",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [3, 6, 11, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The early-20th-century Martinican dance blending bélé drumming with European ballroom and clarinet-led ensembles, a syncopated 2/4 that conquered 1930s Paris. The elegant urban face of Antillean music.",
+    "source": "https://en.wikipedia.org/wiki/Biguine ; https://en.wikipedia.org/wiki/Music_of_Martinique"
+  },
+  {
+    "name": "Zouk",
+    "region": "Latin",
+    "genre": "Antillean zouk",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [3, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The 1980s Kassav'-led Antillean pop fusion of gwoka, bélé and biguine vidé, with the tibwa simplified to an almost-constant 3+3+2 motive on rimshots. The international dance sound of the French Caribbean.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_Martinique ; https://www.last.fm/tag/zouk/wiki"
+  }
+]
