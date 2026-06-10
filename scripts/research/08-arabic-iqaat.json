@@ -1,0 +1,452 @@
+[
+  {
+    "name": "Maqsum",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0, 4], "snareAccent": [1, 3, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "The most widely used iqa' in Arabic music, a versatile 4/4 cycle (DUM tak - tak DUM - tak) foundational to modern song, tarab and belly dance. Skeleton D-T-T-D--T on an eighth grid.",
+    "source": "maqamworld.com/en/iqaa/maqsum.php; khafif.com/rhy [DT-TD-T-]; Carmine Guida Rhythm Cheat Sheet (Karim Nagi/Raquy/Jas)"
+  },
+  {
+    "name": "Baladi (Masmudi Saghir)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0, 1, 4], "snareAccent": [3, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Earthy Egyptian folk 4/4 ('Little Masmudi'), distinguished from Maqsum by two leading DUMs (DUM DUM - tak DUM - tak). Heavy and grounded, ideal for hip drops.",
+    "source": "maqamworld.com/en/iqaa/baladi.php; Carmine Guida Cheat Sheet 'Baladi (basic) D D _ T D _ T'; khafif.com/rhy"
+  },
+  {
+    "name": "Saidi",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0, 3, 4], "snareAccent": [1, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Upper-Egyptian 4/4 of the Maqsum family with two central DUMs (DUM tak - DUM DUM - tak), associated with cane (assaya) dance and saidi music.",
+    "source": "maqamworld.com/en/iqaa/saidi.php; Carmine Guida Cheat Sheet 'Saidi (basic) D T _ D D _ T'; babayagamusic.com"
+  },
+  {
+    "name": "Maqsum Maqluub (Saidi maqluub)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [3, 4], "snareAccent": [0, 1, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "'Inverted' Maqsum/Saidi where the opening beat is played as a tak, dragging the accent onto the central double-DUM (tak tak - DUM DUM - tak). Common folk variation.",
+    "source": "maqamworld.com/en/iqaa/saidi.php; khafif.com/rhy 'baladii maqluub'; Carmine Guida 'Saidi (variation) T D _ D D _ T'"
+  },
+  {
+    "name": "Nawari",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [1, 4], "snareAccent": [0, 3, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Levantine 4/4 variation on Saidi/Baladi used in dabke line dances (tak DUM - tak DUM - tak); often called Katakufti by percussionists.",
+    "source": "maqamworld.com/en/iqaa/nawari.php; Carmine Guida Cheat Sheet 'Nawari T D _ T D _ T'"
+  },
+  {
+    "name": "Wahda",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0], "snareAccent": [3, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "'The one' - a slow open 4/4 with a single DUM at the head of the bar and light taks filling the space, common in slow songs and taqasim accompaniment.",
+    "source": "maqamworld.com/en/iqaa/wahda.php; Carmine Guida Cheat Sheet 'Wahda D _ _ T _ _ T'; mynoota.com/en/blog/iqaat"
+  },
+  {
+    "name": "Wahda wa-Nuss (Wahda w-Nuss)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0, 4], "snareAccent": [3, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "'One and a half' - a 4/4 elaboration of Wahda adding a second DUM on beat 3 (DUM - tak - DUM - tak), bridging Wahda and Maqsum feels.",
+    "source": "maqamworld.com/en/iqaa.php (Wahda w-Nuss 4/4); babayagamusic.com"
+  },
+  {
+    "name": "Wahda Kabira (Sayyah)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 16,
+    "voices": { "bass": [0, 8], "snareAccent": [5, 12], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "'Big Wahda' (Sayyah), an 8/4 cycle spread over two bars with sparse DUMs and taks; sensual and spacious, favored for taqsim improvisation.",
+    "source": "maqamworld.com/en/iqaa.php (Wahda Kabira 8/4); babayagamusic.com 'Wahda Kebira'; mynoota.com/en/blog/iqaat"
+  },
+  {
+    "name": "Masmudi Kabir (Masmoudi)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 16,
+    "voices": { "bass": [0, 4], "snareAccent": [10, 12], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "'Big Masmudi', a slow majestic 8/4 with two leading DUMs opening the cycle followed by taks (DUM - DUM - ... tak - tak); an art-music rhythm rooted in muwashahat.",
+    "source": "maqamworld.com/en/iqaa/masmudi_kabir.php; Carmine Guida Cheat Sheet 'Masmoudi (basic) D _ D _ TK ...'; babayagamusic.com"
+  },
+  {
+    "name": "Masmudi Kabir (3-DUM)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 16,
+    "voices": { "bass": [0, 4, 8], "snareAccent": [10, 12], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Three-DUM variant of Masmudi Kabir adding a DUM on beat 3 of the first measure, giving a heavier 'warring/walking masmudi' stride for marching feels.",
+    "source": "Carmine Guida Cheat Sheet '3 Doum Masmoudi has Doum on 3'; khafif.com/rhy 'warring/walking masmoudi'"
+  },
+  {
+    "name": "Fallahi",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0, 4], "snareAccent": [1, 3, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Fast Egyptian peasant 2/4 ('fellah' = farmer), essentially a brisk doubled Maqsum (DUM tak - tak DUM - tak) used for energetic hip lifts and shimmy walks.",
+    "source": "maqamworld.com/en/iqaa/fallahi.php; babayagamusic.com 'Fellahi D t _ t D _ t'"
+  },
+  {
+    "name": "Malfuf",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0], "snareAccent": [3, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Fast 'wrapped' 2/4 (counted 3+3+2) used as an entrance/exit and intro rhythm: DUM - - tak - - tak. Light and rolling.",
+    "source": "maqamworld.com/en/iqaa/malfuf.php; Carmine Guida Cheat Sheet 'Malfuf (basic) D _T _ T'; babayagamusic.com"
+  },
+  {
+    "name": "Ayyub (Ayoub)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0, 3], "snareAccent": [6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Driving 2/4 zikr/trance rhythm (DUM - - DUM tak), said to evoke a walking camel; the backbone of Sufi and saidi-shaabi grooves.",
+    "source": "maqamworld.com/en/iqaa/ayyub.php; Carmine Guida Cheat Sheet 'Ayub (basic) D _k D T'; babayagamusic.com"
+  },
+  {
+    "name": "Karatshi (Karachi)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [3, 6], "snareAccent": [0], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Fast 2/4 that inverts Ayyub by swapping DUMs and taks (tak - - DUM DUM), giving an off-balance lift.",
+    "source": "maqamworld.com/en/iqaa.php (Karachi 2/4); Carmine Guida Cheat Sheet 'Karachi (basic) T _k T D - inverted Ayub'"
+  },
+  {
+    "name": "Khaleeji (Khaligi)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0, 3], "snareAccent": [6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Arabian-Gulf 2/4 (DUM - - DUM tak), described as Malfuf with two DUMs; underpins khaleegy hair-tossing dance and saudi/kuwaiti pop.",
+    "source": "maqamworld.com/en/iqaa.php; Carmine Guida Cheat Sheet 'Khaligi (basic) D _D _ T - Malfuf with 2 Doums'; ancient-future.com"
+  },
+  {
+    "name": "Wahda Saghira",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0], "snareAccent": [3, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "'Small Wahda', a light 2/4 with a single DUM head and two taks (counted 3+3+2), close kin to Malfuf and used as a gentle filler groove.",
+    "source": "maqamworld.com/en/iqaa.php (Wahda Saghira 2/4); khafif.com/rhy 'waaHida saghiira 3-3-2'"
+  },
+  {
+    "name": "Fox (Rumba)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0, 3], "snareAccent": [4, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Latin-influenced 2/4 ('Fox'/Rumba) absorbed into modern Arabic pop, with a syncopated DUM - - DUM tak - tak feel under foxtrot/rumba-style songs.",
+    "source": "maqamworld.com/en/iqaa.php (Fox 2/4, Rumba 4/4); orientaldrumming.com"
+  },
+  {
+    "name": "Zaffa",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0, 4], "snareAccent": [1, 2, 3, 5, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Egyptian wedding-procession march in 4/4 with a dense tak roll between two strong DUMs (DUM tt t t DUM t t), used to announce the bridal party.",
+    "source": "maqamworld.com/en/iqaa/zaffa.php; Carmine Guida Cheat Sheet 'Zaffa D tt t t D t t'; babayagamusic.com"
+  },
+  {
+    "name": "Hacha",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0, 4], "snareAccent": [2, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A 4/4 iqa' in the maqsum/wahda family with DUMs on beats 1 and 3 and taks marking the off-beats, used in Egyptian folk and shaabi accompaniment.",
+    "source": "maqamworld.com/en/iqaa.php (Hacha' 4/4); orientaldrumming.com"
+  },
+  {
+    "name": "Bambi",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 16,
+    "voices": { "bass": [0, 6, 7], "snareAccent": [2, 4, 9, 11], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "An 8/4 modern rhythm akin to a Wahda with a three-DUM cluster, played sparse and spacious (DUM kt -k t kt -k DUM DUM).",
+    "source": "maqamworld.com/en/iqaa.php (Bambi 8/4); Carmine Guida Cheat Sheet 'Bambi D KT _K T KT _K D D'"
+  },
+  {
+    "name": "Sombati",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 16,
+    "voices": { "bass": [0, 6], "snareAccent": [3, 8], "snareGhost": [2, 11, 13, 15], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A broad, dignified 8/4 of the maqsum family with widely spaced DUMs and syncopated taks, used to accompany slow tarab songs and entrances.",
+    "source": "maqamworld.com/en/iqaa.php; Carmine Guida Cheat Sheet 'Sombati D kT _k T D kk T kk'; khafif.com/rhy"
+  },
+  {
+    "name": "Ciftetelli (Chiftetelli)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 16,
+    "voices": { "bass": [0, 8, 10], "snareAccent": [2, 4, 6, 12], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Slow, sensuous 8/4 (Turkish/Levantine) with a DUM-DUM-tak pull around beats 5-7 of the second bar; classic for veil work and taqsim improvisation.",
+    "source": "maqamworld.com/en/iqaa.php (Ciftetelli 8/4); Carmine Guida Cheat Sheet 'Ciftetelli D _ K T _ K T / D _ D _ T'; suhaila.com/rhythms"
+  },
+  {
+    "name": "Katakufti",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 16,
+    "voices": { "bass": [0, 4, 8], "snareAccent": [12, 14], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "An 8/8 dabke-family iqa' with three opening DUMs and closing taks; when started from its last tak it sounds like Nawari.",
+    "source": "maqamworld.com/en/iqaa/katakufti.php; maqamworld.com/en/iqaa/nawari.php (Katakufti relationship)"
+  },
+  {
+    "name": "Sama'i Thaqil",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 20,
+    "voices": { "bass": [0, 6, 10, 12], "snareAccent": [4, 14, 16], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "The principal 10/8 cycle of the Ottoman saz semai and Arabic muwashah, grouped 3+2+2+3 (DUM - - tak - DUM DUM - tak - tak), heavy and stately.",
+    "source": "maqamworld.com/en/iqaa/samai_thaqil.php; dubsahara.wordpress.com/rhythms/10-8/samai; oudforguitarists.com (beats 1,4,6,7,8 emphasized)"
+  },
+  {
+    "name": "Sama'i Darij",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 6,
+    "voices": { "bass": [0], "snareAccent": [2, 4], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A light, flowing 3/4 iqa' (DUM tak tak) used in both vocal and instrumental muwashah and as the fast final section of a sama'i.",
+    "source": "maqamworld.com/en/iqaa/samai_darij.php; nesmaacademy.com Muwashahat Sama'i Darij"
+  },
+  {
+    "name": "Sama'i Saraband",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 6,
+    "voices": { "bass": [0, 2], "snareAccent": [4], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A 3/8 muwashah iqa' (DUM - DUM - tak) related to the European sarabande, played with a dignified lilt in the vocal repertoire.",
+    "source": "maqamworld.com/en/iqaa/samai_saraband.php; maqamworld.com/en/iqaa.php"
+  },
+  {
+    "name": "Dawr Hindi",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 7,
+    "voices": { "bass": [0, 3], "snareAccent": [2, 5], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "'Cycle of India', a 7/8 muwashah iqa' grouped 3+2+2 (DUM - tak DUM - tak), very popular in the vocal composed genre.",
+    "source": "maqamworld.com/en/iqaa/dawr_hindi.php; dubsahara.wordpress.com/rhythms/7-8/dawr-hindi (7/8 = 3+2+2, D _ T D _ T)"
+  },
+  {
+    "name": "Nawakht",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 7,
+    "voices": { "bass": [0, 4], "snareAccent": [2, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A mellow 7/4 muwashah iqa' with DUMs anchoring the cycle and taks on the off-pulses; played at a relaxed tempo in the muwashah repertoire.",
+    "source": "maqamworld.com/en/iqaa/nawakht.php; maqamworld.com/en/iqaa.php (Nawakht 7/4)"
+  },
+  {
+    "name": "Nawakht Hindi",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 16,
+    "voices": { "bass": [0, 6, 8], "snareAccent": [4, 12], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A long 16/4 muwashah cycle combining the Nawakht and Hindi feels, with DUM clusters and taks distributed across the extended bar.",
+    "source": "maqamworld.com/en/iqaa/nawakht_hindi.php; maqamworld.com/en/iqaa.php (Nawakht Hindi 16/4)"
+  },
+  {
+    "name": "Aqsaq (Aksak)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 9,
+    "voices": { "bass": [0, 4], "snareAccent": [2, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "'Limping' 9/8 grouped 2+2+2+3, very popular in muwashah; an alternate form replaces the rest on beat 6 with a second DUM for two consecutive DUMs.",
+    "source": "maqamworld.com/en/iqaa/aqsaq.php; maqamworld.com/en/iqaa.php (Aqsaq 9/8)"
+  },
+  {
+    "name": "Thurayya (Aqsaq Turki)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 5,
+    "voices": { "bass": [0], "snareAccent": [2, 3], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A 5/8 'Turkish aksak' iqa' grouped 2+3 (DUM - tak tak), a short limping cycle used in muwashah and Turkish-influenced pieces.",
+    "source": "maqamworld.com/en/iqaa/thurayya.php; maqamworld.com/en/iqaa.php (Thurayya 5/8)"
+  },
+  {
+    "name": "Jurjina (Curcuna)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 10,
+    "voices": { "bass": [0, 5], "snareAccent": [3, 7], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Iraqi/Kurdish/Turkish 10/8 cycle (counted 3+2+2+3 / 'Jorjuna'), DUM - - tak - DUM - tak, widely used in Iraqi maqam and folk dance.",
+    "source": "maqamworld.com/en/iqaa/jurjina.php; Carmine Guida Cheat Sheet 'Curcuna (basic) D _ _ T _ D _ T' (10/8)"
+  },
+  {
+    "name": "Yuruk Semai",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 6,
+    "voices": { "bass": [0, 3], "snareAccent": [1, 2, 4], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A brisk Turkish-origin 6/8 usul (DUM tak tak DUM tak) very popular in the muwashah genre as a fast closing rhythm.",
+    "source": "maqamworld.com/en/iqaa/yuruk_semai.php; Carmine Guida Cheat Sheet 'York Semai D T T D T' (Karim Nagi)"
+  },
+  {
+    "name": "Sudasi",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 12,
+    "voices": { "bass": [0, 2, 4, 8, 10], "snareAccent": [6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A 6/4 line-dance iqa' ('based on six') with a run of DUMs and a tak, used to accompany Lebanese and Palestinian dabke.",
+    "source": "maqamworld.com/en/iqaa/sudasi.php; Carmine Guida Cheat Sheet 'Sudasi D _ D D _ D D _ T'"
+  },
+  {
+    "name": "Mudawwar Masri",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 12,
+    "voices": { "bass": [0, 5, 6], "snareAccent": [3, 9], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Egyptian 'rounded' 12/4 muwashah iqa' with DUM anchors and taks across the long cycle; a stately art-music rhythm.",
+    "source": "maqamworld.com/en/iqaa/mudawwar.php; maqamworld.com/en/iqaa.php (Mudawwar Masri 12/4)"
+  },
+  {
+    "name": "Mudawwar Shami",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 10,
+    "voices": { "bass": [0, 4, 5], "snareAccent": [2, 8], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Damascene/pan-Syrian 'rounded' 10/4 form of Mudawwar used in the muwashah repertoire, with DUMs framing the cycle and taks between.",
+    "source": "maqamworld.com/en/iqaa/mudawwar.php; maqamworld.com/en/iqaa.php (Mudawwar Shami 10/4)"
+  },
+  {
+    "name": "Muhajjar",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 14,
+    "voices": { "bass": [0, 6, 7], "snareAccent": [3, 10], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A long 14/4 muwashah iqa' (sometimes grouped as a Mudawwar relative) very popular in the muwashah genre, with DUM clusters and spaced taks.",
+    "source": "maqamworld.com/en/iqaa/muhajjar.php; alsiadi.com/Iqaa_Muhajjar14_4.html"
+  },
+  {
+    "name": "Murabba",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 13,
+    "voices": { "bass": [0, 6, 7], "snareAccent": [3, 10], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A 13/4 muwashah iqa' ('squared') mostly confined to the muwashah repertoire, an extended cycle of DUMs and taks roughly equal to two maqsums plus a beat.",
+    "source": "maqamworld.com/en/iqaa/murabbaa.php; khafif.com/rhy ('Murrabba'); maqamworld.com/en/iqaa.php (Murabba' 13/4)"
+  },
+  {
+    "name": "Mukhammas",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 16,
+    "voices": { "bass": [0, 4, 8], "snareAccent": [6, 12], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A grand 16/4 muwashah iqa' ('fivefold') used in classical vocal suites, with DUMs marking the principal divisions and taks filling between.",
+    "source": "maqamworld.com/en/iqaa.php (Mukhammas 16/4); maqamworld.com/en/form/vocal_comp.php"
+  },
+  {
+    "name": "Dharafat",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 13,
+    "voices": { "bass": [0, 5, 8], "snareAccent": [3, 10], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A 13/8 muwashah iqa' with an irregular limping division, anchoring DUMs against syncopated taks in the classical vocal repertoire.",
+    "source": "maqamworld.com/en/iqaa/dharafat.php; maqamworld.com/en/iqaa.php (Dharafat 13/8)"
+  },
+  {
+    "name": "Awis",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 11,
+    "voices": { "bass": [0, 5], "snareAccent": [3, 8], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "An 11/8 muwashah iqa' with an asymmetric limping feel, used in classical Arabic vocal composition.",
+    "source": "maqamworld.com/en/iqaa.php ('Awis 11/8)"
+  },
+  {
+    "name": "Fakhit",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 20,
+    "voices": { "bass": [0, 8, 10], "snareAccent": [4, 14, 16], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "An expansive 20/4 muwashah iqa' used in long classical vocal suites, with DUM clusters and taks distributed over the very long cycle.",
+    "source": "maqamworld.com/en/iqaa.php (Fakhit 20/4); maqamworld.com/en/form/vocal_comp.php"
+  },
+  {
+    "name": "Awfar Masri",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 19,
+    "voices": { "bass": [0, 8, 10], "snareAccent": [4, 14], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A 19/4 Egyptian muwashah iqa' ('most abundant'), one of the longest cycles in the classical repertoire with sparse DUM and tak anchors.",
+    "source": "maqamworld.com/en/iqaa.php (Awfar Masri 19/4)"
+  },
+  {
+    "name": "Khosh Rang",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 17,
+    "voices": { "bass": [0, 8], "snareAccent": [4, 12], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A 17/8 Persian-named muwashah iqa' ('beautiful color') with an irregular long cycle of DUM and tak anchors used in art music.",
+    "source": "maqamworld.com/en/iqaa.php (Khosh Rang 17/8)"
+  },
+  {
+    "name": "Chobi (Iraqi Dabke)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0, 1, 2], "snareAccent": [4, 6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Iraqi dabke groove characterized by three DUMs clustered at the start of the bar (DUM DUM DUM - tak - tak), driving the line dance.",
+    "source": "suhaila.com/rhythms ('Chobi/Iraqi Debke - three doums at measure beginning'); ancient-future.com"
+  },
+  {
+    "name": "Daboukeh (Dabke 6/8)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 6,
+    "voices": { "bass": [0, 3], "snareAccent": [2, 4, 5], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A 6/8 Levantine dabke rhythm (DUM tak DUM tak tak) propelling Lebanese, Syrian and Palestinian line dances with a stamping lilt.",
+    "source": "ancient-future.com (Debke 6/8); Carmine Guida Cheat Sheet 'Moroccan 6 / Reng' 6/8 family"
+  },
+  {
+    "name": "Zar",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 8,
+    "voices": { "bass": [0, 3], "snareAccent": [6], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "The Egyptian/Sudanese trance-ceremony rhythm (related to Ayyub) used to drive away spirits and induce trance: DUM - - DUM tak, building in intensity.",
+    "source": "babayagamusic.com ('Zar - 2/4 trance, identical time-pattern to Ayyub'); Wikipedia Dumbek rhythms"
+  },
+  {
+    "name": "Zar Sudani (Mandaza/Rangaha)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 12,
+    "voices": { "bass": [0, 3, 6, 9], "snareAccent": [2, 5, 8, 11], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "Sudanese zar trance rhythm (mandaza/rangaha style) in a rolling 6/8-against-12 feel, with insistent paired DUM-tak cells repeated to induce trance.",
+    "source": "babayagamusic.com; Hossam Ramzy 'Sabla Tolo' Sudanese zar repertoire; ethnographic zar literature"
+  },
+  {
+    "name": "Laz (7/8 dabke)",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 7,
+    "voices": { "bass": [0, 4], "snareAccent": [2, 5], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A 7/8 dance rhythm grouped 2+2+3 (DUM - tak - DUM tak), known across Anatolia and the Levant for fast line dances.",
+    "source": "Carmine Guida Cheat Sheet 'Laz D k T k D k k' (7/8 = 2+2+3); babayagamusic.com"
+  },
+  {
+    "name": "Karsilama",
+    "region": "Asian",
+    "genre": "Arabic iqa'",
+    "length": 9,
+    "voices": { "bass": [0, 4], "snareAccent": [2, 6, 7], "snareGhost": [], "hatClosed": [], "hatOpen": [], "hhFoot": [] },
+    "desc": "A Turkish 9/8 greeting dance grouped 2+2+2+3 (DUM tak DUM tak tak), staple of Roman and Anatolian dance and used in Arabic-Turkish fusion.",
+    "source": "Carmine Guida Cheat Sheet 'Karsilama D T D T T' (9/8); babayagamusic.com"
+  }
+]
