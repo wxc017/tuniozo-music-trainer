@@ -419,6 +419,29 @@ function varyGroove(src: PointVoices[], cycle: GrooveCycle, preserve: LayerVoice
  * becomes a preserved bell/clave over a kick+backbeat kit.  Falls back to the
  * generative engine only when no library entry of that length exists.
  */
+/** Source-type test: a sparse single-line entry (<3 defined voices) is treated
+ *  as a bell/clave TIMELINE (preserved as the hi-hat over a kick+backbeat kit);
+ *  a fuller entry supplies its own kit voices directly. */
+export function isTimelineGroove(g: LibraryGroove): boolean {
+  return ALL_LIB_VOICES.filter(v => (g.voices[v]?.length ?? 0) > 0).length < 3;
+}
+
+/** Build one varied groove from a SPECIFIC library entry used as scaffolding.
+ *  Shared by generateInStyle and the stress test so both exercise identical
+ *  logic: keep the style skeleton, re-roll the playing (see varyGroove). */
+export function generateFromGroove(g: LibraryGroove, cycle: GrooveCycle, mode?: AestheticMode, computeScore = true): AssembleResult {
+  const timeline = isTimelineGroove(g);
+  const base = timeline ? kitUnderTimeline(g, cycle) : grooveToPointVoices(g, cycle);
+  const pointVoices = varyGroove(base, cycle, timeline ? ["hatClosed"] : []);
+  const assembled = assembleCycle(cycle, pointVoices);
+  const m = resolveMode(mode ?? "musical");
+  // computeScore:false skips the full library-bonus scan (nearestLibraryGroove)
+  // — used by the stress test to avoid 100k library scans; production keeps the
+  // full score.  The generated groove itself is identical either way.
+  const score = computeScore ? scoreGroove(assembled, m) : scoreGrooveFeatures(assembled, m);
+  return { pointVoices, assembled, score, match: { groove: g, similarity: 1 } };
+}
+
 export function generateInStyle(
   cycle: GrooveCycle,
   opts: { region?: Region; genre?: string; mode?: AestheticMode } = {},
@@ -428,14 +451,6 @@ export function generateInStyle(
     g.length === total &&
     (!opts.region || g.region === opts.region) &&
     (!opts.genre || g.genre === opts.genre));
-  if (pool.length > 0) {
-    const g = pick(pool);
-    const voiceCount = ALL_LIB_VOICES.filter(v => (g.voices[v]?.length ?? 0) > 0).length;
-    const isTimeline = voiceCount < 3;
-    const base = isTimeline ? kitUnderTimeline(g, cycle) : grooveToPointVoices(g, cycle);
-    const pointVoices = varyGroove(base, cycle, isTimeline ? ["hatClosed"] : []);
-    const assembled = assembleCycle(cycle, pointVoices);
-    return { pointVoices, assembled, score: scoreGroove(assembled, resolveMode(opts.mode ?? "musical")), match: { groove: g, similarity: 1 } };
-  }
+  if (pool.length > 0) return generateFromGroove(pick(pool), cycle, opts.mode);
   return assembleMusicalCycle(cycle, { mode: opts.mode });
 }
