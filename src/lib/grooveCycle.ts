@@ -274,7 +274,9 @@ export function cycleToStripData(cycle: GrooveCycle, pointVoices: PointVoices[])
     // quarter — standard kit notation, not a flat 16th lattice.  Beat-aligned
     // beaming (default) keeps each beat's notes in their own beam.
     capToBeat: true,
-    showRests: false,
+    // Show rests so a beat with no hit (e.g. a hi-hat that doesn't land on
+    // beat 1) is marked — the player can see where the downbeat lines up.
+    showRests: true,
   };
 }
 
@@ -301,7 +303,7 @@ export function cycleToStripMeasures(cycle: GrooveCycle, pointVoices: PointVoice
       accentFlags: a.accentFlags.slice(lo, hi),
       slotOverride: p.subPulses,
       capToBeat: true,
-      showRests: false,
+      showRests: true,
     } as StripMeasureData;
   });
 }
