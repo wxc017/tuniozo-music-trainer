@@ -10,9 +10,9 @@
  * rhythm. Every position is an integer in [0, length); matching (grooveLibrary.ts)
  * compares bass + snareAccent rotation-aware at equal length.
  */
-import type { LibraryGroove } from "@/lib/grooveLibrary";
+import type { RawGroove } from "@/lib/grooveLibrary";
 
-const CHUNK_0: LibraryGroove[] = [
+const CHUNK_0: RawGroove[] = [
   {
     id: "rock-four-floor", name: "Four-on-the-Floor Rock", region: "American",
     genre: "Rock", length: 16,
@@ -4815,7 +4815,7 @@ const CHUNK_0: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_1: LibraryGroove[] = [
+const CHUNK_1: RawGroove[] = [
   {
     id: "in-adi-tala-16h", name: "Adi Tala — Sixteenth-Hat Feel", region: "Asian",
     genre: "Carnatic", length: 16,
@@ -9618,7 +9618,7 @@ const CHUNK_1: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_2: LibraryGroove[] = [
+const CHUNK_2: RawGroove[] = [
   {
     id: "rx229-garifuna-belize-honduras-paranda", name: "Paranda", region: "Latin",
     genre: "Garifuna (Belize/Honduras)", length: 16,
@@ -14421,7 +14421,7 @@ const CHUNK_2: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_3: LibraryGroove[] = [
+const CHUNK_3: RawGroove[] = [
   {
     id: "ak-8-2-2+3+3-b", name: "Aksak 2+3+3 (8/8) — long-cell backbeat", region: "European",
     genre: "Additive meter (aksak)", length: 16,
@@ -19224,7 +19224,7 @@ const CHUNK_3: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_4: LibraryGroove[] = [
+const CHUNK_4: RawGroove[] = [
   {
     id: "ak-14-2-3+4+2+3+2-a", name: "Aksak 3+4+2+3+2 (14/8) — group heads", region: "European",
     genre: "Additive meter (aksak)", length: 28,
@@ -24027,7 +24027,7 @@ const CHUNK_4: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_5: LibraryGroove[] = [
+const CHUNK_5: RawGroove[] = [
   {
     id: "ak-16-2-2+3+3+4+4-c", name: "Aksak 2+3+3+4+4 (16/8) — displaced backbeat", region: "American",
     genre: "Odd-meter kit", length: 32,
@@ -28830,7 +28830,7 @@ const CHUNK_5: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_6: LibraryGroove[] = [
+const CHUNK_6: RawGroove[] = [
   {
     id: "ak-17-2-2+4+3+4+4-b", name: "Aksak 2+4+3+4+4 (17/8) — long-cell backbeat", region: "Asian",
     genre: "Additive meter (aksak)", length: 34,
@@ -33633,7 +33633,7 @@ const CHUNK_6: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_7: LibraryGroove[] = [
+const CHUNK_7: RawGroove[] = [
   {
     id: "ak-18-2-2+2+2+2+2+4+4-b", name: "Aksak 2+2+2+2+2+4+4 (18/8) — long-cell backbeat", region: "European",
     genre: "Additive meter (aksak)", length: 36,
@@ -38436,7 +38436,7 @@ const CHUNK_7: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_8: LibraryGroove[] = [
+const CHUNK_8: RawGroove[] = [
   {
     id: "ak-18-3-2+2+3+2+3+4+2-a", name: "Aksak 2+2+3+2+3+4+2 (18/8 compound) — group heads", region: "European",
     genre: "Compound additive meter", length: 54,
@@ -43239,7 +43239,7 @@ const CHUNK_8: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_9: LibraryGroove[] = [
+const CHUNK_9: RawGroove[] = [
   {
     id: "ak-19-2-2+2+3+4+2+2+2+2-c", name: "Aksak 2+2+3+4+2+2+2+2 (19/8) — displaced backbeat", region: "American",
     genre: "Odd-meter kit", length: 38,
@@ -48042,7 +48042,7 @@ const CHUNK_9: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_10: LibraryGroove[] = [
+const CHUNK_10: RawGroove[] = [
   {
     id: "ak-19-2-4+3+3+2+2+3+2-a", name: "Aksak 4+3+3+2+2+3+2 (19/8) — group heads", region: "Asian",
     genre: "Additive meter (aksak)", length: 38,
@@ -52845,7 +52845,7 @@ const CHUNK_10: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_11: LibraryGroove[] = [
+const CHUNK_11: RawGroove[] = [
   {
     id: "ak-20-2-2+4+4+4+4+2-b", name: "Aksak 2+4+4+4+4+2 (20/8) — long-cell backbeat", region: "European",
     genre: "Additive meter (aksak)", length: 40,
@@ -57648,7 +57648,7 @@ const CHUNK_11: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_12: LibraryGroove[] = [
+const CHUNK_12: RawGroove[] = [
   {
     id: "ak-20-2-4+4+3+3+3+3-a", name: "Aksak 4+4+3+3+3+3 (20/8) — group heads", region: "European",
     genre: "Additive meter (aksak)", length: 40,
@@ -62451,7 +62451,7 @@ const CHUNK_12: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_13: LibraryGroove[] = [
+const CHUNK_13: RawGroove[] = [
   {
     id: "ak-21-2-2+3+4+2+4+2+4-b", name: "Aksak 2+3+4+2+4+2+4 (21/8) — long-cell backbeat", region: "Asian",
     genre: "Additive meter (aksak)", length: 42,
@@ -67254,7 +67254,7 @@ const CHUNK_13: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_14: LibraryGroove[] = [
+const CHUNK_14: RawGroove[] = [
   {
     id: "ak-21-2-3+3+4+3+2+2+2+2-a", name: "Aksak 3+3+4+3+2+2+2+2 (21/8) — group heads", region: "Asian",
     genre: "Additive meter (aksak)", length: 42,
@@ -72057,7 +72057,7 @@ const CHUNK_14: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_15: LibraryGroove[] = [
+const CHUNK_15: RawGroove[] = [
   {
     id: "rot-bossa-10", name: "Bossa Clave (rotation 10)", region: "Latin",
     genre: "Timeline rotation", length: 16,
@@ -76860,7 +76860,7 @@ const CHUNK_15: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_16: LibraryGroove[] = [
+const CHUNK_16: RawGroove[] = [
   {
     id: "euc-6-15-4", name: "Euclidean E(6,15) · rot 4", region: "African",
     genre: "Euclidean rhythm", length: 15,
@@ -81663,7 +81663,7 @@ const CHUNK_16: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_17: LibraryGroove[] = [
+const CHUNK_17: RawGroove[] = [
   {
     id: "euc-19-20-6", name: "Euclidean E(19,20) · rot 6", region: "African",
     genre: "Euclidean rhythm", length: 20,
@@ -86466,7 +86466,7 @@ const CHUNK_17: LibraryGroove[] = [
   },
 ];
 
-const CHUNK_18: LibraryGroove[] = [
+const CHUNK_18: RawGroove[] = [
   {
     id: "euc-21-24-6", name: "Euclidean E(21,24) · rot 6", region: "African",
     genre: "Euclidean rhythm", length: 24,
@@ -86625,6 +86625,6 @@ const CHUNK_18: LibraryGroove[] = [
   },
 ];
 
-export const GROOVE_LIBRARY_EXTRA: LibraryGroove[] = [
+export const GROOVE_LIBRARY_EXTRA: RawGroove[] = [
   ...CHUNK_0, ...CHUNK_1, ...CHUNK_2, ...CHUNK_3, ...CHUNK_4, ...CHUNK_5, ...CHUNK_6, ...CHUNK_7, ...CHUNK_8, ...CHUNK_9, ...CHUNK_10, ...CHUNK_11, ...CHUNK_12, ...CHUNK_13, ...CHUNK_14, ...CHUNK_15, ...CHUNK_16, ...CHUNK_17, ...CHUNK_18
 ];

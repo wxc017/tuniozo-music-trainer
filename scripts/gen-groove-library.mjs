@@ -1100,14 +1100,14 @@ const lines = [
   " * rhythm. Every position is an integer in [0, length); matching (grooveLibrary.ts)",
   " * compares bass + snareAccent rotation-aware at equal length.",
   " */",
-  'import type { LibraryGroove } from "@/lib/grooveLibrary";',
+  'import type { RawGroove } from "@/lib/grooveLibrary";',
   "",
 ];
 const chunkNames = [];
 for (let i = 0; i < out.length; i += CHUNK) {
   const cname = `CHUNK_${chunkNames.length}`;
   chunkNames.push(cname);
-  lines.push(`const ${cname}: LibraryGroove[] = [`);
+  lines.push(`const ${cname}: RawGroove[] = [`);
   for (const g of out.slice(i, i + CHUNK)) {
     lines.push("  {");
     lines.push(`    id: "${esc(g.id)}", name: "${esc(g.name)}", region: "${g.region}",`);
@@ -1118,7 +1118,7 @@ for (let i = 0; i < out.length; i += CHUNK) {
   }
   lines.push("];", "");
 }
-lines.push(`export const GROOVE_LIBRARY_EXTRA: LibraryGroove[] = [`);
+lines.push(`export const GROOVE_LIBRARY_EXTRA: RawGroove[] = [`);
 lines.push("  " + chunkNames.map((n) => `...${n}`).join(", "));
 lines.push("];", "");
 writeFileSync(new URL("../src/lib/grooveLibraryData.ts", import.meta.url), lines.join("\n"));

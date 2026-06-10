@@ -91,7 +91,9 @@ describe("assembly engine (per-voice)", () => {
 
   it("permutes over a fixed hi-hat ostinato (hats present on every point)", () => {
     const cycle = makeUniformCycle(4, 4);
-    const res = assembleMusicalCycle(cycle, { candidates: 80, hat: "8ths" });
+    // linear:false forces the stacked path so the fixed hat ostinato is applied
+    // (linear mode weaves a single line and ignores the hat shape).
+    const res = assembleMusicalCycle(cycle, { candidates: 80, hat: "8ths", linear: false });
     // 8ths hat = positions 0,2 per point → 8 hat hits across the cycle
     expect(res.assembled.hatHits.length).toBe(8);
   });
@@ -117,10 +119,10 @@ describe("tradition / style generation", () => {
     expect(a.snareHits).toEqual(g.voices.snareAccent);
   });
 
-  it("generateInStyle returns an entry from the requested region at matching length", () => {
-    const res = generateInStyle(makeUniformCycle(4, 4), { region: "Latin" });
+  it("generateInStyle returns an entry from the requested style bucket at matching length", () => {
+    const res = generateInStyle(makeUniformCycle(4, 4), { region: "Afro-Cuban & Caribbean" });
     expect(res.match).not.toBeNull();
-    expect(res.match!.groove.region).toBe("Latin");
+    expect(res.match!.groove.region).toBe("Afro-Cuban & Caribbean");
     expect(res.match!.groove.length).toBe(16);
     expect(res.pointVoices.length).toBe(4);
   });

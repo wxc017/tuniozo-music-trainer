@@ -19,7 +19,27 @@
 import type { AssembledCycle } from "@/lib/grooveCycle";
 import { GROOVE_LIBRARY_EXTRA } from "@/lib/grooveLibraryData";
 
-export type Region = "African" | "Latin" | "Asian" | "European" | "American";
+/** The 10 cultural/geographic STYLE buckets surfaced in the UI.  These replace
+ *  the old 5 continents — the continents were both too coarse (509 genres, 80%
+ *  of them odd-meter/euclidean abstractions, all flattened into 5 chips) and
+ *  unevenly applied.  Every library entry is re-tagged to one of these by
+ *  `bucketFor()` at construction (see GROOVE_LIBRARY). */
+export type Region =
+  | "West African"
+  | "Afro-Cuban & Caribbean"
+  | "Brazilian & Latin America"
+  | "Middle East & Mediterranean"
+  | "Indian"
+  | "East & SE Asian"
+  | "Balkan & Euro Folk"
+  | "Jazz & Fusion"
+  | "Pop / Rock / Metal"
+  | "Funk / Hip-Hop / Electronic";
+
+/** The original 5-continent tag carried by the raw data + generator output.
+ *  Kept only as the INPUT to `bucketFor` (some abstract families — aksak,
+ *  compound-additive, timelines — route to different buckets by it). */
+export type SourceRegion = "African" | "Latin" | "Asian" | "European" | "American";
 
 export interface GrooveVoices {
   bass?: number[];
@@ -33,6 +53,7 @@ export interface GrooveVoices {
 export interface LibraryGroove {
   id: string;
   name: string;
+  /** Cultural style bucket (post-remap, one of the 10 `Region`s). */
   region: Region;
   genre: string;
   /** Total slots the pattern is notated over. */
@@ -41,12 +62,17 @@ export interface LibraryGroove {
   desc: string;
 }
 
+/** A raw library entry as stored in the data file / emitted by the generator —
+ *  identical to `LibraryGroove` but still carrying the 5-continent source tag.
+ *  `bucketFor` maps it to a `LibraryGroove` with one of the 10 style buckets. */
+export type RawGroove = Omit<LibraryGroove, "region"> & { region: SourceRegion };
+
 /* ═══════════════════════════════════════════════════════════════════════════
    The library
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /** The hand-curated core reference grooves (kept verbatim, well-documented). */
-const GROOVE_LIBRARY_CORE: LibraryGroove[] = [
+const GROOVE_LIBRARY_CORE: RawGroove[] = [
   /* ── African ─────────────────────────────────────────────────────────── */
   {
     id: "bell-standard-128", name: "Standard Bell (7-stroke)", region: "African",
@@ -227,11 +253,114 @@ const GROOVE_LIBRARY_CORE: LibraryGroove[] = [
   },
 ];
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Style bucketing — map each entry's genre (+ its source continent) to one of
+   the 10 cultural buckets.  Ordered rules, FIRST match wins; the four big
+   ABSTRACT families (aksak, euclidean, compound-additive, odd-meter kit) are
+   routed to their nearest cultural home, splitting by source continent where
+   the same family spans regions (Asian aksak → Turkic/Mid-East, European aksak
+   → Balkan).  Validated to classify all 518 (genre × continent) pairs with no
+   fallthrough; the source-continent fallback is a belt-and-braces backstop.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const has = (g: string, ...ks: string[]) => ks.some(k => g.includes(k));
+
+export function bucketFor(genre: string, region: SourceRegion): Region {
+  const g = genre.toLowerCase();
+
+  // Abstract algorithmic families (route by source continent where they split).
+  if (g.includes("euclidean")) return "West African";              // models African bell timelines
+  if (g.includes("polyrhythm")) return "West African";
+  if (g.includes("aksak")) return region === "European" ? "Balkan & Euro Folk" : "Middle East & Mediterranean";
+  if (g.includes("compound additive")) return region === "Asian" ? "East & SE Asian" : "Balkan & Euro Folk";
+  if (g.includes("odd-meter kit") || g === "odd meter" || g.includes("(odd meter)")) return "Jazz & Fusion";
+  if (g.includes("timeline rotation")) return region === "Latin" ? "Afro-Cuban & Caribbean" : "West African";
+  if (g.includes("additive cell") || g.includes("balkan cell")) return "Balkan & Euro Folk";
+  if (g.includes("pan-caribbean") || g.includes("cuban/haitian cell")) return "Afro-Cuban & Caribbean";
+
+  // Jazz & Fusion first, so "latin jazz" / "jazz fusion" don't fall to Latin/rock.
+  if (has(g, "jazz", "bebop", "bop", "swing", "dixieland", "big band", "ecm", "modal")) return "Jazz & Fusion";
+  if (g.includes("fusion")) return "Jazz & Fusion";
+
+  if (has(g, "carnatic", "hindustani", "tala", "solkattu", "nadai", "konnakol", "punjabi", "bhangra", "qawwali")) return "Indian";
+  if (g.includes("south asia")) return "Indian";
+
+  if (has(g, "arabic", "iqa", "egypt", "ottoman", "andalus", "levantine", "sufi", "mugham", "muqam",
+            "turkish", "usul", "persian", "tonbak", "azerbaijani", "uyghur", "central asian", "doira",
+            "flamenco", "spanish", "iberian", "moroccan", "gnawa", "tunisian", "malouf", "algerian", "rai", "raï", "chaabi")) return "Middle East & Mediterranean";
+
+  if (has(g, "gamelan", "javanese", "balinese", "sundanese", "gong", "kulintang", "kotekan", "malay", "minangkabau",
+            "thai", "piphat", "lao", "cambod", "pinpeat", "burmese", "vietnam", "japanese", "taiko", "gagaku",
+            "togaku", "bon odori", "min'yo", "matsuri", "okinawan", "eisa", "kachashi", "korean", "jangdan",
+            "samul", "pungmul", "pansori", "sanjo", "nongak", "chinese", "jingju", "luogu", "jiangnan", "sizhu",
+            "chaozhou", "cantonese", "yangge", "qupai", "peking", "lion dance", "mongolian", "tuvan")) return "East & SE Asian";
+
+  if (has(g, "afro-cuban", "cuban", "clave", "rumba", "guaguanc", "songo", "cascara", "cáscara", "mambo",
+            "timba", "salsa", "danzon", "danzón", "contradanza", "pello",
+            "haitian", "vodou", "rara", "méring", "konpa", "kompa", "rabòday",
+            "dominican", "merengue", "bachata", "palos", "gagá", "salve", "pri-prí", "sarandunga",
+            "puerto ric", "bomba", "plena", "jíbaro", "seis", "danza",
+            "jamaic", "reggae", "ska", "rocksteady", "dub", "dancehall", "ragga", "nyabinghi", "mento",
+            "reggaeton", "dembow", "trinidad", "soca", "calypso", "calipso", "chutney", "parang", "steelband",
+            "bahamian", "junkanoo", "rake-and-scrape", "martinican", "bélé", "biguine", "garifuna", "antillean",
+            "gwoka", "guadeloup", "haiti")) return "Afro-Cuban & Caribbean";
+
+  if (has(g, "brazil", "samba", "bossa", "baião", "baiao", "candombl", "bateria", "recife", "bahia",
+            "afro-peru", "peruvian", "andean", "huayn", "huayñ", "yaraví", "yaravi", "tondero", "zamacueca",
+            "vals criollo", "vals", "marinera", "milonga", "tango", "argentin", "chacarera", "zamba", "gato",
+            "escondido", "malambo", "vidala", "carnavalito", "caporales", "saya", "tinku", "morenada",
+            "diablada", "tobas", "sanjuanito", "albazo", "bolivia", "candombe",
+            "colombi", "cumbia", "porro", "gaita", "mapale", "champeta", "chande", "fandango", "bambuco", "pasillo",
+            "vallenato", "venezuel", "joropo", "golpe", "llanero", "tambor", "calipso",
+            "mexic", "norteñ", "norteno", "mariachi", "huasteco", "jalisciense", "jarocho", "chilena", "banda",
+            "panama", "tamborito", "mejorana", "guatemala", "son chapin", "marimba", "nicaragua", "palo de mayo",
+            "costa rica", "paraguay", "guarania", "polka paraguaya", "cueca", "tonada")) return "Brazilian & Latin America";
+
+  if (has(g, "african", "djembe", "dunun", "malinke", "maninka", "susu", "ewe", "ghana", "akan", "asante",
+            "dagaaba", "mossi", "baga", "nalu", "komanko", "kassonke", "soninke", "temne", "mandingo", "manian",
+            "wassoulou", "landuma", "afrobeat", "highlife", "hiplife", "palm-wine", "soukous", "ndombolo",
+            "congolese", "juju", "jùjú", "fuji", "apala", "makossa", "bikutsi", "cameroon", "nigeria",
+            "senegal", "mbalax", "sabar", "mali", "bambara", "zimbabwe", "mbira", "chimurenga", "jit", "sungura",
+            "mbaqanga", "marabi", "kwela", "kwaito", "amapiano", "tsonga", "shangaan", "kenyan", "benga",
+            "swahili", "taarab", "chakacha", "tanzanian", "bongo flava", "angolan", "semba", "kizomba",
+            "cape verde", "funana", "coladeira", "morna", "batuque", "sudanese", "ethiopian", "ivorian", "ga (", "ga/")) return "West African";
+
+  if (has(g, "balkan", "bulgar", "macedon", "serbian", "romanian", "romani", "greek", "klezmer", "hungar",
+            "nordic", "scandinav", "polish", "celtic", "irish", "scottish", "english", "sliabh", "french",
+            "breton", "italian", "salentino", "tarantella", "central european", "european", "rachenitsa",
+            "kopanitsa", "marching", "march", "waltz", "polka", "portuguese", "viennese", "military")) return "Balkan & Euro Folk";
+
+  // Oceania / Pacific → fold into East & SE Asian (nearest geographic home).
+  if (has(g, "tahitian", "cook island", "samoan", "tongan", "maori", "hawaiian", "papua", "'are'are",
+            "solomon", "fijian", "aboriginal", "polynesia", "pacific", "oceania")) return "East & SE Asian";
+
+  if (has(g, "funk", "soul", "motown", "gospel", "second line", "new orleans", "nola",
+            "hip-hop", "hip hop", "boom-bap", "lo-fi", "trap", "drill",
+            "house", "techno", "trance", "club", "electro", "edm", "dubstep", "drum and bass", "drum & bass",
+            "dnb", "jungle", "idm", "breakbeat", "uk garage", "footwork", "gabber", "hardstyle",
+            "ebm", "grime", "future garage", "ballroom", "moombahton", "disco", "bass")) return "Funk / Hip-Hop / Electronic";
+
+  if (has(g, "rock", "punk", "pop", "surf", "indie", "garage", "krautrock", "arena", "stadium", "metal",
+            "thrash", "death", "black", "doom", "power", "speed", "grindcore", "metalcore", "djent", "prog",
+            "technical", "math", "country", "bluegrass", "rockabilly", "cajun", "creole", "ostinato",
+            "blues", "hardcore")) return "Pop / Rock / Metal";
+
+  // Backstop (no genre matched any rule): map by source continent.
+  const fallback: Record<SourceRegion, Region> = {
+    African: "West African", Latin: "Brazilian & Latin America", Asian: "East & SE Asian",
+    European: "Balkan & Euro Folk", American: "Pop / Rock / Metal",
+  };
+  return fallback[region];
+}
+
 /**
  * The full library: the curated core plus the large auto-generated cross-genre
- * table (`grooveLibraryData.ts`, ~1300+ entries across ~60 world traditions).
+ * table (`grooveLibraryData.ts`, ~14k entries across ~500 genres).  Each raw
+ * entry is re-tagged from its 5-continent source region to one of the 10
+ * cultural style buckets via `bucketFor`.
  */
-export const GROOVE_LIBRARY: LibraryGroove[] = [...GROOVE_LIBRARY_CORE, ...GROOVE_LIBRARY_EXTRA];
+export const GROOVE_LIBRARY: LibraryGroove[] =
+  [...GROOVE_LIBRARY_CORE, ...GROOVE_LIBRARY_EXTRA].map(g => ({ ...g, region: bucketFor(g.genre, g.region) }));
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Matching: align an assembled cycle to its nearest library groove
@@ -331,14 +460,20 @@ export function grooveLibraryBonus(a: AssembledCycle): number {
   return Math.round(600 * Math.pow(match.similarity, 3));
 }
 
-/** Library grouped by region, for the UI's reference browser. */
+/** The 10 cultural style buckets, in UI display order. */
+export const REGIONS: Region[] = [
+  "West African", "Afro-Cuban & Caribbean", "Brazilian & Latin America",
+  "Middle East & Mediterranean", "Indian", "East & SE Asian",
+  "Balkan & Euro Folk", "Jazz & Fusion", "Pop / Rock / Metal",
+  "Funk / Hip-Hop / Electronic",
+];
+
+/** Library grouped by style bucket, for the UI's reference browser. */
 export function libraryByRegion(): Record<Region, LibraryGroove[]> {
-  const out = { African: [], Latin: [], Asian: [], European: [], American: [] } as Record<Region, LibraryGroove[]>;
+  const out = Object.fromEntries(REGIONS.map(r => [r, [] as LibraryGroove[]])) as Record<Region, LibraryGroove[]>;
   for (const g of GROOVE_LIBRARY) out[g.region].push(g);
   return out;
 }
-
-export const REGIONS: Region[] = ["African", "Latin", "Asian", "European", "American"];
 
 /** Distinct genres available for a region (optionally only at a given cycle
  *  length), sorted — used to populate the tradition/style picker. */
