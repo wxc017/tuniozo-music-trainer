@@ -1,0 +1,850 @@
+[
+  {
+    "name": "Lancaran",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [15],
+      "snareAccent": [3, 7, 11, 15],
+      "snareGhost": [5, 9, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The shortest non-wayang gendhing form: a 16-beat cycle closed by gong ageng, with kenong on every fourth beat, kempul interpunctions (a wela rest in the first slot) and kethuk on the off-beats.",
+    "source": "https://en.wikipedia.org/wiki/Colotomy"
+  },
+  {
+    "name": "Ketawang",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [15],
+      "snareAccent": [7, 15],
+      "snareGhost": [11],
+      "hatClosed": [1, 5, 9, 13],
+      "hatOpen": [0, 4, 8, 12],
+      "hhFoot": []
+    },
+    "desc": "A calm, introspective 16-beat form (pTpW pTpN pTpP pTpG) with two kenong nongan per gongan, a single kempul, kethuk and the doubling kempyang between beats.",
+    "source": "https://en.wikipedia.org/wiki/Colotomy"
+  },
+  {
+    "name": "Ladrang",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 32,
+    "voices": {
+      "bass": [31],
+      "snareAccent": [7, 15, 23, 31],
+      "snareGhost": [11, 19, 27],
+      "hatClosed": [1, 5, 9, 13, 17, 21, 25, 29],
+      "hatOpen": [0, 4, 8, 12, 16, 20, 24, 28],
+      "hhFoot": []
+    },
+    "desc": "A 32-beat form with four kenong nongan per gongan and three kempul (a wela rest replacing the first), twice as broad as ketawang with kempyang doubling each beat.",
+    "source": "https://en.wikipedia.org/wiki/Colotomy"
+  },
+  {
+    "name": "Gangsaran",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 8,
+    "voices": {
+      "bass": [7],
+      "snareAccent": [3, 7],
+      "snareGhost": [5],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A driving lancaran variant on a single repeated tone, often used for battle scenes in wayang; here a compact 8-beat gong cycle with kenong and a kempul punctuation.",
+    "source": "http://www.gamelanencantada.net/sfu/pdfs/STRUCTURAL_FORMS.pdf"
+  },
+  {
+    "name": "Bubaran",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [15],
+      "snareAccent": [3, 7, 11, 15],
+      "snareGhost": [5, 9, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A closing or processional piece that shares the lancaran colotomic skeleton, played to send off an audience at the end of a performance.",
+    "source": "http://www.gamelanencantada.net/sfu/pdfs/STRUCTURAL_FORMS.pdf"
+  },
+  {
+    "name": "Srepegan",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [15],
+      "snareAccent": [1, 3, 5, 7, 9, 11, 13, 15],
+      "snareGhost": [3, 7, 11, 15],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A fast wayang form for action scenes: kenong sounds on every off-beat against kethuk on the beats, with kempul reinforcing alternate kenong and gong closing the cycle.",
+    "source": "https://en.wikipedia.org/wiki/Colotomy"
+  },
+  {
+    "name": "Sampak",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [15],
+      "snareAccent": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "snareGhost": [1, 5, 9, 13],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The fastest and most agitated wayang form for fight and chase scenes, with kenong striking on every beat and kempul filling between, closed by gong.",
+    "source": "https://en.wikipedia.org/wiki/Colotomy"
+  },
+  {
+    "name": "Ayak-ayakan",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [15],
+      "snareAccent": [3, 7, 11, 15],
+      "snareGhost": [1, 5, 9, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A flowing wayang form accompanying puppet entrances and pathet transitions, with kenong on every fourth pulse, kethuk on the beats and a sparser kempul line.",
+    "source": "https://en.wikipedia.org/wiki/Colotomy"
+  },
+  {
+    "name": "Gendhing Kethuk 2 Kerep",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 32,
+    "voices": {
+      "bass": [31],
+      "snareAccent": [7, 15, 23, 31],
+      "snareGhost": [11, 19, 27],
+      "hatClosed": [3, 11, 19, 27],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A large-form merong with the kethuk struck twice 'close together' (kerep) per kenongan, four kenong per gongan over 32 beats, sparse kempul and a closing gong ageng.",
+    "source": "https://ipfs.io/ipfs/QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco/wiki/List_of_gendhing_structures.html"
+  },
+  {
+    "name": "Gendhing Kethuk 4 Arang",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 32,
+    "voices": {
+      "bass": [31],
+      "snareAccent": [7, 15, 23, 31],
+      "snareGhost": [11, 27],
+      "hatClosed": [1, 9, 17, 25],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "An expansive merong with the kethuk spaced widely (arang) once per long span, four kenongan per gongan, very sparse kempul and the great gong ageng marking the cycle end.",
+    "source": "https://ipfs.io/ipfs/QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco/wiki/List_of_gendhing_structures.html"
+  },
+  {
+    "name": "Kendhang Kalih Lancaran",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [3, 7, 11, 15],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [0, 4, 8, 12],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The two-drum (kendhang ageng plus ketipung) accompaniment for brisk lancaran: deep dhah strokes lead each gatra cadence while lighter tak/thung strokes fill the off-beats.",
+    "source": "https://php.york.ac.uk/library/dlib/johnjacobsphd/external-media/home/3-garap-guides/3-3-kendhang-garap.html"
+  },
+  {
+    "name": "Kendhang Satunggal Ladrang",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [3, 7, 11, 15],
+      "snareAccent": [1, 5, 9, 13],
+      "snareGhost": [6, 14],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The single large-drum kendhangan for solemn ladrang, with weighty dhah strokes aligning to kenong cadences and tak accents anticipating the beats.",
+    "source": "https://muse.jhu.edu/pub/166/oa_edited_volume/chapter/2707301"
+  },
+  {
+    "name": "Kendhang Ciblon",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 7, 8, 12, 15],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [1, 3, 5, 9, 11, 13],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The lively medium ciblon drum's playful slapping idiom for dance and lively passages, weaving dense dhah/tak/dung/thung interplay across the gatra.",
+    "source": "https://muse.jhu.edu/pub/166/oa_edited_volume/chapter/2707301"
+  },
+  {
+    "name": "Kendhang Wayangan Srepeg",
+    "region": "Asian",
+    "genre": "Javanese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [1, 5, 9, 13],
+      "snareAccent": [3, 7, 11, 15],
+      "snareGhost": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The medium wayangan drum driving a fast srepeg, with continuous interlocked strokes urging the action and cueing tempo changes for the puppeteer.",
+    "source": "https://en.wikipedia.org/wiki/Gendang"
+  },
+  {
+    "name": "Gong Kebyar Kebyar",
+    "region": "Asian",
+    "genre": "Balinese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8, 15],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The explosive North-Bali style (from 1914): the great gong ageng anchors the cycle with kempur and gong wadon/lanang punctuation under blazing unison reyong and gangsa figuration.",
+    "source": "https://en.wikipedia.org/wiki/Gamelan_gong_kebyar"
+  },
+  {
+    "name": "Kotekan Polos",
+    "region": "Asian",
+    "genre": "Balinese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [15],
+      "snareAccent": [0, 2, 4, 6, 8, 10, 12, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The 'simple' on-beat half of a Balinese interlocking kotekan figuration, mostly falling on the beat while the sangsih answers off it; gong closes the cycle.",
+    "source": "https://en.wikipedia.org/wiki/Kotekan"
+  },
+  {
+    "name": "Kotekan Sangsih",
+    "region": "Asian",
+    "genre": "Balinese Gamelan",
+    "length": 16,
+    "voices": {
+      "bass": [15],
+      "snareAccent": [1, 3, 5, 7, 9, 11, 13, 15],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The 'differing' off-beat half of the interlocking kotekan that dovetails with polos to produce a single rapid composite melody in gong kebyar.",
+    "source": "https://en.wikipedia.org/wiki/Kotekan"
+  },
+  {
+    "name": "Kotekan Telu",
+    "region": "Asian",
+    "genre": "Balinese Gamelan",
+    "length": 12,
+    "voices": {
+      "bass": [11],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [1, 2, 4, 5, 7, 8, 10],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A three-note interlocking kotekan figuration whose polos and sangsih each strike groups of three, combining into a continuous stream over a 12-pulse span.",
+    "source": "https://gamelan.org.nz/wp-content/uploads/2015/02/Kotekan-article-Balungan.pdf"
+  },
+  {
+    "name": "Kecak Cak Telu",
+    "region": "Asian",
+    "genre": "Balinese Vocal",
+    "length": 8,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0, 3, 6],
+      "snareGhost": [1, 2, 4, 5, 7],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The interlocking 'cak telu' vocal pattern of the kecak monkey-chant chorus, transposing kotekan onto rhythmic 'cak' syllables split across three groups.",
+    "source": "https://en.wikipedia.org/wiki/Kotekan"
+  },
+  {
+    "name": "Kecak Cak Lima",
+    "region": "Asian",
+    "genre": "Balinese Vocal",
+    "length": 8,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0, 2, 3, 5, 6],
+      "snareGhost": [1, 4, 7],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A five-part interlocking 'cak lima' division of the kecak chorus producing denser composite chatter, anchored by the slower pung/pur reciter line.",
+    "source": "https://en.wikipedia.org/wiki/Kotekan"
+  },
+  {
+    "name": "Gamelan Gong Gede",
+    "region": "Asian",
+    "genre": "Balinese Gamelan",
+    "length": 32,
+    "voices": {
+      "bass": [31],
+      "snareAccent": [7, 15, 23, 31],
+      "snareGhost": [11, 19, 27],
+      "hatClosed": [0, 4, 8, 12, 16, 20, 24, 28],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The stately ceremonial 'great gong' orchestra of the Balinese courts, with broad gong cycles, kempur and kemong punctuation under slow trompong melody.",
+    "source": "https://bali.international/arts-culture/gamelan-bali/"
+  },
+  {
+    "name": "Baris Gilak",
+    "region": "Asian",
+    "genre": "Balinese Gamelan",
+    "length": 8,
+    "voices": {
+      "bass": [0, 7],
+      "snareAccent": [2, 5],
+      "snareGhost": [1, 3, 4, 6],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The martial gilak ostinato accompanying the Balinese baris warrior dance, with gong and kempur framing a short repeating cycle of kajar and kendang accents.",
+    "source": "https://en.wikipedia.org/wiki/Gamelan_gong_kebyar"
+  },
+  {
+    "name": "Jaipongan",
+    "region": "Asian",
+    "genre": "Sundanese",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 11, 15],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 3, 7, 9, 13, 14],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Gugum Gumbira's drum-led Sundanese dance music: virtuosic kendang strokes derived from ketuk tilu and pencak silat punch syncopated accents off the beat over a gong cycle.",
+    "source": "https://en.wikipedia.org/wiki/Jaipongan"
+  },
+  {
+    "name": "Kendang Penca",
+    "region": "Asian",
+    "genre": "Sundanese",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 6],
+      "snareAccent": [2, 5],
+      "snareGhost": [1, 4, 7],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The drum patterns accompanying Sundanese pencak silat, with sharp kendang strokes cueing and mirroring the martial-art movements of the fighters.",
+    "source": "https://en.wikipedia.org/wiki/Kendang"
+  },
+  {
+    "name": "Ketuk Tilu",
+    "region": "Asian",
+    "genre": "Sundanese",
+    "length": 16,
+    "voices": {
+      "bass": [15],
+      "snareAccent": [3, 7, 11, 15],
+      "snareGhost": [1, 5, 9, 13],
+      "hatClosed": [2, 6, 10, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The rural Sundanese social-dance form named for its 'three ketuk' kettle-gongs, a cyclic 4-beat measure punctuated by ketuk strikes with kendang off-beat propulsion.",
+    "source": "https://en.wikipedia.org/wiki/Jaipongan"
+  },
+  {
+    "name": "Kulintang Binalig",
+    "region": "Asian",
+    "genre": "Maguindanao Kulintang",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [4, 12],
+      "hatClosed": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A fast, showy kagungudan-style Maguindanao rhythmic mode emphasising power and speed, with interlocking agung and dabakan driving the kulintang's complex improvisation.",
+    "source": "https://en.wikipedia.org/wiki/Kulintang"
+  },
+  {
+    "name": "Kulintang Sinulog",
+    "region": "Asian",
+    "genre": "Maguindanao Kulintang",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [1, 5, 9, 13],
+      "hatClosed": [3, 7, 11, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Maguindanao sinulog mode, rich in basic patterns and variations, with the agung interlocking against the dabakan in a steady cyclical ostinato.",
+    "source": "https://en.wikipedia.org/wiki/Kulintang"
+  },
+  {
+    "name": "Kulintang Tidto",
+    "region": "Asian",
+    "genre": "Maguindanao Kulintang",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 10],
+      "snareAccent": [3, 8, 13],
+      "snareGhost": [1, 4, 11, 14],
+      "hatClosed": [2, 5, 9, 12, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The tidto (tidtu) rhythmic mode, the most syncopated and least used for serenading, with sharply offset agung and dabakan accents under intricate kulintang play.",
+    "source": "https://en.wikipedia.org/wiki/Kulintang"
+  },
+  {
+    "name": "Kulintang Duyog",
+    "region": "Asian",
+    "genre": "Maguindanao Kulintang",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 10],
+      "snareGhost": [6, 14],
+      "hatClosed": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The slow, dignified kamamatuan duyog (duyug) mode used to serenade, dominated by two closely related agung-and-dabakan patterns over an even kulintang pulse.",
+    "source": "https://en.wikipedia.org/wiki/Kulintang"
+  },
+  {
+    "name": "Kulintang Tagonggo",
+    "region": "Asian",
+    "genre": "Maguindanao Kulintang",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The ritualistic tagonggo mode accompanying trance and dance ceremonies, with insistent interlocking agung and dabakan ostinatos rather than recreational kulintang melody.",
+    "source": "https://en.wikipedia.org/wiki/Kulintang"
+  },
+  {
+    "name": "Maranao Kapromayas",
+    "region": "Asian",
+    "genre": "Maranao Kulintang",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A Maranao kulintang style from Lake Lanao, where agung and dabakan lock into a buoyant cyclical pattern beneath ornamented kulintang gong-row melody.",
+    "source": "https://www.newworldencyclopedia.org/entry/Kulintang"
+  },
+  {
+    "name": "Piphat Na Thap Song Mai",
+    "region": "Asian",
+    "genre": "Thai Piphat",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6, 7],
+      "snareGhost": [1, 3, 5],
+      "hatClosed": [1, 3, 5, 7],
+      "hatOpen": [0, 2, 4, 6],
+      "hhFoot": []
+    },
+    "desc": "The medium-level (song chan) na thap drum cycle of the Thai piphat, with taphon and klong that strokes framed by the ching's open/closed timeline marking the cadence.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_Thailand"
+  },
+  {
+    "name": "Piphat Na Thap Sam Mai",
+    "region": "Asian",
+    "genre": "Thai Piphat",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12, 15],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hhFoot": []
+    },
+    "desc": "The expansive third-level (sam chan) na thap cycle, broadly elaborated taphon and klong that patterns with the climactic accented ching 'chap' closing each cycle.",
+    "source": "https://en.wikipedia.org/wiki/Ching_(instrument)"
+  },
+  {
+    "name": "Ching Chan Diao",
+    "region": "Asian",
+    "genre": "Thai Classical",
+    "length": 4,
+    "voices": {
+      "bass": [3],
+      "snareAccent": [1, 3],
+      "snareGhost": [0, 2],
+      "hatClosed": [1, 3],
+      "hatOpen": [0, 2],
+      "hhFoot": []
+    },
+    "desc": "The fundamental Thai ching timeline: an unaccented open 'ching' answered by an accented damped 'chap', the final chap (siang dok) carrying the strongest emphasis.",
+    "source": "https://en.wikipedia.org/wiki/Ching_(instrument)"
+  },
+  {
+    "name": "Klong That",
+    "region": "Asian",
+    "genre": "Thai Piphat",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [1, 3, 5, 7],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The paired barrel-drum klong that plays the primary beats of the Thai cycle, leaving gaps for the taphon to fill, together steering the piphat's tempo and dynamics.",
+    "source": "https://en.wikipedia.org/wiki/Klong_that"
+  },
+  {
+    "name": "Pinpeat Sampho",
+    "region": "Asian",
+    "genre": "Cambodian Pinpeat",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [1, 3, 5, 7],
+      "hatOpen": [0, 2, 4, 6],
+      "hhFoot": []
+    },
+    "desc": "The two-headed sampho drum leading the Cambodian pinpeat, controlling tempo and transitions while the chhing cymbals mark the metric framework of court and temple music.",
+    "source": "https://en-academic.com/dic.nsf/enwiki/627466"
+  },
+  {
+    "name": "Pinpeat Skor Thom",
+    "region": "Asian",
+    "genre": "Cambodian Pinpeat",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8, 12],
+      "snareAccent": [4, 14],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The large paired skor thom barrel drums of the pinpeat sounding climactic signals and section cues, with gongs articulating cyclical time beneath the roneat and kong vong.",
+    "source": "https://www.coursehero.com/file/90431320/CAMBODIAN-MUSIC-PINPEAT-ENSEMBLE-ONEAT-SAMPHOR-KONGVONG-SKORTHOM-CHHING-IN/"
+  },
+  {
+    "name": "Hsaing Waing Pat Waing",
+    "region": "Asian",
+    "genre": "Burmese",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 10, 14],
+      "snareAccent": [2, 4, 8, 12],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The tuned pat waing drum circle leading Myanmar's hsaing waing ensemble, producing melodic-rhythmic patterns unique among Southeast-Asian gong-chime orchestras.",
+    "source": "https://en.wikipedia.org/wiki/Hsaing_waing"
+  },
+  {
+    "name": "Burmese Bonshay",
+    "region": "Asian",
+    "genre": "Burmese",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [1, 3, 5, 7],
+      "hatOpen": [0, 2, 4, 6],
+      "hhFoot": []
+    },
+    "desc": "The bonshay metric pattern of Burmese classical song, articulated by the si (small bell) and wa (clapper) timeline that organises the hsaing waing's rhythm.",
+    "source": "https://en.wikipedia.org/wiki/Hsaing_waing"
+  },
+  {
+    "name": "Vietnamese Cheo",
+    "region": "Asian",
+    "genre": "Vietnamese",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The northern Vietnamese folk-opera chèo, its trong (drum) and phách clapper marking the song's cyclic rhythm under sung narrative and dan nguyet lute.",
+    "source": "https://www.techpopop.net/2022/09/vocal-music-and-musical-ensembles-of.html"
+  },
+  {
+    "name": "Vietnamese Nha Nhac",
+    "region": "Asian",
+    "genre": "Vietnamese",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8, 15],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Vietnam's refined imperial court music of the Nguyen dynasty, with the trong chien drum and gongs framing a stately ceremonial cycle for ritual and temple performance.",
+    "source": "https://www.techpopop.net/2022/09/vocal-music-and-musical-ensembles-of.html"
+  },
+  {
+    "name": "Ca Tru Phach",
+    "region": "Asian",
+    "genre": "Vietnamese",
+    "length": 8,
+    "voices": {
+      "bass": [0, 5],
+      "snareAccent": [2, 3, 7],
+      "snareGhost": [1, 4, 6],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The intricate phách clapper rhythm of ca tru chamber song, the singer's wooden slats articulating an asymmetric cycle answered by the trong chau praise-drum.",
+    "source": "https://www.techpopop.net/2022/09/vocal-music-and-musical-ensembles-of.html"
+  },
+  {
+    "name": "Zapin",
+    "region": "Asian",
+    "genre": "Malay",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [1, 5, 9, 13],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "An Arab-derived Johor dance in 4/4 built on interlocking marwas hand-drums playing alternating dum-tak figures with a gambus ostinato and the punctuating dok.",
+    "source": "https://farsidemusic.wordpress.com/2015/03/16/rough-guide-to-the-music-of-malaysia/"
+  },
+  {
+    "name": "Joget",
+    "region": "Asian",
+    "genre": "Malay",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 5, 7],
+      "hatClosed": [3],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A lively Portuguese-influenced Malay social dance in brisk 2/4 with a clear backbeat, propelled by rebana and violin for convivial partner dancing.",
+    "source": "https://www.roots.gov.sg/ich-landing/ich/traditional-malay-music"
+  },
+  {
+    "name": "Inang",
+    "region": "Asian",
+    "genre": "Malay",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [6, 14],
+      "snareGhost": [2, 10],
+      "hatClosed": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A moderate, graceful 4/4 Malay courtly dance (also masri-related) with a light gendang pulse suited to refined, elegant movement.",
+    "source": "https://www.roots.gov.sg/ich-landing/ich/traditional-malay-music"
+  },
+  {
+    "name": "Asli",
+    "region": "Asian",
+    "genre": "Malay",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [6, 10, 14],
+      "hatClosed": [2],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The slow, deeply ornamented Melayu asli song-form with a steady gendang cycle underpinning highly melismatic vocal lines and rubato openings.",
+    "source": "https://www.academia.edu/29411333/THE_STYLISTIC_CHARACTERISTICS_OF_MELAYU_ASLI_SONG"
+  },
+  {
+    "name": "Masri",
+    "region": "Asian",
+    "genre": "Malay",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 6],
+      "snareAccent": [2, 5],
+      "snareGhost": [1, 4, 7],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "An Egyptian-flavoured (masri) Malay dance rhythm with a buoyant duple lilt carried by rebana and marwas hand-drums.",
+    "source": "https://www.roots.gov.sg/ich-landing/ich/traditional-malay-music"
+  },
+  {
+    "name": "Ronggeng",
+    "region": "Asian",
+    "genre": "Malay",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The convivial ronggeng/joget social-dance idiom in lively duple metre with a clear backbeat for couple dancing accompanied by violin, accordion and rebana.",
+    "source": "https://farsidemusic.wordpress.com/2015/03/16/rough-guide-to-the-music-of-malaysia/"
+  },
+  {
+    "name": "Dondang Sayang",
+    "region": "Asian",
+    "genre": "Malay",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Malaccan pantun-exchange love song in moderate duple metre, its gentle gong, violin and rebana cycle leaving space for the singers' poetic repartee.",
+    "source": "https://www.roots.gov.sg/ich-landing/ich/traditional-malay-music"
+  },
+  {
+    "name": "Talempong Pacik",
+    "region": "Asian",
+    "genre": "Minangkabau",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [2, 5, 8, 11],
+      "snareGhost": [1, 4, 7, 10],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The hand-held Minangkabau gong-chimes of West Sumatra played by three musicians (anak on the downbeat, tengah between, peningkah off-beat) interlocking into a composite ostinato.",
+    "source": "https://en.wikipedia.org/wiki/Talempong"
+  },
+  {
+    "name": "Gendang Melayu",
+    "region": "Asian",
+    "genre": "Malay",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 8, 11, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 10],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The double-headed gendang frame-drum patterns underpinning Malay dance, alternating deep 'pak' and high 'cak' strokes to drive joget, inang and zapin repertoire.",
+    "source": "https://www.roots.gov.sg/ich-landing/ich/traditional-malay-music"
+  },
+  {
+    "name": "Gandang Tambua",
+    "region": "Asian",
+    "genre": "Minangkabau",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 5],
+      "snareAccent": [1, 4, 6],
+      "snareGhost": [3, 7],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The thunderous interlocking gandang tambua double-headed drums of West Sumatra, multiple players locking dense composite rhythms for festive Minangkabau processions.",
+    "source": "https://www.spafajournal.org/index.php/spafajournal/article/download/886/772/4213"
+  },
+  {
+    "name": "Lao Khaen Lam",
+    "region": "Asian",
+    "genre": "Lao",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The lam singing tradition of Laos accompanied by the khaen mouth-organ, whose steady drone-and-drum cycle frames the sung poetry of the mor lam.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_Thailand"
+  }
+]
