@@ -1042,6 +1042,11 @@ export interface StripMeasureData {
    *  accent group beams on its own instead of by the default quarter beat. */
   beamGroups?: number[];
   showRests?: boolean;
+  /** Like `showRests` but only for the DOWN voice (kick + hi-hat foot).  Lets
+   *  the hands/cymbals show rests (so the beat grid reads) while the bass voice
+   *  hides its empty-beat rests — which otherwise clutter the staff.  Falls back
+   *  to `showRests` when unset. */
+  downShowRests?: boolean;
   hideGhostParens?: boolean;
   bassStemUp?: boolean;
   /** Render the hi-hat foot pedal in the UP voice (stem-up) so it beams with
@@ -1164,7 +1169,9 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
           if (!isFirst || clefGutter) stave.setBegBarType(Barline.type.NONE);
         }
         if (isLast)  stave.setEndBarType(Barline.type.END);
-        else if (oneBeatPerBar) stave.setEndBarType(Barline.type.SINGLE);
+        // equalBeatWidth flows the equal-width beats as ONE seamless bar (no
+        // internal barlines); plain oneBeatPerBar keeps a barline per beat.
+        else if (oneBeatPerBar && !equalBeatWidth) stave.setEndBarType(Barline.type.SINGLE);
         else stave.setEndBarType(Barline.type.NONE);
         if (showTimeSig) {
           // Display time signature is always raw-slots over the note-value of
@@ -1239,7 +1246,7 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
           [false, true],
           [mDownBassHits, mDownFootHits],
           [mDownBassDoubles, hhFootOpen],
-          slotCount, beatSize, [], mShowRests ?? false, false, [0],
+          slotCount, beatSize, [], m.downShowRests ?? mShowRests ?? false, false, [0],
           false, m.downShortHits ?? mShortHits, m.capToBeat ?? false,
         );
 

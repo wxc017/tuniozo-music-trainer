@@ -274,9 +274,12 @@ export function cycleToStripData(cycle: GrooveCycle, pointVoices: PointVoices[])
     // quarter — standard kit notation, not a flat 16th lattice.  Beat-aligned
     // beaming (default) keeps each beat's notes in their own beam.
     capToBeat: true,
-    // Show rests so a beat with no hit (e.g. a hi-hat that doesn't land on
-    // beat 1) is marked — the player can see where the downbeat lines up.
+    // Show rests in the hands/cymbals so a beat with no hit (e.g. a hi-hat that
+    // doesn't land on beat 1) is marked — the player can see where the downbeat
+    // lines up.  But hide the BASS voice's empty-beat rests: a kick that only
+    // plays 1 & 3 doesn't need rests drawn on 2 & 4 (they just clutter).
     showRests: true,
+    downShowRests: false,
     // Beam over a mid-beat rest so a beat's hits read as one beamed group
     // rather than separate flagged notes (a leading rest stays un-beamed).
     beamAcrossRests: true,
@@ -289,8 +292,10 @@ export function cycleToStripData(cycle: GrooveCycle, pointVoices: PointVoices[])
  * renders as a real quintuplet, not five mis-spelled sixteenths).  A uniform
  * cycle renders as a single full-bar measure (its grid already maps cleanly).
  */
-export function cycleToStripMeasures(cycle: GrooveCycle, pointVoices: PointVoices[]): StripMeasureData[] {
-  if (isUniform(cycle)) return [cycleToStripData(cycle, pointVoices)];
+export function cycleToStripMeasures(cycle: GrooveCycle, pointVoices: PointVoices[], opts: { perBeat?: boolean } = {}): StripMeasureData[] {
+  // perBeat forces one measure per pulse even for a uniform cycle, so every
+  // beat can be laid out at an identical width (symmetric notation).
+  if (!opts.perBeat && isUniform(cycle)) return [cycleToStripData(cycle, pointVoices)];
   const a = assembleCycle(cycle, pointVoices);
   const offs = a.pulseBoundaries;
   return cycle.points.map((p, i) => {
@@ -307,6 +312,7 @@ export function cycleToStripMeasures(cycle: GrooveCycle, pointVoices: PointVoice
       slotOverride: p.subPulses,
       capToBeat: true,
       showRests: true,
+      downShowRests: false,
       beamAcrossRests: true,
     } as StripMeasureData;
   });

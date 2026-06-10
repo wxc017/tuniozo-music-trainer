@@ -16,9 +16,9 @@ import { VexDrumStrip } from "@/components/VexDrumNotation";
 import {
   PointVoices,
   SUB_PULSE_SIZES,
-  makeCycle, isUniform, assembleCycle, cycleToStripMeasures,
+  makeCycle, assembleCycle, cycleToStripMeasures,
 } from "@/lib/grooveCycle";
-import { generateInStyle, scoreGroove, grooveToPointVoices, type GrooveBias } from "@/lib/grooveScoring";
+import { generateInStyle, scoreGroove, toKitVoices, type GrooveBias } from "@/lib/grooveScoring";
 import { nearestLibraryGroove, GROOVE_LIBRARY, REGIONS, genresForRegion, type LibraryMatch, type Region, type LibraryGroove } from "@/lib/grooveLibrary";
 import { cycleTotalSlots } from "@/lib/grooveCycle";
 import {
@@ -52,7 +52,6 @@ export default function GrooveMode() {
   const [aesthetic, setAesthetic] = useState<Aesthetic>("musical");
   const [region, setRegion] = useState<Region | "Any">("Any");
   const [genre, setGenre] = useState<string>("");
-  const [symmetric, setSymmetric] = useState(true);
   const [biases, setBiases] = useState<GrooveBias[]>([]);
   const toggleBias = (b: GrooveBias) => setBiases(prev => (prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]));
   const [pointVoices, setPointVoices] = useState<PointVoices[]>(() => sizes.map(() => ({})));
@@ -67,11 +66,10 @@ export default function GrooveMode() {
   }, [sizes]);
 
   const assembled = useMemo(() => assembleCycle(cycle, pointVoices), [cycle, pointVoices]);
-  const measures = useMemo(() => cycleToStripMeasures(cycle, pointVoices), [cycle, pointVoices]);
+  const measures = useMemo(() => cycleToStripMeasures(cycle, pointVoices, { perBeat: true }), [cycle, pointVoices]);
   const match: LibraryMatch | null = useMemo(() => nearestLibraryGroove(assembled), [assembled]);
   const score = useMemo(() => scoreGroove(assembled, aesthetic === "awkward" ? "awkward" : "musical"), [assembled, aesthetic]);
   const rationale = genMatch ?? match;
-  const uniform = isUniform(cycle);
 
   const total = cycleTotalSlots(cycle);
   const genreOpts = useMemo(() => genresForRegion(region, total), [region, total]);
@@ -114,7 +112,9 @@ export default function GrooveMode() {
   // Load a reference-library groove straight into the editor so it can be heard.
   const loadLibraryGroove = useCallback((g: LibraryGroove) => {
     const sz = factorSizes(g.length);
-    const pv = grooveToPointVoices(g, makeCycle(sz));
+    // Build a full kit around sparse timeline/clave entries so the reference
+    // plays as a drumset groove, not a single-instrument circle part.
+    const pv = toKitVoices(g, makeCycle(sz));
     setSizes(sz);
     setTimeout(() => { setPointVoices(pv); setGenMatch({ groove: g, similarity: 1 }); }, 0);
   }, []);
@@ -180,16 +180,12 @@ export default function GrooveMode() {
             style={{ ...chip(false), fontFamily: "monospace", minWidth: 26 }}>{s}</button>
         ))}
         <span style={{ fontSize: 10, color: "#555" }}>e.g. 3-2-2 · 3-4-5 · 6-8-8 — click a number to change it</span>
-        <button onClick={() => setSymmetric(s => !s)} title="give every beat the same width even when subdivisions differ (e.g. a 3 and a 4)"
-          style={{ ...chip(symmetric, "#50b0c0"), marginLeft: "auto" }}>
-          {symmetric ? "◧ symmetric beats" : "◧ proportional beats"}
-        </button>
       </div>
 
       {/* ── Assembled cycle + rationale ────────────────────────────────── */}
       <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: 8, padding: 12 }}>
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <VexDrumStrip measures={measures} measureWidth={uniform ? stripW : Math.max(90, stripW / sizes.length)} height={210} showClef oneBeatPerBar={!uniform} equalBeatWidth={symmetric && !uniform} />
+          <VexDrumStrip measures={measures} measureWidth={Math.max(90, stripW / sizes.length)} height={210} showClef oneBeatPerBar equalBeatWidth />
         </div>
         <div style={{ marginTop: 8, fontSize: 12, color: "#888", textAlign: "center" }}>
           {rationale ? (

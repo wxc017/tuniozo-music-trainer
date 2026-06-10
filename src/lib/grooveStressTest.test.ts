@@ -108,6 +108,7 @@ describe("groove generator — 100k style-fit stress test", () => {
 
     let fEmpty = 0, fColl = 0, fBack = 0, fKick = 0, fDens = 0, fInterlock = 0;
     let degenerate = 0;
+    let fullKit = 0, tlFull = 0, kitFull = 0;   // full kit = hat + kick + snare all present
 
     let ghostDelta = 0, kickDelta = 0, hatChanged = 0, hatPresent = 0;
     let openAdded = 0, ornament = 0;
@@ -147,6 +148,10 @@ describe("groove generator — 100k style-fit stress test", () => {
 
         const totalHits = a.bassHits.length + a.snareHits.length + a.ghostHits.length + a.hatHits.length + a.hhFootHits.length;
         if (totalHits === 0) degenerate++;
+        // Full kit = a real drumset texture (hi-hat ostinato + kick + snare), not
+        // a single-instrument part.
+        const full = a.hatHits.length > 0 && a.bassHits.length > 0 && a.snareHits.length > 0;
+        if (full) { fullKit++; if (timeline) tlFull++; else kitFull++; }
 
         // ── Skeleton preservation ──────────────────────────────────────────
         if (timeline) {
@@ -231,6 +236,7 @@ describe("groove generator — 100k style-fit stress test", () => {
     L.push(`  kit sources    — backbeat+kick kept: ${pctStr(kitBackbone, kitChecked)}  (kick anchors ${pctStr(kickKept, kitChecked)}, snare exact ${pctStr(snareExact, kitChecked)})  n=${kitChecked}`);
     L.push(`  timeline srcs  — all source voices preserved: ${pctStr(tlBell, tlChecked)}  n=${tlChecked}`);
     L.push(`  degenerate (empty) grooves: ${degenerate}`);
+    L.push(`  FULL KIT (hi-hat + kick + snare): ${pctStr(fullKit, N)}  — kit srcs ${pctStr(kitFull, byType.kit.length)} · timeline srcs ${pctStr(tlFull, byType.timeline.length)}`);
 
     L.push("\n── 3. STYLE IDENTITY  nearest real groove to the variation (sample) ──");
     L.push(`  sample size: ${nN.toLocaleString()}`);
@@ -288,5 +294,6 @@ describe("groove generator — 100k style-fit stress test", () => {
     expect(degenerate).toBe(0);                                  // never produce an empty groove
     expect(kitBackbone / Math.max(1, kitChecked)).toBeGreaterThan(0.999); // backbone must survive
     expect(tlBell / Math.max(1, tlChecked)).toBeGreaterThan(0.999);       // bell/clave must survive
+    expect(tlFull / Math.max(1, byType.timeline.length)).toBeGreaterThan(0.999); // timelines become full kit
   }, 600_000);
 });

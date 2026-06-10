@@ -317,13 +317,13 @@ function pulseOf(pos: number, offs: number[]): number {
   return pi;
 }
 
-/** Sparse single-line / two-voice entry (a bell, clave or timeline): keep every
- *  voice the entry defines ON ITS OWN voice — so the groove still reads as that
- *  tradition and scores faithfully against the library — then SUPPLEMENT a
- *  light, non-metronomic foundation only where it's missing: a steady 8th-note
- *  hi-hat for time if the entry carries no cymbal, and a single downbeat kick if
- *  it carries no bass.  No imposed backbeat — stamping a 4/4 backbeat under a
- *  sparse clave was what made it read as Western rock/techno. */
+/** Turn a sparse single-line / two-voice entry (a bell, clave or timeline) into
+ *  a FULL-KIT groove rather than a one-instrument part: keep the entry's own
+ *  voice(s) — the timeline becomes the snare's syncopated accent layer (a kit
+ *  cross-stick clave) — and build a real drumset foundation around it: a steady
+ *  8th-note hi-hat ostinato for time, plus a kick on the first and middle
+ *  downbeats.  No 2&4 backbeat is imposed (that's what made claves read as
+ *  Western rock); the snare carries the tradition's syncopation instead. */
 function kitUnderTimeline(g: LibraryGroove, cycle: GrooveCycle): PointVoices[] {
   const pv = grooveToPointVoices(g, cycle);
   const add = (pi: number, voice: LayerVoice, local: number) => {
@@ -333,9 +333,29 @@ function kitUnderTimeline(g: LibraryGroove, cycle: GrooveCycle): PointVoices[] {
   };
   const hasHat = pv.some(p => (p.hatClosed?.hits.length ?? 0) > 0);
   const hasKick = pv.some(p => (p.bass?.hits.length ?? 0) > 0);
+  const hasSnare = pv.some(p => (p.snareAccent?.hits.length ?? 0) > 0);
+  // Steady 8th-note hi-hat across every pulse — the timekeeping layer that makes
+  // it a kit groove, not a hand-drum part.
   if (!hasHat) cycle.points.forEach((p, i) => { for (const s of hatShapePositions("8ths", p.subPulses)) add(i, "hatClosed", s); });
-  if (!hasKick) add(0, "bass", 0);
+  // Kick foundation on the first + middle downbeats (not a 2&4 backbeat).
+  if (!hasKick) {
+    add(0, "bass", 0);
+    const mid = cycle.points.length >> 1;
+    if (mid > 0) add(mid, "bass", 0);
+  }
+  // Snare ONLY if the entry has none of its own: a clave/timeline stored on the
+  // snare already IS the snare layer, so we leave it; a bell stored on the hat
+  // has no snare, so give the kit a backbeat on the odd pulses to complete it.
+  if (!hasSnare) cycle.points.forEach((_p, i) => { if (i % 2 === 1) add(i, "snareAccent", 0); });
   return pv;
+}
+
+/** Voices for a library entry as a FULL-KIT groove: sparse timeline entries get
+ *  a kit built around them (see kitUnderTimeline); full-kit entries load as-is.
+ *  Used by both the generator and the library-reference loader so neither ever
+ *  yields a bare one-instrument part. */
+export function toKitVoices(g: LibraryGroove, cycle: GrooveCycle): PointVoices[] {
+  return isTimelineGroove(g) ? kitUnderTimeline(g, cycle) : grooveToPointVoices(g, cycle);
 }
 
 /**
