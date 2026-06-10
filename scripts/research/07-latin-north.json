@@ -1,0 +1,850 @@
+[
+  {
+    "name": "Cumbia Clasica",
+    "region": "Latin",
+    "genre": "Cumbia (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Classic Colombian cumbia: tambora marks the duple pulse while the llamador locks the steady offbeat (upbeat) accents that drive the dance. Maracas/guacharaca keep the continuous eighth texture.",
+    "source": "https://thecolombianway.com/en/magazine/cumbia-the-rhythm-of-colombia/"
+  },
+  {
+    "name": "Cumbia Tambor Alegre",
+    "region": "Latin",
+    "genre": "Cumbia (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [2, 6, 7, 10, 14],
+      "snareGhost": [3, 11, 13],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [6, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Syncopated improvising part of the tambor alegre over the cumbia base, emphasizing offbeats and pushing into the upbeats. The deep tambora anchors beats one and three.",
+    "source": "https://movimientoafrolatino.org/en/2022/09/20/colombian-cumbia/"
+  },
+  {
+    "name": "Cumbia Drumset Adaptation",
+    "region": "Latin",
+    "genre": "Cumbia (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "Modern kit translation of traditional cumbia, with the bass tracing the tambora and the rim/snare echoing the alegre accents. Common in Colombian and Panamanian dance bands.",
+    "source": "https://www.moderndrummer.com/article/september-2015-cumbia-drumset-adaptations-traditional-colombianpanamanian-rhythm/"
+  },
+  {
+    "name": "Porro Sabanero",
+    "region": "Latin",
+    "genre": "Porro (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [1, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Festive brass-band porro from the Sinu and savanna region, blending gaita drumming with European bombo and platillo. The bombo strikes on the beat while the redoblante answers on the offbeats.",
+    "source": "https://en.wikipedia.org/wiki/Glossary_of_Colombian_music"
+  },
+  {
+    "name": "Gaita Larga",
+    "region": "Latin",
+    "genre": "Gaita (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [4, 5, 12, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Cane-flute gaita ensemble with interlocking tambora, alegre and llamador under the gaita hembra melody. The llamador holds the offbeat while the tambora drives the duple base.",
+    "source": "https://worldmusicmethod.com/courses/colombian-gaita-mastery/"
+  },
+  {
+    "name": "Bullerengue Sentao",
+    "region": "Latin",
+    "genre": "Bullerengue (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [3, 6, 11, 14],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Medium-tempo Afro-Colombian bullerengue led by elder women with handclaps and call-and-response; the alegre syncopates over the llamador offbeat and tambora pulse.",
+    "source": "https://worldmusiccentral.org/bullerengue-history-instruments-and-variations-of-an-afro-colombian-tradition/"
+  },
+  {
+    "name": "Bullerengue Chalupa",
+    "region": "Latin",
+    "genre": "Bullerengue (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 5, 6, 10, 13, 14],
+      "snareGhost": [3, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [6, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Fast chalupa variant of bullerengue with dense alegre improvisation and rapid clapping. The driving tambora marks every beat under busy offbeat accents.",
+    "source": "https://worldmusiccentral.org/bullerengue-history-instruments-and-variations-of-an-afro-colombian-tradition/"
+  },
+  {
+    "name": "Mapale",
+    "region": "Latin",
+    "genre": "Mapale (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 3, 6, 7, 10, 11, 14, 15],
+      "snareGhost": [1, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "Frenetic Afro-Colombian mapale with relentless drumming and frantic dance; the tambora hammers the beats while the alegre packs the offbeats with rapid accents and clapping.",
+    "source": "https://musicalgetaways.com/blog/afro-colombian-rhythms-cartagena/"
+  },
+  {
+    "name": "Currulao",
+    "region": "Latin",
+    "genre": "Currulao (Colombia Pacific)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Afro-Pacific marimba currulao in lilting 6/8 with interlocking cununos and bombos; the bombo golpeador marks the cycle while the bombo arrullador and guasa hold the ternary texture.",
+    "source": "http://www.lameca.org/publications-numeriques/dossiers-et-articles/afro-colombian-music/3-currulao-the-marimba-dance/"
+  },
+  {
+    "name": "Currulao Bambuco Viejo",
+    "region": "Latin",
+    "genre": "Currulao (Colombia Pacific)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [1, 4, 7, 10],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Bambuco viejo currulao variant where the cununo macho drives steady ternary figures and the cununo hembra replies with offbeat fills over the bombo's deep pulses.",
+    "source": "https://www.gruponaidy.com/instruments/"
+  },
+  {
+    "name": "Champeta Criolla",
+    "region": "Latin",
+    "genre": "Champeta (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 8, 11, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [7, 15],
+      "hhFoot": [4, 12]
+    },
+    "desc": "Cartagena champeta (terapia) built on a syncopated electronic bassline and conga groove rooted in Congolese soukous. Snare/clap lands on the backbeat with offbeat hat accents.",
+    "source": "https://en.wikipedia.org/wiki/Champeta"
+  },
+  {
+    "name": "Vallenato Paseo",
+    "region": "Latin",
+    "genre": "Vallenato (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 4, 6, 8, 12, 14],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Most-recorded vallenato air, the cheerful paseo in 2/4 with the caja marking accents and the guacharaca scraping its quarter-plus-two-eighths down-down-up pattern.",
+    "source": "https://en.wikipedia.org/wiki/Vallenato"
+  },
+  {
+    "name": "Vallenato Son",
+    "region": "Latin",
+    "genre": "Vallenato (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Slowest, most delicate vallenato air in 2/4, used for laments; the caja keeps a breath-like steady accompaniment under the accordion's bass-button melody.",
+    "source": "https://arcmusic.org/features/musica-vallenata/"
+  },
+  {
+    "name": "Vallenato Merengue",
+    "region": "Latin",
+    "genre": "Vallenato (Colombia)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Merengue vallenato in lively 6/8 with a regular two-feel and strong Spanish influence; the caja and guacharaca outline the ternary swing under the accordion.",
+    "source": "https://en.wikipedia.org/wiki/Vallenato"
+  },
+  {
+    "name": "Vallenato Puya",
+    "region": "Latin",
+    "genre": "Vallenato (Colombia)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 4, 6, 8, 10],
+      "snareGhost": [1, 3, 5, 7, 9, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Fastest vallenato air in 6/8, opening like the merengue then breaking into the rapid improvised cierre where caja, guacharaca and accordion trade solos.",
+    "source": "https://arcmusic.org/features/musica-vallenata/"
+  },
+  {
+    "name": "Chande",
+    "region": "Latin",
+    "genre": "Chande (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Coastal chande, a flute-and-drum costeno form related to cumbia and tambora; the llamador holds the offbeat while the tambora drives the carnival pulse.",
+    "source": "https://en.wikipedia.org/wiki/Glossary_of_Colombian_music"
+  },
+  {
+    "name": "Fandango de Bullerengue",
+    "region": "Latin",
+    "genre": "Fandango (Colombia)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [3, 7, 11, 15],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Caribbean Colombian fandango with fast jumps; the tambora emphasizes the llamador accents and adds stick strokes on the drum shell, blending African, Indigenous and Spanish rhythm.",
+    "source": "https://visitmycolombia.com/en/the-main-traditional-colombian-dances/"
+  },
+  {
+    "name": "Bambuco",
+    "region": "Latin",
+    "genre": "Bambuco (Colombia Andes)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "National Andean Colombian song-dance in lilting 6/8 with constant sesquialtera (3/4 against 6/8); tiple and guitar carry the bi-metric strum and syncopated pulse.",
+    "source": "https://colombiaone.com/2026/01/18/bambuco-colombian-folklore/"
+  },
+  {
+    "name": "Pasillo Fiestero",
+    "region": "Latin",
+    "genre": "Pasillo (Colombia Andes)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 6],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Fast, lively party pasillo from the Andean region, a fiesta variant felt in a brisk waltz-derived 3/4; tiple and guitar drive the danceable couple movement.",
+    "source": "https://bnbcolombia.com/music-of-colombia-andes/"
+  },
+  {
+    "name": "Joropo Llanero Corrido",
+    "region": "Latin",
+    "genre": "Joropo (Venezuela)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 2, 4, 6, 8, 10],
+      "snareGhost": [1, 3, 5, 7, 9, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Joropo llanero por corrido with harp, cuatro and maracas in classic sesquialtera, alternating 6/8 and 3/4; the maracas roll continuous cross-rhythms supporting the cuatro accents.",
+    "source": "https://en.wikipedia.org/wiki/Joropo"
+  },
+  {
+    "name": "Joropo Llanero Por Derecho",
+    "region": "Latin",
+    "genre": "Joropo (Venezuela)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Joropo por derecho where the harp bordones drive the 3/4 against the 6/8 treble, producing the vertical sesquialtera; maracas and cuatro lock the hemiola.",
+    "source": "https://openscholar.uga.edu/record/15747/files/primatic_stephen_p_200405_dma.pdf"
+  },
+  {
+    "name": "Joropo Central Tuyero",
+    "region": "Latin",
+    "genre": "Joropo Central (Venezuela)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [1, 5, 7, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Joropo central (tuyero) from the Venezuelan central coast, built on harp and buche with maracas; the 3-against-2 sesquialtera defines the swaying ternary groove.",
+    "source": "https://en.wikipedia.org/wiki/Joropo"
+  },
+  {
+    "name": "Golpe Larense",
+    "region": "Latin",
+    "genre": "Golpe (Venezuela)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 4, 6, 8, 10],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Golpe from the Lara region, a joropo cousin in 6/8 hemiola played on cuatro, cinco and tambora; the strummed accents outline the sesquialtera under improvised verses.",
+    "source": "https://www.melodigging.com/genre/folclor-llanero"
+  },
+  {
+    "name": "Tambor Culo'e Puya",
+    "region": "Latin",
+    "genre": "Tambor (Venezuela)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 3, 6, 8, 9],
+      "snareGhost": [1, 4, 5, 7, 10, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Barlovento culo'e puya, three tall redondo drums interlocking for the San Juan Bautista festival; the prima and cruzao weave fast figures over the pujao's base pulse.",
+    "source": "https://www.caracaschronicles.com/2026/03/20/from-barlovento-to-the-ballpark-the-journey-of-venezuelan-tambores/"
+  },
+  {
+    "name": "Tambor Sangueo",
+    "region": "Latin",
+    "genre": "Tambor (Venezuela)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [3, 6, 11, 14],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Slow, ceremonial sangueo golpe played on mina and curbata to process the image of San Juan; the deep two-measure cycle drives the procession through the town.",
+    "source": "https://radio.otilca.org/ritmos-tradicionales-de-venezuela-el-sangueo/"
+  },
+  {
+    "name": "Tambor Mina y Curbata",
+    "region": "Latin",
+    "genre": "Tambor (Venezuela)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [1, 5, 9, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Tambor mina ensemble from the central coast, the long mina struck with sticks while the curbata answers and laures strike the body; an Afro-Venezuelan festival groove.",
+    "source": "https://ritmostranscend.wordpress.com/instrumentation/"
+  },
+  {
+    "name": "Gaita Zuliana",
+    "region": "Latin",
+    "genre": "Gaita Zuliana (Venezuela)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Festive Zulian Christmas gaita in 6/8 accenting beats 1 and 4; the furro drones the bass, tambora hits accents and fills, charrasca and maracas keep the ternary texture.",
+    "source": "https://en.wikipedia.org/wiki/Gaita_zuliana"
+  },
+  {
+    "name": "Merengue Caraqueno",
+    "region": "Latin",
+    "genre": "Merengue Caraqueno (Venezuela)",
+    "length": 10,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 3, 6, 8],
+      "snareGhost": [2, 5, 9],
+      "hatClosed": [0, 2, 4, 6, 8],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Venezuelan merengue rucaneao in its signature irregular 5/8 subdivided 3+2; the asymmetric accent pattern gives the Caracas dance its distinctive limping swing.",
+    "source": "https://en.wikipedia.org/wiki/Venezuelan_merengue"
+  },
+  {
+    "name": "Calipso de El Callao",
+    "region": "Latin",
+    "genre": "Calipso (Venezuela)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [3, 11],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Carnival calypso from the mining town of El Callao in Guayana, a 4/4 syncopated groove on the open-ended bumbac drum with rallo, campana and steel pans.",
+    "source": "https://en.wikipedia.org/wiki/Calypso_de_El_Callao"
+  },
+  {
+    "name": "Son Jarocho Golpe",
+    "region": "Latin",
+    "genre": "Son Jarocho (Mexico)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 6, 10],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Veracruz son jarocho in 6/8 where the golpe accent pattern falls on the first, fourth and sixth pulses, articulated by jarana downstrokes and the tarima zapateado.",
+    "source": "https://en.wikipedia.org/wiki/Son_jarocho"
+  },
+  {
+    "name": "Son Jarocho Zapateado",
+    "region": "Latin",
+    "genre": "Son Jarocho (Mexico)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [1, 2, 4, 5, 7, 8, 10, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Dense zapateado footwork over the jarocho sesquialtera; dancers on the tarima act as a percussion instrument, the heelwork tracing both the 6/8 and 3/4 feels.",
+    "source": "https://folkways.si.edu/fandango-son-jarocho-community-tradition-improvisation/music/tools-for-teaching/smithsonian"
+  },
+  {
+    "name": "Son Huasteco Huapango",
+    "region": "Latin",
+    "genre": "Son Huasteco (Mexico)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Huapango from the Huasteca, a 6/8 son with marked sesquialtera and falsetto vocals; jarana and huapanguera strum the cross-rhythm while violin improvises.",
+    "source": "https://en.wikipedia.org/wiki/Huapango"
+  },
+  {
+    "name": "Son Jalisciense",
+    "region": "Latin",
+    "genre": "Son Jalisciense (Mexico)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Mariachi son jalisciense felt in 12/8 with sesquialtera and contratiempos; vihuela and guitarron drive the manico while harp and violins trade phrases.",
+    "source": "https://en.wikipedia.org/wiki/Son_jalisciense"
+  },
+  {
+    "name": "Mariachi Huapango",
+    "region": "Latin",
+    "genre": "Mariachi (Mexico)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 6, 8],
+      "snareGhost": [4, 10],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Mariachi huapango alternating a measure of 6/8 with a measure of 3/4 (sesquialtera); the vihuela manico and guitarron outline the shifting accent against the violins.",
+    "source": "https://content.westmusic.com/resources/mariachi-glossary/"
+  },
+  {
+    "name": "Danzon Baqueteo",
+    "region": "Latin",
+    "genre": "Danzon (Mexico/Cuba)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 3, 4, 6, 8, 11, 12, 14],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Danzon baqueteo on timbales, a composite of cinquillo and tresillo in 2/4 popularized in Veracruz; guiro and claves maintain the syncopation under the charanga.",
+    "source": "https://en.wikipedia.org/wiki/Danz%C3%B3n"
+  },
+  {
+    "name": "Danzon Cinquillo",
+    "region": "Latin",
+    "genre": "Danzon (Mexico/Cuba)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 3, 4, 8, 11, 12],
+      "snareGhost": [6, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The cinquillo cell (eighth-sixteenth-eighth-sixteenth-eighth) underpinning danzon, the first written music organized by Afro-Cuban clave, strongly syncopated in 2/4.",
+    "source": "https://en.wikipedia.org/wiki/Cinquillo"
+  },
+  {
+    "name": "Banda Tambora",
+    "region": "Latin",
+    "genre": "Banda (Mexico)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "Sinaloan banda oom-pah, the tambora (bass drum) on the downbeats and tarola (snare) on the offbeats, the tuba doubling the bass under massed brass.",
+    "source": "https://www.liveabout.com/mexican-popular-music-tejano-norteno-banda-2141529"
+  },
+  {
+    "name": "Banda Tambora Quebradita",
+    "region": "Latin",
+    "genre": "Banda (Mexico)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [1, 5, 9, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Up-tempo quebradita banda groove, the tuba pumping the bass on the beats while the tarola cracks the offbeats and the tambora drives the dancehall feel.",
+    "source": "https://collections.libraries.indiana.edu/cookmusiclibrary/exhibits/show/sounds_of_mexico/genres"
+  },
+  {
+    "name": "Norteno Polka",
+    "region": "Latin",
+    "genre": "Norteno (Mexico)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "Classic norteno polka in crisp 2/4 with the bajo sexto thumping bass on beat one and the chordal offbeat on beat two, the accordion carrying the melody.",
+    "source": "https://www.melodigging.com/genre/polka-nortena"
+  },
+  {
+    "name": "Norteno Redova",
+    "region": "Latin",
+    "genre": "Norteno (Mexico)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 8],
+      "snareGhost": [],
+      "hatClosed": [0, 4, 8],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "Norteno redova, a triple-meter dance form adapted from European immigrants, with the bajo sexto bass on the downbeat and chordal answers on the upper beats.",
+    "source": "https://en.wikipedia.org/wiki/Norte%C3%B1o_(music)"
+  },
+  {
+    "name": "Norteno Vals",
+    "region": "Latin",
+    "genre": "Norteno (Mexico)",
+    "length": 12,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [4, 8],
+      "snareGhost": [],
+      "hatClosed": [0, 4, 8],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "Norteno vals (waltz), bass on beat one with two chordal afterbeats; one of the European dance meters the accordion-bajo sexto duo adapted in northern Mexico.",
+    "source": "https://en.wikipedia.org/wiki/Norte%C3%B1o_(music)"
+  },
+  {
+    "name": "Cumbia Sonidera",
+    "region": "Latin",
+    "genre": "Cumbia Sonidera (Mexico)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Mexico City and Puebla sound-system cumbia at 90-105 BPM, kick on the strong beats, clap/snare on the backbeat, guiro and timbales articulating syncopations.",
+    "source": "https://www.melodigging.com/genre/cumbia-sonidera"
+  },
+  {
+    "name": "Cumbia Rebajada",
+    "region": "Latin",
+    "genre": "Cumbia Rebajada (Mexico)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [6, 14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Monterrey cumbia rebajada, the classic cumbia groove slowed to roughly 76 BPM for a heavy, syrupy, head-nodding swing tied to cholombiano sonidero culture.",
+    "source": "https://en.wikipedia.org/wiki/Cumbia_rebajada"
+  },
+  {
+    "name": "Chilena de la Costa",
+    "region": "Latin",
+    "genre": "Chilena (Mexico)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Chilena from the Costa Chica of Guerrero and Oaxaca, a cueca-derived son in bright 6/8 sesquialtera with handkerchief dancing, gritos and buoyant zapateado.",
+    "source": "https://frontera.library.ucla.edu/blog/2016/06/la-chilena-mexican-musical-migration"
+  },
+  {
+    "name": "Tamborito Panameno",
+    "region": "Latin",
+    "genre": "Tamborito (Panama)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Panama's national tamborito with cantadora and female chorus over a three-drum battery; the pujador keeps time, the repicador improvises, the caja anchors the bass amid handclaps.",
+    "source": "https://en.wikipedia.org/wiki/Tamborito"
+  },
+  {
+    "name": "Tamborito Repicador",
+    "region": "Latin",
+    "genre": "Tamborito (Panama)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [2, 3, 6, 7, 10, 11, 14, 15],
+      "snareGhost": [1, 5, 9, 13],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Improvisatory high repicador layer of the tamborito, answering the singer and chorus with rapid figures over the pujador's steady palm strokes and the caja bass.",
+    "source": "https://tamboritodepanama.wordpress.com/music/instruments/"
+  },
+  {
+    "name": "Cumbia Panamena",
+    "region": "Latin",
+    "genre": "Cumbia (Panama)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Panamanian cumbia from the Azuero region with accordion, tambores and churuca; the caja and pujador hold the offbeat while the bass drum drives the duple base.",
+    "source": "https://www.mexicohistorico.com/paginas/the-rhythms-of-panama-exploring-folk-music-32256b3e.html"
+  },
+  {
+    "name": "Mejorana",
+    "region": "Latin",
+    "genre": "Mejorana (Panama)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Mejorana from the Azuero Peninsula, a zapateo-derived dance accompanied by the five-string mejoranera over improvised decimas in a swaying ternary feel.",
+    "source": "https://en.wikipedia.org/wiki/Mejoranera"
+  },
+  {
+    "name": "Son Chapin",
+    "region": "Latin",
+    "genre": "Son Chapin (Guatemala)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Guatemala's national son chapin played on marimba with 3:2 sesquialtera; ornate right-hand figures over a steady bass ostinato accompany the zapateado couple-dance.",
+    "source": "https://folkways.si.edu/chapinlandia-marimba-music-of-guatemala/latin/album/smithsonian"
+  },
+  {
+    "name": "Marimba Son Guatemalteco",
+    "region": "Latin",
+    "genre": "Marimba (Guatemala)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 4, 6, 8, 10],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Guatemalan marimba ensemble son with hemiola cross-rhythm and chorused tremolo; guitars, guitarrilla and maracas reinforce the 6/8 against 3/4 swing.",
+    "source": "https://www.melodigging.com/genre/marimba-de-guatemala"
+  },
+  {
+    "name": "Marimba Son Chiapaneco",
+    "region": "Latin",
+    "genre": "Marimba (Mexico/Central America)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 6],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Marimba son of the Chiapas and Central American highlands, the bass marking the ternary beats while treble mallets trace the sesquialtera over a singing tremolo.",
+    "source": "https://www.phalarope.org/magazine/2021/3/1/la-marimba-guatemalas-national-instrument"
+  },
+  {
+    "name": "Palo de Mayo",
+    "region": "Latin",
+    "genre": "Palo de Mayo (Nicaragua)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 8, 11, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [7, 15],
+      "hhFoot": [4, 12]
+    },
+    "desc": "Afro-Nicaraguan maypole music from Bluefields, an electrified, up-tempo mento built on heavy drums, calypso and soca, with backbeat snare and syncopated bass.",
+    "source": "https://en.wikipedia.org/wiki/Palo_de_Mayo"
+  },
+  {
+    "name": "Marimba Son Costarricense",
+    "region": "Latin",
+    "genre": "Marimba (Costa Rica)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Guanacaste marimba son from Costa Rica in 6/8 sesquialtera, the diatonic marimba accompanying the punto guanacasteco couple-dance with handkerchiefs and bombas.",
+    "source": "https://www.melodigging.com/genre/marimba-de-guatemala"
+  }
+]
