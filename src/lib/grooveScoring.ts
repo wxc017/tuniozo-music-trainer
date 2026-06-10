@@ -155,6 +155,15 @@ const FOOT_STYLES: FootStyle[] = ["none", "none", "backbeat", "offbeats", "downb
 const pick = <T,>(a: T[]): T => a[Math.floor(Math.random() * a.length)];
 const chance = (p: number) => Math.random() < p;
 const seq = (n: number) => Array.from({ length: n }, (_, i) => i);
+const shuffled = <T,>(xs: T[]): T[] => {
+  const a = [...xs];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+};
+
+/** Generation biases — each leans the random variation toward a voice or feel.
+ *  Several can be active at once; an empty list means "no bias". */
+export type GrooveBias = "ghost" | "bass" | "snare" | "mixedHat";
 
 /** Left-foot positions for a point given a style. */
 function footFor(style: FootStyle, pointIdx: number, size: number): number[] {
@@ -308,30 +317,24 @@ function pulseOf(pos: number, offs: number[]): number {
   return pi;
 }
 
-/** Treat a sparse single-line entry (a bell/clave/timeline) as the hi-hat
- *  ostinato and build a simple kit under it: kick on the strong (even) pulse
- *  downbeats, snare backbeat on the odd pulses.  Yields a full, playable groove
- *  with the authentic timeline on top — not a bare one-voice line. */
+/** Sparse single-line / two-voice entry (a bell, clave or timeline): keep every
+ *  voice the entry defines ON ITS OWN voice — so the groove still reads as that
+ *  tradition and scores faithfully against the library — then SUPPLEMENT a
+ *  light, non-metronomic foundation only where it's missing: a steady 8th-note
+ *  hi-hat for time if the entry carries no cymbal, and a single downbeat kick if
+ *  it carries no bass.  No imposed backbeat — stamping a 4/4 backbeat under a
+ *  sparse clave was what made it read as Western rock/techno. */
 function kitUnderTimeline(g: LibraryGroove, cycle: GrooveCycle): PointVoices[] {
-  const offs = pointOffsets(cycle);
-  const total = cycleTotalSlots(cycle);
-  const pv: PointVoices[] = cycle.points.map(() => ({}));
+  const pv = grooveToPointVoices(g, cycle);
   const add = (pi: number, voice: LayerVoice, local: number) => {
     const cur = pv[pi][voice] ?? { hits: [], doubles: [] };
     if (!cur.hits.includes(local)) cur.hits.push(local);
     pv[pi][voice] = cur;
   };
-  // Densest defined voice = the timeline; ride it on the hi-hat.
-  const timeline = [g.voices.hatClosed, g.voices.snareAccent, g.voices.bass, g.voices.hhFoot]
-    .filter((a): a is number[] => !!a && a.length > 0)
-    .sort((a, b) => b.length - a.length)[0] ?? [];
-  for (const pos of timeline) {
-    if (pos < 0 || pos >= total) continue;
-    const pi = pulseOf(pos, offs);
-    add(pi, "hatClosed", pos - offs[pi]);
-  }
-  // Kick/snare foundation under the bell.
-  cycle.points.forEach((_p, i) => add(i, i % 2 === 0 ? "bass" : "snareAccent", 0));
+  const hasHat = pv.some(p => (p.hatClosed?.hits.length ?? 0) > 0);
+  const hasKick = pv.some(p => (p.bass?.hits.length ?? 0) > 0);
+  if (!hasHat) cycle.points.forEach((p, i) => { for (const s of hatShapePositions("8ths", p.subPulses)) add(i, "hatClosed", s); });
+  if (!hasKick) add(0, "bass", 0);
   return pv;
 }
 
@@ -343,52 +346,89 @@ function kitUnderTimeline(g: LibraryGroove, cycle: GrooveCycle): PointVoices[] {
  * hi-hat subdivision, the odd pushed kick, an open-hat accent and a 32nd
  * ornament are re-rolled around it.  Every call is fresh random.
  */
-function varyGroove(src: PointVoices[], cycle: GrooveCycle, preserve: LayerVoice[] = []): PointVoices[] {
+interface VaryOpts {
+  /** Voices that must survive untouched (the style backbone / clave). */
+  preserve?: LayerVoice[];
+  /** Active generation biases — lean the random variation toward these. */
+  biases?: GrooveBias[];
+  /** Global intensity damp (<1 = gentler) — used for sparse timeline grooves so
+   *  the clave's open feel survives the variation. */
+  damp?: number;
+}
+
+function varyGroove(src: PointVoices[], cycle: GrooveCycle, opts: VaryOpts = {}): PointVoices[] {
   const sizes = cycle.points.map(p => p.subPulses);
-  const keep = new Set(preserve);
+  const keep = new Set(opts.preserve ?? []);
+  const bias = new Set(opts.biases ?? []);
+  const damp = opts.damp ?? 1;
   const pv: PointVoices[] = src.map(p => {
     const o: PointVoices = {};
     for (const v of ALL_LIB_VOICES) if (p[v]) o[v] = { hits: [...p[v]!.hits], doubles: [...(p[v]!.doubles ?? [])] };
     return o;
   });
 
-  // 1. Hat subdivision — change how the ride divides the pulse (8ths ↔ 16ths ↔
-  //    offbeats ↔ mixed ↔ quarter).  Skipped when the closed-hat IS the
-  //    preserved timeline (a clave/bell must stay put to keep the style).
-  if (!keep.has("hatClosed") && pv.some(p => (p.hatClosed?.hits.length ?? 0) > 0) && chance(0.55)) {
-    const shape = pick<HatShape>(["8ths", "16ths", "offbeats", "mixed", "quarter"]);
+  // 1. Hi-hat subdivision — change how the ride divides the pulse.  Mixed-hat
+  //    bias makes the swap near-certain and favours busier/syncopated shapes.
+  //    Skipped when the closed-hat IS a preserved timeline.
+  const hatBias = bias.has("mixedHat");
+  if (!keep.has("hatClosed") && pv.some(p => (p.hatClosed?.hits.length ?? 0) > 0) && chance((hatBias ? 0.92 : 0.55) * damp)) {
+    const shapes: HatShape[] = hatBias ? ["mixed", "16ths", "offbeats", "mixed", "16ths"] : ["8ths", "16ths", "offbeats", "mixed", "quarter"];
+    const shape = pick(shapes);
     pv.forEach((p, i) => { if (p.hatClosed) p.hatClosed = { hits: hatShapePositions(shape, sizes[i]), doubles: [] }; });
   }
 
-  // 2. Ghost reshuffle — the main vocabulary driver.  Re-seed light ghost notes
-  //    on the weak slots around the backbeat (never on a slot the snare accents).
-  if (!keep.has("snareGhost") && chance(0.75)) {
+  // 2. Ghost reshuffle — the main vocabulary driver.  Ghost bias raises both the
+  //    chance and the density of ghost notes (never on a slot the snare accents).
+  const ghostProb = (bias.has("ghost") ? 0.95 : 0.75) * damp;
+  const ghostDensity = bias.has("ghost") ? 0.40 : 0.18;
+  if (!keep.has("snareGhost") && chance(ghostProb)) {
     pv.forEach((p, i) => {
       const accents = new Set(p.snareAccent?.hits ?? []);
-      const ghosts = seq(sizes[i]).filter(s => s !== 0 && !accents.has(s) && chance(0.18));
+      const ghosts = seq(sizes[i]).filter(s => s !== 0 && !accents.has(s) && chance(ghostDensity));
       if (ghosts.length) p.snareGhost = { hits: ghosts, doubles: [] };
       else delete p.snareGhost;
     });
   }
 
-  // 3. Pushed kick — keep every existing kick, occasionally add a syncopated one
-  //    on a late slot of a point.
-  if (!keep.has("bass") && chance(0.55)) {
+  // 3. Pushed kick — keep every existing kick; add syncopated ones.  Bass bias
+  //    makes the kick busier (higher chance, up to two added per point).
+  const kickOuter = (bias.has("bass") ? 0.85 : 0.55) * damp;
+  const kickInner = bias.has("bass") ? 0.6 : 0.3;
+  const kickMax = bias.has("bass") ? 2 : 1;
+  if (!keep.has("bass") && chance(kickOuter)) {
     pv.forEach((p, i) => {
       const cur = new Set(p.bass?.hits ?? []);
       const accents = new Set(p.snareAccent?.hits ?? []);
-      const cand = seq(sizes[i]).filter(s => s !== 0 && !cur.has(s) && !accents.has(s));
-      if (cand.length && chance(0.3)) cur.add(pick(cand));
+      let added = 0;
+      for (const s of shuffled(seq(sizes[i]))) {
+        if (added >= kickMax) break;
+        if (s !== 0 && !cur.has(s) && !accents.has(s) && chance(kickInner)) { cur.add(s); added++; }
+      }
       if (cur.size) p.bass = { hits: [...cur].sort((a, b) => a - b), doubles: [] };
     });
   }
 
-  // 4. Open-hat accent — lift one offbeat closed hat into an open hat.
-  if (!keep.has("hatClosed") && chance(0.3)) {
+  // 3b. Snare-accent bias — add a syncopated snare accent (busier comping /
+  //     displaced backbeat).  Off by default so it can't dilute a clean groove;
+  //     skipped when the snare is a preserved clave.
+  if (bias.has("snare") && !keep.has("snareAccent")) {
+    pv.forEach((p, i) => {
+      const cur = new Set(p.snareAccent?.hits ?? []);
+      const cand = seq(sizes[i]).filter(s => s !== 0 && !cur.has(s));
+      if (cand.length && chance(0.4)) {
+        cur.add(pick(cand));
+        p.snareAccent = { hits: [...cur].sort((a, b) => a - b), doubles: [] };
+      }
+    });
+  }
+
+  // 4. Open-hat accent — lift one offbeat closed hat into an open hat.  Mixed-hat
+  //    bias makes this more frequent.
+  if (!keep.has("hatClosed") && chance(bias.has("mixedHat") ? 0.6 : 0.3)) {
     const i = Math.floor(Math.random() * pv.length);
-    const offs = (pv[i].hatClosed?.hits ?? []).filter(s => s !== 0);
-    if (offs.length) {
-      const s = pick(offs);
+    const off = (pv[i].hatClosed?.hits ?? []).filter(s => s !== 0);
+    if (off.length) {
+      const s = pick(off);
       pv[i].hatClosed = { hits: pv[i].hatClosed!.hits.filter(h => h !== s), doubles: [] };
       pv[i].hatOpen = { hits: [...(pv[i].hatOpen?.hits ?? []), s], doubles: [] };
     }
@@ -410,47 +450,56 @@ function varyGroove(src: PointVoices[], cycle: GrooveCycle, preserve: LayerVoice
   return pv;
 }
 
-/**
- * Draw a RANDOM real-world groove of the cycle's length (filtered to the chosen
- * region/genre, or any tradition when none is given) and use it as SCAFFOLDING
- * only — `varyGroove` keeps its style skeleton and re-rolls the playing, so each
- * call exposes the player to a different groove played a different way.  A
- * full-kit entry (≥3 voices) supplies its own voices; a sparse timeline entry
- * becomes a preserved bell/clave over a kick+backbeat kit.  Falls back to the
- * generative engine only when no library entry of that length exists.
- */
 /** Source-type test: a sparse single-line entry (<3 defined voices) is treated
- *  as a bell/clave TIMELINE (preserved as the hi-hat over a kick+backbeat kit);
- *  a fuller entry supplies its own kit voices directly. */
+ *  as a bell/clave TIMELINE (kept as a cross-stick clave on the snare under a
+ *  light kick + hi-hat); a fuller entry supplies its own kit voices directly. */
 export function isTimelineGroove(g: LibraryGroove): boolean {
   return ALL_LIB_VOICES.filter(v => (g.voices[v]?.length ?? 0) > 0).length < 3;
 }
 
+/** Voices a library entry actually defines (non-empty) — the ones a timeline
+ *  source must preserve so it keeps reading as that tradition. */
+function sourceVoices(g: LibraryGroove): LayerVoice[] {
+  return ALL_LIB_VOICES.filter(v => (g.voices[v]?.length ?? 0) > 0);
+}
+
 /** Build one varied groove from a SPECIFIC library entry used as scaffolding.
  *  Shared by generateInStyle and the stress test so both exercise identical
- *  logic: keep the style skeleton, re-roll the playing (see varyGroove). */
-export function generateFromGroove(g: LibraryGroove, cycle: GrooveCycle, mode?: AestheticMode, computeScore = true): AssembleResult {
+ *  logic: keep the style skeleton, re-roll the playing (see varyGroove).  The
+ *  optional `biases` lean the variation toward a voice/feel (ghost-heavy,
+ *  busy bass, busy snare, mixed hi-hat). */
+export function generateFromGroove(
+  g: LibraryGroove, cycle: GrooveCycle,
+  opts: { mode?: AestheticMode; biases?: GrooveBias[]; computeScore?: boolean } = {},
+): AssembleResult {
   const timeline = isTimelineGroove(g);
   const base = timeline ? kitUnderTimeline(g, cycle) : grooveToPointVoices(g, cycle);
-  const pointVoices = varyGroove(base, cycle, timeline ? ["hatClosed"] : []);
+  const pointVoices = varyGroove(base, cycle, {
+    // Timeline grooves keep EVERY source voice (the bell/clave on its own voice);
+    // full-kit grooves keep their backbone (snare + kick are never removed by
+    // varyGroove) but let the hat/ghosts re-roll for vocabulary.
+    preserve: timeline ? sourceVoices(g) : [],
+    biases: opts.biases,
+    damp: timeline ? 0.6 : 1,   // keep sparse timelines open
+  });
   const assembled = assembleCycle(cycle, pointVoices);
-  const m = resolveMode(mode ?? "musical");
+  const m = resolveMode(opts.mode ?? "musical");
   // computeScore:false skips the full library-bonus scan (nearestLibraryGroove)
   // — used by the stress test to avoid 100k library scans; production keeps the
   // full score.  The generated groove itself is identical either way.
-  const score = computeScore ? scoreGroove(assembled, m) : scoreGrooveFeatures(assembled, m);
+  const score = (opts.computeScore ?? true) ? scoreGroove(assembled, m) : scoreGrooveFeatures(assembled, m);
   return { pointVoices, assembled, score, match: { groove: g, similarity: 1 } };
 }
 
 export function generateInStyle(
   cycle: GrooveCycle,
-  opts: { region?: Region; genre?: string; mode?: AestheticMode } = {},
+  opts: { region?: Region; genre?: string; mode?: AestheticMode; biases?: GrooveBias[] } = {},
 ): AssembleResult {
   const total = cycleTotalSlots(cycle);
   const pool = GROOVE_LIBRARY.filter(g =>
     g.length === total &&
     (!opts.region || g.region === opts.region) &&
     (!opts.genre || g.genre === opts.genre));
-  if (pool.length > 0) return generateFromGroove(pick(pool), cycle, opts.mode);
+  if (pool.length > 0) return generateFromGroove(pick(pool), cycle, { mode: opts.mode, biases: opts.biases });
   return assembleMusicalCycle(cycle, { mode: opts.mode });
 }

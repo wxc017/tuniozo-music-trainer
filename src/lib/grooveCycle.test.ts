@@ -111,7 +111,7 @@ describe("ostinato shapes + strip data", () => {
     const ms = cycleToStripMeasures(cycle, cycle.points.map(() => ({})));
     expect(ms.length).toBe(1);
     expect(ms[0].slotOverride).toBe(16);
-    expect(ms[0].beamGroups).toEqual([4, 4, 4, 4]);
+    expect(ms[0].capToBeat).toBe(true);
   });
 
   it("mixed cycle → one measure per pulse with its own grid", () => {
@@ -122,12 +122,12 @@ describe("ostinato shapes + strip data", () => {
     expect(ms[1].slotOverride).toBe(5);
   });
 
-  it("cycleToStripData renders an even grid (shortHits + beamAcrossRests, no rests)", () => {
+  it("cycleToStripData renders beat-aligned drum values (capToBeat, rests shown)", () => {
     const cycle = makeUniformCycle(4, 4);
     const sd = cycleToStripData(cycle, cycle.points.map(() => ({})));
-    expect(sd.shortHits).toBe(true);
-    expect(sd.beamAcrossRests).toBe(true);
-    expect(sd.showRests).toBe(false);
+    expect(sd.capToBeat).toBe(true);
+    expect(sd.showRests).toBe(true);
+    expect(sd.shortHits).toBeUndefined();
   });
 
   it("gridForResolution maps 5 → quintuplet, 9 → null", () => {

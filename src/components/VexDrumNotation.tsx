@@ -1097,9 +1097,14 @@ interface VexDrumStripProps {
    *  buttons) that need to pin to actual rendered note positions rather than
    *  estimate them from slot-index arithmetic. */
   onNoteSlotPositions?: (positions: Array<{ measureIdx: number; slot: number; x: number }>) => void;
+  /** Symmetric beats: format EVERY measure's notes to the same width (the common
+   *  per-beat box minus a margin) instead of each measure's own note area.  So a
+   *  3-note triplet beat and a 4-note sixteenth beat occupy identical horizontal
+   *  space and the cycle reads as an even grid of equal-width pulses. */
+  equalBeatWidth?: boolean;
 }
 
-export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fullBar = false, staveY: staveYProp, oneBeatPerBar = false, showClef = true, showTimeSig = false, singleLine = false, onNotePositions, onNoteSlotPositions }: VexDrumStripProps) {
+export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fullBar = false, staveY: staveYProp, oneBeatPerBar = false, showClef = true, showTimeSig = false, singleLine = false, onNotePositions, onNoteSlotPositions, equalBeatWidth = false }: VexDrumStripProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1256,7 +1261,15 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
         // Leave a small tail margin so the last notehead + any tie/flag
         // fits cleanly inside the end barline.
         const noteAreaW = stave.getNoteEndX() - stave.getNoteStartX();
-        const fmtW = Math.max(40, noteAreaW - Math.max(14, noteAreaW * 0.07));
+        let fmtW = Math.max(40, noteAreaW - Math.max(14, noteAreaW * 0.07));
+        if (equalBeatWidth) {
+          // Symmetric beats: format every measure's notes to the SAME span (the
+          // common per-beat box minus a margin) so a 3-note triplet beat and a
+          // 4-note sixteenth beat take identical width.  The first bar's clef
+          // simply shifts its notes right inside its (wider) box.
+          const baseBox = measureWidths && measureWidths.length ? Math.min(...measureWidths) : measureWidth;
+          fmtW = Math.max(40, baseBox - 24);
+        }
 
         try {
           // Low softmax → near-uniform per-slot spacing, so every bar with the

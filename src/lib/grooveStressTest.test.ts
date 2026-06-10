@@ -133,7 +133,7 @@ describe("groove generator — 100k style-fit stress test", () => {
 
       for (let k = 0; k < n; k++) {
         const g = combo.pool[randInt(combo.pool.length)];
-        const res = generateFromGroove(g, combo.cycle, undefined, false);
+        const res = generateFromGroove(g, combo.cycle, { computeScore: false });
         const a = res.assembled;
         const timeline = isTimelineGroove(g);
 
@@ -150,9 +150,18 @@ describe("groove generator — 100k style-fit stress test", () => {
 
         // ── Skeleton preservation ──────────────────────────────────────────
         if (timeline) {
+          // Every source voice is preserved on its OWN voice.
           tlChecked++; agg.skeletonChecked++;
-          const bell = timelinePositions(g).filter(x => x < total);
-          if (isSubset(bell, new Set(a.hatHits))) { tlBell++; agg.skeletonOK++; }
+          const av: Record<string, number[]> = {
+            bass: a.bassHits, snareAccent: a.snareHits, snareGhost: a.ghostHits,
+            hatClosed: a.hatHits, hatOpen: a.hatOpenHits, hhFoot: a.hhFootHits,
+          };
+          const kept = (["bass", "snareAccent", "snareGhost", "hatClosed", "hatOpen", "hhFoot"] as const)
+            .every(v => {
+              const src = g.voices[v];
+              return !src || !src.length || isSubset(src.filter(x => x < total), new Set(av[v]));
+            });
+          if (kept) { tlBell++; agg.skeletonOK++; }
         } else {
           kitChecked++; agg.skeletonChecked++;
           const sBass = (g.voices.bass ?? []).filter(x => x < total);
@@ -220,7 +229,7 @@ describe("groove generator — 100k style-fit stress test", () => {
 
     L.push("\n── 2. SKELETON PRESERVATION (style backbone survives variation) ──────");
     L.push(`  kit sources    — backbeat+kick kept: ${pctStr(kitBackbone, kitChecked)}  (kick anchors ${pctStr(kickKept, kitChecked)}, snare exact ${pctStr(snareExact, kitChecked)})  n=${kitChecked}`);
-    L.push(`  timeline srcs  — bell/clave kept on hi-hat: ${pctStr(tlBell, tlChecked)}  n=${tlChecked}`);
+    L.push(`  timeline srcs  — all source voices preserved: ${pctStr(tlBell, tlChecked)}  n=${tlChecked}`);
     L.push(`  degenerate (empty) grooves: ${degenerate}`);
 
     L.push("\n── 3. STYLE IDENTITY  nearest real groove to the variation (sample) ──");

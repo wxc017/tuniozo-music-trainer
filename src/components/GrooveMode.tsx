@@ -18,7 +18,7 @@ import {
   SUB_PULSE_SIZES,
   makeCycle, isUniform, assembleCycle, cycleToStripMeasures,
 } from "@/lib/grooveCycle";
-import { generateInStyle, scoreGroove, grooveToPointVoices } from "@/lib/grooveScoring";
+import { generateInStyle, scoreGroove, grooveToPointVoices, type GrooveBias } from "@/lib/grooveScoring";
 import { nearestLibraryGroove, GROOVE_LIBRARY, REGIONS, genresForRegion, type LibraryMatch, type Region, type LibraryGroove } from "@/lib/grooveLibrary";
 import { cycleTotalSlots } from "@/lib/grooveCycle";
 import {
@@ -26,6 +26,14 @@ import {
 } from "@/lib/grooveStore";
 
 type Aesthetic = "musical" | "awkward" | "both";
+
+/** Generation-bias toggles — colours echo the voice each one emphasises. */
+const BIAS_OPTS: { key: GrooveBias; label: string; color: string }[] = [
+  { key: "ghost",    label: "Ghost notes",  color: "#9a9a9a" },
+  { key: "bass",     label: "Busy bass",    color: "#e0a040" },
+  { key: "snare",    label: "Busy snare",   color: "#60b0e0" },
+  { key: "mixedHat", label: "Mixed hi-hat", color: "#c8aa50" },
+];
 
 /** Factor a library groove's slot count into editor pulse sizes (each 2..7),
  *  preferring a uniform sixteenth-style grouping, falling back to an additive
@@ -44,6 +52,9 @@ export default function GrooveMode() {
   const [aesthetic, setAesthetic] = useState<Aesthetic>("musical");
   const [region, setRegion] = useState<Region | "Any">("Any");
   const [genre, setGenre] = useState<string>("");
+  const [symmetric, setSymmetric] = useState(true);
+  const [biases, setBiases] = useState<GrooveBias[]>([]);
+  const toggleBias = (b: GrooveBias) => setBiases(prev => (prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]));
   const [pointVoices, setPointVoices] = useState<PointVoices[]>(() => sizes.map(() => ({})));
   const [genMatch, setGenMatch] = useState<LibraryMatch | null>(null);
 
@@ -69,10 +80,11 @@ export default function GrooveMode() {
       region: region === "Any" ? undefined : region,
       genre: genre || undefined,
       mode: aesthetic,
+      biases,
     });
     setPointVoices(res.pointVoices);
     setGenMatch(res.match);
-  }, [cycle, aesthetic, region, genre, total]);
+  }, [cycle, aesthetic, region, genre, total, biases]);
 
   // ── Per-pulse size editing ──────────────────────────────────────────────
   const setAll = (n: number) => setSizes(prev => prev.map(() => n));
@@ -152,6 +164,15 @@ export default function GrooveMode() {
         <span style={{ fontSize: 10, color: "#555" }}>Generate draws an idiomatic groove from this tradition</span>
       </div>
 
+      {/* ── Generation biases (lean the random variation toward a voice/feel) ─ */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <span style={lbl}>BIAS</span>
+        {BIAS_OPTS.map(b => (
+          <button key={b.key} onClick={() => toggleBias(b.key)} style={chip(biases.includes(b.key), b.color)}>{b.label}</button>
+        ))}
+        <span style={{ fontSize: 10, color: "#555" }}>lean each Generate toward a voice/feel — combine freely, or leave all off for neutral</span>
+      </div>
+
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
         <span style={lbl}>SUB-PULSES / PULSE</span>
         {sizes.map((s, i) => (
@@ -159,12 +180,16 @@ export default function GrooveMode() {
             style={{ ...chip(false), fontFamily: "monospace", minWidth: 26 }}>{s}</button>
         ))}
         <span style={{ fontSize: 10, color: "#555" }}>e.g. 3-2-2 · 3-4-5 · 6-8-8 — click a number to change it</span>
+        <button onClick={() => setSymmetric(s => !s)} title="give every beat the same width even when subdivisions differ (e.g. a 3 and a 4)"
+          style={{ ...chip(symmetric, "#50b0c0"), marginLeft: "auto" }}>
+          {symmetric ? "◧ symmetric beats" : "◧ proportional beats"}
+        </button>
       </div>
 
       {/* ── Assembled cycle + rationale ────────────────────────────────── */}
       <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: 8, padding: 12 }}>
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <VexDrumStrip measures={measures} measureWidth={uniform ? stripW : Math.max(90, stripW / sizes.length)} height={210} showClef oneBeatPerBar={!uniform} />
+          <VexDrumStrip measures={measures} measureWidth={uniform ? stripW : Math.max(90, stripW / sizes.length)} height={210} showClef oneBeatPerBar={!uniform} equalBeatWidth={symmetric && !uniform} />
         </div>
         <div style={{ marginTop: 8, fontSize: 12, color: "#888", textAlign: "center" }}>
           {rationale ? (

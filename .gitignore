@@ -37,3 +37,6 @@ scripts/build-transcriptions/sldl.conf
 # Blues corpus index (artist/title/path metadata) — keep out of the public repo
 public/transcriptions/bluesguitar.json
 public/transcriptions/bluesvocal.json
+
+# stress-test output artifact
+stress-report.txt
