@@ -1,0 +1,882 @@
+[
+  {
+    "name": "Medium Swing Ride",
+    "region": "American",
+    "genre": "Jazz (Swing)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [],
+      "snareGhost": [],
+      "hatClosed": [0, 3, 5, 6, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "The foundational medium-tempo jazz ride cymbal pattern with the 'ding ding-da' spang-a-lang on the ride, hi-hat foot chicking on beats 2 and 4, and lightly feathered bass drum on the quarter pulse.",
+    "source": "https://www.learnjazzstandards.com/blog/learning-jazz/drums/jazz-drumming-mastering-ride-cymbal-part-1/"
+  },
+  {
+    "name": "Up-Tempo Swing Ride",
+    "region": "American",
+    "genre": "Jazz (Swing)",
+    "length": 12,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [],
+      "snareGhost": [],
+      "hatClosed": [0, 3, 5, 6, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "Fast bebop swing where the bass drum drops out (no feathering) and time is carried entirely by the legato ride pattern over crisp hi-hat backbeats on 2 and 4.",
+    "source": "https://www.paulwertico.com/articles/jazzridecymbal1.php"
+  },
+  {
+    "name": "Quarter-Note Ride (Simple Swing)",
+    "region": "American",
+    "genre": "Jazz (Swing)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [],
+      "snareGhost": [],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "The stripped-down quarter-note ride used for sensitive accompaniment, four even pulses on the ride with hi-hat on 2 and 4 and feathered bass drum.",
+    "source": "https://joethedrummer.com/play-jazz-ride-swing-pattern/"
+  },
+  {
+    "name": "Two-Feel (Half-Time Swing)",
+    "region": "American",
+    "genre": "Jazz (Swing)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [],
+      "snareGhost": [],
+      "hatClosed": [0, 3, 5, 6, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "The relaxed 'two-feel' used on heads and ballad A-sections, bass drum and bassist landing on beats 1 and 3 while the ride keeps the swing pattern over hi-hat on 2 and 4.",
+    "source": "https://www.learnjazzstandards.com/blog/learning-jazz/drums/jazz-drumming-mastering-ride-cymbal-part-1/"
+  },
+  {
+    "name": "Four-Feel Walking Time",
+    "region": "American",
+    "genre": "Jazz (Swing)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [],
+      "snareGhost": [],
+      "hatClosed": [0, 3, 5, 6, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "The walking four-feel where the bass drum feathers all four quarter notes in unison with a walking bassline beneath the ride and hi-hat on 2 and 4.",
+    "source": "https://www.learnjazzstandards.com/blog/learning-jazz/drums/jazz-drumming-mastering-ride-cymbal-part-2/"
+  },
+  {
+    "name": "Bebop Comping (Snare Off-Beats)",
+    "region": "American",
+    "genre": "Jazz (Bebop)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [5, 11],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 3, 5, 6, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "Bebop conversational comping with the snare answering the ride on the 'da' of the triplet (the and-of-2 and and-of-4) plus light ghosting, in the style of Max Roach and Kenny Clarke.",
+    "source": "https://www.learnjazzstandards.com/blog/learning-jazz/drums/jazz-drumming-mastering-ride-cymbal-part-2/"
+  },
+  {
+    "name": "Dropping Bombs (Bebop Bass Accents)",
+    "region": "American",
+    "genre": "Jazz (Bebop)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 5, 6, 11],
+      "snareAccent": [3, 9],
+      "snareGhost": [],
+      "hatClosed": [0, 3, 5, 6, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "Kenny Clarke's 'dropping bombs' approach, irregular accented bass-drum punctuations against snare rim-shots over the ride pattern, breaking the time up for kinetic interplay.",
+    "source": "https://www.learnjazzstandards.com/blog/learning-jazz/drums/jazz-drumming-mastering-ride-cymbal-part-2/"
+  },
+  {
+    "name": "Hard-Bop Shuffle",
+    "region": "American",
+    "genre": "Jazz (Hard Bop)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [3, 9],
+      "snareGhost": [5, 11],
+      "hatClosed": [0, 2, 3, 5, 6, 8, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "The greasy hard-bop shuffle (think Art Blakey / Horace Silver), driving triplet shuffle on the ride with a strong backbeat snare on 2 and 4 and ghosted triplet tails.",
+    "source": "https://drummagazine.com/the-jazz-ride-pattern-making-it-swing/"
+  },
+  {
+    "name": "Charleston Comping Figure",
+    "region": "American",
+    "genre": "Jazz (Swing)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 8],
+      "snareGhost": [],
+      "hatClosed": [0, 3, 5, 6, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "The classic Charleston comping rhythm, accents on beat 1 and the and-of-2 in unison between snare and bass under the ongoing ride, a cornerstone of jazz independence.",
+    "source": "https://www.paulwertico.com/articles/jazzridecymbal2.php"
+  },
+  {
+    "name": "Jazz Waltz (3/4)",
+    "region": "American",
+    "genre": "Jazz (Waltz)",
+    "length": 9,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [3],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 3, 6, 8],
+      "hatOpen": [],
+      "hhFoot": [3, 6]
+    },
+    "desc": "The standard jazz waltz ride figure in 3/4 (nine triplet subdivisions), ride accenting the lilting 1, and-of-2, 3 phrase with hi-hat foot on beats 2 and 3.",
+    "source": "https://www.learnjazzstandards.com/blog/learning-jazz/drums/trading-fours-like-elvin-jones-style-and-analysis/"
+  },
+  {
+    "name": "Fast Jazz Waltz",
+    "region": "American",
+    "genre": "Jazz (Waltz)",
+    "length": 9,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [],
+      "snareGhost": [3, 6],
+      "hatClosed": [0, 3, 6],
+      "hatOpen": [],
+      "hhFoot": [3, 6]
+    },
+    "desc": "Up-tempo jazz waltz reduced to dotted-quarter ride pulses with feathered bass on 1 and ghosted snare comping on 2 and 3, floating the fast three feel.",
+    "source": "https://www.learnjazzstandards.com/blog/learning-jazz/drums/trading-fours-like-elvin-jones-style-and-analysis/"
+  },
+  {
+    "name": "Elvin Jones Rolling 6/8",
+    "region": "American",
+    "genre": "Jazz (Modal)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [3, 9],
+      "snareGhost": [1, 4, 7, 10],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "Elvin Jones' trademark rolling triplet 6/8 feel from the Coltrane quartet, a churning broken-triplet wash spread around the kit with a built-in 3-against-4 cross-rhythm.",
+    "source": "https://drummagazine.com/inside-the-drumming-of-elvin-jones/"
+  },
+  {
+    "name": "Tony Williams Fast Ride",
+    "region": "American",
+    "genre": "Jazz (Post-Bop)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [5, 11],
+      "snareGhost": [],
+      "hatClosed": [0, 3, 5, 6, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 3, 6, 9]
+    },
+    "desc": "Tony Williams' incendiary fast ride, a relentless legato cymbal with the hi-hat foot closing on all four quarter notes for forward propulsion, as on the Miles Davis quintet.",
+    "source": "https://cruiseshipdrummer.com/2017/05/16/key-players-elvin-jones/"
+  },
+  {
+    "name": "Broken-Time Free Jazz",
+    "region": "American",
+    "genre": "Jazz (Free)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 7, 10],
+      "snareAccent": [2, 6, 9],
+      "snareGhost": [1, 5, 8, 11],
+      "hatClosed": [0, 3, 8],
+      "hatOpen": [5],
+      "hhFoot": [3, 9]
+    },
+    "desc": "Sunny Murray / Rashied Ali-style broken time, an implied rather than stated pulse with the ride fragmented and accents scattered across the kit in a continuous shimmering flow.",
+    "source": "https://drummagazine.com/inside-the-drumming-of-elvin-jones/"
+  },
+  {
+    "name": "Legato Brush Ballad",
+    "region": "American",
+    "genre": "Jazz (Ballad)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [3, 9],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "The legato brush ballad, left-hand circular stirring on the snare for sustain with the right brush tapping the swing rhythm and a soft backbeat, hi-hat foot on 2 and 4.",
+    "source": "https://www.greatertorontomusic.ca/post/learn-to-play-jazz-drums-swing-shuffle-and-more"
+  },
+  {
+    "name": "Brush Swing (Tap Pattern)",
+    "region": "American",
+    "genre": "Jazz (Swing)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [5, 11],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "Up-tempo brush swing where the right-hand brush taps the swing ride pattern on the snare head while the left hand sweeps, keeping the dance-like pulse with hi-hat on 2 and 4.",
+    "source": "https://www.greatertorontomusic.ca/post/learn-to-play-jazz-drums-swing-shuffle-and-more"
+  },
+  {
+    "name": "Afro-Cuban Mambo Bell (Jazz)",
+    "region": "American",
+    "genre": "Latin Jazz (Afro-Cuban)",
+    "length": 16,
+    "voices": {
+      "bass": [3, 7, 11, 15],
+      "snareAccent": [4, 12],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 7, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [2, 6, 10, 14]
+    },
+    "desc": "Latin-jazz mambo adapted to the kit with the mambo bell pattern on the ride/cowbell, tumbao bass drum on the and-of-2 and 4, and cross-stick comp, hi-hat foot on 2 and 4.",
+    "source": "https://rhythmnotes.net/afro-cuban-rhythms-for-drum-set/"
+  },
+  {
+    "name": "Cha-Cha-Cha (Drumset)",
+    "region": "American",
+    "genre": "Latin Jazz (Afro-Cuban)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [6, 7, 14],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The cha-cha-cha on drumset, cha-cha bell quarter pulse, four-on-the-floor bass drum, and the characteristic 'cha-cha-cha' snare/cross-stick on the and-of-2 into 3.",
+    "source": "https://rhythmnotes.net/afro-cuban-rhythms-for-drum-set/"
+  },
+  {
+    "name": "Afro-Cuban 6/8 Bembe (Jazz)",
+    "region": "American",
+    "genre": "Latin Jazz (Afro-Cuban)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [4, 10],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "The Afro-Cuban 6/8 bembe feel for jazz, the seven-stroke bembe bell pattern voiced on the ride with cross-stick clave accents, blending the swing triplet with sub-Saharan roots.",
+    "source": "https://drumsettips.org/bembe-drum-style-latin-drum-set-beats/"
+  },
+  {
+    "name": "Bossa Nova",
+    "region": "American",
+    "genre": "Latin Jazz (Brazilian)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11],
+      "snareAccent": [0, 6, 10],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The bossa nova on drumset, surdo-style bass drum on the dotted-quarter pulse, steady eighths on the hi-hat, and the rim-click clave cross-stick on the snare.",
+    "source": "https://www.libertyparkmusic.com/guide-drum-kit-notation-latin-music-bossa-nova/"
+  },
+  {
+    "name": "Samba (Jazz)",
+    "region": "American",
+    "genre": "Latin Jazz (Brazilian)",
+    "length": 16,
+    "voices": {
+      "bass": [2, 3, 6, 7, 10, 11, 14, 15],
+      "snareAccent": [0, 6, 10],
+      "snareGhost": [4, 12],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": [2, 6, 10, 14]
+    },
+    "desc": "The driving samba feel for jazz, the surdo 'boom' on the bass drum heavy on beats 2 and 4, hi-hat foot keeping the surdo pulse, and bossa/clave cross-stick on the snare.",
+    "source": "https://www.libertyparkmusic.com/guide-drum-kit-notation-latin-music-samba/"
+  },
+  {
+    "name": "Partido Alto (Samba Jazz)",
+    "region": "American",
+    "genre": "Latin Jazz (Brazilian)",
+    "length": 16,
+    "voices": {
+      "bass": [2, 6, 10, 14],
+      "snareAccent": [3, 6, 11, 14],
+      "snareGhost": [0, 8],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [2, 6, 10, 14]
+    },
+    "desc": "The syncopated partido alto samba groove used in fusion and Brazilian jazz, a 16th-note snare/rim phrase with the surdo bass on the upbeats, propulsive and dance-like.",
+    "source": "https://www.libertyparkmusic.com/guide-drum-kit-notation-latin-music-samba/"
+  },
+  {
+    "name": "Songo (Latin-Jazz Fusion)",
+    "region": "American",
+    "genre": "Latin Jazz (Afro-Cuban)",
+    "length": 16,
+    "voices": {
+      "bass": [3, 7, 10, 11, 15],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 14],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The Cuban songo (Los Van Van / Changuito) adapted for the kit, a modern fusion of tumbao bass, clave-based snare and timbale-style accents that revolutionized Latin-jazz drumming.",
+    "source": "https://rhythmnotes.net/afro-cuban-rhythms-for-drum-set/"
+  },
+  {
+    "name": "New Orleans Second Line",
+    "region": "American",
+    "genre": "New Orleans",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 6],
+      "snareAccent": [4, 6, 9],
+      "snareGhost": [2, 7, 10],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "The New Orleans second-line groove with its swung shuffle between triplet and straight, snare clave-style accents building to the 'big four', and the bass drum's syncopated push.",
+    "source": "https://www.mi.edu/in-the-know/essential-groove-series-drummers-new-orleans-second-line/"
+  },
+  {
+    "name": "New Orleans Street Beat",
+    "region": "American",
+    "genre": "New Orleans",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8, 12],
+      "snareAccent": [4, 7, 12, 14],
+      "snareGhost": [1, 2, 5, 6, 9, 10, 13],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The marching-derived New Orleans street beat with rudimental snare chatter and the 'big four' accent on beat 4, bass drum on 1 and 3 with the characteristic syncopated push.",
+    "source": "http://www.drummerworld.com/Drumclinic/neworleanssecondline.html"
+  },
+  {
+    "name": "New Orleans Funk (Zigaboo)",
+    "region": "American",
+    "genre": "New Orleans",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 10],
+      "snareAccent": [4, 12],
+      "snareGhost": [7, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Zigaboo Modeliste / Meters-style New Orleans funk, a syncopated linear interplay of bass drum and snare with a strong backbeat and the second-line lilt under straight 16ths.",
+    "source": "https://drummagazine.com/lesson-hey-pocky-way-new-orleans-second-line-beat/"
+  },
+  {
+    "name": "Mardi Gras Mambo (Caribbean Funk)",
+    "region": "American",
+    "genre": "New Orleans",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The Caribbean-tinged New Orleans rumba-funk feel (Professor Longhair lineage), a 2-3 son-clave bass drum under backbeat snare, where the city's Latin tinge meets the street beat.",
+    "source": "https://drummagazine.com/lesson-hey-pocky-way-new-orleans-second-line-beat/"
+  },
+  {
+    "name": "Take Five (5/4)",
+    "region": "American",
+    "genre": "Jazz (Odd Meter)",
+    "length": 15,
+    "voices": {
+      "bass": [0, 6, 9],
+      "snareAccent": [3, 12],
+      "snareGhost": [13, 14],
+      "hatClosed": [0, 2, 3, 5, 6, 8, 9, 11, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "Joe Morello's iconic 5/4 groove on Brubeck's 'Take Five', the traditional swing ride extended by one beat per bar with ghosted snare triplets sliding back to beat one.",
+    "source": "https://www.totaldrummer.com/take-five-drum-beat/"
+  },
+  {
+    "name": "Jazz 5/4 Swing",
+    "region": "American",
+    "genre": "Jazz (Odd Meter)",
+    "length": 15,
+    "voices": {
+      "bass": [0, 9],
+      "snareAccent": [6, 12],
+      "snareGhost": [],
+      "hatClosed": [0, 3, 5, 6, 9, 11, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [3, 12]
+    },
+    "desc": "A general medium 5/4 swing feel grouped 3+2, carrying the swing ride across five triplet-subdivided beats with the hi-hat foot anchoring the two halves of the bar.",
+    "source": "https://www.drumstheword.com/free-drum-lesson-take-five-famous-drum-beat-dave-brubeck-joe-morello/"
+  },
+  {
+    "name": "Jazz 7/4 Swing",
+    "region": "American",
+    "genre": "Jazz (Odd Meter)",
+    "length": 21,
+    "voices": {
+      "bass": [0, 12],
+      "snareAccent": [6, 9, 18],
+      "snareGhost": [],
+      "hatClosed": [0, 3, 5, 6, 9, 11, 12, 15, 17, 18, 20],
+      "hatOpen": [],
+      "hhFoot": [3, 9, 15]
+    },
+    "desc": "A 7/4 jazz swing feel grouped 4+3, the spang-a-lang ride stretched across seven triplet-subdivided beats with comping accents marking the asymmetric grouping.",
+    "source": "https://www.paulwertico.com/articles/jazzridecymbal2.php"
+  },
+  {
+    "name": "Money (7/4 Rock-Jazz)",
+    "region": "American",
+    "genre": "Fusion (Odd Meter)",
+    "length": 14,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A 7/4 straight-eighth groove in the spirit of Pink Floyd's 'Money', grouped 3+4 with the backbeat displaced across the bar, a gateway odd-meter feel for fusion players.",
+    "source": "https://www.paulwertico.com/articles/jazzridecymbal2.php"
+  },
+  {
+    "name": "Fusion 7/8 Linear",
+    "region": "American",
+    "genre": "Fusion (Odd Meter)",
+    "length": 14,
+    "voices": {
+      "bass": [0, 5, 8, 11],
+      "snareAccent": [2, 6, 10],
+      "snareGhost": [4, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A 7/8 fusion groove grouped 2+2+3, the asymmetric pulse driving a linear bass-and-snare interplay under straight eighths, a staple of progressive jazz-rock.",
+    "source": "https://www.paulwertico.com/articles/jazzridecymbal2.php"
+  },
+  {
+    "name": "Jazz 7/8 Swing",
+    "region": "American",
+    "genre": "Jazz (Odd Meter)",
+    "length": 14,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 10],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 11, 13],
+      "hatOpen": [],
+      "hhFoot": [4, 11]
+    },
+    "desc": "A swung 7/8 jazz feel grouped 2+2+3, the ride leaning on the long final grouping while the hi-hat foot marks the internal accents of the limping meter.",
+    "source": "https://www.paulwertico.com/articles/jazzridecymbal2.php"
+  },
+  {
+    "name": "Fusion 9/8 (4+5)",
+    "region": "American",
+    "genre": "Fusion (Odd Meter)",
+    "length": 18,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [16],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A 9/8 fusion groove grouped 2+2+2+3, straight eighths with a backbeat that shifts because of the long final cell, common in progressive and Mahavishnu-style fusion.",
+    "source": "https://www.paulwertico.com/articles/jazzridecymbal2.php"
+  },
+  {
+    "name": "Blue Rondo (9/8 Turkish)",
+    "region": "American",
+    "genre": "Jazz (Odd Meter)",
+    "length": 18,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14, 16],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "Brubeck/Morello's 'Blue Rondo a la Turk' aksak 9/8 grouped 2+2+2+3, the driving Turkish-derived asymmetric eighth-note pattern that alternates with straight 3+3+3 swing.",
+    "source": "https://www.drumstheword.com/free-drum-lesson-take-five-famous-drum-beat-dave-brubeck-joe-morello/"
+  },
+  {
+    "name": "Fusion 11/8 (Prog)",
+    "region": "American",
+    "genre": "Fusion (Odd Meter)",
+    "length": 11,
+    "voices": {
+      "bass": [0, 3, 6, 8],
+      "snareAccent": [2, 5, 9],
+      "snareGhost": [],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "An 11/8 progressive-fusion groove grouped 3+3+2+3, straight eighths with accents articulating the asymmetric subdivisions in the lineage of Mahavishnu Orchestra.",
+    "source": "https://www.paulwertico.com/articles/jazzridecymbal2.php"
+  },
+  {
+    "name": "Fusion 13/8 (Math-Rock)",
+    "region": "American",
+    "genre": "Fusion (Odd Meter)",
+    "length": 13,
+    "voices": {
+      "bass": [0, 4, 7, 10],
+      "snareAccent": [2, 6, 9, 12],
+      "snareGhost": [],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A 13/8 math-rock/fusion groove grouped 4+3+3+3, dense straight eighths with shifting backbeats, in the tradition of complex prog-fusion meters.",
+    "source": "https://www.paulwertico.com/articles/jazzridecymbal2.php"
+  },
+  {
+    "name": "Fusion 15/8 (Prog)",
+    "region": "American",
+    "genre": "Fusion (Odd Meter)",
+    "length": 15,
+    "voices": {
+      "bass": [0, 4, 8, 11],
+      "snareAccent": [2, 6, 10, 13],
+      "snareGhost": [],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A 15/8 progressive-fusion groove grouped 4+4+4+3, straight sixteenth-subdivided eighths with a recurring long final cell, a hallmark of odd-meter prog drumming.",
+    "source": "https://www.paulwertico.com/articles/jazzridecymbal2.php"
+  },
+  {
+    "name": "Fusion 5/8 Fast",
+    "region": "American",
+    "genre": "Fusion (Odd Meter)",
+    "length": 10,
+    "voices": {
+      "bass": [0, 4, 6],
+      "snareAccent": [2, 8],
+      "snareGhost": [],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A fast 5/8 fusion groove grouped 2+3, the quick limping pulse driven by 16th-subdivided eighths with bass and snare framing the asymmetric cell.",
+    "source": "https://www.paulwertico.com/articles/jazzridecymbal2.php"
+  },
+  {
+    "name": "Alternating Meter (4/4 + 7/8)",
+    "region": "American",
+    "genre": "Fusion (Odd Meter)",
+    "length": 15,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 13],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "An alternating-meter prog groove pairing a bar of 4/4 with a bar of 7/8, the dropped eighth at the end creating the lurching forward momentum characteristic of math-rock and fusion.",
+    "source": "https://www.paulwertico.com/articles/jazzridecymbal2.php"
+  },
+  {
+    "name": "Metric Modulation (Half-Time Over Triplets)",
+    "region": "American",
+    "genre": "Jazz (Post-Bop)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 4],
+      "snareGhost": [],
+      "hatClosed": [0, 4, 8],
+      "hatOpen": [],
+      "hhFoot": [4, 8]
+    },
+    "desc": "A metric-modulation feel where the new pulse falls on every dotted-quarter of the original triplet grid, reframing the time so the band shifts tempo without changing the underlying triplet, a Tony Williams device.",
+    "source": "https://drummagazine.com/inside-the-drumming-of-elvin-jones/"
+  },
+  {
+    "name": "Displaced Backbeat Swing",
+    "region": "American",
+    "genre": "Jazz (Post-Bop)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [1, 7],
+      "snareGhost": [4, 10],
+      "hatClosed": [0, 3, 5, 6, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "A swing feel with the snare backbeat displaced off the expected 2 and 4, creating a turned-around, off-balance comping effect over the steady ride.",
+    "source": "https://www.learnjazzstandards.com/blog/learning-jazz/drums/jazz-drumming-mastering-ride-cymbal-part-2/"
+  },
+  {
+    "name": "Steve Gadd Mozambique",
+    "region": "American",
+    "genre": "Fusion (Latin)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 8, 11, 14],
+      "snareAccent": [2, 7, 10, 12, 15],
+      "snareGhost": [1, 4, 5, 9, 13],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [2, 6, 10, 14]
+    },
+    "desc": "Steve Gadd's paradiddle-based Mozambique adaptation (famed on Paul Simon's 'Late in the Evening'), a flowing 16th-note carnival groove with bell pattern, syncopated bass and rim accents.",
+    "source": "https://s3.ca-central-1.amazonaws.com/aubreydrumlessons-aubrey.dayle.drum.studios-1/TRANSCRIPTION/STEVE+GADD/STEVE+GADD+MOZAMBIQUE.pdf"
+  },
+  {
+    "name": "Gadd Linear Funk-Fusion",
+    "region": "American",
+    "genre": "Fusion (Funk)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 10],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 7, 9, 14],
+      "hatClosed": [0, 1, 3, 5, 6, 8, 11, 13, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Steve Gadd-style linear fusion where no two limbs strike together, an interlocking single-stream of hi-hat, ghosted snare and bass 16ths under a crisp backbeat (think 'Fifty Ways').",
+    "source": "https://bangthedrumschool.com/steve-gadd-fills-transcriptions-and-soloing-ideas-on-pdf/"
+  },
+  {
+    "name": "Colaiuta Linear Fusion",
+    "region": "American",
+    "genre": "Fusion (Funk)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 5, 10, 11],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 8, 14],
+      "hatClosed": [0, 1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Vinnie Colaiuta-style angular linear fusion, displaced bass-drum syncopations and busy ghost-note conversation woven through a continuous 16th-note flow under a strong backbeat.",
+    "source": "https://www.stevesuchdrums.com/mod/dsv"
+  },
+  {
+    "name": "Weckl Funk-Fusion Sixteenths",
+    "region": "American",
+    "genre": "Fusion (Funk)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 10, 11],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 7, 9, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [9],
+      "hhFoot": []
+    },
+    "desc": "Dave Weckl-style funk-fusion 16ths, precise bass-drum doubles, crisp backbeat and ghosted snare with an open-hat accent, the polished Chick Corea Elektric Band sound.",
+    "source": "https://www.stevesuchdrums.com/mod/dsv"
+  },
+  {
+    "name": "Purdie Half-Time Shuffle",
+    "region": "American",
+    "genre": "Fusion (Funk)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 5, 6],
+      "snareAccent": [6],
+      "snareGhost": [2, 4, 8, 10],
+      "hatClosed": [0, 2, 3, 5, 6, 8, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Bernard Purdie's legendary half-time shuffle (Steely Dan's 'Babylon Sisters'), a triplet hi-hat shuffle with the backbeat on 3 and a web of ghosted triplet snare notes.",
+    "source": "https://francisdrummingblog.com/2023/05/08/bernard-purdie-steely-dan-babylon-sisters-full-drum-transcription/"
+  },
+  {
+    "name": "Rosanna Half-Time Shuffle",
+    "region": "American",
+    "genre": "Fusion (Rock)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6, 8],
+      "snareAccent": [6],
+      "snareGhost": [2, 4, 10],
+      "hatClosed": [0, 2, 3, 5, 6, 8, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Jeff Porcaro's 'Rosanna' half-time shuffle, a Purdie/Bonham-influenced triplet shuffle with a half-time backbeat and tight ghost notes, one of the most studied grooves in drumming.",
+    "source": "https://tomtommag.com/2011/10/the-purdie-shuffle-part-one/"
+  },
+  {
+    "name": "ECM Rubato Wash",
+    "region": "American",
+    "genre": "Jazz (ECM)",
+    "length": 12,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [],
+      "snareGhost": [4, 7, 10],
+      "hatClosed": [0, 6],
+      "hatOpen": [3, 9],
+      "hhFoot": [6]
+    },
+    "desc": "An ECM-style rubato textural feel (Jon Christensen / Manfred Eicher aesthetic), sparse coloristic cymbal washes and ghosted snare with an implied, breathing pulse rather than stated time.",
+    "source": "https://cruiseshipdrummer.com/2017/05/16/key-players-elvin-jones/"
+  },
+  {
+    "name": "ECM Floating Swing",
+    "region": "American",
+    "genre": "Jazz (ECM)",
+    "length": 12,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [9],
+      "snareGhost": [3, 5, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [11],
+      "hhFoot": [3, 9]
+    },
+    "desc": "The loose, floating swing of ECM-era European jazz, a light open ride and conversational snare that imply the time without nailing it, in the manner of Jon Christensen with Jarrett.",
+    "source": "https://cruiseshipdrummer.com/2017/05/16/key-players-elvin-jones/"
+  },
+  {
+    "name": "Latin-Jazz 6/8 Afro (Fast)",
+    "region": "American",
+    "genre": "Latin Jazz (Afro-Cuban)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [4, 10],
+      "snareGhost": [2, 8],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "A fast Afro 6/8 Latin-jazz groove with the bembe bell on the ride, conga-style bass-drum tumbao and cross-stick clave, the engine behind Tito Puente and Mongo Santamaria sides.",
+    "source": "https://drumsettips.org/bembe-drum-style-latin-drum-set-beats/"
+  },
+  {
+    "name": "Nanigo (6/8 Abakua)",
+    "region": "American",
+    "genre": "Latin Jazz (Afro-Cuban)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 6, 10],
+      "snareAccent": [3, 9],
+      "snareGhost": [1, 5, 7, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": [3, 9]
+    },
+    "desc": "The Afro-Cuban nanigo (Abakua) 6/8 feel adapted to kit, a rolling triplet groove with the abakua bell and displaced bass accents, a deep folkloric source for Latin-jazz drummers.",
+    "source": "https://rhythmnotes.net/afro-cuban-rhythms-for-drum-set/"
+  },
+  {
+    "name": "Songo-Timba Jazz",
+    "region": "American",
+    "genre": "Latin Jazz (Afro-Cuban)",
+    "length": 16,
+    "voices": {
+      "bass": [3, 6, 7, 11, 14, 15],
+      "snareAccent": [4, 12],
+      "snareGhost": [0, 2, 8, 10],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "A timba-influenced songo for Latin-jazz fusion, dense syncopated bass-drum tumbao, ghosted 16th snare and bombo accents pushing the modern Cuban dance-band feel onto the kit.",
+    "source": "https://rhythmnotes.net/afro-cuban-rhythms-for-drum-set/"
+  },
+  {
+    "name": "Nardis Brush Bolero",
+    "region": "American",
+    "genre": "Jazz (Ballad)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [3, 4, 6, 12],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "A Latin-jazz bolero ballad feel with brushes, the triplet-into-quarter bolero figure on the snare over a gentle surdo bass, used for atmospheric standards and Spanish-tinged jazz.",
+    "source": "https://rhythmnotes.net/afro-cuban-rhythms-for-drum-set/"
+  },
+  {
+    "name": "Cascara Two-Three Clave",
+    "region": "American",
+    "genre": "Latin Jazz (Afro-Cuban)",
+    "length": 16,
+    "voices": {
+      "bass": [3, 7, 11, 15],
+      "snareAccent": [2, 6, 10, 12],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 3, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The cascara (shell pattern) over a 2-3 son clave for Latin-jazz comping, the timbale-derived cascara on the ride/shell with tumbao bass, the breathing-room texture behind a piano montuno.",
+    "source": "https://rhythmnotes.net/afro-cuban-rhythms-for-drum-set/"
+  }
+]

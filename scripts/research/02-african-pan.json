@@ -1,0 +1,994 @@
+[
+  {
+    "name": "Soukous Cavacha",
+    "region": "African",
+    "genre": "Congolese Soukous",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 7, 10, 15],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The driving cavacha groove at the root of soukous, with a continuous sixteenth-note hi-hat carpet, syncopated kick, and a clave-derived snare backbeat. Popularized by Zaiko Langa Langa in the 1970s.",
+    "source": "https://worldmusicmethod.com/the-pulse-of-congo-mastering-congolese-drum-kit-rhythms/ ; https://daily.redbullmusicacademy.com/2018/12/the-roots-of-soukous/"
+  },
+  {
+    "name": "Soukous Sebene",
+    "region": "African",
+    "genre": "Congolese Soukous",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11],
+      "snareAccent": [4, 12],
+      "snareGhost": [6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [7, 15],
+      "hhFoot": []
+    },
+    "desc": "Fast dance-section (sebene) kit groove driving the interlocking guitar riffs of soukous, with anticipated tresillo-leaning kick and open-hat lift on the offbeats.",
+    "source": "https://www.melodigging.com/genre/sebene ; https://en.wikipedia.org/wiki/Soukous"
+  },
+  {
+    "name": "Rumba Lingala",
+    "region": "African",
+    "genre": "Congolese Rumba",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [7, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Classic mid-tempo Congolese rumba groove descended from Cuban son, with relaxed two-feel kick, steady eighth hi-hat, and a son-clave-referencing snare. The lingala-language ballroom style of the 1950s-60s.",
+    "source": "https://en.wikipedia.org/wiki/Congolese_rumba"
+  },
+  {
+    "name": "Ndombolo",
+    "region": "African",
+    "genre": "Ndombolo",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 8, 11, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "High-energy modern descendant of soukous with an emphatic dance-led kick driving the floor under razor-sharp sebene guitars; sixteenth-note hat and hard backbeat.",
+    "source": "https://www.africanmusiclibrary.org/genre/Ndombolo"
+  },
+  {
+    "name": "Kwassa Kwassa",
+    "region": "African",
+    "genre": "Congolese Soukous",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [3, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [10],
+      "hhFoot": []
+    },
+    "desc": "The mid-1980s Kanda Bongo Man dance variant of soukous, a lilting cavacha derivative with swaying hip-led groove and syncopated kick.",
+    "source": "https://www.melodigging.com/genre/kwassa-kwassa"
+  },
+  {
+    "name": "Makossa",
+    "region": "African",
+    "genre": "Cameroon Makossa",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8, 11],
+      "snareAccent": [4, 12],
+      "snareGhost": [6, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [2, 6, 10, 14],
+      "hhFoot": []
+    },
+    "desc": "Cameroon's brisk 4/4 dance groove with a bottle-percussion offbeat, interlocking rhythm guitar and anticipated bass, made global by Manu Dibango.",
+    "source": "https://www.melodigging.com/genre/makossa ; https://en.wikipedia.org/wiki/Makossa"
+  },
+  {
+    "name": "Bikutsi",
+    "region": "African",
+    "genre": "Cameroon Bikutsi",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [1, 4, 7, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Cameroon's intense 6/8 (12/8) Beti groove built on a 4-over-3 cross-rhythm, with a four-on-the-floor pulse cutting against the continuous triple hi-hat; name means beating the ground.",
+    "source": "https://francisdrummingblog.com/2025/09/10/rhythms-from-the-world-5-bikutsi/ ; https://www.drumeo.com/beat/how-to-play-the-bikutsi/"
+  },
+  {
+    "name": "Assiko",
+    "region": "African",
+    "genre": "Cameroon Assiko",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [3, 7, 11, 15],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [6, 14],
+      "hhFoot": []
+    },
+    "desc": "Bassa guitar-and-bottle dance music of coastal Cameroon, a brisk 4/4 with a clinking metal-on-bottle offbeat and lively syncopated snare fills.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_Cameroon"
+  },
+  {
+    "name": "Afrobeat (Tony Allen Pattern 1)",
+    "region": "African",
+    "genre": "Nigerian Afrobeat",
+    "length": 16,
+    "voices": {
+      "bass": [0, 7, 10],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 9, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [3, 11],
+      "hhFoot": []
+    },
+    "desc": "Tony Allen's foundational afrobeat groove for Fela Kuti: a loose, jazz-and-highlife-informed 4/4 with broken kick, displaced ghost snares and an offbeat open-hat shimmer.",
+    "source": "https://joethedrummer.com/tony-allens-second-pattern-of-afrobeat/ ; https://www.rollingstone.com/music/music-news/tony-allen-afrobeat-drum-patterns-unseen-doc-clip-993318/"
+  },
+  {
+    "name": "Afrobeat (Tony Allen Pattern 2)",
+    "region": "African",
+    "genre": "Nigerian Afrobeat",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 10, 11],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 8, 14],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A denser Tony Allen afrobeat variation with a continuous sixteenth-note hi-hat and conversational kick-snare interplay underpinning Fela's horn sections.",
+    "source": "http://afrobeatdrummingexplained.blogspot.com/2015/05/afrobeat-drumming-in-style-of-tony-allen.html"
+  },
+  {
+    "name": "Afrobeats (Pop)",
+    "region": "African",
+    "genre": "Afrobeats",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The modern Lagos pop groove (Wizkid/Davido era) blending a tresillo-derived kick with a relaxed backbeat and shaker-like hat; descended from afrobeat and dancehall.",
+    "source": "https://nigerianentertainment.com/2025/03/01/the-differences-between-fuji-apala-juju-highlife-and-afrobeat/"
+  },
+  {
+    "name": "Juju",
+    "region": "African",
+    "genre": "Nigerian Juju",
+    "length": 12,
+    "voices": {
+      "bass": [0, 5, 7],
+      "snareAccent": [2, 9],
+      "snareGhost": [4, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Yoruba guitar-band dance music (King Sunny Ade) over a lilting 12/8 with talking-drum and shekere; the kit follows the standard bell time-line.",
+    "source": "https://nigerianentertainment.com/2025/03/01/the-differences-between-fuji-apala-juju-highlife-and-afrobeat/"
+  },
+  {
+    "name": "Fuji",
+    "region": "African",
+    "genre": "Nigerian Fuji",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [2, 5, 9],
+      "snareGhost": [1, 7, 10],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "High-energy Yoruba percussion music (Barrister, Kollington) driven by bata, sakara and dundun talking drums in a dense 12/8 over the standard bell.",
+    "source": "https://nigerianentertainment.com/2025/03/01/the-differences-between-fuji-apala-juju-highlife-and-afrobeat/ ; https://www.melodigging.com/genre/yoruba-music"
+  },
+  {
+    "name": "Apala",
+    "region": "African",
+    "genre": "Nigerian Apala",
+    "length": 12,
+    "voices": {
+      "bass": [0, 5, 7],
+      "snareAccent": [2, 9],
+      "snareGhost": [3, 6, 10],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Contemplative Yoruba Muslim percussion style (Haruna Ishola) with sekere, agidigbo thumb-piano, agogo bell and talking drums over a 12/8 bell at 85-110 BPM.",
+    "source": "https://nigerianentertainment.com/2025/03/01/the-differences-between-fuji-apala-juju-highlife-and-afrobeat/"
+  },
+  {
+    "name": "Highlife (Nigerian)",
+    "region": "African",
+    "genre": "Nigerian Highlife",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [3, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [10],
+      "hhFoot": []
+    },
+    "desc": "Nigerian highlife's bright 4/4 dance groove with asymmetrical Yoruba-derived kick figures and syncopated guitar; the gentleman's dance-band sound of the 1950s-60s.",
+    "source": "https://www.britannica.com/art/highlife-African-music"
+  },
+  {
+    "name": "Highlife (Ghanaian)",
+    "region": "African",
+    "genre": "Ghanaian Highlife",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [3, 7, 11, 15],
+      "hhFoot": []
+    },
+    "desc": "The Ghanaian dance-band highlife groove with a swinging offbeat open-hat, relaxed two-feel kick, and clipped offbeat guitar; rooted in palm-wine and brass-band traditions.",
+    "source": "https://www.britannica.com/art/highlife-African-music ; https://www.ajhssr.com/wp-content/uploads/2020/01/C20411829.pdf"
+  },
+  {
+    "name": "Palm-Wine (Osibisaba)",
+    "region": "African",
+    "genre": "Ghanaian Palm-Wine",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [6, 14],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Relaxed acoustic guitar-and-percussion social music of the Akan coast, the rural seed of highlife, with sparse two-feel kick and clip-bottle backbeat.",
+    "source": "https://www.britannica.com/art/highlife-African-music"
+  },
+  {
+    "name": "Hiplife",
+    "region": "African",
+    "genre": "Ghanaian Hiplife",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 10],
+      "snareAccent": [4, 12],
+      "snareGhost": [14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Ghanaian fusion of highlife melody and hip-hop programming, with a tresillo-derived 808 kick and crisp backbeat clap; the Reggie Rockstone sound of the 1990s.",
+    "source": "https://www.britannica.com/art/highlife-African-music"
+  },
+  {
+    "name": "Mbalax (Sabar Kit)",
+    "region": "African",
+    "genre": "Senegalese Mbalax",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 10],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 7, 9, 14, 15],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Senegal's national popular style (Youssou N'Dour) translating polyrhythmic Wolof sabar drumming to the kit, with rapid snare flurries and accented offbeat kick.",
+    "source": "https://en.wikipedia.org/wiki/Mbalax ; https://drummagazine.com/sabar-drumming-puzzling-rhythms-from-senegal/"
+  },
+  {
+    "name": "Mbalax Accompaniment",
+    "region": "African",
+    "genre": "Senegalese Mbalax",
+    "length": 16,
+    "voices": {
+      "bass": [0, 10],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 7, 14, 15],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The core mbalax accompaniment part, the basic timekeeping figure a sabar drummer masters first, rendered on kit with dense ghost-snare strokes evoking the talmbat bass drums.",
+    "source": "https://books.google.com/books?id=iLuy_dKKRKMC ; https://en.wikipedia.org/wiki/Wolof_music"
+  },
+  {
+    "name": "Baar (Sabar)",
+    "region": "African",
+    "genre": "Senegalese Sabar",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [3, 6, 11, 14],
+      "snareGhost": [1, 2, 9, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Baar, a Wolof sabar dance rhythm, with its characteristic syncopated accent pattern adapted to drum kit; the snare voices the open and slap sabar strokes.",
+    "source": "https://drummagazine.com/sabar-drumming-puzzling-rhythms-from-senegal/ ; https://sites.google.com/bc.edu/bc-west-african-music-ensemble/sabar-repertoire"
+  },
+  {
+    "name": "Ceebu Jen (Sabar)",
+    "region": "African",
+    "genre": "Senegalese Sabar",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 10, 12],
+      "snareGhost": [2, 3, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Ceebu jen, a popular sabar dance rhythm named after the Senegalese national rice-and-fish dish, with a buoyant accented figure carried by snare and kick.",
+    "source": "https://drummagazine.com/sabar-drumming-puzzling-rhythms-from-senegal/ ; https://sites.google.com/bc.edu/bc-west-african-music-ensemble/sabar-repertoire"
+  },
+  {
+    "name": "Kaolack (Sabar)",
+    "region": "African",
+    "genre": "Senegalese Sabar",
+    "length": 16,
+    "voices": {
+      "bass": [0, 7, 8, 15],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 5, 10, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Kaolack, a fast Wolof sabar rhythm named after the Senegalese city, with off-beat anticipated kick and rolling ghost-snare ornaments.",
+    "source": "https://drummagazine.com/sabar-drumming-puzzling-rhythms-from-senegal/ ; https://epdf.pub/masters-of-the-sabar-wolof-griot-percussionists-of-senegal-african-soundscapes.html"
+  },
+  {
+    "name": "Wassoulou",
+    "region": "African",
+    "genre": "Malian Wassoulou",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [2, 5, 9],
+      "snareGhost": [4, 7, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Southern Mali's Wasulu hunters' music (Oumou Sangare) over buoyant 6/8 cross-rhythms with kamele ngoni and percussion, the kit tracking the standard bell.",
+    "source": "https://www.melodigging.com/genre/wassoulou ; https://africanmusiclibrary.org/genre/Wassoulou"
+  },
+  {
+    "name": "Bambara (Bamana)",
+    "region": "African",
+    "genre": "Malian Bambara",
+    "length": 12,
+    "voices": {
+      "bass": [0, 5, 7],
+      "snareAccent": [2, 7, 9],
+      "snareGhost": [3, 6, 10, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Bamana djembe-and-dunun ensemble feel of central Mali adapted to kit, dense interlocking 12/8 with the bell time-line and accented support-drum strokes on snare.",
+    "source": "https://africanmusiclibrary.org/genre/Wassoulou ; https://en.wikipedia.org/wiki/Music_of_Mali"
+  },
+  {
+    "name": "Chimurenga (Mbira)",
+    "region": "African",
+    "genre": "Zimbabwean Chimurenga",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [2, 5, 9, 11],
+      "snareGhost": [1, 4, 7, 10],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Thomas Mapfumo's chimurenga, translating interlocking mbira dzavadzimu cycles to band instruments over a dense 12/8 with hosho-shaker pulse and the standard bell.",
+    "source": "https://en.wikipedia.org/wiki/Shona_music ; https://www.mtosmt.org/issues/mto.10.16.4/mto.10.16.4.scherzinger.html"
+  },
+  {
+    "name": "Nhemamusasa (Mbira)",
+    "region": "African",
+    "genre": "Zimbabwean Mbira",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [2, 5, 8, 11],
+      "snareGhost": [1, 4, 7, 10],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The core Shona mbira repertoire piece Nhemamusasa (building a shelter) rendered as a 12/8 cyclical groove with hosho-derived shaker accents and a four-pulse foundation.",
+    "source": "http://www.tinotenda.org/aspects.htm ; https://en.wikipedia.org/wiki/Shona_music"
+  },
+  {
+    "name": "Jit",
+    "region": "African",
+    "genre": "Zimbabwean Jit",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Fast Zimbabwean guitar dance music translating mbira patterns to electric guitar over a driving four-on-the-floor 4/4 pulse with crisp backbeat.",
+    "source": "https://en.wikipedia.org/wiki/Jit ; https://www.melodigging.com/genre/jit"
+  },
+  {
+    "name": "Sungura",
+    "region": "African",
+    "genre": "Zimbabwean Sungura",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [7, 15],
+      "hhFoot": []
+    },
+    "desc": "Zimbabwe's rapid guitar-band style blending Congolese rumba/soukous with local feels, with a galloping kick and offbeat open-hat under busy lead guitar.",
+    "source": "https://en.wikipedia.org/wiki/Shona_music"
+  },
+  {
+    "name": "Mbaqanga",
+    "region": "African",
+    "genre": "South African Mbaqanga",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [3, 7, 11, 15],
+      "hhFoot": []
+    },
+    "desc": "South African township jive with a driving shuffle, cyclical bass ostinato, choppy offbeat guitar and a swinging open-hat; the Mahlathini and Mahotella Queens sound.",
+    "source": "https://en.wikipedia.org/wiki/Mbaqanga ; https://www.melodigging.com/genre/township-jive"
+  },
+  {
+    "name": "Marabi",
+    "region": "African",
+    "genre": "South African Marabi",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [5, 11],
+      "snareGhost": [2, 8],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The 1920s-30s Johannesburg shebeen keyboard style with a rolling 12/8 swing, repeating I-IV-V cycle and shaker pulse; ancestor of mbaqanga and South African jazz.",
+    "source": "https://www.africanmusiclibrary.org/genre/Marabi ; https://www.melodigging.com/genre/southern-african-music"
+  },
+  {
+    "name": "Kwela",
+    "region": "African",
+    "genre": "South African Kwela",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [3, 7, 11, 15],
+      "hhFoot": []
+    },
+    "desc": "Pennywhistle street jive of 1950s townships with a brisk walking-bass shuffle and skiffle-like offbeat; the lilting precursor to mbaqanga.",
+    "source": "https://www.melodigging.com/genre/kwela ; https://www.melodigging.com/genre/southern-african-music"
+  },
+  {
+    "name": "Kwaito",
+    "region": "African",
+    "genre": "South African Kwaito",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [],
+      "hatClosed": [2, 6, 10, 14],
+      "hatOpen": [3, 7, 11, 15],
+      "hhFoot": []
+    },
+    "desc": "Soweto's slowed-down house (100-120 BPM) with a four-on-the-floor kick, offbeat open-hat and deep bass; the post-apartheid township pop of the 1990s.",
+    "source": "https://en.wikipedia.org/wiki/Kwaito ; https://grokipedia.com/page/Kwaito"
+  },
+  {
+    "name": "Amapiano",
+    "region": "African",
+    "genre": "South African Amapiano",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [3, 7, 11, 15],
+      "hhFoot": []
+    },
+    "desc": "South Africa's slow (108-115 BPM) house-jazz-kwaito hybrid with a four-on-the-floor kick, rolling offbeat shaker-hats and rim/clap backbeat; the bass is the syncopated log drum.",
+    "source": "https://create.routenote.com/blog/beatmakers-guide-how-to-make-an-amapiano-beat/ ; https://orphiq.com/resources/what-is-amapiano"
+  },
+  {
+    "name": "Amapiano Log Drum",
+    "region": "African",
+    "genre": "South African Amapiano",
+    "length": 16,
+    "voices": {
+      "bass": [3, 6, 10, 13],
+      "snareAccent": [4, 12],
+      "snareGhost": [],
+      "hatClosed": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "The defining amapiano feel from the log-drum's perspective: a syncopated woody bass that bounces between the four-on-the-floor kick (here on hhFoot) rather than landing on it.",
+    "source": "https://create.routenote.com/blog/beatmakers-guide-how-to-make-an-amapiano-beat/ ; https://articles.roland.com/production-hacks-creating-amapiano-tracks/"
+  },
+  {
+    "name": "Gqom",
+    "region": "African",
+    "genre": "South African Gqom",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 10, 11, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [7, 15],
+      "hatClosed": [2, 6, 10, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Durban's dark, minimal broken-beat house with a tresillo-driven, off-kilter kick (no steady four-on-the-floor), heavy sub-bass and tribal chant; ancestor of 3-step.",
+    "source": "https://en.wikipedia.org/wiki/Gqom ; https://musiccustodian.com/2025/01/30/south-africas-next-big-sound-exploring-the-rise-of-3-step/"
+  },
+  {
+    "name": "3-Step",
+    "region": "African",
+    "genre": "South African 3-Step",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 11],
+      "snareAccent": [4, 12],
+      "snareGhost": [3, 9, 14],
+      "hatClosed": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A contemporary South African club style with a distinctive three-kick-drum pattern per bar instead of four-on-the-floor, blending amapiano's log-drum bounce with UK broken beat.",
+    "source": "https://www.melodigging.com/genre/3-step ; https://musiccustodian.com/2025/01/30/south-africas-next-big-sound-exploring-the-rise-of-3-step/"
+  },
+  {
+    "name": "Shangaan Electro",
+    "region": "African",
+    "genre": "Tsonga Shangaan Electro",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 3, 6, 7, 10, 11, 14, 15],
+      "hatClosed": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Nozinja's hyper-fast (up to 190 BPM) Afro-futurist Tsonga dance music, a marimba-led reboot of Tsonga disco with rapid-fire kineticism and minimal bass.",
+    "source": "https://en.wikipedia.org/wiki/Shangaan_electro ; https://africanmusiclibrary.org/genre/Shangaan%20Electro"
+  },
+  {
+    "name": "Benga",
+    "region": "African",
+    "genre": "Kenyan Benga",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [3, 11],
+      "hhFoot": []
+    },
+    "desc": "Luo guitar dance music of western Kenya with interlocking guitar ostinati, a bouncing bass and crisp 4/4 backbeat; crystallized in the 1960s from nyatiti lyre traditions.",
+    "source": "https://www.melodigging.com/genre/east-african-music"
+  },
+  {
+    "name": "Taarab",
+    "region": "African",
+    "genre": "Swahili Taarab",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The sung poetry orchestra music of the Swahili coast (Zanzibar/Mombasa), blending Arab, Indian-film and Cuban influences over a gentle chakacha-derived dumbak groove.",
+    "source": "https://www.musicinafrica.net/magazine/taarab-music-coastal-music-flair ; https://en.wikipedia.org/wiki/Chakacha"
+  },
+  {
+    "name": "Chakacha",
+    "region": "African",
+    "genre": "Swahili Chakacha",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 8, 11, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The hip-swaying Swahili wedding ngoma of coastal Kenya and Tanzania, with a sensuous tresillo-driven dumbak/conga groove underlying taarab-style melodies.",
+    "source": "https://en.wikipedia.org/wiki/Chakacha ; https://linguafonica.com/blog/chakacha-swahili-music-and-dance/"
+  },
+  {
+    "name": "Bongo Flava",
+    "region": "African",
+    "genre": "Tanzanian Bongo Flava",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [10],
+      "hhFoot": []
+    },
+    "desc": "Tanzania's Swahili hip-hop/R&B pop blending mid-tempo hip-hop beats and dancehall riddims with taarab and rumba DNA; a tresillo-flavored kick under smooth melodies.",
+    "source": "https://en.wikipedia.org/wiki/Bongo_Flava ; https://www.africanmusiclibrary.org/genre/Bongoflava"
+  },
+  {
+    "name": "Semba",
+    "region": "African",
+    "genre": "Angolan Semba",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [3, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Angola's foundational 4/4 dance music (86-100 BPM) with anticipated bass placed before the downbeat, accented offbeats and dikanza scraper; ancestor of samba and kizomba.",
+    "source": "https://www.melodigging.com/genre/semba ; https://www.melodigging.com/genre/musica-angolana"
+  },
+  {
+    "name": "Kizomba",
+    "region": "African",
+    "genre": "Angolan Kizomba",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [3, 6, 11, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Angola's slow, sensual partner-dance music (70-90 BPM) with the kick on beats one and three forming a steady heartbeat under zouk-derived synths and syncopated percussion.",
+    "source": "https://kizindar.com/kizomba-music-theory/ ; https://www.melodigging.com/genre/kizomba"
+  },
+  {
+    "name": "Kuduro",
+    "region": "African",
+    "genre": "Angolan Kuduro",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [3, 6],
+      "snareGhost": [11, 14],
+      "hatClosed": [2, 6, 10, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Angola's frenetic (140-150 BPM) electronic dance music with a fast four-to-the-floor kick and a sidestick/snare sounding the first two hits of the tresillo, plus chopped shouts.",
+    "source": "https://en.wikipedia.org/wiki/Kuduro ; https://www.melodigging.com/genre/kuduro"
+  },
+  {
+    "name": "Funana",
+    "region": "African",
+    "genre": "Cape Verdean Funana",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Cape Verde's accordion-driven (gaita) dance music with a relentless ferrinho scraper carrying a continuous sixteenth pulse over a fast two-beat drive.",
+    "source": "https://en.wikipedia.org/wiki/Funan%C3%A1 ; https://www.caboverdeexpert.com/funana-cape-verde-music/"
+  },
+  {
+    "name": "Coladeira",
+    "region": "African",
+    "genre": "Cape Verdean Coladeira",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [3, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [10],
+      "hhFoot": []
+    },
+    "desc": "Cape Verde's upbeat, satirical 4/4 dance song-form, a faster and more syncopated cousin of morna with an anticipated bass and lively backbeat.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_Cape_Verde ; https://cabo-verde.cv/cape-verde-music-dance-the-rhythmic-heart-of-the-islands/"
+  },
+  {
+    "name": "Morna",
+    "region": "African",
+    "genre": "Cape Verdean Morna",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [6, 14],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Cape Verde's slow, melancholic national song-form (Cesaria Evora) in a gentle 4/4 with sparse two-feel bass and brushed backbeat evoking saudade.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_Cape_Verde"
+  },
+  {
+    "name": "Batuque",
+    "region": "African",
+    "genre": "Cape Verdean Batuque",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 7, 10, 14, 15],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The oldest Cape Verdean genre from Santiago island, a women's call-and-response built on cloth-bundle (tchabeta) thigh-slapping in a driving, polyrhythmic groove.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_Cape_Verde ; https://cabo-verde.cv/cape-verde-music-dance-the-rhythmic-heart-of-the-islands/"
+  },
+  {
+    "name": "Gnawa",
+    "region": "African",
+    "genre": "Moroccan Gnawa",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [3, 9],
+      "snareGhost": [1, 2, 4, 5, 7, 8, 10, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Moroccan Sufi trance music with a gimbri bass establishing one motive against the qraqeb iron-castanet semiquaver pulse, producing the characteristic 3:2 hemiola in 12/8.",
+    "source": "https://musicofmorocco.weebly.com/form-and-structure.html ; https://dubsahara.wordpress.com/rhythms/6-8/moroccan/"
+  },
+  {
+    "name": "Chaabi (Moroccan)",
+    "region": "African",
+    "genre": "Moroccan Chaabi",
+    "length": 12,
+    "voices": {
+      "bass": [9],
+      "snareAccent": [0, 6],
+      "snareGhost": [3, 5, 8, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Moroccan popular wedding music in a buoyant 6/8 (12/8) where the rhythm starts on the high-pitch percussion and the bass falls late in the cycle, adapting bendir frame-drum patterns.",
+    "source": "https://francisdrummingblog.com/2024/02/09/rhythms-from-the-world-1-chaabi/ ; https://www.melodigging.com/genre/moroccan-pop"
+  },
+  {
+    "name": "Nuba Basit",
+    "region": "African",
+    "genre": "Andalusi Nuba",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [3, 9],
+      "snareGhost": [5, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The opening, stately movement of the Andalusi nuba suite, whose broad mizan (rhythmic cycle) anchors the slow introductory sung sections of Moroccan al-ala.",
+    "source": "https://www.nli.org.il/en/discover/music/jewish-music/piyut/articles/andalusian-nuba ; https://en.wikipedia.org/wiki/Andalusi_nubah"
+  },
+  {
+    "name": "Nuba Qaim wa Nusf",
+    "region": "African",
+    "genre": "Andalusi Nuba",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8, 10],
+      "snareAccent": [4, 12],
+      "snareGhost": [6, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The qaim wa nusf (one-and-a-half) mizan of the Andalusi nuba, a measured asymmetric cycle marking the second movement of the suite.",
+    "source": "https://en.wikipedia.org/wiki/Andalusi_nubah ; https://jewish-music.huji.ac.il/content/andalusian-nuba"
+  },
+  {
+    "name": "Nuba Btayhi",
+    "region": "African",
+    "genre": "Andalusi Nuba",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The btayhi mizan, a flowing duple cycle forming the third movement of the Andalusi nuba as the suite gathers momentum.",
+    "source": "https://en.wikipedia.org/wiki/Andalusi_nubah ; https://www.nli.org.il/en/discover/music/jewish-music/piyut/articles/andalusian-nuba"
+  },
+  {
+    "name": "Nuba Darj",
+    "region": "African",
+    "genre": "Andalusi Nuba",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [2, 6, 10],
+      "snareGhost": [5, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The darj (stair/gradual) mizan, the fourth and increasingly lively movement of the Andalusi nuba in a rolling triple feel.",
+    "source": "https://en.wikipedia.org/wiki/Andalusi_nubah ; https://jewish-music.huji.ac.il/content/andalusian-nuba"
+  },
+  {
+    "name": "Nuba Quddam",
+    "region": "African",
+    "genre": "Andalusi Nuba",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [2, 5, 8, 11],
+      "snareGhost": [1, 4, 7, 10],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The quddam (forward), the fast concluding movement of the Andalusi nuba, a dance-like 6/8 that brings the suite to its energetic climax.",
+    "source": "https://en.wikipedia.org/wiki/Andalusi_nubah ; https://www.nli.org.il/en/discover/music/jewish-music/piyut/articles/andalusian-nuba"
+  },
+  {
+    "name": "Malouf",
+    "region": "African",
+    "genre": "Tunisian Malouf",
+    "length": 12,
+    "voices": {
+      "bass": [0, 5, 7],
+      "snareAccent": [2, 9],
+      "snareGhost": [3, 6, 10],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Tunisian branch of Andalusian classical music, its nuba progressing from slow introductions to lively dance-like endings over measured mizan cycles played on tar and darbouka.",
+    "source": "https://en.wikipedia.org/wiki/Andalusi_nubah ; https://www.melodigging.com/genre/maghrebi-music"
+  },
+  {
+    "name": "Rai",
+    "region": "African",
+    "genre": "Algerian Rai",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 8, 11, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Algeria's Oran-born popular music (Khaled, Cheb Mami) over a tresillo-driven darbouka/kit groove with a 3-3-2 kick and hard backbeat under raspy vocals.",
+    "source": "https://www.melodigging.com/genre/maghrebi-music"
+  },
+  {
+    "name": "Chaabi (Algerian)",
+    "region": "African",
+    "genre": "Algerian Chaabi",
+    "length": 12,
+    "voices": {
+      "bass": [0, 5, 7],
+      "snareAccent": [2, 9],
+      "snareGhost": [3, 6, 10, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Algiers Casbah popular song style (El Hadj M'Hamed El Anka) blending Andalusi modes with a swinging 6/8 derbouka-and-tar accompaniment.",
+    "source": "https://www.melodigging.com/genre/maghrebi-music"
+  },
+  {
+    "name": "Egyptian Maqsum",
+    "region": "African",
+    "genre": "Egyptian Popular",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3],
+      "snareAccent": [4],
+      "snareGhost": [6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The maqsum, the most common rhythm of Egyptian popular and bellydance music: a duple cycle with dum on 1 and the and-of-2, and tek on the backbeat, played on tabla/darbouka.",
+    "source": "https://www.melodigging.com/genre/maghrebi-music"
+  },
+  {
+    "name": "Egyptian Baladi",
+    "region": "African",
+    "genre": "Egyptian Popular",
+    "length": 8,
+    "voices": {
+      "bass": [0, 1, 4],
+      "snareAccent": [3, 6],
+      "snareGhost": [7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The baladi rhythm of Egyptian shaabi/folk dance, a maqsum variant with a heavy double-dum opening (dum-dum on 1) giving it an earthy downtown Cairo feel.",
+    "source": "https://www.melodigging.com/genre/maghrebi-music"
+  },
+  {
+    "name": "Sudanese Tom-Tom (Daluka)",
+    "region": "African",
+    "genre": "Sudanese Popular",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 7],
+      "snareAccent": [2, 5, 9],
+      "snareGhost": [4, 8, 11],
+      "hatClosed": [0, 2, 4, 5, 7, 9, 11],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Sudanese 'tom-tom' or daluka hand-drum groove underpinning haqiba and modern Khartoum pop, a swung 6/8 blending Arabic and Nilotic African feels.",
+    "source": "https://www.melodigging.com/genre/east-african-music"
+  }
+]

@@ -1,0 +1,1788 @@
+[
+  {
+    "name": "Kuku",
+    "region": "African",
+    "genre": "Malinke (Guinea) djembe",
+    "length": 16,
+    "voices": {
+      "bass": [
+        3,
+        12,
+        14
+      ],
+      "snareAccent": [
+        0,
+        2,
+        3,
+        5,
+        6,
+        8,
+        10,
+        11,
+        13,
+        14
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A women's circle dance from the Beyla/Nzerekore forest region celebrating the return from fishing; bright 4/4, now a worldwide festival staple. Bell x.xx.xx.x.xx.xx., sangban accents on the off-beats.",
+    "source": "Malcolm Smith / Paul Nas WAP transcription"
+  },
+  {
+    "name": "Kassa",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        6,
+        9,
+        10
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Harvest rhythm of the Malinke of upper Guinea, played for field workers from dawn to dark; rolling 12/8 on the standard bell with interlocking sangban and dununba.",
+    "source": "Famoudou Konate repertoire / Paul Nas WAP"
+  },
+  {
+    "name": "Kassa Kura",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A 'new Kassa' variant of the upper-Guinea harvest cycle with a denser dununba over the same 12/8 standard bell framework as classic Kassa.",
+    "source": "Paul Nas WAP / djembefola"
+  },
+  {
+    "name": "Djansa",
+    "region": "African",
+    "genre": "Kassonke (S. Mali) 4/4 djembe",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        2,
+        8,
+        10
+      ],
+      "snareAccent": [
+        0,
+        3,
+        5,
+        6,
+        8,
+        11,
+        13,
+        14
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Diansa/Dansa, a competitive young-men's dance of the Kassonke of southern Mali, now hugely popular; bright 4/4 at about 110 bpm with a clave-leaning bell.",
+    "source": "Mamady Keita 'Djembe Kan' / Paul Nas WAP"
+  },
+  {
+    "name": "Soli Lent",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        9,
+        10,
+        11
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The slow ('lent') initiation/circumcision rhythm of the Malinke, played in the months before the rite of passage; stately 12/8. Sangban g.G...g.G..., dununba D.......D..DD.",
+    "source": "Malcolm Smith / Famoudou Konate repertoire"
+  },
+  {
+    "name": "Soli Rapide",
+    "region": "African",
+    "genre": "Malinke (Guinea) 4/4 djembe",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        2,
+        3,
+        5,
+        6,
+        8,
+        10,
+        11,
+        13,
+        14
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The fast ('rapide') duple counterpart to Soli Lent, marking the climax of circumcision festivities; driving 4/4 on the Kuku-family bell.",
+    "source": "Paul Nas WAP / tontinkan"
+  },
+  {
+    "name": "Soli des Manians",
+    "region": "African",
+    "genre": "Manian (Guinea/Ivory Coast) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Soli of the Manian people of the Beyla/Nzerekore forest, danced at circumcision ceremonies; a 12/8 forest-region variant of the initiation rhythm.",
+    "source": "Paul Nas WAP p.204"
+  },
+  {
+    "name": "Dununba",
+    "region": "African",
+    "genre": "Malinke (Hamana) 12/8 dance of strong men",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9,
+        10
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The archetypal 'Dance of the Strong Men' of the Hamana Malinke, head of a family of dignified heavy 12/8 rhythms once tied to ritual whip-battles between men.",
+    "source": "Paul Nas WAP / Famoudou Konate"
+  },
+  {
+    "name": "Dununbe",
+    "region": "African",
+    "genre": "Malinke (Hamana) 12/8 dununba",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        5,
+        6,
+        11
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A core rhythm of the Dununba family carrying the signature 'Dununba' kenkeni and sangban skeleton; men's strength dance in slow 12/8.",
+    "source": "Paul Nas WAP"
+  },
+  {
+    "name": "Balakulanya",
+    "region": "African",
+    "genre": "Malinke (Hamana) 12/8 dununba",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        5,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Also 'Balan Sonde', a Dununba-family rhythm from the village of Balan; exceptionally the women may join, dancing Soli steps over the men's Dununba.",
+    "source": "Paul Nas WAP p.690"
+  },
+  {
+    "name": "Konkoba",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 farmers' rhythm",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        6,
+        10
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Konkoba (Kokoba) honours the great farmers of the village; a 12/8-family agricultural praise rhythm of the Malinke built on a six-beat cycle.",
+    "source": "Paul Nas WAP / djembe-videos"
+  },
+  {
+    "name": "Madan",
+    "region": "African",
+    "genre": "Maninka (Kankaba, Mali) 4/4 djembe",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        2,
+        3,
+        5,
+        6,
+        8,
+        10,
+        11,
+        13,
+        14
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Madan/Maraka, a Maninka rhythm from the Kankaba region of Mali played to celebrate the harvest and welcome guests; lively 4/4, cousin to Kuku.",
+    "source": "Paul Nas WAP p.163"
+  },
+  {
+    "name": "Madan Rapide",
+    "region": "African",
+    "genre": "Maninka (Mali) 4/4 djembe",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10,
+        12,
+        14
+      ],
+      "snareAccent": [
+        0,
+        3,
+        6,
+        8,
+        11,
+        14
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The fast version of Madan with a running dununba on every beat-subdivision; high-energy harvest-celebration 4/4.",
+    "source": "Paul Nas WAP p.165"
+  },
+  {
+    "name": "Maraka",
+    "region": "African",
+    "genre": "Soninke (Maraka) 4/4 djembe",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        3,
+        4,
+        6,
+        8,
+        11,
+        12,
+        14
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Marakadon, the dance of the Maraka (Soninke) people, performed when Maraka guests were honoured by the Malinke and Bambara; festive 4/4.",
+    "source": "Paul Nas WAP p.168"
+  },
+  {
+    "name": "Sunu",
+    "region": "African",
+    "genre": "Maninka (Mali) 4/4 djembe",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        3,
+        6,
+        8,
+        11,
+        14
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A celebratory Maninka dance of Mali for weddings and night-time village parties; brisk 4/4 with a strong four-on-the-floor dununba.",
+    "source": "djembefola / Paul Nas WAP"
+  },
+  {
+    "name": "Tiriba",
+    "region": "African",
+    "genre": "Landuma (Boke/Boffa) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        2,
+        5,
+        6,
+        8,
+        11
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Tiriba of the Landuma people of coastal Guinea (Boke/Boffa), named for a legendary dancer; a richly ornamented 12/8 with its own distinctive dununba.",
+    "source": "Paul Nas WAP p.217 (12/8 version)"
+  },
+  {
+    "name": "Mendiani",
+    "region": "African",
+    "genre": "Malinke (Siguiri/Kankan) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Mendiani, danced by virgin girls (ages 7-14) in the Siguiri-Kankan region; a fast virtuosic 12/8 solo showcase, with dunun variations from Famoudou Konate.",
+    "source": "Famoudou Konate (Museum Berlin) / Paul Nas WAP"
+  },
+  {
+    "name": "Yankadi",
+    "region": "African",
+    "genre": "Susu (Lower Guinea) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        2,
+        6,
+        8
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Yankadi, a slow Susu courtship dance where boys and girls dance in facing rows; gentle swaying 12/8, traditionally paired with the fast Macru.",
+    "source": "Paul Nas WAP p.231 / Malcolm Smith"
+  },
+  {
+    "name": "Macru",
+    "region": "African",
+    "genre": "Susu (Lower Guinea) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Macru (Makuru), the fast Susu seduction dance that follows Yankadi; the couple breaks into quick interplay, song 'Baga Gine' about the urge to dance.",
+    "source": "Paul Nas WAP p.161"
+  },
+  {
+    "name": "Yankadi Binary",
+    "region": "African",
+    "genre": "Susu (Lower Guinea) 4/4 djembe",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        3,
+        6,
+        10,
+        12
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The binary (4/4) realisation of the Susu Yankadi courtship dance; the same facing-rows choreography over a duple clave-style bell.",
+    "source": "Paul Nas WAP p.234"
+  },
+  {
+    "name": "Djole",
+    "region": "African",
+    "genre": "Temne (Sierra Leone) 4/4 mask dance",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        3,
+        6,
+        10,
+        12
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Djole (Yole), a Temne mask/percussion dance from Sierra Leone using sangban and a frame-drum feel; played on djembes with a clave-like bell. 4/4.",
+    "source": "Paul Nas WAP p.72"
+  },
+  {
+    "name": "Sofa",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 warriors' rhythm",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Sofa ('horse-warriors'), honouring the cavalry of Samori Toure's army; a martial 12/8 Malinke rhythm, also known as Limbadji Toko.",
+    "source": "Paul Nas WAP p.200"
+  },
+  {
+    "name": "Lamban",
+    "region": "African",
+    "genre": "Malinke griot (djeli) 12/8",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        2,
+        4,
+        7,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Lamban (Lamba/Sanja), the rhythm of the djeli (griot) caste celebrating the praise-singers' heritage; flowing 12/8 traditionally on bala and dunun.",
+    "source": "Malcolm Smith / Paul Nas WAP p.64"
+  },
+  {
+    "name": "Soko",
+    "region": "African",
+    "genre": "Komanko (Faranah) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        5,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Soko (Soeko) of the Komanko people of the Faranah region, accompanying the dance of the bilakoro (not yet circumcised); now spread across northern Guinea. 12/8.",
+    "source": "Paul Nas WAP p.202"
+  },
+  {
+    "name": "Toro",
+    "region": "African",
+    "genre": "Malinke (Siguiri) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        2,
+        5,
+        7,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Toro, a Malinke rhythm of the Siguiri region played after the initiation of boys returning from a three-month bush camp; reflective 12/8.",
+    "source": "Paul Nas WAP p.219"
+  },
+  {
+    "name": "Wassolonka",
+    "region": "African",
+    "genre": "Wassoulou (Guinea/Mali border) 4/4 djembe",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        2,
+        3,
+        5,
+        6,
+        8,
+        10,
+        11,
+        13,
+        14
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Wassolonka, 'from Wassoulou', a popular Malinke rhythm of the Guinea-Mali borderlands; bright Kuku-family 4/4 from the hunters' region.",
+    "source": "Paul Nas WAP p.223"
+  },
+  {
+    "name": "Sorsornet",
+    "region": "African",
+    "genre": "Baga (coastal Guinea) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9,
+        10
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Sorsornet, a Baga harvest and girls'-gratitude rhythm of coastal Guinea, popularised by Les Ballets Africains; rolling 12/8.",
+    "source": "Dave Kobrenski / Paul Nas WAP p.210"
+  },
+  {
+    "name": "Sinte",
+    "region": "African",
+    "genre": "Baga/Nalu (Boke, Guinea) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Sinte (Sinte), a coastal-Guinean Baga/Nalu mask-and-harvest rhythm; energetic 12/8 often paired with Kakilambe in performance.",
+    "source": "djembefola / Paul Nas WAP"
+  },
+  {
+    "name": "Kakilambe",
+    "region": "African",
+    "genre": "Baga (Boke) 12/8 mask rhythm",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        5,
+        6,
+        9,
+        11
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Kakilambe, the rhythm of a powerful protective forest-spirit mask of the Baga (Susu: 'reaching as high as the copal tree') that appears once a year; ceremonial 12/8.",
+    "source": "Paul Nas WAP / djembefola"
+  },
+  {
+    "name": "Mane",
+    "region": "African",
+    "genre": "Susu (Lower Guinea) 4/4 wedding dance",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        3,
+        6,
+        10,
+        12
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Maane (Maneh), a Susu wedding dance of the coastal region organised by the groom's family for the bride's family; festive 4/4 led by women.",
+    "source": "Paul Nas WAP p.159"
+  },
+  {
+    "name": "Fankani",
+    "region": "African",
+    "genre": "Maninka (Mali) 4/4 djembe",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        2,
+        3,
+        5,
+        6,
+        8,
+        10,
+        11,
+        13,
+        14
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Fankani, a joyous Maninka celebration rhythm of Mali often played for weddings and naming feasts; energetic Kuku/Madan-family 4/4.",
+    "source": "djembefola / Paul Nas WAP"
+  },
+  {
+    "name": "Garankuwa",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 blacksmith/cobbler dance",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Garankuwa (Garangedon), the dance of the garanke (leather-worker/cobbler) caste; a praise rhythm for the artisan guilds in 12/8.",
+    "source": "djembefola / Paul Nas WAP"
+  },
+  {
+    "name": "Wolosodon",
+    "region": "African",
+    "genre": "Maninka (Kayes/SE Mali) 4/4 djembe",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        3,
+        6,
+        8,
+        11,
+        14
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Wolosodon (Djondon/Jondon), a Maninka rhythm of the Kayes region of Mali honouring the woloso (house-born) servant class; spirited 4/4.",
+    "source": "Paul Nas WAP p.225"
+  },
+  {
+    "name": "Wonde",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        2,
+        5,
+        7,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Wonde, a Malinke rhythm whose song speaks of fear and protection; a twelve-pulse cycle with sangban and dununba interplay.",
+    "source": "Paul Nas WAP p.228"
+  },
+  {
+    "name": "Takonany",
+    "region": "African",
+    "genre": "Malinke (Hamana) 12/8 dununba",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9,
+        10
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Takonany ('to take four times'), one of the roughly 20 Dununba-family men's strength rhythms; named for a four-step dance figure. Heavy 12/8.",
+    "source": "Paul Nas WAP p.213"
+  },
+  {
+    "name": "Takosaba",
+    "region": "African",
+    "genre": "Malinke (upper Guinea) 12/8 dununba",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Takosaba ('the first three movements', saba = three), a Dununba-family rhythm of upper Guinea named for its opening dance figures.",
+    "source": "Paul Nas WAP p.215"
+  },
+  {
+    "name": "Lolo",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        2,
+        4,
+        7,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Lolo ('the Star'), composed by master Famoudou Konate after hearing his son sing the song Lolo; a lyrical modern 12/8 with layered sangban variations.",
+    "source": "Paul Nas WAP p.157 (Famoudou Konate)"
+  },
+  {
+    "name": "Liberte",
+    "region": "African",
+    "genre": "Malinke (Guinea) ballet 12/8",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Liberte, created by a Guinean ballet troupe at the 1958 National Festival celebrating independence from France; a buoyant performance 12/8.",
+    "source": "Paul Nas WAP p.155"
+  },
+  {
+    "name": "Mamaya",
+    "region": "African",
+    "genre": "Mandingo (Guinea) 4/4 stately dance",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        3,
+        6,
+        10,
+        12
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Mamaya, a stately Mandingo club dance hugely popular in 1940s-60s Guinea, danced in embroidered gowns in slow dignified lines; elegant 4/4.",
+    "source": "Paul Nas WAP p.165"
+  },
+  {
+    "name": "Moribayassa",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 women's rhythm",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Moribayassa, danced by a woman whose wish has been granted, circling the village in cast-off clothes before burning them; cathartic 12/8.",
+    "source": "Malcolm Smith / Paul Nas WAP"
+  },
+  {
+    "name": "Soboninkun",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        2,
+        5,
+        6,
+        8,
+        11
+      ],
+      "snareAccent": [
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        10,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Soboninkun, a 12/8 Malinke masquerade rhythm floating over a 4/4 feel; bell .xx.xx.xx.xx, sangban g.g..G.GG..., kenkeni k..KK.k..KK.",
+    "source": "Malcolm Smith transcription"
+  },
+  {
+    "name": "Kedju",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Kedju (Kedjou), a 12/8 Malinke rhythm in which the kenkeni enters on beat three to introduce the dununba; rolling triple feel.",
+    "source": "Malcolm Smith transcription"
+  },
+  {
+    "name": "Dunun Kura",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 dununba",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Dunun Kura, Mamady Keita's addition to the Dununba family, best felt as four groups of three; men's strength dance in 12/8.",
+    "source": "Malcolm Smith / Mamady Keita"
+  },
+  {
+    "name": "Menie",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 naming rhythm",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Menie, a Malinke rhythm played at the naming ceremony about a week after a child's birth; its song tells of four masks. Gentle 12/8.",
+    "source": "Paul Nas WAP p.174"
+  },
+  {
+    "name": "Lafe / Kurubi",
+    "region": "African",
+    "genre": "Malinke (Guinea) 12/8 djembe",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Lafe (Kurubi), a swinging invitation-to-dance rhythm; 'Lafe' is the female dancer who circles outside the ring shaking a rattle. 12/8.",
+    "source": "Paul Nas WAP p.148"
+  },
+  {
+    "name": "Warba",
+    "region": "African",
+    "genre": "Mossi (Burkina Faso) 12/8 dance",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Warba (Waraba), a popular Mossi dance of Burkina Faso originally accompanied by the bendre gourd-drum; lively 12/8 with a slow then fast section.",
+    "source": "Paul Nas WAP p.221"
+  },
+  {
+    "name": "Yogui",
+    "region": "African",
+    "genre": "Susu (Lower Guinea) 12/8 women's dance",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Yogui (Yongui), a Susu women's dance-rhythm of Lower Guinea, in some traditions a mask dance for older women; flowing 12/8.",
+    "source": "Paul Nas WAP p.235"
+  },
+  {
+    "name": "Agbekor",
+    "region": "African",
+    "genre": "Ewe (Ghana/Togo) 12/8 war dance",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Agbekor, the ancient Ewe war dance once performed before and after battle; built on the gankogui standard bell [0,2,4,5,7,9,11] over a 12/8 cycle.",
+    "source": "Wikipedia (Ewe drumming) / David Locke transcriptions"
+  },
+  {
+    "name": "Atsiagbekor",
+    "region": "African",
+    "genre": "Ewe (Ghana/Togo) 12/8 war dance",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Atsiagbekor, the modern recreational/concert form of the old Agbekor war dance; the same seven-stroke gankogui timeline drives fast interlocking drums.",
+    "source": "Wikipedia (Ewe drumming) / David Locke"
+  },
+  {
+    "name": "Gadzo",
+    "region": "African",
+    "genre": "Ewe (Ghana/Togo) 12/8 war dance",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        5,
+        6,
+        11
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Gadzo, an Ewe warrior dance of the northern Ewe area; the standard 12/8 gankogui bell anchors the sogo, kidi and kagan responses.",
+    "source": "Wikipedia (Ewe drumming) / Locke"
+  },
+  {
+    "name": "Adzogbo",
+    "region": "African",
+    "genre": "Ewe (Benin/Togo) 12/8 ritual war dance",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Adzogbo (originally Adzohu from Benin), a spiritual war/charm dance of the Ewe displaying mystical power; a complex sectional 12/8 on the standard bell.",
+    "source": "Wikipedia (Ewe music) / Locke"
+  },
+  {
+    "name": "Agbadza",
+    "region": "African",
+    "genre": "Ewe (Ghana/Togo) 12/8 social dance",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        5,
+        6,
+        11
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Agbadza, the most widespread Ewe recreational and funeral dance, descended from the old war dance Atrikpui; built on the standard 12/8 gankogui timeline.",
+    "source": "Wikipedia (Ewe drumming)"
+  },
+  {
+    "name": "Kete",
+    "region": "African",
+    "genre": "Asante (Ghana) 12/8 royal court",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Kete, the dignified royal court music of the Asante played for the chief; the dawuro iron-bell timeline embodies the maxim of 'not hurrying'. Ternary 12/8.",
+    "source": "African Music journal (Asante Kete) / Brown U."
+  },
+  {
+    "name": "Gahu",
+    "region": "African",
+    "genre": "Ewe (Ghana/Togo) 4/4 social dance",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        3,
+        6,
+        10,
+        12
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Gahu, a circle social dance the Ewe adopted from Yoruba/Egun migrants; its gankogui keeps a son-clave-like 4/4 timeline unchanged throughout the piece.",
+    "source": "Reich/Locke transcriptions / Wikipedia"
+  },
+  {
+    "name": "Kpanlogo",
+    "region": "African",
+    "genre": "Ga (Accra, Ghana) 4/4 highlife dance",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        3,
+        6,
+        10,
+        12
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Kpanlogo, a 1960s Ga recreational drum-dance of Accra influenced by highlife and rock-and-roll; its nono bell plays the 3-2 son clave key pattern in 4/4.",
+    "source": "Wikipedia (Kpanlogo) / bell-pattern literature"
+  },
+  {
+    "name": "Borborbor",
+    "region": "African",
+    "genre": "Ewe (central Volta, Ghana) 12/8 dance",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Borborbor (Akpese), a mid-20th-century Ewe recreational dance from the central Volta region created by Francis Nuatro; joyful 12/8 on the standard bell.",
+    "source": "Pulse Ghana / Ewe drumming sources"
+  },
+  {
+    "name": "Bawa",
+    "region": "African",
+    "genre": "Dagaaba (Northern Ghana) 12/8 harvest dance",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Bawa, a northern-Ghanaian Dagaaba harvest and recreational dance adopted into Ewe and school repertoires; bright triple-feel 12/8 with bell timeline.",
+    "source": "Ghana dance repertoire / Ewe drumming"
+  },
+  {
+    "name": "Gabada",
+    "region": "African",
+    "genre": "Ewe (Ghana/Togo) 12/8 recreational dance",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Gabada, a relaxed Ewe recreational dance of the Volta region; the gankogui standard bell rides over kidi and kagan interplay in 12/8.",
+    "source": "Ewe drumming repertoire"
+  },
+  {
+    "name": "Gome",
+    "region": "African",
+    "genre": "Ga (Accra, Ghana) 4/4 frame-drum dance",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        3,
+        6,
+        10,
+        12
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Gome (Gombe), a Ga recreational music centred on the large square gome bass frame-drum the player sits on, brought back by returning labourers; relaxed 4/4 clave feel.",
+    "source": "Ewe/Ga drumming sources"
+  },
+  {
+    "name": "Sikyi",
+    "region": "African",
+    "genre": "Asante (Ghana) 4/4 youth dance",
+    "length": 16,
+    "voices": {
+      "bass": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "snareAccent": [
+        0,
+        3,
+        6,
+        10,
+        12
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Sikyi (Sekye), a flirtatious Asante youth recreational dance from the 1920s that peaked around independence; light 4/4 with a clave-style bell.",
+    "source": "Akan drumming sources / Ghana repertoire"
+  },
+  {
+    "name": "Adowa",
+    "region": "African",
+    "genre": "Akan (Ghana) 12/8 funeral dance",
+    "length": 12,
+    "voices": {
+      "bass": [
+        0,
+        3,
+        6,
+        9
+      ],
+      "snareAccent": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Adowa, the most widespread Akan social dance, performed chiefly at funerals with atumpan, donno and the dawuro double bell; graceful 12/8 imitating the antelope.",
+    "source": "africamuseum.be (Adowa) / Akan drumming"
+  }
+]

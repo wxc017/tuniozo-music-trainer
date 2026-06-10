@@ -1,0 +1,946 @@
+[
+  {
+    "name": "Sofyan",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 8,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [4, 6],
+      "snareGhost": [2],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The simplest 4/4 usul, the building block of Ottoman classical and folk music, vocalized Düm Tek Te-ke (one düm and two teks). Two Sofyan cycles combine to form Düyek.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music); Turkish Music Portal usuls"
+  },
+  {
+    "name": "Nim Sofyan",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 4,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [2],
+      "snareGhost": [],
+      "hatClosed": [0, 2],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "A 2/4 usul, the shortest cycle, vocalized Düm Tek; the half-size of Sofyan and a basic unit of the larger composite usuls.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Semai",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 6,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [2, 4],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4],
+      "hatOpen": [],
+      "hhFoot": [0]
+    },
+    "desc": "A 3/4 usul vocalized Düm Tek Tek, used widely in saz semai instrumental forms; two Semai cycles or three Nim Sofyan form Yürük Semai.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Düyek",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12],
+      "snareGhost": [6, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "An 8/8 usul, one of the most common cycles in Turkish music, vocalized Düm Tek-ke Düm Tek; effectively two Sofyan cycles joined. The backbone of many ilahis and oyun havaları.",
+    "source": "Rhythm in Turkish music, Wikipedia; compmusic.upf.edu usul examples (https://compmusic.upf.edu/examples-usul-mmt)"
+  },
+  {
+    "name": "Ağır Düyek",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [6, 12],
+      "snareGhost": [4, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The slow (ağır) variant of Düyek in 8/4 feel, giving each stroke greater weight and used in stately classical compositions and Mevlevi ceremonies.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Müsemmen",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [3, 10, 12],
+      "snareGhost": [8, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "An 8/8 aksak-feel usul grouped 3+2+3, giving a limping eight-beat cycle popular in folk and dance repertoire of Rumeli and the Aegean.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Devr-i Hindi",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 14,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 6, 12],
+      "snareGhost": [10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "A 7/8 usul grouped 2+2+3 (or 3+2+2), one of the classic aksak cycles of Ottoman art music, vocalized Düm Te-ke Tek Düm Tek.",
+    "source": "Rhythm in Turkish music, Wikipedia; chromatone.center Turkish rhythms (https://chromatone.center/theory/rhythm/system/turkish/)"
+  },
+  {
+    "name": "Devr-i Turan",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 14,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [4, 10, 12],
+      "snareGhost": [8],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A 7/8 usul grouped 3+2+2, a sibling of Devr-i Hindi with the long pulse placed first, used in classical and folk repertoire.",
+    "source": "chromatone.center Turkish rhythms (https://chromatone.center/theory/rhythm/system/turkish/)"
+  },
+  {
+    "name": "Türk Aksağı",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 10,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [4, 6],
+      "snareGhost": [8],
+      "hatClosed": [0, 2, 4, 6, 8],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A 5/8 aksak usul grouped 2+3, vocalized Düm Tek Te-ek; two cycles combine to form Curcuna. Common in folk and classical song.",
+    "source": "Rhythm in Turkish music, Wikipedia; chromatone.center Turkish rhythms (https://chromatone.center/theory/rhythm/system/turkish/)"
+  },
+  {
+    "name": "Aksak",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 18,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12, 14],
+      "snareGhost": [6, 16],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16],
+      "hatOpen": [],
+      "hhFoot": [0, 8, 12]
+    },
+    "desc": "The classic 9/8 aksak usul grouped 2+2+2+3, the 'limping' meter of zeybek and oyun havası, vocalized Düm Te-ke Tek Te-ke Düm Tek-ke.",
+    "source": "Rhythm in Turkish music, Wikipedia; chromatone.center Turkish rhythms (https://chromatone.center/theory/rhythm/system/turkish/)"
+  },
+  {
+    "name": "Ağır Aksak",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 18,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 6, 12],
+      "snareGhost": [14, 16],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16],
+      "hatOpen": [],
+      "hhFoot": [0, 8, 12]
+    },
+    "desc": "The slow form of the 9/8 aksak (2+2+2+3), giving a heavier, dignified gait used in art songs and şarkı; the same skeleton as Aksak performed at a stately tempo.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Karşılama",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 18,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 12, 14],
+      "snareGhost": [2, 6, 10, 16],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16],
+      "hatOpen": [14],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "The 9/8 Roman/Rumeli dance usul grouped 2+2+2+3, the lively karşılama 'greeting' face-to-face dance rhythm of Thrace, vocalized Düm Tek Düm Tek Düm Te-ke.",
+    "source": "Oyun Havası, Melodigging; Donizetti Darbuka 9/8 aksak guide (https://www.donizettidarbuka.com/en/post/how-to-play-the-9-8-irregular-rhythm-on-the-darbuka-beginner-s-guide)"
+  },
+  {
+    "name": "Roman 9/8",
+    "region": "Asian",
+    "genre": "Turkish Romani usul",
+    "length": 18,
+    "voices": {
+      "bass": [0, 6, 8],
+      "snareAccent": [4, 12, 14, 16],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16],
+      "hatOpen": [16],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The fast Turkish Romani (Roman havası) 9/8 grouped 2+2+2+3 with a syncopated düm on the off-pulse, the festive wedding groove of Roma clarinet and darbuka ensembles.",
+    "source": "Darbuka Roman Havaları, Melodigging Oyun Havası; Roman havası darbuka references"
+  },
+  {
+    "name": "Curcuna",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 20,
+    "voices": {
+      "bass": [0, 10],
+      "snareAccent": [4, 6, 14, 16],
+      "snareGhost": [8, 18],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18],
+      "hatOpen": [],
+      "hhFoot": [0, 10]
+    },
+    "desc": "A 10/8 usul grouped 3+2+2+3 (two Türk Aksağı joined), vocalized Düm Tek Te-ke Düm Düm Tek Te-ke; the playful curcuna meter of köçekçe and oyun pieces.",
+    "source": "Rhythm in Turkish music, Wikipedia; researchgate Yürük Semai–Curcuna study"
+  },
+  {
+    "name": "Aksak Semai",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 20,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [8, 12, 16],
+      "snareGhost": [2, 18],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12, 16]
+    },
+    "desc": "A 10/8 usul grouped 2+2+2+2+2, used in the aksak semai instrumental and beste forms of Ottoman classical music; vocalized Düm Tek Tek Tek Tek over five pulses.",
+    "source": "chromatone.center Turkish rhythms (https://chromatone.center/theory/rhythm/system/turkish/)"
+  },
+  {
+    "name": "Yürük Semai",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [2, 4, 8, 10],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A 6/8 (6/4) usul grouped 3+3, vocalized Düm Tek Tek Düm Tek Tek; the flowing yürük ('walking') semai meter closing many fasıl suites, made of three Nim Sofyan.",
+    "source": "Rhythm in Turkish music, Wikipedia; researchgate Yürük Semai–Curcuna study"
+  },
+  {
+    "name": "Sengin Semai",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [4, 8, 10],
+      "snareGhost": [2],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A 6/4 usul, the 'weighty' semai grouped 3+3 at a slower, more ornamented tempo than Yürük Semai, common in classical şarkı.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Devr-i Kebir",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 28,
+    "voices": {
+      "bass": [0, 8, 14, 22],
+      "snareAccent": [4, 6, 12, 18, 20, 26],
+      "snareGhost": [10, 16, 24],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26],
+      "hatOpen": [],
+      "hhFoot": [0, 8, 14, 22]
+    },
+    "desc": "A grand 14/4 usul, one of the long classical cycles used in kâr, beste and Mevlevi ayin compositions; built from a sequence of düm and tek subgroups across fourteen beats.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Çenber",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 48,
+    "voices": {
+      "bass": [0, 8, 16, 24, 32, 40],
+      "snareAccent": [4, 12, 20, 28, 36, 44],
+      "snareGhost": [6, 14, 22, 30, 38, 46],
+      "hatClosed": [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44],
+      "hatOpen": [],
+      "hhFoot": [0, 8, 16, 24, 32, 40]
+    },
+    "desc": "A 24/4 classical usul ('the circle'), one of the great long cycles of Ottoman art music used in stately beste and kâr forms, here on a half-beat (eighth) grid.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Berefşan",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 64,
+    "voices": {
+      "bass": [0, 8, 16, 24, 32, 40, 48, 56],
+      "snareAccent": [4, 12, 20, 28, 36, 44, 52, 60],
+      "snareGhost": [6, 14, 22, 30, 38, 46, 54, 62],
+      "hatClosed": [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60],
+      "hatOpen": [],
+      "hhFoot": [0, 16, 32, 48]
+    },
+    "desc": "A 32/4 long classical usul (Berefşan/Berevşan), one of the extended cycles of Ottoman art music spanning thirty-two beats, used in monumental beste compositions.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Hafif",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 64,
+    "voices": {
+      "bass": [0, 12, 24, 32, 44, 56],
+      "snareAccent": [4, 8, 16, 20, 28, 36, 40, 48, 52, 60],
+      "snareGhost": [6, 18, 30, 38, 50, 62],
+      "hatClosed": [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60],
+      "hatOpen": [],
+      "hhFoot": [0, 16, 32, 48]
+    },
+    "desc": "A 32/4 classical usul whose name means 'light', a long compound cycle of Ottoman art music combining smaller usuls across thirty-two beats.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Sakîl",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 96,
+    "voices": {
+      "bass": [0, 16, 32, 48, 64, 80],
+      "snareAccent": [8, 24, 40, 56, 72, 88],
+      "snareGhost": [4, 20, 36, 52, 68, 84],
+      "hatClosed": [0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88],
+      "hatOpen": [],
+      "hhFoot": [0, 16, 32, 48, 64, 80]
+    },
+    "desc": "A 48/4 monumental classical usul whose name means 'heavy', among the longest cycles of Ottoman art music; spans forty-eight beats here on a half-beat grid.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Remel",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 56,
+    "voices": {
+      "bass": [0, 12, 20, 32, 44],
+      "snareAccent": [4, 8, 16, 24, 28, 36, 40, 48, 52],
+      "snareGhost": [10, 22, 34, 46, 54],
+      "hatClosed": [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52],
+      "hatOpen": [],
+      "hhFoot": [0, 14, 28, 42]
+    },
+    "desc": "A 28/4 long classical usul derived from the aruz poetic metre Remel, used in extended beste and kâr forms of Ottoman art music.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Fer'",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 28,
+    "voices": {
+      "bass": [0, 8, 16],
+      "snareAccent": [4, 12, 20, 24],
+      "snareGhost": [6, 14, 22, 26],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26],
+      "hatOpen": [],
+      "hhFoot": [0, 8, 16]
+    },
+    "desc": "A 14/4 classical usul (Fer'), a medium-long cycle of Ottoman art music used in beste and ağır semai forms.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Çiftetelli",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8],
+      "snareAccent": [4, 12, 14],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [14],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The sensuous 8/8 (4/4) çiftetelli dance groove, vocalized Düm Tek Düm-Düm Tek, the undulating belly-dance and Roman rhythm of the eastern Mediterranean.",
+    "source": "Oyun Havası, Melodigging; çiftetelli darbuka references"
+  },
+  {
+    "name": "Mandıra",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 18,
+    "voices": {
+      "bass": [0, 8, 12],
+      "snareAccent": [4, 14, 16],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16],
+      "hatOpen": [],
+      "hhFoot": [0, 8, 12]
+    },
+    "desc": "A 9/8 usul grouped 2+2+2+3 used for the mandıra Roman dance, a relaxed swung cousin of karşılama played by Thracian Roma clarinet and darbuka ensembles.",
+    "source": "Oyun Havası, Melodigging; Turkish 9/8 Roman dance references"
+  },
+  {
+    "name": "Nim Devir",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [3, 8, 10],
+      "snareGhost": [4],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A 6/4 usul ('half-cycle'), a shorter classical cycle related to the devir family, used in instrumental and vocal forms of Ottoman music.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Evfer",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 18,
+    "voices": {
+      "bass": [0, 6, 8],
+      "snareAccent": [4, 12, 14],
+      "snareGhost": [10, 16],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "A 9/8 usul grouped 2+2+2+3 widely used in Mevlevi and tekke music and ilahis, a devotional cousin of Aksak with a distinctive düm placement.",
+    "source": "chromatone.center Turkish rhythms; Rhythm in Turkish music, Wikipedia"
+  },
+  {
+    "name": "Raksan",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 30,
+    "voices": {
+      "bass": [0, 10, 18],
+      "snareAccent": [4, 6, 14, 22, 24],
+      "snareGhost": [8, 16, 26, 28],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28],
+      "hatOpen": [],
+      "hhFoot": [0, 10, 18]
+    },
+    "desc": "A 15/8 usul ('dancing') grouped in additive subgroups, an aksak cycle used in lively classical and folk dance pieces.",
+    "source": "chromatone.center Turkish rhythms (https://chromatone.center/theory/rhythm/system/turkish/)"
+  },
+  {
+    "name": "Nim Evsat",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 26,
+    "voices": {
+      "bass": [0, 8, 14],
+      "snareAccent": [4, 6, 18, 20, 24],
+      "snareGhost": [10, 16, 22],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24],
+      "hatOpen": [],
+      "hhFoot": [0, 14]
+    },
+    "desc": "A 13/8 usul, an additive aksak cycle of Ottoman classical music ('half-Evsat'), used in instrumental and devotional repertoire.",
+    "source": "chromatone.center Turkish rhythms (https://chromatone.center/theory/rhythm/system/turkish/)"
+  },
+  {
+    "name": "Devr-i Revan",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 28,
+    "voices": {
+      "bass": [0, 8, 16, 20],
+      "snareAccent": [4, 12, 24, 26],
+      "snareGhost": [6, 14, 18, 22],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26],
+      "hatOpen": [],
+      "hhFoot": [0, 8, 16, 20]
+    },
+    "desc": "A 14/8 usul ('flowing cycle') used in classical beste and kâr forms, a medium-long cycle with a gracefully moving düm-tek skeleton.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Nim Hafif",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 32,
+    "voices": {
+      "bass": [0, 8, 16, 24],
+      "snareAccent": [4, 12, 20, 28],
+      "snareGhost": [6, 14, 22, 30],
+      "hatClosed": [0, 4, 8, 12, 16, 20, 24, 28],
+      "hatOpen": [],
+      "hhFoot": [0, 16]
+    },
+    "desc": "A 16/4 classical usul ('half-Hafif'), a long composite cycle of Ottoman art music built from joined smaller usuls across sixteen beats.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Frenkçin",
+    "region": "Asian",
+    "genre": "Turkish usul",
+    "length": 24,
+    "voices": {
+      "bass": [0, 8, 16],
+      "snareAccent": [4, 12, 20, 22],
+      "snareGhost": [6, 14, 18],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22],
+      "hatOpen": [],
+      "hhFoot": [0, 8, 16]
+    },
+    "desc": "A 12/8 classical usul of Ottoman art music, a medium cycle grouped in additive subgroups used in instrumental forms.",
+    "source": "Rhythm in Turkish music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Turkish_music)"
+  },
+  {
+    "name": "Reng",
+    "region": "Asian",
+    "genre": "Persian tonbak",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [3, 4, 8, 10],
+      "snareGhost": [2, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The classic Persian 6/8 reng dance rhythm with a hemiola (6/8 + 3/4) feel, the most common metric cycle of Persian art music, played on tonbak with bass tom and rim baks.",
+    "source": "Persian Rhythms, Oud for Guitarists (https://www.oudforguitarists.com/persian-rhythms/); Rhythm in Persian music, Wikipedia"
+  },
+  {
+    "name": "Reng-e Chahar Mezrab",
+    "region": "Asian",
+    "genre": "Persian tonbak",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [2, 4, 8, 10],
+      "snareGhost": [1, 3, 5, 7, 9, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The driving chahar mezrab ('four-pick') ostinato in 6/8, a fast virtuosic instrumental form of the dastgah where the tonbak fills the cycle with continuous rolling strokes.",
+    "source": "Persian Rhythms, Oud for Guitarists (https://www.oudforguitarists.com/persian-rhythms/)"
+  },
+  {
+    "name": "Zarbi 2/4",
+    "region": "Asian",
+    "genre": "Persian tonbak",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [3, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A Persian żarbī (metered) 2/4 cycle used in pishdaramad and reng, related to Arabic wahda; tonbak plays a low tom on the beat and rim accents off the beat.",
+    "source": "Rhythm in Persian music, Wikipedia; Persian Rhythms, Oud for Guitarists (https://www.oudforguitarists.com/persian-rhythms/)"
+  },
+  {
+    "name": "Zarbi 4/4",
+    "region": "Asian",
+    "genre": "Persian tonbak",
+    "length": 8,
+    "voices": {
+      "bass": [0, 5],
+      "snareAccent": [2, 4, 6],
+      "snareGhost": [7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A Persian żarbī 4/4 cycle for pishdaramad and zarbi-avaz sections, with a steady bass tom and bright bak accents framing the metered melody.",
+    "source": "Rhythm in Persian music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Persian_music)"
+  },
+  {
+    "name": "Persian 5/8",
+    "region": "Asian",
+    "genre": "Persian tonbak",
+    "length": 10,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6, 8],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 2, 4, 6, 8],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "A Persian 5/8 cycle grouped 2+3 (or 3+2), an asymmetric żarbī metre used in regional and art-music pieces, played on tonbak with tom and bak strokes.",
+    "source": "Persian Rhythms, Oud for Guitarists (https://www.oudforguitarists.com/persian-rhythms/)"
+  },
+  {
+    "name": "Persian 7/8",
+    "region": "Asian",
+    "genre": "Persian tonbak",
+    "length": 14,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [4, 10, 12],
+      "snareGhost": [2, 8],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A Persian 7/8 cycle grouped 3+2+2 (or 2+2+3), an asymmetric metre of the żarbī repertoire, played on tonbak with a bass tom opening each subgroup.",
+    "source": "Persian Rhythms, Oud for Guitarists (https://www.oudforguitarists.com/persian-rhythms/)"
+  },
+  {
+    "name": "Persian 10/8 Jorjina",
+    "region": "Asian",
+    "genre": "Persian tonbak",
+    "length": 20,
+    "voices": {
+      "bass": [0, 10],
+      "snareAccent": [6, 14, 16],
+      "snareGhost": [4, 8, 18],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18],
+      "hatOpen": [],
+      "hhFoot": [0, 10]
+    },
+    "desc": "A Persian 10/8 cycle grouped 3+2+2+3, cognate with the Arabic jurjina, a lively asymmetric dance metre played on tonbak with paired bass toms framing the cycle.",
+    "source": "Persian Rhythms, Oud for Guitarists (https://www.oudforguitarists.com/persian-rhythms/)"
+  },
+  {
+    "name": "Pishdaramad 6/4",
+    "region": "Asian",
+    "genre": "Persian tonbak",
+    "length": 24,
+    "voices": {
+      "bass": [0, 8, 12, 20],
+      "snareAccent": [4, 6, 16, 18, 22],
+      "snareGhost": [2, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22],
+      "hatOpen": [],
+      "hhFoot": [0, 12]
+    },
+    "desc": "A stately 6/4 pishdaramad (overture) cycle of the dastgah, the slow metered prelude that opens a Persian classical suite, played on tonbak with broad toms and bak ornaments.",
+    "source": "Rhythm in Persian music, Wikipedia; Persian Rhythms, Oud for Guitarists (https://www.oudforguitarists.com/persian-rhythms/)"
+  },
+  {
+    "name": "Zarb-e Osul",
+    "region": "Asian",
+    "genre": "Persian tonbak",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 6, 12, 14],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Zarb-e osul, the foundational metric cycle taught in the tonbak radif, an 8-beat żarbī pattern of tom and bak strokes underpinning composed sections of the dastgah.",
+    "source": "Rhythmic forms in Persian art music, ResearchGate; Rhythm in Persian music, Wikipedia"
+  },
+  {
+    "name": "Tasnif 6/8",
+    "region": "Asian",
+    "genre": "Persian tonbak",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6],
+      "snareAccent": [4, 8, 10],
+      "snareGhost": [2, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "A 6/8 tasnif (ballad/song) accompaniment of Persian classical music, gentler than reng, where the tonbak supports a sung melody with rolling tom-bak figures.",
+    "source": "Rhythm in Persian music, Wikipedia (https://en.wikipedia.org/wiki/Rhythm_in_Persian_music)"
+  },
+  {
+    "name": "Azerbaijani Mugham Reng",
+    "region": "Asian",
+    "genre": "Azerbaijani mugham",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [3, 4, 8, 9, 10],
+      "snareGhost": [2],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "The lively 6/8 reng/diringi dance section of an Azerbaijani mugham, where naghara and daf drive a hemiola groove between the slow improvised mugham movements.",
+    "source": "Rhythm in Persian music, Wikipedia; Azerbaijani mugham references"
+  },
+  {
+    "name": "Heyrati",
+    "region": "Asian",
+    "genre": "Azerbaijani mugham",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 5, 6],
+      "snareGhost": [1, 3, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "Heyrati, a march-like metered zarbi-mugham rhythm of Azerbaijan in duple time, played on naghara with a firm bass and crisp rim accents under a fixed-tempo mugham.",
+    "source": "Azerbaijani zarbi-mugham references; Rhythm in Persian music, Wikipedia"
+  },
+  {
+    "name": "Doira Ufar",
+    "region": "Asian",
+    "genre": "Central Asian doira usul",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [3, 4, 8, 10],
+      "snareGhost": [2, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Ufar, the fast 6/8 dance usul that closes each Shashmaqom suite, played on doira with deep bum (center) and sharp bak (rim) strokes driving an exuberant dance.",
+    "source": "Uzbek classical music and rhythm (usul), ppublishing.org (https://ppublishing.org/archive/publication/1050-uzbek-classical-music-and-rhythm-usul); Shashmaqam, Wikipedia"
+  },
+  {
+    "name": "Doira Samoî",
+    "region": "Asian",
+    "genre": "Central Asian doira usul",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [2, 6, 10],
+      "snareGhost": [1, 5, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Samoî (Samoiy), a flowing 6/8 usul of the Shashmaqom instrumental cycle, with bum strokes opening each pulse group and bak strokes filling the dance-like motion.",
+    "source": "Uzbek classical music and rhythm (usul), ppublishing.org; Shashmaqam, Wikipedia (https://en.wikipedia.org/wiki/Shashmaqam)"
+  },
+  {
+    "name": "Doira Talqin",
+    "region": "Asian",
+    "genre": "Central Asian doira usul",
+    "length": 14,
+    "voices": {
+      "bass": [0, 6, 8],
+      "snareAccent": [4, 10, 12],
+      "snareGhost": [2, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Talqin (Talkin), a stately 7/8 usul of the Shashmaqom vocal cycle, where the doira's bum-bak pattern carries a measured, declamatory song section.",
+    "source": "Uzbek classical music and rhythm (usul), ppublishing.org; Shashmaqam, Wikipedia"
+  },
+  {
+    "name": "Doira Mukhammas",
+    "region": "Asian",
+    "genre": "Central Asian doira usul",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 10, 12],
+      "snareGhost": [2, 6, 8],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Mukhammas ('fivefold'), a long instrumental usul of the Shashmaqom, one of the great composed cycles for doira accompaniment with a rich bum-bak architecture.",
+    "source": "Uzbek classical music and rhythm (usul), ppublishing.org; Shashmaqam, Wikipedia (https://en.wikipedia.org/wiki/Shashmaqam)"
+  },
+  {
+    "name": "Doira Sakil",
+    "region": "Asian",
+    "genre": "Central Asian doira usul",
+    "length": 20,
+    "voices": {
+      "bass": [0, 8, 10, 18],
+      "snareAccent": [4, 6, 14, 16],
+      "snareGhost": [2, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18],
+      "hatOpen": [],
+      "hhFoot": [0, 10]
+    },
+    "desc": "Sakil, a weighty long usul of the Shashmaqom instrumental repertoire, among the most extended doira cycles, building a grand procession of bum and bak strokes.",
+    "source": "Uzbek classical music and rhythm (usul), ppublishing.org; Shashmaqam, Wikipedia"
+  },
+  {
+    "name": "Doira Gardun",
+    "region": "Asian",
+    "genre": "Central Asian doira usul",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 5, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "Gardun, a duple instrumental usul of the Shashmaqom ('the wheel/heaven'), a steady doira cycle of alternating bum and bak that introduces many maqom movements.",
+    "source": "Uzbek classical music and rhythm (usul), ppublishing.org; Shashmaqam, Wikipedia (https://en.wikipedia.org/wiki/Shashmaqam)"
+  },
+  {
+    "name": "Doira Sarakhbor",
+    "region": "Asian",
+    "genre": "Central Asian doira usul",
+    "length": 12,
+    "voices": {
+      "bass": [0, 5, 6],
+      "snareAccent": [2, 8, 10],
+      "snareGhost": [3, 9, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Sarakhbor, the grand opening vocal usul of a Shashmaqom maqom, a measured cycle whose doira pattern frames the highest sung climax of the suite.",
+    "source": "Uzbek classical music and rhythm (usul), ppublishing.org; Shashmaqam, Wikipedia"
+  },
+  {
+    "name": "Doira Savt",
+    "region": "Asian",
+    "genre": "Central Asian doira usul",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6, 8],
+      "snareAccent": [3, 4, 10],
+      "snareGhost": [2, 9],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Savt, a lyrical vocal usul of the Shashmaqom song cycle, where the doira supports an ornamented melody with a gently swung bum-bak figure.",
+    "source": "Uzbek classical music and rhythm (usul), ppublishing.org; Shashmaqam, Wikipedia"
+  },
+  {
+    "name": "Doira Chapandoz",
+    "region": "Asian",
+    "genre": "Central Asian doira usul",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [2, 6, 10],
+      "snareGhost": [3, 7, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Chapandoz, an energetic Uzbek-Tajik dance usul evoking the horseback buzkashi rider, with a galloping doira pattern of alternating bum and bak strokes.",
+    "source": "Uzbek classical music and rhythm (usul), ppublishing.org; Doira traditional rhythm references"
+  },
+  {
+    "name": "Doira Zang",
+    "region": "Asian",
+    "genre": "Central Asian doira usul",
+    "length": 10,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [2, 4, 8],
+      "snareGhost": [3, 9],
+      "hatClosed": [0, 2, 4, 6, 8],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Zang, an asymmetric 5/8 (2+3) folk dance usul of the doira repertoire of the Ferghana and Tashkent traditions, with a limping bum-bak gait.",
+    "source": "Uzbek classical music and rhythm (usul), ppublishing.org; Doira traditional rhythm references"
+  },
+  {
+    "name": "Doira Sarbakhsh",
+    "region": "Asian",
+    "genre": "Central Asian doira usul",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [1, 5, 9, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "Sarbakhsh, an introductory instrumental usul of the Tajik-Uzbek maqom tradition, a steady additive doira cycle that sets the meter before the main movement.",
+    "source": "Uzbek classical music and rhythm (usul), ppublishing.org; Shashmaqam, Wikipedia"
+  },
+  {
+    "name": "Uyghur Muqam Marghul",
+    "region": "Asian",
+    "genre": "Uyghur muqam",
+    "length": 14,
+    "voices": {
+      "bass": [0, 6, 8],
+      "snareAccent": [4, 10, 12],
+      "snareGhost": [2, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "A 7/8 marghul dance rhythm from the Uyghur On Ikki Muqam, where dap (frame drum) and naghra accelerate the suite's closing dastan and mäshräp dance sections.",
+    "source": "Uyghur On Ikki Muqam, Wikipedia; Central Asian muqam rhythm references"
+  },
+  {
+    "name": "Uyghur Muqam Sama",
+    "region": "Asian",
+    "genre": "Uyghur muqam",
+    "length": 14,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 6, 12],
+      "snareGhost": [2, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The 7/8 sama dance rhythm of the Uyghur muqam, a communal circle-dance metre grouped 2+2+3 led by the dap frame drum at the climax of the suite.",
+    "source": "Uyghur On Ikki Muqam, Wikipedia; Central Asian muqam rhythm references"
+  },
+  {
+    "name": "Lazgi",
+    "region": "Asian",
+    "genre": "Central Asian doira usul",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [3, 4, 8, 9, 10],
+      "snareGhost": [2, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 6]
+    },
+    "desc": "Lazgi, the exuberant Khorezm dance rhythm of Uzbekistan in a 6/8 hemiola feel, accelerating across the dance with driving doira bum and bak strokes.",
+    "source": "Khorezm Lazgi (UNESCO ICH); Doira traditional rhythm references"
+  }
+]

@@ -1,0 +1,914 @@
+[
+  {
+    "name": "Jinyangjo",
+    "region": "Asian",
+    "genre": "Korean jangdan (pansori/sanjo)",
+    "length": 18,
+    "voices": {
+      "bass": [0, 6, 9, 12],
+      "snareAccent": [0, 3, 6, 9, 12, 15],
+      "snareGhost": [3, 7, 10, 13, 16],
+      "hatClosed": [0, 3, 6, 9, 12, 15],
+      "hatOpen": [9],
+      "hhFoot": [0]
+    },
+    "desc": "The slowest pansori/sanjo jangdan, a stately six-beat gak in compound triple (encoded as 6 beats x 3 = 18), with the changgo kung (low) on the main beats and accented deok strokes marking the lyrical, meditative cycle.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Jungmori",
+    "region": "Asian",
+    "genre": "Korean jangdan (pansori/sanjo)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6, 9],
+      "snareAccent": [0, 3, 6, 9, 11],
+      "snareGhost": [2, 5, 8, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [9],
+      "hhFoot": [0]
+    },
+    "desc": "A walking-tempo twelve-beat jangdan (12/4) basic to all sanjo schools, used for descriptive and emotional passages; the deok accent on beat 9 (the 'maett�' cadence) is characteristic.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Jungjungmori",
+    "region": "Asian",
+    "genre": "Korean jangdan (pansori/folk)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 2, 3, 6, 8, 9],
+      "snareGhost": [1, 4, 7, 10, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [6],
+      "hhFoot": [0]
+    },
+    "desc": "An exciting twelve-beat compound-quadruple jangdan (12/8, four beats of three) faster than jungmori, used in lively pansori scenes and folk song; deong on each main beat with deok ornaments.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Jajinmori",
+    "region": "Asian",
+    "genre": "Korean jangdan (pansori/sanjo/nongak)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 6, 8, 9],
+      "snareGhost": [2, 5, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "A fast four-beat compound jangdan (12/8) whose basic figure is 'deong-kung-kungdeok-kung'; drives dramatic, urgent sections of pansori, sanjo, nongak and shaman muga.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Eotmori",
+    "region": "Asian",
+    "genre": "Korean jangdan (pansori/sanjo)",
+    "length": 10,
+    "voices": {
+      "bass": [0, 5],
+      "snareAccent": [0, 3, 5, 8],
+      "snareGhost": [2, 7],
+      "hatClosed": [0, 3, 5, 8],
+      "hatOpen": [5],
+      "hhFoot": [0]
+    },
+    "desc": "A lopsided, fast 10/8 jangdan grouped 3+2+3+2, used for mysterious or supernatural pansori passages; the asymmetric kung/deok placement gives its distinctive limping swing.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Hwimori",
+    "region": "Asian",
+    "genre": "Korean jangdan (pansori/sanjo)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [1, 4, 7, 10],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The fastest pansori jangdan, four rapid compound beats (also called dangak in shaman music) used when events rush by; a relentless alternation of deong and kung.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Danmori",
+    "region": "Asian",
+    "genre": "Korean jangdan (sanjo)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [0, 2, 4, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The simple-duple counterpart of hwimori (4/4) closing many sanjo, extremely fast with two sobak per beat; steady deong-kung drive to the finale.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Semachi",
+    "region": "Asian",
+    "genre": "Korean jangdan (folk)",
+    "length": 9,
+    "voices": {
+      "bass": [0, 3, 6],
+      "snareAccent": [0, 3, 6, 8],
+      "snareGhost": [2, 4, 5, 7],
+      "hatClosed": [0, 3, 6],
+      "hatOpen": [6],
+      "hhFoot": [0]
+    },
+    "desc": "A bright three-beat folk jangdan (9/8) faster than gutgeori, giving cheerful, valiant feeling; kung opens each of the three compound beats with deok ornaments.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Gutgeori",
+    "region": "Asian",
+    "genre": "Korean jangdan (folk/dance)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 6, 8],
+      "snareGhost": [3, 4, 5, 9, 10, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The most common folk jangdan, a twelve-beat compound cycle 'deong-gideok-kung deoreoreoreo / kung-gideok-kung deoreoreoreo', basis of much Korean dance and folk song.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Eotjungmori",
+    "region": "Asian",
+    "genre": "Korean jangdan (pansori)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 2, 4, 6, 8, 10],
+      "snareGhost": [1, 5, 9, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [6],
+      "hhFoot": [0]
+    },
+    "desc": "An asymmetric pansori jangdan in a slow uneven grouping, used for solemn or off-balance narrative passages; the kung articulates the irregular metric divisions.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Dongsalpuri",
+    "region": "Asian",
+    "genre": "Korean jangdan (shaman/dance)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 3, 6, 9],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "Salpuri-derived shaman/dance jangdan (also called obangjin) in a flowing compound twelve, accompanying ritual and the famous Korean cleansing dance; smooth deong-deoreoreo phrasing.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Gukkeori (Gyeonggi gut)",
+    "region": "Asian",
+    "genre": "Korean jangdan (shaman)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 6, 9],
+      "snareGhost": [3, 4, 5, 10, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [6],
+      "hhFoot": [0]
+    },
+    "desc": "A regional variant of the twelve-beat gutgeori used in Seoul/Gyeonggi gut (shaman ritual), looser and more syncopated than the dance form.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Jungmori (slow danga)",
+    "region": "Asian",
+    "genre": "Korean jangdan (danga)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 4, 8, 11],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [8],
+      "hhFoot": [0]
+    },
+    "desc": "The danga (warm-up song) reading of jungmori, three groups of four with the cadential deok on the eleventh beat marking the end of each line of text.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Eongmori",
+    "region": "Asian",
+    "genre": "Korean jangdan (pansori)",
+    "length": 14,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 3, 6, 9, 11],
+      "snareGhost": [2, 5, 8, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12],
+      "hatOpen": [6],
+      "hhFoot": [0]
+    },
+    "desc": "A rare wide 14-beat pansori jangdan (grouped unevenly) used for grand or expansive scenes; the kung anchors the two large halves while deok marks the inner subdivisions.",
+    "source": "https://en.wikipedia.org/wiki/Traditional_Korean_rhythm"
+  },
+  {
+    "name": "Samul nori Binari",
+    "region": "Asian",
+    "genre": "Korean samul nori",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 2, 5, 6, 8, 11],
+      "snareGhost": [1, 4, 7, 10],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The blessing-chant opening of a samul nori program; a moderate compound twelve where janggu and buk lay a steady deong-kung bed under the kkwaenggwari invocation.",
+    "source": "https://en.wikipedia.org/wiki/Samul_nori"
+  },
+  {
+    "name": "Samdo Nongak (Binari-gut)",
+    "region": "Asian",
+    "genre": "Korean samul nori",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [2, 5, 8, 11],
+      "snareGhost": [1, 4, 7, 10],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "From the seated 'three-provinces farmers' band' suite; a driving four-beat compound groove with the deong on the main beats answered by off-beat deok strokes and dense deoreoreo rolls.",
+    "source": "https://en.wikipedia.org/wiki/Samul_nori"
+  },
+  {
+    "name": "Yeongnam Nongak (Gilgunak)",
+    "region": "Asian",
+    "genre": "Korean samul nori",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [2, 4, 7, 10],
+      "snareGhost": [1, 3, 5, 6, 9, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The processional 'road' rhythm of the Yeongnam (southeast) nongak suite; a marching pulse adapted for samul nori with kung on the three big beats and syncopated deok strokes.",
+    "source": "https://en.wikipedia.org/wiki/Samul_nori"
+  },
+  {
+    "name": "Yeongnam Byeoldalgeori",
+    "region": "Asian",
+    "genre": "Korean samul nori",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 9],
+      "snareAccent": [0, 3, 6, 9, 10],
+      "snareGhost": [1, 4, 7, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [6],
+      "hhFoot": [0]
+    },
+    "desc": "A syncopated section of the Yeongnam nongak suite famous in samul nori for its off-beat kkwaenggwari calls answered by displaced janggu deong accents.",
+    "source": "https://en.wikipedia.org/wiki/Samul_nori"
+  },
+  {
+    "name": "Samdo Seoltjanggu (Dadeuraegi)",
+    "region": "Asian",
+    "genre": "Korean samul nori",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 2, 3, 6, 8, 9],
+      "snareGhost": [1, 4, 5, 7, 10, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "From the virtuoso four-janggu showpiece of the 'three provinces'; intricate interlocking deong/deok/gideok figures showcasing the changgo's two-hand technique.",
+    "source": "https://en.wikipedia.org/wiki/Samul_nori"
+  },
+  {
+    "name": "Hwimori (samul nori finale)",
+    "region": "Asian",
+    "genre": "Korean samul nori",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 1, 3, 4, 6, 7, 9, 10],
+      "snareGhost": [2, 5, 8, 11],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The accelerating climactic hwimori that ends most samul nori performances; near-continuous deong-deok hammering over four compound beats building to the unison stop.",
+    "source": "https://en.wikipedia.org/wiki/Samul_nori"
+  },
+  {
+    "name": "Pungmul Samchae",
+    "region": "Asian",
+    "genre": "Korean pungmul",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 4, 8, 10],
+      "snareGhost": [2, 6, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The 'three-stroke' farmers'-band pattern (samchae) of pungmul nori, a three-beat compound cycle that propels the dancing procession with buk on the down-beats.",
+    "source": "https://en.wikipedia.org/wiki/Pungmul"
+  },
+  {
+    "name": "Matsuri Don-doko",
+    "region": "Asian",
+    "genre": "Japanese taiko (matsuri-bayashi)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The basic festival 'don-doko-don-doko' nagado-daiko ground beat under matsuri-bayashi, with the low don on the beats and doko fills between, shime-daiko keeping the ji-uchi.",
+    "source": "https://en.wikipedia.org/wiki/Kuchi_sh%C5%8Dga"
+  },
+  {
+    "name": "Miyake (Kiyari-daiko)",
+    "region": "Asian",
+    "genre": "Japanese taiko (Miyake-jima)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 4, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The low, wide-stance Miyake-jima style from the Gozu Tenno festival; a powerful syncopated 'do-don, do-do-don' phrase struck on the side-mounted nagado-daiko.",
+    "source": "https://en.wikipedia.org/wiki/Taiko"
+  },
+  {
+    "name": "Yatai-bayashi",
+    "region": "Asian",
+    "genre": "Japanese taiko (Chichibu)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 2, 4, 6, 8, 10, 12, 14],
+      "snareAccent": [0, 8],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The fast Chichibu float-festival piece famous for its relentless 'doko-doko' sixteenth stream and seated, leaning posture; the low taiko drives a near-continuous roll.",
+    "source": "https://en.wikipedia.org/wiki/Taiko"
+  },
+  {
+    "name": "Hachijo-daiko",
+    "region": "Asian",
+    "genre": "Japanese taiko (Hachijo-jima)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 3, 5, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [1, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The Hachijo-jima two-player tradition where a fixed shita-byoshi underbeat supports a free improvised upper part; this encodes a typical bouncing shita-byoshi don-pattern.",
+    "source": "https://en.wikipedia.org/wiki/Taiko"
+  },
+  {
+    "name": "Bon Odori Ondo",
+    "region": "Asian",
+    "genre": "Japanese bon odori (ondo)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [4],
+      "hhFoot": [0]
+    },
+    "desc": "The swinging duple ondo groove for Bon-odori circle dancing; low taiko on the down-beats with the kane/shime back-beat accents that carry the singer's call-and-response.",
+    "source": "https://www.melodigging.com/genre/ondo"
+  },
+  {
+    "name": "Tanko-bushi",
+    "region": "Asian",
+    "genre": "Japanese min'yo / bon odori",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 3, 6, 7],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [4],
+      "hhFoot": [0]
+    },
+    "desc": "The 'coal-miner's song', Japan's most popular Bon-odori min'yo; a clean two-beat ondo feel with the taiko marking the digging-and-tossing dance gestures.",
+    "source": "https://www.melodigging.com/genre/ondo"
+  },
+  {
+    "name": "Soran-bushi",
+    "region": "Asian",
+    "genre": "Japanese min'yo (Hokkaido)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [0, 1, 4, 5],
+      "snareGhost": [3, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The Hokkaido herring-fishers' work song; a vigorous duple net-hauling rhythm with strong low taiko on every half-beat under the 'yaren soran' shouts.",
+    "source": "https://www.melodigging.com/genre/ondo"
+  },
+  {
+    "name": "Shishimai (lion dance)",
+    "region": "Asian",
+    "genre": "Japanese taiko (shishimai)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 5, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [4],
+      "hhFoot": [0]
+    },
+    "desc": "Accompaniment for the Japanese shishi (lion) dance with flute and shime; an irregular, prowling taiko figure that cues the lion's lunges and head shakes.",
+    "source": "https://en.wikipedia.org/wiki/Taiko"
+  },
+  {
+    "name": "Gion-bayashi",
+    "region": "Asian",
+    "genre": "Japanese matsuri (Kyoto)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [1, 3, 5, 7],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The kane-and-flute 'kon-chiki-chin' float music of Kyoto's Gion Matsuri; a steady gong ostinato over a light taiko pulse leading the yamaboko procession.",
+    "source": "https://en.wikipedia.org/wiki/Taiko"
+  },
+  {
+    "name": "Edo-bayashi",
+    "region": "Asian",
+    "genre": "Japanese matsuri (Tokyo)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [1, 3, 5, 7],
+      "snareGhost": [0, 4],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "Tokyo festival ensemble music with two shime, one nagado-daiko, kane and flute; interlocking on-beat taiko and off-beat shime create its busy festival drive.",
+    "source": "https://en.wikipedia.org/wiki/Jiuchi"
+  },
+  {
+    "name": "Jiuchi Don-doko (base beat)",
+    "region": "Asian",
+    "genre": "Japanese taiko (ji-uchi)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The foundational ji-uchi 'don (su) doko' pulse that underlies most kumi-daiko pieces, supplying the steady metric bed over which solo phrases are played.",
+    "source": "https://en.wikipedia.org/wiki/Jiuchi"
+  },
+  {
+    "name": "Yagura-bayashi",
+    "region": "Asian",
+    "genre": "Japanese bon odori (yagura)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 4, 7],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [4],
+      "hhFoot": [0]
+    },
+    "desc": "Drumming from atop the Bon-odori yagura tower; a lilting syncopated taiko call that the encircling dancers follow, alternating low don with rim ka accents.",
+    "source": "https://www.melodigging.com/genre/ondo"
+  },
+  {
+    "name": "Nokorigaku Yo-hyoshi",
+    "region": "Asian",
+    "genre": "Japanese gagaku (togaku)",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 8],
+      "snareGhost": [4, 12],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "A four-kobyoshi (yo-hyoshi) gagaku cycle: the great taiko marks the start of each four-beat unit while the kakko fills with rolls and the shoko strikes the back-beats.",
+    "source": "https://gagaku.stanford.edu/en/theory/rhythm/"
+  },
+  {
+    "name": "Gagaku Ya-hyoshi (eight-beat)",
+    "region": "Asian",
+    "genre": "Japanese gagaku (togaku)",
+    "length": 16,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0, 8],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [8],
+      "hhFoot": [0]
+    },
+    "desc": "The eight-kobyoshi ya-hyoshi gagaku pattern of kangen music; the slow taiko stroke crowns the long cycle, kakko anticipates with katarai rolls and shoko marks midpoints.",
+    "source": "https://gagaku.stanford.edu/en/theory/rhythm/"
+  },
+  {
+    "name": "Gagaku Tadabyoshi",
+    "region": "Asian",
+    "genre": "Japanese gagaku (togaku)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The standard tadabyoshi metric frame of togaku where taiko and kakko coordinate the colotomic cycle, the shoko gong filling the off-beats of the courtly tempo.",
+    "source": "https://gagaku.stanford.edu/en/theory/rhythm/"
+  },
+  {
+    "name": "Jingju Sigexiang",
+    "region": "Asian",
+    "genre": "Chinese jingju luogu (Peking opera)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [0, 3, 6],
+      "snareGhost": [1, 5, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "A core Peking-opera entrance pattern ('si ji tou' family) where danpigu drum, daluo, naobo cymbals and xiaoluo interlock as 'cang-qi-cang' to set up an actor's appearance.",
+    "source": "http://www.pweng.org/teaching/peking-opera-percussion-workshop/"
+  },
+  {
+    "name": "Jingju Jijifeng",
+    "region": "Asian",
+    "genre": "Chinese jingju luogu (Peking opera)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 1, 2, 3, 4, 5, 6, 7],
+      "snareAccent": [0, 4],
+      "snareGhost": [1, 2, 3, 5, 6, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The 'fast wind' battle pattern (jijifeng) of jingju, an accelerating continuous gong-and-drum tremolo accompanying fights and frantic action on the Peking-opera stage.",
+    "source": "http://www.pweng.org/teaching/peking-opera-percussion-workshop/"
+  },
+  {
+    "name": "Jingju Manchangchui",
+    "region": "Asian",
+    "genre": "Chinese jingju luogu (Peking opera)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 6],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [4],
+      "hhFoot": [0]
+    },
+    "desc": "A stately slow gong pattern of Peking opera used for dignified entrances and aria introductions; the daluo's falling pitch on the strong beats conveys solemnity.",
+    "source": "http://www.pweng.org/teaching/peking-opera-percussion-workshop/"
+  },
+  {
+    "name": "Luogu Ba Da Cang",
+    "region": "Asian",
+    "genre": "Chinese luogu (gong-drum)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [3, 7],
+      "snareGhost": [1, 2, 5, 6],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [3],
+      "hhFoot": [0]
+    },
+    "desc": "The classic 'du... ba-da-cang' cadential gong-drum figure that punctuates stage action, the gu drum rolling into the cymbal-and-gong 'cang' downstroke.",
+    "source": "https://www.britannica.com/art/luogu"
+  },
+  {
+    "name": "Luogu Beng-deng-cang",
+    "region": "Asian",
+    "genre": "Chinese luogu (gong-drum)",
+    "length": 6,
+    "voices": {
+      "bass": [0, 2],
+      "snareAccent": [4],
+      "snareGhost": [1, 3, 5],
+      "hatClosed": [0, 2, 4],
+      "hatOpen": [4],
+      "hhFoot": [0]
+    },
+    "desc": "The short 'beng-deng-cang' emphasis figure marking an actor's movement or pose, two drum taps resolving onto the gong-cymbal 'cang'.",
+    "source": "https://www.britannica.com/art/luogu"
+  },
+  {
+    "name": "Lion Dance Sam Sing (three-star)",
+    "region": "Asian",
+    "genre": "Chinese lion dance (luogu)",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 6, 10],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The 'three-star' (saam sing) lion-dance drum call, three big drum-gong-cymbal hits that signal the lion to bow or salute before the main routine.",
+    "source": "https://www.britannica.com/art/luogu"
+  },
+  {
+    "name": "Lion Dance Cai Qing (marching)",
+    "region": "Asian",
+    "genre": "Chinese lion dance (luogu)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [0, 2, 4, 6, 7],
+      "snareGhost": [1, 3, 5],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The walking/seven-star drum groove driving a lion's approach to the cai-qing ('plucking the greens') challenge, steady drum with cymbal-and-gong on the strong beats.",
+    "source": "https://en.wikipedia.org/wiki/Lion_dance"
+  },
+  {
+    "name": "Jiangnan Sizhu Lao Liuban",
+    "region": "Asian",
+    "genre": "Chinese Jiangnan sizhu",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 2, 4, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The 'Old Six-Beat' (Lao Liuban / Baban) stock tune of Jiangnan silk-and-bamboo music; the ban clapper and gu drum frame the eight-bar 'eight-beat' metric skeleton.",
+    "source": "https://contemporary_chinese_culture.en-academic.com/390/Jiangnan_sizhu"
+  },
+  {
+    "name": "Ba Ban (Eight Beats)",
+    "region": "Asian",
+    "genre": "Chinese instrumental (qupai)",
+    "length": 8,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The ubiquitous 'Baban' eight-beat tune-skeleton underlying countless Chinese folk and opera pieces; the ban marks each beat (banyan) with a strong-beat accent structure.",
+    "source": "https://contemporary_chinese_culture.en-academic.com/390/Jiangnan_sizhu"
+  },
+  {
+    "name": "Chaozhou Luogu",
+    "region": "Asian",
+    "genre": "Chinese Chaozhou percussion",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [1, 4, 7],
+      "snareGhost": [3, 5],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The drum-gong style of Chaozhou (eastern Guangdong), led by the daluo gong-drum (da luogu) with bright cymbal interplay over a steady duple drum pulse.",
+    "source": "https://contemporary_chinese_culture.en-academic.com/99/Chaozhou-Hakka_sixian"
+  },
+  {
+    "name": "Cantonese Lion Drum (Qixing)",
+    "region": "Asian",
+    "genre": "Chinese Cantonese percussion",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 6],
+      "snareAccent": [2, 4, 7],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [4],
+      "hhFoot": [0]
+    },
+    "desc": "The Cantonese 'seven-star' (cat sing) lion-dance drum cadence with its characteristic syncopated drum roll into the gong-cymbal answer, used between dance figures.",
+    "source": "https://en.wikipedia.org/wiki/Lion_dance"
+  },
+  {
+    "name": "Yangge (rice-sprout dance)",
+    "region": "Asian",
+    "genre": "Chinese yangge (folk)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 2, 3, 4, 6, 7],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The northern-Chinese yangge folk-dance groove driven by waist-drum and gong; a bouncy duple 'cang-cang' beat for the swaying processional rice-planting dance.",
+    "source": "https://www.britannica.com/art/luogu"
+  },
+  {
+    "name": "Yanggao Ritual Drum",
+    "region": "Asian",
+    "genre": "Chinese ritual percussion (Shanxi)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 5, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [1, 2, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [4],
+      "hhFoot": [0]
+    },
+    "desc": "A drum pattern from the Yanggao (Shanxi) ritual shawm-band tradition, where drum and cymbals punctuate the suona melody with irregular accented strokes.",
+    "source": "https://stephenjones.blog/2019/09/07/drum-patterns/"
+  },
+  {
+    "name": "Okinawan Eisa",
+    "region": "Asian",
+    "genre": "Okinawan eisa",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [0, 4, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The Okinawan Bon dance drumming for the ancestral spirits, with the large odaiko on the down-beats and shime/paranku frame-drums dancing the marching duple groove.",
+    "source": "https://en.wikipedia.org/wiki/Okinawan_music"
+  },
+  {
+    "name": "Okinawan Kachashi",
+    "region": "Asian",
+    "genre": "Okinawan kachashi",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [2, 4, 6],
+      "snareGhost": [1, 3, 5, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [2],
+      "hhFoot": [0]
+    },
+    "desc": "The fast, joyous Okinawan kachashi celebration rhythm danced with raised hands; a quick uptempo duple driven by sanshin, taiko and clapping at weddings and parties.",
+    "source": "https://en.wikipedia.org/wiki/Okinawan_music"
+  },
+  {
+    "name": "Mongolian Long-song Drum",
+    "region": "Asian",
+    "genre": "Mongolian folk",
+    "length": 12,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [3, 6, 9],
+      "snareGhost": [1, 4, 7, 10],
+      "hatClosed": [0, 3, 6, 9],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "A spacious compound frame-drum pulse evoking Mongolian pastoral song and shamanic rite; broad low strokes with rolling fills under the wide melodic phrases.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_Mongolia"
+  },
+  {
+    "name": "Mongolian Shaman Frame Drum",
+    "region": "Asian",
+    "genre": "Mongolian shamanic",
+    "length": 8,
+    "voices": {
+      "bass": [0, 1, 2, 3, 4, 5, 6, 7],
+      "snareAccent": [0, 3, 6],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The steady hypnotic frame-drum (tsetsuukhei) pulse of Mongolian/Buryat shamanic ritual, an even galloping beat sustaining trance and invocation.",
+    "source": "https://en.wikipedia.org/wiki/Music_of_Mongolia"
+  },
+  {
+    "name": "Tuvan Horse-gait Groove",
+    "region": "Asian",
+    "genre": "Tuvan folk",
+    "length": 8,
+    "voices": {
+      "bass": [0, 1, 4, 5],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 3, 6, 7],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "An imitative 'horse-gait' rhythm pervasive in Tuvan throat-singing music, the paired low strokes evoking a galloping or ambling horse beneath the khoomei drone.",
+    "source": "https://en.wikipedia.org/wiki/Tuvan_throat_singing"
+  },
+  {
+    "name": "Tuvan Igil Trot",
+    "region": "Asian",
+    "genre": "Tuvan folk",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [2, 4],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [4],
+      "hhFoot": [0]
+    },
+    "desc": "A brisk trotting pulse that underlies igil-and-doshpuluur dance tunes in Tuva, a clean duple that mirrors the steady gait of the steppe horse.",
+    "source": "https://en.wikipedia.org/wiki/Tuvan_throat_singing"
+  },
+  {
+    "name": "Sword/Spear Dance (Jianqi)",
+    "region": "Asian",
+    "genre": "Chinese opera luogu",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 4, 6],
+      "snareAccent": [0, 3, 4, 7],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 2, 4, 6],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "A martial gong-drum pattern accompanying weapon-dance and acrobatic combat scenes in Chinese opera, the cymbals slashing off-beats around the drum's strong strokes.",
+    "source": "https://kspublisher.com/articles/619/"
+  },
+  {
+    "name": "Liangping Laizi Luogu",
+    "region": "Asian",
+    "genre": "Chinese folk percussion (Chongqing)",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 4, 7],
+      "snareAccent": [0, 2, 4, 6],
+      "snareGhost": [1, 5],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [0],
+      "hhFoot": [0]
+    },
+    "desc": "The 'laizi' gong-drum suite of Liangping (Chongqing), a lively folk percussion ensemble pattern of interlocking small-gong and drum heard at village festivals.",
+    "source": "https://www.ichongqing.info/culture/cultural-heritage/liangping-laizi-luogu-drum-performance/"
+  }
+]

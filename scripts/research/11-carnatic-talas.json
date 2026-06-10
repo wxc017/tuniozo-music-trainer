@@ -1,0 +1,722 @@
+[
+  {
+    "name": "Adi Tala (Chatusra Triputa)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 8,
+    "voices": {
+      "bass": [0, 4, 6],
+      "snareAccent": [0, 4, 6],
+      "snareGhost": [1, 2, 3, 5, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [7],
+      "hhFoot": [0]
+    },
+    "desc": "The most common Carnatic tala, an 8-akshara cycle structured as a chatusra-jati laghu (4) plus two drutams (2+2): clap then three finger-counts, clap-wave, clap-wave. Formal name Chatusra Jati Triputa Tala.",
+    "source": "https://www.upbeatlabs.com/2016/04/14/adi-talam-and-common-time/"
+  },
+  {
+    "name": "Rupaka Tala (Chatusra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 6,
+    "voices": {
+      "bass": [0, 2],
+      "snareAccent": [0, 2],
+      "snareGhost": [1, 3, 4, 5],
+      "hatClosed": [0, 1, 2, 3, 4, 5],
+      "hatOpen": [5],
+      "hhFoot": [0]
+    },
+    "desc": "Rupaka Tala in its default chatusra jati: a drutam (2) followed by a chatusra laghu (4), giving a 6-akshara cycle clapped as clap-wave then clap and three finger-counts.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Rupaka Tala (3-beat reduced)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 3,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0, 1],
+      "snareGhost": [2],
+      "hatClosed": [0, 1, 2],
+      "hatOpen": [2],
+      "hhFoot": [0]
+    },
+    "desc": "The practical 3-beat form of Rupaka Tala widely used in performance, counted as a wave-wave (drutam) plus a single clap, i.e. one beat plus two, a compact 3-akshara cycle.",
+    "source": "https://carnatic-circle.com/carnatic-lessonsnotes/music-theory/"
+  },
+  {
+    "name": "Eka Tala (Chatusra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 4,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0],
+      "snareGhost": [1, 2, 3],
+      "hatClosed": [0, 1, 2, 3],
+      "hatOpen": [3],
+      "hhFoot": [0]
+    },
+    "desc": "Eka Tala consists of a single laghu; in the default chatusra jati this is a 4-akshara cycle clapped once then counted on three fingers.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Eka Tala (Tisra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 3,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0],
+      "snareGhost": [1, 2],
+      "hatClosed": [0, 1, 2],
+      "hatOpen": [2],
+      "hhFoot": [0]
+    },
+    "desc": "Eka Tala in tisra jati: a single tisra laghu (3 aksharas), clap plus two finger-counts.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Eka Tala (Khanda)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 5,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0],
+      "snareGhost": [1, 2, 3, 4],
+      "hatClosed": [0, 1, 2, 3, 4],
+      "hatOpen": [4],
+      "hhFoot": [0]
+    },
+    "desc": "Eka Tala in khanda jati: a single khanda laghu of 5 aksharas, clap plus four finger-counts.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Eka Tala (Misra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 7,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0],
+      "snareGhost": [1, 2, 3, 4, 5, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6],
+      "hatOpen": [6],
+      "hhFoot": [0]
+    },
+    "desc": "Eka Tala in misra jati: a single misra laghu of 7 aksharas, clap plus six finger-counts.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Eka Tala (Sankirna)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 9,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0],
+      "snareGhost": [1, 2, 3, 4, 5, 6, 7, 8],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      "hatOpen": [8],
+      "hhFoot": [0]
+    },
+    "desc": "Eka Tala in sankirna jati: a single sankirna laghu of 9 aksharas, clap plus eight finger-counts.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Matya Tala (Chatusra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 10,
+    "voices": {
+      "bass": [0, 4, 6],
+      "snareAccent": [0, 4, 6],
+      "snareGhost": [1, 2, 3, 5, 7, 8, 9],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+      "hatOpen": [9],
+      "hhFoot": [0]
+    },
+    "desc": "Matya Tala in default chatusra jati, structured laghu-drutam-laghu (4+2+4) for a 10-akshara cycle: clap and three counts, clap-wave, clap and three counts.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Matya Tala (Tisra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 8,
+    "voices": {
+      "bass": [0, 3, 5],
+      "snareAccent": [0, 3, 5],
+      "snareGhost": [1, 2, 4, 6, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [7],
+      "hhFoot": [0]
+    },
+    "desc": "Matya Tala in tisra jati, laghu-drutam-laghu (3+2+3) for an 8-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Matya Tala (Khanda)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 12,
+    "voices": {
+      "bass": [0, 5, 7],
+      "snareAccent": [0, 5, 7],
+      "snareGhost": [1, 2, 3, 4, 6, 8, 9, 10, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [11],
+      "hhFoot": [0]
+    },
+    "desc": "Matya Tala in khanda jati, laghu-drutam-laghu (5+2+5) for a 12-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Dhruva Tala (Chatusra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 14,
+    "voices": {
+      "bass": [0, 4, 6, 10],
+      "snareAccent": [0, 4, 6, 10],
+      "snareGhost": [1, 2, 3, 5, 7, 8, 9, 11, 12, 13],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+      "hatOpen": [13],
+      "hhFoot": [0]
+    },
+    "desc": "Dhruva Tala in default chatusra jati, structured laghu-drutam-laghu-laghu (4+2+4+4) for a 14-akshara cycle, the first of the sapta talas.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Dhruva Tala (Tisra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 11,
+    "voices": {
+      "bass": [0, 3, 5, 8],
+      "snareAccent": [0, 3, 5, 8],
+      "snareGhost": [1, 2, 4, 6, 7, 9, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      "hatOpen": [10],
+      "hhFoot": [0]
+    },
+    "desc": "Dhruva Tala in tisra jati, laghu-drutam-laghu-laghu (3+2+3+3) for an 11-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Dhruva Tala (Khanda)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 17,
+    "voices": {
+      "bass": [0, 5, 7, 12],
+      "snareAccent": [0, 5, 7, 12],
+      "snareGhost": [1, 2, 3, 4, 6, 8, 9, 10, 11, 13, 14, 15, 16],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+      "hatOpen": [16],
+      "hhFoot": [0]
+    },
+    "desc": "Dhruva Tala in khanda jati, laghu-drutam-laghu-laghu (5+2+5+5) for a 17-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Jhampa Tala (Misra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 10,
+    "voices": {
+      "bass": [0, 7, 8],
+      "snareAccent": [0, 7, 8],
+      "snareGhost": [1, 2, 3, 4, 5, 6, 9],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+      "hatOpen": [9],
+      "hhFoot": [0]
+    },
+    "desc": "Jhampa Tala in its default misra jati, structured laghu-anudrutam-drutam (7+1+2) for a 10-akshara cycle: a long misra laghu, a single anudrutam clap, then a drutam clap-wave.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Jhampa Tala (Chatusra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 7,
+    "voices": {
+      "bass": [0, 4, 5],
+      "snareAccent": [0, 4, 5],
+      "snareGhost": [1, 2, 3, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6],
+      "hatOpen": [6],
+      "hhFoot": [0]
+    },
+    "desc": "Jhampa Tala in chatusra jati, laghu-anudrutam-drutam (4+1+2) for a 7-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Jhampa Tala (Tisra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 6,
+    "voices": {
+      "bass": [0, 3, 4],
+      "snareAccent": [0, 3, 4],
+      "snareGhost": [1, 2, 5],
+      "hatClosed": [0, 1, 2, 3, 4, 5],
+      "hatOpen": [5],
+      "hhFoot": [0]
+    },
+    "desc": "Jhampa Tala in tisra jati, laghu-anudrutam-drutam (3+1+2) for a 6-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Jhampa Tala (Khanda)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 8,
+    "voices": {
+      "bass": [0, 5, 6],
+      "snareAccent": [0, 5, 6],
+      "snareGhost": [1, 2, 3, 4, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [7],
+      "hhFoot": [0]
+    },
+    "desc": "Jhampa Tala in khanda jati, laghu-anudrutam-drutam (5+1+2) for an 8-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Jhampa Tala (Sankirna)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 12,
+    "voices": {
+      "bass": [0, 9, 10],
+      "snareAccent": [0, 9, 10],
+      "snareGhost": [1, 2, 3, 4, 5, 6, 7, 8, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [11],
+      "hhFoot": [0]
+    },
+    "desc": "Jhampa Tala in sankirna jati, laghu-anudrutam-drutam (9+1+2) for a 12-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Triputa Tala (Tisra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 7,
+    "voices": {
+      "bass": [0, 3, 5],
+      "snareAccent": [0, 3, 5],
+      "snareGhost": [1, 2, 4, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6],
+      "hatOpen": [6],
+      "hhFoot": [0]
+    },
+    "desc": "Tisra Jati Triputa Tala, the default Triputa, structured laghu-drutam-drutam (3+2+2) for a 7-akshara cycle: clap and two counts, clap-wave, clap-wave.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Triputa Tala (Khanda)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 9,
+    "voices": {
+      "bass": [0, 5, 7],
+      "snareAccent": [0, 5, 7],
+      "snareGhost": [1, 2, 3, 4, 6, 8],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      "hatOpen": [8],
+      "hhFoot": [0]
+    },
+    "desc": "Triputa Tala in khanda jati, laghu-drutam-drutam (5+2+2) for a 9-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Triputa Tala (Misra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 11,
+    "voices": {
+      "bass": [0, 7, 9],
+      "snareAccent": [0, 7, 9],
+      "snareGhost": [1, 2, 3, 4, 5, 6, 8, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      "hatOpen": [10],
+      "hhFoot": [0]
+    },
+    "desc": "Triputa Tala in misra jati, laghu-drutam-drutam (7+2+2) for an 11-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Triputa Tala (Sankirna)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 13,
+    "voices": {
+      "bass": [0, 9, 11],
+      "snareAccent": [0, 9, 11],
+      "snareGhost": [1, 2, 3, 4, 5, 6, 7, 8, 10, 12],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "hatOpen": [12],
+      "hhFoot": [0]
+    },
+    "desc": "Triputa Tala in sankirna jati, laghu-drutam-drutam (9+2+2) for a 13-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Ata Tala (Khanda)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 14,
+    "voices": {
+      "bass": [0, 5, 10, 12],
+      "snareAccent": [0, 5, 10, 12],
+      "snareGhost": [1, 2, 3, 4, 6, 7, 8, 9, 11, 13],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+      "hatOpen": [13],
+      "hhFoot": [0]
+    },
+    "desc": "Ata Tala in its default khanda jati, structured laghu-laghu-drutam-drutam (5+5+2+2) for a 14-akshara cycle, common in varnams.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Ata Tala (Tisra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 10,
+    "voices": {
+      "bass": [0, 3, 6, 8],
+      "snareAccent": [0, 3, 6, 8],
+      "snareGhost": [1, 2, 4, 5, 7, 9],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+      "hatOpen": [9],
+      "hhFoot": [0]
+    },
+    "desc": "Ata Tala in tisra jati, laghu-laghu-drutam-drutam (3+3+2+2) for a 10-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Ata Tala (Chatusra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8, 10],
+      "snareAccent": [0, 4, 8, 10],
+      "snareGhost": [1, 2, 3, 5, 6, 7, 9, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [11],
+      "hhFoot": [0]
+    },
+    "desc": "Ata Tala in chatusra jati, laghu-laghu-drutam-drutam (4+4+2+2) for a 12-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Ata Tala (Misra)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 18,
+    "voices": {
+      "bass": [0, 7, 14, 16],
+      "snareAccent": [0, 7, 14, 16],
+      "snareGhost": [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 15, 17],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+      "hatOpen": [17],
+      "hhFoot": [0]
+    },
+    "desc": "Ata Tala in misra jati, laghu-laghu-drutam-drutam (7+7+2+2) for an 18-akshara cycle.",
+    "source": "https://www.upbeatlabs.com/2017/01/17/a-primer-for-carnatic-talas/"
+  },
+  {
+    "name": "Misra Chapu",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 7,
+    "voices": {
+      "bass": [0, 3, 5],
+      "snareAccent": [0, 3, 5],
+      "snareGhost": [1, 2, 4, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6],
+      "hatOpen": [6],
+      "hhFoot": [0]
+    },
+    "desc": "Misra Chapu, a 7-akshara chapu tala divided 3+2+2 (ardi), recited Ta-Ki-Ta Ta-Ka Dhi-Mi with accents falling on aksharas 1, 4 and 6; one of the most popular asymmetric Carnatic cycles.",
+    "source": "https://lvnaga.wordpress.com/tag/misra-chapu/"
+  },
+  {
+    "name": "Khanda Chapu",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 5,
+    "voices": {
+      "bass": [0, 2],
+      "snareAccent": [0, 2],
+      "snareGhost": [1, 3, 4],
+      "hatClosed": [0, 1, 2, 3, 4],
+      "hatOpen": [4],
+      "hhFoot": [0]
+    },
+    "desc": "Khanda Chapu, a 5-akshara chapu tala divided 2+3 (also called Ara Jhampa), recited Ta-Ka Ta-Ki-Ta with accents on aksharas 1 and 3.",
+    "source": "https://carnatic2000.tripod.com/tal/tal8.htm"
+  },
+  {
+    "name": "Sankirna Chapu",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 9,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [1, 2, 3, 5, 6, 7, 8],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      "hatOpen": [8],
+      "hhFoot": [0]
+    },
+    "desc": "Sankirna Chapu, a rare 9-akshara chapu tala divided 4+5, encountered mainly in ragam-tanam-pallavi, with accents on aksharas 1 and 5.",
+    "source": "https://carnatic2000.tripod.com/tal/tal8.htm"
+  },
+  {
+    "name": "Tisra Chapu",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 3,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0, 1],
+      "snareGhost": [2],
+      "hatClosed": [0, 1, 2],
+      "hatOpen": [2],
+      "hhFoot": [0]
+    },
+    "desc": "Tisra Chapu, a 3-akshara chapu tala recited Ta-Ki-Ta, the smallest chapu cycle, divided 1+2.",
+    "source": "https://medium.com/kavyavriksha/chapu-talas-the-allure-of-odd-numbers-cb7963267f6f"
+  },
+  {
+    "name": "Chatusra Chapu",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 4,
+    "voices": {
+      "bass": [0, 2],
+      "snareAccent": [0, 2],
+      "snareGhost": [1, 3],
+      "hatClosed": [0, 1, 2, 3],
+      "hatOpen": [3],
+      "hhFoot": [0]
+    },
+    "desc": "Chatusra Chapu, a 4-akshara chapu tala divided 2+2, recited Ta-Ka Dhi-Mi with accents on aksharas 1 and 3.",
+    "source": "https://medium.com/kavyavriksha/chapu-talas-the-allure-of-odd-numbers-cb7963267f6f"
+  },
+  {
+    "name": "Adi Tala (Tisra Gati)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 24,
+    "voices": {
+      "bass": [0, 12, 18],
+      "snareAccent": [0, 12, 18],
+      "snareGhost": [3, 6, 9, 15, 21],
+      "hatClosed": [0, 3, 6, 9, 12, 15, 18, 21],
+      "hatOpen": [23],
+      "hhFoot": [0]
+    },
+    "desc": "Adi Tala played in tisra gati (nadai), where each of the 8 aksharas subdivides into 3 pulses for 24 sub-beats; anga claps fall on the laghu and drutam boundaries (0, 12, 18) with finger-counts at the other akshara starts.",
+    "source": "https://www.academia.edu/7760865/Exploring_Nadai_The_concept_of_beat_subdivision_in_South_Indian_music"
+  },
+  {
+    "name": "Adi Tala (Khanda Gati)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 40,
+    "voices": {
+      "bass": [0, 20, 30],
+      "snareAccent": [0, 20, 30],
+      "snareGhost": [5, 10, 15, 25, 35],
+      "hatClosed": [0, 5, 10, 15, 20, 25, 30, 35],
+      "hatOpen": [39],
+      "hhFoot": [0]
+    },
+    "desc": "Adi Tala played in khanda gati, each of the 8 aksharas subdividing into 5 pulses for 40 sub-beats; clap accents fall on the laghu/drutam akshara boundaries.",
+    "source": "https://www.academia.edu/7760865/Exploring_Nadai_The_concept_of_beat_subdivision_in_South_Indian_music"
+  },
+  {
+    "name": "Adi Tala (Misra Gati)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 56,
+    "voices": {
+      "bass": [0, 28, 42],
+      "snareAccent": [0, 28, 42],
+      "snareGhost": [7, 14, 21, 35, 49],
+      "hatClosed": [0, 7, 14, 21, 28, 35, 42, 49],
+      "hatOpen": [55],
+      "hhFoot": [0]
+    },
+    "desc": "Adi Tala played in misra gati, each akshara subdividing into 7 pulses for 56 sub-beats; the 8 akshara starts carry the laghu/drutam clap accents.",
+    "source": "https://www.academia.edu/7760865/Exploring_Nadai_The_concept_of_beat_subdivision_in_South_Indian_music"
+  },
+  {
+    "name": "Adi Tala (Sankirna Gati)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 72,
+    "voices": {
+      "bass": [0, 36, 54],
+      "snareAccent": [0, 36, 54],
+      "snareGhost": [9, 18, 27, 45, 63],
+      "hatClosed": [0, 9, 18, 27, 36, 45, 54, 63],
+      "hatOpen": [71],
+      "hhFoot": [0]
+    },
+    "desc": "Adi Tala played in sankirna gati, each akshara subdividing into 9 pulses for 72 sub-beats; clap accents mark the laghu and two drutam boundaries.",
+    "source": "https://www.academia.edu/7760865/Exploring_Nadai_The_concept_of_beat_subdivision_in_South_Indian_music"
+  },
+  {
+    "name": "Rupaka Tala (Tisra Gati)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 9,
+    "voices": {
+      "bass": [0, 3],
+      "snareAccent": [0, 3],
+      "snareGhost": [1, 2, 4, 5, 6, 7, 8],
+      "hatClosed": [0, 3, 6],
+      "hatOpen": [8],
+      "hhFoot": [0]
+    },
+    "desc": "Chatusra Rupaka Tala (drutam+laghu, 3 aksharas in reduced form) played in tisra gati, each akshara subdividing into 3 for a 9-pulse cycle.",
+    "source": "https://www.academia.edu/7760865/Exploring_Nadai_The_concept_of_beat_subdivision_in_South_Indian_music"
+  },
+  {
+    "name": "Konnakol Cell - Tisra (Ta Ki Ta)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 3,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0],
+      "snareGhost": [1, 2],
+      "hatClosed": [0, 1, 2],
+      "hatOpen": [2],
+      "hhFoot": [0]
+    },
+    "desc": "The basic tisra (3) konnakol gati cell recited Ta-Ki-Ta, the fundamental three-pulse solkattu phrase used to fill one akshara in tisra nadai.",
+    "source": "https://algorithmicpattern.org/patterns-in-konnakol/"
+  },
+  {
+    "name": "Konnakol Cell - Chatusra (Ta Ka Dhi Mi)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 4,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0],
+      "snareGhost": [1, 2, 3],
+      "hatClosed": [0, 1, 2, 3],
+      "hatOpen": [3],
+      "hhFoot": [0]
+    },
+    "desc": "The basic chatusra (4) konnakol gati cell recited Ta-Ka-Dhi-Mi, the fundamental four-pulse solkattu phrase used in chatusra nadai.",
+    "source": "https://algorithmicpattern.org/patterns-in-konnakol/"
+  },
+  {
+    "name": "Konnakol Cell - Khanda (Ta Ka Ta Ki Ta)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 5,
+    "voices": {
+      "bass": [0, 2],
+      "snareAccent": [0, 2],
+      "snareGhost": [1, 3, 4],
+      "hatClosed": [0, 1, 2, 3, 4],
+      "hatOpen": [4],
+      "hhFoot": [0]
+    },
+    "desc": "The khanda (5) konnakol gati cell recited Ta-Ka Ta-Ki-Ta, a 2+3 grouping forming the standard five-pulse solkattu phrase used in khanda nadai.",
+    "source": "https://algorithmicpattern.org/patterns-in-konnakol/"
+  },
+  {
+    "name": "Konnakol Cell - Misra (Ta Ki Ta Ta Ka Dhi Mi)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 7,
+    "voices": {
+      "bass": [0, 3],
+      "snareAccent": [0, 3],
+      "snareGhost": [1, 2, 4, 5, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6],
+      "hatOpen": [6],
+      "hhFoot": [0]
+    },
+    "desc": "The misra (7) konnakol gati cell recited Ta-Ki-Ta Ta-Ka-Dhi-Mi, a 3+4 grouping forming the standard seven-pulse solkattu phrase used in misra nadai.",
+    "source": "https://algorithmicpattern.org/patterns-in-konnakol/"
+  },
+  {
+    "name": "Konnakol Cell - Sankirna (Ta Ka Dhi Mi Ta Ka Ta Ki Ta)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 9,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4],
+      "snareGhost": [1, 2, 3, 5, 6, 7, 8],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      "hatOpen": [8],
+      "hhFoot": [0]
+    },
+    "desc": "The sankirna (9) konnakol gati cell recited Ta-Ka-Dhi-Mi Ta-Ka-Ta-Ki-Ta, a 4+5 grouping forming the standard nine-pulse solkattu phrase used in sankirna nadai.",
+    "source": "https://algorithmicpattern.org/patterns-in-konnakol/"
+  },
+  {
+    "name": "Sankirna Eka (Misra Gati)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 27,
+    "voices": {
+      "bass": [0],
+      "snareAccent": [0, 7, 14, 21],
+      "snareGhost": [3, 10, 17, 24],
+      "hatClosed": [0, 3, 7, 10, 14, 17, 21, 24],
+      "hatOpen": [26],
+      "hhFoot": [0]
+    },
+    "desc": "Sankirna jati Eka Tala (single 9-akshara laghu) played in misra-derived gati, 9 aksharas subdivided to 27 pulses, illustrating gati multiplication on an Eka cycle with finger-count accents.",
+    "source": "https://www.academia.edu/7760865/Exploring_Nadai_The_concept_of_beat_subdivision_in_South_Indian_music"
+  },
+  {
+    "name": "Triputa Tala (Tisra) in Tisra Gati",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 21,
+    "voices": {
+      "bass": [0, 9, 15],
+      "snareAccent": [0, 9, 15],
+      "snareGhost": [3, 6, 12, 18],
+      "hatClosed": [0, 3, 6, 9, 12, 15, 18],
+      "hatOpen": [20],
+      "hhFoot": [0]
+    },
+    "desc": "Tisra Jati Triputa Tala (3+2+2) played in tisra gati, each of its 7 aksharas subdividing into 3 for a 21-pulse cycle, with anga claps on the laghu and drutam boundaries.",
+    "source": "https://www.academia.edu/7760865/Exploring_Nadai_The_concept_of_beat_subdivision_in_South_Indian_music"
+  },
+  {
+    "name": "Misra Chapu (Khanda Gati)",
+    "region": "Asian",
+    "genre": "Carnatic tala",
+    "length": 35,
+    "voices": {
+      "bass": [0, 15, 25],
+      "snareAccent": [0, 15, 25],
+      "snareGhost": [5, 10, 20, 30],
+      "hatClosed": [0, 5, 10, 15, 20, 25, 30],
+      "hatOpen": [34],
+      "hhFoot": [0]
+    },
+    "desc": "Misra Chapu (3+2+2) played in khanda gati, each of the 7 aksharas subdividing into 5 pulses for a 35-pulse cycle, with chapu accents on aksharas 1, 4 and 6 (indices 0, 15, 25).",
+    "source": "https://lvnaga.wordpress.com/tag/misra-chapu/"
+  }
+]

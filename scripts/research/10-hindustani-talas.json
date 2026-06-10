@@ -1,0 +1,674 @@
+[
+  {
+    "name": "Teental (Tintal / Trital)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 16,
+    "voices": {
+      "bass": [0, 1, 2, 3, 4, 5, 6, 7, 15],
+      "snareAccent": [0, 4, 12],
+      "snareGhost": [8, 9, 10, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "The most common 16-matra cycle of Hindustani music, in four equal vibhags of 4. Theka: Dha Dhin Dhin Dha | Dha Dhin Dhin Dha | Dha Tin Tin Ta | Ta Dhin Dhin Dha; sam on 1, tali on 1/5/13, khali (wave) on 9.",
+    "source": "https://sites.math.washington.edu/~gangolli/Music428Thekas.html"
+  },
+  {
+    "name": "Tilwada (Tilwara)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 16,
+    "voices": {
+      "bass": [0, 1, 2, 3, 4, 5, 6, 7, 12, 13, 14, 15],
+      "snareAccent": [0, 4, 12],
+      "snareGhost": [8, 9, 10, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "A graceful 16-matra cycle (4+4+4+4) used for vilambit khayal as an alternative to Teental. Theka: Dha Tirkit Dhin Dhin | Dha Dha Tin Tin | Ta Tirkit Dhin Dhin | Dha Dha Dhin Dhin; tali on 1/5/13, khali on 9.",
+    "source": "https://www.tablatheka.com/2022/01/tilwara-taal-16-beats.html"
+  },
+  {
+    "name": "Sitarkhani (Addha-like, 16)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 4, 7, 12, 15],
+      "snareAccent": [0, 4, 12],
+      "snareGhost": [8, 9, 10, 11],
+      "hatClosed": [0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "A 16-matra (4+4+4+4) variant of Teental favored by instrumentalists, with a lilting syncopated dha on the off-beat of each vibhag. Tali on 1/5/13, khali on 9. Vocalists call the related theka Punjabi.",
+    "source": "https://chandrakantha.com/music-and-dance/i-class-music/index-of-tals/sitarkhani/"
+  },
+  {
+    "name": "Punjabi Theka (16)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 4, 7, 12, 15],
+      "snareAccent": [0, 4, 12],
+      "snareGhost": [8, 9, 10, 11],
+      "hatClosed": [0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "The Punjabi variation of Teental (16, 4+4+4+4) popularized by Punjab musicians, sharing Sitarkhani's syncopation where paired dhins become a single off-beat dhin. Sam on 1, tali on 1/5/13, khali on 9.",
+    "source": "https://chandrakantha.com/music-and-dance/i-class-music/index-of-tals/sitarkhani/"
+  },
+  {
+    "name": "Addha Teental (Addha, 16)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 16,
+    "voices": {
+      "bass": [0, 2, 4, 6, 12, 14],
+      "snareAccent": [0, 4, 12],
+      "snareGhost": [8, 9, 10, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "Addha ('half') of Teental, a light 16-matra theka common in thumri and ghazal. Theka: Dha Dha Dhin Ta | Ta Dha Dhin Dha | Dha Dha Tin Ta | Ta Ta Dhin Dha; tali on 1/5/13, khali on 9.",
+    "source": "http://kksongs.org/tabla/chapter08.html"
+  },
+  {
+    "name": "Jhaptal (Jhaptaal)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 10,
+    "voices": {
+      "bass": [0, 2, 3, 7, 8],
+      "snareAccent": [0, 2, 7],
+      "snareGhost": [5, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 5, 7]
+    },
+    "desc": "A 10-matra cycle in vibhags of 2+3+2+3. Theka: Dhin Na | Dhin Dhin Na | Tin Na | Dhin Dhin Na; sam on 1, tali on 1/3/8, khali (wave) on 6.",
+    "source": "https://sites.math.washington.edu/~gangolli/Music428Thekas.html"
+  },
+  {
+    "name": "Sultal (Sooltal / Surfakta)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 10,
+    "voices": {
+      "bass": [0, 4, 5],
+      "snareAccent": [0, 4, 8],
+      "snareGhost": [2, 3, 6, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 4, 6, 8]
+    },
+    "desc": "A 10-matra pakhawaj tal of the dhrupad tradition in vibhags of 2 (clap, wave, clap, wave, clap). Theka commonly: Dha Dha | Din Ta | Kit Dha | Tirakita | Dhin Na; tali on 1/5/9, khali on 3/7.",
+    "source": "https://chandrakantha.com/music-and-dance/i-class-music/index-of-tals/sultal/"
+  },
+  {
+    "name": "Rupak (Roopak, classical)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 7,
+    "voices": {
+      "bass": [3, 5],
+      "snareAccent": [3, 5],
+      "snareGhost": [0, 1, 2],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 3, 5]
+    },
+    "desc": "A 7-matra cycle in vibhags of 3+2+2, unique for beginning on khali (sam = wave). Theka: Tin Tin Na | Dhin Na | Dhin Na; khali on 1, tali on 4 and 6.",
+    "source": "https://sites.math.washington.edu/~gangolli/Music428Thekas.html"
+  },
+  {
+    "name": "Rupak (light / semi-classical)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 7,
+    "voices": {
+      "bass": [3, 5],
+      "snareAccent": [3, 5],
+      "snareGhost": [0, 1, 2],
+      "hatClosed": [0, 2, 3, 4, 5, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 3, 5]
+    },
+    "desc": "The light/bhajan rendering of Rupak (7, 3+2+2) used in devotional and film songs, keeping the khali-tali-tali structure but with a simpler resonant theka. Khali on 1, tali on 4 and 6.",
+    "source": "https://digitabla.com/reference/tals-and-thekas/rupak-tal/"
+  },
+  {
+    "name": "Tivra (Teevra)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 7,
+    "voices": {
+      "bass": [0, 1, 2, 5],
+      "snareAccent": [0, 3, 5],
+      "snareGhost": [3, 4],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 3, 5]
+    },
+    "desc": "A 7-matra dhrupad tal in vibhags of 3+2+2. Theka: Dhin Dhin Dha | Tirakita Tu | Na Kat Ta (regional variants exist); sam/tali on 1 and 5, khali on 4.",
+    "source": "https://chandrakantha.com/music-and-dance/i-class-music/index-of-tals/tivra-tal/"
+  },
+  {
+    "name": "Ektal (Ektaal)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 12,
+    "voices": {
+      "bass": [0, 1, 2, 3, 10, 11],
+      "snareAccent": [0, 4, 8, 10],
+      "snareGhost": [2, 3, 6, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 4, 6, 8, 10]
+    },
+    "desc": "A 12-matra cycle in six vibhags of 2 (tali-khali-tali-khali-tali-tali). Theka: Dhin Dhin | Dhage Tirakita | Tu Na | Kat Ta | Dhage Tirakita | Dhin Na; tali on 1/5/9/11, khali on 3/7.",
+    "source": "https://sites.math.washington.edu/~gangolli/Music428Thekas.html"
+  },
+  {
+    "name": "Chautal (Chartal)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 12,
+    "voices": {
+      "bass": [0, 1, 2, 5],
+      "snareAccent": [0, 4, 8, 10],
+      "snareGhost": [3, 6, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 4, 6, 8, 10]
+    },
+    "desc": "The standard 12-matra pakhawaj tal of dhrupad, vibhags 4+4+2+2 (or 2x6). Theka: Dha Dha Din Ta | Kita Dha Din Ta | Tete Kata | Gadi Gana; tali on 1/5/9/11, khali on 3/7.",
+    "source": "https://sites.math.washington.edu/~gangolli/Music428Thekas.html"
+  },
+  {
+    "name": "Dadra (classical)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 6,
+    "voices": {
+      "bass": [0, 3],
+      "snareAccent": [0],
+      "snareGhost": [3, 4, 5],
+      "hatClosed": [0, 1, 2, 3, 4, 5],
+      "hatOpen": [],
+      "hhFoot": [0, 3]
+    },
+    "desc": "A 6-matra light-classical cycle in two vibhags of 3. Theka: Dha Dhin Na | Dha Tin Na; sam/tali on 1, khali (wave) on 4. The basis of the dadra song genre.",
+    "source": "https://chandrakantha.com/music-and-dance/i-class-music/tala-tal/"
+  },
+  {
+    "name": "Keherwa (Kaharva)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 8,
+    "voices": {
+      "bass": [0, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 3, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The ubiquitous 8-matra folk/light cycle in two vibhags of 4. Theka: Dha Ge Na Ti | Na Ka Dhin Na; sam/tali on 1, khali on 5.",
+    "source": "http://kksongs.org/tabla/chapter08.html"
+  },
+  {
+    "name": "Bhajani Theka (Keherwa variant)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 3],
+      "snareAccent": [0, 4],
+      "snareGhost": [5, 6, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The devotional bhajan rendering of Keherwa (8, 4+4). Theka: Dhin Ta Dhin Dhin | Ta Tin Ta Tin; sam/tali on 1, khali on 5. Heard throughout bhajans and kirtans.",
+    "source": "http://kksongs.org/tabla/chapter08.html"
+  },
+  {
+    "name": "Qawwali Theka (Keherwa variant)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 8,
+    "voices": {
+      "bass": [0, 2, 3],
+      "snareAccent": [0, 4],
+      "snareGhost": [5, 6, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "The forceful 8-matra Qawwali rendering of Keherwa used in Sufi devotional music. Theka: Dha Dhin Dha Dhe | Tira Ta Tin Ta; sam/tali on 1, khali on 5, driven by emphatic hand-claps.",
+    "source": "http://kksongs.org/tabla/chapter08.html"
+  },
+  {
+    "name": "Mughlai / Dhumali (Keherwa-family)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 8,
+    "voices": {
+      "bass": [0, 1, 6],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 3, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "Dhumali, an 8-matra (4+4) Keherwa-family theka with a Mughlai lilt used in light-classical thumri and dance. Theka: Dhin Dhin Dha Tirakita | Dhin Na Ge Na; sam/tali on 1, khali on 5.",
+    "source": "https://en.wikipedia.org/wiki/Keherwa"
+  },
+  {
+    "name": "Dhamar (Dhammar)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 14,
+    "voices": {
+      "bass": [0, 5, 10],
+      "snareAccent": [0, 5, 10],
+      "snareGhost": [7, 8, 9],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+      "hatOpen": [],
+      "hhFoot": [0, 5, 7, 10]
+    },
+    "desc": "A 14-matra dhrupad/dhamar tal in asymmetric vibhags 5+2+3+4, played with open pakhawaj strokes. Theka: Ka Dhi Ta Dhi Ta | Dha Ga | Ti Ta Ti | Ta Dhi Ta Dha; tali on 1/6/11, khali on 8.",
+    "source": "https://www.kathakworld.com/tal-2/"
+  },
+  {
+    "name": "Jhumra (Jhumra Tal)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 14,
+    "voices": {
+      "bass": [0, 3, 4, 5, 6, 10, 11, 12, 13],
+      "snareAccent": [0, 3, 10],
+      "snareGhost": [7, 8, 9],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+      "hatOpen": [],
+      "hhFoot": [0, 3, 7, 10]
+    },
+    "desc": "A stately 14-matra vilambit cycle in vibhags 3+4+3+4, used for bada khayal. Theka: Dhin Dha Tirakita | Dhin Dhin Dhage Tirakita | Tin Ta Tirakita | Dhin Dhin Dhage Tirakita; tali on 1/4/11, khali on 8.",
+    "source": "https://digitabla.com/reference/tals-and-thekas/extended-list/"
+  },
+  {
+    "name": "Deepchandi (Dipchandi)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 14,
+    "voices": {
+      "bass": [0, 1, 3, 10, 11],
+      "snareAccent": [0, 3, 10],
+      "snareGhost": [7, 8, 9],
+      "hatClosed": [0, 1, 3, 4, 5, 7, 8, 10, 11, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 3, 7, 10]
+    },
+    "desc": "A graceful 14-matra thumri/ghazal cycle in vibhags 3+4+3+4. Theka: Dha Dhin - | Dha Ge Tin - | Ta Tin - | Dha Ge Dhin -; tali on 1/4/11, khali on 8, with rests on 3/7/10/14.",
+    "source": "https://saraswatisangeetsadhana.in/deepchandi-taal/"
+  },
+  {
+    "name": "Ada Chautal (Ara Chautal)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 14,
+    "voices": {
+      "bass": [0, 2, 8, 9, 10, 11, 12, 13],
+      "snareAccent": [0, 2, 6, 10],
+      "snareGhost": [4, 5, 8, 12],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 4, 6, 8, 10, 12]
+    },
+    "desc": "A 14-matra khayal cycle in seven vibhags of 2. Theka: Dhin Tirkit | Dhin Na | Tu Na | Kat Ta | Tirkit Dhin | Na Dhin | Dhin Na; tali on 1/3/7/11, khali on 5/9/13.",
+    "source": "https://www.tablatheka.com/2022/07/ara-chautaal-14-beats.html"
+  },
+  {
+    "name": "Pharodast (Farodast)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 14,
+    "voices": {
+      "bass": [0, 1, 4, 5, 10, 11],
+      "snareAccent": [0, 4, 6, 10],
+      "snareGhost": [2, 3, 8, 9],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 4, 6, 8, 10, 12]
+    },
+    "desc": "Pharodast, a 14-matra pakhawaj tal of seven vibhags of 2 used in dhrupad. Built from dha/kita/dhin phrasing across the cycle; sam on 1 with the customary clap-wave alternation of the seven divisions.",
+    "source": "http://tablawiki.blogspot.com/2021/01/different-tals-theka-and-few-lines.html"
+  },
+  {
+    "name": "Pancham Sawari",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 15,
+    "voices": {
+      "bass": [0, 2, 3, 7, 8, 11, 12],
+      "snareAccent": [0, 3, 7, 11],
+      "snareGhost": [4, 5, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 3, 7, 11]
+    },
+    "desc": "An intricate 15-matra cycle in asymmetric vibhags 3+4+4+4, used in khayal, kathak and tabla solos. Theka built on Dhi Na Dhidhi / Kat Dhidhi Nadhi Dhina phrasing; tali on 1/4/8/12, khali on 5.",
+    "source": "https://www.tablatheka.com/2022/01/pancham-sawari-taal.html"
+  },
+  {
+    "name": "Gajjhampa",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 15,
+    "voices": {
+      "bass": [0, 4],
+      "snareAccent": [0, 4, 11],
+      "snareGhost": [8, 9, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 11]
+    },
+    "desc": "A rare 15-matra tal in four vibhags. Theka: Dha Dhin Nak Tak | Dha Dhin Nak Tak | Tin Nak Tak | Titt Kat Gdi Gan; tali on 1/5/12, khali on 9.",
+    "source": "https://onlinesangeet.com/gajjhampa-taal-in-music-in-english/"
+  },
+  {
+    "name": "Matta Tal",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 9,
+    "voices": {
+      "bass": [0, 2, 6, 7, 8],
+      "snareAccent": [0, 2, 6],
+      "snareGhost": [4, 5],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 4, 6]
+    },
+    "desc": "A 9-matra cycle in vibhags 2+2+2+3. Theka: Dhin Tirekite | Dhin Na | Tun Na | Dhindhin Nadhin Dhinna; tali on 1/3/7, khali on 5.",
+    "source": "https://www.tablatheka.com/2025/07/matta-taal-9-beats-guide.html"
+  },
+  {
+    "name": "Shikhar Tal",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 17,
+    "voices": {
+      "bass": [0, 2, 6, 8, 12],
+      "snareAccent": [0, 4, 8, 11, 13],
+      "snareGhost": [6, 7, 9, 10],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12, 14]
+    },
+    "desc": "A rare 17-matra pakhawaj/kathak tal in vibhags 4+4+3+2+4, famed for having five talis and no khali. Theka: Dha Tirkit Dhin Nak | Thun Ga Dhin Nak | Dhom Kit Tak | Dhet Dha | Titt Kat Gdi Gan.",
+    "source": "https://onlinesangeet.com/shikhar-taal-in-music-in-english/"
+  },
+  {
+    "name": "Brahma Tal",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 28,
+    "voices": {
+      "bass": [0, 6, 8, 10, 12, 18, 24],
+      "snareAccent": [0, 4, 6, 10, 12, 14, 18, 20, 22, 24],
+      "snareGhost": [2, 8, 16, 26],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12, 16, 20, 24]
+    },
+    "desc": "A monumental 28-matra pakhawaj tal of fourteen vibhags of 2. Theka spans Dha Ki Ta / Ta Ka Dhu Ma / Ki Ta Ta Ka / Dhe T / Ti Ta Ka Ta / Ga Di Ga Na; many talis with khali on 3/9/17/27.",
+    "source": "https://onlinesangeet.com/brahma-taal-in-music-in-english/"
+  },
+  {
+    "name": "Lakshmi Tal",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 18,
+    "voices": {
+      "bass": [0, 2, 4, 9, 11, 13],
+      "snareAccent": [0, 4, 8, 9, 13],
+      "snareGhost": [6, 7, 15, 16, 17],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 9, 13]
+    },
+    "desc": "A rare 18-matra cycle used in pakhawaj and kathak, built on resonant dha/dhin phrasing across multiple vibhags with the customary clap-wave alternation; sam on 1.",
+    "source": "https://saraswatisangeetsadhana.in/laxmi-taal-in-indian-classical-music-in-hindi/"
+  },
+  {
+    "name": "Ganesh Tal",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 21,
+    "voices": {
+      "bass": [0, 3, 6, 11, 14, 17],
+      "snareAccent": [0, 6, 11, 17],
+      "snareGhost": [8, 9, 10, 19, 20],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+      "hatOpen": [],
+      "hhFoot": [0, 6, 11, 17]
+    },
+    "desc": "A rare 21-matra pakhawaj/kathak tal divided into multiple vibhags, named for Ganesha and built on open resonant dhrupad bols; sam on 1 with clap-wave alternation across its divisions.",
+    "source": "http://tablawiki.blogspot.com/2021/01/different-tals-theka-and-few-lines.html"
+  },
+  {
+    "name": "Khemta (Khempta)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 6,
+    "voices": {
+      "bass": [0, 3],
+      "snareAccent": [0],
+      "snareGhost": [3, 4, 5],
+      "hatClosed": [0, 1, 2, 3, 4, 5],
+      "hatOpen": [],
+      "hhFoot": [0, 3]
+    },
+    "desc": "A 6-matra light cycle (3+3) close to Dadra, used in folk and semi-classical songs. Theka: Dha Ti Na | Dhin Na Tina; sam/tali on 1, khali on 4.",
+    "source": "https://samyuktha-music.blogspot.com/2010/07/index-of-tals-tala.html"
+  },
+  {
+    "name": "Pashto (Pashtu)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 7,
+    "voices": {
+      "bass": [0, 3, 5],
+      "snareAccent": [0, 3, 5],
+      "snareGhost": [1, 2, 4, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 3, 5]
+    },
+    "desc": "A 7-matra tal in vibhags 3+2+2 used in light-classical and dance music. Theka: Dhin Na Dhin | Dhin Na | Dha Tirkit; tali on 1/4/6 with no khali in the common form.",
+    "source": "https://samyuktha-music.blogspot.com/2010/07/index-of-tals-tala.html"
+  },
+  {
+    "name": "Dhumali (8, light)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 8,
+    "voices": {
+      "bass": [0, 1, 5],
+      "snareAccent": [0, 4],
+      "snareGhost": [2, 3, 6, 7],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7],
+      "hatOpen": [],
+      "hhFoot": [0, 4]
+    },
+    "desc": "Dhumali, an 8-matra (4+4) thumri/dance theka of the Keherwa family with a swinging gait. Theka: Dhin Dhin Na | Tirakita Dhin Na Ge Na; sam/tali on 1, khali on 5.",
+    "source": "http://kksongs.org/tabla/chapter08.html"
+  },
+  {
+    "name": "Sawari Tal (Savari, 16)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 16,
+    "voices": {
+      "bass": [0, 1, 4, 8, 12, 13],
+      "snareAccent": [0, 4, 12],
+      "snareGhost": [8, 9, 10, 11],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "Sawari, a 16-matra cycle in four vibhags of 4 used in tabla solo and instrumental music, related to the sawari family of off-balance talas; tali on 1/5/13, khali on 9.",
+    "source": "https://digitabla.com/reference/tals-and-thekas/extended-list/"
+  },
+  {
+    "name": "Basant Tal",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 9,
+    "voices": {
+      "bass": [0, 4, 7],
+      "snareAccent": [0, 4, 7],
+      "snareGhost": [2, 3, 5, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 7]
+    },
+    "desc": "Basant, a 9-matra dhrupad tal associated with seasonal/spring compositions. Theka built on dha/din/ta phrasing across asymmetric vibhags; sam on 1 with clap-wave alternation.",
+    "source": "https://sites.math.washington.edu/~gangolli/Music428Thekas.html"
+  },
+  {
+    "name": "Jhampak (Laghu Jhampa)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 10,
+    "voices": {
+      "bass": [0, 2, 3, 7, 8],
+      "snareAccent": [0, 2, 7],
+      "snareGhost": [5, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 5, 7]
+    },
+    "desc": "A 10-matra cycle related to Jhaptal in vibhags 2+3+2+3, used in dhrupad and light-classical forms. Sam/tali on 1/3/8, khali on 6.",
+    "source": "https://sites.math.washington.edu/~gangolli/Music428Thekas.html"
+  },
+  {
+    "name": "Trital Dugun (Sitarkhani Punjabi instrumental)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 4, 7, 12, 15],
+      "snareAccent": [0, 4, 12],
+      "snareGhost": [8, 9, 10, 11],
+      "hatClosed": [0, 3, 4, 7, 8, 11, 12, 15],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "The instrumental Sitarkhani/Punjabi 16-matra theka as played behind sitar and sarod gats, emphasizing the syncopated single dhin on the off-beat of each vibhag; tali on 1/5/13, khali on 9.",
+    "source": "http://www.ancient-future.com/theka.html"
+  },
+  {
+    "name": "Roopak Bhajani (7, devotional)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 7,
+    "voices": {
+      "bass": [3, 5],
+      "snareAccent": [3, 5],
+      "snareGhost": [0, 1, 2],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 3, 5]
+    },
+    "desc": "A devotional/abhang rendering of Rupak (7, 3+2+2) common in Marathi bhajan and Vaishnava kirtan, retaining khali on the sam (beat 1) with talis on 4 and 6.",
+    "source": "https://digitabla.com/reference/tals-and-thekas/rupak-tal/"
+  },
+  {
+    "name": "Ektal Madhya (12, drut variant)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8, 10],
+      "snareAccent": [0, 4, 8, 10],
+      "snareGhost": [2, 3, 6, 7],
+      "hatClosed": [0, 2, 4, 6, 8, 10],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 4, 6, 8, 10]
+    },
+    "desc": "The madhya/drut-laya rendering of Ektal (12, 2x6) used in fast khayal, where the theka condenses to Dhin Dhinna Tirkit Dhin Dhinna Dhage Tirkit; tali on 1/5/9/11, khali on 3/7.",
+    "source": "https://sites.math.washington.edu/~gangolli/Music428Thekas.html"
+  },
+  {
+    "name": "Saartal (Sawaritaal, 12)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 12,
+    "voices": {
+      "bass": [0, 1, 2, 5, 6],
+      "snareAccent": [0, 4, 8, 10],
+      "snareGhost": [3, 7, 9],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 4, 6, 8, 10]
+    },
+    "desc": "Saartal (Soutal), a 12-matra pakhawaj tal related to Chautal used in dhrupad. Theka built on Dha Dha Din Ta / Kita Dha phrasing across vibhags; tali on 1/5/9/11, khali on 3/7.",
+    "source": "http://kksongs.org/tabla/chapter08.html"
+  },
+  {
+    "name": "Teevra Madhya (Tivra drut, 7)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 7,
+    "voices": {
+      "bass": [0, 1, 2, 5],
+      "snareAccent": [0, 3, 5],
+      "snareGhost": [3, 4, 6],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6],
+      "hatOpen": [],
+      "hhFoot": [0, 3, 5]
+    },
+    "desc": "A faster madhya-laya rendering of Tivra (7, 3+2+2) used in instrumental gats and dhrupad, with the open resonant theka condensed; sam/tali on 1 and 5, khali on 4.",
+    "source": "https://chandrakantha.com/music-and-dance/i-class-music/index-of-tals/tivra-tal/"
+  },
+  {
+    "name": "Brahma Tal (14, common)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 14,
+    "voices": {
+      "bass": [0, 2, 8, 9, 10, 11],
+      "snareAccent": [0, 2, 6, 10],
+      "snareGhost": [4, 5, 12, 13],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+      "hatOpen": [],
+      "hhFoot": [0, 2, 4, 6, 8, 10, 12]
+    },
+    "desc": "The common 14-matra form of Brahma Tal in seven vibhags of 2, used in pakhawaj and kathak. Built on Dha/Kita/Dhin phrasing with the seven-fold clap-wave alternation; sam on 1.",
+    "source": "https://www.swarganga.org/taals/76/Brahma%20Taal"
+  },
+  {
+    "name": "Lakshmi Tal (36, expanded)",
+    "region": "Asian",
+    "genre": "Hindustani tala",
+    "length": 36,
+    "voices": {
+      "bass": [0, 4, 8, 18, 22, 26],
+      "snareAccent": [0, 8, 16, 18, 26],
+      "snareGhost": [12, 13, 14, 30, 31, 32],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34],
+      "hatOpen": [],
+      "hhFoot": [0, 8, 16, 18, 26]
+    },
+    "desc": "The expanded 36-matra (dugun) form of Lakshmi Tal used in pakhawaj and kathak, doubling the 18-matra cycle with resonant dha/dhin phrasing and the customary clap-wave alternation; sam on 1.",
+    "source": "https://saraswatisangeetsadhana.in/laxmi-taal-in-indian-classical-music-in-hindi/"
+  }
+]

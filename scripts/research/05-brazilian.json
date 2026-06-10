@@ -1,0 +1,1026 @@
+[
+  {
+    "name": "Samba Batucada (full bateria)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [4, 12],
+      "snareAccent": [0, 2, 3, 6, 8, 10, 11, 14],
+      "snareGhost": [1, 5, 7, 9, 13, 15],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [3, 11],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The driving Rio escola de samba groove felt in 2, with the surdo answering on beats 2 and 4 and syncopated caixa/tamborim sixteenths on top. The foundation of carnival batucada.",
+    "source": "https://upbeat.studio/blog/how-to-play-samba-percussion-batucada-basics/"
+  },
+  {
+    "name": "Surdo de Primeira (Surdo 1 marcação)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [12],
+      "snareAccent": [],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The lowest surdo marks the strongest beat (beat 4, the 'two' of the 2/4 samba) with an open ringing tone, anchoring the bateria's pulse.",
+    "source": "https://www.kalango.com/en/community/sambapedia/styles/bahia-styles/"
+  },
+  {
+    "name": "Surdo de Segunda (Surdo 2 marcação)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [4],
+      "snareAccent": [],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The mid surdo answers the first surdo, marking beat 2 (the 'one' of samba's two-feel) with an open tone, completing the heartbeat call-and-response of the surdos.",
+    "source": "https://www.kalango.com/en/community/sambapedia/styles/bahia-styles/"
+  },
+  {
+    "name": "Surdo de Terceira (Surdo 3 corte)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [4, 10, 12],
+      "snareAccent": [],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The cutting third surdo improvises syncopated fills between the marking surdos, adding the floating off-beat phrases characteristic of Rio escolas.",
+    "source": "https://www.kalango.com/en/community/sambapedia/styles/bahia-styles/"
+  },
+  {
+    "name": "Tamborim Teleco-teco",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [4, 12],
+      "snareAccent": [0, 2, 3, 6, 7, 10, 11, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The classic teleco-teco tamborim phrase that gives samba its melodic syncopation, accenting just ahead of and around the surdo beats.",
+    "source": "https://thatdrumblog.blogspot.com/2015/02/escola-de-samba-patterns-for-drumset.html"
+  },
+  {
+    "name": "Caixa Samba (continuous sixteenths)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [4, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [0, 1, 3, 4, 5, 7, 8, 9, 11, 12, 13, 15],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The snare-drum caixa lays a constant carpet of sixteenths with accents on the 'e' of each beat, giving samba its swinging forward drive.",
+    "source": "https://www.libertyparkmusic.com/guide-drum-kit-notation-latin-music-samba/"
+  },
+  {
+    "name": "Repinique Chamada (call)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [4, 12],
+      "snareAccent": [0, 3, 4, 7, 8, 11, 12, 15],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The repinique leads the bateria, sounding the chamada that signals entries and breaks with sharp ringing strokes around the beat.",
+    "source": "https://www.kalango.com/en/community/sambapedia/styles/bahia-styles/"
+  },
+  {
+    "name": "Samba de Enredo",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [4, 12],
+      "snareAccent": [0, 3, 6, 7, 10, 14],
+      "snareGhost": [1, 2, 5, 9, 11, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The grand parade samba of the escolas, a theme-song groove built for thousands of dancers, with surdos marking 2 and 4 and dense syncopated upper percussion.",
+    "source": "https://en.wikipedia.org/wiki/Samba"
+  },
+  {
+    "name": "Partido Alto",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [4, 12],
+      "snareAccent": [0, 3, 6, 10, 11, 14],
+      "snareGhost": [1, 7, 13],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A call-and-response samba subgenre whose signature pandeiro/clave phrase emphasizes the off-beats, the rhythmic backbone of roda-de-samba improvisation.",
+    "source": "https://thatdrumblog.blogspot.com/2015/02/escola-de-samba-patterns-for-drumset.html"
+  },
+  {
+    "name": "Samba de Roda",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [4, 12],
+      "snareAccent": [0, 3, 6, 8, 11, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The ancestral circle samba of the Bahian Recôncavo, played on pandeiro, atabaque and palmas, recognized by UNESCO as a root of all samba.",
+    "source": "https://en.wikipedia.org/wiki/Samba_de_roda"
+  },
+  {
+    "name": "Pagode",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [4, 12],
+      "snareAccent": [0, 3, 6, 10, 14],
+      "snareGhost": [2, 8, 11],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The intimate backyard samba style of the 1980s, lighter and more melodic, driven by tantã, repique de mão and pandeiro with a relaxed swing.",
+    "source": "https://en.wikipedia.org/wiki/Pagode"
+  },
+  {
+    "name": "Samba-Canção",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [4, 12],
+      "snareAccent": [6, 14],
+      "snareGhost": [],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "A slow, romantic ballad form of samba where the percussion thins to a gentle marking of 2 and 4, emphasizing the melody and lyrics.",
+    "source": "https://en.wikipedia.org/wiki/Samba-can%C3%A7%C3%A3o"
+  },
+  {
+    "name": "Samba Cruzado (drum kit)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [],
+      "snareGhost": [2, 4, 10, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The drum-set adaptation of samba where the bass drum plays the surdo-derived crossed pattern and the left foot keeps 2 and 4 on the hi-hat.",
+    "source": "https://www.libertyparkmusic.com/guide-drum-kit-notation-latin-music-samba/"
+  },
+  {
+    "name": "Bossa Nova",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [3, 6, 10, 13],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The cool, understated cousin of samba born on Rio's beaches, with a soft surdo-style bass drum and a cross-stick rim clave evoking the bossa guitar.",
+    "source": "https://www.libertyparkmusic.com/guide-drum-kit-notation-latin-music-samba/"
+  },
+  {
+    "name": "Bossa Nova Clave (forward)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [3, 6, 10, 13],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The two-bar bossa nova rim-click clave (3-2 forward direction) that João Gilberto distilled from samba, the rhythmic signature of the genre.",
+    "source": "https://en.wikipedia.org/wiki/Bossa_nova"
+  },
+  {
+    "name": "Choro",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [0, 3, 6, 8, 11, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Brazil's first urban instrumental genre, propelled by pandeiro and the syncopated baixaria of the seven-string guitar, ancestor of samba and instrumental virtuosity.",
+    "source": "https://en.wikipedia.org/wiki/Choro"
+  },
+  {
+    "name": "Choro Pandeiro",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 3, 6, 7, 10, 11, 14, 15],
+      "snareGhost": [1, 5, 9, 13],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The pandeiro pattern that drives choro, alternating thumb bass tones on the beats with fingertip and slap accents filling the sixteenths.",
+    "source": "https://en.wikipedia.org/wiki/Choro"
+  },
+  {
+    "name": "Maxixe",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [3, 4, 6, 11, 12, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The 'Brazilian tango' of the late 1800s that fused habanera and lundu into a syncopated couple dance, a direct forerunner of samba.",
+    "source": "https://en.wikipedia.org/wiki/Maxixe_(dance)"
+  },
+  {
+    "name": "Lundu",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [0, 3, 8, 11],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Afro-Brazilian song-and-dance of Angolan/Bantu origin built on a habanera-like syncopation, the earliest African-rooted music accepted into Brazilian salons.",
+    "source": "https://en.wikipedia.org/wiki/Lundu_(music)"
+  },
+  {
+    "name": "Baião",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11],
+      "snareAccent": [],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The foundational Northeastern rhythm popularized by Luiz Gonzaga, with its signature zabumba figure (low boom on the beat, accent on the 'a') under constant triangle sixteenths.",
+    "source": "https://ir.library.louisville.edu/cgi/viewcontent.cgi?article=4431&context=etd"
+  },
+  {
+    "name": "Baião Zabumba (full)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [3, 4, 11, 12],
+      "snareGhost": [],
+      "hatClosed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The two-headed zabumba groove of baião: muffled low boom on beat 1, damped high slap from the bacalhau stick on the off-beats, under a shimmering triangle.",
+    "source": "https://en.wikipedia.org/wiki/Zabumba"
+  },
+  {
+    "name": "Forró",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8, 15],
+      "snareAccent": [4, 12],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The pan-Northeastern dance music descended from baião, identified by the zabumba's open low sound on the last sixteenth of the bar that pulls into the next measure.",
+    "source": "https://www.melodigging.com/genre/forro-tradicional-12310"
+  },
+  {
+    "name": "Xote",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [10, 12],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The slower, swaying Northeastern partner dance derived from the European schottische, marked by the zabumba's open low tones on the two eighths of the second beat.",
+    "source": "https://www.melodigging.com/genre/northeastern-brazilian-music"
+  },
+  {
+    "name": "Xaxado",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The marching sertão dance of the cangaceiros from the Pernambuco backlands, named for the shuffling 'xa-xa' of sandals, driven by a steady zabumba march.",
+    "source": "https://en.wikipedia.org/wiki/Xaxado"
+  },
+  {
+    "name": "Arrasta-pé",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The fast, festive June-festival forró variant whose name means 'drag the foot', pushing the baião feel to a punchy quick tempo for São João dancing.",
+    "source": "https://www.melodigging.com/genre/northeastern-brazilian-music"
+  },
+  {
+    "name": "Coco",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8, 11],
+      "snareAccent": [2, 6, 7, 10, 14, 15],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The coastal Northeastern song-and-dance built on stamped feet, hand-claps and the ganzá, a call-and-response form tied to coconut-breaking work songs.",
+    "source": "https://en.wikipedia.org/wiki/Coco_(music)"
+  },
+  {
+    "name": "Embolada",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 2, 4, 6, 8, 10, 12, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The rapid-fire tongue-twisting vocal genre of coco, where pandeiro keeps a relentless even sixteenth pulse under improvised, competitive sung verses.",
+    "source": "https://en.wikipedia.org/wiki/Embolada"
+  },
+  {
+    "name": "Ciranda",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 7, 12, 15],
+      "snareGhost": [],
+      "hatClosed": [0, 4, 8, 12],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The Pernambuco coastal circle dance played on mineiro, bombo and ganzá, a slow swaying 2-feel that draws dancers into a giant ring on the beach.",
+    "source": "https://en.wikipedia.org/wiki/Ciranda_(Brazilian_music)"
+  },
+  {
+    "name": "Frevo",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [2, 3, 6, 10, 11, 14],
+      "snareGhost": [0, 4, 8, 12],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 8]
+    },
+    "desc": "The frenetic Pernambuco carnival march of Recife and Olinda, a fast brass-band style with snappy syncopated snare accents that fuel the acrobatic passo dance.",
+    "source": "https://ir.library.louisville.edu/cgi/viewcontent.cgi?article=4431&context=etd"
+  },
+  {
+    "name": "Maracatu Nação (Baque Virado)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 7, 8, 10, 14],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The thunderous 'turned beat' processional from Recife-Olinda, with interlocking alfaia drums answering the mestre's call and the gonguê bell marking the timeline.",
+    "source": "https://en.wikipedia.org/wiki/Maracatu"
+  },
+  {
+    "name": "Maracatu Gonguê Timeline",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 3, 4, 6, 8, 11, 12, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The gonguê cowbell timeline that is the spine of baque virado, its asymmetric bell phrase locking the alfaias and caixas of the nação together.",
+    "source": "https://brazilianpercussion.blogspot.com/2014/11/maracatu.html"
+  },
+  {
+    "name": "Maracatu Rural (Baque Solto)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "snareGhost": [],
+      "hatClosed": [0, 8],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The 'loose beat' of the Zona da Mata sugarcane region, a frenetic style with rolling tarol/caixa, mineiro and brass behind the spinning caboclo de lança.",
+    "source": "https://en.wikipedia.org/wiki/Maracatu"
+  },
+  {
+    "name": "Afoxé (Ijexá)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [0, 4, 6, 7, 10, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Candomblé-rooted carnival rhythm of Salvador's blocos afro, built on the ijexá agogô bell pattern with atabaques and xequerê at a gently rolling tempo.",
+    "source": "https://www.kalango.com/en/community/sambapedia/styles/bahia-styles/"
+  },
+  {
+    "name": "Ijexá Agogô Bell",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [0, 3, 4, 7, 8, 11, 12, 15],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The two-tone agogô ostinato of ijexá, the sacred bell timeline that underlies afoxé and feeds directly into the accents of samba-reggae.",
+    "source": "https://pulsewave.com/2013/09/rhythm-tip-samba-reggae/"
+  },
+  {
+    "name": "Samba-Reggae (Olodum)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [4, 10, 12, 14],
+      "snareAccent": [0, 4, 8, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The signature bloco-afro groove of Salvador created by Neguinho do Samba and Olodum, reorienting samba's surdos around a reggae backbeat with the famous syncopated surdo answer.",
+    "source": "https://en.wikipedia.org/wiki/Samba_reggae"
+  },
+  {
+    "name": "Samba-Reggae Surdo Interlock",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 11, 12, 14],
+      "snareAccent": [2, 6, 10, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The four-surdo interlocking pyramid of samba-reggae, where surdos 1-4 each take a slice of the bar to build the rolling Olodum wall of low drums.",
+    "source": "https://www.kalango.com/en/community/sambapedia/styles/bahia-styles/"
+  },
+  {
+    "name": "Timbalada (Timbau groove)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 10, 11, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [1, 2, 5, 9, 13],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Carlinhos Brown's Bahian style played on the conical hand-drum timbau, blending samba-reggae and Candomblé into a dense, bass-heavy carnival groove.",
+    "source": "https://www.kalango.com/en/community/sambapedia/styles/bahia-styles/"
+  },
+  {
+    "name": "Axé",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [3, 11],
+      "hhFoot": [4, 12]
+    },
+    "desc": "The pop-carnival music of Salvador's trio elétrico era, fusing afoxé, frevo and samba-reggae into an upbeat, danceable backbeat-driven sound.",
+    "source": "https://en.wikipedia.org/wiki/Ax%C3%A9_(music)"
+  },
+  {
+    "name": "Carimbó",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11],
+      "snareAccent": [4, 6, 12, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Afro-Indigenous drum-and-dance music of Pará in the Amazon, played on large hollowed-log carimbó drums with maracas, ancestor of lambada.",
+    "source": "https://en.wikipedia.org/wiki/Carimb%C3%B3"
+  },
+  {
+    "name": "Marcha (Marchinha de Carnaval)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 6, 12, 14],
+      "snareGhost": [],
+      "hatClosed": [0, 2, 4, 6, 8, 10, 12, 14],
+      "hatOpen": [],
+      "hhFoot": [0, 4, 8, 12]
+    },
+    "desc": "The bouncy two-beat carnival march of early-20th-century Rio, with an oom-pah bass on every beat and a singalong melody, the sound of old-school Brazilian Carnaval.",
+    "source": "https://en.wikipedia.org/wiki/Marchinha"
+  },
+  {
+    "name": "Capoeira Toque Angola",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [4, 6, 7, 12, 14, 15],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The slow, low, grounded berimbau toque for the traditional capoeira Angola game, calling players to a crafty, close-to-the-ground jogo with pandeiro and atabaque.",
+    "source": "https://en.wikipedia.org/wiki/Capoeira_toques"
+  },
+  {
+    "name": "Capoeira Toque São Bento Grande",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 3, 10, 11],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The fast, driving berimbau toque of capoeira Regional created by Mestre Bimba, energizing an athletic, fast-paced game in the roda.",
+    "source": "https://en.wikipedia.org/wiki/Capoeira_toques"
+  },
+  {
+    "name": "Capoeira Toque São Bento Pequeno",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [2, 8, 10],
+      "snareAccent": [0, 6, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A medium-tempo berimbau toque whose low note falls on the off-beat, often paired with São Bento Grande to layer the gunga and viola berimbaus.",
+    "source": "https://decapoeira.org/en/toques-de-berimbau/"
+  },
+  {
+    "name": "Capoeira Toque Iúna",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11],
+      "snareAccent": [4, 7, 12, 15],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "Mestre Bimba's berimbau toque imitating the call-and-response song of the iúna bird, reserved for graduated capoeiristas playing a refined, acrobatic game without singing.",
+    "source": "https://en.wikipedia.org/wiki/Capoeira_toques"
+  },
+  {
+    "name": "Capoeira Toque Benguela",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8],
+      "snareAccent": [3, 5, 7, 11, 13, 15],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A slow, hypnotic berimbau toque (associated with Mestre Pastinha) for a malicious, deceptive low game, swaying between the open and pressed notes.",
+    "source": "https://decapoeira.org/en/toques-de-berimbau/"
+  },
+  {
+    "name": "Capoeira Toque Cavalaria",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 2, 8, 10],
+      "snareAccent": [4, 5, 12, 13],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The berimbau toque imitating galloping mounted police, historically a coded warning in the roda that the cavalry was approaching to raid the capoeira game.",
+    "source": "https://en.wikipedia.org/wiki/Capoeira_toques"
+  },
+  {
+    "name": "Capoeira Toque Santa Maria",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 8, 11],
+      "snareAccent": [4, 6, 12, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A berimbau toque traditionally used for the jogo de dentro and money-grabbing games (jogo do dinheiro), with a distinctive answered low phrase.",
+    "source": "https://decapoeira.org/en/toques-de-berimbau/"
+  },
+  {
+    "name": "Capoeira Toque Samango",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [3, 4, 7, 11, 12, 15],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A regional berimbau toque used in some capoeira lineages for a flowing, mid-tempo game, varying the placement of the pressed buzz note.",
+    "source": "https://decapoeira.org/en/toques-de-berimbau/"
+  },
+  {
+    "name": "Candomblé Ijexá (atabaque)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 14],
+      "snareAccent": [0, 3, 4, 7, 10, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The sacred Candomblé toque for Oxum and other orixás, a calm rolling ijexá played on rum, rumpi and lê atabaques with the agogô, parent of afoxé.",
+    "source": "https://www.melodigging.com/genre/candomble-music"
+  },
+  {
+    "name": "Candomblé Vassi",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 12,
+    "voices": {
+      "bass": [0, 3, 6, 9],
+      "snareAccent": [0, 2, 3, 5, 7, 8, 10],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A foundational Ketu Candomblé toque in 12 pulses with seven hand-drum strokes spread across the cycle, used in many orixá ceremonies.",
+    "source": "https://revistaabem.abem.mus.br/revistaabem/article/download/910/601/3666"
+  },
+  {
+    "name": "Candomblé Aguerê",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 12,
+    "voices": {
+      "bass": [0, 4, 8],
+      "snareAccent": [0, 2, 4, 6, 8, 10],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The compound-time toque for the warrior-hunter orixá Oxóssi, a galloping 12/8 atabaque rhythm evoking the chase through the forest.",
+    "source": "https://www.melodigging.com/genre/candomble-music"
+  },
+  {
+    "name": "Candomblé Opanijé",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 8, 12],
+      "snareAccent": [0, 4, 8, 11, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The stately 16-pulse toque for Obaluaiê/Omolu, the orixá of disease and healing, with a deliberate limping phrase that mirrors the orixá's dance.",
+    "source": "https://www.melodigging.com/genre/candomble-music"
+  },
+  {
+    "name": "Candomblé Barravento",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 2, 4, 6, 8, 10, 12, 14],
+      "snareGhost": [1, 3, 5, 7, 9, 11, 13, 15],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "A fast, accelerating Candomblé toque used to call the orixás into possession (the 'turning of the wind'), driving the rum's improvisations to a peak.",
+    "source": "https://www.melodigging.com/genre/candomble-music"
+  },
+  {
+    "name": "Candomblé Alujá (Xangô)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 6, 10, 12],
+      "snareAccent": [0, 3, 6, 8, 11, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The vigorous toque dedicated to Xangô, orixá of thunder and justice, a fast atabaque rhythm whose rolling rum phrases evoke crashing thunder.",
+    "source": "https://www.melodigging.com/genre/candomble-music"
+  },
+  {
+    "name": "Congado (Congada)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [2, 3, 6, 10, 11, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Afro-Brazilian Catholic processional of Minas Gerais honoring Our Lady of the Rosary, with caixas and patangome bells marching the crowned-king cortege.",
+    "source": "https://en.wikipedia.org/wiki/Congado"
+  },
+  {
+    "name": "Catira (Cateretê)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [3, 6, 10, 13],
+      "snareGhost": [1, 5, 7, 9, 11, 15],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The caipira foot-stomping and hand-clapping dance of Brazil's rural interior, where dancers' palmas and sapateado create the percussion alongside the viola.",
+    "source": "https://en.wikipedia.org/wiki/Catira"
+  },
+  {
+    "name": "Baile Funk Tamborzão",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 6, 8, 11, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 7, 10],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The defining Rio funk carioca beat built from sampled atabaque/conga hits, a syncopated surdo-like kick with tight claps on 2 and 4, descended from Candomblé and capoeira drums.",
+    "source": "https://www.melodigging.com/genre/tamborzao"
+  },
+  {
+    "name": "Baile Funk (Volt Mix / Miami bass)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 7, 8, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [],
+      "hatClosed": [2, 6, 10, 14],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The earlier Miami-bass-derived funk carioca groove (the '808 Volt mix' break) that founded the genre in 1980s Rio before tamborzão, with electro kick and clap.",
+    "source": "https://en.wikipedia.org/wiki/Funk_carioca"
+  },
+  {
+    "name": "Maculelê",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 3, 8, 11],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Afro-Brazilian stick-dance from Bahia performed with clashing grimas, accompanied by atabaque and song, often shown alongside capoeira.",
+    "source": "https://en.wikipedia.org/wiki/Macul%C3%AAl%C3%AA_(dance)"
+  },
+  {
+    "name": "Tambor de Crioula",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 3, 8, 11, 14],
+      "snareAccent": [2, 6, 10],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Afro-Maranhão circle dance honoring São Benedito, played on three hand drums (tambor grande, meião, crivador) with the navel-bump punga, UNESCO heritage.",
+    "source": "https://en.wikipedia.org/wiki/Tambor_de_crioula"
+  },
+  {
+    "name": "Jongo (Caxambu)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 6, 8, 11, 14],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 10],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Bantu-rooted drum-and-dance of the Paraíba Valley played on tambu and candongueiro drums, a riddle-song tradition counted among samba's ancestors.",
+    "source": "https://en.wikipedia.org/wiki/Jongo"
+  },
+  {
+    "name": "Maracatu Baque de Marcação",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 12],
+      "snareAccent": [0, 3, 6, 8, 11, 14],
+      "snareGhost": [],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The steady marking baque of maracatu nação used to move the cortege between viradas, with alfaias and gonguê holding a walking processional pulse.",
+    "source": "https://brazilianpercussion.blogspot.com/2014/11/maracatu.html"
+  },
+  {
+    "name": "Samba-Funk (Samba Afro)",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 8, 11, 12],
+      "snareAccent": [4, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The Bahian bloco-afro fusion of samba-reggae with funk and Candomblé, a heavy surdo groove with a backbeat snare championed by groups like Ilê Aiyê.",
+    "source": "https://www.kalango.com/en/community/sambapedia/styles/bahia-styles/"
+  },
+  {
+    "name": "Pagode Baiano",
+    "region": "Latin",
+    "genre": "Brazilian",
+    "length": 16,
+    "voices": {
+      "bass": [0, 4, 6, 8, 12, 14],
+      "snareAccent": [3, 4, 11, 12],
+      "snareGhost": [2, 6, 10, 14],
+      "hatClosed": [],
+      "hatOpen": [],
+      "hhFoot": []
+    },
+    "desc": "The fast Salvador dance-music offshoot of axé and samba-reggae driven by timbau and percussion, propelling the energetic swingueira choreography.",
+    "source": "https://www.kalango.com/en/community/sambapedia/styles/bahia-styles/"
+  }
+]
