@@ -317,13 +317,35 @@ function pulseOf(pos: number, offs: number[]): number {
   return pi;
 }
 
+/** The densest voice a sparse entry defines — its timeline. */
+function timelineVoice(g: LibraryGroove): LayerVoice {
+  const vlen = (v: LayerVoice) => g.voices[v]?.length ?? 0;
+  return (["hatClosed", "snareAccent", "bass", "hhFoot"] as LayerVoice[])
+    .reduce((best, v) => (vlen(v) > vlen(best) ? v : best), "snareAccent" as LayerVoice);
+}
+
+/** Which KIT voice a timeline should be played on.  The decision is by how busy
+ *  the line is, not a hard-coded accent map: a running line (more than ~1.5
+ *  strokes per beat) is a ride/bell/cowbell pattern → the hi-hat (x-heads),
+ *  where it reads as the bell it is and carries NO accent/ghost; a sparse clave
+ *  stays a cross-stick on the snare (few strokes, all genuine accents).  This is
+ *  why an evenly-spaced bell no longer comes out as a wall of snare accents. */
+function timelineKitVoice(g: LibraryGroove, cycle: GrooveCycle): LayerVoice {
+  const tv = timelineVoice(g);
+  if (tv === "snareAccent") {
+    const perBeat = (g.voices.snareAccent?.length ?? 0) / Math.max(1, cycle.points.length);
+    if (perBeat > 1.5) return "hatClosed";   // a running bell → ride/cowbell, not the snare
+  }
+  return tv;
+}
+
 /** Turn a sparse single-line / two-voice entry (a bell, clave or timeline) into
- *  a FULL-KIT groove rather than a one-instrument part: keep the entry's own
- *  voice(s) — the timeline becomes the snare's syncopated accent layer (a kit
- *  cross-stick clave) — and build a real drumset foundation around it: a steady
- *  8th-note hi-hat ostinato for time, plus a kick on the first and middle
- *  downbeats.  No 2&4 backbeat is imposed (that's what made claves read as
- *  Western rock); the snare carries the tradition's syncopation instead. */
+ *  a FULL-KIT groove rather than a one-instrument part.  A busy bell rides on
+ *  the hi-hat (see timelineKitVoice); a sparse clave is a cross-stick on the
+ *  snare.  Then a real drumset foundation is built around it: a steady 8th-note
+ *  hi-hat for time (if the line isn't already on the hat), a kick on the first +
+ *  middle downbeats, and a backbeat snare when the kit would otherwise have none
+ *  (e.g. a bell that rode to the hat). */
 function kitUnderTimeline(g: LibraryGroove, cycle: GrooveCycle): PointVoices[] {
   const pv = grooveToPointVoices(g, cycle);
   const add = (pi: number, voice: LayerVoice, local: number) => {
@@ -331,11 +353,25 @@ function kitUnderTimeline(g: LibraryGroove, cycle: GrooveCycle): PointVoices[] {
     if (!cur.hits.includes(local)) cur.hits.push(local);
     pv[pi][voice] = cur;
   };
+  // Re-voice a busy bell off the snare onto the hi-hat: on a cymbal it reads as
+  // the bell it is, instead of a wall of snare accents.
+  const tv = timelineVoice(g);
+  const bv = timelineKitVoice(g, cycle);
+  if (bv !== tv) {
+    pv.forEach(p => {
+      const src = p[tv];
+      if (!src) return;
+      const dst = p[bv] ?? { hits: [], doubles: [] };
+      for (const h of src.hits) if (!dst.hits.includes(h)) dst.hits.push(h);
+      dst.hits.sort((a, b) => a - b);
+      p[bv] = dst;
+      delete p[tv];
+    });
+  }
   const hasHat = pv.some(p => (p.hatClosed?.hits.length ?? 0) > 0);
   const hasKick = pv.some(p => (p.bass?.hits.length ?? 0) > 0);
   const hasSnare = pv.some(p => (p.snareAccent?.hits.length ?? 0) > 0);
-  // Steady 8th-note hi-hat across every pulse — the timekeeping layer that makes
-  // it a kit groove, not a hand-drum part.
+  // Steady 8th-note hi-hat for time (unless the bell already rides the hat).
   if (!hasHat) cycle.points.forEach((p, i) => { for (const s of hatShapePositions("8ths", p.subPulses)) add(i, "hatClosed", s); });
   // Kick foundation on the first + middle downbeats (not a 2&4 backbeat).
   if (!hasKick) {
@@ -343,9 +379,8 @@ function kitUnderTimeline(g: LibraryGroove, cycle: GrooveCycle): PointVoices[] {
     const mid = cycle.points.length >> 1;
     if (mid > 0) add(mid, "bass", 0);
   }
-  // Snare ONLY if the entry has none of its own: a clave/timeline stored on the
-  // snare already IS the snare layer, so we leave it; a bell stored on the hat
-  // has no snare, so give the kit a backbeat on the odd pulses to complete it.
+  // Backbeat snare only if the kit has no snare of its own (e.g. a bell that
+  // rode to the hat) — so a clave-on-snare keeps its own line untouched.
   if (!hasSnare) cycle.points.forEach((_p, i) => { if (i % 2 === 1) add(i, "snareAccent", 0); });
   return pv;
 }
@@ -477,12 +512,6 @@ export function isTimelineGroove(g: LibraryGroove): boolean {
   return ALL_LIB_VOICES.filter(v => (g.voices[v]?.length ?? 0) > 0).length < 3;
 }
 
-/** Voices a library entry actually defines (non-empty) — the ones a timeline
- *  source must preserve so it keeps reading as that tradition. */
-function sourceVoices(g: LibraryGroove): LayerVoice[] {
-  return ALL_LIB_VOICES.filter(v => (g.voices[v]?.length ?? 0) > 0);
-}
-
 /** Build one varied groove from a SPECIFIC library entry used as scaffolding.
  *  Shared by generateInStyle and the stress test so both exercise identical
  *  logic: keep the style skeleton, re-roll the playing (see varyGroove).  The
@@ -495,10 +524,11 @@ export function generateFromGroove(
   const timeline = isTimelineGroove(g);
   const base = timeline ? kitUnderTimeline(g, cycle) : grooveToPointVoices(g, cycle);
   const pointVoices = varyGroove(base, cycle, {
-    // Timeline grooves keep EVERY source voice (the bell/clave on its own voice);
-    // full-kit grooves keep their backbone (snare + kick are never removed by
-    // varyGroove) but let the hat/ghosts re-roll for vocabulary.
-    preserve: timeline ? sourceVoices(g) : [],
+    // Timeline grooves keep the bell/clave intact on whichever kit voice it was
+    // played on (ride-hat for a busy bell, cross-stick snare for a clave); the
+    // supplemented kit around it (kick, backbeat, hat) is free to re-roll.
+    // Full-kit grooves keep their backbone (snare + kick are never removed).
+    preserve: timeline ? [timelineKitVoice(g, cycle)] : [],
     biases: opts.biases,
     damp: timeline ? 0.6 : 1,   // keep sparse timelines open
   });

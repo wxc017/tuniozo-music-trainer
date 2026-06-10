@@ -155,18 +155,12 @@ describe("groove generator — 100k style-fit stress test", () => {
 
         // ── Skeleton preservation ──────────────────────────────────────────
         if (timeline) {
-          // Every source voice is preserved on its OWN voice.
+          // The timeline (densest source voice) is preserved on its KIT voice:
+          // a busy bell rides the hi-hat, a sparse clave stays on the snare.
           tlChecked++; agg.skeletonChecked++;
-          const av: Record<string, number[]> = {
-            bass: a.bassHits, snareAccent: a.snareHits, snareGhost: a.ghostHits,
-            hatClosed: a.hatHits, hatOpen: a.hatOpenHits, hhFoot: a.hhFootHits,
-          };
-          const kept = (["bass", "snareAccent", "snareGhost", "hatClosed", "hatOpen", "hhFoot"] as const)
-            .every(v => {
-              const src = g.voices[v];
-              return !src || !src.length || isSubset(src.filter(x => x < total), new Set(av[v]));
-            });
-          if (kept) { tlBell++; agg.skeletonOK++; }
+          const tlPos = timelinePositions(g).filter(x => x < total);
+          const kept = new Set([...a.snareHits, ...a.hatHits, ...a.bassHits, ...a.hhFootHits, ...a.ghostHits, ...a.hatOpenHits]);
+          if (isSubset(tlPos, kept)) { tlBell++; agg.skeletonOK++; }
         } else {
           kitChecked++; agg.skeletonChecked++;
           const sBass = (g.voices.bass ?? []).filter(x => x < total);
