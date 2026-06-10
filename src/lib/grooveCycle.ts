@@ -277,6 +277,9 @@ export function cycleToStripData(cycle: GrooveCycle, pointVoices: PointVoices[])
     // Show rests so a beat with no hit (e.g. a hi-hat that doesn't land on
     // beat 1) is marked — the player can see where the downbeat lines up.
     showRests: true,
+    // Beam over a mid-beat rest so a beat's hits read as one beamed group
+    // rather than separate flagged notes (a leading rest stays un-beamed).
+    beamAcrossRests: true,
   };
 }
 
@@ -304,6 +307,7 @@ export function cycleToStripMeasures(cycle: GrooveCycle, pointVoices: PointVoice
       slotOverride: p.subPulses,
       capToBeat: true,
       showRests: true,
+      beamAcrossRests: true,
     } as StripMeasureData;
   });
 }

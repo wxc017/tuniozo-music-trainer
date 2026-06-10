@@ -198,7 +198,7 @@ function slotsToVfDur(slots: number, beatSize: number, tripletGroup3 = false): [
 // For non-standard beat sizes (anything other than 2 or 4) notes are grouped
 // sequentially by beatSize so every group shares one beam.
 // The standard 8th/16th grids (beatSize 2 or 4) fall through to VexFlow's auto-beamer.
-function buildBeams(notes: StaveNote[], beatSize: number): Beam[] {
+function buildBeams(notes: StaveNote[], beatSize: number, beamAcrossRests = false): Beam[] {
   // Pass the full note list (rests included): VexFlow's generateBeams uses
   // cumulative ticks to align beam groups to beat boundaries, and with
   // beamRests:false (the default) rests also break beams at their actual
@@ -206,7 +206,14 @@ function buildBeams(notes: StaveNote[], beatSize: number): Beam[] {
   // (e.g. bass on slots 0 and 3 of a 4-slot bar) end up beamed across the
   // gap instead of each showing their own flag.
   if (beatSize === 2 || beatSize === 4) {
-    return Beam.generateBeams(notes, { maintainStemDirections: true, flatBeams: true });
+    return Beam.generateBeams(notes, {
+      maintainStemDirections: true, flatBeams: true,
+      // beamMiddleOnly beams ONLY rests that sit between two notes of the same
+      // beat — so a hi-hat, a mid-beat rest, then more hi-hats render as one
+      // beamed group instead of isolated flagged notes, while a leading/trailing
+      // rest stays an un-beamed rest (the downbeat reference stays visible).
+      ...(beamAcrossRests ? { beamRests: true, beamMiddleOnly: true } : {}),
+    });
   }
   const BEAMABLE = new Set(["8", "16", "32"]);
   const beams: Beam[] = [];
@@ -222,10 +229,14 @@ function buildBeams(notes: StaveNote[], beatSize: number): Beam[] {
     group = [];
   };
   for (const n of notes) {
-    if (n.isRest() || !BEAMABLE.has(n.getDuration())) {
+    if (n.isRest()) {
+      // Across-rests: keep the group open so the notes beam over an internal
+      // rest; otherwise a rest breaks the beam (standard).
+      if (beamAcrossRests) continue;
       flush();
       continue;
     }
+    if (!BEAMABLE.has(n.getDuration())) { flush(); continue; }
     group.push(n);
     if (group.length >= beatSize) flush();
   }
@@ -1125,21 +1136,32 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
 
       const collectedPositions: number[] = [];
       const collectedSlotPositions: Array<{ measureIdx: number; slot: number; x: number }> = [];
+      // Symmetric beats: draw the clef in its own leading gutter so every beat
+      // box can be the SAME width (dead-even barline spacing). Otherwise the
+      // clef shares — and widens — the first measure's box as before.
+      const clefGutter = equalBeatWidth && showClef && !singleLine ? CLEF_EXTRA : 0;
       let xCursor = 0;
+      if (clefGutter) {
+        const clefStave = new Stave(0, staveY, CLEF_EXTRA);
+        clefStave.addClef("percussion");
+        clefStave.setEndBarType(Barline.type.NONE);
+        clefStave.setContext(ctx).draw();
+        xCursor = CLEF_EXTRA;
+      }
       measures.forEach((m, idx) => {
         const isFirst = idx === 0;
         const isLast  = idx === measures.length - 1;
         const thisMW = mw(idx);
         const x = xCursor;
-        const w = isFirst ? thisMW + CLEF_EXTRA : thisMW;
+        const w = (isFirst && !clefGutter) ? thisMW + CLEF_EXTRA : thisMW;
 
         const stave = new Stave(x, staveY, w);
         if (singleLine) {
           stave.setNumLines(1);
           if (!isFirst) stave.setBegBarType(Barline.type.NONE);
         } else {
-          if (isFirst && showClef) stave.addClef("percussion");
-          if (!isFirst) stave.setBegBarType(Barline.type.NONE);
+          if (isFirst && showClef && !clefGutter) stave.addClef("percussion");
+          if (!isFirst || clefGutter) stave.setBegBarType(Barline.type.NONE);
         }
         if (isLast)  stave.setEndBarType(Barline.type.END);
         else if (oneBeatPerBar) stave.setEndBarType(Barline.type.SINGLE);
@@ -1254,7 +1276,7 @@ export function VexDrumStrip({ measures, measureWidth, measureWidths, height, fu
           ? (hasUp ? buildBeamsByGroups(upNotes, beatSize, m.beamGroups!, m.beamAcrossRests ?? false) : [])
           : m.beamGrouping && m.beamGrouping > 0
           ? beamSrcs.flatMap(arr => buildBeamsByGrouping(arr, beatSize, m.beamGrouping!, m.beamGroupingOffset ?? 0, m.beamAcrossRests ?? false))
-          : beamSrcs.flatMap(arr => buildBeams(arr, beamSize));
+          : beamSrcs.flatMap(arr => buildBeams(arr, beamSize, m.beamAcrossRests ?? false));
         // Use the stave's own note area (already compensates for clef,
         // time signature, and end barline) so notes never overflow the
         // measure regardless of what's drawn at the head of the bar.
