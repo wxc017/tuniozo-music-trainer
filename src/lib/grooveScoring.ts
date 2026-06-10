@@ -19,7 +19,7 @@ import {
   type HatShape,
 } from "@/lib/grooveCycle";
 import {
-  grooveLibraryBonus, nearestLibraryGroove, GROOVE_LIBRARY,
+  grooveLibraryBonus, nearestLibraryGroove, GROOVE_LIBRARY, isWesternRegion,
   type LibraryMatch, type LibraryGroove, type Region,
 } from "@/lib/grooveLibrary";
 
@@ -101,28 +101,57 @@ export function extractGrooveFeatures(a: AssembledCycle): GrooveFeatures {
   };
 }
 
+// WESTERN-KIT weights: musicality rests on a snare backbeat (2 & 4) over a kick
+// anchor — the defining trait of rock/funk/jazz kit grooves.  Used only for the
+// Western style buckets (see isWesternRegion).
 const WEIGHTS_MUSICAL: Record<string, number> = {
   backbeat: 90, kickAnchor: 80, interlock: 60, syncopation: 50, ghostPlacement: 40,
   density: 60, hatSteadiness: 30, hasEmptyPulse: -200, collision: -120,
+};
+// WORLD weights: the SAME musicality engine with the Western backbeat/kick-anchor
+// assumption REMOVED — a 12/8 bell, a son clave, a tala or an aksak line is
+// musical on its own internal coherence (voices interlock, steady timeline,
+// well-placed ornaments, every pulse alive, few collisions) plus its resemblance
+// to a real library groove (the library bonus, added in scoreGroove).  The 170
+// points that backbeat+kickAnchor carried are redistributed onto those
+// culture-neutral features so world grooves aren't under-scored.
+const WEIGHTS_WORLD: Record<string, number> = {
+  backbeat: 0, kickAnchor: 0, interlock: 95, syncopation: 70, ghostPlacement: 55,
+  density: 85, hatSteadiness: 65, hasEmptyPulse: -200, collision: -120,
 };
 const WEIGHTS_AWKWARD: Record<string, number> = {
   backbeat: -60, kickAnchor: -50, interlock: -40, syncopation: -30, ghostPlacement: -20,
   density: -30, hatSteadiness: -40, hasEmptyPulse: -200, collision: 40,
 };
 
-/** Feature-only score (no library scan) — cheap, for ranking many candidates. */
-export function scoreGrooveFeatures(a: AssembledCycle, mode: "musical" | "awkward"): number {
+/** Feature-only score (no library scan) — cheap, for ranking many candidates.
+ *  `style` selects the weight set: a Western bucket uses the backbeat-based
+ *  WEIGHTS_MUSICAL; any other tradition uses WEIGHTS_WORLD (no backbeat
+ *  assumption).  Omit `style` to default to world weights (the culture-neutral
+ *  judgement) — pass the region whenever it is known. */
+export function scoreGrooveFeatures(
+  a: AssembledCycle, mode: "musical" | "awkward", style?: Region | null,
+): number {
   const features = extractGrooveFeatures(a);
-  const weights = mode === "musical" ? WEIGHTS_MUSICAL : WEIGHTS_AWKWARD;
+  const weights = mode === "awkward" ? WEIGHTS_AWKWARD
+    : isWesternRegion(style) ? WEIGHTS_MUSICAL : WEIGHTS_WORLD;
   return weightedScore(features as unknown as Record<string, number>, weights);
 }
 
 /** Full score = features + cross-genre library bonus. The library scan is
  *  length-indexed but still ~O(entries of this length), so call this for
- *  DISPLAY / final ranking, not inside a tight candidate loop. */
-export function scoreGroove(a: AssembledCycle, mode: "musical" | "awkward"): number {
-  const base = scoreGrooveFeatures(a, mode);
-  return mode === "musical" ? base + grooveLibraryBonus(a) : base;
+ *  DISPLAY / final ranking, not inside a tight candidate loop.  When `style` is
+ *  omitted it is INFERRED from the nearest library groove, so UI display scoring
+ *  is style-aware for free (the same nearest-match scan feeds the bonus). */
+export function scoreGroove(
+  a: AssembledCycle, mode: "musical" | "awkward", style?: Region | null,
+): number {
+  if (mode === "awkward") return scoreGrooveFeatures(a, mode, style);
+  const match = nearestLibraryGroove(a);
+  const resolvedStyle = style ?? match?.groove.region ?? null;
+  const base = scoreGrooveFeatures(a, mode, resolvedStyle);
+  const bonus = match ? Math.round(600 * Math.pow(match.similarity, 3)) : 0;
+  return base + bonus;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -603,7 +632,11 @@ export function generateFromGroove(
   // computeScore:false skips the full library-bonus scan (nearestLibraryGroove)
   // — used by the stress test to avoid 100k library scans; production keeps the
   // full score.  The generated groove itself is identical either way.
-  const score = (opts.computeScore ?? true) ? scoreGroove(assembled, m) : scoreGrooveFeatures(assembled, m);
+  // Judge with the SOURCE groove's own style: a clave/bell/tala is scored on
+  // world (non-backbeat) terms, a rock/funk/jazz source on Western terms.
+  const score = (opts.computeScore ?? true)
+    ? scoreGroove(assembled, m, g.region)
+    : scoreGrooveFeatures(assembled, m, g.region);
   return { pointVoices, assembled, score, match: { groove: g, similarity: 1 } };
 }
 

@@ -51,6 +51,15 @@ const ghostsBetween = (snare, L) => {
   }
   return uniqSort(g);
 };
+// Ghost slots that are actually PLAYABLE: between the accents AND off the kick
+// (a ghost stacked on a bass drum reads as nonsense and gets dropped, so a
+// "Ghost-Note Variation" whose ghosts all land on kicks would show none).  If a
+// groove is saturated (every gap is a kick), this returns [] and the caller
+// skips the ghost variant rather than mislabel a groove that has no ghosts.
+const ghostGaps = (snare, bass, L) => {
+  const b = new Set(bass ?? []);
+  return ghostsBetween(snare, L).filter((x) => !b.has(x));
+};
 // add one syncopated kick (the '& of 3'-ish push) to an existing bass voice
 const driveKick = (bass, L) => uniqSort([...(bass ?? [0]), Math.floor((5 * L) / 8), Math.floor((7 * L) / 8)]);
 
@@ -1019,8 +1028,8 @@ const VARIANTS = [
     descSuffix: " The hi-hat barks open on the upbeats.",
     apply: (v, L) => ({ ...v, hatClosed: eighthHats(L), hatOpen: pickOffbeats(L, 2) }) },
   { idSuffix: "-gh", nameSuffix: " — Ghost-Note Variation",
-    descSuffix: " Snare ghost-notes fill the gaps for a funkier breath.",
-    apply: (v, L) => ({ ...v, snareGhost: ghostsBetween(v.snareAccent, L) }) },
+    descSuffix: " Snare ghost-notes fill the gaps for a funkier breath.", needsGhost: true,
+    apply: (v, L) => ({ ...v, snareGhost: ghostGaps(v.snareAccent, v.bass, L) }) },
   { idSuffix: "-drv", nameSuffix: " — Driving-Kick Variation",
     descSuffix: " An extra syncopated kick pushes the pulse forward.",
     apply: (v, L) => ({ ...v, bass: driveKick(v.bass, L) }) },
@@ -1036,6 +1045,8 @@ for (const base of BASES) {
     const key = base.region + "|" + name;
     if (seenIds.has(id) || seenKeys.has(key)) continue;
     const voices = clampVoices(vr.apply({ ...base.voices }, base.length), base.length);
+    // a ghost variant with no playable ghost slot would be mislabelled — skip it.
+    if (vr.needsGhost && !(voices.snareGhost && voices.snareGhost.length)) continue;
     // guarantee at least one non-empty voice
     if (Object.values(voices).every((a) => !a || a.length === 0)) continue;
     seenIds.add(id); seenKeys.add(key);
@@ -1053,6 +1064,149 @@ for (const g of [...RESEARCH, ...STRUCTURAL]) {
   seenIds.add(g.id); seenKeys.add(key);
   out.push(g);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Balance the 10 cultural STYLE buckets.  The continent tags collapse into 10
+   buckets in grooveLibrary.ts (bucketFor); 80% of entries are the algorithmic
+   aksak/euclidean families, which pile into 3 buckets and leave the authentic
+   cultural buckets thin (talas, claves, sambas).  The research entries were
+   never feel-expanded (only the hand BASES were), so we lift each under-target
+   bucket by giving its entries the SAME honest feel re-readings the bases get —
+   different hi-hat subdivisions, ghost-notes, kick treatments and a left-foot
+   ostinato.  Identity (bass + snareAccent) is preserved; only the kit feel
+   around it changes, and identical-voice duplicates are dropped.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const BAL_TARGET = 1200;
+
+// JS port of grooveLibrary.ts bucketFor — keep in sync with that source of truth.
+const _hasG = (g, ...ks) => ks.some((k) => g.includes(k));
+function bucketFor(genre, region) {
+  const g = genre.toLowerCase();
+  if (g.includes("euclidean")) return "West African";
+  if (g.includes("polyrhythm")) return "West African";
+  if (g.includes("aksak")) return region === "European" ? "Balkan & Euro Folk" : "Middle East & Mediterranean";
+  if (g.includes("compound additive")) return region === "Asian" ? "East & SE Asian" : "Balkan & Euro Folk";
+  if (g.includes("odd-meter kit") || g === "odd meter" || g.includes("(odd meter)")) return "Jazz & Fusion";
+  if (g.includes("timeline rotation")) return region === "Latin" ? "Afro-Cuban & Caribbean" : "West African";
+  if (g.includes("additive cell") || g.includes("balkan cell")) return "Balkan & Euro Folk";
+  if (g.includes("pan-caribbean") || g.includes("cuban/haitian cell")) return "Afro-Cuban & Caribbean";
+  if (_hasG(g, "jazz", "bebop", "bop", "swing", "dixieland", "big band", "ecm", "modal")) return "Jazz & Fusion";
+  if (g.includes("fusion")) return "Jazz & Fusion";
+  if (_hasG(g, "carnatic", "hindustani", "tala", "solkattu", "nadai", "konnakol", "punjabi", "bhangra", "qawwali")) return "Indian";
+  if (g.includes("south asia")) return "Indian";
+  if (_hasG(g, "arabic", "iqa", "egypt", "ottoman", "andalus", "levantine", "sufi", "mugham", "muqam",
+            "turkish", "usul", "persian", "tonbak", "azerbaijani", "uyghur", "central asian", "doira",
+            "flamenco", "spanish", "iberian", "moroccan", "gnawa", "tunisian", "malouf", "algerian", "rai", "raï", "chaabi")) return "Middle East & Mediterranean";
+  if (_hasG(g, "gamelan", "javanese", "balinese", "sundanese", "gong", "kulintang", "kotekan", "malay", "minangkabau",
+            "thai", "piphat", "lao", "cambod", "pinpeat", "burmese", "vietnam", "japanese", "taiko", "gagaku",
+            "togaku", "bon odori", "min'yo", "matsuri", "okinawan", "eisa", "kachashi", "korean", "jangdan",
+            "samul", "pungmul", "pansori", "sanjo", "nongak", "chinese", "jingju", "luogu", "jiangnan", "sizhu",
+            "chaozhou", "cantonese", "yangge", "qupai", "peking", "lion dance", "mongolian", "tuvan")) return "East & SE Asian";
+  if (_hasG(g, "afro-cuban", "cuban", "clave", "rumba", "guaguanc", "songo", "cascara", "cáscara", "mambo",
+            "timba", "salsa", "danzon", "danzón", "contradanza", "pello",
+            "haitian", "vodou", "rara", "méring", "konpa", "kompa", "rabòday",
+            "dominican", "merengue", "bachata", "palos", "gagá", "salve", "pri-prí", "sarandunga",
+            "puerto ric", "bomba", "plena", "jíbaro", "seis", "danza",
+            "jamaic", "reggae", "ska", "rocksteady", "dub", "dancehall", "ragga", "nyabinghi", "mento",
+            "reggaeton", "dembow", "trinidad", "soca", "calypso", "calipso", "chutney", "parang", "steelband",
+            "bahamian", "junkanoo", "rake-and-scrape", "martinican", "bélé", "biguine", "garifuna", "antillean",
+            "gwoka", "guadeloup", "haiti")) return "Afro-Cuban & Caribbean";
+  if (_hasG(g, "brazil", "samba", "bossa", "baião", "baiao", "candombl", "bateria", "recife", "bahia",
+            "afro-peru", "peruvian", "andean", "huayn", "huayñ", "yaraví", "yaravi", "tondero", "zamacueca",
+            "vals criollo", "vals", "marinera", "milonga", "tango", "argentin", "chacarera", "zamba", "gato",
+            "escondido", "malambo", "vidala", "carnavalito", "caporales", "saya", "tinku", "morenada",
+            "diablada", "tobas", "sanjuanito", "albazo", "bolivia", "candombe",
+            "colombi", "cumbia", "porro", "gaita", "mapale", "champeta", "chande", "fandango", "bambuco", "pasillo",
+            "vallenato", "venezuel", "joropo", "golpe", "llanero", "tambor", "calipso",
+            "mexic", "norteñ", "norteno", "mariachi", "huasteco", "jalisciense", "jarocho", "chilena", "banda",
+            "panama", "tamborito", "mejorana", "guatemala", "son chapin", "marimba", "nicaragua", "palo de mayo",
+            "costa rica", "paraguay", "guarania", "polka paraguaya", "cueca", "tonada")) return "Brazilian & Latin America";
+  if (_hasG(g, "african", "djembe", "dunun", "malinke", "maninka", "susu", "ewe", "ghana", "akan", "asante",
+            "dagaaba", "mossi", "baga", "nalu", "komanko", "kassonke", "soninke", "temne", "mandingo", "manian",
+            "wassoulou", "landuma", "afrobeat", "highlife", "hiplife", "palm-wine", "soukous", "ndombolo",
+            "congolese", "juju", "jùjú", "fuji", "apala", "makossa", "bikutsi", "cameroon", "nigeria",
+            "senegal", "mbalax", "sabar", "mali", "bambara", "zimbabwe", "mbira", "chimurenga", "jit", "sungura",
+            "mbaqanga", "marabi", "kwela", "kwaito", "amapiano", "tsonga", "shangaan", "kenyan", "benga",
+            "swahili", "taarab", "chakacha", "tanzanian", "bongo flava", "angolan", "semba", "kizomba",
+            "cape verde", "funana", "coladeira", "morna", "batuque", "sudanese", "ethiopian", "ivorian", "ga (", "ga/")) return "West African";
+  if (_hasG(g, "balkan", "bulgar", "macedon", "serbian", "romanian", "romani", "greek", "klezmer", "hungar",
+            "nordic", "scandinav", "polish", "celtic", "irish", "scottish", "english", "sliabh", "french",
+            "breton", "italian", "salentino", "tarantella", "central european", "european", "rachenitsa",
+            "kopanitsa", "marching", "march", "waltz", "polka", "portuguese", "viennese", "military")) return "Balkan & Euro Folk";
+  if (_hasG(g, "tahitian", "cook island", "samoan", "tongan", "maori", "hawaiian", "papua", "'are'are",
+            "solomon", "fijian", "aboriginal", "polynesia", "pacific", "oceania")) return "East & SE Asian";
+  if (_hasG(g, "funk", "soul", "motown", "gospel", "second line", "new orleans", "nola",
+            "hip-hop", "hip hop", "boom-bap", "lo-fi", "trap", "drill",
+            "house", "techno", "trance", "club", "electro", "edm", "dubstep", "drum and bass", "drum & bass",
+            "dnb", "jungle", "idm", "breakbeat", "uk garage", "footwork", "gabber", "hardstyle",
+            "ebm", "grime", "future garage", "ballroom", "moombahton", "disco", "bass")) return "Funk / Hip-Hop / Electronic";
+  if (_hasG(g, "rock", "punk", "pop", "surf", "indie", "garage", "krautrock", "arena", "stadium", "metal",
+            "thrash", "death", "black", "doom", "power", "speed", "grindcore", "metalcore", "djent", "prog",
+            "technical", "math", "country", "bluegrass", "rockabilly", "cajun", "creole", "ostinato",
+            "blues", "hardcore")) return "Pop / Rock / Metal";
+  const fb = { African: "West African", Latin: "Brazilian & Latin America", Asian: "East & SE Asian",
+    European: "Balkan & Euro Folk", American: "Pop / Rock / Metal" };
+  return fb[region];
+}
+
+// Foot (left-foot hi-hat pedal) ostinato shapes for balancing variants.
+const mixedHats = (L) => uniqSort([...eighthHats(L), L >= 4 ? L - 1 : 0]);
+const footDown = (L) => quarterHats(L);
+const footBack = (L) => { const q = quarterHats(L); return q.filter((_, i) => i % 2 === 1); };
+const fourFloor = (L) => quarterHats(L);
+
+// Honest feel re-readings used to balance thin buckets.  Each keeps the source
+// bass+snareAccent (the identity) unless it explicitly re-voices the kick, and
+// only ever changes the kit FEEL around it.
+const BAL_VARIANTS = [
+  { s: "-b8h",  n: " — Eighth-Hat Feel",       d: " A steady eighth-note hi-hat keeps the time.",        f: (v, L) => ({ ...v, hatClosed: eighthHats(L), hatOpen: undefined }) },
+  { s: "-b16h", n: " — Sixteenth-Hat Feel",    d: " A busy sixteenth-note hi-hat carpets the groove.",   f: (v, L) => ({ ...v, hatClosed: sixteenthHats(L), hatOpen: undefined }) },
+  { s: "-bofh", n: " — Offbeat-Hat Feel",      d: " The hi-hat rides the offbeats.",                     f: (v, L) => ({ ...v, hatClosed: offbeatHats(L), hatOpen: undefined }) },
+  { s: "-bqh",  n: " — Quarter-Hat Feel",      d: " A sparse quarter-note hi-hat opens the groove up.",  f: (v, L) => ({ ...v, hatClosed: quarterHats(L), hatOpen: undefined }) },
+  { s: "-bmh",  n: " — Mixed-Hat Feel",        d: " A mixed hi-hat figure adds lift.",                   f: (v, L) => ({ ...v, hatClosed: mixedHats(L), hatOpen: undefined }) },
+  { s: "-boh",  n: " — Open-Hat Accents",      d: " The hi-hat barks open on the upbeats.",              f: (v, L) => ({ ...v, hatClosed: eighthHats(L), hatOpen: pickOffbeats(L, 2) }) },
+  { s: "-bgh",  n: " — Ghost-Note Variation",  d: " Snare ghost-notes fill the gaps for a funkier breath.", needsGhost: true, f: (v, L) => ({ ...v, snareGhost: ghostGaps(v.snareAccent, v.bass, L) }) },
+  { s: "-bg8",  n: " — Ghosts + Eighth Hat",   d: " Ghost-notes under a steady eighth-note hi-hat.",     needsGhost: true, f: (v, L) => ({ ...v, snareGhost: ghostGaps(v.snareAccent, v.bass, L), hatClosed: eighthHats(L) }) },
+  { s: "-bdrv", n: " — Driving-Kick Variation",d: " An extra syncopated kick pushes the pulse forward.", f: (v, L) => ({ ...v, bass: driveKick(v.bass, L) }) },
+  { s: "-bdg",  n: " — Driving Kick + Ghosts", d: " A pushed kick with ghost-notes between the accents.", needsGhost: true, f: (v, L) => { const bass = driveKick(v.bass, L); return { ...v, bass, snareGhost: ghostGaps(v.snareAccent, bass, L) }; } },
+  { s: "-bft",  n: " — Foot Downbeats",        d: " A left-foot hi-hat pedal marks the quarter-notes.",  f: (v, L) => ({ ...v, hhFoot: footDown(L) }) },
+  { s: "-bfb",  n: " — Foot Backbeat",         d: " The left-foot pedal chicks on the backbeats.",       f: (v, L) => ({ ...v, hhFoot: footBack(L) }) },
+  { s: "-bf8",  n: " — Foot + Eighth Hat",     d: " A left-foot pedal under a steady eighth-note hat.",  f: (v, L) => ({ ...v, hhFoot: footDown(L), hatClosed: eighthHats(L) }) },
+  { s: "-b4f",  n: " — Four-on-the-Floor Kick",d: " A four-on-the-floor kick drives underneath.",        f: (v, L) => ({ ...v, bass: fourFloor(L), hatClosed: eighthHats(L) }) },
+];
+
+// Canonical voice signature, to drop identical-voice duplicates.
+const voiceKey = (g) => g.region + "|" + g.length + "|" +
+  ["bass", "snareAccent", "snareGhost", "hatClosed", "hatOpen", "hhFoot"]
+    .map((k) => (g.voices[k] ?? []).join(".")).join("/");
+
+const bucketCount = {};
+const seenVoice = new Set();
+for (const g of out) { bucketCount[bucketFor(g.genre, g.region)] = (bucketCount[bucketFor(g.genre, g.region)] || 0) + 1; seenVoice.add(voiceKey(g)); }
+
+const balanceSources = [...out];   // snapshot — never feed a balanced entry back in
+let balanceAdded = 0;
+for (const vr of BAL_VARIANTS) {
+  for (const base of balanceSources) {
+    const bucket = bucketFor(base.genre, base.region);
+    if (bucketCount[bucket] >= BAL_TARGET) continue;
+    const id = base.id + vr.s;
+    const name = base.name + vr.n;
+    const key = base.region + "|" + name;
+    if (seenIds.has(id) || seenKeys.has(key)) continue;
+    const voices = clampVoices(vr.f({ ...base.voices }, base.length), base.length);
+    if (vr.needsGhost && !(voices.snareGhost && voices.snareGhost.length)) continue;  // no playable ghost → don't mislabel
+    if (Object.values(voices).every((a) => !a || a.length === 0)) continue;
+    const entry = { id, name, region: base.region, genre: base.genre, length: base.length, voices, desc: (base.desc + vr.d).trim() };
+    const vk = voiceKey(entry);
+    if (seenVoice.has(vk)) continue;             // identical kit voicing already exists
+    seenIds.add(id); seenKeys.add(key); seenVoice.add(vk);
+    out.push(entry); bucketCount[bucket]++; balanceAdded++;
+  }
+}
+console.log(`  · balancing: +${balanceAdded} feel-variations to lift thin buckets toward ${BAL_TARGET}`);
+for (const b of Object.keys(bucketCount).sort((a, c) => bucketCount[c] - bucketCount[a]))
+  console.log(`      ${String(bucketCount[b]).padStart(5)}  ${b}`);
 
 /* ── validate ── */
 const errors = [];

@@ -468,6 +468,19 @@ export const REGIONS: Region[] = [
   "Funk / Hip-Hop / Electronic",
 ];
 
+/** The buckets whose musicality genuinely RESTS on the backbeat drum-kit feel —
+ *  a snare on 2 & 4 over a kick anchor (rock, pop, metal, funk, hip-hop, most
+ *  four-on-the-floor electronic).  Only these are scored with the backbeat/kick
+ *  weights.  Everything else is judged WITHOUT that assumption (WEIGHTS_WORLD in
+ *  grooveScoring.ts) — including Jazz & Fusion, because swing rests on the RIDE
+ *  and comping, not a fixed 2-&-4 snare, so a backbeat gate would mis-judge it
+ *  just as it would a clave or a 12/8 bell. */
+export const WESTERN_REGIONS: ReadonlySet<Region> = new Set<Region>([
+  "Pop / Rock / Metal", "Funk / Hip-Hop / Electronic",
+]);
+export const isWesternRegion = (r: Region | undefined | null): boolean =>
+  r != null && WESTERN_REGIONS.has(r);
+
 /** Library grouped by style bucket, for the UI's reference browser. */
 export function libraryByRegion(): Record<Region, LibraryGroove[]> {
   const out = Object.fromEntries(REGIONS.map(r => [r, [] as LibraryGroove[]])) as Record<Region, LibraryGroove[]>;
