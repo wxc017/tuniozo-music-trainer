@@ -166,24 +166,32 @@ export function sizedNoteName(edo: number, step: number): { base: string; sup: s
   // "collisions" are expected, not a bug.  (Strict fifth-chain spelling is unique
   // but piles on double-sharps/flats — Dbb — which we avoid.)
   const circDev = (a: number, b: number) => ((a - b) % 1200 + 1800) % 1200 - 600;
-  let best: { base: string; dev: number } | null = null, bestScore = Infinity;
   // Candidate notes = the 7 naturals (F C G D A E B) + the 5 flats (Bb Eb Ab Db
   // Gb) + the 5 sharps (F# C# G# D# A#).  We deliberately EXCLUDE the enharmonic
   // naturals (Fb Cb E# B#) and all double-accidentals so a step always spells to
-  // a clean, near note (every nominal "centers a range") — its small offset is
-  // carried by the s/l superscript, never by a far interval like "sm2".
+  // a clean, near note (every nominal "centers a range").
+  //
+  // SPELLING uses the EDO's OWN fifth, not the pure Pythagorean one — otherwise a
+  // meantone EDO (31, 50, 19, …) gets its accidentals backwards (Pythagorean has
+  // C# above Db, but meantone has C# BELOW Db).  Using the tempered fifth lands
+  // each accidental on its real side of the white keys, so a step above a white
+  // key spells sharp and a step below one spells flat (per direct user request).
+  const edoFifth = (Math.round(edo * Math.log2(1.5)) / edo) * 1200;
+  let best: { base: string; f: number } | null = null, bestScore = Infinity;
   for (let f = -6; f <= 10; f++) {
     const letter = FIFTH_LETTERS[(((f + 1) % 7) + 7) % 7];
     const acc = Math.floor((f + 1) / 7);
-    const pyth = (((f * PYTH_FIFTH_CENTS) % 1200) + 1200) % 1200;
-    const dev = circDev(cents, pyth);                // >0 ⇒ step is SHARP of this note
-    const score = Math.abs(dev) + 10 * Math.abs(acc);  // mild natural preference on near-ties
+    const posEdo = (((f * edoFifth) % 1200) + 1200) % 1200;
+    const score = Math.abs(circDev(cents, posEdo)) + 10 * Math.abs(acc);  // mild natural preference
     if (score < bestScore) {
       bestScore = score;
-      best = { base: letter + (acc > 0 ? "#".repeat(acc) : acc < 0 ? "b".repeat(-acc) : ""), dev };
+      best = { base: letter + (acc > 0 ? "#".repeat(acc) : acc < 0 ? "b".repeat(-acc) : ""), f };
     }
   }
-  const d = best!.dev;
+  // s/l size is measured off the note's PYTHAGOREAN position, so a meantone D
+  // (an exact step, but flat of Pythagorean D) still reads "small".
+  const posPyth = (((best!.f * PYTH_FIFTH_CENTS) % 1200) + 1200) % 1200;
+  const d = circDev(cents, posPyth);
   // Superscript is ONLY the size of the offset from the nearest note: a sharper
   // step → "l" (large), a flatter step → "s" (small), within ½ comma → bare
   // ("just/central").  Each note CENTERS a range and the s/l mark which side of
