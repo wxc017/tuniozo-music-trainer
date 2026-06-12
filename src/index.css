@@ -10,6 +10,18 @@
   font-display: swap;
 }
 
+/* Bravura Text — SMuFL music font (Steinberg, SIL OFL).  Used only as a FALLBACK
+   so the Stein–Zimmermann–Gould accidental glyphs (Private-Use Area U+E2xx in our
+   sized note names) render; letters keep the normal font. */
+@font-face {
+  font-family: "Bravura Text";
+  src: url("https://cdn.jsdelivr.net/gh/steinbergmedia/bravura@master/redist/woff/BravuraText.woff2") format("woff2"),
+       url("https://cdn.jsdelivr.net/gh/steinbergmedia/bravura@master/redist/woff/BravuraText.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -77,7 +89,7 @@
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
-  --app-font-sans: 'Inter', system-ui, sans-serif;
+  --app-font-sans: 'Inter', system-ui, sans-serif, 'Bravura Text';
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: 0.5rem;

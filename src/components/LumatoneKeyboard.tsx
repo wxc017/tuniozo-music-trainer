@@ -138,6 +138,7 @@ export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, 
                 return (
                   <text x={key.x} y={key.y} textAnchor="middle" dominantBaseline="central"
                     fontSize={fs} fontWeight={700} fill={textCol}
+                    fontFamily="Inter, system-ui, sans-serif, 'Bravura Text'"
                     style={{ pointerEvents: "none", userSelect: "none" }}>
                     {multi
                       ? words.map((w, wi) => <tspan key={wi} x={key.x} y={y0 + wi * lineH}>{w}</tspan>)

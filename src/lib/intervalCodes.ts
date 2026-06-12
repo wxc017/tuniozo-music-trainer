@@ -140,74 +140,60 @@ export function fifthSpelling(edo: number, step: number): string | null {
   return (n > 0 ? "#".repeat(n) : n < 0 ? "b".repeat(-n) : "") + degNum;
 }
 
-/** A Schulter-inspired NOTE-name (not interval) for an EDO step: the NEAREST
- *  clean note name (a natural F C G D A E B, or a single #/b) plus a SIZE
- *  superscript saying which side of that note the step sits on:
- *    ""   central — within ½ comma of the exact (Pythagorean) note
- *    "s"  small   — the step is flatter than the note
- *    "l"  large   — the step is sharper than the note
- *  Each note centers a range; a flatter E reads "E·s", a sharper E "E·l".  So the
- *  50-EDO white keys read  C  D·s  E·s  F  G  A·s  B·s.  Returns `base` (render
- *  plainly) + `sup` (render as a superscript).  Works for EVERY EDO (no fifth-
- *  generation needed) — multi-ring tunings included. */
-const PYTH_FIFTH_CENTS = 1200 * Math.log2(1.5);   // 701.955…
-const FIFTH_LETTERS = "FCGDAEB";                   // chain order: F C G D A E B
+// ── A FIXED Schulter-region → note map (the system is universal; EDOs fit in) ──
+// Every pitch is classified into a Schulter spectrum region by its cents (via
+// fuzzyCode); the region maps to a note name (naturals at the major/perfect
+// regions, enharmonic sharps/flats at the minor/tritone regions, Gould-arrow
+// notes for the fine regions between).  The small/large SUB-BAND of the region a
+// pitch lands in is added as an s/l superscript.  Because it is keyed to cents,
+// the SAME table names every EDO — the tunings just fit into it.
+//
+// SMuFL accidental glyphs (Private-Use Area — render in the "Bravura Text" font;
+// letters fall back to the normal font automatically).  Standard accidentals are
+// U+E260–E264; the Gould arrow quarter-tone accidentals are U+E270–E279.
+const ACC = {
+  flat: "", natural: "", sharp: "", dblSharp: "", dblFlat: "",
+  flatUp: "", flatDown: "", natUp: "", natDown: "",
+  sharpUp: "", sharpDown: "", dblSharpUp: "", dblSharpDown: "",
+  dblFlatUp: "", dblFlatDown: "",
+};
+
+// fuzzyCode base (region) → note (letter + SMuFL glyph).  The system is fixed:
+// naturals at the major/perfect regions, the enharmonic ♯/♭ at the minor/tritone
+// regions, and Gould-arrow glyphs for the fine regions — spelled SHARP from the
+// white key below in a gap's LOWER half (above the white key) and FLAT from the
+// white key above in the UPPER half (below the next white key).  "between"
+// regions carry no sub-band, so they never get an s/l superscript; main regions
+// do (their s/l prefix → `sup`).
+const REGION_NOTE: Record<string, string> = {
+  // ── between regions (single band, no s/l) ──
+  "1": "C", "8": "C",
+  k: "C" + ACC.natUp, "-k": "C" + ACC.natDown,         // C-D lower / B-C upper
+  di: "C" + ACC.sharpDown, "-di": "B" + ACC.sharp,      // C-D / B-C midpoints
+  i3: "D" + ACC.natUp, i4: "E" + ACC.sharp,             // D-E lower / E-F midpoint
+  sup4: "F" + ACC.natUp, sub5: "G" + ACC.natDown,       // F-G lower / upper
+  i6: "G" + ACC.natUp, i7: "A" + ACC.natUp,             // G-A / A-B lower
+  e2: "D" + ACC.natDown, e7: "B" + ACC.flatUp,          // C-D upper / A-B upper
+  // ── main regions (s/l prefix stripped before lookup) ──
+  m2: "C" + ACC.sharp, M2: "D", n2: "D" + ACC.flatUp,
+  m3: "D" + ACC.sharp, M3: "E", n3: "E" + ACC.natDown,
+  "4": "F", T: "F" + ACC.sharp, "5": "G",
+  m6: "G" + ACC.sharp, M6: "A", n6: "A" + ACC.natDown,
+  m7: "A" + ACC.sharp, M7: "B", n7: "B" + ACC.natDown,
+};
+
+/** A note name for an EDO step in our Schulter-region notation: the step's cents
+ *  are classified into a spectrum region (fuzzyCode); the region → a note name
+ *  (incl. Gould-arrow accidentals for the fine in-between regions), and the
+ *  region's small/large sub-band → an `s`/`l` superscript.  Sharps and flats come
+ *  out enharmonically equivalent.  Returns `base` (letter + accidental) + `sup`. */
 export function sizedNoteName(edo: number, step: number): { base: string; sup: string } {
   const k = ((step % edo) + edo) % edo;
-  const cents = (k * 1200) / edo;
-  // No modInverse / fifth-generation needed: we spell each step by the NEAREST
-  // circle-of-fifths note by CENTS, so this works for every EDO — including
-  // multi-ring ones (34, 24, …) whose fifth doesn't reach every step.
-  // Spell to the NEAREST circle-of-fifths note carrying at most ONE accidental
-  // (naturals F C G D A E B, single #/b), chosen by cents with a per-accidental
-  // penalty so a natural wins unless an accidental is clearly closer.  The
-  // microtonal offset is carried by the superscript — that is the spectrum idea:
-  // several nearby steps share a named region (e.g. D·-k / D / D·k), and those
-  // "collisions" are expected, not a bug.  (Strict fifth-chain spelling is unique
-  // but piles on double-sharps/flats — Dbb — which we avoid.)
-  const circDev = (a: number, b: number) => ((a - b) % 1200 + 1800) % 1200 - 600;
-  // Candidate notes = the 7 naturals (F C G D A E B) + the 5 flats (Bb Eb Ab Db
-  // Gb) + the 5 sharps (F# C# G# D# A#).  We deliberately EXCLUDE the enharmonic
-  // naturals (Fb Cb E# B#) and all double-accidentals so a step always spells to
-  // a clean, near note (every nominal "centers a range").
-  //
-  // SPELLING uses the EDO's OWN fifth, not the pure Pythagorean one — otherwise a
-  // meantone EDO (31, 50, 19, …) gets its accidentals backwards (Pythagorean has
-  // C# above Db, but meantone has C# BELOW Db).  Using the tempered fifth lands
-  // each accidental on its real side of the white keys, so a step above a white
-  // key spells sharp and a step below one spells flat (per direct user request).
-  const edoFifth = (Math.round(edo * Math.log2(1.5)) / edo) * 1200;
-  let best: { base: string; f: number } | null = null, bestScore = Infinity;
-  for (let f = -6; f <= 10; f++) {
-    const letter = FIFTH_LETTERS[(((f + 1) % 7) + 7) % 7];
-    const acc = Math.floor((f + 1) / 7);
-    const posEdo = (((f * edoFifth) % 1200) + 1200) % 1200;
-    const score = Math.abs(circDev(cents, posEdo)) + 10 * Math.abs(acc);  // mild natural preference
-    if (score < bestScore) {
-      bestScore = score;
-      best = { base: letter + (acc > 0 ? "#".repeat(acc) : acc < 0 ? "b".repeat(-acc) : ""), f };
-    }
-  }
-  // s/l size is measured off the note's PYTHAGOREAN position, so a meantone D
-  // (an exact step, but flat of Pythagorean D) still reads "small".
-  const posPyth = (((best!.f * PYTH_FIFTH_CENTS) % 1200) + 1200) % 1200;
-  const d = circDev(cents, posPyth);
-  // Superscript is ONLY the size of the offset from the nearest note: a sharper
-  // step → "l" (large), a flatter step → "s" (small), within ½ comma → bare
-  // ("just/central").  Each note CENTERS a range and the s/l mark which side of
-  // it the step sits — no comma/diesis/interval codes (per direct user request:
-  // "CDEFGAB are the center of a range, a flatter E is E small, a sharper E is E
-  // large"; "D sm2 is bad notation — it should be Eb s").
-  const TOL = 10.75;                                 // ≈ ½ syntonic comma central band
-  let sup = d > TOL ? "l" : d < -TOL ? "s" : "";
-  // A note's accidental already fixes which side of its white key it sits on, so
-  // the size must not contradict it: a SHARP is above its white key and can only
-  // be central or larger (never "s"); a FLAT is below and can only be central or
-  // smaller (never "l").  (Per user: "zero sharps below white, zero flats above
-  // white" — for anything other than naturals.)  Naturals keep either size.
-  if (best!.base.includes("#") && sup === "s") sup = "";
-  if (best!.base.includes("b") && sup === "l") sup = "";
-  return { base: best!.base, sup };
+  const code = fuzzyCode((k * 1200) / edo);     // e.g. "sM2", "m2", "di", "k", "lm3"
+  if (code in REGION_NOTE) return { base: REGION_NOTE[code], sup: "" };   // between region
+  const m = /^([sl])(.+)$/.exec(code);          // main region with an s/l sub-band prefix
+  if (m && (m[2] in REGION_NOTE)) return { base: REGION_NOTE[m[2]], sup: m[1] };
+  return { base: REGION_NOTE[code] ?? code, sup: "" };
 }
 
 /** ASCII→Unicode superscript for rendering a sized note name as a plain string
