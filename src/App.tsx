@@ -26,6 +26,7 @@ import ParadiddleOrchestrationsTab from "@/components/tabs/ParadiddleOrchestrati
 import ModulationBorrowingTab from "@/components/tabs/ModulationBorrowingTab";
 import { sizedCode } from "@/lib/chordNotation";
 import { notationLabel, solfegeLabel } from "@/lib/notationLabels";
+import { sizedNoteName } from "@/lib/intervalCodes";
 import NotationPicker from "@/components/NotationPicker";
 import IntervalSpectrumTab from "@/components/tabs/IntervalSpectrumTab";
 import ChordChart from "@/components/ChordChart";
@@ -1749,14 +1750,17 @@ export default function App() {
             playback "stayed in C / picked the wrong root". */}
         {(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && <div className="flex gap-2 flex-wrap items-center mb-3">
           <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">ROOT</span>
-          {Array.from({ length: edo }, (_, i) => (
-            <button key={i} onClick={() => setTonicPc(i)}
-              className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
-                tonicPc === i ? "bg-[#7173e6] text-white border-[#7173e6]"
-                              : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
-              {notationLabel(edo, notationByEdo[edo], i)}
-            </button>
-          ))}
+          {Array.from({ length: edo }, (_, i) => {
+            const { base, size } = sizedNoteName(edo, i);
+            return (
+              <button key={i} onClick={() => setTonicPc(i)}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                  tonicPc === i ? "bg-[#7173e6] text-white border-[#7173e6]"
+                                : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
+                {base}{size && <sup className="text-[0.7em]">{size}</sup>}
+              </button>
+            );
+          })}
         </div>}
         <div className="flex gap-1 flex-wrap items-center mb-4">
           {activeTab !== "transcriptions" && (<>

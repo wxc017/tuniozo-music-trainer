@@ -140,6 +140,48 @@ export function fifthSpelling(edo: number, step: number): string | null {
   return (n > 0 ? "#".repeat(n) : n < 0 ? "b".repeat(-n) : "") + degNum;
 }
 
+/** A Schulter-inspired NOTE-name (not interval) for an EDO step: a circle-of-
+ *  fifths letter spelling (C, G, D, … with #/b) plus a SIZE suffix —
+ *    ""  central  (within ~½ syntonic comma of the exact Pythagorean note)
+ *    "s" small    (flatter than that — a narrowed nominal)
+ *    "l" large    (sharper)
+ *  so the 50-EDO white keys read  C  D·s  E·s  F  G  A·s  B·s  (D is 12¢ flat of
+ *  Pythagorean D, etc.; C/F/G sit within a few cents → bare).  Returns `base`
+ *  (render plainly) + `size` (render as a superscript).  Multi-ring EDOs whose
+ *  fifth doesn't generate every step fall back to the interval code. */
+const PYTH_FIFTH_CENTS = 1200 * Math.log2(1.5);   // 701.955…
+const FIFTH_LETTERS = "FCGDAEB";                   // chain order: F C G D A E B
+export function sizedNoteName(edo: number, step: number): { base: string; size: "" | "s" | "l" } {
+  const k = ((step % edo) + edo) % edo;
+  const fifth = Math.round(edo * Math.log2(1.5));
+  const inv = modInverse(fifth, edo);
+  if (inv === null) return { base: fuzzyCode((k * 1200) / edo), size: "" };   // multi-ring fallback
+  const cents = (k * 1200) / edo;
+  // Spell to the NEAREST circle-of-fifths note carrying at most ONE accidental
+  // (naturals F C G D A E B, single #/b), chosen by cents with a per-accidental
+  // penalty so a natural wins unless an accidental is clearly closer.  The
+  // microtonal offset is carried by the SIZE suffix — that is the spectrum
+  // idea: several nearby steps share a named region (e.g. D·s / D / D·l), and
+  // those "collisions" are expected, not a bug.  (Strict fifth-chain spelling
+  // is unique but piles on double-sharps/flats — Dbb·l — which we avoid.)
+  const circDev = (a: number, b: number) => ((a - b) % 1200 + 1800) % 1200 - 600;
+  let best: { base: string; dev: number } | null = null, bestScore = Infinity;
+  for (let f = -8; f <= 12; f++) {                   // f∈[-8,12] ⇒ |accidentals| ≤ 1
+    const letter = FIFTH_LETTERS[(((f + 1) % 7) + 7) % 7];
+    const acc = Math.floor((f + 1) / 7);
+    const pyth = (((f * PYTH_FIFTH_CENTS) % 1200) + 1200) % 1200;
+    const dev = circDev(pyth, cents);                // >0 ⇒ step is flat of this note (small)
+    const score = Math.abs(dev) + 30 * Math.abs(acc);
+    if (score < bestScore) {
+      bestScore = score;
+      best = { base: letter + (acc > 0 ? "#".repeat(acc) : acc < 0 ? "b".repeat(-acc) : ""), dev };
+    }
+  }
+  const TOL = 10.75;                                 // ≈ ½ syntonic comma
+  const size: "" | "s" | "l" = best!.dev > TOL ? "s" : best!.dev < -TOL ? "l" : "";
+  return { base: best!.base, size };
+}
+
 // Quality-prefix remap for the 41/53 short-code tables (s/m/Clm/u/n/Cl/M/S…)
 const PREFIX: Record<string, string> = {
   s: "sm", m: "p", Clm: "j", u: "Sm", n: "n", Cl: "J", M: "P", S: "SM",
