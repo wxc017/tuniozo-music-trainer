@@ -8,7 +8,8 @@
 import { useEffect, useRef, useState } from "react";
 import { REGIONS, ratioCents, ratioName, edoIntervalLabel, edoSteps, centsToRatio, type Region } from "@/lib/intervalSpectrum";
 import { useDroneSynth, DEFAULT_VOICE_GAIN } from "@/hooks/useDroneSynth";
-import { fuzzyCode } from "@/lib/intervalCodes";
+import { fuzzyCode, solfegeName } from "@/lib/intervalCodes";
+import { notationLabel, solfegeLabel } from "@/lib/notationLabels";
 import { useLocalState } from "@/hooks/useLocalState";
 import SpectrumTemperament from "@/components/tabs/SpectrumTemperament";
 import SpectrumIntervalDatabase from "@/components/tabs/SpectrumIntervalDatabase";
@@ -18,8 +19,11 @@ import LumatoneVisualizer from "@/components/tabs/LumatoneVisualizer";
 const EDO_COLORS = ["#e0c070", "#5b8dd9", "#9a7ad0", "#cc6a8a", "#6acc7a"];
 const RATIO_COLOR = "#4ab0a0";   // JI ratio ticks
 const CUSTOM_COLOR = "#ff79c6";  // typed ratios + placed nodes
-const BASE_FREQ = 220; // A3 reference (pitch-class 9)
+const REF_C = 261.6256; // C4 — the 0¢ reference the root is measured from
 const ROOT_NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+// 12-EDO root names with both enharmonic spellings (the chromatic roots read as
+// note letters; finer EDOs fall back to the app's per-step interval code).
+const ROOT_NAMES_DUAL = ["C", "C♯/D♭", "D", "D♯/E♭", "E", "F", "F♯/G♭", "G", "G♯/A♭", "A", "A♯/B♭", "B"];
 
 function subName(r: Region, c: number): string {
   return r.subs?.find(s => c >= s.lo && c <= s.hi)?.name ?? "";
@@ -31,10 +35,16 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
   onOpenNotation?: () => void;
 } = {}) {
   const [edoInput, setEdoInput] = useLocalState("is_edos", "12, 31");
-  const [rootPc, setRootPc] = useLocalState("is_root", 9); // A
+  // Root is EDO-precise: stored as cents above C so it can land on ANY step of
+  // any EDO (not just the 12 chromatic pitch classes).  900¢ = A (the old default).
+  const [rootCents, setRootCents] = useLocalState("is_root_cents", 900);
+  // Interval/solfège naming, shared with the Lumatone keyboard so the root
+  // selector + readout name the root exactly the way the keys do (in solfège
+  // the root reads "A", in intervals it reads "1").
+  const [nameMode, setNameMode] = useLocalState<"code" | "solfege">("lv_namemode", "code");
   const [fullscreen, setFullscreen] = useState(false);
   const { active, toggle, stopAll, gainByKey, freqByKey, setGain } = useDroneSynth();
-  const baseFreq = BASE_FREQ * 2 * Math.pow(2, (rootPc - 9) / 12); // up an octave
+  const baseFreq = REF_C * Math.pow(2, rootCents / 1200);
 
   // Per-voice volume (mirror of the synth's gains so the sliders stay controlled)
   const [vols, setVols] = useState<Record<string, number>>({});
@@ -69,6 +79,17 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
 
   const edos = edoInput.split(/[,\s]+/).map(s => parseInt(s, 10))
     .filter(n => Number.isFinite(n) && n >= 2 && n <= 200);
+  // The EDO whose steps the Root selector enumerates (first entered, else 12).
+  const primaryEdo = edos[0] ?? 12;
+  // The root's nearest step in a given EDO (exact when the root was set from it).
+  const rootStepIn = (e: number) => (((Math.round((rootCents * e) / 1200)) % e) + e) % e;
+  // Name a step of `primaryEdo`: solfège syllables (root = "A"), 12-EDO note
+  // letters with both enharmonics, else the app's per-step interval code.
+  const rootNameOf = (step: number) => nameMode === "solfege"
+    ? solfegeLabel(primaryEdo, solfegeByEdo[primaryEdo], step)
+    : primaryEdo === 12
+      ? ROOT_NAMES_DUAL[step]
+      : notationLabel(primaryEdo, notationByEdo[primaryEdo], step);
 
   const toggleVoice = (key: string, cents: number, gain?: number) => toggle(key, baseFreq * centsToRatio(cents), gain);
   // Toggle the spectrum's own EDO-step voice (shared with the Lumatone keyboard,
@@ -146,10 +167,13 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
     return acc;
   }, {} as Record<number, { hz: number; keys: string[] }>)).sort((a, b) => a.hz - b.hz);
 
-  // Live readout: each sounding pitch as its interval code from the root
-  // (spectrum coding) — a comma/diesis just above the root reads "k"/"di", a
-  // single root reads "1", and there's no chord symbol implying a chord.
-  const chordSym = voiceGroups.map(g => fuzzyCode(1200 * Math.log2(g.hz / baseFreq))).join(" ");
+  // Live readout: each sounding pitch named from the root in the active system —
+  // intervals (root reads "1", a comma above reads "k"/"di") or solfège (root
+  // reads "A").  The root is the drone reference, so it follows any root change.
+  const chordSym = voiceGroups.map(g => {
+    const c = 1200 * Math.log2(g.hz / baseFreq);
+    return nameMode === "solfege" ? solfegeName(c) : fuzzyCode(c);
+  }).join(" ");
 
   const setGroupVol = (keys: string[], v: number) => keys.forEach(k => setVoiceVol(k, v));
   const unmuteState = (keys: string[]) => setMuted(prev => { const n = { ...prev }; keys.forEach(k => delete n[k]); return n; });
@@ -287,9 +311,14 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
         </label>
         <label className="flex items-center gap-2">
           <span className="text-[10px] text-[#888] tracking-wider uppercase">Root</span>
-          <select value={rootPc} onChange={e => setRootPc(Number(e.target.value))}
+          {/* Every step of the primary EDO is selectable, named in the active
+              system — so the root can land on ANY node, not just 12 pitches. */}
+          <select value={rootStepIn(primaryEdo)}
+            onChange={e => setRootCents((Number(e.target.value) * 1200) / primaryEdo)}
             className="px-2 py-1 text-sm bg-[#0a0a08] border border-[#2a2620] rounded text-[#d4a050] outline-none">
-            {ROOT_NAMES.map((n, i) => <option key={i} value={i}>{n}</option>)}
+            {Array.from({ length: primaryEdo }, (_, s) => (
+              <option key={s} value={s}>{rootNameOf(s)}</option>
+            ))}
           </select>
         </label>
         {edos.map((e, i) => (
@@ -404,7 +433,7 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
                         <span className="absolute -translate-x-1/2 whitespace-nowrap text-center leading-none"
                           style={{ top, color: on ? "#7affe0" : "#4ab0a0" }}>
                           <span className="block text-[7px]" style={{ color: on ? "#9fffe9" : "#5f9f96" }}>
-                            {o.j === "1/1" ? `${ROOT_NAMES[rootPc]} (root)` : o.j === "2/1" ? `${ROOT_NAMES[rootPc]} (8ve)` : ratioName(o.j)}
+                            {o.j === "1/1" ? `${ROOT_NAMES[rootStepIn(12)]} (root)` : o.j === "2/1" ? `${ROOT_NAMES[rootStepIn(12)]} (8ve)` : ratioName(o.j)}
                           </span>
                           <span className="block text-[9px] mt-px">{o.j}</span>
                           <span className="block text-[7px] mt-px opacity-70">{Math.round(o.c)}¢</span>
@@ -431,7 +460,7 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
                       <div key={`grp-${Math.round(cents)}`} className="absolute" style={{ left: x(cents), top: BAR_TOP }}>
                         {/* large transparent hit area centred on the dot so a near-miss
                             still toggles the node instead of dropping a new one nearby */}
-                        <button onClick={(e) => { e.stopPropagation(); if (e.ctrlKey || e.metaKey) setRootPc(((rootPc + Math.round(cents / 100)) % 12 + 12) % 12); else toggleGroup(); }}
+                        <button onClick={(e) => { e.stopPropagation(); if (e.ctrlKey || e.metaKey) setRootCents((((rootCents + cents) % 1200) + 1200) % 1200); else toggleGroup(); }}
                           title={`${g.map(o => `${o.step}\\${o.e}`).join(" · ")} = ${cents.toFixed(1)}¢ — ${iname} — click to drone, Ctrl/⌘-click to set root`}
                           className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center cursor-pointer"
                           style={{ top: BAR_H / 2, width: 24, height: 24, background: "transparent", border: "none", padding: 0 }}>
@@ -507,10 +536,11 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
       )}
 
       {fullscreen && (
-        <LumatoneVisualizer edos={edos} activeStepsByEdo={activeStepsByEdo} rootPc={rootPc}
+        <LumatoneVisualizer edos={edos} activeStepsByEdo={activeStepsByEdo} rootCents={rootCents}
           fullscreen onToggleStep={toggleEdoStep} onScaleVoices={setScaleVoicesMuted}
           notationByEdo={notationByEdo} solfegeByEdo={solfegeByEdo} onOpenNotation={onOpenNotation}
-          mixer={mixerContent} onClose={() => setFullscreen(false)} />
+          mixer={mixerContent} onSetRoot={setRootCents}
+          nameMode={nameMode} onNameMode={setNameMode} onClose={() => setFullscreen(false)} />
       )}
     </div>
   );

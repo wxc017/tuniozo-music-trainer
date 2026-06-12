@@ -53,11 +53,12 @@ const AVAILABLE_LAYOUTS = [
 const LATTICE_EDOS = [12, 31, 41];
 const EMPTY_PITCHES: Set<number> = new Set();
 
-export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, fullscreen, onToggleStep, onScaleVoices, onClose, notationByEdo = {}, solfegeByEdo = {}, onOpenNotation, mixer }: {
+export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootCents, fullscreen, onToggleStep, onScaleVoices, onClose, notationByEdo = {}, solfegeByEdo = {}, onOpenNotation, mixer, onSetRoot, nameMode, onNameMode }: {
   edos: number[];
   /** edo -> active step numbers (0..edo) currently sounding for that EDO */
   activeStepsByEdo: Record<number, number[]>;
-  rootPc: number;
+  /** Global root as cents above C (EDO-precise — lands on any step of any EDO). */
+  rootCents: number;
   fullscreen?: boolean;
   /** drone/un-drone the spectrum's own voice for (edo, step) — bidirectional */
   onToggleStep: (edo: number, step: number) => void;
@@ -69,6 +70,13 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
   notationByEdo?: Record<number, string>;
   solfegeByEdo?: Record<number, string>;
   onOpenNotation?: () => void;
+  /** Set the global root (cents above C) — Ctrl/⌘-clicking a key calls this so
+   *  that key becomes the true root (labels AND readout follow, EDO-precise). */
+  onSetRoot?: (cents: number) => void;
+  /** Interval/solfège naming, owned by the parent so the keyboard, root selector
+   *  and readout stay in sync. */
+  nameMode: "code" | "solfege";
+  onNameMode: (m: "code" | "solfege") => void;
   onClose: () => void;
 }) {
   const options = useMemo(() => edos.filter(e => AVAILABLE_LAYOUTS.includes(e)), [edos]);
@@ -77,17 +85,11 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
   const edo = pick !== null && options.includes(pick) ? pick : (options[0] ?? null);
 
   const [layout, setLayout] = useState<LayoutResult | null>(null);
-  const [nameMode, setNameMode] = useLocalState<"code" | "solfege">("lv_namemode", "code");
   const [scale, setScale] = useState<Set<number>>(new Set());   // selected solfège steps
-  // EDO-precise label root: Ctrl/⌘-click a key to make THAT node the tonic for
-  // the interval/solfège labels.  The global rootPc is only 12-EDO, so it can't
-  // land on every node in a fine EDO; this lets the clicked node read as the
-  // exact unison "1".  null → derive from rootPc.  Drone/highlight stay in the
-  // global-root frame; only the labels + root marker follow this override.
-  const [rootStepOverride, setRootStepOverride] = useState<number | null>(null);
-  // Clear the override whenever the EDO or the global key changes (its step
-  // value is EDO-specific and a deliberate global root change should win).
-  useEffect(() => { setRootStepOverride(null); }, [edo, rootPc]);
+  // Root step on THIS board, derived from the EDO-precise global root (cents).
+  // Ctrl/⌘-clicking a key sets that root for real, so labels, the root marker,
+  // the drone frame and the readout all stay in agreement (no label-only drift).
+  const rootStep = edo !== null ? (((Math.round((rootCents * edo) / 1200)) % edo) + edo) % edo : 0;
   const [showLattice, setShowLattice] = useLocalState("lv_showlattice", false);  // 3D alteration lattice
   const [latticeAnchorKey, setLatticeAnchorKey] = useLocalState("lv_anchor", "Major Family::Ionian");
   const latticeOk = edo !== null && LATTICE_EDOS.includes(edo);
@@ -97,9 +99,9 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
   // the popup's current root.
   const onLatticeMode = useCallback((node: LatticeNode | null) => {
     if (!node || edo === null) return;
-    const rs = Math.round((rootPc * edo) / 12);
+    const rs = (((Math.round((rootCents * edo) / 1200)) % edo) + edo) % edo;
     setScale(new Set(node.mode.scale.map(s => (((node.rootPc + s - rs) % edo) + edo) % edo)));
-  }, [edo, rootPc]);
+  }, [edo, rootCents]);
 
   // Picking a preset scale: turn its notes on as muted voices (they fill the
   // mixer ready to unmute) and re-centre the alteration lattice on it (when it
@@ -167,7 +169,6 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
   const litKeys = useMemo(() => {
     const set = new Set<number>();
     if (!layout || edo === null) return set;
-    const rootStep = Math.round((rootPc * edo) / 12);
     const rootClass = (((rootStep) % edo) + edo) % edo;
     // reference root key: the root-class instance nearest the board centre —
     // defines the register the scale is played / shown in.
@@ -203,19 +204,17 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
       }
     }
     return set;
-  }, [layout, steps, edo, rootPc, scale, activeStepsByEdo]);
+  }, [layout, steps, edo, rootStep, scale, activeStepsByEdo]);
 
   const onKey = (key: ComputedKey, e: MouseEvent) => {
     if (edo === null) return;
     const pc = ((key.pitch % edo) + edo) % edo;
-    // Ctrl/⌘-click makes THIS node the tonic for the interval/solfège labels
-    // (EDO-precise, so the clicked key reads as the unison "1").  Labels + the
-    // root marker follow it; droning/highlight stay in the global-root frame.
+    // Ctrl/⌘-click makes THIS node the real tonic (EDO-precise), so it reads as
+    // the unison "1"/"A" and labels, drone frame and readout all follow it.
     if (e.ctrlKey || e.metaKey) {
-      setRootStepOverride(pc);
+      onSetRoot?.((pc * 1200) / edo);
       return;
     }
-    const rootStep = Math.round((rootPc * edo) / 12);
     const step = (((pc - rootStep) % edo) + edo) % edo;
     // A key is "on" if it's droning OR selected.  Toggle BOTH together so a
     // second click always turns it fully off (otherwise it stays lit by the
@@ -242,19 +241,17 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
     return codes.map((c, s) => (counts.get(c)! > 1 ? `${c} ${s}` : c));
   }, [edo, notationByEdo]);
 
-  // EDO-precise label root (Ctrl-clicked node), else the 12-EDO-derived root.
-  const effectiveRootStep = edo !== null ? (rootStepOverride ?? Math.round((rootPc * edo) / 12)) : 0;
-  // Fuzzy (Schulter-spectrum) interval name for a key, measured from the (label) root.
+  // Fuzzy (Schulter-spectrum) interval name for a key, measured from the root.
   const keyLabel = (pitch: number) => {
     if (edo === null) return undefined;
     const pc = ((pitch % edo) + edo) % edo;
-    const step = (((pc - effectiveRootStep) % edo) + edo) % edo;
+    const step = (((pc - rootStep) % edo) + edo) % edo;
     // Use the per-EDO system chosen in the "n" picker (Schulter / Universal by default).
     return nameMode === "solfege"
       ? solfegeLabel(edo, solfegeByEdo[edo], step)
       : (codeByStep ? codeByStep[step] : notationLabel(edo, notationByEdo[edo], step));
   };
-  const rootPitchClass = edo !== null ? ((effectiveRootStep % edo) + edo) % edo : undefined;
+  const rootPitchClass = edo !== null ? ((rootStep % edo) + edo) % edo : undefined;
 
   const header = (
     <div className="flex items-center gap-2 mb-2">
@@ -267,7 +264,7 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
       )}
       <div className="flex items-center gap-1">
         {(["code", "solfege"] as const).map(m => (
-          <button key={m} onClick={() => setNameMode(m)}
+          <button key={m} onClick={() => onNameMode(m)}
             className={`px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors ${nameMode === m
               ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
             {m === "code" ? "Intervals" : "Solfège"}
@@ -318,8 +315,8 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootPc, ful
             {showLattice && latticeOk && edo !== null && (
               <div className="flex-1 min-h-0 border-t border-[#1e1e1e] pt-2">
                 <Suspense fallback={<div className="text-xs text-[#666] p-4">Loading lattice…</div>}>
-                  <ModeLattice3D edo={edo} rootPitch={Math.round((rootPc * edo) / 12) + edo * 4}
-                    tonicPc={Math.round((rootPc * edo) / 12)} anchorKey={latticeAnchorKey}
+                  <ModeLattice3D edo={edo} rootPitch={Math.round((rootCents * edo) / 1200) + edo * 4}
+                    tonicPc={Math.round((rootCents * edo) / 1200)} anchorKey={latticeAnchorKey}
                     onActiveModeChange={onLatticeMode} fillHeight embedded />
                 </Suspense>
               </div>
