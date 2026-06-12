@@ -281,8 +281,7 @@ function ScalarExplorationLayout(props: {
                 if (showNotes) return sizedNoteLabel(edo, pitch, prefer);
                 const step = (((pitch - tonicPc) % edo) + edo) % edo;
                 return showSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
-              } : undefined}
-              isNatural={showNotes ? (p: number) => isNaturalNote(edo, p) : undefined}
+              } : undefined}
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
           ) : (
             <div className="bg-[#111] rounded-xl border border-[#222] h-36 flex items-center justify-center text-[#444] text-xs">
@@ -1385,8 +1384,7 @@ export default function App() {
                 if (modShowNotes) return sizedNoteLabel(edo, pitch, prefer);   // absolute note name
                 const step = ((((pitch - tonicPc) % edo) + edo) % edo);
                 return modShowSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
-              } : undefined}
-              isNatural={modShowNotes ? (p: number) => isNaturalNote(edo, p) : undefined}
+              } : undefined}
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
           ) : (
             <div className="bg-[#111] rounded-xl border border-[#222] h-36 flex items-center justify-center text-[#444] text-xs">
@@ -1536,8 +1534,7 @@ export default function App() {
                   if (modShowNotes) return sizedNoteLabel(edo, pitch, prefer);   // absolute note name
                   const step = ((((pitch - tonicPc) % edo) + edo) % edo);
                   return modShowSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
-                } : undefined}
-                isNatural={modShowNotes ? (p: number) => isNaturalNote(edo, p) : undefined}
+                } : undefined}
                 onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
             ) : (
               <div className="bg-[#111] rounded-xl border border-[#222] h-36 flex items-center justify-center text-[#444] text-xs">Loading keyboard…</div>

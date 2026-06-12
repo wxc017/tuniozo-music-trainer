@@ -150,20 +150,30 @@ export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, 
               {label && (() => {
                 // Multi-word labels (the fully-spelled interval names, e.g.
                 // "Small Major 3rd") stack one word per line so they fit the
-                // hex; single tokens (codes / solfège) render at full size.
+                // hex; single tokens (codes / solfège / note names) render at
+                // full size.
                 const words = label.split(" ");
                 const multi = words.length > 1;
                 const fs = HEX_RADIUS * (multi ? 0.3 : 0.52);
                 const lineH = fs * 1.08;
                 const y0 = key.y - (lineH * (words.length - 1)) / 2;
+                // SMuFL accidental glyphs live in the Private-Use Area; render them
+                // a touch BIGGER (so they read at the letter's size, not subscript)
+                // in Bravura, with the letter/superscript runs in the normal font.
+                const isPua = (c: string) => { const cp = c.codePointAt(0)!; return cp >= 0xE000 && cp <= 0xF8FF; };
+                const hasGlyph = !multi && [...label].some(isPua);
                 return (
                   <text x={key.x} y={key.y} textAnchor="middle" dominantBaseline="central"
-                    fontSize={fs} fontWeight={700} fill={textCol}
+                    fontSize={fs} fontWeight={multi ? 700 : 600} fill={textCol}
                     fontFamily="Inter, system-ui, sans-serif, 'Bravura Text'"
                     style={{ pointerEvents: "none", userSelect: "none" }}>
                     {multi
                       ? words.map((w, wi) => <tspan key={wi} x={key.x} y={y0 + wi * lineH}>{w}</tspan>)
-                      : label /* intervals by themselves: no size-prefix subscript */}
+                      : hasGlyph
+                        ? [...label].map((c, ci) => isPua(c)
+                            ? <tspan key={ci} fontSize={fs * 1.32} fontWeight={400} fontFamily="'Bravura Text'">{c}</tspan>
+                            : <tspan key={ci}>{c}</tspan>)
+                        : label}
                   </text>
                 );
               })()}
