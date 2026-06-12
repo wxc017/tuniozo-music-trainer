@@ -158,42 +158,103 @@ const ACC = {
   dblFlatUp: "", dblFlatDown: "",
 };
 
-// fuzzyCode base (region) → note (letter + SMuFL glyph).  The system is fixed:
-// naturals at the major/perfect regions, the enharmonic ♯/♭ at the minor/tritone
-// regions, and Gould-arrow glyphs for the fine regions — spelled SHARP from the
-// white key below in a gap's LOWER half (above the white key) and FLAT from the
-// white key above in the UPPER half (below the next white key).  "between"
-// regions carry no sub-band, so they never get an s/l superscript; main regions
-// do (their s/l prefix → `sup`).
-const REGION_NOTE: Record<string, string> = {
-  // ── between regions (single band, no s/l) ──
-  "1": "C", "8": "C",
-  k: "C" + ACC.natUp, "-k": "C" + ACC.natDown,         // C-D lower / B-C upper
-  di: "C" + ACC.sharpDown, "-di": "B" + ACC.sharp,      // C-D / B-C midpoints
-  i3: "D" + ACC.natUp, i4: "E" + ACC.sharp,             // D-E lower / E-F midpoint
-  sup4: "F" + ACC.natUp, sub5: "G" + ACC.natDown,       // F-G lower / upper
-  i6: "G" + ACC.natUp, i7: "A" + ACC.natUp,             // G-A / A-B lower
-  e2: "D" + ACC.natDown, e7: "B" + ACC.flatUp,          // C-D upper / A-B upper
-  // ── main regions (s/l prefix stripped before lookup) ──
-  m2: "C" + ACC.sharp, M2: "D", n2: "D" + ACC.flatUp,
-  m3: "D" + ACC.sharp, M3: "E", n3: "E" + ACC.natDown,
-  "4": "F", T: "F" + ACC.sharp, "5": "G",
-  m6: "G" + ACC.sharp, M6: "A", n6: "A" + ACC.natDown,
-  m7: "A" + ACC.sharp, M7: "B", n7: "B" + ACC.natDown,
+// The 7 natural regions → letter (major/perfect intervals from the tonic).
+const NAT: Record<string, string> = {
+  "1": "C", M2: "D", M3: "E", "4": "F", "5": "G", M6: "A", M7: "B", "8": "C",
 };
 
-/** A note name for an EDO step in our Schulter-region notation: the step's cents
- *  are classified into a spectrum region (fuzzyCode); the region → a note name
- *  (incl. Gould-arrow accidentals for the fine in-between regions), and the
- *  region's small/large sub-band → an `s`/`l` superscript.  Sharps and flats come
- *  out enharmonically equivalent.  Returns `base` (letter + accidental) + `sup`. */
-export function sizedNoteName(edo: number, step: number): { base: string; sup: string } {
-  const k = ((step % edo) + edo) % edo;
-  const code = fuzzyCode((k * 1200) / edo);     // e.g. "sM2", "m2", "di", "k", "lm3"
-  if (code in REGION_NOTE) return { base: REGION_NOTE[code], sup: "" };   // between region
-  const m = /^([sl])(.+)$/.exec(code);          // main region with an s/l sub-band prefix
-  if (m && (m[2] in REGION_NOTE)) return { base: REGION_NOTE[m[2]], sup: m[1] };
-  return { base: REGION_NOTE[code] ?? code, sup: "" };
+// Every OTHER region sits in a whole-tone (or semitone) gap between two naturals.
+// `lo`/`hi` are the bounding natural letters; `n`/`m` are the region's offset (in
+// region-steps) from lo (going up) / hi (going down); `bs`/`bf` are where the ♯ /
+// ♭ (apotome) falls in region-steps from lo / hi (the black-key region).  This
+// lets us spell a FULL pure-sharp version (from lo) and a FULL pure-flat version
+// (from hi) — never cutting from sharp to flat mid-gap.
+interface RInfo { lo: string; n: number; bs: number; hi: string; m: number; bf: number }
+const RINFO: Record<string, RInfo> = {
+  // C–D : commas di m2 n2 e2  (apotome m2 at +3, gap = 6 region-steps)
+  k:    { lo: "C", n: 1, bs: 3, hi: "D", m: 5, bf: 3 },
+  di:   { lo: "C", n: 2, bs: 3, hi: "D", m: 4, bf: 3 },
+  m2:   { lo: "C", n: 3, bs: 3, hi: "D", m: 3, bf: 3 },
+  n2:   { lo: "C", n: 4, bs: 3, hi: "D", m: 2, bf: 3 },
+  e2:   { lo: "C", n: 5, bs: 3, hi: "D", m: 1, bf: 3 },
+  // D–E : i3 m3 n3  (apotome m3 at +2, gap = 4)
+  i3:   { lo: "D", n: 1, bs: 2, hi: "E", m: 3, bf: 2 },
+  m3:   { lo: "D", n: 2, bs: 2, hi: "E", m: 2, bf: 2 },
+  n3:   { lo: "D", n: 3, bs: 2, hi: "E", m: 1, bf: 2 },
+  // E–F : i4  (apotome at +1, gap = 2)
+  i4:   { lo: "E", n: 1, bs: 1, hi: "F", m: 1, bf: 1 },
+  // F–G : sup4 T sub5  (apotome T at +2, gap = 4)
+  sup4: { lo: "F", n: 1, bs: 2, hi: "G", m: 3, bf: 2 },
+  T:    { lo: "F", n: 2, bs: 2, hi: "G", m: 2, bf: 2 },
+  sub5: { lo: "F", n: 3, bs: 2, hi: "G", m: 1, bf: 2 },
+  // G–A : i6 m6 n6  (apotome m6 at +2, gap = 4)
+  i6:   { lo: "G", n: 1, bs: 2, hi: "A", m: 3, bf: 2 },
+  m6:   { lo: "G", n: 2, bs: 2, hi: "A", m: 2, bf: 2 },
+  n6:   { lo: "G", n: 3, bs: 2, hi: "A", m: 1, bf: 2 },
+  // A–B : i7 m7 e7 n7  (gap = 5 — odd, so A♯ at +2 from A but B♭ at −3 from B)
+  i7:   { lo: "A", n: 1, bs: 2, hi: "B", m: 4, bf: 3 },
+  m7:   { lo: "A", n: 2, bs: 2, hi: "B", m: 3, bf: 3 },
+  e7:   { lo: "A", n: 3, bs: 2, hi: "B", m: 2, bf: 3 },
+  n7:   { lo: "A", n: 4, bs: 2, hi: "B", m: 1, bf: 3 },
+  // B–C : -di -k  (apotome at +1, gap = 3)
+  "-di": { lo: "B", n: 1, bs: 1, hi: "C", m: 2, bf: 2 },
+  "-k":  { lo: "B", n: 2, bs: 2, hi: "C", m: 1, bf: 1 },
+};
+
+const SHARP_STACK = ["", ACC.sharp, ACC.dblSharp];
+const FLAT_STACK = ["", ACC.flat, ACC.dblFlat];
+/** The SMuFL Gould glyph for being `off` region-steps from a natural, where the
+ *  whole ♯/♭ (apotome) is `B` steps away.  Whole accidentals stack; the leftover
+ *  ±1 step becomes a Gould arrow on the nearest natural/sharp/flat. */
+function gould(off: number, B: number, sharp: boolean): string {
+  if (off === 0) return "";
+  let k = Math.floor(off / B);                       // whole-accidental count (nearest)
+  if (Math.abs(off - (k + 1) * B) < Math.abs(off - k * B)) k++;
+  const rem = off - k * B;
+  // `off` is a magnitude; `sharp` decides the family AND the arrow sense — on the
+  // sharp side a positive remainder points UP (more sharp), on the flat side it
+  // points DOWN (more flat), so the arrows mirror correctly.
+  const up = sharp ? rem > 0 : rem < 0;
+  if (k === 0) return up ? ACC.natUp : ACC.natDown;
+  if (rem === 0) return (sharp ? SHARP_STACK : FLAT_STACK)[Math.min(k, 2)] || (sharp ? ACC.dblSharp : ACC.dblFlat);
+  if (k === 1) return sharp ? (up ? ACC.sharpUp : ACC.sharpDown) : (up ? ACC.flatUp : ACC.flatDown);
+  return sharp ? (up ? ACC.dblSharpUp : ACC.dblSharpDown) : (up ? ACC.dblFlatUp : ACC.dblFlatDown);
+}
+
+/** Is this EDO step a NATURAL (C D E F G A B)? — used by the grid to decide each
+ *  hex's sharp-above / flat-below spelling. */
+export function isNaturalNote(edo: number, step: number): boolean {
+  const code = fuzzyCode((((step % edo) + edo) % edo * 1200) / edo);
+  if (code in NAT) return true;
+  const m = /^[sl](.+)$/.exec(code);
+  return !!m && m[1] in NAT;
+}
+
+/** A note name for an EDO step in our Schulter-region notation.  The step's cents
+ *  are classified into a spectrum region (fuzzyCode); naturals get their letter,
+ *  every in-between region a SMuFL Gould accidental.  Each gap has a FULL pure-
+ *  sharp spelling (from the white key below) and a FULL pure-flat spelling (from
+ *  the white key above) — `prefer` picks one (the grid uses the hex's position:
+ *  sharp ABOVE a white key, flat BELOW).  Without `prefer` it defaults to the
+ *  half it leans to.  The region's small/large sub-band → an `s`/`l` superscript. */
+export function sizedNoteName(
+  edo: number, step: number, prefer?: "sharp" | "flat",
+): { base: string; sup: string } {
+  const code = fuzzyCode((((step % edo) + edo) % edo * 1200) / edo);
+  // Strip an s/l sub-band prefix ONLY when the remainder is a real region — so
+  // codes that merely START with s/l (sup4, sub5) are left intact.
+  const m = /^([sl])(.+)$/.exec(code);
+  const stripped = m && (m[2] in NAT || m[2] in RINFO);
+  const sup = stripped ? m![1] : "";
+  const region = stripped ? m![2] : code;
+  if (region in NAT) return { base: NAT[region], sup };
+  const info = RINFO[region];
+  if (!info) return { base: region, sup };           // fallback (shouldn't happen)
+  const useSharp = prefer ? prefer === "sharp" : info.n <= info.m;
+  const base = useSharp
+    ? info.lo + gould(info.n, info.bs, true)
+    : info.hi + gould(info.m, info.bf, false);
+  return { base, sup };
 }
 
 /** ASCII→Unicode superscript for rendering a sized note name as a plain string
@@ -208,8 +269,8 @@ const toSuper = (s: string) => s.split("").map(ch => SUPERSCRIPTS[ch] ?? ch).joi
 
 /** Sized note name as a single display string with the superscript rendered in
  *  Unicode (for callers that take a plain string label). */
-export function sizedNoteLabel(edo: number, step: number): string {
-  const { base, sup } = sizedNoteName(edo, step);
+export function sizedNoteLabel(edo: number, step: number, prefer?: "sharp" | "flat"): string {
+  const { base, sup } = sizedNoteName(edo, step, prefer);
   return base + (sup ? toSuper(sup) : "");
 }
 

@@ -26,7 +26,7 @@ import ParadiddleOrchestrationsTab from "@/components/tabs/ParadiddleOrchestrati
 import ModulationBorrowingTab from "@/components/tabs/ModulationBorrowingTab";
 import { sizedCode } from "@/lib/chordNotation";
 import { notationLabel, solfegeLabel } from "@/lib/notationLabels";
-import { sizedNoteName, sizedNoteLabel } from "@/lib/intervalCodes";
+import { sizedNoteName, sizedNoteLabel, isNaturalNote } from "@/lib/intervalCodes";
 import NotationPicker from "@/components/NotationPicker";
 import IntervalSpectrumTab from "@/components/tabs/IntervalSpectrumTab";
 import ChordChart from "@/components/ChordChart";
@@ -274,13 +274,15 @@ function ScalarExplorationLayout(props: {
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
           ) : layout ? (
             <LumatoneKeyboard layout={layout} highlightedPitches={highlighted}
-              labelOf={(showIvOverlay || showSolfege || showNotes) ? (pitch: number) => {
+              labelOf={(showIvOverlay || showSolfege || showNotes) ? (pitch: number, prefer?: "sharp" | "flat") => {
                 // Notes are ABSOLUTE (independent of tonic); intervals/solfège are
-                // tonic-relative.  tonicPc is a raw EDO step.
-                if (showNotes) return sizedNoteLabel(edo, pitch);
+                // tonic-relative.  tonicPc is a raw EDO step.  `prefer` spells the
+                // note sharp (hex above a white key) or flat (below).
+                if (showNotes) return sizedNoteLabel(edo, pitch, prefer);
                 const step = (((pitch - tonicPc) % edo) + edo) % edo;
                 return showSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
               } : undefined}
+              isNatural={showNotes ? (p: number) => isNaturalNote(edo, p) : undefined}
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
           ) : (
             <div className="bg-[#111] rounded-xl border border-[#222] h-36 flex items-center justify-center text-[#444] text-xs">
@@ -1379,11 +1381,12 @@ export default function App() {
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
           ) : layout ? (
             <LumatoneKeyboard layout={layout} highlightedPitches={highlighted} dimPitchClasses={dimScalePcs} edo={edo}
-              labelOf={(modShowIntervals || modShowSolfege || modShowNotes) ? (pitch: number) => {
-                if (modShowNotes) return sizedNoteLabel(edo, pitch);   // absolute note name
+              labelOf={(modShowIntervals || modShowSolfege || modShowNotes) ? (pitch: number, prefer?: "sharp" | "flat") => {
+                if (modShowNotes) return sizedNoteLabel(edo, pitch, prefer);   // absolute note name
                 const step = ((((pitch - tonicPc) % edo) + edo) % edo);
                 return modShowSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
               } : undefined}
+              isNatural={modShowNotes ? (p: number) => isNaturalNote(edo, p) : undefined}
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
           ) : (
             <div className="bg-[#111] rounded-xl border border-[#222] h-36 flex items-center justify-center text-[#444] text-xs">
@@ -1529,11 +1532,12 @@ export default function App() {
                 onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
             ) : layout ? (
               <LumatoneKeyboard layout={layout} highlightedPitches={highlighted} maxHeight={360}
-                labelOf={(modShowIntervals || modShowSolfege || modShowNotes) ? (pitch: number) => {
-                  if (modShowNotes) return sizedNoteLabel(edo, pitch);   // absolute note name
+                labelOf={(modShowIntervals || modShowSolfege || modShowNotes) ? (pitch: number, prefer?: "sharp" | "flat") => {
+                  if (modShowNotes) return sizedNoteLabel(edo, pitch, prefer);   // absolute note name
                   const step = ((((pitch - tonicPc) % edo) + edo) % edo);
                   return modShowSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
                 } : undefined}
+                isNatural={modShowNotes ? (p: number) => isNaturalNote(edo, p) : undefined}
                 onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
             ) : (
               <div className="bg-[#111] rounded-xl border border-[#222] h-36 flex items-center justify-center text-[#444] text-xs">Loading keyboard…</div>

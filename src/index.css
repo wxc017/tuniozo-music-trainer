@@ -15,8 +15,7 @@
    sized note names) render; letters keep the normal font. */
 @font-face {
   font-family: "Bravura Text";
-  src: url("https://cdn.jsdelivr.net/gh/steinbergmedia/bravura@master/redist/woff/BravuraText.woff2") format("woff2"),
-       url("https://cdn.jsdelivr.net/gh/steinbergmedia/bravura@master/redist/woff/BravuraText.woff") format("woff");
+  src: url("/BravuraText.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   font-display: swap;

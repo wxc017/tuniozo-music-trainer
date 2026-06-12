@@ -13,8 +13,13 @@ interface Props {
   dimPitchClasses?: Set<number>;
   edo?: number;
   onKeyClick?: (key: ComputedKey, e: MouseEvent) => void;
-  /** Optional short text drawn in the middle of every key (e.g. interval suffix). */
-  labelOf?: (pitch: number) => string | undefined;
+  /** Optional short text drawn in the middle of every key (e.g. interval suffix).
+   *  `prefer` is the sharp/flat spelling chosen from the hex's position (only set
+   *  when `isNatural` is provided). */
+  labelOf?: (pitch: number, prefer?: "sharp" | "flat") => string | undefined;
+  /** When given, non-natural hexes are spelled SHARP if they sit above the
+   *  nearest natural hex and FLAT if below (Lumatone position-based spelling). */
+  isNatural?: (pitch: number) => boolean;
   /** Pitch CLASS treated as the root — its keys get a bright outline. */
   rootPitchClass?: number;
   /** Pitch CLASSES to darken and unlabel (e.g. the ring you're not viewing). */
@@ -68,8 +73,24 @@ function luminance(hex: string): number {
   return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
-export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, dimPitchClasses, edo, onKeyClick, labelOf, rootPitchClass, mutedPitchClasses, maxHeight = 220 }: Props) {
+export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, dimPitchClasses, edo, onKeyClick, labelOf, isNatural, rootPitchClass, mutedPitchClasses, maxHeight = 220 }: Props) {
   const pad = 32;
+  // Natural-pitch hex positions, so each non-natural hex can pick its sharp/flat
+  // spelling from whether it sits above (sharp) or below (flat) the nearest one.
+  const naturalKeys = useMemo(
+    () => (isNatural ? layout.keys.filter(k => isNatural(k.pitch)) : []),
+    [layout, isNatural],
+  );
+  const preferFor = (kx: number, ky: number, pitch: number): "sharp" | "flat" | undefined => {
+    if (!isNatural || naturalKeys.length === 0 || isNatural(pitch)) return undefined;
+    let best: ComputedKey | null = null, bd = Infinity;
+    for (const nk of naturalKeys) {
+      const d = (nk.x - kx) ** 2 + (nk.y - ky) ** 2;
+      if (d < bd) { bd = d; best = nk; }
+    }
+    if (!best) return undefined;
+    return ky < best.y ? "sharp" : "flat";   // hex above the nearest natural → sharp
+  };
   const hasHighlight = (litKeys ?? highlightedPitches).size > 0;
   const hasDim = !!dimPitchClasses && dimPitchClasses.size > 0;
   // When something is lit OR a dim scale is shown, non-member keys darken so
@@ -112,7 +133,7 @@ export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, 
             && ((key.pitch % edo) + edo) % edo === ((rootPitchClass % edo) + edo) % edo;
           const stroke = isMuted ? "#0d0d0d" : isRoot ? "#ffffff" : isLit ? "#ffffff" : isDim ? "#3a3a3a" : hasAny ? "#0d0d0d" : "#111111";
           const strokeW = isMuted ? 0.35 : isRoot ? 2.4 : isLit ? 2.0 : isDim ? 0.6 : 0.35;
-          const label = isMuted ? undefined : labelOf?.(key.pitch);
+          const label = isMuted ? undefined : labelOf?.(key.pitch, preferFor(key.x, key.y, key.pitch));
           // lit keys are brightened, so use dark text on them; otherwise pick by base luminance
           const textCol = isLit ? "#0a0a0a" : luminance(key.color_hex) > 140 ? "#0c0c0c" : "#f4f4f4";
 
