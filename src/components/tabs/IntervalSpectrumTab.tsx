@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { REGIONS, ratioCents, ratioName, edoIntervalLabel, edoSteps, centsToRatio, type Region } from "@/lib/intervalSpectrum";
 import { useDroneSynth, DEFAULT_VOICE_GAIN } from "@/hooks/useDroneSynth";
-import { fuzzyCode, solfegeName } from "@/lib/intervalCodes";
+import { fuzzyCode, solfegeName, sizedNoteLabel } from "@/lib/intervalCodes";
 import { notationLabel, solfegeLabel } from "@/lib/notationLabels";
 import { useLocalState } from "@/hooks/useLocalState";
 import SpectrumTemperament from "@/components/tabs/SpectrumTemperament";
@@ -41,7 +41,7 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
   // Interval/solfège naming, shared with the Lumatone keyboard so the root
   // selector + readout name the root exactly the way the keys do (in solfège
   // the root reads "A", in intervals it reads "1").
-  const [nameMode, setNameMode] = useLocalState<"code" | "solfege">("lv_namemode", "code");
+  const [nameMode, setNameMode] = useLocalState<"code" | "solfege" | "notes">("lv_namemode", "code");
   const [fullscreen, setFullscreen] = useState(false);
   const { active, toggle, stopAll, gainByKey, freqByKey, setGain } = useDroneSynth();
   const baseFreq = REF_C * Math.pow(2, rootCents / 1200);
@@ -85,11 +85,13 @@ export default function IntervalSpectrumTab({ notationByEdo = {}, solfegeByEdo =
   const rootStepIn = (e: number) => (((Math.round((rootCents * e) / 1200)) % e) + e) % e;
   // Name a step of `primaryEdo`: solfège syllables (root = "A"), 12-EDO note
   // letters with both enharmonics, else the app's per-step interval code.
-  const rootNameOf = (step: number) => nameMode === "solfege"
-    ? solfegeLabel(primaryEdo, solfegeByEdo[primaryEdo], step)
-    : primaryEdo === 12
-      ? ROOT_NAMES_DUAL[step]
-      : notationLabel(primaryEdo, notationByEdo[primaryEdo], step);
+  const rootNameOf = (step: number) => nameMode === "notes"
+    ? sizedNoteLabel(primaryEdo, step)
+    : nameMode === "solfege"
+      ? solfegeLabel(primaryEdo, solfegeByEdo[primaryEdo], step)
+      : primaryEdo === 12
+        ? ROOT_NAMES_DUAL[step]
+        : notationLabel(primaryEdo, notationByEdo[primaryEdo], step);
 
   const toggleVoice = (key: string, cents: number, gain?: number) => toggle(key, baseFreq * centsToRatio(cents), gain);
   // Toggle the spectrum's own EDO-step voice (shared with the Lumatone keyboard,

@@ -9,6 +9,7 @@ import LumatoneKeyboard from "@/components/LumatoneKeyboard";
 import { computeLayout, type LayoutResult, type LumatoneData, type ComputedKey } from "@/lib/lumatoneLayout";
 import { getLayoutFile } from "@/lib/edoData";
 import { notationLabel, solfegeLabel } from "@/lib/notationLabels";
+import { sizedNoteLabel } from "@/lib/intervalCodes";
 import { type LatticeNode } from "@/lib/tonalityLatticeLayout";
 import { type NamedScale } from "@/lib/commonScales";
 import SolfegePanel from "@/components/tabs/SolfegePanel";
@@ -75,8 +76,8 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootCents, 
   onSetRoot?: (cents: number) => void;
   /** Interval/solfège naming, owned by the parent so the keyboard, root selector
    *  and readout stay in sync. */
-  nameMode: "code" | "solfege";
-  onNameMode: (m: "code" | "solfege") => void;
+  nameMode: "code" | "solfege" | "notes";
+  onNameMode: (m: "code" | "solfege" | "notes") => void;
   onClose: () => void;
 }) {
   const options = useMemo(() => edos.filter(e => AVAILABLE_LAYOUTS.includes(e)), [edos]);
@@ -246,7 +247,9 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootCents, 
     if (edo === null) return undefined;
     const pc = ((pitch % edo) + edo) % edo;
     const step = (((pc - rootStep) % edo) + edo) % edo;
-    // Use the per-EDO system chosen in the "n" picker (Schulter / Universal by default).
+    // Notes are ABSOLUTE (by pitch class); intervals/solfège are measured from
+    // the root.  Use the per-EDO system chosen in the "n" picker.
+    if (nameMode === "notes") return sizedNoteLabel(edo, pc);
     return nameMode === "solfege"
       ? solfegeLabel(edo, solfegeByEdo[edo], step)
       : (codeByStep ? codeByStep[step] : notationLabel(edo, notationByEdo[edo], step));
@@ -263,11 +266,11 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootCents, 
         </select>
       )}
       <div className="flex items-center gap-1">
-        {(["code", "solfege"] as const).map(m => (
+        {(["code", "solfege", "notes"] as const).map(m => (
           <button key={m} onClick={() => onNameMode(m)}
             className={`px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors ${nameMode === m
               ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
-            {m === "code" ? "Intervals" : "Solfège"}
+            {m === "code" ? "Intervals" : m === "solfege" ? "Solfège" : "Notes"}
           </button>
         ))}
       </div>
