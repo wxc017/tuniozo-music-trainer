@@ -199,7 +199,14 @@ export function sizedNoteName(edo: number, step: number): { base: string; sup: s
   // "CDEFGAB are the center of a range, a flatter E is E small, a sharper E is E
   // large"; "D sm2 is bad notation — it should be Eb s").
   const TOL = 10.75;                                 // ≈ ½ syntonic comma central band
-  const sup = d > TOL ? "l" : d < -TOL ? "s" : "";
+  let sup = d > TOL ? "l" : d < -TOL ? "s" : "";
+  // A note's accidental already fixes which side of its white key it sits on, so
+  // the size must not contradict it: a SHARP is above its white key and can only
+  // be central or larger (never "s"); a FLAT is below and can only be central or
+  // smaller (never "l").  (Per user: "zero sharps below white, zero flats above
+  // white" — for anything other than naturals.)  Naturals keep either size.
+  if (best!.base.includes("#") && sup === "s") sup = "";
+  if (best!.base.includes("b") && sup === "l") sup = "";
   return { base: best!.base, sup };
 }
 
