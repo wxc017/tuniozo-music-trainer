@@ -1741,15 +1741,20 @@ export default function App() {
             </>
           )}
         </div>}
-        {/* Root — placed directly below the EDO row for Chords/Intervals. */}
+        {/* Root — placed directly below the EDO row for Chords/Intervals.
+            ALL roots: one button per EDO step (not a fixed 12), labelled in the
+            active notation.  The old hard-coded C…B row only reached 12 of the
+            EDO's steps and mis-labelled them in any non-12 EDO — e.g. in 31-EDO
+            "G" (index 7) set the tonic to step 7 (~271¢, a neutral third), so
+            playback "stayed in C / picked the wrong root". */}
         {(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && <div className="flex gap-2 flex-wrap items-center mb-3">
           <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">ROOT</span>
-          {["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"].map((n, i) => (
+          {Array.from({ length: edo }, (_, i) => (
             <button key={i} onClick={() => setTonicPc(i)}
               className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
                 tonicPc === i ? "bg-[#7173e6] text-white border-[#7173e6]"
                               : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
-              {n}
+              {notationLabel(edo, notationByEdo[edo], i)}
             </button>
           ))}
         </div>}

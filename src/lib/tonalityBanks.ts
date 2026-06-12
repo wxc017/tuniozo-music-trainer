@@ -8,6 +8,7 @@
 import { getChordShapes, getModeDegreeMap } from "./edoData";
 import { JI_FAMILY, JI_SCALE_NAMES } from "./jiScaleData";
 import { getScalesForEdo } from "./commonScales";
+import { sizedCode } from "./chordNotation";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -124,7 +125,14 @@ export function getSizedTonalityBanks(edo: number): TonalityBank[] {
         else if (min3 && dz) kind = "dim"; else if (maj3 && az) kind = "aug";
       }
       let r = ROMAN[i] ?? String(i + 1);
-      if (kind === "min" || kind === "dim") r = r.toLowerCase();
+      // CASE of the numeral comes from the THIRD ALONE — the same source of
+      // truth chordSymbol uses (the third's sized code), so a SMALL or large
+      // minor third (sm3 / lm3) lowercases just like a plain m3.  The kind
+      // (maj/min/dim/aug) only drives the °/+ decoration; coupling the case to
+      // the fifth wrongly left minor chords with an unusual fifth uppercase.
+      const t3code = sizedCode(c2(t3));
+      const minorThird = /m\d/.test(t3code) && !/M/.test(t3code);
+      if (minorThird || kind === "dim") r = r.toLowerCase();
       r += kind === "dim" ? "°" : kind === "aug" ? "+" : "";
       triads.push({ label: r, steps: [root, third, fifth], root });
     }
