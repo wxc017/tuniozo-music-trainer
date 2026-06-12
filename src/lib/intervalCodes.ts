@@ -141,45 +141,76 @@ export function fifthSpelling(edo: number, step: number): string | null {
 }
 
 /** A Schulter-inspired NOTE-name (not interval) for an EDO step: a circle-of-
- *  fifths letter spelling (C, G, D, … with #/b) plus a SIZE suffix —
- *    ""  central  (within ~½ syntonic comma of the exact Pythagorean note)
- *    "s" small    (flatter than that — a narrowed nominal)
- *    "l" large    (sharper)
- *  so the 50-EDO white keys read  C  D·s  E·s  F  G  A·s  B·s  (D is 12¢ flat of
- *  Pythagorean D, etc.; C/F/G sit within a few cents → bare).  Returns `base`
- *  (render plainly) + `size` (render as a superscript).  Multi-ring EDOs whose
- *  fifth doesn't generate every step fall back to the interval code. */
+ *  fifths letter spelling (C, G, D, … with #/b) plus a SUPERSCRIPT that names the
+ *  step's deviation FROM that nominal using the SAME spectrum vocabulary as the
+ *  interval coder (fuzzyCode), signed:
+ *    ""    central — within ½ comma of the exact Pythagorean note
+ *    "k" / "-k"   a comma sharp / flat        "di" / "-di"  a diesis sharp / flat
+ *    bigger gaps fall through to the region size codes ("sm2", …) just like
+ *    intervals do — so the system is exactly as expressive as the interval
+ *    spectrum (otherwise it would be theoretically incomplete).
+ *  e.g. 50-EDO white keys read  C  D·-k  E·-k  F  G  A·-k  B·-k  (each ≈ a comma
+ *  flat of Pythagorean).  Returns `base` (render plainly) + `sup` (superscript).
+ *  Multi-ring EDOs whose fifth doesn't generate every step fall back to the bare
+ *  interval code. */
 const PYTH_FIFTH_CENTS = 1200 * Math.log2(1.5);   // 701.955…
 const FIFTH_LETTERS = "FCGDAEB";                   // chain order: F C G D A E B
-export function sizedNoteName(edo: number, step: number): { base: string; size: "" | "s" | "l" } {
+export function sizedNoteName(edo: number, step: number): { base: string; sup: string } {
   const k = ((step % edo) + edo) % edo;
   const fifth = Math.round(edo * Math.log2(1.5));
   const inv = modInverse(fifth, edo);
-  if (inv === null) return { base: fuzzyCode((k * 1200) / edo), size: "" };   // multi-ring fallback
+  if (inv === null) return { base: fuzzyCode((k * 1200) / edo), sup: "" };   // multi-ring fallback
   const cents = (k * 1200) / edo;
   // Spell to the NEAREST circle-of-fifths note carrying at most ONE accidental
   // (naturals F C G D A E B, single #/b), chosen by cents with a per-accidental
   // penalty so a natural wins unless an accidental is clearly closer.  The
-  // microtonal offset is carried by the SIZE suffix — that is the spectrum
-  // idea: several nearby steps share a named region (e.g. D·s / D / D·l), and
-  // those "collisions" are expected, not a bug.  (Strict fifth-chain spelling
-  // is unique but piles on double-sharps/flats — Dbb·l — which we avoid.)
+  // microtonal offset is carried by the superscript — that is the spectrum idea:
+  // several nearby steps share a named region (e.g. D·-k / D / D·k), and those
+  // "collisions" are expected, not a bug.  (Strict fifth-chain spelling is unique
+  // but piles on double-sharps/flats — Dbb — which we avoid.)
   const circDev = (a: number, b: number) => ((a - b) % 1200 + 1800) % 1200 - 600;
   let best: { base: string; dev: number } | null = null, bestScore = Infinity;
   for (let f = -8; f <= 12; f++) {                   // f∈[-8,12] ⇒ |accidentals| ≤ 1
     const letter = FIFTH_LETTERS[(((f + 1) % 7) + 7) % 7];
     const acc = Math.floor((f + 1) / 7);
     const pyth = (((f * PYTH_FIFTH_CENTS) % 1200) + 1200) % 1200;
-    const dev = circDev(pyth, cents);                // >0 ⇒ step is flat of this note (small)
+    const dev = circDev(cents, pyth);                // >0 ⇒ step is SHARP of this note
     const score = Math.abs(dev) + 30 * Math.abs(acc);
     if (score < bestScore) {
       bestScore = score;
       best = { base: letter + (acc > 0 ? "#".repeat(acc) : acc < 0 ? "b".repeat(-acc) : ""), dev };
     }
   }
+  const d = best!.dev;
+  // Superscript = the spectrum code of the deviation interval, signed ("-" when
+  // the step sits FLAT of the nominal).  Within ½ comma of the exact Pythagorean
+  // note → "just/central" → bare; beyond that the deviation is named with the
+  // SAME vocabulary as intervals: a comma → k, a diesis → di, larger gaps fall
+  // through to the region size codes (sm2, …).
   const TOL = 10.75;                                 // ≈ ½ syntonic comma
-  const size: "" | "s" | "l" = best!.dev > TOL ? "s" : best!.dev < -TOL ? "l" : "";
-  return { base: best!.base, size };
+  let sup = "";
+  if (Math.abs(d) >= TOL) {
+    const code = fuzzyCode(Math.abs(d));
+    if (code !== "1") sup = (d < 0 ? "-" : "") + code;
+  }
+  return { base: best!.base, sup };
+}
+
+/** ASCII→Unicode superscript for rendering a sized note name as a plain string
+ *  (e.g. grid labels that can't host a <sup>): "D" + "-k" → "D⁻ᵏ".  Characters
+ *  without a superscript form are left as-is. */
+const SUPERSCRIPTS: Record<string, string> = {
+  "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶",
+  "7": "⁷", "8": "⁸", "9": "⁹", a: "ᵃ", b: "ᵇ", c: "ᶜ", d: "ᵈ", e: "ᵉ", h: "ʰ",
+  i: "ⁱ", k: "ᵏ", l: "ˡ", m: "ᵐ", n: "ⁿ", o: "ᵒ", p: "ᵖ", r: "ʳ", s: "ˢ", t: "ᵗ", u: "ᵘ",
+};
+const toSuper = (s: string) => s.split("").map(ch => SUPERSCRIPTS[ch] ?? ch).join("");
+
+/** Sized note name as a single display string with the superscript rendered in
+ *  Unicode (for callers that take a plain string label). */
+export function sizedNoteLabel(edo: number, step: number): string {
+  const { base, sup } = sizedNoteName(edo, step);
+  return base + (sup ? toSuper(sup) : "");
 }
 
 // Quality-prefix remap for the 41/53 short-code tables (s/m/Clm/u/n/Cl/M/S…)

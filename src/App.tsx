@@ -26,7 +26,7 @@ import ParadiddleOrchestrationsTab from "@/components/tabs/ParadiddleOrchestrati
 import ModulationBorrowingTab from "@/components/tabs/ModulationBorrowingTab";
 import { sizedCode } from "@/lib/chordNotation";
 import { notationLabel, solfegeLabel } from "@/lib/notationLabels";
-import { sizedNoteName } from "@/lib/intervalCodes";
+import { sizedNoteName, sizedNoteLabel } from "@/lib/intervalCodes";
 import NotationPicker from "@/components/NotationPicker";
 import IntervalSpectrumTab from "@/components/tabs/IntervalSpectrumTab";
 import ChordChart from "@/components/ChordChart";
@@ -233,6 +233,7 @@ function ScalarExplorationLayout(props: {
   const [latticeTarget, setLatticeTarget] = useState<HTMLDivElement | null>(null);
   const [showIvOverlay, setShowIvOverlay] = useState(false);   // interval-label overlay
   const [showSolfege, setShowSolfege] = useState(false);       // solfège overlay
+  const [showNotes, setShowNotes] = useState(false);           // sized note-name overlay
   return (
     <>
       <div className="flex flex-col">
@@ -245,15 +246,20 @@ function ScalarExplorationLayout(props: {
                   n: Notation / Solfège
                 </button>
               )}
-              <button onClick={() => { setShowIvOverlay(v => !v); setShowSolfege(false); }}
+              <button onClick={() => { setShowIvOverlay(v => !v); setShowSolfege(false); setShowNotes(false); }}
                 className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${showIvOverlay
                   ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
                 {showIvOverlay ? "✓ " : ""}Intervals
               </button>
-              <button onClick={() => { setShowSolfege(v => !v); setShowIvOverlay(false); }}
+              <button onClick={() => { setShowSolfege(v => !v); setShowIvOverlay(false); setShowNotes(false); }}
                 className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${showSolfege
                   ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
                 {showSolfege ? "✓ " : ""}Solfège
+              </button>
+              <button onClick={() => { setShowNotes(v => !v); setShowIvOverlay(false); setShowSolfege(false); }}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${showNotes
+                  ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
+                {showNotes ? "✓ " : ""}Notes
               </button>
             </div>
           )}
@@ -268,9 +274,11 @@ function ScalarExplorationLayout(props: {
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
           ) : layout ? (
             <LumatoneKeyboard layout={layout} highlightedPitches={highlighted}
-              labelOf={(showIvOverlay || showSolfege) ? (pitch: number) => {
-                const ts = Math.round((tonicPc * edo) / 12);
-                const step = (((pitch - ts) % edo) + edo) % edo;
+              labelOf={(showIvOverlay || showSolfege || showNotes) ? (pitch: number) => {
+                // Notes are ABSOLUTE (independent of tonic); intervals/solfège are
+                // tonic-relative.  tonicPc is a raw EDO step.
+                if (showNotes) return sizedNoteLabel(edo, pitch);
+                const step = (((pitch - tonicPc) % edo) + edo) % edo;
                 return showSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
               } : undefined}
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
@@ -310,6 +318,7 @@ export default function App() {
   const [highlighted, setHighlighted] = useState<Set<number>>(new Set());
   const [modShowIntervals, setModShowIntervals] = useState(false);  // interval-label overlay in Modulation tab
   const [modShowSolfege, setModShowSolfege] = useState(false);      // solfège overlay in Modulation tab
+  const [modShowNotes, setModShowNotes] = useState(false);          // sized note-name overlay in Modulation tab
   // Per-EDO notation / solfège choice (the "n" popup); persisted.
   const [notationByEdo, setNotationByEdo] = useState<Record<number, string>>(() => {
     try { return JSON.parse(localStorage.getItem("notation_by_edo") || "{}"); } catch { return {}; }
@@ -1159,14 +1168,17 @@ export default function App() {
               {!(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && (<>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <label className="text-xs text-[#666]">Tonic</label>
-                {["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"].map((n, i) => (
-                  <button key={i} onClick={() => setTonicPc(i)}
-                    className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
-                      tonicPc === i ? "bg-[#7173e6] text-white border-[#7173e6]"
-                                    : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
-                    {n}
-                  </button>
-                ))}
+                {Array.from({ length: edo }, (_, i) => {
+                  const { base, sup } = sizedNoteName(edo, i);
+                  return (
+                    <button key={i} onClick={() => setTonicPc(i)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                        tonicPc === i ? "bg-[#7173e6] text-white border-[#7173e6]"
+                                      : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
+                      {base}{sup && <sup className="text-[0.7em]">{sup}</sup>}
+                    </button>
+                  );
+                })}
               </div>
               <div className="w-px h-4 bg-[#2a2a2a]" />
               </>)}
@@ -1339,15 +1351,20 @@ export default function App() {
                 className="px-2 py-0.5 rounded text-[10px] font-medium border bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff] transition-colors">
                 n: Notation / Solfège
               </button>
-              <button onClick={() => { setModShowIntervals(v => !v); setModShowSolfege(false); }}
+              <button onClick={() => { setModShowIntervals(v => !v); setModShowSolfege(false); setModShowNotes(false); }}
                 className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${modShowIntervals
                   ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
                 {modShowIntervals ? "✓ " : ""}Intervals
               </button>
-              <button onClick={() => { setModShowSolfege(v => !v); setModShowIntervals(false); }}
+              <button onClick={() => { setModShowSolfege(v => !v); setModShowIntervals(false); setModShowNotes(false); }}
                 className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${modShowSolfege
                   ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
                 {modShowSolfege ? "✓ " : ""}Solfège
+              </button>
+              <button onClick={() => { setModShowNotes(v => !v); setModShowIntervals(false); setModShowSolfege(false); }}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${modShowNotes
+                  ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
+                {modShowNotes ? "✓ " : ""}Notes
               </button>
             </div>
           )}
@@ -1362,9 +1379,9 @@ export default function App() {
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
           ) : layout ? (
             <LumatoneKeyboard layout={layout} highlightedPitches={highlighted} dimPitchClasses={dimScalePcs} edo={edo}
-              labelOf={(modShowIntervals || modShowSolfege) ? (pitch: number) => {
-                const ts = Math.round((tonicPc * edo) / 12);
-                const step = ((((pitch - ts) % edo) + edo) % edo);
+              labelOf={(modShowIntervals || modShowSolfege || modShowNotes) ? (pitch: number) => {
+                if (modShowNotes) return sizedNoteLabel(edo, pitch);   // absolute note name
+                const step = ((((pitch - tonicPc) % edo) + edo) % edo);
                 return modShowSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
               } : undefined}
               onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
@@ -1491,15 +1508,20 @@ export default function App() {
                 className="px-2 py-0.5 rounded text-[10px] font-medium border bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff] transition-colors">
                 n: Notation / Solfège
               </button>
-              <button onClick={() => { setModShowIntervals(v => !v); setModShowSolfege(false); }}
+              <button onClick={() => { setModShowIntervals(v => !v); setModShowSolfege(false); setModShowNotes(false); }}
                 className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${modShowIntervals
                   ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
                 {modShowIntervals ? "✓ " : ""}Intervals
               </button>
-              <button onClick={() => { setModShowSolfege(v => !v); setModShowIntervals(false); }}
+              <button onClick={() => { setModShowSolfege(v => !v); setModShowIntervals(false); setModShowNotes(false); }}
                 className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${modShowSolfege
                   ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
                 {modShowSolfege ? "✓ " : ""}Solfège
+              </button>
+              <button onClick={() => { setModShowNotes(v => !v); setModShowIntervals(false); setModShowSolfege(false); }}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${modShowNotes
+                  ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
+                {modShowNotes ? "✓ " : ""}Notes
               </button>
             </div>
             {edo === 12 && vizType === "piano" ? (
@@ -1507,9 +1529,9 @@ export default function App() {
                 onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k as ComputedKey); }} />
             ) : layout ? (
               <LumatoneKeyboard layout={layout} highlightedPitches={highlighted} maxHeight={360}
-                labelOf={(modShowIntervals || modShowSolfege) ? (pitch: number) => {
-                  const ts = Math.round((tonicPc * edo) / 12);
-                  const step = ((((pitch - ts) % edo) + edo) % edo);
+                labelOf={(modShowIntervals || modShowSolfege || modShowNotes) ? (pitch: number) => {
+                  if (modShowNotes) return sizedNoteLabel(edo, pitch);   // absolute note name
+                  const step = ((((pitch - tonicPc) % edo) + edo) % edo);
                   return modShowSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
                 } : undefined}
                 onKeyClick={async (k) => { await ensureAudio(); handleKeyClick(k); }} />
@@ -1751,13 +1773,13 @@ export default function App() {
         {(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && <div className="flex gap-2 flex-wrap items-center mb-3">
           <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">ROOT</span>
           {Array.from({ length: edo }, (_, i) => {
-            const { base, size } = sizedNoteName(edo, i);
+            const { base, sup } = sizedNoteName(edo, i);
             return (
               <button key={i} onClick={() => setTonicPc(i)}
                 className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
                   tonicPc === i ? "bg-[#7173e6] text-white border-[#7173e6]"
                                 : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
-                {base}{size && <sup className="text-[0.7em]">{size}</sup>}
+                {base}{sup && <sup className="text-[0.7em]">{sup}</sup>}
               </button>
             );
           })}

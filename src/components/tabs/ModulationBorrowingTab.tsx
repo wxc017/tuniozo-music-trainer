@@ -71,7 +71,7 @@ export default function ModulationBorrowingTab({ edo, tonicPc, onHighlight, ensu
   const [expanded, setExpanded] = useState<string | null>(null);
   const show = (l: Limit) => limitFilter === null || limitFilter === l;
 
-  const tonicStep = Math.round((tonicPc * edo) / 12);
+  const tonicStep = tonicPc; // tonicPc is a raw EDO step
   const homeTriadRatio = mode === "major" ? "4:5:6" : "10:12:15";
 
   // One octave below the C4 reference so the tonic sounds in octave 3
