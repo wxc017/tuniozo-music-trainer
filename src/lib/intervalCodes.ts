@@ -140,19 +140,16 @@ export function fifthSpelling(edo: number, step: number): string | null {
   return (n > 0 ? "#".repeat(n) : n < 0 ? "b".repeat(-n) : "") + degNum;
 }
 
-/** A Schulter-inspired NOTE-name (not interval) for an EDO step: a circle-of-
- *  fifths letter spelling (C, G, D, … with #/b) plus a SUPERSCRIPT that names the
- *  step's deviation FROM that nominal using the SAME spectrum vocabulary as the
- *  interval coder (fuzzyCode), signed:
- *    ""    central — within ½ comma of the exact Pythagorean note
- *    "k" / "-k"   a comma sharp / flat        "di" / "-di"  a diesis sharp / flat
- *    bigger gaps fall through to the region size codes ("sm2", …) just like
- *    intervals do — so the system is exactly as expressive as the interval
- *    spectrum (otherwise it would be theoretically incomplete).
- *  e.g. 50-EDO white keys read  C  D·-k  E·-k  F  G  A·-k  B·-k  (each ≈ a comma
- *  flat of Pythagorean).  Returns `base` (render plainly) + `sup` (superscript).
- *  Multi-ring EDOs whose fifth doesn't generate every step fall back to the bare
- *  interval code. */
+/** A Schulter-inspired NOTE-name (not interval) for an EDO step: the NEAREST
+ *  clean note name (a natural F C G D A E B, or a single #/b) plus a SIZE
+ *  superscript saying which side of that note the step sits on:
+ *    ""   central — within ½ comma of the exact (Pythagorean) note
+ *    "s"  small   — the step is flatter than the note
+ *    "l"  large   — the step is sharper than the note
+ *  Each note centers a range; a flatter E reads "E·s", a sharper E "E·l".  So the
+ *  50-EDO white keys read  C  D·s  E·s  F  G  A·s  B·s.  Returns `base` (render
+ *  plainly) + `sup` (render as a superscript).  Works for EVERY EDO (no fifth-
+ *  generation needed) — multi-ring tunings included. */
 const PYTH_FIFTH_CENTS = 1200 * Math.log2(1.5);   // 701.955…
 const FIFTH_LETTERS = "FCGDAEB";                   // chain order: F C G D A E B
 export function sizedNoteName(edo: number, step: number): { base: string; sup: string } {
@@ -170,29 +167,31 @@ export function sizedNoteName(edo: number, step: number): { base: string; sup: s
   // but piles on double-sharps/flats — Dbb — which we avoid.)
   const circDev = (a: number, b: number) => ((a - b) % 1200 + 1800) % 1200 - 600;
   let best: { base: string; dev: number } | null = null, bestScore = Infinity;
-  for (let f = -8; f <= 12; f++) {                   // f∈[-8,12] ⇒ |accidentals| ≤ 1
+  // Candidate notes = the 7 naturals (F C G D A E B) + the 5 flats (Bb Eb Ab Db
+  // Gb) + the 5 sharps (F# C# G# D# A#).  We deliberately EXCLUDE the enharmonic
+  // naturals (Fb Cb E# B#) and all double-accidentals so a step always spells to
+  // a clean, near note (every nominal "centers a range") — its small offset is
+  // carried by the s/l superscript, never by a far interval like "sm2".
+  for (let f = -6; f <= 10; f++) {
     const letter = FIFTH_LETTERS[(((f + 1) % 7) + 7) % 7];
     const acc = Math.floor((f + 1) / 7);
     const pyth = (((f * PYTH_FIFTH_CENTS) % 1200) + 1200) % 1200;
     const dev = circDev(cents, pyth);                // >0 ⇒ step is SHARP of this note
-    const score = Math.abs(dev) + 30 * Math.abs(acc);
+    const score = Math.abs(dev) + 10 * Math.abs(acc);  // mild natural preference on near-ties
     if (score < bestScore) {
       bestScore = score;
       best = { base: letter + (acc > 0 ? "#".repeat(acc) : acc < 0 ? "b".repeat(-acc) : ""), dev };
     }
   }
   const d = best!.dev;
-  // Superscript = the spectrum code of the deviation interval, signed ("-" when
-  // the step sits FLAT of the nominal).  Within ½ comma of the exact Pythagorean
-  // note → "just/central" → bare; beyond that the deviation is named with the
-  // SAME vocabulary as intervals: a comma → k, a diesis → di, larger gaps fall
-  // through to the region size codes (sm2, …).
-  const TOL = 10.75;                                 // ≈ ½ syntonic comma
-  let sup = "";
-  if (Math.abs(d) >= TOL) {
-    const code = fuzzyCode(Math.abs(d));
-    if (code !== "1") sup = (d < 0 ? "-" : "") + code;
-  }
+  // Superscript is ONLY the size of the offset from the nearest note: a sharper
+  // step → "l" (large), a flatter step → "s" (small), within ½ comma → bare
+  // ("just/central").  Each note CENTERS a range and the s/l mark which side of
+  // it the step sits — no comma/diesis/interval codes (per direct user request:
+  // "CDEFGAB are the center of a range, a flatter E is E small, a sharper E is E
+  // large"; "D sm2 is bad notation — it should be Eb s").
+  const TOL = 10.75;                                 // ≈ ½ syntonic comma central band
+  const sup = d > TOL ? "l" : d < -TOL ? "s" : "";
   return { base: best!.base, sup };
 }
 
