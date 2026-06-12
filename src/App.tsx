@@ -1198,8 +1198,8 @@ export default function App() {
                     : (() => {
                         const loPc = ((lowestPitch % edo) + edo) % edo;
                         const hiPc = ((highestPitch % edo) + edo) % edo;
-                        const loName = formatHalfAccidentals(pcToNoteNameWithEnharmonic(loPc, edo) ?? "");
-                        const hiName = formatHalfAccidentals(pcToNoteNameWithEnharmonic(hiPc, edo) ?? "");
+                        const loName = sizedNoteLabel(edo, loPc);   // sized note-name system (absolute)
+                        const hiName = sizedNoteLabel(edo, hiPc);
                         const loOct = 4 + Math.floor((lowestPitch - tonicPc) / edo);
                         const hiOct = 4 + Math.floor((highestPitch - tonicPc) / edo);
                         return `${loName}${loOct}–${hiName}${hiOct}`;

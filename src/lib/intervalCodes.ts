@@ -157,10 +157,10 @@ const PYTH_FIFTH_CENTS = 1200 * Math.log2(1.5);   // 701.955…
 const FIFTH_LETTERS = "FCGDAEB";                   // chain order: F C G D A E B
 export function sizedNoteName(edo: number, step: number): { base: string; sup: string } {
   const k = ((step % edo) + edo) % edo;
-  const fifth = Math.round(edo * Math.log2(1.5));
-  const inv = modInverse(fifth, edo);
-  if (inv === null) return { base: fuzzyCode((k * 1200) / edo), sup: "" };   // multi-ring fallback
   const cents = (k * 1200) / edo;
+  // No modInverse / fifth-generation needed: we spell each step by the NEAREST
+  // circle-of-fifths note by CENTS, so this works for every EDO — including
+  // multi-ring ones (34, 24, …) whose fifth doesn't reach every step.
   // Spell to the NEAREST circle-of-fifths note carrying at most ONE accidental
   // (naturals F C G D A E B, single #/b), chosen by cents with a per-accidental
   // penalty so a natural wins unless an accidental is clearly closer.  The
