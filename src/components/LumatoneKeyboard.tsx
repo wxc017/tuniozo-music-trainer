@@ -81,15 +81,23 @@ export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, 
     () => (isNatural ? layout.keys.filter(k => isNatural(k.pitch)) : []),
     [layout, isNatural],
   );
+  // ~a whole tone in this EDO (+ a little) — the pitch window that brackets a
+  // note with its two neighbouring naturals, so we never reference a far/wrong-
+  // octave white key.
+  const wtWindow = edo ? Math.round((edo * 210) / 1200) + 2 : 3;
   const preferFor = (kx: number, ky: number, pitch: number): "sharp" | "flat" | undefined => {
     if (!isNatural || naturalKeys.length === 0 || isNatural(pitch)) return undefined;
+    // Nearest natural HEX among the pitch-bracketing ones (within ~a whole tone),
+    // by physical distance.  Higher pitch sits higher on screen (smaller y), so a
+    // hex above that white key → sharp, below → flat.
     let best: ComputedKey | null = null, bd = Infinity;
     for (const nk of naturalKeys) {
+      if (Math.abs(nk.pitch - pitch) > wtWindow) continue;
       const d = (nk.x - kx) ** 2 + (nk.y - ky) ** 2;
       if (d < bd) { bd = d; best = nk; }
     }
     if (!best) return undefined;
-    return ky < best.y ? "sharp" : "flat";   // hex above the nearest natural → sharp
+    return ky < best.y ? "sharp" : "flat";
   };
   const hasHighlight = (litKeys ?? highlightedPitches).size > 0;
   const hasDim = !!dimPitchClasses && dimPitchClasses.size > 0;
@@ -161,7 +169,8 @@ export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, 
                 // a touch BIGGER (so they read at the letter's size, not subscript)
                 // in Bravura, with the letter/superscript runs in the normal font.
                 const isPua = (c: string) => { const cp = c.codePointAt(0)!; return cp >= 0xE000 && cp <= 0xF8FF; };
-                const hasGlyph = !multi && [...label].some(isPua);
+                const isSup = (c: string) => "ˢˡⁿᵏᵈⁱ⁻⁺⁰¹²³⁴⁵⁶⁷⁸⁹".includes(c);   // the s/l size superscript
+                const hasGlyph = !multi && [...label].some(c => isPua(c) || isSup(c));
                 return (
                   <text x={key.x} y={key.y} textAnchor="middle" dominantBaseline="central"
                     fontSize={fs} fontWeight={multi ? 700 : 600} fill={textCol}
@@ -172,7 +181,9 @@ export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, 
                       : hasGlyph
                         ? [...label].map((c, ci) => isPua(c)
                             ? <tspan key={ci} fontSize={fs * 1.32} fontWeight={400} fontFamily="'Bravura Text'">{c}</tspan>
-                            : <tspan key={ci}>{c}</tspan>)
+                            : isSup(c)
+                              ? <tspan key={ci} fontWeight={400}>{c}</tspan>   // size superscript: lighter
+                              : <tspan key={ci}>{c}</tspan>)
                         : label}
                   </text>
                 );
