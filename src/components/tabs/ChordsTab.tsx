@@ -29,7 +29,7 @@ import { getSizedTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABE
 import { xenIntervalsForEdo, bankToScaleFamMode } from "@/lib/tonalityChordPool";
 import { getScalesForEdo } from "@/lib/commonScales";
 import { formatRomanNumeral, formatRomanNumeralWithFamily } from "@/lib/formatRoman";
-import { chordSymbol } from "@/lib/chordNotation";
+import { chordSymbol, sizedCode } from "@/lib/chordNotation";
 import { notationLabel } from "@/lib/notationLabels";
 
 // Stack a chord's quality tones (step offsets from the root) as a notation
@@ -51,6 +51,30 @@ function systemStack(toneOffsets: number[], edo: number, system: string | undefi
 function romanWithSystem(roman: string, toneOffsets: number[], edo: number, system: string | undefined): string {
   const stack = systemStack(toneOffsets, edo, system);
   return stack ? `${roman} ${stack}` : roman;
+}
+
+// Compound (upper) extension codes for the played pitches that aren't part of
+// the base chord shape — the 9th / 11th / 13th — so the extension is visible in
+// the chord header (per direct user direction 2026-06-13 "have the 9 be in
+// notation so i can see").  `baseOffsets` are the base chord's tone offsets
+// from the root; any played pc not among them is an extension, rendered as its
+// sized code bumped to a compound degree (2→9, 4→11, 6→13).
+function extensionSuffix(
+  pitches: number[], tonicPc: number, rootPc: number, baseOffsets: number[], edo: number,
+): string {
+  const base = new Set(baseOffsets.map(o => ((o % edo) + edo) % edo));
+  const exts = [...new Set(pitches.map(p =>
+    ((((((p - tonicPc) % edo) + edo) % edo) - rootPc + edo) % edo)))]
+    .filter(o => o !== 0 && !base.has(o))
+    .sort((a, b) => a - b);
+  const codes: string[] = [];
+  for (const o of exts) {
+    const m = /^([sl]?)([mM]?)(\d+)$/.exec(sizedCode((o * 1200) / edo));
+    if (!m) continue;
+    const deg = parseInt(m[3], 10);
+    codes.push(m[1] + m[2] + (deg <= 6 ? deg + 7 : deg));   // 2→9, 4→11, 6→13
+  }
+  return codes.length ? ` ${codes.join(" ")}` : "";
 }
 
 // Display a tonality/scale name in our sized system: keep Greek + proper-noun
@@ -1200,7 +1224,13 @@ export default function ChordsTab({
           }
         }
       }
-      return clampToLayout(voiced);
+      // Drop exact-duplicate pitches: clampToLayout can fold an out-of-range
+      // extension onto a pitch already in the voicing (e.g. a 13th and another
+      // tone collapsing to the same lm6 in the playable range), adding an
+      // inaudible doubled pitch — per direct user direction 2026-06-13
+      // "stacking two lm6 is unnecessary".  Octave doublings at DIFFERENT
+      // pitches are kept (they're real voicing colour).
+      return [...new Set(clampToLayout(voiced))].sort((a, b) => a - b);
     };
 
     // Bass gate: the LOWEST note of the realized voicing must sit inside
@@ -2516,7 +2546,10 @@ export default function ChordsTab({
               // tone the inversion put in the bass (per direct user direction
               // 2026-06-13 "there is not a 1 in a V nor a 3 … i should only be
               // seeing [the selected chords]; its broken for inversions").
-              const headerLabel = sizedLabel + (bassNum && bassNum !== 1 ? `/${bassNum}` : "");
+              // Upper extensions (9/11/13) the voicing actually plays but the
+              // base chord shape doesn't carry — append so they're visible.
+              const extSuffix = extensionSuffix(c.pitches, tonicPc, c.chordRootPc, c.chordToneOffsets, edo);
+              const headerLabel = sizedLabel + extSuffix + (bassNum && bassNum !== 1 ? `/${bassNum}` : "");
               return (
                 <button key={i}
                   onClick={() => {
