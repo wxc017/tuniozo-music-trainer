@@ -185,7 +185,8 @@ export function getSizedTonalityBanks(edo: number): TonalityBank[] {
             chord("ii°",  dim(M2)),         // parallel minor
             chord("#iv°", dim(P4 + A1)),    // Lydian — raised-4 leading tone
             chord("II",   maj(M2)),         // Lydian / V-of-V colour
-            chord("III",  maj(M3)),         // chromatic mediant
+            chord("III",  maj(M3)),         // chromatic mediant (major) → sIII
+            chord("siii", min(M3)),         // minor mediant on the natural 3rd → siii
           ]
         : [
             chord("V",    maj(P5)),         // harmonic-minor dominant
