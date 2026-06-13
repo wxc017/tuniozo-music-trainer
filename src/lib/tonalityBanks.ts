@@ -187,6 +187,11 @@ export function getSizedTonalityBanks(edo: number): TonalityBank[] {
             chord("II",   maj(M2)),         // Lydian / V-of-V colour
             chord("III",  maj(M3)),         // chromatic mediant (major) → sIII
             chord("siii", min(M3)),         // minor mediant on the natural 3rd → siii
+            chord("VI",   maj(M6)),         // major submediant (chromatic mediant)
+            chord("svi",  min(M6)),         // minor submediant on the natural 6th
+            chord("biii", min(m3)),         // minor counterpart of bIII
+            chord("bvi",  min(m6)),         // minor counterpart of bVI
+            chord("bV",   maj(d5)),         // Locrian / tritone colour
           ]
         : [
             chord("V",    maj(P5)),         // harmonic-minor dominant
