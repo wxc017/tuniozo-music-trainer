@@ -106,7 +106,7 @@ export function getSizedTonalityBanks(edo: number): TonalityBank[] {
   for (const sc of getScalesForEdo(edo, false)) {
     const n = sc.steps.length;
     if (n < 3) continue;
-    const triads: { label: string; steps: number[]; root: number }[] = [];
+    const triads: { label: string; steps: number[]; root: number; kind: "maj" | "min" | "dim" | "aug" | "other" }[] = [];
     for (let i = 0; i < n; i++) {
       const root = sc.steps[i];
       const third = sc.steps[(i + 2) % n] + (i + 2 >= n ? edo : 0);
@@ -134,7 +134,7 @@ export function getSizedTonalityBanks(edo: number): TonalityBank[] {
       const minorThird = /m\d/.test(t3code) && !/M/.test(t3code);
       if (minorThird || kind === "dim") r = r.toLowerCase();
       r += kind === "dim" ? "°" : kind === "aug" ? "+" : "";
-      triads.push({ label: r, steps: [root, third, fifth], root });
+      triads.push({ label: r, steps: [root, third, fifth], root, kind });
     }
     // Primary = the functional pillars: tonic (I) + the triads a perfect 4th
     // (subdominant) and perfect 5th (dominant) above it.  Identify by the root's
@@ -151,11 +151,53 @@ export function getSizedTonalityBanks(edo: number): TonalityBank[] {
     const secDom = triads
       .filter(t => ((t.root % edo) + edo) % edo !== 0)
       .map(t => chord(`V/${t.label}`, dom7(t.root + P5)));
+
+    // Modal-interchange (borrowed) chords — the parallel-mode borrowings the
+    // 12-EDO Major/Aeolian banks carry, generalised to the sized tuning.  Only
+    // heptatonic scales with a clearly major/minor tonic get them (no
+    // well-defined parallel mode otherwise).  Each chord is built from the
+    // scale's OWN degree roots so the pitches stay in-tuning, with the EDO's
+    // chromatic step A1 lowering / raising a degree where the borrowing alters
+    // it (bIII = major triad on the lowered 3rd, etc.).  Labels duplicated by
+    // an existing diatonic chord are dropped.
+    const modalInterchange = (): ChordEntry[] => {
+      if (n !== 7) return [];
+      const tonicKind = triads[0]?.kind;
+      if (tonicKind !== "maj" && tonicKind !== "min") return [];
+      const deg = (d: number) => triads[d - 1].root;        // degree 1..7 → root step
+      const maj3 = (rt: number) => [rt, rt + M3, rt + P5];
+      const min3 = (rt: number) => [rt, rt + m3, rt + P5];
+      const dim3 = (rt: number) => [rt, rt + m3, rt + d5];
+      const out: ChordEntry[] = tonicKind === "maj"
+        ? [
+            chord("iv",   min3(deg(4))),        // parallel minor — most common
+            chord("bVII", maj3(deg(7) - A1)),   // Mixolydian / rock
+            chord("bVI",  maj3(deg(6) - A1)),   // parallel minor
+            chord("bIII", maj3(deg(3) - A1)),   // parallel minor
+            chord("bII",  maj3(deg(2) - A1)),   // Neapolitan (Phrygian)
+            chord("v",    min3(deg(5))),        // minor v (Mixolydian)
+            chord("ii°",  dim3(deg(2))),        // parallel minor
+          ]
+        : [
+            chord("V",    maj3(deg(5))),        // harmonic-minor dominant
+            chord("vii°", dim3(deg(7) + A1)),   // leading-tone diminished
+            chord("IV",   maj3(deg(4))),        // Dorian major IV
+            chord("I",    maj3(deg(1))),        // Picardy third
+            chord("bII",  maj3(deg(2) - A1)),   // Neapolitan (Phrygian)
+            chord("VI",   maj3(deg(6) + A1)),   // Dorian major VI (raised 6)
+            chord("ii",   min3(deg(2))),        // parallel major ii
+          ];
+      const have = new Set([...primary, ...diatonic].map(c => c.label));
+      return out.filter(c => !have.has(c.label));
+    };
+    const modalChords = modalInterchange();
+
     const levels: TonalityLevel[] = [
       { name: "Primary", chords: primary },
       { name: "Diatonic", chords: diatonic },
     ];
     if (secDom.length) levels.push({ name: "Secondary Dominants", chords: secDom });
+    if (modalChords.length) levels.push({ name: "Modal Interchange", chords: modalChords });
     banks.push({ name: sc.name, levels });
   }
   return banks;
