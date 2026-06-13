@@ -174,24 +174,26 @@ export function getSizedTonalityBanks(edo: number): TonalityBank[] {
       const maj = (rt: number) => [rt, rt + M3, rt + P5];
       const min = (rt: number) => [rt, rt + m3, rt + P5];
       const dim = (rt: number) => [rt, rt + m3, rt + d5];
+      // Chromatic mediants — a major + minor pair on each third / sixth
+      // position — shared by major and minor tonics; the pitch-content dedup
+      // below drops any that coincide with a diatonic chord of the scale.
+      const mediants: ChordEntry[] = [
+        chord("bIII", maj(m3)), chord("biii", min(m3)),
+        chord("III",  maj(M3)), chord("siii", min(M3)),
+        chord("bVI",  maj(m6)), chord("bvi",  min(m6)),
+        chord("VI",   maj(M6)), chord("svi",  min(M6)),
+      ];
       const out: ChordEntry[] = tonicKind === "maj"
         ? [
             chord("iv",   min(P4)),         // parallel minor — most common
             chord("bVII", maj(m7)),         // Mixolydian / rock
-            chord("bVI",  maj(m6)),         // parallel minor
-            chord("bIII", maj(m3)),         // parallel minor
             chord("bII",  maj(m3 - M2)),    // Neapolitan (Phrygian)
             chord("v",    min(P5)),         // minor v (Mixolydian)
             chord("ii°",  dim(M2)),         // parallel minor
             chord("#iv°", dim(P4 + A1)),    // Lydian — raised-4 leading tone
             chord("II",   maj(M2)),         // Lydian / V-of-V colour
-            chord("III",  maj(M3)),         // chromatic mediant (major) → sIII
-            chord("siii", min(M3)),         // minor mediant on the natural 3rd → siii
-            chord("VI",   maj(M6)),         // major submediant (chromatic mediant)
-            chord("svi",  min(M6)),         // minor submediant on the natural 6th
-            chord("biii", min(m3)),         // minor counterpart of bIII
-            chord("bvi",  min(m6)),         // minor counterpart of bVI
             chord("bV",   maj(d5)),         // Locrian / tritone colour
+            ...mediants,
           ]
         : [
             chord("V",    maj(P5)),         // harmonic-minor dominant
@@ -199,11 +201,10 @@ export function getSizedTonalityBanks(edo: number): TonalityBank[] {
             chord("IV",   maj(P4)),         // Dorian major IV
             chord("I",    maj(0)),          // Picardy third
             chord("bII",  maj(m3 - M2)),    // Neapolitan (Phrygian)
-            chord("VI",   maj(M6)),         // Dorian major VI
             chord("ii",   min(M2)),         // parallel major ii
-            chord("bV",   maj(d5)),         // Locrian / tritone colour
-            chord("bIII", maj(m3)),         // major mediant (harmonic minor)
             chord("bVII", maj(m7)),         // subtonic
+            chord("bV",   maj(d5)),         // Locrian / tritone colour
+            ...mediants,
           ];
       // Dedup against the diatonic chords by PITCH CONTENT (not label): the
       // sized bank labels minor-scale degrees positionally (III/VI/VII without
