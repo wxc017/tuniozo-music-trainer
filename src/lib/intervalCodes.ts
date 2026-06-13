@@ -274,23 +274,38 @@ export function sizedNoteLabel(edo: number, step: number, prefer?: "sharp" | "fl
   return base + (sup ? toSuper(sup) : "");
 }
 
-// ── Plain Pythagorean note names ("regular Schulter" notes) ──────────────────
-// The nearest circle-of-fifths note (naturals F C G D A E B + a single #/b),
-// placed at its PURE Pythagorean pitch — so the sharp is the LARGER chromatic
-// step (C# above Db).  No size superscripts, no Gould arrows: just the note.
+// ── STRICT Pythagorean note names ("regular Schulter" notes) ─────────────────
+// Spell every step by its exact circle-of-fifths position (the chain F C G D A E
+// B …): each step is a UNIQUE chain index, so distant steps pile on real
+// double-/triple-flats and -sharps (Dbb, Fbbb …) — the honest Pythagorean
+// spelling, not a nearest-note approximation.  Multi-ring EDOs (whose fifth does
+// not reach every step) fall back to the nearest single-accidental note.
 const PYTH_FIFTH = 1200 * Math.log2(1.5);
 const FIFTH_LETTERS = "FCGDAEB";
+function fifthChainName(f: number): string {
+  const letter = FIFTH_LETTERS[(((f + 1) % 7) + 7) % 7];
+  const acc = Math.floor((f + 1) / 7);
+  return letter + (acc > 0 ? "#".repeat(acc) : acc < 0 ? "b".repeat(-acc) : "");
+}
 export function pythagoreanNoteLabel(edo: number, step: number): string {
   const k = ((step % edo) + edo) % edo;
+  const fifth = Math.round(edo * Math.log2(1.5));
+  const inv = modInverse(fifth, edo);
+  if (inv !== null) {
+    // single-ring: the exact (signed, nearest-0) chain position → unique spelling
+    let f = (k * inv) % edo;
+    if (f > edo / 2) f -= edo;
+    if (f <= -edo / 2) f += edo;
+    return fifthChainName(f);
+  }
+  // multi-ring fallback: nearest single-accidental note by cents
   const cents = (k * 1200) / edo;
   const dev = (a: number, b: number) => ((a - b) % 1200 + 1800) % 1200 - 600;
   let best = "", score = Infinity;
-  for (let f = -6; f <= 10; f++) {                   // 7 naturals + 5 flats + 5 sharps
-    const letter = FIFTH_LETTERS[(((f + 1) % 7) + 7) % 7];
-    const acc = Math.floor((f + 1) / 7);
+  for (let f = -6; f <= 10; f++) {
     const pyth = (((f * PYTH_FIFTH) % 1200) + 1200) % 1200;
-    const s = Math.abs(dev(cents, pyth)) + 10 * Math.abs(acc);   // mild natural preference
-    if (s < score) { score = s; best = letter + (acc > 0 ? "#".repeat(acc) : acc < 0 ? "b".repeat(-acc) : ""); }
+    const s = Math.abs(dev(cents, pyth)) + 10 * Math.abs(Math.floor((f + 1) / 7));
+    if (s < score) { score = s; best = fifthChainName(f); }
   }
   return best;
 }
