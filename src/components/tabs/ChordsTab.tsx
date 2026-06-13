@@ -11,7 +11,7 @@ import {
   generateBassLine, generateMelodyLine,
   checkLowIntervalLimits, formatLilWarnings,
   buildTwoHandedVoicing, TWO_HAND_STYLES, type TwoHandStyle,
-  addBassUnder, BASS_VOICINGS, type BassVoicing,
+  addBassUnderHands, BASS_VOICINGS, type BassVoicing,
   type LilWarning,
 } from "@/lib/musicTheory";
 import {
@@ -1414,8 +1414,16 @@ export default function ChordsTab({
         const rootPc = chordTonePcs[0];
         const floor = layoutPitchRange?.min ?? (lowestPitch - 2 * edo);
         if (isBassVoicing(twoHandMode)) {
-          // Family 1: keep the realized RH voicing as-is, add a LH bass.
-          playChordAbs = addBassUnder(chordAbs, chordTonePcs, rootPc, edo, twoHandMode, floor);
+          // Family 1: keep the realized RH voicing as-is, add a LH bass —
+          // anchored to a FIXED low register (~1 octave below the exercise low
+          // note) instead of tracking the RH voicing's bottom.  Per direct user
+          // direction 2026-06-13 "the bass is supposed to be limited to a
+          // specific octave": a high tonic (e.g. an all-roots pick near the top
+          // of a sub-octave range) used to pin the RH chord near the top and
+          // drag the bass up with it; the anchor keeps the bass in a consistent
+          // keyboard-bass octave regardless of the RH register.
+          const bassAnchor = lowestPitch - edo;
+          playChordAbs = addBassUnderHands(chordAbs, chordTonePcs, rootPc, edo, twoHandMode, floor, bassAnchor).all;
         } else {
           // Family 2: rebuild both hands as a full two-hand voicing.
           const tonePcSet = new Set(chordTonePcs);
