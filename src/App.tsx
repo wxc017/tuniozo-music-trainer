@@ -26,7 +26,7 @@ import ParadiddleOrchestrationsTab from "@/components/tabs/ParadiddleOrchestrati
 import ModulationBorrowingTab from "@/components/tabs/ModulationBorrowingTab";
 import { sizedCode } from "@/lib/chordNotation";
 import { notationLabel, solfegeLabel } from "@/lib/notationLabels";
-import { sizedNoteName, sizedNoteLabel, isNaturalNote } from "@/lib/intervalCodes";
+import { sizedNoteName, sizedNoteLabel, isNaturalNote, noteLabelForSystem } from "@/lib/intervalCodes";
 import NotationPicker from "@/components/NotationPicker";
 import IntervalSpectrumTab from "@/components/tabs/IntervalSpectrumTab";
 import ChordChart from "@/components/ChordChart";
@@ -240,7 +240,7 @@ function ScalarExplorationLayout(props: {
         <div id="main-visualizer" className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: 0 }}>
           {edo !== 12 && (
             <div className="flex justify-end gap-1 mb-1">
-              {(!notationByEdo[edo] || notationByEdo[edo] === "Schulter") && (
+              {(!notationByEdo[edo] || notationByEdo[edo] === "Schulter" || notationByEdo[edo] === "Schulter V2") && (
                 <button onClick={onOpenNotation}
                   className="px-2 py-0.5 rounded text-[10px] font-medium border bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff] transition-colors">
                   n: Notation / Solfège
@@ -278,7 +278,7 @@ function ScalarExplorationLayout(props: {
                 // Notes are ABSOLUTE (independent of tonic); intervals/solfège are
                 // tonic-relative.  tonicPc is a raw EDO step.  `prefer` spells the
                 // note sharp (hex above a white key) or flat (below).
-                if (showNotes) return sizedNoteLabel(edo, pitch, prefer);
+                if (showNotes) return noteLabelForSystem(edo, pitch, notationByEdo[edo], prefer);
                 const step = (((pitch - tonicPc) % edo) + edo) % edo;
                 return showSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
               } : undefined}
@@ -1201,8 +1201,8 @@ export default function App() {
                     : (() => {
                         const loPc = ((lowestPitch % edo) + edo) % edo;
                         const hiPc = ((highestPitch % edo) + edo) % edo;
-                        const loName = sizedNoteLabel(edo, loPc);   // sized note-name system (absolute)
-                        const hiName = sizedNoteLabel(edo, hiPc);
+                        const loName = noteLabelForSystem(edo, loPc, notationByEdo[edo]);
+                        const hiName = noteLabelForSystem(edo, hiPc, notationByEdo[edo]);
                         const loOct = 4 + Math.floor((lowestPitch - tonicPc) / edo);
                         const hiOct = 4 + Math.floor((highestPitch - tonicPc) / edo);
                         return `${loName}${loOct}–${hiName}${hiOct}`;
@@ -1383,7 +1383,7 @@ export default function App() {
           ) : layout ? (
             <LumatoneKeyboard layout={layout} highlightedPitches={highlighted} dimPitchClasses={dimScalePcs} edo={edo}
               labelOf={(modShowIntervals || modShowSolfege || modShowNotes) ? (pitch: number, prefer?: "sharp" | "flat") => {
-                if (modShowNotes) return sizedNoteLabel(edo, pitch, prefer);   // absolute note name
+                if (modShowNotes) return noteLabelForSystem(edo, pitch, notationByEdo[edo], prefer);   // absolute note name
                 const step = ((((pitch - tonicPc) % edo) + edo) % edo);
                 return modShowSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
               } : undefined}
@@ -1535,7 +1535,7 @@ export default function App() {
             ) : layout ? (
               <LumatoneKeyboard layout={layout} highlightedPitches={highlighted} maxHeight={360}
                 labelOf={(modShowIntervals || modShowSolfege || modShowNotes) ? (pitch: number, prefer?: "sharp" | "flat") => {
-                  if (modShowNotes) return sizedNoteLabel(edo, pitch, prefer);   // absolute note name
+                  if (modShowNotes) return noteLabelForSystem(edo, pitch, notationByEdo[edo], prefer);   // absolute note name
                   const step = ((((pitch - tonicPc) % edo) + edo) % edo);
                   return modShowSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
                 } : undefined}

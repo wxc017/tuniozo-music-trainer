@@ -9,7 +9,7 @@ import LumatoneKeyboard from "@/components/LumatoneKeyboard";
 import { computeLayout, type LayoutResult, type LumatoneData, type ComputedKey } from "@/lib/lumatoneLayout";
 import { getLayoutFile } from "@/lib/edoData";
 import { notationLabel, solfegeLabel } from "@/lib/notationLabels";
-import { sizedNoteLabel } from "@/lib/intervalCodes";
+import { noteLabelForSystem } from "@/lib/intervalCodes";
 import { type LatticeNode } from "@/lib/tonalityLatticeLayout";
 import { type NamedScale } from "@/lib/commonScales";
 import SolfegePanel from "@/components/tabs/SolfegePanel";
@@ -249,7 +249,7 @@ export default function LumatoneVisualizer({ edos, activeStepsByEdo, rootCents, 
     const step = (((pc - rootStep) % edo) + edo) % edo;
     // Notes are ABSOLUTE (by pitch class); intervals/solfège are measured from
     // the root.  Use the per-EDO system chosen in the "n" picker.
-    if (nameMode === "notes") return sizedNoteLabel(edo, pc);
+    if (nameMode === "notes") return noteLabelForSystem(edo, pc, notationByEdo[edo]);
     return nameMode === "solfege"
       ? solfegeLabel(edo, solfegeByEdo[edo], step)
       : (codeByStep ? codeByStep[step] : notationLabel(edo, notationByEdo[edo], step));

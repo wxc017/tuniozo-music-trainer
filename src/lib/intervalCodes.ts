@@ -274,6 +274,36 @@ export function sizedNoteLabel(edo: number, step: number, prefer?: "sharp" | "fl
   return base + (sup ? toSuper(sup) : "");
 }
 
+// ── Plain Pythagorean note names ("regular Schulter" notes) ──────────────────
+// The nearest circle-of-fifths note (naturals F C G D A E B + a single #/b),
+// placed at its PURE Pythagorean pitch — so the sharp is the LARGER chromatic
+// step (C# above Db).  No size superscripts, no Gould arrows: just the note.
+const PYTH_FIFTH = 1200 * Math.log2(1.5);
+const FIFTH_LETTERS = "FCGDAEB";
+export function pythagoreanNoteLabel(edo: number, step: number): string {
+  const k = ((step % edo) + edo) % edo;
+  const cents = (k * 1200) / edo;
+  const dev = (a: number, b: number) => ((a - b) % 1200 + 1800) % 1200 - 600;
+  let best = "", score = Infinity;
+  for (let f = -6; f <= 10; f++) {                   // 7 naturals + 5 flats + 5 sharps
+    const letter = FIFTH_LETTERS[(((f + 1) % 7) + 7) % 7];
+    const acc = Math.floor((f + 1) / 7);
+    const pyth = (((f * PYTH_FIFTH) % 1200) + 1200) % 1200;
+    const s = Math.abs(dev(cents, pyth)) + 10 * Math.abs(acc);   // mild natural preference
+    if (s < score) { score = s; best = letter + (acc > 0 ? "#".repeat(acc) : acc < 0 ? "b".repeat(-acc) : ""); }
+  }
+  return best;
+}
+
+/** Note name for the chosen notation SYSTEM: "Schulter V2" → the Schulter-region
+ *  / Gould system (sizedNoteLabel); anything else ("Schulter" et al.) → plain
+ *  Pythagorean note names. */
+export function noteLabelForSystem(
+  edo: number, step: number, system: string | undefined, prefer?: "sharp" | "flat",
+): string {
+  return system === "Schulter V2" ? sizedNoteLabel(edo, step, prefer) : pythagoreanNoteLabel(edo, step);
+}
+
 // Quality-prefix remap for the 41/53 short-code tables (s/m/Clm/u/n/Cl/M/S…)
 const PREFIX: Record<string, string> = {
   s: "sm", m: "p", Clm: "j", u: "Sm", n: "n", Cl: "J", M: "P", S: "SM",

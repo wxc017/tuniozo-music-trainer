@@ -9,6 +9,11 @@ import { NOTATION_SYSTEMS } from "./notationSystems";
 import { SOLFEGE_SYSTEMS } from "./solfegeSystems";
 
 export const SCHULTER = "Schulter";
+// "Schulter V2" — the region/Gould absolute NOTE system (see intervalCodes
+// sizedNoteName).  For interval labels it behaves like Schulter (the spectrum
+// coder); it only changes the "Notes" overlay (Pythagorean for plain Schulter,
+// SZG/Gould for V2).
+export const SCHULTER_V2 = "Schulter V2";
 export const UNIVERSAL_SOLFEGE = "Universal Solfège";
 
 /** Notation systems available for an EDO (Schulter first, then mined). */
@@ -25,7 +30,7 @@ export function notationsForEdo(edo: number): string[] {
     .filter(s => s.kind === "notation")
     .map(s => s.name)
     .filter(n => authorFor(n) !== null);
-  return [SCHULTER, ...tidyNames(mined)];
+  return [SCHULTER, SCHULTER_V2, ...tidyNames(mined)];
 }
 /** Solfège systems available for an EDO (Universal first, then mined). */
 export function solfegesForEdo(edo: number): string[] {
@@ -39,7 +44,7 @@ export function notationLabel(edo: number, system: string | undefined, step: num
   const cents = (k * 1200) / edo;
   // Schulter = our spectrum coder (fuzzyCode) — same one the scale namer uses,
   // so it carries neutrals and the per-region no-overlap codes.
-  if (!system || system === SCHULTER) return fuzzyCode(cents);
+  if (!system || system === SCHULTER || system === SCHULTER_V2) return fuzzyCode(cents);
   return (NOTATION_SYSTEMS[edo] ?? []).find(s => s.name === system)?.labels[k] ?? fuzzyCode(cents);
 }
 /** Solfège syllable for a step under a solfège system (falls back to Universal). */
@@ -55,7 +60,7 @@ export const labelForStep = notationLabel;
 // Known authors of notation / solfège systems (shown as "· by …").  Names that
 // already credit a person ("Kite Giedraitis's solfege") are left alone.
 const AUTHORS: [RegExp, string][] = [
-  [/^Schulter$/i, "Margo Schulter"],
+  [/schulter/i, "Margo Schulter"],
   [/universal solf/i, "Nick Vuci"],
   [/uniform solf/i, "Kite Giedraitis"],
   [/ups?\s*and\s*downs|^kite\b/i, "Kite Giedraitis"],
