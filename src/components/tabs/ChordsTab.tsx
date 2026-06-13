@@ -3655,6 +3655,11 @@ function ChordSelectionPanel({
                             if (!steps || !steps.length) return roman;
                             // Schulter → sized chord symbol; other notation → roman (#/b) +
                             // the system's scale-degree symbols (s3, S3, Kite arrows…).
+                            // Modal-interchange chords share this notation — now that
+                            // the chords are well-formed triads (50-EDO intervals fixed)
+                            // chordSymbol renders them cleanly (bIII → "lIII", etc.),
+                            // per direct user direction "it should still have same
+                            // notation system".
                             if (useSchulter) return <ChordSym symbol={chordSymbol(steps.map(s => (s * 1200) / edo))} />;
                             const root = steps[0];
                             const stack = systemStack(steps.map(s => s - root), edo, notationSystem);

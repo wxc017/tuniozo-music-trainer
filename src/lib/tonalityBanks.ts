@@ -97,7 +97,7 @@ export function getApproachChords(
 // the steps via chordSymbol); the bank NAME is the sized scale name.
 export function getSizedTonalityBanks(edo: number): TonalityBank[] {
   const sh = getChordShapes(edo);
-  const { M3, m3, P5, d5, A1, m7 } = sh;
+  const { M3, m3, P5, d5, A1, m7, M2, P4, m6, M6, M7 } = sh;
   const aug5 = P5 + A1;
   const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
   const c2 = (s: number) => (s / edo) * 1200;
@@ -164,31 +164,56 @@ export function getSizedTonalityBanks(edo: number): TonalityBank[] {
       if (n !== 7) return [];
       const tonicKind = triads[0]?.kind;
       if (tonicKind !== "maj" && tonicKind !== "min") return [];
-      const deg = (d: number) => triads[d - 1].root;        // degree 1..7 → root step
-      const maj3 = (rt: number) => [rt, rt + M3, rt + P5];
-      const min3 = (rt: number) => [rt, rt + m3, rt + P5];
-      const dim3 = (rt: number) => [rt, rt + m3, rt + d5];
+      // Borrowed chords on fixed chromatic positions from the tonic — the same
+      // construction the 12-EDO Major/Aeolian banks use, now correct in any EDO
+      // since getChordShapes is proportional.  chordSymbol renders each in the
+      // sized system from these steps (a flat-3 lands on the large-minor-3rd, so
+      // it reads "lIII", a flat-7 → "lVII", etc.) so modal-interchange chords
+      // share the SAME notation as the rest of the bank (per direct user
+      // direction 2026-06-13 "it should still have same notation system").
+      const maj = (rt: number) => [rt, rt + M3, rt + P5];
+      const min = (rt: number) => [rt, rt + m3, rt + P5];
+      const dim = (rt: number) => [rt, rt + m3, rt + d5];
       const out: ChordEntry[] = tonicKind === "maj"
         ? [
-            chord("iv",   min3(deg(4))),        // parallel minor — most common
-            chord("bVII", maj3(deg(7) - A1)),   // Mixolydian / rock
-            chord("bVI",  maj3(deg(6) - A1)),   // parallel minor
-            chord("bIII", maj3(deg(3) - A1)),   // parallel minor
-            chord("bII",  maj3(deg(2) - A1)),   // Neapolitan (Phrygian)
-            chord("v",    min3(deg(5))),        // minor v (Mixolydian)
-            chord("ii°",  dim3(deg(2))),        // parallel minor
+            chord("iv",   min(P4)),         // parallel minor — most common
+            chord("bVII", maj(m7)),         // Mixolydian / rock
+            chord("bVI",  maj(m6)),         // parallel minor
+            chord("bIII", maj(m3)),         // parallel minor
+            chord("bII",  maj(m3 - M2)),    // Neapolitan (Phrygian)
+            chord("v",    min(P5)),         // minor v (Mixolydian)
+            chord("ii°",  dim(M2)),         // parallel minor
+            chord("#iv°", dim(P4 + A1)),    // Lydian — raised-4 leading tone
+            chord("II",   maj(M2)),         // Lydian / V-of-V colour
+            chord("III",  maj(M3)),         // chromatic mediant
           ]
         : [
-            chord("V",    maj3(deg(5))),        // harmonic-minor dominant
-            chord("vii°", dim3(deg(7) + A1)),   // leading-tone diminished
-            chord("IV",   maj3(deg(4))),        // Dorian major IV
-            chord("I",    maj3(deg(1))),        // Picardy third
-            chord("bII",  maj3(deg(2) - A1)),   // Neapolitan (Phrygian)
-            chord("VI",   maj3(deg(6) + A1)),   // Dorian major VI (raised 6)
-            chord("ii",   min3(deg(2))),        // parallel major ii
+            chord("V",    maj(P5)),         // harmonic-minor dominant
+            chord("vii°", dim(M7)),         // leading-tone diminished
+            chord("IV",   maj(P4)),         // Dorian major IV
+            chord("I",    maj(0)),          // Picardy third
+            chord("bII",  maj(m3 - M2)),    // Neapolitan (Phrygian)
+            chord("VI",   maj(M6)),         // Dorian major VI
+            chord("ii",   min(M2)),         // parallel major ii
+            chord("bV",   maj(d5)),         // Locrian / tritone colour
+            chord("bIII", maj(m3)),         // major mediant (harmonic minor)
+            chord("bVII", maj(m7)),         // subtonic
           ];
-      const have = new Set([...primary, ...diatonic].map(c => c.label));
-      return out.filter(c => !have.has(c.label));
+      // Dedup against the diatonic chords by PITCH CONTENT (not label): the
+      // sized bank labels minor-scale degrees positionally (III/VI/VII without
+      // flats), so a borrowing can match a diatonic chord under a different
+      // label.  Also dedups borrowings against each other.
+      const keyOf = (steps: number[]) =>
+        [...new Set(steps.map(s => (((s % edo) + edo) % edo)))].sort((a, b) => a - b).join(",");
+      const seen = new Set([...primary, ...diatonic].map(c => keyOf(c.steps!)));
+      const result: ChordEntry[] = [];
+      for (const c of out) {
+        const k = keyOf(c.steps!);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        result.push(c);
+      }
+      return result;
     };
     const modalChords = modalInterchange();
 
