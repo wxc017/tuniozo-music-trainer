@@ -29,7 +29,7 @@ import { getSizedTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABE
 import { xenIntervalsForEdo, bankToScaleFamMode } from "@/lib/tonalityChordPool";
 import { getScalesForEdo } from "@/lib/commonScales";
 import { formatRomanNumeral, formatRomanNumeralWithFamily } from "@/lib/formatRoman";
-import { chordSymbol, sizedRoman } from "@/lib/chordNotation";
+import { chordSymbol } from "@/lib/chordNotation";
 import { notationLabel } from "@/lib/notationLabels";
 
 // Stack a chord's quality tones (step offsets from the root) as a notation
@@ -2509,21 +2509,14 @@ export default function ChordsTab({
               const sizedLabel = useSchulter
                 ? chordSymbol([rootCT, ...c.chordToneOffsets.map(o => rootCT + (o * 1200) / edo)])
                 : romanWithSystem(c.roman, c.chordToneOffsets, edo, notationSystem);
-              // Inversions: rather than an unreadable "/N" slash crammed into the
-              // superscript, re-root the symbol on the bass note so it reads as the
-              // chord/quality OF the inversion's root (per direct user direction).
-              let headerLabel = sizedLabel;
-              if (bassNum && bassNum !== 1 && c.pitches.length > 0) {
-                const bassCents = (lowestPc * 1200) / edo;
-                const voiced = c.pitches.map(p => bassCents + ((p - c.pitches[0]) * 1200) / edo);
-                headerLabel = useSchulter
-                  ? chordSymbol(voiced)
-                  : (() => {
-                      const stack = systemStack(c.pitches.map(p => p - c.pitches[0]), edo, notationSystem);
-                      const num = sizedRoman(bassCents);
-                      return stack ? `${num} ${stack}` : num;
-                    })();
-              }
+              // Inversions: keep the SELECTED chord's real root label and append a
+              // jazz slash for the bass chord-tone (I/5 = I with its 5th in bass).
+              // Do NOT re-root the symbol on the bass: a I in 2nd inversion is
+              // still the I chord, not a "V" — re-rooting renamed it by whatever
+              // tone the inversion put in the bass (per direct user direction
+              // 2026-06-13 "there is not a 1 in a V nor a 3 … i should only be
+              // seeing [the selected chords]; its broken for inversions").
+              const headerLabel = sizedLabel + (bassNum && bassNum !== 1 ? `/${bassNum}` : "");
               return (
                 <button key={i}
                   onClick={() => {
@@ -2784,20 +2777,12 @@ export default function ChordsTab({
               const sizedLabelAns = useSchulter
                 ? chordSymbol([rootCAns, ...chordToneOffsets.map(o => rootCAns + (o * 1200) / edo)])
                 : romanWithSystem(chord.numeral, chordToneOffsets, edo, notationSystem);
-              // Inversions: re-root on the bass note (chord/quality of the
-              // inversion's root) instead of an unreadable "/N" slash suffix.
-              let headerLabel = sizedLabelAns;
-              if (bassNum && bassNum !== 1 && allNotes.length > 0) {
-                const bassCents = (lowestPc * 1200) / edo;
-                const voiced = allNotes.map(n => bassCents + ((n - allNotes[0]) * 1200) / edo);
-                headerLabel = useSchulter
-                  ? chordSymbol(voiced)
-                  : (() => {
-                      const stack = systemStack(allNotes.map(n => n - allNotes[0]), edo, notationSystem);
-                      const num = sizedRoman(bassCents);
-                      return stack ? `${num} ${stack}` : num;
-                    })();
-              }
+              // Inversions: keep the SELECTED chord's real root label and append a
+              // jazz slash for the bass chord-tone (I/5 = I with its 5th in bass).
+              // Do NOT re-root on the bass — that renamed a I in 2nd inversion as
+              // a "V" (per direct user direction 2026-06-13 "there is not a 1 in a
+              // V nor a 3 … i should only be seeing [the selected chords]").
+              const headerLabel = sizedLabelAns + (bassNum && bassNum !== 1 ? `/${bassNum}` : "");
               return (
               <div key={chord.index} role="button" tabIndex={0}
                 onClick={async () => {

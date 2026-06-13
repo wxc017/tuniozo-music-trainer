@@ -1245,17 +1245,36 @@ export function generateFunctionalLoop(
 
   const FUNCTIONAL_WEIGHTS = FUNCTIONAL_WEIGHTS_TABLE;
 
+  // Sized scales can fold a triad's quality into the label — e.g. the
+  // Large-Major dominant is genuinely augmented, so the bank emits "V+".
+  // The functional-weight table is keyed on undecorated numerals, so a "V+"
+  // would otherwise find no transitions and silently degrade the walk to a
+  // uniform fallback.  Map a decorated label to its functional base for BOTH
+  // the source lookup and target matching: an augmented dominant still
+  // functions as V.  Only the "+" (augmented) decoration is stripped — "°"
+  // stays, since vii°/ii° are real table keys with their own behaviour.
+  const baseLabel = (c: string): string => c.replace(/\+$/, "");
+  // Functional base → the actual available label(s) that reduce to it, so a
+  // table target "V" resolves to the in-pool "V+".  For an undecorated scale
+  // baseLabel is the identity and this reproduces the old avSet.has() match.
+  const baseToAvail = new Map<string, string[]>();
+  for (const c of available) {
+    const b = baseLabel(c);
+    const arr = baseToAvail.get(b);
+    if (arr) arr.push(c); else baseToAvail.set(b, [c]);
+  }
+
   // Build the transition map, filtering to only available chords.
   // Boosted targets get a weight multiplier so the walk biases toward them
   // even when their transition weights are modest.
   for (const chord of available) {
-    const weightMap = FUNCTIONAL_WEIGHTS[chord];
+    const weightMap = FUNCTIONAL_WEIGHTS[baseLabel(chord)];
     if (!weightMap) continue;
     const trans: Transition = [];
     for (const [target, weight] of Object.entries(weightMap)) {
-      if (avSet.has(target)) {
-        const w = boost.has(target) ? weight * boostFactor : weight;
-        trans.push({ target, weight: w });
+      for (const availTarget of baseToAvail.get(target) ?? []) {
+        const w = boost.has(availTarget) ? weight * boostFactor : weight;
+        trans.push({ target: availTarget, weight: w });
       }
     }
     if (trans.length > 0) transitions.set(chord, trans);
