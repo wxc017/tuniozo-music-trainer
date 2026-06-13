@@ -7,7 +7,7 @@ import {
   LOOP_LENGTHS,
   getAllChordsForEdo, generateFunctionalLoop,
   triadQuality, intervalLabel, randomChoice, shuffle,
-  ALL_VOICING_PATTERNS, VOICING_PATTERN_GROUPS, applyVoicingPattern,
+  ALL_VOICING_PATTERNS, VOICING_PATTERN_GROUPS, applyVoicingPattern, isTheoreticalVoicing,
   generateBassLine, generateMelodyLine,
   checkLowIntervalLimits, formatLilWarnings,
   buildTwoHandedVoicing, TWO_HAND_STYLES, type TwoHandStyle,
@@ -3366,13 +3366,16 @@ function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet
           {patterns.map(p => {
             const on = checkedPatterns.has(p.id);
             const color = "#9999ee";
+            const theoretical = isTheoreticalVoicing(p.id);
             return (
               <button key={p.id} onClick={() => setCheckedPatterns(toggleSet(checkedPatterns, p.id))}
+                title={theoretical ? "Theoretical — valid but uncommon as a literal voicing" : undefined}
                 className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition-colors ${
                   on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
                 }`}
                 style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
                 {renderPatternLabel(p.label)}
+                {theoretical && <sup className="ml-0.5 text-[7px] text-[#c08a4a] italic" title="Theoretical — uncommon as a literal voicing">th</sup>}
               </button>
             );
           })}

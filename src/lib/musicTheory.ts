@@ -200,6 +200,25 @@ export const ALL_VOICING_PATTERNS: VoicingPattern[] = [
 
 export const VOICING_PATTERN_GROUPS: string[] = [...new Set(ALL_VOICING_PATTERNS.map(p => p.group))];
 
+// Voicings kept for completeness / ear-training ("different ways to sing the
+// chord") but uncommon as literal comping voicings — flagged "theoretical" in
+// the UI per direct user direction 2026-06-13 (keep all, just label them).
+// Covers the 7th ordering that buries the major-7th against the root, and every
+// Sus permutation that isn't plain root position or a clean rotation.
+const THEORETICAL_VOICING_IDS = new Set<string>([
+  "7-1735",                                                    // 1 7 3 5 — maj7 cluster at the bottom
+  // Sus2 scrambles (root 1 2 5 / rotations 2 5 1, 7 1 2 5 stay "common")
+  "s2-152", "s2-215", "s2-521",
+  "s27-1725", "s27-1527", "s27-2715", "s27-5127", "s27-7251",
+  // Sus4 scrambles (root 1 4 5 / rotations 4 5 1, 7 1 4 5 stay "common")
+  "s4-154", "s4-415", "s4-541",
+  "s47-1745", "s47-1547", "s47-4715", "s47-5147", "s47-7451",
+]);
+/** True for a voicing that's theoretically valid but uncommon in practice. */
+export function isTheoreticalVoicing(id: string): boolean {
+  return THEORETICAL_VOICING_IDS.has(id);
+}
+
 // Re-label each voicing pattern with explicit "+N" octave tags — but ONLY
 // when the spread shift genuinely lifts a note ABOVE its natural ascending
 // placement.  A bottom-to-top sequence like "5 7 1 3" already implies its
