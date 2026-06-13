@@ -16,6 +16,30 @@ const DIATONIC: Record<number, EdoParams> = {
   53: { T: 9, s: 5, A1: 4 }, // used only for derivations; Ionian=[0,9,17,22,31,39,48]
 };
 
+// Diatonic params for ANY EDO.  EDOs with an explicit entry above use it; every
+// other selectable EDO (50, 48, 55, …) derives its params PROPORTIONALLY rather
+// than borrowing 31-EDO's literal step counts — the old `?? DIATONIC[31]`
+// fallback made P5 = 18 steps (≈432¢, a third not a fifth) in those tunings, so
+// every getChordShapes-built chord (secondary dominants, modal interchange, …)
+// came out malformed.  Find integer T (whole tone ≈ 2\12) and s (diatonic
+// semitone) with 5T + 2s = edo and 1 ≤ s < T, so the diatonic naturals land at
+// the right pitches and A1 = T − s is a genuine chromatic semitone.
+function diatonicParamsFor(edo: number): EdoParams {
+  const explicit = DIATONIC[edo];
+  if (explicit) return explicit;
+  const guess = Math.round(edo / 6);            // whole tone ≈ 2\12
+  for (let d = 0; d <= 6; d++) {
+    for (const T of [guess + d, guess - d]) {
+      const rem = edo - 5 * T;
+      if (T >= 2 && rem >= 2 && rem % 2 === 0) {
+        const s = rem / 2;
+        if (s >= 1 && s < T) return { T, s, A1: T - s };
+      }
+    }
+  }
+  return DIATONIC[31];                            // degenerate (tiny/odd) EDOs
+}
+
 // ── Degree maps ───────────────────────────────────────────────────────
 // Maps degree names to step counts above the root.
 // For 53-EDO: uses 5-limit JI (M3=17, P4=22, P5=31, not Pythagorean 18/23/32).
@@ -71,7 +95,7 @@ function make53DegreeMap(): Record<string, number> {
 
 export function getDegreeMap(edo: number): Record<string, number> {
   if (edo === 53) return make53DegreeMap();
-  const p = DIATONIC[edo] ?? DIATONIC[31];
+  const p = diatonicParamsFor(edo);
   return makeDegreeMap(p.T, p.s, p.A1);
 }
 
@@ -84,7 +108,7 @@ const _fullDegreeNamesCache: Record<number, string[]> = {};
 
 export function getFullDegreeNames(edo: number): string[] {
   if (_fullDegreeNamesCache[edo]) return _fullDegreeNamesCache[edo];
-  const p = DIATONIC[edo] ?? DIATONIC[31];
+  const p = diatonicParamsFor(edo);
   const { T, s, A1 } = p;
   const naturals: [string, number][] = [
     ["1", 0], ["2", T], ["3", 2 * T],
@@ -197,7 +221,7 @@ export function getEDOIntervals(edo: number) {
     P5: dm["5"],
     m6: dm["b6"], M6: dm["6"],
     m7: dm["b7"], M7: dm["7"],
-    A1: DIATONIC[edo]?.A1 ?? dm["#4"] - dm["4"],
+    A1: diatonicParamsFor(edo).A1,
     A2: dm["#2"],
   };
 }
@@ -1256,7 +1280,7 @@ function buildSymmetricFamily(edo: number): ScaleFamilyMap {
 }
 
 function getPatternMaps(edo: number): Record<string, ScaleFamilyMap> {
-  const p = DIATONIC[edo] ?? DIATONIC[31];
+  const p = diatonicParamsFor(edo);
   const T = p.T, s = p.s, A1 = p.A1;
   const A2 = T + A1; // augmented second interval
 
@@ -1433,7 +1457,7 @@ function keySigWithinLimit(degNum: string, acc: string, limit = MAX_KEY_SIG_ACC)
 
 export function pcToNoteNameWithEnharmonic(pc: number, edo: number): string {
   if (!_enharmonicCache[edo]) {
-    const p = DIATONIC[edo] ?? DIATONIC[31];
+    const p = diatonicParamsFor(edo);
     const { T, s, A1 } = p;
     const naturals: [string, number][] = [
       ["1", 0], ["2", T], ["3", 2 * T],
