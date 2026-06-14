@@ -406,6 +406,7 @@ export default function ChordsTab({
   // shown while the visualizer steps through the loop with no audio.
   const [targetChordInfo, setTargetChordInfo] = useState<{
     progression: string;
+    tonality: string | null;   // which selected tonality this round was generated in
     perChord: {
       roman: string;
       quality: string;
@@ -1859,7 +1860,7 @@ export default function ChordsTab({
         }
         return { roman: rn, quality, inversion, pitches: chordPitches, chordRootPc, chordToneOffsets };
       });
-      setTargetChordInfo({ progression: info, perChord, activeIndex: -1 });
+      setTargetChordInfo({ progression: info, tonality: pickedTonality ?? null, perChord, activeIndex: -1 });
       setIsLooping(true);
       for (let i = 0; i < voices.chords.length; i++) {
         const frame = voices.chords[i];
@@ -2519,6 +2520,9 @@ export default function ChordsTab({
           <div className="flex items-baseline gap-2 mb-1">
             <span className="text-[10px] text-[#7a7af0] font-semibold tracking-wider">SHOW TARGET</span>
             <span className="text-[11px] text-[#aaa] font-mono">{targetChordInfo.progression}</span>
+            {targetChordInfo.tonality && (
+              <span className="text-[10px] text-[#888] ml-auto italic">Scale: {targetChordInfo.tonality}</span>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {targetChordInfo.perChord.map((c, i) => {
