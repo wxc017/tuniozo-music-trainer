@@ -95,11 +95,24 @@ export default function LumatoneIntervalsTab() {
     return { pcColors: colorByPc, legend: leg };
   }, [selectedScales, scaleByName, rootPc, edo]);
 
-  const grouped = useMemo(() => {
-    const m = new Map<string, NamedScale[]>();
-    for (const s of scales) { const a = m.get(s.group) ?? []; a.push(s); m.set(s.group, a); }
-    return [...m.entries()];
+  // Family → sub-category → scales, splitting the "family · limit" group string
+  // (matches the Interval Spectrum overlay).  Families are collapsible.
+  const families = useMemo(() => {
+    const fam = new Map<string, Map<string, NamedScale[]>>();
+    for (const s of scales) {
+      const i = s.group.indexOf(" · ");
+      const family = i >= 0 ? s.group.slice(0, i) : s.group;
+      const sub = i >= 0 ? s.group.slice(i + 3) : "";
+      let subMap = fam.get(family);
+      if (!subMap) { subMap = new Map(); fam.set(family, subMap); }
+      const arr = subMap.get(sub) ?? [];
+      arr.push(s); subMap.set(sub, arr);
+    }
+    return [...fam.entries()].map(([family, subMap]) => ({ family, subs: [...subMap.entries()] }));
   }, [scales]);
+  const [collapsedFams, setCollapsedFams] = useLocalState<string[]>("li_collapsed_fams", []);
+  const toggleFam = (f: string) =>
+    setCollapsedFams(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
 
   // Click = drone the key; Ctrl/Cmd-click = set it as the root.
   const onKey = (k: ComputedKey, e: MouseEvent) => {
@@ -186,27 +199,46 @@ export default function LumatoneIntervalsTab() {
               </span>
             </div>
           )}
-          <div className="overflow-y-auto space-y-2 pr-1 flex-1">
-            {grouped.map(([group, list]) => (
-              <div key={group}>
-                <p className="text-[9px] text-[#666] uppercase tracking-wide mb-1">{group}</p>
-                <div className="flex flex-wrap gap-1">
-                  {list.map(s => {
-                    const on = selectedScales.includes(s.name);
-                    const color = on ? SCALE_COLORS[selectedScales.indexOf(s.name) % SCALE_COLORS.length] : undefined;
-                    return (
-                      <button key={s.name} onClick={() => toggleScale(s.name)}
-                        className={`px-1.5 py-0.5 rounded text-[10px] border transition-colors ${on
-                          ? "" : "bg-[#14141a] border-[#2a2a3a] text-[#9090b8] hover:text-[#cfe6ff]"}`}
-                        style={on ? { background: (color ?? "#fff") + "30", borderColor: color, color } : {}}>
-                        {on && <span className="inline-block w-2 h-2 rounded-sm mr-1 align-middle" style={{ background: color }} />}
-                        {s.name}
-                      </button>
-                    );
-                  })}
+          <div className="overflow-y-auto space-y-1 pr-1 flex-1">
+            {families.map(({ family, subs }) => {
+              const collapsed = collapsedFams.includes(family);
+              const all = subs.flatMap(([, list]) => list);
+              const selCount = all.filter(s => selectedScales.includes(s.name)).length;
+              return (
+                <div key={family} className="rounded border border-[#1a1a22] bg-[#0b0b10]">
+                  <div onClick={() => toggleFam(family)}
+                    className="flex items-center gap-1.5 px-1.5 py-1 cursor-pointer select-none hover:bg-[#13131a] rounded">
+                    <span className="w-2.5 text-[9px] text-[#666]">{collapsed ? "▸" : "▾"}</span>
+                    <span className="text-[9px] font-semibold uppercase tracking-wider text-[#d4a050] flex-1 truncate">{family}</span>
+                    {selCount > 0 && <span className="text-[9px] text-[#7173e6] font-semibold">{selCount}</span>}
+                  </div>
+                  {!collapsed && (
+                    <div className="px-1.5 pb-1.5 space-y-1">
+                      {subs.map(([sub, list]) => (
+                        <div key={sub}>
+                          {sub && <p className="text-[8px] uppercase tracking-wide text-[#5a6a5a] mb-0.5">{sub}</p>}
+                          <div className="flex flex-wrap gap-1">
+                            {list.map(s => {
+                              const on = selectedScales.includes(s.name);
+                              const color = on ? SCALE_COLORS[selectedScales.indexOf(s.name) % SCALE_COLORS.length] : undefined;
+                              return (
+                                <button key={s.name} onClick={() => toggleScale(s.name)}
+                                  className={`px-1.5 py-0.5 rounded text-[10px] border transition-colors ${on
+                                    ? "" : "bg-[#14141a] border-[#2a2a3a] text-[#9090b8] hover:text-[#cfe6ff]"}`}
+                                  style={on ? { background: (color ?? "#fff") + "30", borderColor: color, color } : {}}>
+                                  {on && <span className="inline-block w-2 h-2 rounded-sm mr-1 align-middle" style={{ background: color }} />}
+                                  {s.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </aside>
 
