@@ -73,30 +73,50 @@ const TEMPLATES: ScaleTemplate[] = [
   // per blue-note alteration the EDO offers).
 ];
 
-// ── Blues Scale (every blue-note alteration in one scale) ───────────
-// A single "Blues Scale" = the union of the major and minor blues, carrying
-// EVERY blue-note alteration the EDO offers.  The stable pillars (1, 4, 5) are
-// pure; every other degree is a smear across its region, so the board lights up
-//   1 · (major-2nd smear) · (b3→3 smear) · 4 · (b5/tritone smear) · 5
-//     · (major-6th smear, incl. sM6) · (b7 smear)
-// all at once — the full subminor↔major third, the flat-five tritone region
-// (sTT/sub5/lTT), the major-sixth alterations, and the subminor↔minor seventh.
+// ── Blues scales (Small / Center / Large, minor & major) ────────────
+// Six blues scales — Small/Center/Large × Minor/Major — each a clean, playable
+// hexatonic blues whose blue notes are all taken at the SAME sized variant
+// (small / centre / large), so the three sizes "resolve" the blue-note smear
+// into three discrete shades the way the sized diatonics do.
+//   Minor Blues = 1 · b3 · 4 · b5(tritone) · 5 · b7
+//   Major Blues = 1 · 2 · b3 · 3 · 5 · 6
+// Each is named by the actual size of its characteristic third (the b3 for
+// minor, the major 3rd for major).  An EDO that lacks a size (e.g. 12-EDO has
+// only one minor 3rd) collapses to fewer scales; steps falling back to a
+// neighbouring size are deduped by name.
 function generateBluesScales(edo: number): NamedScale[] {
+  const codeStep = new Map<string, number>();
+  for (let s = 0; s < edo; s++) { const c = fuzzyCode((s * 1200) / edo); if (!codeStep.has(c)) codeStep.set(c, s); }
+  const SZL = ["s", "", "l"];                       // small / centre / large prefix
   const c2s = (c: number) => ((Math.round((edo * c) / 1200) % edo) + edo) % edo;
-  const inBand = (lo: number, hi: number): number[] => {
-    const r: number[] = [];
-    for (let s = 1; s < edo; s++) { const c = (s * 1200) / edo; if (c >= lo && c <= hi) r.push(s); }
-    return r;
-  };
   const P4 = c2s(498), P5 = c2s(702);
-  const second  = inBand(178, 240);    // major 2nd smear: sM2/M2/lM2
-  const third   = inBand(255, 445);    // blue 3rd: subminor → large major
-  const fifth   = inBand(560, 650);    // blue 5th: the tritone smear (sTT/sub5/lTT)
-  const sixth   = inBand(878, 940);    // major 6th smear: sM6/M6/lM6
-  const seventh = inBand(930, 1045);   // blue 7th: subminor → minor 7th
-  const steps = [...new Set([0, ...second, ...third, P4, ...fifth, P5, ...sixth, ...seventh]
-    .map(x => ((x % edo) + edo) % edo))].sort((a, b) => a - b);
-  return steps.length >= 6 ? [{ name: "Blues Scale", steps, group: "Blues" }] : [];
+  // EDO step for a quality+degree code at size sz (0/1/2): exact, else nearest size.
+  const sized = (code: string, sz: number): number | undefined => {
+    for (const t of [sz, sz - 1, sz + 1, sz - 2, sz + 2])
+      if (t >= 0 && t <= 2) { const st = codeStep.get(SZL[t] + code); if (st !== undefined) return st; }
+    return undefined;
+  };
+  const sizeWord = (step: number): string => {
+    const c = fuzzyCode((step * 1200) / edo);
+    return c.startsWith("s") ? "Small " : c.startsWith("l") ? "Large " : "";  // centre = plain
+  };
+  const out: NamedScale[] = [];
+  const seenName = new Set<string>(), seenSteps = new Set<string>();
+  const emit = (kind: "Minor" | "Major", nameStep: number | undefined, parts: (number | undefined)[]) => {
+    if (nameStep === undefined || parts.some(s => s === undefined)) return;
+    const u = [...new Set((parts as number[]).map(x => ((x % edo) + edo) % edo))].sort((a, b) => a - b);
+    if (u.length < 6 || u[0] !== 0) return;
+    const name = `${sizeWord(nameStep)}${kind} Blues`, key = u.join(",");
+    if (seenName.has(name) || seenSteps.has(key)) return;
+    seenName.add(name); seenSteps.add(key);
+    out.push({ name, steps: u, group: "Blues" });
+  };
+  for (const sz of [0, 1, 2]) {                     // small → centre → large
+    const m3 = sized("m3", sz), M3 = sized("M3", sz);
+    emit("Minor", m3, [0, m3, P4, sized("T", sz), P5, sized("m7", sz)]);
+    emit("Major", M3, [0, sized("M2", sz), m3, M3, P5, sized("M6", sz)]);
+  }
+  return out;
 }
 
 // ── Systematic sized diatonic scales ────────────────────────────────
