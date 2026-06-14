@@ -73,21 +73,22 @@ const TEMPLATES: ScaleTemplate[] = [
   // per blue-note alteration the EDO offers).
 ];
 
-// ── Blues scales (Small / Center / Large + blue-note alterations) ────
-// The blues family as a smear.  Two clean hexatonic blues —
-//   Minor Blues = 1 · b3 · 4 · #4/b5 · 5 · b7
-//   Major Blues = 1 · 2 · b3 · 3 · 5 · 6
-// — each enumerated as THREE bases (Small / Center / Large, every blue note at
-// one size, named by the characteristic third) PLUS one scale per single
-// blue-note alteration the EDO can render, so each blue note appears in all its
-// shades the way the sized diatonics enumerate their colour tones:
-//   • the blue 3rd → subminor … neutral  (the "3rd like neutral" shades)
-//   • the #4/b5    → super-4th · tritone(s) · sub-5th  (all the different #4)
-//   • the blue 7th → harmonic-7th … neutral
-// Alterations move ONE note off the central base and are named by that note's
-// spectrum code (e.g. "Minor Blues lT", "Minor Blues n3", "Major Blues sm3").
-// A shade the EDO can't render is simply dropped (12-EDO collapses to the two
-// plain bases); scales colliding by name or step-set are deduped.
+// ── Blues scales (three sized versions × blue-note smears) ───────────
+// Each blues is its pentatonic plus blue notes wedged in the gaps, and every
+// blue note is "smeared" — enumerated in all the shades the EDO can render — the
+// way the sized diatonics enumerate their colour tones.  The smear gaps follow
+// where players actually bend:
+//   Minor Blues = 1 · b3 · 4 ·[4–5: #4/b5]· 5 ·[6–7: b7]    (anchor = b3)
+//   Major Blues = 1 · 2 ·[2–3: b3]· 3 · 5 · 6 ·[6–7: b7]    (anchor = 3)
+//     • 2–3  (major) → the blue 3rd:  subminor … neutral
+//     • 4–5  (minor) → the #4/b5:     super-4th · tritone(s) · sub-5th
+//     • 6–7  (both)  → the blue 7th:  harmonic-7th … neutral  (added to major)
+// Three sized versions (Small / Center / Large, named by the characteristic
+// third — itself NOT smeared) are generated for each, and within every version
+// each gap is smeared to all its shades: one scale per single-note move, named
+// by that note's spectrum code (e.g. "Minor Blues lT", "Major Blues n3").
+// Shades the EDO can't render are dropped (12-EDO collapses to the two plain
+// bases); scales colliding by name or step-set are deduped.
 function generateBluesScales(edo: number): NamedScale[] {
   const codeStep = new Map<string, number>();
   for (let s = 0; s < edo; s++) { const c = fuzzyCode((s * 1200) / edo); if (!codeStep.has(c)) codeStep.set(c, s); }
@@ -125,19 +126,20 @@ function generateBluesScales(edo: number): NamedScale[] {
   const MODES: { kind: "Minor" | "Major"; slots: Slot[] }[] = [
     { kind: "Minor", slots: [
       fixed(0),
-      blue("m3", smear("m", 3), true),                     // the characteristic blue 3rd (anchor)
+      blue("m3", undefined, true),                         // characteristic b3 — anchor, not smeared
       fixed(P4),
-      blue("T", ["sup4", "sT", "T", "lT", "sub5"]),        // the #4–b5 tritone smear
+      blue("T", ["sup4", "sT", "T", "lT", "sub5"]),        // 4–5 smear: the #4/b5
       fixed(P5),
-      blue("m7", smear("m", 7)),                           // the blue 7th
+      blue("m7", smear("m", 7)),                           // 6–7 smear: the blue 7th
     ] },
     { kind: "Major", slots: [
       fixed(0),
-      blue("M2", smear("M", 2)),
-      blue("m3", smear("m", 3)),                           // the blue (passing) 3rd
-      blue("M3", undefined, true),                          // the characteristic 3rd (anchor) — names the scale
+      blue("M2"),                                           // stable pentatonic 2nd
+      blue("m3", smear("m", 3)),                           // 2–3 smear: the blue 3rd
+      blue("M3", undefined, true),                          // characteristic 3rd — anchor, not smeared
       fixed(P5),
-      blue("M6", smear("M", 6)),
+      blue("M6"),                                           // stable pentatonic 6th
+      blue("m7", smear("m", 7)),                           // 6–7 smear: the blue 7th (added to major)
     ] },
   ];
 
@@ -155,23 +157,23 @@ function generateBluesScales(edo: number): NamedScale[] {
 
   for (const { kind, slots } of MODES) {
     const anchorIdx = slots.findIndex(s => s.anchor);
-    // Three same-size bases, named by the characteristic third's actual size.
+    // Three sized versions (Small / Center / Large), each named by the
+    // characteristic third's actual size, each smeared at its blue-note gaps.
     for (let sz = 0; sz < 3; sz++) {
       const base = slots.map(s => s.base(sz));
-      emit(`${sizeWord(base[anchorIdx])}${kind} Blues`, base);
+      const baseName = `${sizeWord(base[anchorIdx])}${kind} Blues`;
+      emit(baseName, base);                               // the version's plain base
+      // every shade of each smear gap (one single-note move per scale)
+      slots.forEach((slot, i) => {
+        if (!slot.alts) return;
+        for (const code of slot.alts) {
+          const st = codeStep.get(code);                 // exact — no fallback for smears
+          if (st === undefined || st === base[i]) continue;
+          const parts = base.slice(); parts[i] = st;
+          emit(`${baseName} ${code}`, parts);
+        }
+      });
     }
-    // Single blue-note alterations off the central base (every shade the EDO has).
-    const center = slots.map(s => s.base(1));
-    const baseName = `${sizeWord(center[anchorIdx])}${kind} Blues`;
-    slots.forEach((slot, i) => {
-      if (!slot.alts) return;
-      for (const code of slot.alts) {
-        const st = codeStep.get(code);              // exact — no fallback for alterations
-        if (st === undefined || st === center[i]) continue;
-        const parts = center.slice(); parts[i] = st;
-        emit(`${baseName} ${code}`, parts);
-      }
-    });
   }
   return out;
 }
