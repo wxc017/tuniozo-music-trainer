@@ -123,20 +123,30 @@ export function chordSymbol(centsFromTonic: number[]): string {
   // 2026-06-14).  Omitted for the tonic (unison / octave).
   const rootCode = sizedCode(root);
   const prefix = rootCode === "1" || rootCode === "8" ? "" : `${rootCode} `;
+  // A genuine perfect 5th is implied (hidden); a tempered 5th still coded "5" is
+  // shown as d5 / A5.  Either way the 5th is accounted for.  But a diminished or
+  // augmented 5th sizes as a DIFFERENT degree (l4 ~576¢, lm6 ~816¢) and keeps
+  // that sized code — so when a 3rd-bearing chord shows no 5-family tone at all,
+  // append "no5" so the altered interval doesn't read as a stray 4th / 6th.  Per
+  // direct user direction 2026-06-14: keep the sized code, just say no5.
+  let fifthSeen = false, hasThird = false;
   const stack: string[] = [];
   for (const c of sorted) {
     const code = sizedCode(c - root);
     if (code === "1" || code === "8") continue;                  // skip root / octave
+    if (/3$/.test(code)) hasThird = true;
     if (code === "5") {
-      // Only a GENUINELY perfect 5th is implied (hidden).  A tempered/altered
-      // 5th is always signified: narrow → "d5", wide → "A5".
       const off = ((((c - root) % 1200) + 1200) % 1200) - 702;
-      if (Math.abs(off) <= 14) continue;
+      if (Math.abs(off) <= 14) { fifthSeen = true; continue; }   // genuine perfect 5th: implied
+      fifthSeen = true;                                          // tempered 5th: signify d5 / A5
       const sig = off < 0 ? "d5" : "A5";
       if (stack[stack.length - 1] !== sig) stack.push(sig);
       continue;
     }
     if (stack[stack.length - 1] !== code) stack.push(code);
   }
+  // 3rd present but no 5-family tone — the altered 5th (l4 / lm6 / …) kept its own
+  // sized code above; flag the missing perfect 5th explicitly.
+  if (hasThird && !fifthSeen) stack.push("no5");
   return prefix + (stack.length ? `${numeral} ${stack.join(" ")}` : numeral);
 }
