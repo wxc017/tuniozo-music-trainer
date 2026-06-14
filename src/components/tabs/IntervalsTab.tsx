@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import { randomChoice } from "@/lib/musicTheory";
 import { getHeathwaiteSolfege, getFullDegreeNames } from "@/lib/edoData";
-import { sizedIntervalNamesFull } from "@/lib/chordNotation";
+import { fuzzyIntervalNamesFull } from "@/lib/intervalCodes";
 import { getScalesForEdo } from "@/lib/commonScales";
 import { notationLabel, SCHULTER } from "@/lib/notationLabels";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
@@ -76,7 +76,7 @@ export default function IntervalsTab({
   // the size distinction is a Schulter-spectrum concept.
   const isSchulter = !notationSystem || notationSystem === SCHULTER;
   const ivNames = isSchulter
-    ? sizedIntervalNamesFull(edo)                // full-word sized names (e.g. "Small Minor 3rd")
+    ? fuzzyIntervalNamesFull(edo)                // full-word spectrum names matching Lumatone Intervals (e.g. "Neutral Third")
     : Array.from({ length: edo + 1 }, (_, s) => notationLabel(edo, notationSystem, s));
 
   // Per-EDO scale catalog grouped for the quick-fill picker.  Mirrors the

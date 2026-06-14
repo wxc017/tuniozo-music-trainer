@@ -381,6 +381,46 @@ export function fuzzyCode(cents: number): string {
   return betweenCode(best, c);
 }
 
+const FUZZY_ORD: Record<string, string> = {
+  "2": "Second", "3": "Third", "4": "Fourth", "5": "Fifth", "6": "Sixth", "7": "Seventh",
+};
+/** Full-word spelling of the Schulter-spectrum interval at `cents` — the SAME
+ *  classification fuzzyCode uses (so the Lumatone-Intervals naming and this stay
+ *  in lock-step), just written out: "sm3" → "Small Minor Third", "n3" → "Neutral
+ *  Third", "T" → "Tritone", "s4" → "Small Perfect Fourth", "sup4" →
+ *  "Superfourth".  Used where a readable label is wanted instead of the code. */
+export function fuzzyFullName(cents: number): string {
+  const code = fuzzyCode(cents);
+  if (code === "1") return "Unison";
+  if (code === "8") return "Octave";
+  if (code === "k") return "Comma";
+  if (code === "di") return "Diesis";
+  if (code === "-k") return "Octave less Comma";
+  if (code === "-di") return "Octave less Diesis";
+  if (code === "sup4") return "Superfourth";
+  if (code === "sub5") return "Subfifth";
+  const tt = /^([sl]?)T$/.exec(code);
+  if (tt) return `${tt[1] === "s" ? "Small " : tt[1] === "l" ? "Large " : ""}Tritone`;
+  const it = /^i(\d)$/.exec(code);
+  if (it) return `Interseptimal ${FUZZY_ORD[it[1]] ?? it[1]}`;
+  const eq = /^e(\d)$/.exec(code);
+  if (eq) return `Equable ${FUZZY_ORD[eq[1]] ?? eq[1]}`;
+  // Banded: [small|large]? + (minor|major|neutral|perfect) + degree.
+  const m = /^([sl]?)([mMn]?)(\d)$/.exec(code);
+  if (m) {
+    const size = m[1] === "s" ? "Small " : m[1] === "l" ? "Large " : "";
+    const qual = m[2] === "m" ? "Minor " : m[2] === "M" ? "Major " : m[2] === "n" ? "Neutral " : "Perfect ";
+    const ord = FUZZY_ORD[m[3]] ?? `${m[3]}th`;
+    return (size + qual + ord).trim();
+  }
+  return code;
+}
+
+/** Full-word spectrum interval name per EDO step (index 0..edo). */
+export function fuzzyIntervalNamesFull(edo: number): string[] {
+  return Array.from({ length: edo + 1 }, (_, s) => fuzzyFullName((s * 1200) / edo));
+}
+
 /** Nearest spectrum region for a pitch in cents (containing region preferred,
  *  then main regions, then nearest center). */
 function nearestRegion(c: number): Region | null {
