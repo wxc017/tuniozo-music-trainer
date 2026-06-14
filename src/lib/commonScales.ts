@@ -73,17 +73,21 @@ const TEMPLATES: ScaleTemplate[] = [
   // per blue-note alteration the EDO offers).
 ];
 
-// ── Blues scales (Small / Center / Large, minor & major) ────────────
-// Six blues scales — Small/Center/Large × Minor/Major — each a clean, playable
-// hexatonic blues whose blue notes are all taken at the SAME sized variant
-// (small / centre / large), so the three sizes "resolve" the blue-note smear
-// into three discrete shades the way the sized diatonics do.
-//   Minor Blues = 1 · b3 · 4 · b5(tritone) · 5 · b7
+// ── Blues scales (Small / Center / Large + blue-note alterations) ────
+// The blues family as a smear.  Two clean hexatonic blues —
+//   Minor Blues = 1 · b3 · 4 · #4/b5 · 5 · b7
 //   Major Blues = 1 · 2 · b3 · 3 · 5 · 6
-// Each is named by the actual size of its characteristic third (the b3 for
-// minor, the major 3rd for major).  An EDO that lacks a size (e.g. 12-EDO has
-// only one minor 3rd) collapses to fewer scales; steps falling back to a
-// neighbouring size are deduped by name.
+// — each enumerated as THREE bases (Small / Center / Large, every blue note at
+// one size, named by the characteristic third) PLUS one scale per single
+// blue-note alteration the EDO can render, so each blue note appears in all its
+// shades the way the sized diatonics enumerate their colour tones:
+//   • the blue 3rd → subminor … neutral  (the "3rd like neutral" shades)
+//   • the #4/b5    → super-4th · tritone(s) · sub-5th  (all the different #4)
+//   • the blue 7th → harmonic-7th … neutral
+// Alterations move ONE note off the central base and are named by that note's
+// spectrum code (e.g. "Minor Blues lT", "Minor Blues n3", "Major Blues sm3").
+// A shade the EDO can't render is simply dropped (12-EDO collapses to the two
+// plain bases); scales colliding by name or step-set are deduped.
 function generateBluesScales(edo: number): NamedScale[] {
   const codeStep = new Map<string, number>();
   for (let s = 0; s < edo; s++) { const c = fuzzyCode((s * 1200) / edo); if (!codeStep.has(c)) codeStep.set(c, s); }
@@ -96,25 +100,78 @@ function generateBluesScales(edo: number): NamedScale[] {
       if (t >= 0 && t <= 2) { const st = codeStep.get(SZL[t] + code); if (st !== undefined) return st; }
     return undefined;
   };
-  const sizeWord = (step: number): string => {
+  const sizeWord = (step: number | undefined): string => {
+    if (step === undefined) return "";
     const c = fuzzyCode((step * 1200) / edo);
     return c.startsWith("s") ? "Small " : c.startsWith("l") ? "Large " : "";  // centre = plain
   };
+
+  // A blues mode is an ordered list of degree slots.  Fixed slots (root / 4th /
+  // 5th) resolve to one step; sized slots take a quality+degree at the base size
+  // and, when alterable, carry the explicit codes of every shade the blue note
+  // can bend to (`alts`).  `anchor` marks the slot whose actual size names the
+  // scale (the characteristic third).
+  interface Slot { base: (sz: number) => number | undefined; alts?: string[]; anchor?: boolean }
+  const fixed = (st: number): Slot => ({ base: () => st });
+  const blue = (code: string, alts?: string[], anchor = false): Slot =>
+    ({ base: sz => sized(code, sz), alts, anchor });
+  // The small / centre / large shades of a quality+degree (centre = bare code).
+  const bands = (q: string, d: number) => [`s${q}${d}`, `${q}${d}`, `l${q}${d}`];
+  // A blue note's full smear: its own quality's three sizes, plus the three
+  // neutral sizes (so "3rd like neutral" appears on any EDO that has a neutral
+  // third, whichever sub-band it lands in).
+  const smear = (q: string, d: number) => [...bands(q, d), ...bands("n", d)];
+
+  const MODES: { kind: "Minor" | "Major"; slots: Slot[] }[] = [
+    { kind: "Minor", slots: [
+      fixed(0),
+      blue("m3", smear("m", 3), true),                     // the characteristic blue 3rd (anchor)
+      fixed(P4),
+      blue("T", ["sup4", "sT", "T", "lT", "sub5"]),        // the #4–b5 tritone smear
+      fixed(P5),
+      blue("m7", smear("m", 7)),                           // the blue 7th
+    ] },
+    { kind: "Major", slots: [
+      fixed(0),
+      blue("M2", smear("M", 2)),
+      blue("m3", smear("m", 3)),                           // the blue (passing) 3rd
+      blue("M3", undefined, true),                          // the characteristic 3rd (anchor) — names the scale
+      fixed(P5),
+      blue("M6", smear("M", 6)),
+    ] },
+  ];
+
   const out: NamedScale[] = [];
   const seenName = new Set<string>(), seenSteps = new Set<string>();
-  const emit = (kind: "Minor" | "Major", nameStep: number | undefined, parts: (number | undefined)[]) => {
-    if (nameStep === undefined || parts.some(s => s === undefined)) return;
+  const emit = (name: string, parts: (number | undefined)[]) => {
+    if (parts.some(s => s === undefined)) return;
     const u = [...new Set((parts as number[]).map(x => ((x % edo) + edo) % edo))].sort((a, b) => a - b);
-    if (u.length < 6 || u[0] !== 0) return;
-    const name = `${sizeWord(nameStep)}${kind} Blues`, key = u.join(",");
+    if (u.length < 6 || u[0] !== 0) return;          // a blue note collapsed onto a neighbour
+    const key = u.join(",");
     if (seenName.has(name) || seenSteps.has(key)) return;
     seenName.add(name); seenSteps.add(key);
     out.push({ name, steps: u, group: "Blues" });
   };
-  for (const sz of [0, 1, 2]) {                     // small → centre → large
-    const m3 = sized("m3", sz), M3 = sized("M3", sz);
-    emit("Minor", m3, [0, m3, P4, sized("T", sz), P5, sized("m7", sz)]);
-    emit("Major", M3, [0, sized("M2", sz), m3, M3, P5, sized("M6", sz)]);
+
+  for (const { kind, slots } of MODES) {
+    const anchorIdx = slots.findIndex(s => s.anchor);
+    // Three same-size bases, named by the characteristic third's actual size.
+    for (let sz = 0; sz < 3; sz++) {
+      const base = slots.map(s => s.base(sz));
+      emit(`${sizeWord(base[anchorIdx])}${kind} Blues`, base);
+    }
+    // Single blue-note alterations off the central base (every shade the EDO has).
+    const center = slots.map(s => s.base(1));
+    const baseName = `${sizeWord(center[anchorIdx])}${kind} Blues`;
+    slots.forEach((slot, i) => {
+      if (!slot.alts) return;
+      for (const code of slot.alts) {
+        const st = codeStep.get(code);              // exact — no fallback for alterations
+        if (st === undefined || st === center[i]) continue;
+        const parts = center.slice(); parts[i] = st;
+        emit(`${baseName} ${code}`, parts);
+      }
+    });
   }
   return out;
 }
