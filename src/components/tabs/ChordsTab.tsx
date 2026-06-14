@@ -1320,7 +1320,17 @@ export default function ChordsTab({
       // to the range.
       const inRange = allCandidates.filter(bassInRange);
       if (inRange.length > 0) {
-        chordAbs = randomChoice(inRange);
+        if (regMode === "Fixed Register") {
+          // Deterministic register: bass nearest the MIDDLE of the exercise
+          // range, so the progression always starts in the same octave instead
+          // of a random one (the rest voice-lead from here) — per direct user
+          // direction 2026-06-14 "big leaps and random registers".
+          const mid = (lowestPitch + highestPitch) / 2;
+          chordAbs = inRange.reduce((best, c) =>
+            Math.abs(Math.min(...c) - mid) < Math.abs(Math.min(...best) - mid) ? c : best);
+        } else {
+          chordAbs = randomChoice(inRange);   // Random Bass Octave / Full Register
+        }
       } else if (allCandidates.length > 0) {
         const byOffset = [...allCandidates].sort((a, b) => bassOffset(a) - bassOffset(b));
         chordAbs = byOffset[0];
