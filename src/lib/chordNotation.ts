@@ -97,8 +97,22 @@ export function chordSymbol(centsFromTonic: number[]): string {
   let numeral = sizedRoman(root);
   const pm = /^([sl]?)(.+)$/.exec(numeral);
   if (pm && sorted.length >= 2) {
-    const t = sizedCode(sorted[1] - root);
-    const minorChord = /m\d/.test(t) && !/M/.test(t);   // minor third above the root
+    // Case from the chord's THIRD — the first degree-3 tone above the root —
+    // NOT sorted[1].  sorted[1] can be a DUPLICATED root (interval "1", when the
+    // caller both prepends the root and includes it in the tone list) or an
+    // extension (a 9th sorts below the third), either of which would wrongly
+    // flip a minor chord to uppercase.  Falls back to the first non-unison tone
+    // (sus chords have no 3rd).
+    let thirdIv: number | null = null, firstIv: number | null = null;
+    for (const c of sorted) {
+      const iv = c - root;
+      const code = sizedCode(iv);
+      if (code === "1" || code === "8") continue;        // skip root / octave (and duplicates)
+      if (firstIv === null) firstIv = iv;
+      if (/3$/.test(code)) { thirdIv = iv; break; }
+    }
+    const t = sizedCode(thirdIv ?? firstIv ?? (sorted[1] - root));
+    const minorChord = /m\d/.test(t) && !/M/.test(t);    // minor third above the root
     numeral = pm[1] + (minorChord ? pm[2].toLowerCase() : pm[2].toUpperCase());
   }
   const stack: string[] = [];
