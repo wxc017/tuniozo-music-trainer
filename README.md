@@ -21,3 +21,4 @@ A microtonal music practice tool me and AI built for my own daily practice. Main
 - **Harmonic Lattice** — Explore a just-intonation Monzo lattice up to prime 127.
 - **Modulation & Borrowing** — Hear key changes and borrowed chords realized in any EDO.
 - **Interval Spectrum** — See where each EDO's steps land across the interval spectrum and ring them as drones to compare color.
+- **Lumatone Intervals** — Renders the Lumatone board for any EDO with each key labeled by its nearest just interval from a chosen root, with color scale overlays.
