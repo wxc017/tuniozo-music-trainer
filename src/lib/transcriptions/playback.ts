@@ -64,6 +64,14 @@ function outputGain(): GainNode {
     txGain.gain.value = 1;
     txGain.connect(audioEngine.getPlayDestination());
     reverbCtx = null;                                 // rebuild reverb for the new context
+    // The AudioContext was rebuilt — audioEngine.stopAll() closes and recreates
+    // it (it runs on every tab switch).  Cached smplr instruments are bound to
+    // the OLD, now-closed context and would schedule notes silently, so drop
+    // them; getInstrument() rebuilds each against the live context on next use.
+    // Without this, the synth modes (fresh nodes per play) stay audible while
+    // Transcriptions goes silent after the first context rebuild.
+    for (const p of instCache.values()) p.then(i => { try { i.stop(); } catch { /* */ } }).catch(() => {});
+    instCache.clear();
   }
   return txGain;
 }
