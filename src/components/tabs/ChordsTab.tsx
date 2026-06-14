@@ -1235,13 +1235,11 @@ export default function ChordsTab({
           }
         }
       }
-      // Drop exact-duplicate pitches: clampToLayout can fold an out-of-range
-      // extension onto a pitch already in the voicing (e.g. a 13th and another
-      // tone collapsing to the same lm6 in the playable range), adding an
-      // inaudible doubled pitch — per direct user direction 2026-06-13
-      // "stacking two lm6 is unnecessary".  Octave doublings at DIFFERENT
-      // pitches are kept (they're real voicing colour).
-      return [...new Set(clampToLayout(voiced))].sort((a, b) => a - b);
+      // NOTE: duplicate-pitch dedup happens on the CHOSEN chord (see the return
+      // below), NOT here — buildVoicing also generates the voice-leading search
+      // candidates, and deduping a folded candidate to fewer notes would shrink
+      // its distance and let a degenerate voicing win the "nearest" search.
+      return clampToLayout(voiced);
     };
 
     // Bass gate: the LOWEST note of the realized voicing must sit inside
@@ -1331,7 +1329,11 @@ export default function ChordsTab({
       }
     }
 
-    return { chordAbs, voicingType: "pattern", quality: triadQuality(shape, edo), appliedShape: [...shape] };
+    // Dedup exact-duplicate pitches on the CHOSEN chord only (clampToLayout can
+    // fold a note onto another, e.g. two identical lm6) — kept out of the
+    // candidate builder so it doesn't bias the voice-leading search.
+    const deduped = [...new Set(chordAbs)].sort((a, b) => a - b);
+    return { chordAbs: deduped, voicingType: "pattern", quality: triadQuality(shape, edo), appliedShape: [...shape] };
   }, [checkedPatterns, patternNoteCounts, effectiveChecked, checkedExts, checkedExtCounts, extTendency, regMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, getCompatibleTypes, applyChordType, edoChordTypes, diatonicScaleRoots]);
 
   // ── Progressions: loop engine ───────────────────────────────────────
