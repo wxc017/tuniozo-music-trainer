@@ -1334,7 +1334,11 @@ export default function App() {
           scrolls past that, the visualizer scrolls away (per direct
           user direction 2026-05-05: "the visualizer should disappear
           after i pass by the last chords"). */}
-      {section === "ear-trainer" && (
+      {/* The sticky EDO keyboard is meaningless on the Transcriptions sub-tab
+          (real-world tunes play in standard tuning, and its EDO / Root selectors
+          are hidden there) — showing it just cuts off the top of the view, so
+          drop it for Transcriptions per direct user direction 2026-06-14. */}
+      {section === "ear-trainer" && activeTab !== "transcriptions" && (
         <div id="main-visualizer" className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: 0 }}>
           {edo !== 12 && (
             <div className="flex justify-end gap-1 mb-1">
