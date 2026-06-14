@@ -73,14 +73,14 @@ const TEMPLATES: ScaleTemplate[] = [
   // per blue-note alteration the EDO offers).
 ];
 
-// ── Blues scales (all blue-note alterations in one scale) ───────────
-// Two scales — Minor Blues and Major Blues — each carrying EVERY blue-note
-// alteration the EDO offers, not one scale per alteration.  The blues "blue
-// notes" are smears, so the whole region is included:
-//   Minor Blues = 1 · (b3 smear) · 4 · (b5/tritone smear) · 5 · (b7 smear)
-//   Major Blues = major pentatonic (1 2 5 6) · (b3→3 smear)
-// so on the board you see the full subminor↔major-third smear, the flat-five
-// tritone region (sTT/sub5/lTT), and the subminor↔minor-seventh region at once.
+// ── Blues Scale (every blue-note alteration in one scale) ───────────
+// A single "Blues Scale" = the union of the major and minor blues, carrying
+// EVERY blue-note alteration the EDO offers.  The stable pillars (1, 4, 5) are
+// pure; every other degree is a smear across its region, so the board lights up
+//   1 · (major-2nd smear) · (b3→3 smear) · 4 · (b5/tritone smear) · 5
+//     · (major-6th smear, incl. sM6) · (b7 smear)
+// all at once — the full subminor↔major third, the flat-five tritone region
+// (sTT/sub5/lTT), the major-sixth alterations, and the subminor↔minor seventh.
 function generateBluesScales(edo: number): NamedScale[] {
   const c2s = (c: number) => ((Math.round((edo * c) / 1200) % edo) + edo) % edo;
   const inBand = (lo: number, hi: number): number[] => {
@@ -88,18 +88,15 @@ function generateBluesScales(edo: number): NamedScale[] {
     for (let s = 1; s < edo; s++) { const c = (s * 1200) / edo; if (c >= lo && c <= hi) r.push(s); }
     return r;
   };
-  const P4 = c2s(498), P5 = c2s(702), M2 = c2s(204), M6 = c2s(906);
-  const third = inBand(255, 445);      // blue 3rd: subminor → large major
-  const fifth = inBand(560, 650);      // blue 5th: the tritone smear (sTT/sub5/lTT)
+  const P4 = c2s(498), P5 = c2s(702);
+  const second  = inBand(178, 240);    // major 2nd smear: sM2/M2/lM2
+  const third   = inBand(255, 445);    // blue 3rd: subminor → large major
+  const fifth   = inBand(560, 650);    // blue 5th: the tritone smear (sTT/sub5/lTT)
+  const sixth   = inBand(878, 940);    // major 6th smear: sM6/M6/lM6
   const seventh = inBand(930, 1045);   // blue 7th: subminor → minor 7th
-  const dedupe = (a: number[]) =>
-    [...new Set(a.map(x => ((x % edo) + edo) % edo))].sort((x, y) => x - y);
-  const out: NamedScale[] = [];
-  const minor = dedupe([0, ...third, P4, ...fifth, P5, ...seventh]);
-  if (minor.length >= 6) out.push({ name: "Minor Blues", steps: minor, group: "Blues" });
-  const major = dedupe([0, M2, ...third, P5, M6]);
-  if (major.length >= 5) out.push({ name: "Major Blues", steps: major, group: "Blues" });
-  return out;
+  const steps = [...new Set([0, ...second, ...third, P4, ...fifth, P5, ...sixth, ...seventh]
+    .map(x => ((x % edo) + edo) % edo))].sort((a, b) => a - b);
+  return steps.length >= 6 ? [{ name: "Blues Scale", steps, group: "Blues" }] : [];
 }
 
 // ── Systematic sized diatonic scales ────────────────────────────────
