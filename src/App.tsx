@@ -1005,7 +1005,7 @@ export default function App() {
                   { id: "konnakol",             label: "Solkattu",             beta: true },
                   { id: "phrase-decomposition", label: "Phrase Decomposition", beta: true },
                   { id: "interval-browser",     label: "Interval Browser",     group: "Analytical", beta: true },
-                  { id: "lumatone-intervals",   label: "Lumatone Intervals",   group: "Analytical", beta: true },
+                  { id: "lumatone-intervals",   label: "Lumatone Intervals",   group: "Analytical" },
                   { id: "microwave",            label: "Microwave",            beta: true },
                 ];
                 const visible = SECTION_BUTTONS.filter(b => !b.beta || betaMode);

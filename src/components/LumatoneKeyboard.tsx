@@ -11,6 +11,10 @@ interface Props {
    *  e.g. the underlying scale shown faintly behind the lit chord tones.
    *  Matched modulo `edo` so every octave of each scale degree lights. */
   dimPitchClasses?: Set<number>;
+  /** Pitch CLASS → fill colour (hex `#rrggbb`).  Used to paint several scales
+   *  on the board at once, each in its own colour.  Every octave of a mapped
+   *  pitch class is filled; lit (droned) keys still brighten on top. */
+  pitchClassColors?: Map<number, string>;
   edo?: number;
   onKeyClick?: (key: ComputedKey, e: MouseEvent) => void;
   /** Optional short text drawn in the middle of every key (e.g. interval suffix).
@@ -73,7 +77,7 @@ function luminance(hex: string): number {
   return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
-export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, dimPitchClasses, edo, onKeyClick, labelOf, isNatural, rootPitchClass, mutedPitchClasses, maxHeight = 220 }: Props) {
+export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, dimPitchClasses, pitchClassColors, edo, onKeyClick, labelOf, isNatural, rootPitchClass, mutedPitchClasses, maxHeight = 220 }: Props) {
   const pad = 32;
   // Natural-pitch hex positions, so each non-natural hex can pick its sharp/flat
   // spelling from whether it sits above (sharp) or below (flat) the nearest one.
@@ -101,9 +105,10 @@ export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, 
   };
   const hasHighlight = (litKeys ?? highlightedPitches).size > 0;
   const hasDim = !!dimPitchClasses && dimPitchClasses.size > 0;
-  // When something is lit OR a dim scale is shown, non-member keys darken so
-  // the (dim or full) highlights stand out.
-  const hasAny = hasHighlight || hasDim;
+  const hasColors = !!pitchClassColors && pitchClassColors.size > 0;
+  // When something is lit OR a dim/coloured scale is shown, non-member keys
+  // darken so the highlights stand out.
+  const hasAny = hasHighlight || hasDim || hasColors;
 
   const { viewBox } = useMemo(() => {
     const w = layout.maxX - layout.minX + pad * 2 + HEX_RADIUS * 2;
@@ -124,26 +129,32 @@ export default function LumatoneKeyboard({ layout, highlightedPitches, litKeys, 
       >
         {layout.keys.map((key, i) => {
           const isLit = litKeys ? litKeys.has(i) : highlightedPitches.has(key.pitch);
-          const pc = hasDim && edo && edo > 0 ? ((key.pitch % edo) + edo) % edo : -1;
-          const isDim = !isLit && hasDim && dimPitchClasses!.has(pc);
+          const keyPc = edo && edo > 0 ? ((key.pitch % edo) + edo) % edo : -1;
+          const scaleColor = hasColors && keyPc >= 0 ? pitchClassColors!.get(keyPc) : undefined;
+          const isDim = !isLit && !scaleColor && hasDim && dimPitchClasses!.has(keyPc);
           const isMuted = edo != null && !!mutedPitchClasses
             && mutedPitchClasses.has(((key.pitch % edo) + edo) % edo);
           const fill = isMuted
             ? darkenHex(key.color_hex)
             : isLit
-              ? lightenHex(key.color_hex)
-              : isDim
-                ? dimHex(key.color_hex)
-                : hasAny
-                  ? darkenHex(key.color_hex)
-                  : key.color_hex;
+              ? lightenHex(scaleColor ?? key.color_hex)
+              : scaleColor
+                ? scaleColor
+                : isDim
+                  ? dimHex(key.color_hex)
+                  : hasAny
+                    ? darkenHex(key.color_hex)
+                    : key.color_hex;
           const isRoot = !isMuted && edo != null && rootPitchClass != null
             && ((key.pitch % edo) + edo) % edo === ((rootPitchClass % edo) + edo) % edo;
-          const stroke = isMuted ? "#0d0d0d" : isRoot ? "#ffffff" : isLit ? "#ffffff" : isDim ? "#3a3a3a" : hasAny ? "#0d0d0d" : "#111111";
-          const strokeW = isMuted ? 0.35 : isRoot ? 2.4 : isLit ? 2.0 : isDim ? 0.6 : 0.35;
+          const stroke = isMuted ? "#0d0d0d" : isRoot ? "#ffffff" : isLit ? "#ffffff" : scaleColor ? lightenHex(scaleColor) : isDim ? "#3a3a3a" : hasAny ? "#0d0d0d" : "#111111";
+          const strokeW = isMuted ? 0.35 : isRoot ? 2.4 : isLit ? 2.0 : scaleColor ? 1.0 : isDim ? 0.6 : 0.35;
           const label = isMuted ? undefined : labelOf?.(key.pitch, preferFor(key.x, key.y, key.pitch));
-          // lit keys are brightened, so use dark text on them; otherwise pick by base luminance
-          const textCol = isLit ? "#0a0a0a" : luminance(key.color_hex) > 140 ? "#0c0c0c" : "#f4f4f4";
+          // lit keys are brightened (dark text); coloured scale keys use text
+          // chosen by the scale colour's luminance; else by the base key colour.
+          const textCol = isLit ? "#0a0a0a"
+            : scaleColor ? (luminance(scaleColor) > 140 ? "#0c0c0c" : "#f4f4f4")
+            : luminance(key.color_hex) > 140 ? "#0c0c0c" : "#f4f4f4";
 
           return (
             <g key={i}>
