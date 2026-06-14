@@ -1059,31 +1059,36 @@ export default function ChordsTab({
       return chordRels.join(",") === tKey || chordRels.join(",").startsWith(tKey + ",");
     });
 
-    const buildExtPool = (strict: boolean): number[] => {
+    const buildExtPool = (applyScale: boolean, applyStable: boolean): number[] => {
       const pool: number[] = [];
       for (const lbl of checkedExts) {
         // 7th is carried by seventh-chord voicings, not as a generic ext.
         if (lbl === "7th") continue;
         for (const s of getExtLabelToSteps(edo)[lbl] ?? []) {
-          if (strict) {
-            const pc = ((rootStep + s) % edo + edo) % edo;
-            const inScale = scalePcs.has(pc);
+          const pc = ((rootStep + s) % edo + edo) % edo;
+          const inScale = scalePcs.has(pc);
+          if (applyScale) {
             if (extTendency === "Avoid") {
               if (inScale) continue;                       // deliberately seek out-of-scale tension
-            } else {
-              if (!inScale) continue;                      // Any / Stable: extensions stay in the scale
-              // Stable additionally restricts to the chord type's consonant set.
-              if (extTendency === "Stable" && matchedType && matchedType.stable.length > 0
-                  && !matchedType.stable.includes(((s % edo) + edo) % edo)) continue;
-            }
+            } else if (!inScale) continue;                 // Any / In-Key: extensions stay in the scale
           }
+          // "In Key" additionally restricts to the chord type's consonant set.
+          if (applyStable && extTendency === "Stable" && matchedType && matchedType.stable.length > 0
+              && !matchedType.stable.includes(((s % edo) + edo) % edo)) continue;
           pool.push(s);
         }
       }
       return pool;
     };
-    let extStepPool = buildExtPool(true);
-    if (extStepPool.length === 0 && extTendency !== "Any") extStepPool = buildExtPool(false);
+    // In-scale + (for In-Key) the consonant-set narrowing.
+    let extStepPool = buildExtPool(true, true);
+    // If the consonant narrowing emptied it, relax ONLY that — keep the scale
+    // gate — so "In Key" never leaks an out-of-scale tone (the old fallback
+    // dropped the scale gate entirely, which let a #9 / sm3 slip in and
+    // mis-label the chord minor).
+    if (extStepPool.length === 0 && extTendency === "Stable") extStepPool = buildExtPool(true, false);
+    // "Avoid" genuinely wants out-of-scale tension; if none exists, allow anything.
+    if (extStepPool.length === 0 && extTendency === "Avoid") extStepPool = buildExtPool(false, false);
 
     // Split extensions: lower (2/4/6 — within the first octave) fill
     // voicing-pattern slots like any other chord tone; upper (9/11/13
@@ -3206,10 +3211,10 @@ function ExtensionControls({ extTendency, setExtTendency, checkedExts, setChecke
   extPlacement: "top" | "mixed" | "spread";
   setExtPlacement: (v: "top" | "mixed" | "spread") => void;
 }) {
-  const tendencyOpts: { value: string; color: string; desc: string }[] = [
-    { value: "Any",    color: "#9999ee", desc: "Any extension allowed" },
-    { value: "Stable", color: "#7aaa6a", desc: "Prefer stable (chord-tone-ish) extensions" },
-    { value: "Avoid",  color: "#c06060", desc: "Prefer avoid-note extensions" },
+  const tendencyOpts: { value: string; label: string; color: string; desc: string }[] = [
+    { value: "Any",    label: "Any",    color: "#9999ee", desc: "Any extension allowed (in or out of the scale)" },
+    { value: "Stable", label: "In Key", color: "#7aaa6a", desc: "Only extensions that stay in the scale (in key)" },
+    { value: "Avoid",  label: "Avoid",  color: "#c06060", desc: "Prefer avoid-note (out-of-scale) extensions" },
   ];
   return (
     <div className="space-y-3">
@@ -3224,7 +3229,7 @@ function ExtensionControls({ extTendency, setExtTendency, checkedExts, setChecke
                   on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
                 }`}
                 style={on ? { backgroundColor: o.color + "30", borderColor: o.color, color: o.color } : {}}>
-                {o.value}
+                {o.label}
               </button>
             );
           })}
