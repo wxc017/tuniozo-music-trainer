@@ -64,6 +64,7 @@ import { recordAnswer, getDayTotals, accuracy, setImportBias, getImportBias, cle
 import { getSavedToken, downloadSync, uploadSync, clearToken } from "@/lib/googleDrive";
 import { buildSyncPayload, restoreFromSyncPayload } from "@/lib/syncData";
 import { getLayoutFile, pcToNoteNameWithEnharmonic, formatHalfAccidentals } from "@/lib/edoData";
+import { groupEdosByFamily } from "@/lib/edoFamilies";
 // Side-effect import: registers the 19 curated JI scales (Pythagorean,
 // 5-limit, septimal, neutral / Maqam) into edoData's pattern-map cache
 // for 41-EDO and 53-EDO so getModeDegreeMap() resolves them.  No exports
@@ -160,17 +161,7 @@ const ALL_TONAL_EDOS = [
   5, 7, 12, 17, 19, 22, 26, 27, 29, 31, 32, 33, 34, 35, 37, 39, 40, 41, 43, 45, 46, 47, 49, 50, 53,
   55, 56, 63, 80, 81, 94,
 ];
-const fifthCentsOf = (edo: number) => (Math.round(edo * Math.log2(1.5)) / edo) * 1200;
-const FIFTH_FAMILY_BANDS: { fam: string; color: string; lo: number; hi: number }[] = [
-  { fam: "FLATTONE",    color: "#9ad0ff", lo: 0,     hi: 694.5 },
-  { fam: "MEANTONE",    color: "#cfe6ff", lo: 694.5, hi: 700.5 },
-  { fam: "PYTHAGOREAN", color: "#e6cfa0", lo: 700.5, hi: 703.0 },
-  { fam: "SCHISMATIC",  color: "#cfe6cf", lo: 703.0, hi: 706.0 },
-  { fam: "SUPERPYTH",   color: "#e6a0c0", lo: 706.0, hi: 9999 },
-];
-const TONAL_EDO_GROUPS = FIFTH_FAMILY_BANDS
-  .map(b => ({ fam: b.fam, color: b.color, edos: ALL_TONAL_EDOS.filter(e => { const c = fifthCentsOf(e); return c >= b.lo && c < b.hi; }) }))
-  .filter(g => g.edos.length > 0);
+const TONAL_EDO_GROUPS = groupEdosByFamily(ALL_TONAL_EDOS);
 
 // ── Settings snapshot types (shared with tabs) ──────────────────────
 export interface SettingsGroup {

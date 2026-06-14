@@ -1,8 +1,8 @@
 // ── Lumatone Intervals ──────────────────────────────────────────────
-// Pick an EDO → the Lumatone board renders with each key labelled by the
-// nearest just interval from the chosen root.  Click a key to drone it;
-// Ctrl/Cmd-click to make it the new root.  Select one or more scales to
-// paint them onto the board at once, each in its own colour (a pitch class
+// Pick an EDO (family-grouped) → the Lumatone board renders with each key
+// labelled by the nearest just interval from the chosen root.  Click a key to
+// drone it; Ctrl/Cmd-click to make it the new root.  The side panel lets you
+// overlay any number of scales at once, each in its own colour (a pitch class
 // shared by several scales shows in a neutral "shared" colour).
 
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
@@ -11,6 +11,7 @@ import { computeLayout, type LayoutResult, type LumatoneData, type ComputedKey }
 import { getPastelLayoutFile } from "@/lib/edoData";
 import { fuzzyCode, solfegeName } from "@/lib/intervalCodes";
 import { getScalesForEdo, type NamedScale } from "@/lib/commonScales";
+import { groupEdosByFamily } from "@/lib/edoFamilies";
 import { useDroneSynth } from "@/hooks/useDroneSynth";
 import { useLocalState } from "@/hooks/useLocalState";
 
@@ -18,7 +19,9 @@ const AVAILABLE = [
   5, 7, 12, 17, 19, 22, 26, 27, 29, 31, 32, 33, 34, 35, 37, 39, 40, 41, 43, 45, 46, 47, 49, 50, 53,
   55, 56, 63, 80, 81, 94,
 ];
+const EDO_GROUPS = groupEdosByFamily(AVAILABLE);
 const C4 = 261.6256; // layout pitch 0 = C4
+const BOARD_MAX = 600; // px — keyboard height cap so the side panel matches
 
 // Distinct, legible scale colours, cycled if more scales are selected.
 const SCALE_COLORS = [
@@ -54,6 +57,10 @@ export default function LumatoneIntervalsTab() {
     : new Set(Array.from({ length: edo }, (_, pc) => pc).filter(pc => ringOf(pc) !== ring));
 
   const [nameMode, setNameMode] = useLocalState<"code" | "solfege">("li_namemode", "code");
+
+  const selectEdo = (n: number) => {
+    setEdo(n); setRootPc(0); setRing(null); setSelectedScales([]); stopAll();
+  };
 
   // Each key labelled by its spectrum interval from the root (code or solfège).
   const labelOf = (pitch: number) => {
@@ -101,39 +108,51 @@ export default function LumatoneIntervalsTab() {
   };
   const highlighted = new Set([...active].map(Number));
 
-  const ringBtn = (on: boolean) =>
+  const pillBtn = (on: boolean) =>
     `px-2 py-1 rounded text-[11px] font-medium border transition-colors ${on
       ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]"
       : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <h2 className="text-lg font-bold text-[#e0a040]">Lumatone Intervals</h2>
+
+      {/* EDO — family-grouped buttons (flattone → superpyth), matching Tonal Audiation. */}
+      <div className="flex gap-2 flex-wrap items-center">
+        <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">EDO</span>
+        {EDO_GROUPS.map(group => (
+          <div key={group.fam} className="flex items-center gap-1.5">
+            <span className="text-[9px] font-semibold tracking-wider px-1 border-l border-[#2a2a2a]" style={{ color: group.color }}>
+              {group.fam}
+            </span>
+            {group.edos.map(n => (
+              <button key={n} onClick={() => selectEdo(n)} title={`${n}-EDO (${group.fam.toLowerCase()} family)`}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                  edo === n
+                    ? "bg-[#7173e6] text-white border-[#7173e6]"
+                    : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
+                {n}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Ring filter + label mode + stop. */}
       <div className="flex items-center gap-3 flex-wrap">
-        <label className="flex items-center gap-2">
-          <span className="text-[10px] text-[#888] uppercase tracking-wider">EDO</span>
-          <select value={edo} onChange={e => { setEdo(Number(e.target.value)); setRootPc(0); setRing(null); setSelectedScales([]); stopAll(); }}
-            className="px-2 py-1 text-sm bg-[#0a0a08] border border-[#2a2620] rounded text-[#d4a050] outline-none">
-            {AVAILABLE.map(e => <option key={e} value={e}>{e}-EDO</option>)}
-          </select>
-        </label>
         {rings > 1 && (
           <div className="flex items-center gap-1">
             <span className="text-[10px] text-[#888] uppercase tracking-wider mr-1">Rings ({rings})</span>
-            <button onClick={() => setRing(null)} className={ringBtn(ring === null)}>Both</button>
+            <button onClick={() => setRing(null)} className={pillBtn(ring === null)}>Both</button>
             {Array.from({ length: rings }, (_, i) => (
-              <button key={i} onClick={() => setRing(i)} className={ringBtn(ring === i)}>Ring {i + 1}</button>
+              <button key={i} onClick={() => setRing(i)} className={pillBtn(ring === i)}>Ring {i + 1}</button>
             ))}
           </div>
         )}
         <div className="flex items-center gap-1">
-          <button onClick={() => setNameMode("code")} className={ringBtn(nameMode === "code")}>Intervals</button>
-          <button onClick={() => setNameMode("solfege")} className={ringBtn(nameMode === "solfege")}>Solfège</button>
+          <button onClick={() => setNameMode("code")} className={pillBtn(nameMode === "code")}>Intervals</button>
+          <button onClick={() => setNameMode("solfege")} className={pillBtn(nameMode === "solfege")}>Solfège</button>
         </div>
-        <span className="text-[11px] text-[#888]">
-          <span className="text-[#cfe6ff] font-semibold">Click = drone</span>,
-          {" "}<span className="text-[#cfe6ff] font-semibold">Ctrl/⌘-click = set root</span>.
-        </span>
         {active.size > 0 && (
           <button onClick={stopAll}
             className="ml-auto px-3 py-1 rounded text-sm font-medium border bg-[#1a1010] border-[#3a2020] text-[#cc8080] hover:text-[#ffaaaa] transition-colors">
@@ -142,59 +161,63 @@ export default function LumatoneIntervalsTab() {
         )}
       </div>
 
-      {/* Scale overlay picker — toggle any number of scales; each lights the
-          board in its own colour (shared notes show in a neutral tone). */}
-      <div className="rounded-lg border border-[#23232e] bg-[#0d0d12] p-3 space-y-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] text-[#888] uppercase tracking-wider">Scales — click to overlay (relative to root)</span>
-          {selectedScales.length > 0 && (
-            <button onClick={() => setSelectedScales([])}
-              className="text-[10px] text-[#cc8080] hover:text-[#ffaaaa] border border-[#3a2020] rounded px-1.5 py-0.5">
-              Clear ({selectedScales.length})
-            </button>
-          )}
-        </div>
-        {legend.length > 0 && (
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
-            {legend.map(l => (
-              <span key={l.name} className="flex items-center gap-1 text-[11px] text-[#cfd4e0]">
-                <span className="inline-block w-3 h-3 rounded-sm" style={{ background: l.color }} />{l.name}
-              </span>
-            ))}
-            <span className="flex items-center gap-1 text-[11px] text-[#9aa0ac]">
-              <span className="inline-block w-3 h-3 rounded-sm" style={{ background: SHARED_COLOR }} />shared
-            </span>
+      {/* Scale picker on the side, board fills the rest. */}
+      <div className="flex gap-3 items-start">
+        <aside className="w-56 shrink-0 rounded-lg border border-[#23232e] bg-[#0d0d12] p-2 flex flex-col"
+          style={{ maxHeight: BOARD_MAX }}>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="text-[10px] text-[#888] uppercase tracking-wider">Scales</span>
+            {selectedScales.length > 0 && (
+              <button onClick={() => setSelectedScales([])}
+                className="text-[10px] text-[#cc8080] hover:text-[#ffaaaa] border border-[#3a2020] rounded px-1.5 py-0.5">
+                Clear ({selectedScales.length})
+              </button>
+            )}
           </div>
-        )}
-        <div className="max-h-44 overflow-y-auto space-y-2 pr-1">
-          {grouped.map(([group, list]) => (
-            <div key={group}>
-              <p className="text-[9px] text-[#666] uppercase tracking-wide mb-1">{group}</p>
-              <div className="flex flex-wrap gap-1">
-                {list.map(s => {
-                  const on = selectedScales.includes(s.name);
-                  const color = on ? SCALE_COLORS[selectedScales.indexOf(s.name) % SCALE_COLORS.length] : undefined;
-                  return (
-                    <button key={s.name} onClick={() => toggleScale(s.name)}
-                      className={`px-2 py-0.5 rounded text-[11px] border transition-colors ${on
-                        ? "" : "bg-[#14141a] border-[#2a2a3a] text-[#9090b8] hover:text-[#cfe6ff]"}`}
-                      style={on ? { background: (color ?? "#fff") + "30", borderColor: color, color } : {}}>
-                      {on && <span className="inline-block w-2 h-2 rounded-sm mr-1 align-middle" style={{ background: color }} />}
-                      {s.name}
-                    </button>
-                  );
-                })}
-              </div>
+          {legend.length > 0 && (
+            <div className="flex flex-wrap gap-x-2 gap-y-1 mb-1.5 pb-1.5 border-b border-[#1d1d26]">
+              {legend.map(l => (
+                <span key={l.name} className="flex items-center gap-1 text-[10px] text-[#cfd4e0]">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: l.color }} />{l.name}
+                </span>
+              ))}
+              <span className="flex items-center gap-1 text-[10px] text-[#9aa0ac]">
+                <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: SHARED_COLOR }} />shared
+              </span>
             </div>
-          ))}
+          )}
+          <div className="overflow-y-auto space-y-2 pr-1 flex-1">
+            {grouped.map(([group, list]) => (
+              <div key={group}>
+                <p className="text-[9px] text-[#666] uppercase tracking-wide mb-1">{group}</p>
+                <div className="flex flex-wrap gap-1">
+                  {list.map(s => {
+                    const on = selectedScales.includes(s.name);
+                    const color = on ? SCALE_COLORS[selectedScales.indexOf(s.name) % SCALE_COLORS.length] : undefined;
+                    return (
+                      <button key={s.name} onClick={() => toggleScale(s.name)}
+                        className={`px-1.5 py-0.5 rounded text-[10px] border transition-colors ${on
+                          ? "" : "bg-[#14141a] border-[#2a2a3a] text-[#9090b8] hover:text-[#cfe6ff]"}`}
+                        style={on ? { background: (color ?? "#fff") + "30", borderColor: color, color } : {}}>
+                        {on && <span className="inline-block w-2 h-2 rounded-sm mr-1 align-middle" style={{ background: color }} />}
+                        {s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <div className="flex-1 min-w-0">
+          {layout
+            ? <LumatoneKeyboard layout={layout} highlightedPitches={highlighted} edo={edo}
+                labelOf={labelOf} rootPitchClass={rootPc} mutedPitchClasses={muted}
+                pitchClassColors={pcColors} onKeyClick={onKey} maxHeight={BOARD_MAX} />
+            : <div className="text-sm text-[#666]">Loading {edo}-EDO…</div>}
         </div>
       </div>
-
-      {layout
-        ? <LumatoneKeyboard layout={layout} highlightedPitches={highlighted} edo={edo}
-            labelOf={labelOf} rootPitchClass={rootPc} mutedPitchClasses={muted}
-            pitchClassColors={pcColors} onKeyClick={onKey} maxHeight={null} />
-        : <div className="text-sm text-[#666]">Loading {edo}-EDO…</div>}
     </div>
   );
 }
