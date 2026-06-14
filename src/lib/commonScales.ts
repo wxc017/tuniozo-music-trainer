@@ -8,7 +8,12 @@
 import { sizedScaleName } from "./sizedNaming";
 import { scaleLimit, fuzzyCode } from "./intervalCodes";
 
-export interface NamedScale { name: string; steps: number[]; group: string; }
+export interface NamedScale {
+  name: string; steps: number[]; group: string;
+  /** Subset of `steps` that are "smear" / blue notes filling a gap (vs the
+   *  structural skeleton tones) — used to colour them distinctly. */
+  smear?: number[];
+}
 
 // ── MOS (moment-of-symmetry) scale generation ───────────────────────
 // The Xenharmonic Wiki's per-EDO "scales" are dominated by MOS scales: a chain
@@ -115,27 +120,36 @@ function generateBluesScales(edo: number): NamedScale[] {
 
   const out: NamedScale[] = [];
   const seenName = new Set<string>(), seenSteps = new Set<string>();
-  const emit = (name: string, parts: (number | undefined)[]) => {
-    if (parts.some(s => s === undefined)) return;
-    const u = [...new Set((parts as number[]).map(x => ((x % edo) + edo) % edo))].sort((a, b) => a - b);
+  const mod = (x: number) => ((x % edo) + edo) % edo;
+  // `skeleton` = the structural pentatonic tones; `smearSteps` = the gap shades.
+  // The two are tracked apart so the board can colour them differently, but a
+  // gap shade landing on a skeleton tone stays skeleton.
+  const emit = (name: string, skeleton: (number | undefined)[], smearSteps: number[]) => {
+    if (skeleton.some(s => s === undefined)) return;
+    const skel = new Set((skeleton as number[]).map(mod));
+    const sm = new Set(smearSteps.map(mod));
+    for (const s of skel) sm.delete(s);
+    const u = [...skel, ...sm].sort((a, b) => a - b);
     if (u.length < 6 || u[0] !== 0) return;          // too coarse to form a blues
     const key = u.join(",");
     if (seenName.has(name) || seenSteps.has(key)) return;
     seenName.add(name); seenSteps.add(key);
-    out.push({ name, steps: u, group: "Blues" });
+    out.push({ name, steps: u, group: "Blues", smear: [...sm].sort((a, b) => a - b) });
   };
 
   // Six scales: Small / Centre / Large of Minor and Major, each the sized
-  // pentatonic with every shade of its blue-note gaps poured in at once.  The
-  // characteristic third sets the version; coarse EDOs that can't split a size
-  // collapse to fewer (deduped by step-set).
+  // pentatonic skeleton with every shade of its blue-note gaps poured in at
+  // once.  The characteristic third sets the version; coarse EDOs that can't
+  // split a size collapse to fewer (deduped by step-set).
   for (let sz = 0; sz < 3; sz++) {
-    // Minor pentatonic (1 b3 4 5) + all #4/b5 + all b7 shades; version = b3.
+    // Minor pentatonic (1 b3 4 5 b7) + all #4/b5 + extra b7 shades; version = b3.
+    // The version's own b7 is a skeleton tone; the other b7 shades are smear.
     const m3 = sized("m3", sz);
-    emit(`${sizeWord(m3)}Minor Blues`, [0, m3, P4, P5, ...TRITONE, ...SEVENTH]);
+    emit(`${sizeWord(m3)}Minor Blues`, [0, m3, P4, P5, sized("m7", sz)], [...TRITONE, ...SEVENTH]);
     // Major pentatonic (1 2 3 5 6) + all b3 + all b7 shades; version = major 3rd.
+    // Major has no structural 7th, so the whole b7 gap is smear.
     const M3 = sized("M3", sz);
-    emit(`${sizeWord(M3)}Major Blues`, [0, sized("M2", sz), M3, P5, sized("M6", sz), ...FLAT3, ...SEVENTH]);
+    emit(`${sizeWord(M3)}Major Blues`, [0, sized("M2", sz), M3, P5, sized("M6", sz)], [...FLAT3, ...SEVENTH]);
   }
   return out;
 }

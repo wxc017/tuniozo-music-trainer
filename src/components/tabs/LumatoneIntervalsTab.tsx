@@ -29,6 +29,7 @@ const SCALE_COLORS = [
   "#3ec0b0", "#e070c0", "#9fbf3f", "#e85d8a", "#56b0d8",
 ];
 const SHARED_COLOR = "#dfe6f0"; // a pitch class shared by 2+ selected scales
+const SMEAR_COLOR = "#6f7390";  // blue-note "smear" tones (vs the structural skeleton)
 
 export default function LumatoneIntervalsTab() {
   const [edo, setEdo] = useLocalState("li_edo", 31);
@@ -76,23 +77,30 @@ export default function LumatoneIntervalsTab() {
 
   // pitch class → colour for every selected scale (relative to the current
   // root); a pc that belongs to 2+ scales is painted in the shared colour.
-  const { pcColors, legend } = useMemo(() => {
-    const colorByPc = new Map<number, string>();
+  const { pcColors, legend, hasSmear } = useMemo(() => {
+    const colorByPc = new Map<number, string>();   // structural (skeleton) tones
     const countByPc = new Map<number, number>();
+    const smearPcs = new Set<number>();            // blue-note "smear" tones
     const leg: { name: string; color: string }[] = [];
     selectedScales.forEach((name, idx) => {
       const sc = scaleByName.get(name);
       if (!sc) return;
       const color = SCALE_COLORS[idx % SCALE_COLORS.length];
       leg.push({ name, color });
+      const smear = new Set(sc.smear ?? []);
       for (const step of sc.steps) {
         const pc = (((rootPc + step) % edo) + edo) % edo;
+        if (smear.has(step)) { smearPcs.add(pc); continue; }   // gap tone → smear
         countByPc.set(pc, (countByPc.get(pc) ?? 0) + 1);
         if (!colorByPc.has(pc)) colorByPc.set(pc, color);
       }
     });
     for (const [pc, c] of countByPc) if (c > 1) colorByPc.set(pc, SHARED_COLOR);
-    return { pcColors: colorByPc, legend: leg };
+    // Smear tones get the smear colour — unless that pitch is also a skeleton
+    // tone of some selected scale, in which case the structural colour wins.
+    let anySmear = false;
+    for (const pc of smearPcs) if (!colorByPc.has(pc)) { colorByPc.set(pc, SMEAR_COLOR); anySmear = true; }
+    return { pcColors: colorByPc, legend: leg, hasSmear: anySmear };
   }, [selectedScales, scaleByName, rootPc, edo]);
 
   // Family → sub-category → scales, splitting the "family · limit" group string
@@ -197,6 +205,11 @@ export default function LumatoneIntervalsTab() {
               <span className="flex items-center gap-1 text-[10px] text-[#9aa0ac]">
                 <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: SHARED_COLOR }} />shared
               </span>
+              {hasSmear && (
+                <span className="flex items-center gap-1 text-[10px] text-[#9aa0ac]">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: SMEAR_COLOR }} />blue notes
+                </span>
+              )}
             </div>
           )}
           <div className="overflow-y-auto space-y-1 pr-1 flex-1">
