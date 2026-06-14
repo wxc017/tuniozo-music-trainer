@@ -436,8 +436,11 @@ export default function ChordsTab({
   // means no chord is active right now.
   const [currentChordIdx, setCurrentChordIdx] = useState(-1);
   // Which Show-Answer card the user last clicked (kept highlighted alongside the
-  // chord it lights on the keyboard).
+  // chord it lights on the keyboard).  Clicking a card holds a sustained drone
+  // of that chord; this index is also the "which card is droning" flag.
   const [litCardIdx, setLitCardIdx] = useState<number | null>(null);
+  // Stop any held Show-Answer chord drone when the tab unmounts.
+  useEffect(() => () => { audioEngine.stopDrone(); }, []);
   // The transition currently being previewed for voice-leading
   // arrows.  When set to N, the harmonic lattice flashes arrows
   // showing the voice motion from chord N → chord N+1.  Driven by
@@ -572,6 +575,8 @@ export default function ChordsTab({
     setFhDetailInfo("");
     fhFramesRef.current = null;
     setPinnedChordIdxs(new Set());
+    audioEngine.stopDrone();   // a held Show-Answer chord drone is in the old EDO's pitches
+    setLitCardIdx(null);
     setTonalitySet(prev => {
       // Compute the set of tonality names that actually appear in
       // the current EDO's picker (intersection of every section's
@@ -1335,6 +1340,7 @@ export default function ChordsTab({
     isLoopingRef.current = false;
     setIsLooping(false);
     audioEngine.silencePlay();
+    audioEngine.stopDrone();   // also kill any held Show-Answer chord drone
   }, []);
 
   const buildLoopFrames = useCallback((progression: string[], chordMapOverride?: Record<string, number[]>, xenForNumeral?: Record<string, string[]>, scaleRootsOverride?: number[] | null): { chords: number[][]; bass: number[][]; melody: number[][]; appliedShapes: (number[] | null)[] } => {
@@ -2827,10 +2833,20 @@ export default function ChordsTab({
               return (
               <div key={chord.index} role="button" tabIndex={0}
                 onClick={async () => {
-                  setLitCardIdx(chord.index);
                   await ensureAudio();
-                  audioEngine.playMultiVoice([{ frames: [chord.notes], noteDuration: 0.9, gain: playVol * harmonyVol * CHORD_BOOST }], edo, 0, 1);
-                  onHighlight(chord.notes, 0);   // hold lit indefinitely (until another highlight replaces it)
+                  // Toggle a sustained DRONE of the chord: clicking the lit card
+                  // again (or clicking another card) stops it — per direct user
+                  // direction 2026-06-14 "it should drone the chord until i click
+                  // off or click another".
+                  if (litCardIdx === chord.index) {
+                    audioEngine.stopDrone();
+                    setLitCardIdx(null);
+                    return;
+                  }
+                  audioEngine.stopDrone();
+                  setLitCardIdx(chord.index);
+                  audioEngine.startDrone(chord.notes, edo, playVol * harmonyVol * 0.5);
+                  onHighlight(chord.notes, 0);   // hold lit until another highlight replaces it
                 }}
                 className={`rounded-lg border transition-colors p-3 cursor-pointer ${
                   (chord.index - 1) === currentChordIdx || chord.index === litCardIdx
