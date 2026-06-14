@@ -131,10 +131,25 @@ function Numeral({ num }: { num: string }) {
   return <><sub className="text-[0.7em]">{m[1]}</sub>{m[2]}</>;
 }
 function ChordSym({ symbol }: { symbol: string }) {
-  const i = symbol.indexOf(" ");
-  const num = i < 0 ? symbol : symbol.slice(0, i);
-  const rest = i < 0 ? "" : symbol.slice(i + 1);
-  return <><Numeral num={num} />{rest && <sup className="text-[0.7em]">{rest}</sup>}</>;
+  // A chord symbol is "[root-interval prefix] <roman> [stacked interval codes]".
+  // The numeral is the token made only of roman letters (+ optional b/#/s/l
+  // prefix and °/+ suffix); tokens before it are the root-position interval
+  // indicator, tokens after are the stack.  e.g. "lm3 III sM3" → ₗₘ₃ "III" ⁽ˢᴹ³⁾.
+  const tokens = symbol.split(" ");
+  const ri = tokens.findIndex(t => /^[#b]?[sl]?[ivxIVX]+[°+]?$/.test(t));
+  if (ri < 0) {
+    const i = symbol.indexOf(" ");
+    const num = i < 0 ? symbol : symbol.slice(0, i);
+    const rest = i < 0 ? "" : symbol.slice(i + 1);
+    return <><Numeral num={num} />{rest && <sup className="text-[0.7em]">{rest}</sup>}</>;
+  }
+  const prefix = tokens.slice(0, ri).join(" ");
+  const rest = tokens.slice(ri + 1).join(" ");
+  return <>
+    {prefix && <span className="text-[0.72em] opacity-75 mr-[1px]">{prefix}</span>}
+    <Numeral num={tokens[ri]} />
+    {rest && <sup className="text-[0.7em]">{rest}</sup>}
+  </>;
 }
 
 function SaySpan({
