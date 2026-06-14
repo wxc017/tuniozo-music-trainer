@@ -94,8 +94,10 @@ export function chordSymbol(centsFromTonic: number[]): string {
   // the CASE reflects the CHORD's quality: a minor third above the root →
   // lowercase (ii, iii, …), major / other → uppercase.  The s/l size prefix is
   // preserved (rendered as a subscript by the chord-symbol component).
-  let numeral = sizedRoman(root);
-  const pm = /^([sl]?)(.+)$/.exec(numeral);
+  const pm = /^([sl]?)(.+)$/.exec(sizedRoman(root));
+  // Bare Roman (degree + quality) — the size now lives in the root-position
+  // prefix below, so drop the redundant s/l here.
+  let numeral = pm ? pm[2] : sizedRoman(root);
   if (pm && sorted.length >= 2) {
     // Case from the chord's THIRD — the first degree-3 tone above the root —
     // NOT sorted[1].  sorted[1] can be a DUPLICATED root (interval "1", when the
@@ -113,8 +115,14 @@ export function chordSymbol(centsFromTonic: number[]): string {
     }
     const t = sizedCode(thirdIv ?? firstIv ?? (sorted[1] - root));
     const minorChord = /m\d/.test(t) && !/M/.test(t);    // minor third above the root
-    numeral = pm[1] + (minorChord ? pm[2].toLowerCase() : pm[2].toUpperCase());
+    numeral = minorChord ? pm[2].toLowerCase() : pm[2].toUpperCase();
   }
+  // Root-position indicator: the root's own sized interval from the tonic, in
+  // FRONT of the numeral so it's explicit where the root sits — e.g. a flat-3
+  // rooted on the large-minor-3rd reads "lm3 III" (per direct user direction
+  // 2026-06-14).  Omitted for the tonic (unison / octave).
+  const rootCode = sizedCode(root);
+  const prefix = rootCode === "1" || rootCode === "8" ? "" : `${rootCode} `;
   const stack: string[] = [];
   for (const c of sorted) {
     const code = sizedCode(c - root);
@@ -130,5 +138,5 @@ export function chordSymbol(centsFromTonic: number[]): string {
     }
     if (stack[stack.length - 1] !== code) stack.push(code);
   }
-  return stack.length ? `${numeral} ${stack.join(" ")}` : numeral;
+  return prefix + (stack.length ? `${numeral} ${stack.join(" ")}` : numeral);
 }
