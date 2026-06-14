@@ -2,24 +2,22 @@
 
 **Warning: AI-assisted program.** I wish I'd written more of this myself, but I have other responsibilities.
 
-A microtonal music practice tool I built for my own daily practice. Mainly uploaded as a backup.
-
-Everything is built around **any EDO** (and JI), an isomorphic **Lumatone** layout, and a shared **sized-interval** notation, so a scale, chord, or interval is named the same way in every tuning. It also supports a wide variety of **notation systems and solfège schemes** (switchable per EDO), so you can read intervals and degrees in whatever convention you prefer.
+A microtonal music practice tool me and AI built for my own daily practice. Mainly uploaded as a backup.
 
 ## Ear & Feel
 
-- **Tonal Audiation** — the mode I rely on most. Plays audio; you play it back on your keyboard instead of drill-and-response. Intervals, scales, and chords for the current EDO, with a sized-scale catalog, auto-computed chords per scale, and solfège.
-- **Drum Patterns** — ostinato and permutation drills (Fine Ostinato, Pattern Ostinato, Accent Studies).
-- **Permutations** — work a cell through its sticking / grouping permutations.
+- **Tonal Audiation** — Plays an interval, scale, or chord that you reproduce by ear on your keyboard; the mode I use most.
+- **Drum Patterns** — Ostinato and accent drills for building rhythmic independence.
+- **Permutations** — Runs a rhythmic cell through its sticking and grouping permutations.
 
 ## Sheet Music
 
-- **Chord Chart** — chord charts and lead sheets.
-- **Transcription** — transcribe audio into notation.
-- **Scoring** — note entry / writing out scores.
+- **Chord Chart** — Build and read chord charts and lead sheets.
+- **Transcription** — Transcribe audio you hear into notation.
+- **Scoring** — Write out a score by entering notes directly.
 
 ## Analytical
 
-- **Harmonic Lattice** — Monzo lattice up to prime 127; primes past the visible dimensions show as angles.
-- **Modulation & Borrowing** — key changes and borrowed chords, realized per EDO.
-- **Interval Spectrum** — Margo Schulter's regions of the interval spectrum; type EDOs to see where their steps land and ring intervals as drones to compare their color.
+- **Harmonic Lattice** — Explore a just-intonation Monzo lattice up to prime 127.
+- **Modulation & Borrowing** — Hear key changes and borrowed chords realized in any EDO.
+- **Interval Spectrum** — See where each EDO's steps land across the interval spectrum and ring them as drones to compare color.
