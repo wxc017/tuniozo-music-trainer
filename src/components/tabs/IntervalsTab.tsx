@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import { randomChoice } from "@/lib/musicTheory";
 import { getHeathwaiteSolfege, getFullDegreeNames } from "@/lib/edoData";
 import { fuzzyIntervalNamesFull } from "@/lib/intervalCodes";
 import { getScalesForEdo } from "@/lib/commonScales";
+import TonalitySection from "@/components/TonalitySection";
 import { notationLabel, SCHULTER } from "@/lib/notationLabels";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
 import { weightedRandomChoice, getOptionStats } from "@/lib/stats";
@@ -86,21 +87,57 @@ export default function IntervalsTab({
   // group string is "<mode> · <family>", so we split on " · ".
   // In a non-Schulter notation the Small/Large flavours are hidden (that
   // notation doesn't express sizing), leaving the standard non-sized scales.
-  const scaleModes = (() => {
-    const all = getScalesForEdo(edo);
-    const scales = isSchulter ? all : all.filter(s => !/^(Small|Large) /.test(s.name));
-    const modes: { mode: string; families: { family: string; scales: typeof scales }[] }[] = [];
-    for (const s of scales) {
-      const [modeName, familyName = "Other"] = s.group.split(" · ");
-      let m = modes.find(x => x.mode === modeName);
-      if (!m) { m = { mode: modeName, families: [] }; modes.push(m); }
-      let f = m.families.find(x => x.family === familyName);
-      if (!f) { f = { family: familyName, scales: [] }; m.families.push(f); }
-      f.scales.push(s);
-    }
-    return modes;
-  })();
-  const scaleCount = scaleModes.reduce((n, m) => n + m.families.reduce((k, f) => k + f.scales.length, 0), 0);
+  // Tonality quick-fill — the SAME TONALITIES picker as Chord Progressions
+  // (shared <TonalitySection>).  Selecting tonalities fills the interval
+  // checkboxes with the union of their scale steps.  `scaleStepsByName` maps a
+  // tonality name → its real scale steps (matching the sized catalog's names).
+  const scaleStepsByName = useMemo(() => {
+    const m = new Map<string, number[]>();
+    for (const s of getScalesForEdo(edo, false)) m.set(s.name, s.steps);
+    return m;
+  }, [edo]);
+  const [tonalitySet, setTonalitySet] = useLS<Set<string>>("lt_ivl_tonalities", new Set());
+  const [collapsedTonalities, setCollapsedTonalities] = useLS<boolean>("lt_ivl_collapsed_tonalities", false);
+  const [playingTonality, setPlayingTonality] = useState<string | null>(null);
+  const playingTonalityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Fill `checked` with the union of the selected tonalities' steps (unison
+  // dropped — a unison-vs-unison quiz is degenerate).
+  const applyTonalities = (names: Set<string>) => {
+    const steps = new Set<number>();
+    for (const name of names)
+      for (const st of scaleStepsByName.get(name) ?? []) if (st > 0 && st < edo) steps.add(st);
+    setChecked(steps);
+  };
+  const toggleTonality = (name: string) => {
+    setTonalitySet(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      applyTonalities(next);
+      return next;
+    });
+  };
+  const clearTonalities = () => { setTonalitySet(new Set()); setChecked(new Set()); };
+  // ▶ preview: play the scale ascending and light it on the keyboard (mirrors
+  // the Chord-Progressions tonality preview).
+  const previewTonality = useCallback(async (name: string) => {
+    await ensureAudio();
+    frameTimers.current.forEach(id => clearTimeout(id));
+    frameTimers.current = [];
+    const steps = (scaleStepsByName.get(name) ?? []).slice().sort((a, b) => a - b);
+    if (!steps.length) return;
+    const allSteps = [...steps, steps[0] + edo];                 // append the octave
+    const baseTonic = lowestPitch + (((tonicPc - lowestPitch) % edo) + edo) % edo;
+    const frames = allSteps.map(s => [baseTonic + s]);
+    const stepMs = 420;
+    audioEngine.playMultiVoice([{ frames, noteDuration: 0.5, gain: playVol * 1.4 }], edo, stepMs, frames.length);
+    frames.forEach((fr, i) => frameTimers.current.push(setTimeout(() => onHighlight(fr), i * stepMs)));
+    const holdStart = frames.length * stepMs;
+    frameTimers.current.push(setTimeout(() => onHighlight(allSteps.map(s => baseTonic + s)), holdStart));
+    frameTimers.current.push(setTimeout(() => onHighlight([]), holdStart + 3500));
+    if (playingTonalityTimer.current) clearTimeout(playingTonalityTimer.current);
+    setPlayingTonality(name);
+    playingTonalityTimer.current = setTimeout(() => { setPlayingTonality(null); playingTonalityTimer.current = null; }, holdStart + 3500);
+  }, [edo, tonicPc, lowestPitch, playVol, ensureAudio, onHighlight, scaleStepsByName]);
 
   const selectAll = () => setChecked(new Set(ivNames.map((_,i) => i)));
   const clearAll = () => setChecked(new Set());
@@ -412,49 +449,21 @@ export default function IntervalsTab({
         );
       })()}
 
-      {/* Quick-fill from a scale — driven by the exhaustive, per-EDO-correct
-          scale catalog (getScalesForEdo): Greek-named diatonic modes, septimal
-          & neutral diatonics, the minor families, pentatonics, and every MOS.
-          Click any scale to auto-check the intervals it contains (unison
-          excluded — a unison-vs-unison quiz is degenerate). */}
-      <div className="bg-[#0e0e0e] border border-[#1a1a1a] rounded p-2 space-y-2 max-h-80 overflow-y-auto">
-        <div className="flex items-center gap-2 sticky top-0 bg-[#0e0e0e] z-10 pt-2 pb-1 -mt-2">
-          <p className="text-xs text-[#888] font-medium">QUICK FILL FROM SCALE</p>
-          <span className="text-[9px] text-[#555]">{scaleCount} scales</span>
-          <button onClick={() => setChecked(new Set())}
-            className="text-[9px] text-[#555] hover:text-[#aaa] border border-[#222] rounded px-2 py-0.5 ml-auto">Clear</button>
-        </div>
-        {scaleModes.map(m => (
-          <div key={m.mode} className="space-y-1.5">
-            {/* Mode header — blue, mirrors the Interval-Spectrum TONALITIES sections. */}
-            <p className="text-[10px] font-bold tracking-widest border-b border-[#1a1a1a] pb-0.5" style={{ color: "#5b9bd5" }}>
-              {m.mode.toUpperCase()}
-            </p>
-            {m.families.map(f => (
-              <div key={f.family} className="ml-2 space-y-1">
-                {/* Family sub-header — grey, a different colour from the mode. */}
-                <p className="text-[9px] font-medium tracking-wider text-[#666]">{f.family}</p>
-                <div className="flex flex-wrap gap-1">
-                  {f.scales.map((s, i) => {
-                    const intervals = s.steps.filter(st => st > 0);
-                    const on = intervals.length === checked.size && intervals.every(st => checked.has(st));
-                    return (
-                      <button key={s.name + i}
-                        onClick={() => setChecked(new Set(intervals))}
-                        title={`${s.name} · ${s.steps.map(st => `${st}\\${edo}`).join(" ")}`}
-                        className={`px-2 py-1 text-[10px] rounded border transition-colors ${on
-                          ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]"
-                          : "bg-[#111] border-[#2a2a2a] text-[#888] hover:text-[#ccc]"}`}>
-                        {s.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
+      {/* Tonality quick-fill — the SAME collapsible TONALITIES picker as Chord
+          Progressions (shared component).  Selecting tonalities fills the
+          interval checkboxes with the union of their scale steps; ▶ previews the
+          scale.  Per direct user direction 2026-06-14. */}
+      <TonalitySection
+        edo={edo}
+        notationSystem={notationSystem}
+        selected={tonalitySet}
+        onToggle={toggleTonality}
+        onClear={clearTonalities}
+        collapsed={collapsedTonalities}
+        onToggleCollapsed={() => setCollapsedTonalities(v => !v)}
+        onPreview={previewTonality}
+        playing={playingTonality}
+      />
 
       {/* Interval selection — toggle buttons matching the Mode ID /
           Chords-tab picker style. */}
