@@ -575,6 +575,14 @@ export default function ChordsTab({
   }, []);
   const loopXenMapRef = useRef<Record<string, string[]> | null>(null);
   const loopScaleRootsRef = useRef<number[] | null>(null);
+  // First-chord inversion recency: the opening chord has no previous voicing to
+  // lead from, so without this it locks onto one inversion.  Track which
+  // inversions each opening chord has used (keyed `${roman}|${bassOffset}`) and
+  // bias the pick toward the ones not played recently (per direct user direction
+  // 2026-06-14 "sticking to the same inversions for the first chord … bias
+  // toward [the inversions not being permutated through]").
+  const firstInvCounter = useRef(0);
+  const firstInvLastUsed = useRef<Map<string, number>>(new Map());
   // Recency tracking for tonality picking — bias toward tonalities the
   // user hasn't seen lately so a multi-tonality pool actually rotates
   // instead of stochastically clumping on the same key.
@@ -1334,21 +1342,46 @@ export default function ChordsTab({
         chordAbs = buildVoicing(refRootAbs, randomChoice(compatPatterns));
       }
     } else {
-      // First chord: random pick among voicings whose bass is in range.
-      // If none exist, fall back to the candidate whose bass is closest
-      // to the range.
+      // First chord: no previous voicing to lead from.  Bias the INVERSION toward
+      // ones not used recently for this chord (so the opening chord cycles through
+      // its inversions instead of locking onto one), then choose the REGISTER
+      // within that inversion per regMode.  If no bass is in range, fall back to
+      // the candidate whose bass is closest to the range.
       const inRange = allCandidates.filter(bassInRange);
       if (inRange.length > 0) {
+        // Inversion identity = the bass pitch-class's offset from the chord root.
+        const rootPc = (((tonicPc + rootStep) % edo) + edo) % edo;
+        const invOf = (cand: number[]) => (((((Math.min(...cand) % edo) + edo) % edo) - rootPc + edo) % edo);
+        const byInv = new Map<number, number[][]>();
+        for (const c of inRange) {
+          const k = invOf(c);
+          const list = byInv.get(k);
+          if (list) list.push(c); else byInv.set(k, [c]);
+        }
+        const invs = [...byInv.keys()];
+        // Recency weighting: an inversion not seen recently (or ever) gets the
+        // highest weight, so the randomizer favours the un-played inversions.
+        const now = firstInvCounter.current++;
+        const span = invs.length + 3;
+        const weights = invs.map(k => {
+          const last = firstInvLastUsed.current.get(`${rn}|${k}`);
+          return last === undefined ? span : Math.min(now - last, span);
+        });
+        const sum = weights.reduce((a, b) => a + b, 0);
+        let pick = Math.random() * sum, pickedInv = invs[0];
+        for (let i = 0; i < invs.length; i++) { pick -= weights[i]; if (pick <= 0) { pickedInv = invs[i]; break; } }
+        firstInvLastUsed.current.set(`${rn}|${pickedInv}`, now);
+        const invPool = byInv.get(pickedInv)!;
         if (regMode === "Fixed Register") {
           // Deterministic register: bass nearest the MIDDLE of the exercise
           // range, so the progression always starts in the same octave instead
           // of a random one (the rest voice-lead from here) — per direct user
           // direction 2026-06-14 "big leaps and random registers".
           const mid = (lowestPitch + highestPitch) / 2;
-          chordAbs = inRange.reduce((best, c) =>
+          chordAbs = invPool.reduce((best, c) =>
             Math.abs(Math.min(...c) - mid) < Math.abs(Math.min(...best) - mid) ? c : best);
         } else {
-          chordAbs = randomChoice(inRange);   // Random Bass Octave / Full Register
+          chordAbs = randomChoice(invPool);   // Random Bass Octave / Full Register
         }
       } else if (allCandidates.length > 0) {
         const byOffset = [...allCandidates].sort((a, b) => bassOffset(a) - bassOffset(b));
