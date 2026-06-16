@@ -1972,6 +1972,21 @@ export default function ChordsTab({
     frameTimers.current.push(d);
   }, [playVoices, playVol, isLooping, loopGap, chordDur]);
 
+  // Replay ONE chord of the last-played loop on its own (the numbered buttons
+  // next to Replay), so the user can re-hear just the 2nd / 4th / etc. — per
+  // direct user direction 2026-06-14.
+  const replayChordAt = useCallback(async (i: number) => {
+    const voices = fhVoicesRef.current;
+    const chord = voices?.chords[i];
+    if (!chord || !chord.length || isLooping) return;
+    await ensureAudio();
+    audioEngine.playMultiVoice(
+      [{ frames: [chord], noteDuration: chordDur, gain: playVol * 0.7 * harmonyVol * CHORD_BOOST }],
+      edo, 0, 1,
+    );
+    onHighlight(chord, 0);
+  }, [ensureAudio, playVol, harmonyVol, chordDur, edo, onHighlight, isLooping]);
+
   const showFhAnswer = useCallback(async () => {
     await ensureAudio();
     setFhShowAnswer(true);
@@ -2492,6 +2507,18 @@ export default function ChordsTab({
             className="bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#333] text-[#aaa] px-4 py-2 rounded text-sm transition-colors">
             Replay
           </button>
+        )}
+        {/* Per-chord replay: re-hear just the 2nd / 4th / etc. on its own. */}
+        {responseMode !== "Show Target (Sing It)" && fhFramesRef.current && fhFramesRef.current.length > 1 && !isLooping && (
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-[#555] mr-0.5">chord</span>
+            {fhFramesRef.current.map((_, i) => (
+              <button key={i} onClick={() => replayChordAt(i)} title={`Replay chord ${i + 1} on its own`}
+                className="w-7 py-2 rounded text-xs border bg-[#1e1e1e] border-[#333] text-[#aaa] hover:border-[#7173e6] hover:text-[#9999ee] transition-colors">
+                {i + 1}
+              </button>
+            ))}
+          </div>
         )}
         {responseMode !== "Show Target (Sing It)" && (
           <button onClick={() => setCardDroneOn(v => !v)}
