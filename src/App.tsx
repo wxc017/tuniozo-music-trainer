@@ -1111,48 +1111,9 @@ export default function App() {
               Drone Continuum has its own multi-node drone control
               built into the section, so it doesn't need the global
               strip either. */}
-          {!academicMode && section === "ear-trainer" && (
-            <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 mb-3 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-[#888] tracking-widest uppercase">Drone</span>
-                {droneIsOn && <span className="w-2 h-2 rounded-full bg-[#7173e6] animate-pulse inline-block" />}
-              </div>
-              <button onClick={startHeaderDrone}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${droneIsOn ? "bg-[#7173e6] border-[#7173e6] text-white" : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"}`}>
-                ON
-              </button>
-              <button onClick={stopHeaderDrone}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${!droneIsOn ? "bg-[#3a1a1a] border-[#5a2a2a] text-[#cc6666]" : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"}`}>
-                OFF
-              </button>
-              <div className="w-px h-4 bg-[#2a2a2a]" />
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Instrument</label>
-                <select value={droneInstrument}
-                  onChange={async e => {
-                    const inst = e.target.value as DroneInstrument;
-                    setDroneInstrument(inst);
-                    audioEngine.setInstrument(inst);
-                    if (droneIsOn) {
-                      const { notes, gains } = buildDroneNotes(tonicPc);
-                      audioEngine.startDrone(notes, edo, droneVol, gains);
-                    }
-                  }}
-                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
-                  {DRONE_INSTRUMENTS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Drone Vol</label>
-                <input type="range" min={0} max={1.5} step={0.01} value={droneVol}
-                  onChange={e => handleDroneVolChange(Number(e.target.value))}
-                  className="w-20 accent-[#7173e6]" />
-                <span className="text-xs text-[#555] w-7">{Math.round(droneVol * 100)}%</span>
-              </div>
-            </div>
-          )}
-
-          {section === "ear-trainer" && (<>
+          {/* Drone strip + ear-trainer controls moved into the sticky visualizer
+              wrapper below (so they pin to the top with the keyboard). */}
+          {false && section === "ear-trainer" && (<>
           {/* Row 2: Ear-trainer controls */}
           <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 flex flex-col gap-2">
             {/* Top row: Tonic (shared) · Exercise range · Response mode · Play vol · ♪ Tonic */}
@@ -1338,8 +1299,124 @@ export default function App() {
           (real-world tunes play in standard tuning, and its EDO / Root selectors
           are hidden there) — showing it just cuts off the top of the view, so
           drop it for Transcriptions per direct user direction 2026-06-14. */}
-      {section === "ear-trainer" && activeTab !== "transcriptions" && (
-        <div id="main-visualizer" className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: 0 }}>
+      {section === "ear-trainer" && (
+        <div className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: 0 }}>
+          {/* Controls bar — moved here from the header so it sticks to the top
+              together with the keyboard (per direct user direction 2026-06-14
+              "ensure this sticks to top like the visualizer"). */}
+          {!academicMode && (
+            <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 mb-2 flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[#888] tracking-widest uppercase">Drone</span>
+                {droneIsOn && <span className="w-2 h-2 rounded-full bg-[#7173e6] animate-pulse inline-block" />}
+              </div>
+              <button onClick={startHeaderDrone}
+                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${droneIsOn ? "bg-[#7173e6] border-[#7173e6] text-white" : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"}`}>
+                ON
+              </button>
+              <button onClick={stopHeaderDrone}
+                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${!droneIsOn ? "bg-[#3a1a1a] border-[#5a2a2a] text-[#cc6666]" : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"}`}>
+                OFF
+              </button>
+              <div className="w-px h-4 bg-[#2a2a2a]" />
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-[#666]">Instrument</label>
+                <select value={droneInstrument}
+                  onChange={async e => {
+                    const inst = e.target.value as DroneInstrument;
+                    setDroneInstrument(inst);
+                    audioEngine.setInstrument(inst);
+                    if (droneIsOn) {
+                      const { notes, gains } = buildDroneNotes(tonicPc);
+                      audioEngine.startDrone(notes, edo, droneVol, gains);
+                    }
+                  }}
+                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
+                  {DRONE_INSTRUMENTS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-[#666]">Drone Vol</label>
+                <input type="range" min={0} max={1.5} step={0.01} value={droneVol}
+                  onChange={e => handleDroneVolChange(Number(e.target.value))}
+                  className="w-20 accent-[#7173e6]" />
+                <span className="text-xs text-[#555] w-7">{Math.round(droneVol * 100)}%</span>
+              </div>
+            </div>
+          )}
+          <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 mb-2 flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              {!(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && (<>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <label className="text-xs text-[#666]">Tonic</label>
+                {Array.from({ length: edo }, (_, i) => (
+                  <button key={i} onClick={() => setTonicPc(i)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                      tonicPc === i ? "bg-[#7173e6] text-white border-[#7173e6]"
+                                    : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
+                    {noteLabelForSystem(edo, i, notationByEdo[edo])}
+                  </button>
+                ))}
+              </div>
+              <div className="w-px h-4 bg-[#2a2a2a]" />
+              </>)}
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-[#666]">Range</label>
+                <button onClick={() => setRangePickStep(s => s === 0 ? 1 : 0)}
+                  title={rangePickStep === 0
+                    ? "Click to pick low + high notes on the visualizer"
+                    : "Click again to cancel"}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-colors border ${
+                    rangePickStep > 0
+                      ? "bg-[#7173e6] border-[#7173e6] text-white animate-pulse"
+                      : "bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#555]"
+                  }`}>
+                  {rangePickStep === 1 ? "Click low note…"
+                    : rangePickStep === 2 ? "Click high note…"
+                    : (() => {
+                        const loPc = ((lowestPitch % edo) + edo) % edo;
+                        const hiPc = ((highestPitch % edo) + edo) % edo;
+                        const loName = noteLabelForSystem(edo, loPc, notationByEdo[edo]);
+                        const hiName = noteLabelForSystem(edo, hiPc, notationByEdo[edo]);
+                        const loOct = 4 + Math.floor((lowestPitch - tonicPc) / edo);
+                        const hiOct = 4 + Math.floor((highestPitch - tonicPc) / edo);
+                        return `${loName}${loOct}–${hiName}${hiOct}`;
+                      })()}
+                </button>
+              </div>
+              <div className="w-px h-4 bg-[#2a2a2a]" />
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-[#666]">Response</label>
+                <select value={responseMode} onChange={e => setResponseMode(e.target.value as ResponseMode)}
+                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
+                  <option>Play Audio</option>
+                  <option>Show Target (Sing It)</option>
+                </select>
+              </div>
+              <div className="w-px h-4 bg-[#2a2a2a]" />
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-[#666]">Play Vol</label>
+                <input type="range" min={0} max={1.5} step={0.01} value={playVol}
+                  onChange={e => setPlayVol(Number(e.target.value))}
+                  className="w-20 accent-[#7173e6]" />
+                <span className="text-xs text-[#555] w-8">{Math.round(playVol * 100)}%</span>
+              </div>
+              <button onClick={async () => {
+                await ensureAudio();
+                const mid = Math.floor((lowestPitch + highestPitch) / 2);
+                const tonicNote = mid - (((mid - tonicPc) % edo + edo) % edo);
+                audioEngine.playNote(tonicNote, edo, 1.0, 0.8);
+                handleHighlight([tonicNote]);
+              }}
+                className="px-3 py-1 rounded text-xs font-medium transition-colors border bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"
+                title="Play and highlight tonic note">
+                ♪ Tonic
+              </button>
+            </div>
+          </div>
+          {/* Keyboard — meaningless on Transcriptions (real tunes, standard tuning). */}
+          {activeTab !== "transcriptions" && (
+          <div id="main-visualizer">
           {edo !== 12 && (
             <div className="flex justify-end gap-1 mb-1">
               <button onClick={() => setNotationOpen(true)}
@@ -1386,6 +1463,8 @@ export default function App() {
             <div className="bg-[#111] rounded-xl border border-[#222] h-36 flex items-center justify-center text-[#444] text-xs">
               Loading keyboard…
             </div>
+          )}
+          </div>
           )}
         </div>
       )}

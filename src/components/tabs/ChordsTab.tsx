@@ -14,8 +14,9 @@ import {
   addBassUnderHands, BASS_VOICINGS, type BassVoicing,
   type LilWarning,
 } from "@/lib/musicTheory";
+import { buildExtensionPool } from "@/lib/chordExtensions";
 import {
-  getExtLabelToSteps, getChordShapes, getEdoChordTypes, type EdoChordType,
+  getChordShapes, getEdoChordTypes, type EdoChordType,
   formatHalfAccidentals,
   getAvailableThirdQualities,
   getModeDegreeMap,
@@ -575,6 +576,10 @@ export default function ChordsTab({
   }, []);
   const loopXenMapRef = useRef<Record<string, string[]> | null>(null);
   const loopScaleRootsRef = useRef<number[] | null>(null);
+  // Per-tonality effective-checked set used to build the extension scale
+  // pool, so the in-key pool isn't polluted by chords from OTHER selected
+  // tonalities (a major-key M6 leaking into a harmonic-minor loop, etc.).
+  const loopEffectiveRef = useRef<Set<string> | null>(null);
   // First-chord inversion recency: the opening chord has no previous voicing to
   // lead from, so without this it locks onto one inversion.  Track which
   // inversions each opening chord has used (keyed `${roman}|${bassOffset}`) and
@@ -967,7 +972,7 @@ export default function ChordsTab({
     return counts;
   }, [checkedPatterns]);
 
-  const voiceChord = useCallback((rn: string, stepsOverride: number[] | null, currentChordMap: Record<string, number[]>, prevChord: number[] | null = null, xenList: string[] = [], scaleRootsOverride?: number[] | null) => {
+  const voiceChord = useCallback((rn: string, stepsOverride: number[] | null, currentChordMap: Record<string, number[]>, prevChord: number[] | null = null, xenList: string[] = [], scaleRootsOverride?: number[] | null, poolCheckedOverride?: Set<string> | null) => {
     // No voicing patterns selected → nothing to play
     if (patternNoteCounts.size === 0) return null;
 
@@ -1059,7 +1064,13 @@ export default function ChordsTab({
     // ticked.  scaleRootsOverride is the loop's per-tonality scale roots.
     const srcRoots = scaleRootsOverride !== undefined ? scaleRootsOverride : diatonicScaleRoots;
     if (srcRoots) for (const r of srcRoots) scalePcs.add(((r % edo) + edo) % edo);
-    const checkedRomans = Array.from(effectiveChecked).filter(r => currentChordMap[r]);
+    // Restrict the pool to the CURRENT tonality's checked chords.  Using the
+    // global `effectiveChecked` here let chords from other selected tonalities
+    // resolve against this tonality's (base-seeded) chord map and leak their
+    // out-of-key tones into the scale pool — e.g. a major-key M6 making the
+    // 13th over a harmonic-minor chord read as sM6 instead of sm6.
+    const poolChecked = poolCheckedOverride ?? effectiveChecked;
+    const checkedRomans = Array.from(poolChecked).filter(r => currentChordMap[r]);
     for (const rn2 of checkedRomans) {
       for (const s of currentChordMap[rn2] ?? []) scalePcs.add(((s % edo) + edo) % edo);
     }
@@ -1086,36 +1097,19 @@ export default function ChordsTab({
       return chordRels.join(",") === tKey || chordRels.join(",").startsWith(tKey + ",");
     });
 
-    const buildExtPool = (applyScale: boolean, applyStable: boolean): number[] => {
-      const pool: number[] = [];
-      for (const lbl of checkedExts) {
-        // 7th is carried by seventh-chord voicings, not as a generic ext.
-        if (lbl === "7th") continue;
-        for (const s of getExtLabelToSteps(edo)[lbl] ?? []) {
-          const pc = ((rootStep + s) % edo + edo) % edo;
-          const inScale = scalePcs.has(pc);
-          if (applyScale) {
-            if (extTendency === "Avoid") {
-              if (inScale) continue;                       // deliberately seek out-of-scale tension
-            } else if (!inScale) continue;                 // Any / In-Key: extensions stay in the scale
-          }
-          // "In Key" additionally restricts to the chord type's consonant set.
-          if (applyStable && extTendency === "Stable" && matchedType && matchedType.stable.length > 0
-              && !matchedType.stable.includes(((s % edo) + edo) % edo)) continue;
-          pool.push(s);
-        }
-      }
-      return pool;
-    };
-    // In-scale + (for In-Key) the consonant-set narrowing.
-    let extStepPool = buildExtPool(true, true);
-    // If the consonant narrowing emptied it, relax ONLY that — keep the scale
-    // gate — so "In Key" never leaks an out-of-scale tone (the old fallback
-    // dropped the scale gate entirely, which let a #9 / sm3 slip in and
-    // mis-label the chord minor).
-    if (extStepPool.length === 0 && extTendency === "Stable") extStepPool = buildExtPool(true, false);
-    // "Avoid" genuinely wants out-of-scale tension; if none exists, allow anything.
-    if (extStepPool.length === 0 && extTendency === "Avoid") extStepPool = buildExtPool(false, false);
+    // Extension pool (shared, pure — see chordExtensions.ts).  Each natural
+    // extension also offers its in-scale diatonic-walk variant, so the scale
+    // gate keeps the in-key tone (e.g. the 13th over a harmonic-minor chord
+    // resolves to the scale's ♭6, not a fixed major 6th).
+    const extStepPool = buildExtensionPool({
+      edo,
+      checkedExts,
+      scalePcs,
+      scaleRoots: srcRoots ?? null,
+      chordRootStep: rootStep,
+      extTendency,
+      stableSet: matchedType?.stable ?? null,
+    });
 
     // Split extensions: lower (2/4/6 — within the first octave) fill
     // voicing-pattern slots like any other chord tone; upper (9/11/13
@@ -1413,7 +1407,7 @@ export default function ChordsTab({
     audioEngine.stopDrone();   // also kill any held Show-Answer chord drone
   }, []);
 
-  const buildLoopFrames = useCallback((progression: string[], chordMapOverride?: Record<string, number[]>, xenForNumeral?: Record<string, string[]>, scaleRootsOverride?: number[] | null): { chords: number[][]; bass: number[][]; melody: number[][]; appliedShapes: (number[] | null)[] } => {
+  const buildLoopFrames = useCallback((progression: string[], chordMapOverride?: Record<string, number[]>, xenForNumeral?: Record<string, string[]>, scaleRootsOverride?: number[] | null, poolCheckedOverride?: Set<string> | null): { chords: number[][]; bass: number[][]; melody: number[][]; appliedShapes: (number[] | null)[] } => {
     const useMap = chordMapOverride ?? chordMap;
     const chords: number[][] = [];
     const appliedShapes: (number[] | null)[] = [];
@@ -1442,7 +1436,7 @@ export default function ChordsTab({
     for (let i = 0; i < progression.length; i++) {
       const rn = progression[i];
       const xenList = xenForNumeral?.[rn] ?? [];
-      const result = voiceChord(rn, null, useMap, prevVoicing, xenList, scaleRootsOverride);
+      const result = voiceChord(rn, null, useMap, prevVoicing, xenList, scaleRootsOverride, poolCheckedOverride);
       let chordAbs = result ? result.chordAbs : [];
       // Adaptive JI mode: COMPENSATE for the cumulative comma drift
       // instead of letting it accumulate.  The drift is still computed
@@ -1731,6 +1725,7 @@ export default function ChordsTab({
           loopChordMapRef.current ?? undefined,
           loopXenMapRef.current ?? undefined,
           loopScaleRootsRef.current,
+          loopEffectiveRef.current ?? undefined,
         );
         if (newVoices.chords.some(c => c.length > 0)) {
           lastPlayed.current = { frames: newVoices.chords, info: loop.join(" → ") };
@@ -1803,7 +1798,8 @@ export default function ChordsTab({
     loopChordMapRef.current = tonalityChordMap;
     loopXenMapRef.current = tonalityXen;
     loopScaleRootsRef.current = tonalityScaleRoots;
-    const voices = buildLoopFrames(progression, tonalityChordMap, tonalityXen, tonalityScaleRoots);
+    loopEffectiveRef.current = tonalityEffective;
+    const voices = buildLoopFrames(progression, tonalityChordMap, tonalityXen, tonalityScaleRoots, tonalityEffective);
     if (!voices.chords.some(c => c.length > 0)) {
       setLoopInfo("Could not voice these chords.");
       return;

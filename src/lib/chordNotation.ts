@@ -154,6 +154,16 @@ export function chordSymbol(centsFromTonic: number[]): string {
       if (stack[stack.length - 1] !== sig) stack.push(sig);
       continue;
     }
+    // A small / large fifth (s5 / l5) sits too far from a perfect 5th to read
+    // as the chord's 5th.  When the chord has a 3rd, treat it as a MISSING
+    // perfect fifth (→ "no5" below) rather than printing a self-contradictory
+    // "l5 … no5".  With no 3rd (power / sus shapes) we still show it so the
+    // tone isn't lost.  Per direct user direction 2026-06-16.
+    if (code === "s5" || code === "l5") {
+      if (hasThird) continue;                                      // fifthSeen stays false → no5
+      if (stack[stack.length - 1] !== code) stack.push(code);
+      continue;
+    }
     const display = ext(code);
     if (stack[stack.length - 1] !== display) stack.push(display);
   }
