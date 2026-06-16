@@ -129,6 +129,17 @@ export function chordSymbol(centsFromTonic: number[]): string {
   // that sized code — so when a 3rd-bearing chord shows no 5-family tone at all,
   // append "no5" so the altered interval doesn't read as a stray 4th / 6th.  Per
   // direct user direction 2026-06-14: keep the sized code, just say no5.
+  // In a 7th chord the upper 2nd / 4th / 6th are tensions, so name them as the
+  // compound intervals they actually are to the chord — 2→9, 4→11, 6→13 — keeping
+  // the sized prefix (s11 / 11 / lM13, etc.).  Gated on a 7th being present so
+  // plain triads, sus / add and 6 chords keep their simple degree.  Per direct
+  // user direction 2026-06-14 ("i need to see l11 or s11 or 11").
+  const hasSeventh = sorted.some(c => { const k = sizedCode(c - root); return k !== "1" && k !== "8" && /7$/.test(k); });
+  const ext = (code: string): string => {
+    if (!hasSeventh) return code;
+    const m = /^(.*?)([246])$/.exec(code);
+    return m ? `${m[1]}${parseInt(m[2], 10) + 7}` : code;
+  };
   let fifthSeen = false, hasThird = false;
   const stack: string[] = [];
   for (const c of sorted) {
@@ -143,7 +154,8 @@ export function chordSymbol(centsFromTonic: number[]): string {
       if (stack[stack.length - 1] !== sig) stack.push(sig);
       continue;
     }
-    if (stack[stack.length - 1] !== code) stack.push(code);
+    const display = ext(code);
+    if (stack[stack.length - 1] !== display) stack.push(display);
   }
   // 3rd present but no 5-family tone — the altered 5th (l4 / lm6 / …) kept its own
   // sized code above; flag the missing perfect 5th explicitly.
