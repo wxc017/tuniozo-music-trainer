@@ -1749,8 +1749,12 @@ export default function ChordsTab({
     const tonalityScaleRoots = buildDiatonicScaleRootsForTonality(pickedTonality);
 
     const checkedRomans = Array.from(tonalityEffective).filter(r => tonalityChordMap[r]);
-    if (checkedRomans.length < 2) {
-      setLoopInfo("Select at least 2 chords.");
+    // A 1-chord loop only needs one chord; longer loops want at least two so the
+    // progression actually moves (per direct user direction 2026-06-14: allow a
+    // single-chord playback, not just two as the minimum).
+    const minChords = loopLength <= 1 ? 1 : 2;
+    if (checkedRomans.length < minChords) {
+      setLoopInfo(`Select at least ${minChords} chord${minChords > 1 ? "s" : ""}.`);
       return;
     }
 

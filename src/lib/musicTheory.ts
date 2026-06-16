@@ -1168,7 +1168,7 @@ const APPLIED_CHORDS = new Set([
 ]);
 
 /** Length options for generated loops */
-export const LOOP_LENGTHS = [2, 3, 4, 5, 6, 8] as const;
+export const LOOP_LENGTHS = [1, 2, 3, 4, 5, 6, 8] as const;
 
 /** Chords that function as "home" — a loop must start and end here. */
 const HOME_CHORDS = new Set(["I", "i"]);
