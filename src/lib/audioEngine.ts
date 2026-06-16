@@ -404,6 +404,9 @@ export class AudioEngine {
   private droneGeneration = 0;
   private droneNoteGains: GainNode[] = [];
   private droneGainNode: GainNode | null = null;
+  // Slow tremolo LFO for "swell" drones (the chord-card drone) so a sustained
+  // chord breathes instead of sitting at a constant level.  Null for plain drones.
+  private droneSwellLfo: OscillatorNode | null = null;
   // Per-voice keyed drones — used by the Drone Continuum tab so that
   // adding a new node doesn't restart every other voice.  Each voice
   // tracks its own samples + timers + per-voice generation counter
@@ -870,7 +873,7 @@ export class AudioEngine {
    *  every instrument sounds like a sine wave.  Per direct user
    *  feedback (2026-05-05): the previous sync version was the root
    *  cause of the cello/sitar/bagpipe/voice "soundwave" complaints. */
-  async startDrone(notes: number[], edo: number, gain = 0.4, perNoteGains?: number[]) {
+  async startDrone(notes: number[], edo: number, gain = 0.4, perNoteGains?: number[], swell = false) {
     // Stop any existing drone synchronously.  The previous version
     // used fadeDrone(150) which scheduled a stopDrone() setTimeout 150ms
     // out — that timeout fired AFTER the new drone was spawned and
@@ -891,7 +894,26 @@ export class AudioEngine {
     if (myGen !== this.droneGeneration) return;
 
     this.droneGainNode = ctx.createGain();
-    this.droneGainNode.gain.value = gain;
+    if (swell) {
+      // Gentle fade-in, then a slow tremolo so the sustained chord drone breathes
+      // in and out instead of holding a constant (and fatiguing) level — per
+      // direct user direction 2026-06-14 "make it fade in and out not a
+      // consistent volume".  The LFO modulates the gain AudioParam additively
+      // around a reduced base, swinging ~0.4x..1.0x of the target gain.
+      const now = ctx.currentTime;
+      this.droneGainNode.gain.setValueAtTime(0.0001, now);
+      this.droneGainNode.gain.exponentialRampToValueAtTime(Math.max(0.0001, gain * 0.7), now + 0.5);
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 0.2;                       // ~5 s swell period
+      const depth = ctx.createGain();
+      depth.gain.value = gain * 0.3;
+      lfo.connect(depth);
+      depth.connect(this.droneGainNode.gain);
+      lfo.start(now + 0.5);
+      this.droneSwellLfo = lfo;
+    } else {
+      this.droneGainNode.gain.value = gain;
+    }
     // Route drone through the SAME limiter as the play path so both
     // get identical dynamics processing — the only way to guarantee
     // drone-vs-play 1:1 parity at equal slider %.  User explicitly
@@ -1197,6 +1219,11 @@ export class AudioEngine {
       try { g.disconnect(); } catch {}
     }
     this.droneNoteGains = [];
+    if (this.droneSwellLfo) {
+      try { this.droneSwellLfo.stop(); } catch {}
+      try { this.droneSwellLfo.disconnect(); } catch {}
+      this.droneSwellLfo = null;
+    }
     if (this.droneGainNode) {
       try { this.droneGainNode.disconnect(); } catch {}
       this.droneGainNode = null;

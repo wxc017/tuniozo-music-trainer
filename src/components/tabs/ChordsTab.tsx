@@ -455,6 +455,10 @@ export default function ChordsTab({
   // chord it lights on the keyboard).  Clicking a card holds a sustained drone
   // of that chord; this index is also the "which card is droning" flag.
   const [litCardIdx, setLitCardIdx] = useState<number | null>(null);
+  // Card click mode: ON = hold a sustained, swelling drone of the chord; OFF =
+  // play the chord once (like the random playback), so the user can alternate
+  // between plain playback and drone (per direct user direction 2026-06-14).
+  const [cardDroneOn, setCardDroneOn] = useLS<boolean>("lt_crd_card_drone", true);
   // Stop any held Show-Answer chord drone when the tab unmounts.
   useEffect(() => () => { audioEngine.stopDrone(); }, []);
   // The transition currently being previewed for voice-leading
@@ -2452,6 +2456,17 @@ export default function ChordsTab({
             Replay
           </button>
         )}
+        {responseMode !== "Show Target (Sing It)" && (
+          <button onClick={() => setCardDroneOn(v => !v)}
+            title={cardDroneOn
+              ? "Answer-card click holds a swelling drone — switch to one-shot playback"
+              : "Answer-card click plays the chord once — switch to a held drone"}
+            className={`px-3 py-2 rounded text-sm border transition-colors ${
+              cardDroneOn ? "bg-[#1a1a2e] border-[#7173e6] text-[#9999ee]" : "bg-[#1e1e1e] border-[#333] text-[#888]"
+            }`}>
+            {cardDroneOn ? "◉ Drone" : "▷ Playback"}
+          </button>
+        )}
         {answerButtons}
       </div>
       {/* Bottom row: Show Answer — kept below Play per direct user
@@ -2870,22 +2885,30 @@ export default function ChordsTab({
               <div key={chord.index} role="button" tabIndex={0}
                 onClick={async () => {
                   await ensureAudio();
-                  // Toggle a sustained DRONE of the chord: clicking the lit card
-                  // again (or clicking another card) stops it — per direct user
-                  // direction 2026-06-14 "it should drone the chord until i click
-                  // off or click another".
-                  if (litCardIdx === chord.index) {
-                    audioEngine.stopDrone();
+                  // Drone mode ON: hold a sustained, swelling drone of the chord —
+                  // clicking the lit card again (or another card) stops it.  Drone
+                  // mode OFF: play the chord once, like the random playback (per
+                  // direct user direction 2026-06-14: drone until clicked off /
+                  // alternate between playback and drone).
+                  if (cardDroneOn && litCardIdx === chord.index) {
+                    audioEngine.fadeDrone();   // smooth fade-out
                     setLitCardIdx(null);
                     return;
                   }
                   audioEngine.stopDrone();
                   setLitCardIdx(chord.index);
-                  audioEngine.startDrone(chord.notes, edo, playVol * harmonyVol * 0.5);
+                  if (cardDroneOn) {
+                    // Quieter than the random playback (×0.2) + breathing swell.
+                    audioEngine.startDrone(chord.notes, edo, playVol * harmonyVol * 0.2, undefined, true);
+                  } else {
+                    audioEngine.playMultiVoice([{ frames: [chord.notes], noteDuration: 1.4, gain: playVol * harmonyVol * CHORD_BOOST }], edo, 0, 1);
+                  }
                   onHighlight(chord.notes, 0);   // hold lit until another highlight replaces it
                 }}
                 className={`rounded-lg border transition-colors p-3 cursor-pointer ${
-                  (chord.index - 1) === currentChordIdx || chord.index === litCardIdx
+                  // A lit (droned / clicked) card takes precedence so only ONE card
+                  // is highlighted — the playback cursor no longer competes with it.
+                  (litCardIdx !== null ? chord.index === litCardIdx : (chord.index - 1) === currentChordIdx)
                     ? "bg-[#15152b] border-[#7a7aca]"
                     : "bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#5a5a8a]"
                 }`} style={{ minWidth: 220 }}>
