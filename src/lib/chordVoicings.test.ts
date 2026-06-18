@@ -44,6 +44,27 @@ describe("generateChordVoicings — chord-type sections", () => {
     expect(groups).toContain("9th");    // compound extension section
   });
 
+  it("emits a section for every combination of the active extensions", () => {
+    const v = generateChordVoicings(["9th", "11th"]);
+    const groups = new Set(v.map(p => p.group));
+    expect(groups).toContain("9th");
+    expect(groups).toContain("11th");
+    expect(groups).toContain("9th + 11th");   // the combo section
+    // the combo carries both extensions
+    expect(v.some(p => p.group === "9th + 11th"
+      && p.extDegrees?.includes("9th") && p.extDegrees?.includes("11th"))).toBe(true);
+  });
+
+  it("tags each voicing with its type (Close / Open / Drop …)", () => {
+    const v = generateVoicings(["1", "3", "5", "7"]);
+    const close = v.find(p => p.label === "1 3 5 7");
+    const drop2 = v.find(p => p.label === "5 1 3 7");
+    expect(close?.voicingType).toBe("Close");
+    expect(drop2?.voicingType).toBe("Drop 2");
+    expect(v.some(p => p.voicingType === "Open")).toBe(true);
+    expect(v.some(p => p.voicingType === "Drop 2&4")).toBe(true);
+  });
+
   it("extension sections carry their extDegrees and base size", () => {
     const v = generateChordVoicings(["9th", "2nd"]);
     const ninth = v.filter(p => p.group === "9th");

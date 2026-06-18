@@ -58,7 +58,7 @@ export function generateVoicings(degrees: string[], opts: GenerateOptions = {}):
     return [...dropped, ...rest];
   };
 
-  const push = (order: number[]) => {
+  const push = (order: number[], voicingType: string) => {
     const key = order.join(",");
     if (seen.has(key)) return;
     seen.add(key);
@@ -72,20 +72,22 @@ export function generateVoicings(degrees: string[], opts: GenerateOptions = {}):
       maxNotes: n,
       baseNotes: opts.baseNotes,
       extDegrees: opts.extDegrees,
+      voicingType,
     });
   };
 
+  const DROP_NAME: Record<string, string> = { "2": "Drop 2", "3": "Drop 3", "2,4": "Drop 2&4" };
   for (let b = 0; b < n; b++) {
     const close = Array.from({ length: n }, (_, k) => (b + k) % n);
-    push(close);                                   // close inversion
+    push(close, "Close");                           // close inversion
     if (opts.open ?? true) {
       const others = degrees.map((_, i) => i).filter(i => i !== b)
         .sort((x, y) => rankOf(degrees[x]) - rankOf(degrees[y]) || x - y);
-      push([b, ...others]);                        // harmonic-rank open
+      push([b, ...others], "Open");                 // harmonic-rank open
     }
-    for (const drops of [[2], [3], [2, 4]]) {       // drop-2 / drop-3 / drop-2&4
+    for (const drops of [[2], [3], [2, 4]]) {        // drop-2 / drop-3 / drop-2&4
       if (drops.some(k => k > n || k < 2)) continue;
-      push(applyDrop(close, drops));
+      push(applyDrop(close, drops), DROP_NAME[drops.join(",")] ?? "Drop");
     }
   }
   // Order the section by actual bass (inversion), then by the ordering itself.
@@ -103,21 +105,43 @@ const EXT_SECTION: Record<string, { sym: string; base: string[]; baseNotes: numb
   "13th": { sym: "13", base: ["1", "3", "5", "7"],  baseNotes: 4 },
 };
 
+const EXT_ORDER = ["2nd", "4th", "6th", "9th", "11th", "13th"];
+const isUpperExt = (l: string) => l === "9th" || l === "11th" || l === "13th";
+
+/** Every non-empty subset of `items`, ordered by size then extension order. */
+function nonEmptySubsets(items: string[]): string[][] {
+  const n = items.length;
+  const out: string[][] = [];
+  for (let mask = 1; mask < (1 << n); mask++) {
+    const s: string[] = [];
+    for (let i = 0; i < n; i++) if (mask & (1 << i)) s.push(items[i]);
+    out.push(s);
+  }
+  out.sort((a, b) => a.length - b.length || a.join().localeCompare(b.join()));
+  return out;
+}
+
 /**
- * The full voicing catalog: always the Triad and Seventh sections, plus one
- * section per active extension label (2nd/4th/6th/9th/11th/13th), each with its
- * own inversions + drop voicings.  Toggling an extension ADDS its section —
- * it never mutates the base sections.
+ * The full voicing catalog: always the Triad and Seventh sections, plus a
+ * section for EVERY non-empty combination of the active extensions
+ * (2nd/4th/6th/9th/11th/13th) — so 9th + 11th yields "9th", "11th" AND
+ * "9th + 11th".  Each section has its own inversions + drop voicings; toggling
+ * extensions only ADDS sections, never mutating the base ones.
  */
 export function generateChordVoicings(activeExtLabels: string[]): VoicingPattern[] {
   const out: VoicingPattern[] = [];
   out.push(...generateVoicings(["1", "3", "5"], { group: "Triad", baseNotes: 3, extDegrees: [] }));
   out.push(...generateVoicings(["1", "3", "5", "7"], { group: "Seventh", baseNotes: 4, extDegrees: [] }));
-  for (const label of activeExtLabels) {
-    const e = EXT_SECTION[label];
-    if (!e) continue;
-    const degrees = [...e.base, e.sym].sort(byPitch);
-    out.push(...generateVoicings(degrees, { group: label, baseNotes: e.baseNotes, extDegrees: [label] }));
+  const active = EXT_ORDER.filter(l => activeExtLabels.includes(l) && EXT_SECTION[l]);
+  for (const subset of nonEmptySubsets(active)) {
+    // A 7th base when any compound extension is present, else a triad base.
+    const base = subset.some(isUpperExt) ? ["1", "3", "5", "7"] : ["1", "3", "5"];
+    const degrees = [...base, ...subset.map(l => EXT_SECTION[l].sym)].sort(byPitch);
+    out.push(...generateVoicings(degrees, {
+      group: subset.join(" + "),
+      baseNotes: base.length,
+      extDegrees: subset,
+    }));
   }
   // Disambiguate ids across sections (the same order indices recur per section).
   for (const p of out) p.id = `v-${p.group}-${p.order.join("-")}`;

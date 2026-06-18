@@ -443,6 +443,7 @@ export default function ChordsTab({
       // EDO).  Used to identify which chord tone sits in the bass
       // for each permutation (root → label "V", 3rd → "3/V", etc.).
       chordToneOffsets: number[];
+      voicingType: string;   // e.g. "Seventh · Drop 2"
     }[];
     activeIndex: number;
   } | null>(null);
@@ -495,6 +496,7 @@ export default function ChordsTab({
     quality: string;
     notes: number[];          // absolute pitches in playback order
     chordRootPc: number;      // pitch-class of the chord root
+    voicingType: string;      // e.g. "Seventh · Drop 2"
   };
   interface FhAnswer {
     progression: string[];
@@ -521,7 +523,7 @@ export default function ChordsTab({
   const [bassVol, setBassVol] = useLS<number>("lt_crd_vol_bass", 0.55);
   const [melodyVol, setMelodyVol] = useLS<number>("lt_crd_vol_melody", 0.75);
   const [passingTones, setPassingTones] = useLS<boolean>("lt_crd_passing_tones", false);
-  const fhVoicesRef = useRef<{ chords: number[][]; bass: number[][]; melody: number[][]; appliedShapes: (number[] | null)[] } | null>(null);
+  const fhVoicesRef = useRef<{ chords: number[][]; bass: number[][]; melody: number[][]; appliedShapes: (number[] | null)[]; voicingTypes: string[] } | null>(null);
   // Capture the picked tonality's chord map / xen map / scale roots so
   // loop iterations after the first preserve them.  Without these refs
   // the setTimeout closure called buildLoopFrames(loop) with no override
@@ -1191,15 +1193,16 @@ export default function ChordsTab({
     const searchLo = lowestPitch - 2 * edo;
     const searchHi = highestPitch + 2 * edo;
     const firstRoot = searchLo + (((tonicPc + rootStep - searchLo) % edo) + edo) % edo;
-    const allCandidates: number[][] = [];
+    const allCandidates: { voicing: number[]; pattern: VoicingPattern }[] = [];
     for (let rootAbs = firstRoot; rootAbs <= searchHi; rootAbs += edo) {
       for (const pat of compatPatterns) {
         const cand = buildVoicing(rootAbs, pat);
-        if (cand.length > 0) allCandidates.push(cand);
+        if (cand.length > 0) allCandidates.push({ voicing: cand, pattern: pat });
       }
     }
 
     let chordAbs: number[];
+    let chosenPattern: VoicingPattern | null = null;
     if (prevChord && prevChord.length > 0) {
       // Voice-leading by minimum total movement: for every candidate
       // measure how far each of its notes is from the nearest note in the
@@ -1219,7 +1222,7 @@ export default function ChordsTab({
         return total;
       };
       const scored = allCandidates
-        .map(v => ({ voicing: v, dist: distToPrev(v), offset: bassOffset(v) }))
+        .map(c => ({ voicing: c.voicing, pattern: c.pattern, dist: distToPrev(c.voicing), offset: bassOffset(c.voicing) }))
         .sort((a, b) => a.dist - b.dist);
       const inRange = scored.filter(s => s.offset === 0);
       if (inRange.length > 0) {
@@ -1227,14 +1230,16 @@ export default function ChordsTab({
         // at random so loops don't lock onto the same exact voicing.
         const minDist = inRange[0].dist;
         const best = inRange.filter(s => s.dist === minDist);
-        chordAbs = randomChoice(best).voicing;
+        const pick = randomChoice(best);
+        chordAbs = pick.voicing; chosenPattern = pick.pattern;
       } else if (scored.length > 0) {
         // No in-range candidate: pick the one whose bass is closest to
         // the range, tiebroken by voice-leading distance.
         const byOffset = [...scored].sort((a, b) => a.offset - b.offset || a.dist - b.dist);
-        chordAbs = byOffset[0].voicing;
+        chordAbs = byOffset[0].voicing; chosenPattern = byOffset[0].pattern;
       } else {
-        chordAbs = buildVoicing(refRootAbs, randomChoice(compatPatterns));
+        const pat = randomChoice(compatPatterns);
+        chordAbs = buildVoicing(refRootAbs, pat); chosenPattern = pat;
       }
     } else {
       // First chord: no previous voicing to lead from.  Bias the INVERSION toward
@@ -1242,14 +1247,14 @@ export default function ChordsTab({
       // its inversions instead of locking onto one), then choose the REGISTER
       // within that inversion per regMode.  If no bass is in range, fall back to
       // the candidate whose bass is closest to the range.
-      const inRange = allCandidates.filter(bassInRange);
+      const inRange = allCandidates.filter(c => bassInRange(c.voicing));
       if (inRange.length > 0) {
         // Inversion identity = the bass pitch-class's offset from the chord root.
         const rootPc = (((tonicPc + rootStep) % edo) + edo) % edo;
         const invOf = (cand: number[]) => (((((Math.min(...cand) % edo) + edo) % edo) - rootPc + edo) % edo);
-        const byInv = new Map<number, number[][]>();
+        const byInv = new Map<number, { voicing: number[]; pattern: VoicingPattern }[]>();
         for (const c of inRange) {
-          const k = invOf(c);
+          const k = invOf(c.voicing);
           const list = byInv.get(k);
           if (list) list.push(c); else byInv.set(k, [c]);
         }
@@ -1267,22 +1272,25 @@ export default function ChordsTab({
         for (let i = 0; i < invs.length; i++) { pick -= weights[i]; if (pick <= 0) { pickedInv = invs[i]; break; } }
         firstInvLastUsed.current.set(`${rn}|${pickedInv}`, now);
         const invPool = byInv.get(pickedInv)!;
+        let chosen: { voicing: number[]; pattern: VoicingPattern };
         if (regMode === "Fixed Register") {
           // Deterministic register: bass nearest the MIDDLE of the exercise
           // range, so the progression always starts in the same octave instead
           // of a random one (the rest voice-lead from here) — per direct user
           // direction 2026-06-14 "big leaps and random registers".
           const mid = (lowestPitch + highestPitch) / 2;
-          chordAbs = invPool.reduce((best, c) =>
-            Math.abs(Math.min(...c) - mid) < Math.abs(Math.min(...best) - mid) ? c : best);
+          chosen = invPool.reduce((best, c) =>
+            Math.abs(Math.min(...c.voicing) - mid) < Math.abs(Math.min(...best.voicing) - mid) ? c : best);
         } else {
-          chordAbs = randomChoice(invPool);   // Random Bass Octave / Full Register
+          chosen = randomChoice(invPool);   // Random Bass Octave / Full Register
         }
+        chordAbs = chosen.voicing; chosenPattern = chosen.pattern;
       } else if (allCandidates.length > 0) {
-        const byOffset = [...allCandidates].sort((a, b) => bassOffset(a) - bassOffset(b));
-        chordAbs = byOffset[0];
+        const byOffset = [...allCandidates].sort((a, b) => bassOffset(a.voicing) - bassOffset(b.voicing));
+        chordAbs = byOffset[0].voicing; chosenPattern = byOffset[0].pattern;
       } else {
-        chordAbs = buildVoicing(refRootAbs, randomChoice(compatPatterns));
+        const pat = randomChoice(compatPatterns);
+        chordAbs = buildVoicing(refRootAbs, pat); chosenPattern = pat;
       }
     }
 
@@ -1290,7 +1298,7 @@ export default function ChordsTab({
     // fold a note onto another, e.g. two identical lm6) — kept out of the
     // candidate builder so it doesn't bias the voice-leading search.
     const deduped = [...new Set(chordAbs)].sort((a, b) => a - b);
-    return { chordAbs: deduped, voicingType: "pattern", quality: triadQuality(shape, edo), appliedShape: [...shape] };
+    return { chordAbs: deduped, voicingType: chosenPattern?.voicingType ?? "", voicingSection: chosenPattern?.group ?? "", quality: triadQuality(shape, edo), appliedShape: [...shape] };
   }, [checkedPatterns, patternNoteCounts, voicingPatterns, effectiveChecked, checkedExts, extTendency, regMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, getCompatibleTypes, applyChordType, edoChordTypes, diatonicScaleRoots]);
 
   // ── Progressions: loop engine ───────────────────────────────────────
@@ -1308,10 +1316,12 @@ export default function ChordsTab({
     audioEngine.stopDrone();   // also kill any held Show-Answer chord drone
   }, []);
 
-  const buildLoopFrames = useCallback((progression: string[], chordMapOverride?: Record<string, number[]>, xenForNumeral?: Record<string, string[]>, scaleRootsOverride?: number[] | null, poolCheckedOverride?: Set<string> | null): { chords: number[][]; bass: number[][]; melody: number[][]; appliedShapes: (number[] | null)[] } => {
+  const buildLoopFrames = useCallback((progression: string[], chordMapOverride?: Record<string, number[]>, xenForNumeral?: Record<string, string[]>, scaleRootsOverride?: number[] | null, poolCheckedOverride?: Set<string> | null): { chords: number[][]; bass: number[][]; melody: number[][]; appliedShapes: (number[] | null)[]; voicingTypes: string[] } => {
     const useMap = chordMapOverride ?? chordMap;
     const chords: number[][] = [];
     const appliedShapes: (number[] | null)[] = [];
+    // Per-chord voicing descriptor for the Show Answer card, e.g. "Seventh · Drop 2".
+    const voicingTypes: string[] = [];
 
     // Adaptive JI lattice: compute the cumulative comma drift for each
     // chord in the progression by tracing chord transitions on the
@@ -1406,6 +1416,9 @@ export default function ChordsTab({
       }
       chords.push(playChordAbs);
       appliedShapes.push(shapeForRecord);
+      const vt = result?.voicingType ?? "";
+      const vs = result?.voicingSection ?? "";
+      voicingTypes.push(vt ? (vs ? `${vs} · ${vt}` : vt) : vs);
       if (chordAbs.length > 0) prevVoicing = chordAbs;
     }
     // Derive octave indices from the absolute-pitch range — generateBassLine
@@ -1477,7 +1490,7 @@ export default function ChordsTab({
       melody.push(...withPassing);
     }
 
-    return { chords, bass, melody, appliedShapes };
+    return { chords, bass, melody, appliedShapes, voicingTypes };
   }, [voiceChord, chordMap, bassLineMode, melodyMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, layoutPitchRange, passingTones, jiMode, hands, twoHandMode]);
 
   /** Play all active texture voices using the multi-voice scheduler.
@@ -1804,7 +1817,7 @@ export default function ChordsTab({
         ? [...voices.chords[idx]].sort((a, b) => a - b)
         : [];
       const chordRootPc = applied ? ((applied[0] % edo) + edo) % edo : 0;
-      return { index: idx + 1, numeral: rn, quality, notes, chordRootPc };
+      return { index: idx + 1, numeral: rn, quality, notes, chordRootPc, voicingType: voices.voicingTypes[idx] ?? "" };
     });
     setFhAnswer({
       progression,
@@ -1847,7 +1860,7 @@ export default function ChordsTab({
                     : inv === 3 ? "3rd"
                     : `low ${intervalLabel(offset, edo)}`;
         }
-        return { roman: rn, quality, inversion, pitches: chordPitches, chordRootPc, chordToneOffsets };
+        return { roman: rn, quality, inversion, pitches: chordPitches, chordRootPc, chordToneOffsets, voicingType: voices.voicingTypes[idx] ?? "" };
       });
       setTargetChordInfo({ progression: info, tonality: pickedTonality ?? null, perChord, activeIndex: -1 });
       setIsLooping(true);
@@ -2598,6 +2611,9 @@ export default function ChordsTab({
                     <div className="text-[16px] font-bold leading-tight font-mono" style={{ color: "#c8a0e0" }}>
                       <ChordSym symbol={headerLabel} />
                     </div>
+                    {c.voicingType && (
+                      <div className="text-[9px] text-[#8a8aa0] mt-0.5 uppercase tracking-wide">{c.voicingType}</div>
+                    )}
                   </div>
                   {/* Voicing notes — one cell per pitch (the actual
                       voicing).  Degree (top, +<sup>N</sup> if the
@@ -2893,6 +2909,9 @@ export default function ChordsTab({
                   <div className="text-[16px] font-bold leading-tight font-mono" style={{ color: "#c8a0e0" }}>
                     <ChordSym symbol={headerLabel} />
                   </div>
+                  {chord.voicingType && (
+                    <div className="text-[9px] text-[#8a8aa0] mt-0.5 uppercase tracking-wide">{chord.voicingType}</div>
+                  )}
                 </div>
                 {/* INTERVALS section — each tone's interval from the tonic; tap one
                     to hear that single note (the card itself plays the whole chord). */}
