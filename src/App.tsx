@@ -228,7 +228,7 @@ function ScalarExplorationLayout(props: {
   return (
     <>
       <div className="flex flex-col">
-        <div id="main-visualizer" className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: 0 }}>
+        <div id="main-visualizer" className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: "var(--metro-h, 0px)" }}>
           {edo !== 12 && (
             <div className="flex justify-end gap-1 mb-1">
               {(!notationByEdo[edo] || notationByEdo[edo] === "Schulter" || notationByEdo[edo] === "Schulter V2") && (
@@ -948,8 +948,37 @@ export default function App() {
   const lastOpt = lastOptionKey ? optionSessionStats.current.get(lastOptionKey) : null;
   const lastOptAcc = lastOpt && (lastOpt.c + lastOpt.w) ? `${Math.round(100 * lastOpt.c / (lastOpt.c + lastOpt.w))}%` : "";
 
+  const metroShown = showMetronomeTimer && !academicMode && section !== "mixed-groups";
   return (
-    <div className={`bg-[#0d0d0d] text-white flex flex-col ${(section === "reading-workflow" || section === "temperament-explorer" || section === "math-lab") ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}>
+    <div
+      className={`bg-[#0d0d0d] text-white flex flex-col ${(section === "reading-workflow" || section === "temperament-explorer" || section === "math-lab") ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}
+      style={{ "--metro-h": metroShown ? "44px" : "0px" } as React.CSSProperties}
+    >
+      {/* Metronome + Timer — pinned as an always-on strip at the very top so it
+          stays visible across every section.  Root-level sticky headers (the
+          ear-trainer / scalar-exploration visualizers) offset themselves below
+          it via the --metro-h variable; inner-scroll sections sit beneath it
+          naturally.  Hidden in academic mode and Mixed Groups, and gated on the
+          showMetronomeTimer settings toggle (default off). */}
+      {metroShown && (
+        <div className="sticky top-0 z-[55] flex items-center gap-3 px-4 min-h-[44px] bg-[#0d0d0d] border-b border-[#1e1e1e] flex-shrink-0 overflow-x-auto" style={{ position: "sticky", top: 0 }}>
+          <MetronomeStrip
+            bpm={metronome.bpm}
+            setBpm={metronome.setBpm}
+            running={metronome.running}
+            beat={metronome.beat}
+            start={metronome.start}
+            stop={metronome.stop}
+          />
+          <div className="w-px h-4 bg-[#2a2a2a]" />
+          <CountdownTimer />
+          <button onClick={() => setShowMetronomeTimer(false)}
+            title="Hide metronome & timer (re-enable in Settings)"
+            className="ml-1 text-[#555] hover:text-[#cc6666] text-xs px-1.5 py-0.5 rounded border border-[#2a2a2a] hover:border-[#5a2a2a] transition-colors">
+            ✕
+          </button>
+        </div>
+      )}
       {/* ── Header ── */}
       <div className="border-b border-[#1e1e1e] px-4 pt-4 pb-3 flex-shrink-0">
         <div className="space-y-3">
@@ -1085,23 +1114,8 @@ export default function App() {
               metornome and timer from everything unless i toggle it
               on in settings" — default off so the page header stays
               focused on the section content. */}
-          {showMetronomeTimer && !academicMode && section !== "mixed-groups" && <div className="flex flex-wrap items-center gap-3">
-            <MetronomeStrip
-              bpm={metronome.bpm}
-              setBpm={metronome.setBpm}
-              running={metronome.running}
-              beat={metronome.beat}
-              start={metronome.start}
-              stop={metronome.stop}
-            />
-            <div className="w-px h-4 bg-[#2a2a2a]" />
-            <CountdownTimer />
-            <button onClick={() => setShowMetronomeTimer(false)}
-              title="Hide metronome & timer (re-enable in Settings)"
-              className="ml-1 text-[#555] hover:text-[#cc6666] text-xs px-1.5 py-0.5 rounded border border-[#2a2a2a] hover:border-[#5a2a2a] transition-colors">
-              ✕
-            </button>
-          </div>}
+          {/* Metronome + Timer strip moved to a pinned always-on bar at the
+              very top of the root (see the --metro-h sticky bar above). */}
 
           {/* Drone strip — only in Tonal Audiation (ear-trainer) per
               direct user direction (2026-05-06): "drone option should
@@ -1300,7 +1314,7 @@ export default function App() {
           are hidden there) — showing it just cuts off the top of the view, so
           drop it for Transcriptions per direct user direction 2026-06-14. */}
       {section === "ear-trainer" && (
-        <div className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: 0 }}>
+        <div className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: "var(--metro-h, 0px)" }}>
           {/* Controls bar — moved here from the header so it sticks to the top
               together with the keyboard (per direct user direction 2026-06-14
               "ensure this sticks to top like the visualizer"). */}
