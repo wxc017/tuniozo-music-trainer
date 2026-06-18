@@ -146,18 +146,15 @@ export function chordSymbol(centsFromTonic: number[]): string {
     const code = sizedCode(c - root);
     if (code === "1" || code === "8") continue;                  // skip root / octave
     if (/3$/.test(code)) hasThird = true;
-    // Any fifth-region tone (s5 / 5 / l5).  A genuine perfect 5th (within 14¢
-    // of 702) is implied and hidden; otherwise it's an altered 5th, NAMED as
-    // d5 (flat side) or A5 (sharp side) so the symbol always says what stands
-    // in for the 5th instead of a bare "no5" or a self-contradictory "l5 no5".
-    // Per direct user direction 2026-06-16 ("if you're gonna say no5 you need
-    // to specify what interval is replacing it").
-    if (code === "5" || code === "s5" || code === "l5") {
-      const off = ((((c - root) % 1200) + 1200) % 1200) - 702;
+    // Fifth-region tones use ONLY our raw sized codes (Schulter) — never d5/A5.
+    // A perfect 5th ("5") is implied and hidden; a sized fifth (s5 / l5 / sub5)
+    // is shown as-is and still counts as the 5th, so no "no5".  Anything ELSE
+    // occupying the 5th's place isn't a fifth — it's shown by its own code and
+    // "no5" is flagged below.  Per direct user direction 2026-06-16 (zero
+    // deviation from our notation: raw intervals only).
+    if (/^(?:s|l|sub)?5$/.test(code)) {
       fifthSeen = true;
-      if (Math.abs(off) <= 14) continue;                           // genuine perfect 5th: implied
-      const sig = off < 0 ? "d5" : "A5";
-      if (stack[stack.length - 1] !== sig) stack.push(sig);
+      if (code !== "5" && stack[stack.length - 1] !== code) stack.push(code);
       continue;
     }
     const display = ext(code);
