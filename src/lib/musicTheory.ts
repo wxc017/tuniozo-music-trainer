@@ -5,6 +5,7 @@ import {
   getShellRanges, getPatternScaleMaps, getModeDegreeMap,
   getChordShapes, getSizedDegreeMap,
 } from "./edoData";
+import { getSpectrumChromaticMap } from "./intervalCodes";
 
 export {
   getDegreeMap, getDegreeMapMinor, getIntervalNames,
@@ -649,6 +650,7 @@ export type BassVoicing =
   | "bass-root"        // 1            — single bass root
   | "bass-octave"      // 1 1          — root doubled an octave up
   | "bass-root5"       // 1 5          — open fifth bass
+  | "bass-root5oct"    // 1 5 8        — open fifth + octave (partials 2:3:4)
   | "bass-root10"      // 1 3          — root + 3rd up a 10th (ballad)
   | "bass-shell7"      // 1 7          — bebop shell (root + 7th)
   | "bass-shellfull";  // 1 3 7        — full Bud-Powell shell
@@ -657,6 +659,7 @@ export const BASS_VOICINGS: { id: BassVoicing; label: string; degrees: string; d
   { id: "bass-root",      label: "Root",          degrees: "1 · voicing",       desc: "Single root in the bass under your chosen voicing." },
   { id: "bass-octave",    label: "Octave",        degrees: "1 1 · voicing",     desc: "Root doubled in octaves under your voicing." },
   { id: "bass-root5",     label: "Root + 5th",    degrees: "1 5 · voicing",     desc: "Open fifth bass under your voicing." },
+  { id: "bass-root5oct",  label: "Root + 5th + 8ve", degrees: "1 5 8 · voicing", desc: "Open fifth plus the octave (partials 2:3:4) — full but still all low harmonics." },
   { id: "bass-root10",    label: "Root + 10th",   degrees: "1 3 · voicing",     desc: "Root with the 3rd up a 10th — ballad / stride sound." },
   { id: "bass-shell7",    label: "Shell (1+7)",   degrees: "1 7 · voicing",     desc: "Bebop guide-tone shell (root + 7th) under your voicing." },
   { id: "bass-shellfull", label: "Full shell",    degrees: "1 3 7 · voicing",   desc: "Full Bud-Powell shell (root + 3rd + 7th) under your voicing." },
@@ -715,6 +718,7 @@ export function addBassUnderHands(
   switch (bass) {
     case "bass-octave":    lhOff = [0, edo]; break;
     case "bass-root5":     lhOff = [0, fifthI ?? P5]; break;
+    case "bass-root5oct":  lhOff = [0, fifthI ?? P5, edo]; break;
     case "bass-root10":    lhOff = thirdI !== null ? [0, edo + thirdI] : [0]; break;
     case "bass-shell7":    lhOff = seventhI !== null ? [0, seventhI] : (thirdI !== null ? [0, thirdI] : [0]); break;
     case "bass-shellfull":
@@ -735,7 +739,11 @@ export function addBassUnderHands(
   // chord / I/5 instead of I" symptom that happened when a 5 1 3 voicing
   // forced the safety-bail path.
   const maxOff = Math.max(...lhOff);
-  const gap = Math.round(edo * 5 / 12);
+  // Minimum LH→RH separation = a major 10th (octave + M3).  In the harmonic
+  // series there are no thirds until partial 5 (~2.3 octaves up) — the low end
+  // is only octaves and fifths — so the upper structure (which carries the
+  // thirds/colours) must sit well clear of the bass, not a mere 5th above it.
+  const gap = edo + Math.round(edo * 4 / 12);
   const rootPcMod = ((rootPc % edo) + edo) % edo;
   let rhAdj = [...rh];
   let bassRoot = rootPcMod;
@@ -748,8 +756,8 @@ export function addBassUnderHands(
     while (bassRoot < floor) bassRoot += edo;
     for (let guard = 0; guard < 6; guard++) {
       const rhBottom = Math.min(...rhAdj);
-      if (bassRoot + maxOff < rhBottom) break;     // RH clears the bass
-      rhAdj = rhAdj.map(n => n + edo);             // lift RH an octave
+      if (bassRoot + maxOff + gap <= rhBottom) break;   // RH clears the bass by ≥ a 10th
+      rhAdj = rhAdj.map(n => n + edo);                   // lift RH an octave
     }
   } else {
     // Legacy: place the bass a gap below the RH bottom (tracks the voicing).
@@ -1448,7 +1456,11 @@ export function jazzPhraseToStepsEdo(
   edo: number
 ): number[] {
   const modeMap = getModeDegreeMap(edo, scaleFam, modeName);
-  const fallback = getDegreeMap(edo);
+  // Out-of-scale (chromatic) degrees resolve against BOTH the standard chromatic
+  // map and the sized spectrum palette, so a phrase / generator can colour with
+  // the EDO's sized variants (sm3 / m3 / lm3, sT / T / lT) — not just one 12-tone
+  // option (per direct user direction 2026-06-14).
+  const fallback = { ...getSpectrumChromaticMap(edo), ...getDegreeMap(edo) };
 
   const steps: number[] = [];
   let prev: number | null = null;

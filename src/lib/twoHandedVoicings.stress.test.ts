@@ -153,6 +153,10 @@ describe("addBassUnder — family 1 (Bass + YOUR voicing)", () => {
                 // Always 2 (root + chord's 5th if present, else P5 fallback).
                 expect(lhPitches.length, `${label}: bass-root5 expects 2 LH pitches`).toBe(2);
                 break;
+              case "bass-root5oct":
+                // Always 3 (root + 5th + octave).
+                expect(lhPitches.length, `${label}: bass-root5oct expects 3 LH pitches`).toBe(3);
+                break;
               case "bass-root10":
                 expect(lhPitches.length, `${label}: bass-root10 expects ${hasThird ? 2 : 1}`).toBe(hasThird ? 2 : 1);
                 break;
