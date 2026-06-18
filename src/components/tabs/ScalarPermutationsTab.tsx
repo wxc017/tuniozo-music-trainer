@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { audioEngine } from "@/lib/audioEngine";
 import {
   MELODY_BANK_31,
@@ -8,11 +8,12 @@ import {
   PATTERN_SCALE_FAMILIES, getModeDegreeMap,
   CADENCE_PROGRESSIONS, MELODY_VARIANTS, buildDiatonicChord,
 } from "@/lib/musicTheory";
-import { getDegreeMap, getHeathwaiteSolfege } from "@/lib/edoData";
+import { getDegreeMap, getHeathwaiteSolfege, registerSizedDegreeMap } from "@/lib/edoData";
+import { getScalesForEdo } from "@/lib/commonScales";
 import { useLS, registerKnownOption, unregisterKnownOptionsForPrefix } from "@/lib/storage";
 import { weightedRandomChoice } from "@/lib/stats";
 import { useContourReplay } from "@/components/PitchContour";
-import ModeScalePicker, { tonalityKey, parseTonalityKey } from "@/components/ModeScalePicker";
+import TonalitySection from "@/components/TonalitySection";
 import type { TabSettingsSnapshot } from "@/App";
 
 interface Props {
@@ -205,8 +206,22 @@ export default function ScalarPermutationsTab({
   // The current per-play "picked" tonality (scaleFam + modeName) is
   // held in state so the build functions + variantLabel can keep
   // computing against a single concrete tonality without API churn.
-  const defaultKey = tonalityKey(famNames[0], PATTERN_SCALE_FAMILIES[famNames[0]][0]);
-  const [tonalityPool, setTonalityPool] = useLS<Set<string>>("lt_perm_tonality_pool", new Set([defaultKey]));
+  // Sized-tonality pool — the SAME catalog as Chord Progressions (shared
+  // <TonalitySection>).  Each selected tonality's actual scale steps drive the
+  // permutation generators (registered as a degree map per play), per direct
+  // user direction 2026-06-14.
+  const scaleStepsByName = useMemo(() => {
+    const m = new Map<string, number[]>();
+    for (const s of getScalesForEdo(edo, false)) m.set(s.name, s.steps);
+    return m;
+  }, [edo]);
+  const [tonalitySet, setTonalitySet] = useLS<Set<string>>("lt_perm_tonalities", new Set(["Major"]));
+  const toggleTonality = (name: string) => setTonalitySet(prev => {
+    const next = new Set(prev);
+    if (next.has(name)) next.delete(name); else next.add(name);
+    return next;
+  });
+  const clearTonalities = () => setTonalitySet(new Set());
   const [scaleFam, setScaleFam] = useLS<string>("lt_perm_scaleFam", famNames[0]);
   const [modeName, setModeName] = useLS<string>("lt_perm_mode", PATTERN_SCALE_FAMILIES[famNames[0]][0]);
   // Per-tonality pick counter — drives the bias toward less-picked
@@ -538,7 +553,7 @@ export default function ScalarPermutationsTab({
     // gets weight 1 (never fully starved).  Plain uniform picking
     // was letting Math.random cluster repeats; this smooths the
     // distribution over a session.
-    const poolKeys = Array.from(tonalityPool);
+    const poolKeys = Array.from(tonalitySet);
     if (poolKeys.length === 0) { onResult("Select at least one tonality."); return; }
     const counts = tonalityPickCounts.current;
     const maxCount = poolKeys.reduce((m, k) => Math.max(m, counts.get(k) ?? 0), 0);
@@ -551,7 +566,11 @@ export default function ScalarPermutationsTab({
       if (pick <= 0) { pickedKey = poolKeys[i]; break; }
     }
     counts.set(pickedKey, (counts.get(pickedKey) ?? 0) + 1);
-    const { scaleFam: pickedFam, modeName: pickedMode } = parseTonalityKey(pickedKey);
+    // Drive the generators off this sized tonality's actual scale steps: register
+    // its degree map, then pass the tonality name as both family + mode so the
+    // generators' getModeDegreeMap / getDiatonicTriadsForMode lookups resolve to it.
+    const pickedFam = pickedKey, pickedMode = pickedKey;
+    registerSizedDegreeMap(edo, pickedKey, scaleStepsByName.get(pickedKey) ?? []);
     setScaleFam(pickedFam);
     setModeName(pickedMode);
 
@@ -682,36 +701,14 @@ export default function ScalarPermutationsTab({
           part" — defaults to expanded so first-time users see the
           picker, but the user can fold it away once their preferred
           scale is set. */}
-      <div className="rounded border border-[#1e1e1e] bg-[#0e0e0e]">
-        <div
-          onClick={() => setCollapsedTonalities(v => !v)}
-          className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer select-none transition-colors hover:bg-[#161616]"
-          style={{ borderLeft: "3px solid #888" }}
-        >
-          <span className="text-[10px] text-[#666] w-3">{collapsedTonalities ? "▸" : "▾"}</span>
-          <span className="text-xs font-semibold tracking-wider text-[#aaa]">TONALITIES</span>
-          <span className="text-[10px] text-[#555] ml-auto">{tonalityPool.size} selected</span>
-        </div>
-        {!collapsedTonalities && (
-          <div className="px-2 pb-2">
-            <ModeScalePicker
-              selected={tonalityPool}
-              onToggle={(fam, mode) => {
-                const k = tonalityKey(fam, mode);
-                setTonalityPool(prev => {
-                  const next = new Set(prev);
-                  if (next.has(k)) {
-                    // Don't allow the pool to drop to zero — keep at
-                    // least one tonality selected so play() always has
-                    // material.
-                    if (next.size > 1) next.delete(k);
-                  } else next.add(k);
-                  return next;
-                });
-              }} />
-          </div>
-        )}
-      </div>
+      <TonalitySection
+        edo={edo}
+        selected={tonalitySet}
+        onToggle={toggleTonality}
+        onClear={clearTonalities}
+        collapsed={collapsedTonalities}
+        onToggleCollapsed={() => setCollapsedTonalities(v => !v)}
+      />
 
       {/* Length filter + Note Length row moved to right ABOVE the
           Play row per direct user direction (2026-05-12) "these need
