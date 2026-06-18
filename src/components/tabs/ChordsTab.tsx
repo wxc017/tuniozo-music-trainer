@@ -1805,6 +1805,26 @@ export default function ChordsTab({
       return;
     }
 
+    // TEMP DIAGNOSTIC — compare what's PLAYED vs what the cards show.
+    // Both the audio (playVoices) and the Show Answer cards read these
+    // exact arrays, so this log is the single source of truth for the
+    // "playback doesn't match the cards" report. Remove once resolved.
+    // eslint-disable-next-line no-console
+    console.log("[CHORDS-DIAG]", {
+      tonality: pickedTonality,
+      tonicPc,
+      edo,
+      progression,
+      textureLayers: [...textureLayers],
+      chords: voices.chords.map((c, i) => ({
+        numeral: progression[i],
+        pitches: c,
+        degreesFromTonic: c.map(n => (((n - tonicPc) % edo) + edo) % edo),
+      })),
+      bass: voices.bass,
+      melody: voices.melody,
+    });
+
     // Build detailed info for "Show Answer"
     const detailLines: string[] = [`Loop: ${progression.join(" → ")}`, ""];
     if (hands === "two") {
