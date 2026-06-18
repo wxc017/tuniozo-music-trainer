@@ -1810,19 +1810,18 @@ export default function ChordsTab({
     // exact arrays, so this log is the single source of truth for the
     // "playback doesn't match the cards" report. Remove once resolved.
     // eslint-disable-next-line no-console
-    console.log("[CHORDS-DIAG]", {
-      tonality: pickedTonality,
-      tonicPc,
-      edo,
-      progression,
-      textureLayers: [...textureLayers],
-      chords: voices.chords.map((c, i) => ({
-        numeral: progression[i],
-        pitches: c,
-        degreesFromTonic: c.map(n => (((n - tonicPc) % edo) + edo) % edo),
-      })),
-      bass: voices.bass,
-      melody: voices.melody,
+    console.log("[CHORDS-DIAG] tonality=%s tonicPc=%d edo=%d  %s",
+      pickedTonality, tonicPc, edo, progression.join(" → "));
+    voices.chords.forEach((c, i) => {
+      const sorted = [...c].sort((a, b) => a - b);
+      const degs = sorted.map(n => (((n - tonicPc) % edo) + edo) % edo);
+      const appliedShape = voices.appliedShapes[i];
+      // The exact label the Show Answer card renders for each played pitch.
+      const cardLabels = sorted.map(n => notationLabel(edo, notationSystem, (((n - tonicPc) % edo) + edo) % edo));
+      // eslint-disable-next-line no-console
+      console.log(
+        `  [${i}] ${progression[i]}  pitches=[${sorted.join(",")}]  degreesFromTonic=[${degs.join(",")}]  cardShows=[${cardLabels.join(",")}]  appliedShape(tonic-rel)=[${appliedShape ?? "—"}]`,
+      );
     });
 
     // Build detailed info for "Show Answer"

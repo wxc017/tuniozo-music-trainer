@@ -1,0 +1,42 @@
+
+══════════════════════════════════════════════════════════════════════════════
+  STYLE-BY-STYLE MUSICALITY — 4,000 grooves across 10 buckets in 85.2s
+  library: 19,453 entries · path: generateInStyle (the Generate button)
+══════════════════════════════════════════════════════════════════════════════
+
+── PER-STYLE RATING (sorted by mean musical score) ───────────────────────────
+  W=Western (backbeat gate) · ·=world (no-backbeat gate)
+  style                          lib    n    score(mean±sd)   gate   backbt  kick  intlk  dens
+  W Pop / Rock / Metal           738  400    781.0± 80.3    45.3%  0.453 0.873 0.815 0.258
+  · West African                2688  400    758.0± 97.0    94.5%  0.490 0.583 0.802 0.255
+  · Afro-Cuban & Caribbean      1205  400    724.5±123.0    87.0%  0.566 0.549 0.701 0.307
+  W Funk / Hip-Hop / Electronic  1203  400    713.8±130.4    51.0%  0.532 0.627 0.835 0.449
+  · Brazilian & Latin America   1202  400    701.8±105.0    82.0%  0.561 0.902 0.678 0.106
+  · Jazz & Fusion               1202  400    686.6±135.0    96.5%  0.378 0.565 0.871 0.496
+  · Middle East & Mediterranean  4383  400    683.0±144.2    92.8%  0.563 0.830 0.882 0.350
+  · Balkan & Euro Folk          4428  400    681.7±136.6    86.3%  0.355 0.781 0.738 0.343
+  · East & SE Asian             1201  400    602.4±140.8    84.3%  0.296 0.615 0.713 0.283
+  · Indian                      1203  400    582.8±123.9    71.8%  0.598 0.735 0.592 0.222
+
+── POOLED (all styles) ───────────────────────────────────────────────────────
+  musical score:  mean 691.6  p5 452.3  median 711.0  p95 890.8
+  random baseline (see grooveMusicalityRandom.test.ts): mean ≈ 346
+  style-appropriate "sounds like a groove" gate pass:  79.1%
+  NOTE: each style is judged by the RIGHT gate — backbeat buckets (rock/pop/metal,
+  funk/hip-hop/electronic) on a 2-&-4 backbeat + kick anchor; every other tradition
+  — INCLUDING jazz/swing (ride + comp, no fixed backbeat) — on a culture-neutral gate
+  (every pulse alive · voices interlock) with NO backbeat assumption.  Scoring is
+  style-aware too (WEIGHTS_WORLD for world styles vs WEIGHTS_MUSICAL for backbeat).
+
+── CYCLE LENGTHS EXERCISED PER STYLE ─────────────────────────────────────────
+  West African                 16, 12, 8, 24
+  Afro-Cuban & Caribbean       16, 12, 8, 32
+  Brazilian & Latin America    16, 12, 8
+  Middle East & Mediterranean  16, 12, 8, 24
+  Indian                       16, 12, 8, 24
+  East & SE Asian              16, 12, 8, 32
+  Balkan & Euro Folk           16, 12, 8, 24
+  Jazz & Fusion                16, 12, 24, 20
+  Pop / Rock / Metal           16, 12, 8
+  Funk / Hip-Hop / Electronic  16, 12, 24
+══════════════════════════════════════════════════════════════════════════════
