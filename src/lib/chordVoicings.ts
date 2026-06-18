@@ -12,7 +12,7 @@
 // Both index the SAME pitch-sorted chord the engine builds, so they compose
 // with applyVoicingPattern unchanged.
 
-import type { VoicingPattern } from "./musicTheory";
+import { applyVoicingPattern, type VoicingPattern } from "./musicTheory";
 
 // Harmonic-series rank: the smooth bottom→top stack order.  Lower = lower in
 // the voicing.  The octave-up extensions (9/11/13) share their first-octave
@@ -88,4 +88,38 @@ export function generateVoicings(degrees: string[], opts: GenerateOptions = {}):
 /** Unique group headers (inversions) present in a generated set, in order. */
 export function generatedGroups(patterns: VoicingPattern[]): string[] {
   return [...new Set(patterns.map(p => p.group))];
+}
+
+// ── Unified voicing assembly (the engine seam for the rework) ─────────
+// The current engine voices the base triad/7th with a pattern and then bolts
+// extensions on afterward.  The unified model instead treats EVERY active tone
+// (base + extensions) as one ordered set the pattern arranges — so "extension
+// placement" is just the pattern's order, no separate append.
+
+/**
+ * Canonical-ordered tone steps (relative to the chord root) for the full active
+ * chord: the base chord tones plus the selected, already-scale-resolved
+ * extension steps (each raised into its compound octave so the 9 sits above the
+ * 7, the 13 above the 7, etc.).  Pitch-sorted — the order that both
+ * generateVoicings' indices and applyVoicingPattern assume.
+ *
+ * `baseSteps` and `extSteps` are EDO step offsets above the chord root.  The
+ * extension steps must already be resolved from the key/scale (♮11 vs ♯11, etc.)
+ * by the caller — this function only orders them, it doesn't choose qualities.
+ */
+export function chordToneSteps(baseSteps: number[], extSteps: number[]): number[] {
+  return [...baseSteps, ...extSteps].sort((a, b) => a - b);
+}
+
+/**
+ * Realize one voicing: place the canonical tone steps at `rootAbs` and apply the
+ * pattern's bottom-to-top order (extensions included).  A pure wrapper over
+ * applyVoicingPattern that pins the root-realization + canonical-ordering
+ * contract the extension-aware rework relies on.
+ */
+export function assembleVoicing(
+  rootAbs: number, toneSteps: number[], pattern: VoicingPattern, edo: number,
+): number[] {
+  const content = toneSteps.map(s => rootAbs + s).sort((a, b) => a - b);
+  return applyVoicingPattern(content, edo, pattern);
 }
