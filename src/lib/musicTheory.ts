@@ -3,7 +3,7 @@ import {
   getDegreeMap, getDegreeMapMinor, getIntervalNames, getSolfege,
   getBaseChords, getChordDroneTypes, getExtLabelToSteps,
   getShellRanges, getPatternScaleMaps, getModeDegreeMap,
-  getChordShapes,
+  getChordShapes, getSizedDegreeMap,
 } from "./edoData";
 
 export {
@@ -3330,6 +3330,8 @@ registerXenPatternMaps(31, {
 });
 
 export function getModeDegreeMap31(scaleFam: string, modeName: string): Record<string, number> {
+  const sized = getSizedDegreeMap(31, scaleFam);   // a registered sized tonality wins
+  if (sized) return sized;
   const fam = PATTERN_SCALE_MAPS_31[scaleFam];
   if (!fam) return DEGREE_MAP_MAJOR_31;
   return fam[modeName] ?? DEGREE_MAP_MAJOR_31;

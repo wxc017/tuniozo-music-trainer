@@ -1342,7 +1342,50 @@ export function getPatternScaleMaps(edo: number): Record<string, ScaleFamilyMap>
   return _patternMapsCache[edo];
 }
 
+// ── Sized-tonality degree maps (Scalar Permutations) ────────────────
+// A selected sized tonality (Large Major, Small Minor, a maqam, …) drives the
+// permutation generators by registering a degree map built from its ACTUAL scale
+// steps: each step is named by its nearest chromatic degree, so a small-minor 3rd
+// registers as "b3" at the SIZED step (not the standard chromatic one).  Jazz /
+// melody phrases then resolve their degrees against it; accidentals that fall
+// outside the scale use the chromatic map (#4 = tritone, b3 = minor 3rd — per
+// direct user direction 2026-06-14).
+const _sizedDegreeMaps = new Map<string, ModeMap>();
+/** Build a degree map (degree name → octave-reduced step) from a scale's steps,
+ *  naming each step by the nearest chromatic degree of this EDO. */
+export function degreeMapFromScale(edo: number, steps: number[]): ModeMap {
+  const entries = Object.entries(getDegreeMap(edo));
+  const nameFor = (k: number): string => {
+    let best = entries[0]?.[0] ?? "1", bd = Infinity;
+    for (const [name, st] of entries) {
+      const sk = ((st % edo) + edo) % edo;
+      const raw = Math.abs(sk - k);
+      const d = Math.min(raw, edo - raw);
+      if (d < bd) { bd = d; best = name; }
+    }
+    return best;
+  };
+  const map: ModeMap = {};
+  for (const s of steps) {
+    const k = ((s % edo) + edo) % edo;
+    const name = k === 0 ? "1" : nameFor(k);
+    if (!(name in map)) map[name] = k;     // first scale step claiming a name wins
+  }
+  if (!("1" in map)) map["1"] = 0;
+  return map;
+}
+/** Register a sized tonality's scale so the generators name+resolve degrees
+ *  against it (keyed by EDO + the tonality name passed as scaleFam). */
+export function registerSizedDegreeMap(edo: number, key: string, steps: number[]): void {
+  _sizedDegreeMaps.set(`${edo}|${key}`, degreeMapFromScale(edo, steps));
+}
+export function getSizedDegreeMap(edo: number, key: string): ModeMap | undefined {
+  return _sizedDegreeMaps.get(`${edo}|${key}`);
+}
+
 export function getModeDegreeMap(edo: number, scaleFam: string, modeName: string): ModeMap {
+  const sized = _sizedDegreeMaps.get(`${edo}|${scaleFam}`);
+  if (sized) return sized;                 // a registered sized tonality wins
   const maps = getPatternScaleMaps(edo);
   return maps[scaleFam]?.[modeName] ?? getDegreeMap(edo);
 }
