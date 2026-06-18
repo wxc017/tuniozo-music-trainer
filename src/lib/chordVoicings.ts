@@ -90,6 +90,29 @@ export function generatedGroups(patterns: VoicingPattern[]): string[] {
   return [...new Set(patterns.map(p => p.group))];
 }
 
+/**
+ * The full extension-aware voicing catalog for a set of active upper-extension
+ * degrees (subset of ["9","11","13"]): triad-base and seventh-base orderings,
+ * each spanning the extensions.  `baseNotes` carries the base size (3/4) and
+ * minNotes the full size, so the engine keeps its triad/7th base build while
+ * the pattern's order arranges the extensions.  Empty extDegrees → the plain
+ * triad + seventh inversions (same as the static catalog's inversion groups).
+ */
+export function generateChordVoicings(extDegrees: string[]): VoicingPattern[] {
+  const out: VoicingPattern[] = [];
+  for (const base of [["1", "3", "5"], ["1", "3", "5", "7"]]) {
+    const degrees = [...base, ...extDegrees];
+    for (const p of generateVoicings(degrees)) {
+      // Disambiguate ids across the triad/7th sets (same order indices can
+      // recur, e.g. triad+9 vs plain 7th both yield order 0-1-2-3).
+      p.id = `v${base.length}-${p.order.join("-")}${p.spread ? "s" : ""}`;
+      p.baseNotes = base.length;
+      out.push(p);
+    }
+  }
+  return out;
+}
+
 // ── Unified voicing assembly (the engine seam for the rework) ─────────
 // The current engine voices the base triad/7th with a pattern and then bolts
 // extensions on afterward.  The unified model instead treats EVERY active tone

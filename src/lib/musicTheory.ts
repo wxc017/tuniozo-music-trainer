@@ -79,6 +79,12 @@ export interface VoicingPattern {
   spread: boolean;    // spread variant
   minNotes: number;   // minimum chord size (3 = triads, 4 = sevenths)
   maxNotes?: number;  // maximum chord size (3 = triads only)
+  // For generated, extension-aware voicings: the BASE chord size (3 = triad,
+  // 4 = seventh) the pattern is built on, with minNotes/maxNotes carrying the
+  // FULL size (base + extensions).  Lets the engine keep its triad/7th base
+  // build while the pattern's order spans the extensions.  Undefined for the
+  // static base catalog.
+  baseNotes?: number;
   // Stack mode: replaces the chord's pitch content with N stacked
   // P4s ("p4" → quartal) or P5s ("p5" → quintal) starting from the
   // chord's root.  When set, `order` and `spread` are ignored.  `n`

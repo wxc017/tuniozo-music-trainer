@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateVoicings, assembleVoicing, chordToneSteps } from "./chordVoicings";
+import { generateVoicings, generateChordVoicings, assembleVoicing, chordToneSteps } from "./chordVoicings";
 
 const pc = (n: number) => ((n % 12) + 12) % 12;
 
@@ -49,6 +49,28 @@ describe("generateVoicings", () => {
     // same input → same ids
     const v2 = generateVoicings(["1", "3", "5", "7", "9", "11", "13"]);
     expect(v2.map(p => p.id)).toEqual(ids);
+  });
+});
+
+describe("generateChordVoicings", () => {
+  it("emits triad-base and seventh-base sets with baseNotes + full minNotes", () => {
+    const v = generateChordVoicings(["9", "13"]);
+    const triad = v.filter(p => p.baseNotes === 3);
+    const seventh = v.filter(p => p.baseNotes === 4);
+    expect(triad.length).toBeGreaterThan(0);
+    expect(seventh.length).toBeGreaterThan(0);
+    // triad+9+13 → full size 5; seventh+9+13 → full size 6
+    expect(triad.every(p => p.minNotes === 5)).toBe(true);
+    expect(seventh.every(p => p.minNotes === 6)).toBe(true);
+    // ids are unique across the two base sets
+    const ids = v.map(p => p.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("no extensions → plain triad + seventh inversions", () => {
+    const v = generateChordVoicings([]);
+    expect(v.some(p => p.baseNotes === 3 && p.label === "1 3 5")).toBe(true);
+    expect(v.some(p => p.baseNotes === 4 && p.label === "1 3 5 7")).toBe(true);
   });
 });
 
