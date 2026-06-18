@@ -146,22 +146,18 @@ export function chordSymbol(centsFromTonic: number[]): string {
     const code = sizedCode(c - root);
     if (code === "1" || code === "8") continue;                  // skip root / octave
     if (/3$/.test(code)) hasThird = true;
-    if (code === "5") {
+    // Any fifth-region tone (s5 / 5 / l5).  A genuine perfect 5th (within 14¢
+    // of 702) is implied and hidden; otherwise it's an altered 5th, NAMED as
+    // d5 (flat side) or A5 (sharp side) so the symbol always says what stands
+    // in for the 5th instead of a bare "no5" or a self-contradictory "l5 no5".
+    // Per direct user direction 2026-06-16 ("if you're gonna say no5 you need
+    // to specify what interval is replacing it").
+    if (code === "5" || code === "s5" || code === "l5") {
       const off = ((((c - root) % 1200) + 1200) % 1200) - 702;
-      if (Math.abs(off) <= 14) { fifthSeen = true; continue; }   // genuine perfect 5th: implied
-      fifthSeen = true;                                          // tempered 5th: signify d5 / A5
+      fifthSeen = true;
+      if (Math.abs(off) <= 14) continue;                           // genuine perfect 5th: implied
       const sig = off < 0 ? "d5" : "A5";
       if (stack[stack.length - 1] !== sig) stack.push(sig);
-      continue;
-    }
-    // A small / large fifth (s5 / l5) sits too far from a perfect 5th to read
-    // as the chord's 5th.  When the chord has a 3rd, treat it as a MISSING
-    // perfect fifth (→ "no5" below) rather than printing a self-contradictory
-    // "l5 … no5".  With no 3rd (power / sus shapes) we still show it so the
-    // tone isn't lost.  Per direct user direction 2026-06-16.
-    if (code === "s5" || code === "l5") {
-      if (hasThird) continue;                                      // fifthSeen stays false → no5
-      if (stack[stack.length - 1] !== code) stack.push(code);
       continue;
     }
     const display = ext(code);

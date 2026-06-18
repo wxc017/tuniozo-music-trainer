@@ -73,7 +73,11 @@ function extensionSuffix(
     const m = /^([sl]?)([mM]?)(\d+)$/.exec(sizedCode((o * 1200) / edo));
     if (!m) continue;
     const deg = parseInt(m[3], 10);
-    codes.push(m[1] + m[2] + (deg <= 6 ? deg + 7 : deg));   // 2→9, 4→11, 6→13
+    // Only real upper tensions compound: 2→9, 4→11, 6→13.  A 1/3/5/7 here is a
+    // chord-tone-degree voicing artifact, not an extension — skip it so we
+    // never emit nonsense like "s12" (a 5th was being mapped to 5+7).
+    if (deg !== 2 && deg !== 4 && deg !== 6) continue;
+    codes.push(m[1] + m[2] + (deg + 7));
   }
   return codes.length ? ` ${codes.join(" ")}` : "";
 }
