@@ -832,6 +832,25 @@ export class AudioEngine {
     const ctx = this.getCtx();
     const gap = gapMs / 1000;
     const t0 = ctx.currentTime + 0.05;
+    // TEMP DIAGNOSTIC — print the EXACT pitches this call will sound, with
+    // their rendered frequency + nearest 12-EDO note name, so loop playback
+    // and single-note clicks can be compared directly. Remove once resolved.
+    try {
+      const NN = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+      const nameOf = (f: number) => {
+        const m = Math.round(69 + 12 * Math.log2(f / 440));
+        const cents = Math.round(100 * (69 + 12 * Math.log2(f / 440) - m));
+        return `${NN[((m % 12) + 12) % 12]}${Math.floor(m / 12) - 1}${cents >= 0 ? "+" : ""}${cents}`;
+      };
+      const dump = voices.map(v => v.frames.map(fr =>
+        fr.map(n => {
+          const freq = 261.63 * Math.pow(2, n / edo);
+          return `${n}=${freq.toFixed(1)}Hz(${nameOf(freq)})`;
+        }).join(" "),
+      ));
+      // eslint-disable-next-line no-console
+      console.log(`[PLAYBACK-DIAG] edo=${edo} chordCount=${chordCount} frames:`, JSON.stringify(dump));
+    } catch { /* ignore */ }
     for (const voice of voices) {
       if (!voice.frames.length) continue;
       const subdivs = Math.max(1, Math.ceil(voice.frames.length / chordCount));
