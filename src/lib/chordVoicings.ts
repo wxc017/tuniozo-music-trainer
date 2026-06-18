@@ -1,144 +1,148 @@
 // ── Smooth-voicing generator (harmonic-series-ordered) ───────────────
-// Generates VoicingPattern objects for ANY active chord-tone set — base
-// tones (1/3/5/7) plus whatever extensions (9/11/13, or 2/4/6) the user has
-// turned on — so the Voicings list grows as extensions are added instead of
-// staying frozen at triads/sevenths.
-//
-// Each voicing is a bottom-to-top ordering of indices into the active-tone
-// array.  Two orderings are produced per inversion (bass note):
-//   • CLOSE  — the tones stacked in their natural (numeric) order from the bass.
-//   • OPEN   — the tones in harmonic-series rank order from the bass
-//              (1·5·3·7·9·11·13), the all-odd / smooth spread.
-// Both index the SAME pitch-sorted chord the engine builds, so they compose
-// with applyVoicingPattern unchanged.
+// Generates VoicingPattern objects for chord-tone sets, organised into
+// CHORD-TYPE SECTIONS (Triad, Seventh, and one per active extension), each
+// with the full common-voicing set per inversion:
+//   • CLOSE       — tones stacked in natural order from the bass.
+//   • OPEN        — tones in harmonic-series rank order (1·5·3·7·9·11·13).
+//   • DROP-2/3/2&4 — the standard drop voicings (a top voice dropped an 8ve).
+// Every voicing is a bottom-to-top ordering of indices into the active-tone
+// array, composing with applyVoicingPattern unchanged.
 
 import { applyVoicingPattern, type VoicingPattern } from "./musicTheory";
 
-// Harmonic-series rank: the smooth bottom→top stack order.  Lower = lower in
-// the voicing.  The octave-up extensions (9/11/13) share their first-octave
-// degree's slot but rank above the core, as colours on top.
+// Harmonic-series rank: the smooth bottom→top stack order (lower = lower).
 const RANK: Record<string, number> = {
   "1": 0, "5": 1, "3": 2, "7": 3, "9": 4, "11": 5, "13": 6,
-  // first-octave additions (sus / add): rank with their compound colour
   "2": 4, "4": 5, "6": 6,
 };
+const rankOf = (deg: string): number => RANK[deg] ?? 99;
+
+// Pitch order of every degree symbol (for sorting a chord's tones low→high).
+const PITCH_ORDER: Record<string, number> = {
+  "1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5, "7": 6, "9": 7, "11": 8, "13": 9,
+};
+const byPitch = (a: string, b: string) => (PITCH_ORDER[a] ?? 99) - (PITCH_ORDER[b] ?? 99);
 
 const ordinal = (i: number): string =>
   i === 0 ? "Root Position"
   : i === 1 ? "1st Inversion"
   : i === 2 ? "2nd Inversion"
   : i === 3 ? "3rd Inversion"
-  : i === 4 ? "4th Inversion"
-  : i === 5 ? "5th Inversion"
   : `${i + 1}th Inversion`;
 
-const rankOf = (deg: string): number => RANK[deg] ?? 99;
-
 export interface GenerateOptions {
-  /** Include the OPEN (harmonic-rank) ordering in addition to CLOSE. Default true. */
-  open?: boolean;
+  group?: string;          // section header; defaults to the inversion name
+  baseNotes?: number;      // base chord size (3/4) for the engine
+  extDegrees?: string[];   // extension labels this section adds (e.g. ["9th"])
+  open?: boolean;          // include the harmonic-rank open ordering. Default true.
 }
 
 /**
- * Generate the smooth voicings for an active chord-tone set.
- * @param degrees active tone labels in CANONICAL order, e.g. ["1","3","5","7","9","13"].
- *                The engine must build the chord's pitches in this same order
- *                (each extension an octave above its first-octave degree) so the
- *                `order` indices line up.
+ * Generate the common voicings for a chord-tone set: close + open + the drop
+ * voicings, for every inversion.  `degrees` are tone symbols in pitch order
+ * (e.g. ["1","3","5","7","9"]); the engine must build the chord's pitches in
+ * the same order so the `order` indices line up.
  */
 export function generateVoicings(degrees: string[], opts: GenerateOptions = {}): VoicingPattern[] {
-  const open = opts.open ?? true;
   const n = degrees.length;
   if (n === 0) return [];
   const out: VoicingPattern[] = [];
   const seen = new Set<string>();
 
-  const push = (order: number[], spread: boolean, bass: number) => {
-    const key = order.join(",") + (spread ? "s" : "");
+  // Drop a set of voices (counted from the top) of a close voicing down an
+  // octave: they move to the bottom in their original (ascending) order.
+  const applyDrop = (close: number[], dropsFromTop: number[]): number[] => {
+    const dropIdx = new Set(dropsFromTop.map(k => n - k));
+    const dropped = close.filter((_, i) => dropIdx.has(i));
+    const rest = close.filter((_, i) => !dropIdx.has(i));
+    return [...dropped, ...rest];
+  };
+
+  const push = (order: number[]) => {
+    const key = order.join(",");
     if (seen.has(key)) return;
     seen.add(key);
     out.push({
-      id: "v-" + order.join("-") + (spread ? "s" : ""),
-      label: order.map(i => degrees[i]).join(" ") + (spread ? " (spread)" : ""),
-      group: ordinal(bass),
+      id: "v-" + order.join("-"),
+      label: order.map(i => degrees[i]).join(" "),
+      group: opts.group ?? ordinal(order[0]),
       order,
-      spread,
+      spread: false,
       minNotes: n,
       maxNotes: n,
+      baseNotes: opts.baseNotes,
+      extDegrees: opts.extDegrees,
     });
   };
 
   for (let b = 0; b < n; b++) {
-    // CLOSE — rotate so the bass is first, keep the rest in numeric order.
     const close = Array.from({ length: n }, (_, k) => (b + k) % n);
-    push(close, false, b);
-
-    if (open) {
-      // OPEN — bass first, then the rest by harmonic-series rank (smooth spread).
-      const others = degrees
-        .map((_, i) => i)
-        .filter(i => i !== b)
+    push(close);                                   // close inversion
+    if (opts.open ?? true) {
+      const others = degrees.map((_, i) => i).filter(i => i !== b)
         .sort((x, y) => rankOf(degrees[x]) - rankOf(degrees[y]) || x - y);
-      push([b, ...others], false, b);
+      push([b, ...others]);                        // harmonic-rank open
+    }
+    for (const drops of [[2], [3], [2, 4]]) {       // drop-2 / drop-3 / drop-2&4
+      if (drops.some(k => k > n || k < 2)) continue;
+      push(applyDrop(close, drops));
     }
   }
+  // Order the section by actual bass (inversion), then by the ordering itself.
+  out.sort((a, b) => a.order[0] - b.order[0] || a.order.join().localeCompare(b.order.join()));
   return out;
 }
 
-/** Unique group headers (inversions) present in a generated set, in order. */
+// Each selectable extension → the chord-type section it produces.
+const EXT_SECTION: Record<string, { sym: string; base: string[]; baseNotes: number }> = {
+  "2nd":  { sym: "2",  base: ["1", "3", "5"],       baseNotes: 3 },
+  "4th":  { sym: "4",  base: ["1", "3", "5"],       baseNotes: 3 },
+  "6th":  { sym: "6",  base: ["1", "3", "5"],       baseNotes: 3 },
+  "9th":  { sym: "9",  base: ["1", "3", "5", "7"],  baseNotes: 4 },
+  "11th": { sym: "11", base: ["1", "3", "5", "7"],  baseNotes: 4 },
+  "13th": { sym: "13", base: ["1", "3", "5", "7"],  baseNotes: 4 },
+};
+
+/**
+ * The full voicing catalog: always the Triad and Seventh sections, plus one
+ * section per active extension label (2nd/4th/6th/9th/11th/13th), each with its
+ * own inversions + drop voicings.  Toggling an extension ADDS its section —
+ * it never mutates the base sections.
+ */
+export function generateChordVoicings(activeExtLabels: string[]): VoicingPattern[] {
+  const out: VoicingPattern[] = [];
+  out.push(...generateVoicings(["1", "3", "5"], { group: "Triad", baseNotes: 3, extDegrees: [] }));
+  out.push(...generateVoicings(["1", "3", "5", "7"], { group: "Seventh", baseNotes: 4, extDegrees: [] }));
+  for (const label of activeExtLabels) {
+    const e = EXT_SECTION[label];
+    if (!e) continue;
+    const degrees = [...e.base, e.sym].sort(byPitch);
+    out.push(...generateVoicings(degrees, { group: label, baseNotes: e.baseNotes, extDegrees: [label] }));
+  }
+  // Disambiguate ids across sections (the same order indices recur per section).
+  for (const p of out) p.id = `v-${p.group}-${p.order.join("-")}`;
+  return out;
+}
+
+/** Unique group headers (sections) present in a generated set, in order. */
 export function generatedGroups(patterns: VoicingPattern[]): string[] {
   return [...new Set(patterns.map(p => p.group))];
 }
 
-/**
- * The full extension-aware voicing catalog for a set of active upper-extension
- * degrees (subset of ["9","11","13"]): triad-base and seventh-base orderings,
- * each spanning the extensions.  `baseNotes` carries the base size (3/4) and
- * minNotes the full size, so the engine keeps its triad/7th base build while
- * the pattern's order arranges the extensions.  Empty extDegrees → the plain
- * triad + seventh inversions (same as the static catalog's inversion groups).
- */
-export function generateChordVoicings(extDegrees: string[]): VoicingPattern[] {
-  const out: VoicingPattern[] = [];
-  for (const base of [["1", "3", "5"], ["1", "3", "5", "7"]]) {
-    const degrees = [...base, ...extDegrees];
-    for (const p of generateVoicings(degrees)) {
-      // Disambiguate ids across the triad/7th sets (same order indices can
-      // recur, e.g. triad+9 vs plain 7th both yield order 0-1-2-3).
-      p.id = `v${base.length}-${p.order.join("-")}${p.spread ? "s" : ""}`;
-      p.baseNotes = base.length;
-      out.push(p);
-    }
-  }
-  return out;
-}
-
 // ── Unified voicing assembly (the engine seam for the rework) ─────────
-// The current engine voices the base triad/7th with a pattern and then bolts
-// extensions on afterward.  The unified model instead treats EVERY active tone
-// (base + extensions) as one ordered set the pattern arranges — so "extension
-// placement" is just the pattern's order, no separate append.
 
 /**
- * Canonical-ordered tone steps (relative to the chord root) for the full active
- * chord: the base chord tones plus the selected, already-scale-resolved
- * extension steps (each raised into its compound octave so the 9 sits above the
- * 7, the 13 above the 7, etc.).  Pitch-sorted — the order that both
- * generateVoicings' indices and applyVoicingPattern assume.
- *
- * `baseSteps` and `extSteps` are EDO step offsets above the chord root.  The
- * extension steps must already be resolved from the key/scale (♮11 vs ♯11, etc.)
- * by the caller — this function only orders them, it doesn't choose qualities.
+ * Canonical-ordered tone steps (relative to the chord root): base tones plus
+ * the already-scale-resolved extension steps, pitch-sorted — the order
+ * generateVoicings' indices and applyVoicingPattern both assume.
  */
 export function chordToneSteps(baseSteps: number[], extSteps: number[]): number[] {
   return [...baseSteps, ...extSteps].sort((a, b) => a - b);
 }
 
 /**
- * Realize one voicing: place the canonical tone steps at `rootAbs` and apply the
- * pattern's bottom-to-top order (extensions included).  A pure wrapper over
- * applyVoicingPattern that pins the root-realization + canonical-ordering
- * contract the extension-aware rework relies on.
+ * Realize one voicing: place the canonical tone steps at `rootAbs` and apply
+ * the pattern's bottom-to-top order (extensions included).
  */
 export function assembleVoicing(
   rootAbs: number, toneSteps: number[], pattern: VoicingPattern, edo: number,

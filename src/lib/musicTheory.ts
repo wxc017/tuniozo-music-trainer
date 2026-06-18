@@ -85,6 +85,10 @@ export interface VoicingPattern {
   // build while the pattern's order spans the extensions.  Undefined for the
   // static base catalog.
   baseNotes?: number;
+  // The extension degrees ("9"/"11"/"13") this voicing adds on top of the base.
+  // Empty for the plain Triad / Seventh sections; the engine resolves these to
+  // in-key steps and adds them to the content.
+  extDegrees?: string[];
   // Stack mode: replaces the chord's pitch content with N stacked
   // P4s ("p4" → quartal) or P5s ("p5" → quintal) starting from the
   // chord's root.  When set, `order` and `spread` are ignored.  `n`

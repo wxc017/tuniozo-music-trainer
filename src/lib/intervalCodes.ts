@@ -421,6 +421,22 @@ export function fuzzyIntervalNamesFull(edo: number): string[] {
   return Array.from({ length: edo + 1 }, (_, s) => fuzzyFullName((s * 1200) / edo));
 }
 
+/** Spectrum (sized) chromatic palette for an EDO: every distinct sized interval
+ *  code → its octave-reduced step.  A finer EDO exposes more variants — sm3 / m3
+ *  / lm3 as three separate minor-3rd-region steps, sT / T / lT across the tritone
+ *  — so the generators can colour chromatic (out-of-scale) notes with the full
+ *  sized palette instead of a single 12-tone option (per direct user direction
+ *  2026-06-14 "different versions of chromaticism based upon the edo … sm3 / m3 /
+ *  lm3 … #4 which is lTT sTT"). */
+export function getSpectrumChromaticMap(edo: number): Record<string, number> {
+  const map: Record<string, number> = {};
+  for (let s = 0; s < edo; s++) {
+    const code = fuzzyCode((s * 1200) / edo);
+    if (!(code in map)) map[code] = s;     // first step claiming a code wins
+  }
+  return map;
+}
+
 /** Nearest spectrum region for a pitch in cents (containing region preferred,
  *  then main regions, then nearest center). */
 function nearestRegion(c: number): Region | null {

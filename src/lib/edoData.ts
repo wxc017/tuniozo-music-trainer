@@ -2,6 +2,8 @@
 // Supports 12, 17, 19, 31, 53 EDO.
 // All intervals expressed as step counts within the chosen EDO.
 
+import { fuzzyCode } from "./intervalCodes";
+
 // ── Diatonic structure ────────────────────────────────────────────────
 // T = major 2nd, s = minor 2nd (diatonic semitone), A1 = chromatic semitone (T-s)
 // 53-EDO is handled specially because its 5-limit Ionian is non-uniform (T=9 or 8).
@@ -1355,7 +1357,7 @@ const _sizedDegreeMaps = new Map<string, ModeMap>();
  *  naming each step by the nearest chromatic degree of this EDO. */
 export function degreeMapFromScale(edo: number, steps: number[]): ModeMap {
   const entries = Object.entries(getDegreeMap(edo));
-  const nameFor = (k: number): string => {
+  const stdNameFor = (k: number): string => {
     let best = entries[0]?.[0] ?? "1", bd = Infinity;
     for (const [name, st] of entries) {
       const sk = ((st % edo) + edo) % edo;
@@ -1368,8 +1370,14 @@ export function degreeMapFromScale(edo: number, steps: number[]): ModeMap {
   const map: ModeMap = {};
   for (const s of steps) {
     const k = ((s % edo) + edo) % edo;
-    const name = k === 0 ? "1" : nameFor(k);
-    if (!(name in map)) map[name] = k;     // first scale step claiming a name wins
+    // Name each scale step BOTH in the sized spectrum ("our new notation":
+    // sm3 / m3 / lm3, sT / T / lT, …) and the standard chromatic degree (b3 /
+    // #4 …), so the degree-named phrase banks still resolve to the scale's own
+    // (sized) steps while sized references resolve too.
+    const sized = k === 0 ? "1" : fuzzyCode((k * 1200) / edo);
+    const std = k === 0 ? "1" : stdNameFor(k);
+    if (!(sized in map)) map[sized] = k;
+    if (!(std in map)) map[std] = k;
   }
   if (!("1" in map)) map["1"] = 0;
   return map;

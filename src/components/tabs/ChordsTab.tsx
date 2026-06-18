@@ -12,10 +12,12 @@ import {
   checkLowIntervalLimits, formatLilWarnings,
   buildTwoHandedVoicing, TWO_HAND_STYLES, type TwoHandStyle,
   addBassUnderHands, BASS_VOICINGS, type BassVoicing,
-  type LilWarning,
+  type LilWarning, type VoicingPattern,
 } from "@/lib/musicTheory";
-import { buildExtensionPool } from "@/lib/chordExtensions";
+import { diatonicExtensionStep } from "@/lib/chordExtensions";
+import { generateChordVoicings, assembleVoicing } from "@/lib/chordVoicings";
 import {
+  getExtLabelToSteps,
   getChordShapes, getEdoChordTypes, type EdoChordType,
   formatHalfAccidentals,
   getAvailableThirdQualities,
@@ -312,13 +314,16 @@ export default function ChordsTab({
   const isBassVoicing = (m: TwoHandMode): m is BassVoicing => typeof m === "string" && m.startsWith("bass-");
   const validModes = new Set<string>([...BASS_VOICINGS.map(b => b.id), ...TWO_HAND_STYLES.map(s => s.id)]);
   const [twoHandModeRaw, setTwoHandMode] = useLS<TwoHandMode>("lt_crd_2hMode", "bass-root");
-  // Coerce a stale persisted id (the option set has been expanded — old
-  // single "shell" / "rootless" map to their default sub-variant).
-  const legacyMap: Record<string, TwoHandMode> = { shell: "shell-b", rootless: "rootless-a" };
-  const twoHandMode: TwoHandMode = validModes.has(twoHandModeRaw)
+  // The "Full two-hand voicings" styles were removed (covered by Bass + voicing
+  // plus the extension-aware voicing list) — coerce any persisted style to the
+  // bass family so a stale selection can't strand the picker.
+  const twoHandMode: TwoHandMode = (typeof twoHandModeRaw === "string" && twoHandModeRaw.startsWith("bass-") && validModes.has(twoHandModeRaw))
     ? twoHandModeRaw
-    : (legacyMap[twoHandModeRaw as string] ?? "bass-root");
-  const [checkedPatterns, setCheckedPatterns] = useLS<Set<string>>("lt_crd_vpatterns", new Set(["t-135"]));
+    : "bass-root";
+  // Defaults are the generated root-position close voicings (triad + seventh).
+  // Bumped the storage key (v2) so stale static-pattern ids from before the
+  // extension-aware rework don't linger and silently match nothing.
+  const [checkedPatterns, setCheckedPatterns] = useLS<Set<string>>("lt_crd_vpatterns_v3", new Set(["v-Triad-0-1-2", "v-Seventh-0-1-2-3"]));
   // Per-tonality, per-numeral xenharmonic chord-type opt-ins.  Each entry is
   // a list of xen 3rd-quality IDs (e.g. "neu3","sub3","sup3") that the user
   // wants to add to that numeral's chord pool. An empty list = play the
@@ -929,7 +934,7 @@ export default function ChordsTab({
   }, [effectiveChecked, chordMap, chordMatchesType]);
 
   const hasPlayableVoicing = useMemo(() => {
-    return ALL_VOICING_PATTERNS.some(p => checkedPatterns.has(p.id));
+    return checkedPatterns.size > 0;
   }, [checkedPatterns]);
 
   const canPlay = playablePool.length > 0 && hasPlayableVoicing;
@@ -961,20 +966,36 @@ export default function ChordsTab({
 
   // ── Shared voicing pipeline ─────────────────────────────────────────
 
-  // Derive the set of valid note counts from the selected voicing patterns.
-  // Stack patterns (Quartal / Quintal) advertise a fixed note count via
-  // `stack.n`; chord-tone patterns use [minNotes, maxNotes].
+  // The extension labels the user has toggled on (2nd/4th/6th/9th/11th/13th),
+  // in pitch order.  Each spawns its own voicing section.
+  const activeExtLabels = useMemo(() => {
+    const ALL = ["2nd", "4th", "6th", "9th", "11th", "13th"];
+    return ALL.filter(l => checkedExts.has(l));
+  }, [checkedExts]);
+  // The voicing catalog: Triad + Seventh + a section per active extension
+  // (regenerated as extensions toggle) + the static Sus / Quartal / Quintal.
+  const voicingPatterns = useMemo<VoicingPattern[]>(() => {
+    const generated = generateChordVoicings(activeExtLabels);
+    const STATIC_GROUPS = new Set(["Sus2", "Sus4", "Quartal", "Quintal"]);
+    const statics = ALL_VOICING_PATTERNS.filter(p => STATIC_GROUPS.has(p.group));
+    return [...generated, ...statics];
+  }, [activeExtLabels]);
+
+  // Derive the set of valid BASE note counts from the selected voicing patterns.
+  // Generated patterns build on their base size (3/4) and add extensions as
+  // content; static stack / sus patterns use their declared range.
   const patternNoteCounts = useMemo(() => {
     const counts = new Set<number>();
-    for (const p of ALL_VOICING_PATTERNS) {
+    for (const p of voicingPatterns) {
       if (!checkedPatterns.has(p.id)) continue;
       if (p.stack) { counts.add(p.stack.n); continue; }
+      if (p.baseNotes !== undefined) { counts.add(p.baseNotes); continue; }
       const lo = p.minNotes;
       const hi = p.maxNotes ?? 7;
       for (let n = lo; n <= hi; n++) counts.add(n);
     }
     return counts;
-  }, [checkedPatterns]);
+  }, [checkedPatterns, voicingPatterns]);
 
   const voiceChord = useCallback((rn: string, stepsOverride: number[] | null, currentChordMap: Record<string, number[]>, prevChord: number[] | null = null, xenList: string[] = [], scaleRootsOverride?: number[] | null, poolCheckedOverride?: Set<string> | null) => {
     // No voicing patterns selected → nothing to play
@@ -1101,170 +1122,46 @@ export default function ChordsTab({
       return chordRels.join(",") === tKey || chordRels.join(",").startsWith(tKey + ",");
     });
 
-    // Extension pool (shared, pure — see chordExtensions.ts).  Each natural
-    // extension also offers its in-scale diatonic-walk variant, so the scale
-    // gate keeps the in-key tone (e.g. the 13th over a harmonic-minor chord
-    // resolves to the scale's ♭6, not a fixed major 6th).
-    const extStepPool = buildExtensionPool({
-      edo,
-      checkedExts,
-      scalePcs,
-      scaleRoots: srcRoots ?? null,
-      chordRootStep: rootStep,
-      extTendency,
-      stableSet: matchedType?.stable ?? null,
+    // Per-voicing extension resolution: each generated voicing carries the
+    // extension labels it adds (e.g. ["9th"]).  Resolve each to its in-key step
+    // — first-octave for 2nd/4th/6th, compound for 9th/11th/13th — via the
+    // diatonic walk (scale-aware), falling back to the generic degree map.
+    void scalePcs; void matchedType;   // retained for the chord-type/scale context
+    const resolveExt = (label: string): number | null => {
+      const dia = diatonicExtensionStep(edo, srcRoots ?? null, rootStep, label);
+      if (dia !== null) return dia;
+      const fb = (getExtLabelToSteps(edo)[label] ?? [])[0];
+      return fb ?? null;
+    };
+
+    const baseCount = chordAbsRef.length;
+    // Compatible patterns:
+    //   • generated — base size must match; an extension section is usable only
+    //     when its extensions resolve in the current key.
+    //   • static Sus / Quartal — base-only.
+    const compatPatterns = voicingPatterns.filter(p => {
+      if (!checkedPatterns.has(p.id)) return false;
+      if (p.baseNotes !== undefined) {
+        if (p.baseNotes !== baseCount) return false;
+        if (p.extDegrees && p.extDegrees.length > 0) return p.extDegrees.every(l => resolveExt(l) !== null);
+        return true;
+      }
+      return baseCount >= p.minNotes && (!p.maxNotes || baseCount <= p.maxNotes);
     });
-
-    // Split extensions: lower (2/4/6 — within the first octave) fill
-    // voicing-pattern slots like any other chord tone; upper (9/11/13
-    // and their alterations — steps ≥ edo) always sit on top of the
-    // voicing so they read as real compound extensions.
-    const lowerExtSteps = extStepPool.filter(s => s < edo);
-    const upperExtSteps = extStepPool.filter(s => s >= edo);
-
-    if (k_ext > 0 && lowerExtSteps.length > 0) {
-      const existing = new Set(chordAbsRef);
-      const candidates = lowerExtSteps.map(s => refRootAbs + s).filter(n => !existing.has(n));
-      shuffle(candidates);
-      chordAbsRef = [...chordAbsRef, ...candidates.slice(0, k_ext)].sort((a, b) => a - b);
-    }
-
-    if (chordAbsRef.length > targetNotes) {
-      chordAbsRef = chordAbsRef.slice(0, targetNotes);
-    }
-
-    // Pick the set of upper extensions to stack on top — count comes from
-    // # EXTENSIONS (checkedExtCounts), capped by how many upper qualities
-    // the user checked. If #EXTENSIONS has no value ≥1, no upper ext plays.
-    const extCountOpts = Array.from(checkedExtCounts).filter(n => n > 0);
-    const kUpper = extCountOpts.length > 0
-      ? Math.min(randomChoice(extCountOpts), upperExtSteps.length)
-      : 0;
-    const upperExtStepsPicked = kUpper > 0
-      ? shuffle([...upperExtSteps]).slice(0, kUpper)
-      : [];
-
-    // Must match a selected voicing pattern — no fallback
-    const nNotes = chordAbsRef.length;
-    const compatPatterns = ALL_VOICING_PATTERNS.filter(p =>
-      checkedPatterns.has(p.id) && nNotes >= p.minNotes && (!p.maxNotes || nNotes <= p.maxNotes)
-    );
     if (compatPatterns.length === 0) return null;
 
-    // Capture chord content as steps relative to the reference root, so we
-    // can re-realize it at any candidate root pitch during voice-leading search.
+    // Chord content relative to the reference root.  Each voicing adds its own
+    // extensions, so the content is built per pattern.
     const relSteps = chordAbsRef.map(n => n - refRootAbs);
-    const buildVoicing = (rootAbs: number, pattern: typeof ALL_VOICING_PATTERNS[number]): number[] => {
-      const content = relSteps.map(s => rootAbs + s).sort((a, b) => a - b);
-      let voiced = applyVoicingPattern(content, edo, pattern);
-      if (upperExtStepsPicked.length > 0) {
-        const sortedExts = [...upperExtStepsPicked].sort((a, b) => a - b);
-
-        // m9 (minor 9th) step count for the current EDO — used in the
-        // "mixed" mode's chord-defining-tone clash filter.  Octave +
-        // minor 2nd.  The minor 2nd in the degree map is "b2".
-        const m2Step = (getDegreeMap(edo)["b2"] ?? 1);
-        const m9Step = edo + m2Step;
-
-        // Identify the chord's 3rd and 7th step indices relative to
-        // the chord root — these are the chord-defining tones and the
-        // m9-avoidance filter applies against THESE only (not against
-        // the root or 5th).  We treat the diatonic 3rd / 7th positions
-        // generically: 2 scale steps and 6 scale steps above root in
-        // the chord's voicing relSteps.
-        const chordDefiningPCs = new Set<number>();
-        // Heuristic: any voice that sits 3-4 step or 9-11 step relative
-        // to the chord root (i.e. somewhere in the 3rd/7th range).
-        // Robust enough for triads + 7ths + microtonal qualities.
-        for (const s of relSteps) {
-          const rel = ((s - relSteps[0]) % edo + edo) % edo;
-          // 3rd zone: ~3-5 EDO steps (minor 3rd to neutral/major 3rd)
-          // 7th zone: ~9-11 EDO steps (minor 7th to major 7th) for 12-EDO,
-          // scaled proportionally for other EDOs.
-          const thirdLow  = Math.round(edo * 3 / 12), thirdHi  = Math.round(edo * 5 / 12);
-          const seventhLow = Math.round(edo * 9 / 12), seventhHi = Math.round(edo * 11 / 12);
-          if ((rel >= thirdLow && rel <= thirdHi) || (rel >= seventhLow && rel <= seventhHi)) {
-            chordDefiningPCs.add(((rootAbs + s) % edo + edo) % edo);
-          }
-        }
-
-        if (extPlacement === "top") {
-          for (const extStep of sortedExts) {
-            let note = rootAbs + extStep;
-            const top = voiced.length > 0 ? Math.max(...voiced) : rootAbs;
-            while (note <= top) note += edo;
-            voiced.push(note);
-          }
-        } else if (extPlacement === "mixed") {
-          // Bill Evans modal placement: extensions in any octave inside
-          // [bass, top+edo], but any candidate that forms a minor 9th
-          // against a chord-defining 3rd or 7th is filtered out.  If
-          // no valid candidate remains, fall back to "on top" placement
-          // for that extension.
-          const low = voiced.length > 0 ? Math.min(...voiced) : rootAbs;
-          const top = voiced.length > 0 ? Math.max(...voiced) : rootAbs;
-          for (const extStep of sortedExts) {
-            const pc = ((extStep % edo) + edo) % edo;
-            const candidates: number[] = [];
-            const lowOctBase = Math.floor((low - rootAbs - pc) / edo) * edo;
-            let cand = rootAbs + pc + lowOctBase;
-            while (cand < low) cand += edo;
-            while (cand <= top + edo) {
-              candidates.push(cand);
-              cand += edo;
-            }
-            const fresh = candidates.filter(c => !voiced.includes(c));
-            // m9 filter — drop positions sitting an octave + m2 from
-            // any chord-defining (3 / 7) voice.
-            const m9Clean = fresh.filter(c => {
-              for (const v of voiced) {
-                const vPc = ((v % edo) + edo) % edo;
-                if (!chordDefiningPCs.has(vPc)) continue;
-                if (Math.abs(c - v) === m9Step) return false;
-              }
-              return true;
-            });
-            const pool = m9Clean.length > 0 ? m9Clean : fresh;
-            if (pool.length > 0) {
-              voiced.push(pool[Math.floor(Math.random() * pool.length)]);
-              voiced.sort((a, b) => a - b);
-            } else {
-              // Fall back to stacked placement above the current top.
-              let note = rootAbs + extStep;
-              while (note <= Math.max(...voiced)) note += edo;
-              voiced.push(note);
-            }
-          }
-        } else {
-          // "spread" — McCoy Tyner / Herbie style.  Widen the chord-tone
-          // range to ~2 octaves by lifting the top half of the voicing
-          // up by one octave, then place each extension at its lowest
-          // natural position inside the widened range so it falls
-          // between chord tones rather than above them.
-          if (voiced.length >= 2) {
-            const half = Math.ceil(voiced.length / 2);
-            for (let i = half; i < voiced.length; i++) voiced[i] += edo;
-            voiced.sort((a, b) => a - b);
-          }
-          const low = voiced.length > 0 ? Math.min(...voiced) : rootAbs;
-          const top = voiced.length > 0 ? Math.max(...voiced) : rootAbs;
-          for (const extStep of sortedExts) {
-            const pc = ((extStep % edo) + edo) % edo;
-            // Lowest absolute pitch in this PC at or above the bass.
-            let note = rootAbs + pc;
-            while (note < low) note += edo;
-            // Walk up until it doesn't collide with an existing tone.
-            while (voiced.includes(note) && note <= top + edo) note += edo;
-            voiced.push(note);
-            voiced.sort((a, b) => a - b);
-          }
-        }
+    const buildVoicing = (rootAbs: number, pattern: VoicingPattern): number[] => {
+      let steps = relSteps;
+      if (pattern.extDegrees && pattern.extDegrees.length > 0) {
+        const extSteps = pattern.extDegrees
+          .map(resolveExt)
+          .filter((s): s is number => s !== null);
+        steps = [...relSteps, ...extSteps].sort((a, b) => a - b);
       }
-      // NOTE: duplicate-pitch dedup happens on the CHOSEN chord (see the return
-      // below), NOT here — buildVoicing also generates the voice-leading search
-      // candidates, and deduping a folded candidate to fewer notes would shrink
-      // its distance and let a degenerate voicing win the "nearest" search.
-      return clampToLayout(voiced);
+      return clampToLayout(assembleVoicing(rootAbs, steps, pattern, edo));
     };
 
     // Bass gate: the LOWEST note of the realized voicing must sit inside
@@ -1394,7 +1291,7 @@ export default function ChordsTab({
     // candidate builder so it doesn't bias the voice-leading search.
     const deduped = [...new Set(chordAbs)].sort((a, b) => a - b);
     return { chordAbs: deduped, voicingType: "pattern", quality: triadQuality(shape, edo), appliedShape: [...shape] };
-  }, [checkedPatterns, patternNoteCounts, effectiveChecked, checkedExts, checkedExtCounts, extTendency, regMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, getCompatibleTypes, applyChordType, edoChordTypes, diatonicScaleRoots]);
+  }, [checkedPatterns, patternNoteCounts, voicingPatterns, effectiveChecked, checkedExts, extTendency, regMode, edo, tonicPc, lowestPitch, highestPitch, clampToLayout, getCompatibleTypes, applyChordType, edoChordTypes, diatonicScaleRoots]);
 
   // ── Progressions: loop engine ───────────────────────────────────────
 
@@ -2320,7 +2217,7 @@ export default function ChordsTab({
                   checkedExtCounts={checkedExtCounts} setCheckedExtCounts={setCheckedExtCounts} toggleSet={toggleSet}
                   extPlacement={extPlacement} setExtPlacement={setExtPlacement}
                 />
-                <VoicingPatternControls checkedPatterns={checkedPatterns} setCheckedPatterns={setCheckedPatterns} toggleSet={toggleSet} betaMode={betaMode} />
+                <VoicingPatternControls patterns={voicingPatterns} checkedPatterns={checkedPatterns} setCheckedPatterns={setCheckedPatterns} toggleSet={toggleSet} betaMode={betaMode} />
                 {/* HANDS — single on/off toggle.  When on, two families of
                     options: "Bass + voicing" keeps the chosen RH voicing and
                     adds a small LH bass, while "Full two-hand voicings"
@@ -2344,23 +2241,6 @@ export default function ChordsTab({
                         <p className="text-[10px] text-[#666] mb-1">BASS + YOUR VOICING</p>
                         <div className="flex flex-wrap gap-1">
                           {BASS_VOICINGS.map(o => {
-                            const on = twoHandMode === o.id;
-                            return (
-                              <button key={o.id} onClick={() => setTwoHandMode(o.id)} title={o.desc}
-                                className={`flex flex-col items-start px-2 py-1 rounded border transition-colors ${
-                                  on ? "bg-[#e0b06030] border-[#e0b060]" : "bg-[#111] border-[#2a2a2a] hover:border-[#3a3a3a]"
-                                }`}>
-                                <span className={`text-[10px] ${on ? "text-[#e0b060]" : "text-[#888]"}`}>{o.label}</span>
-                                <span className={`text-[9px] font-mono ${on ? "text-[#e0b060]/80" : "text-[#555]"}`}>{o.degrees}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-[#666] mb-1">FULL TWO-HAND VOICINGS</p>
-                        <div className="flex flex-wrap gap-1">
-                          {TWO_HAND_STYLES.map(o => {
                             const on = twoHandMode === o.id;
                             return (
                               <button key={o.id} onClick={() => setTwoHandMode(o.id)} title={o.desc}
@@ -3368,111 +3248,42 @@ function ExtensionControls({ extTendency, setExtTendency, checkedExts, setChecke
           })}
         </div>
       </div>
-      {/* EXT PLACEMENT toggle — three musically-curated modes per
-          direct user direction (2026-05-13) "go ahead with this": */}
+      {/* Extension picker.  In the unified model each selected colour is added
+          on top and arranged by the (extension-aware) voicing pattern — so
+          there's no separate placement mode or count to choose. */}
       <div>
-        <p className="text-xs text-[#888] mb-1.5 font-medium">EXT PLACEMENT</p>
+        <p className="text-xs text-[#888] mb-1.5 font-medium">EXTENSIONS</p>
         <div className="flex flex-wrap gap-1">
-          {([
-            { value: "top",    label: "On top",  color: "#9999ee", desc: "Textbook stacked tertian — 9/11/13 sit above the chord tones" },
-            { value: "mixed",  label: "Mixed",   color: "#c8a0e0", desc: "Bill Evans modal voicings — extensions can sit between chord tones, m9 against 3/7 filtered out" },
-            { value: "spread", label: "Spread",  color: "#88c8d0", desc: "McCoy Tyner / Herbie spread — chord tones widen across 2 octaves with extensions woven in between" },
-          ] as const).map(o => {
-            const on = extPlacement === o.value;
+          {["2nd", "4th", "6th", "9th", "11th", "13th"].map(lbl => {
+            const on = checkedExts.has(lbl);
+            const color = "#b07acc";
             return (
-              <button key={o.value} onClick={() => setExtPlacement(o.value)} title={o.desc}
+              <button key={lbl}
+                onClick={() => setCheckedExts(toggleSet(checkedExts, lbl))}
                 className={`px-2 py-1 text-[10px] rounded border transition-colors ${
                   on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
                 }`}
-                style={on ? { backgroundColor: o.color + "30", borderColor: o.color, color: o.color } : {}}>
-                {o.label}
+                style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
+                {lbl}
               </button>
             );
           })}
         </div>
-      </div>
-      <div>
-        {/* Extension picker — gated by # EXTENSIONS per direct user
-            direction (2026-05-13) "dont allow me to click an
-            extensions if i dont have amoutn of extensions selected,
-            2 extensions have to be selected exc.".  Adding an
-            extension is blocked once the selected count reaches
-            the highest active # EXTENSIONS value.  Already-on
-            extensions can still be removed.  If no positive count
-            is in # EXTENSIONS the entire row is disabled. */}
-        <p className="text-xs text-[#888] mb-1.5 font-medium">EXTENSIONS</p>
-        {(() => {
-          const positiveCounts = Array.from(checkedExtCounts).filter(n => n > 0);
-          const maxCount = positiveCounts.length > 0 ? Math.max(...positiveCounts) : 0;
-          const atLimit = checkedExts.size >= maxCount;
-          return (
-            <>
-              <div className="flex flex-wrap gap-1">
-                {EXTENSION_LABELS_UI.map(lbl => {
-                  const on = checkedExts.has(lbl);
-                  const color = "#b07acc";
-                  const blocked = !on && atLimit;
-                  return (
-                    <button key={lbl}
-                      onClick={() => { if (!blocked) setCheckedExts(toggleSet(checkedExts, lbl)); }}
-                      disabled={blocked}
-                      title={blocked
-                        ? maxCount === 0
-                          ? "Select a # EXTENSIONS count first"
-                          : `Already at limit (${maxCount}).  Deselect one to swap.`
-                        : undefined}
-                      className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-                        on ? "text-white"
-                          : blocked ? "bg-[#0a0a0a] border-[#1a1a1a] text-[#333] cursor-not-allowed"
-                          : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                      }`}
-                      style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
-                      {lbl}
-                    </button>
-                  );
-                })}
-              </div>
-              {maxCount > 0 && (
-                <div className="text-[9px] text-[#666] mt-1">
-                  {checkedExts.size}/{maxCount} selected{atLimit ? " · at limit" : ""}
-                </div>
-              )}
-              {maxCount === 0 && (
-                <div className="text-[9px] text-[#c8a860] mt-1">
-                  Select a count in # EXTENSIONS below to enable extension picks.
-                </div>
-              )}
-            </>
-          );
-        })()}
-      </div>
-      <div>
-        <p className="text-xs text-[#888] mb-1.5 font-medium"># EXTENSIONS</p>
-        <div className="flex flex-wrap gap-1">
-          {EXT_COUNTS.map(n => {
-            const on = checkedExtCounts.has(n);
-            const color = "#c8a860";
-            return (
-              <button key={n} onClick={() => setCheckedExtCounts(toggleSet(checkedExtCounts, n))}
-                className={`px-2 py-1 text-[10px] rounded border transition-colors min-w-[28px] ${
-                  on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                }`}
-                style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
-                {n}
-              </button>
-            );
-          })}
+        <div className="text-[9px] text-[#666] mt-1">
+          Each colour is added on top; the Voicings list grows to arrange them.
         </div>
       </div>
     </div>
   );
 }
 
-function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet, betaMode = false }: {
+function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns, toggleSet, betaMode = false }: {
+  patterns: VoicingPattern[];
   checkedPatterns: Set<string>; setCheckedPatterns: (s: Set<string>) => void;
   toggleSet: <T>(s: Set<T>, v: T) => Set<T>;
   betaMode?: boolean;
 }) {
+  const groups = [...new Set(patterns.map(p => p.group))];
   // Render voicing-pattern labels with any "+N" / "-N" octave-offset
   // segment wrapped in <sup> per direct user direction "they still
   // have +1 they need be superscript" — labels like "1 3+1 5+1"
@@ -3487,15 +3298,15 @@ function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet
     );
   };
   const selectGroup = (g: string) => {
-    const ids = ALL_VOICING_PATTERNS.filter(p => p.group === g).map(p => p.id);
+    const ids = patterns.filter(p => p.group === g).map(p => p.id);
     const n = new Set(checkedPatterns); ids.forEach(id => n.add(id)); setCheckedPatterns(n);
   };
   const deselectGroup = (g: string) => {
-    const ids = new Set(ALL_VOICING_PATTERNS.filter(p => p.group === g).map(p => p.id));
+    const ids = new Set(patterns.filter(p => p.group === g).map(p => p.id));
     const n = new Set(checkedPatterns); ids.forEach(id => n.delete(id)); setCheckedPatterns(n);
   };
 
-  const totalChecked = ALL_VOICING_PATTERNS.filter(p => checkedPatterns.has(p.id)).length;
+  const totalChecked = patterns.filter(p => checkedPatterns.has(p.id)).length;
   // Sus2 and Sus4 are merged into a single "Sus" section with sub-tabs;
   // every other group still gets its own outer block.  Quartal /
   // Quintal / Sus voicings are gated behind beta — they're advanced
@@ -3503,20 +3314,20 @@ function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet
   // training, so the standard view stays focused on inversions.
   const SUS_GROUPS = ["Sus2", "Sus4"];
   const BETA_ONLY_GROUPS = new Set(["Quartal", "Quintal", "Sus2", "Sus4"]);
-  const nonSus = VOICING_PATTERN_GROUPS
+  const nonSus = groups
     .filter(g => !SUS_GROUPS.includes(g))
     .filter(g => betaMode || !BETA_ONLY_GROUPS.has(g));
-  const susAvailable = SUS_GROUPS.filter(g => ALL_VOICING_PATTERNS.some(p => p.group === g));
+  const susAvailable = SUS_GROUPS.filter(g => patterns.some(p => p.group === g));
   const [susTab, setSusTab] = useState<string>(susAvailable[0] ?? "Sus2");
-  const susTabPatterns = ALL_VOICING_PATTERNS.filter(p => p.group === susTab);
+  const susTabPatterns = patterns.filter(p => p.group === susTab);
   const susTotalCount = SUS_GROUPS.reduce(
-    (acc, g) => acc + ALL_VOICING_PATTERNS.filter(p => p.group === g && checkedPatterns.has(p.id)).length,
+    (acc, g) => acc + patterns.filter(p => p.group === g && checkedPatterns.has(p.id)).length,
     0,
   );
 
   const renderGroup = (g: string) => {
-    const patterns = ALL_VOICING_PATTERNS.filter(p => p.group === g);
-    const count = patterns.filter(p => checkedPatterns.has(p.id)).length;
+    const groupPatterns = patterns.filter(p => p.group === g);
+    const count = groupPatterns.filter(p => checkedPatterns.has(p.id)).length;
     return (
       <div key={g} className="flex flex-col">
         <div className="flex items-center gap-1.5 mb-1">
@@ -3529,7 +3340,7 @@ function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet
             className="text-[9px] text-[#555] hover:text-[#e06060] border border-[#222] rounded px-1 py-0.5">None</button>
         </div>
         <div className="flex flex-wrap gap-1">
-          {patterns.map(p => {
+          {groupPatterns.map(p => {
             const on = checkedPatterns.has(p.id);
             const color = "#9999ee";
             const theoretical = isTheoreticalVoicing(p.id);
@@ -3574,7 +3385,7 @@ function VoicingPatternControls({ checkedPatterns, setCheckedPatterns, toggleSet
               </p>
               {susAvailable.map(g => {
                 const active = susTab === g;
-                const groupCount = ALL_VOICING_PATTERNS.filter(p => p.group === g && checkedPatterns.has(p.id)).length;
+                const groupCount = patterns.filter(p => p.group === g && checkedPatterns.has(p.id)).length;
                 return (
                   <button key={g} onClick={() => setSusTab(g)}
                     className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
