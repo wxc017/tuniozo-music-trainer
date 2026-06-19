@@ -949,7 +949,7 @@ export default function App() {
   const lastOpt = lastOptionKey ? optionSessionStats.current.get(lastOptionKey) : null;
   const lastOptAcc = lastOpt && (lastOpt.c + lastOpt.w) ? `${Math.round(100 * lastOpt.c / (lastOpt.c + lastOpt.w))}%` : "";
 
-  const metroShown = showMetronomeTimer && !academicMode && section !== "mixed-groups" && section !== "ear-trainer";
+  const metroShown = showMetronomeTimer && !academicMode && section !== "mixed-groups";
   // Metronome strip content.  For most sections it pins at the very top; for
   // Tonal Audiation it moves into the sticky controls group, ABOVE the drone, per
   // direct user direction 2026-06-14 ("on top of the drone stuff not at the
@@ -968,6 +968,18 @@ export default function App() {
       <CountdownTimer />
       <button onClick={() => setShowMetronomeTimer(false)}
         title="Hide metronome & timer (re-enable in Settings)"
+        className="ml-1 text-[#555] hover:text-[#cc6666] text-xs px-1.5 py-0.5 rounded border border-[#2a2a2a] hover:border-[#5a2a2a] transition-colors">
+        ✕
+      </button>
+    </>
+  );
+  // Timer only — Tonal Audiation keeps the countdown timer but not the
+  // metronome (per direct user direction).
+  const timerStripInner = (
+    <>
+      <CountdownTimer />
+      <button onClick={() => setShowMetronomeTimer(false)}
+        title="Hide timer (re-enable in Settings)"
         className="ml-1 text-[#555] hover:text-[#cc6666] text-xs px-1.5 py-0.5 rounded border border-[#2a2a2a] hover:border-[#5a2a2a] transition-colors">
         ✕
       </button>
@@ -1326,11 +1338,11 @@ export default function App() {
           drop it for Transcriptions per direct user direction 2026-06-14. */}
       {section === "ear-trainer" && (
         <div className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: "var(--metro-h, 0px)" }}>
-          {/* Metronome + Timer — at the top of the controls group, above the
-              drone (per direct user direction 2026-06-14). */}
+          {/* Timer only — metronome is hidden in Tonal Audiation (per direct
+              user direction); the countdown timer stays. */}
           {metroShown && (
             <div className="flex items-center gap-3 mb-2 overflow-x-auto">
-              {metroStripInner}
+              {timerStripInner}
             </div>
           )}
           {/* Controls bar — moved here from the header so it sticks to the top
@@ -1498,11 +1510,11 @@ export default function App() {
             </div>
           )}
           </>)}
-          {/* Curtain — collapse / reveal the visualizer. */}
+          {/* Curtain — collapse / reveal the visualizer.  Deliberately subtle. */}
           <button onClick={() => setVizCollapsed(v => !v)}
             title={vizCollapsed ? "Show keyboard" : "Hide keyboard"}
-            className="w-full flex items-center justify-center h-3 mt-0.5 group">
-            <span className={`h-1 rounded-full transition-colors ${vizCollapsed ? "w-16 bg-[#3a3a5a]" : "w-10 bg-[#2a2a2a]"} group-hover:bg-[#5a5a8a]`} />
+            className="w-full flex items-center justify-center h-2 group">
+            <span className={`h-px rounded-full transition-colors ${vizCollapsed ? "w-8 bg-[#262630]" : "w-6 bg-[#171717]"} group-hover:bg-[#3a3a4a]`} />
           </button>
           </div>
           )}
@@ -1899,6 +1911,12 @@ export default function App() {
                 {noteLabelForSystem(edo, i, notationByEdo[edo])}
               </button>
             );
+            // Only offer roots that the Lumatone layout actually maps — many
+            // EDOs (e.g. 81) only place a subset of their steps on the board, so
+            // an unmapped tonic would never light up.  Fall back to all steps if
+            // the layout hasn't loaded yet.
+            const available = new Set((layout?.keys ?? []).map(k => ((k.pitch % edo) + edo) % edo));
+            const has = (i: number) => available.size === 0 || available.has(i);
             // Order the roots by the circle of fifths and group them in sevens,
             // one accidental level per row (the Pythagorean generator: the 7
             // naturals F C G D A E B, then the 7 sharps, the 7 flats, etc.).
@@ -1907,10 +1925,11 @@ export default function App() {
             const inv = modInv(fifth, edo);
             if (inv < 0) {
               // Multi-ring EDO (the fifth doesn't reach every step) — fall back to chromatic.
-              return <div className="flex gap-1 flex-wrap">{Array.from({ length: edo }, (_, i) => rootBtn(i))}</div>;
+              return <div className="flex gap-1 flex-wrap">{Array.from({ length: edo }, (_, i) => i).filter(has).map(i => rootBtn(i))}</div>;
             }
             const rows = new Map<number, { i: number; f: number }[]>();
             for (let i = 0; i < edo; i++) {
+              if (!has(i)) continue;
               let f = (i * inv) % edo;
               if (f > edo / 2) f -= edo;
               if (f <= -edo / 2) f += edo;
