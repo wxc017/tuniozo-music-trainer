@@ -100,12 +100,12 @@ export default function IntervalsTab({
   const [collapsedTonalities, setCollapsedTonalities] = useLS<boolean>("lt_ivl_collapsed_tonalities", false);
   const [playingTonality, setPlayingTonality] = useState<string | null>(null);
   const playingTonalityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Fill `checked` with the union of the selected tonalities' steps (unison
-  // dropped — a unison-vs-unison quiz is degenerate).
+  // Fill `checked` with the union of the selected tonalities' steps, INCLUDING
+  // the unison (step 0) per direct user direction.
   const applyTonalities = (names: Set<string>) => {
     const steps = new Set<number>();
     for (const name of names)
-      for (const st of scaleStepsByName.get(name) ?? []) if (st > 0 && st < edo) steps.add(st);
+      for (const st of scaleStepsByName.get(name) ?? []) if (st >= 0 && st < edo) steps.add(st);
     setChecked(steps);
   };
   const toggleTonality = (name: string) => {
