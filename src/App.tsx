@@ -19,7 +19,6 @@ import RhythmicAudiationTab from "@/components/tabs/RhythmicAudiationTab";
 
 
 
-import PresetBar from "@/components/PresetBar";
 import DrumPatterns from "@/components/DrumPatterns";
 import SplitPermutationsTab from "@/components/tabs/SplitPermutationsTab";
 import ParadiddleOrchestrationsTab from "@/components/tabs/ParadiddleOrchestrationsTab";
@@ -1879,21 +1878,52 @@ export default function App() {
             EDO's steps and mis-labelled them in any non-12 EDO — e.g. in 31-EDO
             "G" (index 7) set the tonic to step 7 (~271¢, a neutral third), so
             playback "stayed in C / picked the wrong root". */}
-        {(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && <div className="flex gap-2 flex-wrap items-center mb-3">
-          <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">ROOT</span>
-          {Array.from({ length: edo }, (_, i) => (
-            <button key={i} onClick={() => setTonicPc(i)}
-              className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
-                tonicPc === i ? "bg-[#7173e6] text-white border-[#7173e6]"
-                              : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
-              {noteLabelForSystem(edo, i, notationByEdo[edo])}
-            </button>
-          ))}
+        {(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && <div className="flex gap-2 items-start mb-3">
+          <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1 mt-1">ROOT</span>
+          {(() => {
+            const rootBtn = (i: number) => (
+              <button key={i} onClick={() => setTonicPc(i)}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                  tonicPc === i ? "bg-[#7173e6] text-white border-[#7173e6]"
+                                : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
+                {noteLabelForSystem(edo, i, notationByEdo[edo])}
+              </button>
+            );
+            // Order the roots by the circle of fifths and group them in sevens,
+            // one accidental level per row (the Pythagorean generator: the 7
+            // naturals F C G D A E B, then the 7 sharps, the 7 flats, etc.).
+            const fifth = Math.round(edo * Math.log2(1.5));
+            const modInv = (a: number, m: number) => { a = ((a % m) + m) % m; for (let x = 1; x < m; x++) if ((a * x) % m === 1) return x; return -1; };
+            const inv = modInv(fifth, edo);
+            if (inv < 0) {
+              // Multi-ring EDO (the fifth doesn't reach every step) — fall back to chromatic.
+              return <div className="flex gap-1 flex-wrap">{Array.from({ length: edo }, (_, i) => rootBtn(i))}</div>;
+            }
+            const rows = new Map<number, { i: number; f: number }[]>();
+            for (let i = 0; i < edo; i++) {
+              let f = (i * inv) % edo;
+              if (f > edo / 2) f -= edo;
+              if (f <= -edo / 2) f += edo;
+              const level = Math.floor((f + 1) / 7);   // naturals F..B → 0, sharps → 1, flats → -1
+              (rows.get(level) ?? rows.set(level, []).get(level)!).push({ i, f });
+            }
+            const levelLabel = (lv: number) => lv === 0 ? "♮" : lv > 0 ? "♯".repeat(lv) : "♭".repeat(-lv);
+            const orderKey = (lv: number) => lv === 0 ? 0 : lv > 0 ? 2 * lv - 1 : -2 * lv;  // ♮, ♯, ♭, ♯♯, ♭♭…
+            const levels = [...rows.keys()].sort((a, b) => orderKey(a) - orderKey(b));
+            return (
+              <div className="flex flex-col gap-1">
+                {levels.map(lv => (
+                  <div key={lv} className="flex gap-1 items-center">
+                    <span className="text-[9px] text-[#555] w-5 text-right mr-0.5 font-mono">{levelLabel(lv)}</span>
+                    {rows.get(lv)!.sort((a, b) => a.f - b.f).map(nd => rootBtn(nd.i))}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>}
         <div className="flex gap-1 flex-wrap items-center mb-4">
           {activeTab !== "transcriptions" && (<>
-            <PresetBar onPresetLoaded={() => setTabKey(k => k + 1)} />
-            <div className="w-px h-4 bg-[#2a2a2a]" />
           </>)}
           {visibleTemperamentTabs.map(t => (
             <button key={t} onClick={() => { stopAllAudio(); setActiveTab(t); }}
