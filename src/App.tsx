@@ -421,6 +421,8 @@ export default function App() {
   // simpler fix is to defer the filter + snap-to-valid effect until
   // after the flag exists.  See line ~395 below.
   const [vizType, setVizType] = useLS<VisualizerType>("lt_app_vizType", "lumatone");
+  // Curtain: collapse the ear-trainer keyboard/visualizer to free vertical space.
+  const [vizCollapsed, setVizCollapsed] = useLS<boolean>("lt_viz_collapsed", false);
   const [tonicPc, setTonicPc] = useLS<number>("lt_app_tonic", 0);
   // Exercise range — absolute pitch bounds (both inclusive). Set by clicking
   // two visualizer keys via the "Range" button. Defaults span 3 octaves
@@ -1447,6 +1449,7 @@ export default function App() {
           {/* Keyboard — meaningless on Transcriptions (real tunes, standard tuning). */}
           {activeTab !== "transcriptions" && (
           <div id="main-visualizer">
+          {!vizCollapsed && (<>
           {edo !== 12 && (
             <div className="flex justify-end gap-1 mb-1">
               <button onClick={() => setNotationOpen(true)}
@@ -1494,6 +1497,13 @@ export default function App() {
               Loading keyboard…
             </div>
           )}
+          </>)}
+          {/* Curtain — collapse / reveal the visualizer. */}
+          <button onClick={() => setVizCollapsed(v => !v)}
+            title={vizCollapsed ? "Show keyboard" : "Hide keyboard"}
+            className="w-full flex items-center justify-center h-3 mt-0.5 group">
+            <span className={`h-1 rounded-full transition-colors ${vizCollapsed ? "w-16 bg-[#3a3a5a]" : "w-10 bg-[#2a2a2a]"} group-hover:bg-[#5a5a8a]`} />
+          </button>
           </div>
           )}
         </div>
