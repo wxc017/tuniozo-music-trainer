@@ -3428,7 +3428,7 @@ function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns,
         <div className="flex flex-col gap-1.5">
           {byType.map(({ type, pats }) => (
             <div key={type}>
-              {(() => {
+              {byType.length > 1 && (() => {
                 const allOn = pats.every(p => checkedPatterns.has(p.id));
                 const someOn = pats.some(p => checkedPatterns.has(p.id));
                 return (

@@ -107,26 +107,6 @@ export function generateVoicings(degrees: string[], opts: GenerateOptions = {}):
   if (rootI >= 0) push([...close0, rootI], "Doubled");
   if (fifthI >= 0 && fifthI !== rootI) push([...close0, fifthI], "Doubled");
 
-  // ── Cluster — fold compound extensions (9/11/13 → 2/4/6) into one octave and
-  //    stack tight.  Only meaningful when a compound extension is present. ──
-  const FOLD: Record<string, string> = { "9": "2", "11": "4", "13": "6" };
-  if (degrees.some(d => FOLD[d])) {
-    const folded = degrees.map(d => FOLD[d] ?? d);
-    const order = close0.slice().sort((a, b) => (PITCH_ORDER[folded[a]] ?? 99) - (PITCH_ORDER[folded[b]] ?? 99));
-    const key = "cluster:" + order.join(",");
-    if (!seen.has(key)) {
-      seen.add(key);
-      out.push({
-        id: "v-cluster-" + order.join("-"),
-        label: order.map(i => folded[i]).join(" "),
-        group: opts.group ?? "Cluster",
-        order, spread: false, minNotes: n, maxNotes: n,
-        baseNotes: opts.baseNotes, extDegrees: opts.extDegrees, sus: opts.sus,
-        cluster: true, voicingType: "Cluster",
-      });
-    }
-  }
-
   // Order the section by actual bass (inversion), then by the ordering itself.
   out.sort((a, b) => a.order[0] - b.order[0] || a.order.join().localeCompare(b.order.join()));
   return out;
@@ -144,6 +124,22 @@ const EXT_SECTION: Record<string, { sym: string; base: string[]; baseNotes: numb
 
 const EXT_ORDER = ["2nd", "4th", "6th", "9th", "11th", "13th"];
 const isUpperExt = (l: string) => l === "9th" || l === "11th" || l === "13th";
+
+// Compound extension → its first-octave fold for cluster voicings.
+const CLUSTER_FOLD: Record<string, string> = { "9": "2", "11": "4", "13": "6" };
+
+/** One tight cluster voicing (every tone folded into a single octave). */
+function buildClusterPattern(degrees: string[], baseNotes: number, extDegrees: string[]): VoicingPattern | null {
+  if (!degrees.some(d => CLUSTER_FOLD[d])) return null;
+  const folded = degrees.map(d => CLUSTER_FOLD[d] ?? d);
+  const order = degrees.map((_, i) => i).sort((a, b) => (PITCH_ORDER[folded[a]] ?? 99) - (PITCH_ORDER[folded[b]] ?? 99));
+  return {
+    id: "", label: order.map(i => folded[i]).join(" "),
+    group: "Cluster", order, spread: false,
+    minNotes: degrees.length, maxNotes: degrees.length,
+    baseNotes, extDegrees, cluster: true, voicingType: "Cluster",
+  };
+}
 
 /** Every non-empty subset of `items`, ordered by size then extension order. */
 function nonEmptySubsets(items: string[]): string[][] {
@@ -184,6 +180,14 @@ export function generateChordVoicings(activeExtLabels: string[]): VoicingPattern
       baseNotes: base.length,
       extDegrees: subset,
     }));
+  }
+  // Cluster — its own top-level section: one tight folded cluster per combo of
+  // COMPOUND colours (9/11/13).  Pure-compound only, so the folds (9→2, 11→4,
+  // 13→6) never collide with a first-octave 2nd/4th/6th in the same chord.
+  for (const subset of nonEmptySubsets(active.filter(isUpperExt))) {
+    const degrees = ["1", "3", "5", "7", ...subset.map(l => EXT_SECTION[l].sym)].sort(byPitch);
+    const cl = buildClusterPattern(degrees, 4, subset);
+    if (cl) out.push(cl);
   }
   // Disambiguate ids across sections (the same order indices recur per section).
   for (const p of out) p.id = `v-${p.group}-${p.order.join("-")}`;
