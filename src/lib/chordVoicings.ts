@@ -34,6 +34,7 @@ export interface GenerateOptions {
   group?: string;          // section header; defaults to the inversion name
   baseNotes?: number;      // base chord size (3/4) for the engine
   extDegrees?: string[];   // extension labels this section adds (e.g. ["9th"])
+  sus?: string;            // "2" / "4" — engine replaces the 3rd before voicing
   open?: boolean;          // include the harmonic-rank open ordering. Default true.
 }
 
@@ -72,6 +73,7 @@ export function generateVoicings(degrees: string[], opts: GenerateOptions = {}):
       maxNotes: n,
       baseNotes: opts.baseNotes,
       extDegrees: opts.extDegrees,
+      sus: opts.sus,
       voicingType,
     });
   };
@@ -132,6 +134,11 @@ export function generateChordVoicings(activeExtLabels: string[]): VoicingPattern
   const out: VoicingPattern[] = [];
   out.push(...generateVoicings(["1", "3", "5"], { group: "Triad", baseNotes: 3, extDegrees: [] }));
   out.push(...generateVoicings(["1", "3", "5", "7"], { group: "Seventh", baseNotes: 4, extDegrees: [] }));
+  // Suspensions — the engine replaces the 3rd with the resolved 2nd / 4th.
+  out.push(...generateVoicings(["1", "2", "5"], { group: "Sus2", baseNotes: 3, sus: "2", extDegrees: [] }));
+  out.push(...generateVoicings(["1", "4", "5"], { group: "Sus4", baseNotes: 3, sus: "4", extDegrees: [] }));
+  out.push(...generateVoicings(["1", "2", "5", "7"], { group: "7sus2", baseNotes: 4, sus: "2", extDegrees: [] }));
+  out.push(...generateVoicings(["1", "4", "5", "7"], { group: "7sus4", baseNotes: 4, sus: "4", extDegrees: [] }));
   const active = EXT_ORDER.filter(l => activeExtLabels.includes(l) && EXT_SECTION[l]);
   for (const subset of nonEmptySubsets(active)) {
     // A 7th base when any compound extension is present, else a triad base.

@@ -32,9 +32,17 @@ describe("generateVoicings", () => {
 });
 
 describe("generateChordVoicings — chord-type sections", () => {
-  it("always has Triad + Seventh; extensions add their own sections", () => {
+  it("always has Triad + Seventh + Sus; extensions add their own sections", () => {
     const none = generateChordVoicings([]);
-    expect(new Set(none.map(p => p.group))).toEqual(new Set(["Triad", "Seventh"]));
+    const baseGroups = new Set(none.map(p => p.group));
+    expect(baseGroups).toContain("Triad");
+    expect(baseGroups).toContain("Seventh");
+    expect(baseGroups).toContain("Sus2");
+    expect(baseGroups).toContain("Sus4");
+    expect(baseGroups).toContain("7sus4");
+    // sus voicings carry the substitution marker
+    expect(none.some(p => p.group === "Sus2" && p.sus === "2")).toBe(true);
+    expect(none.some(p => p.group === "Sus4" && p.sus === "4")).toBe(true);
 
     const withExt = generateChordVoicings(["6th", "9th"]);
     const groups = new Set(withExt.map(p => p.group));

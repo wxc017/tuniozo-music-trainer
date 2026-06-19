@@ -276,7 +276,7 @@ export default function ChordsTab({
   useEffect(() => {
     if ((jiMode as string) === "pure5") setJiMode("adaptive");
   }, [jiMode, setJiMode]);
-  const [extTendency, setExtTendency] = useLS<string>("lt_crd_extTend", "Any");
+  const [extTendency, setExtTendency] = useLS<string>("lt_crd_extTend_v2", "InKey");
   // "7th" is intentionally excluded from the extension UI — the 7th is
   // already carried by seventh-chord voicing patterns (1 3 5 7, etc.).
   // Default is empty so nothing is added on top of the triad/7th voicing.
@@ -978,7 +978,8 @@ export default function ChordsTab({
   // (regenerated as extensions toggle) + the static Sus / Quartal / Quintal.
   const voicingPatterns = useMemo<VoicingPattern[]>(() => {
     const generated = generateChordVoicings(activeExtLabels);
-    const STATIC_GROUPS = new Set(["Sus2", "Sus4", "Quartal", "Quintal"]);
+    // Sus2/Sus4/7sus are generated now; only Quartal/Quintal remain static.
+    const STATIC_GROUPS = new Set(["Quartal", "Quintal"]);
     const statics = ALL_VOICING_PATTERNS.filter(p => STATIC_GROUPS.has(p.group));
     return [...generated, ...statics];
   }, [activeExtLabels]);
@@ -1129,22 +1130,28 @@ export default function ChordsTab({
     // — first-octave for 2nd/4th/6th, compound for 9th/11th/13th — via the
     // diatonic walk (scale-aware), falling back to the generic degree map.
     void scalePcs; void matchedType;   // retained for the chord-type/scale context
+    // Resolve an extension/suspension degree to an EDO step.  Tendency:
+    //   "In Key" / "Stable" → the scale's own degree (diatonic walk);
+    //   "Any" / "Avoid"     → the textbook degree (may be out of key = tension).
     const resolveExt = (label: string): number | null => {
-      const dia = diatonicExtensionStep(edo, srcRoots ?? null, rootStep, label);
-      if (dia !== null) return dia;
-      const fb = (getExtLabelToSteps(edo)[label] ?? [])[0];
-      return fb ?? null;
+      const generic = (getExtLabelToSteps(edo)[label] ?? [])[0] ?? null;
+      const diatonic = diatonicExtensionStep(edo, srcRoots ?? null, rootStep, label);
+      if (extTendency === "Any" || extTendency === "Avoid") return generic ?? diatonic;
+      return diatonic ?? generic;
     };
+    const susStepFor = (sus: string | undefined): number | null =>
+      sus ? resolveExt(sus === "2" ? "2nd" : "4th") : null;
 
     const baseCount = chordAbsRef.length;
     // Compatible patterns:
-    //   • generated — base size must match; an extension section is usable only
-    //     when its extensions resolve in the current key.
-    //   • static Sus / Quartal — base-only.
+    //   • generated — base size must match; extension / sus sections are usable
+    //     only when their added tones resolve in the current key.
+    //   • static Quartal / Quintal — base-only.
     const compatPatterns = voicingPatterns.filter(p => {
       if (!checkedPatterns.has(p.id)) return false;
       if (p.baseNotes !== undefined) {
         if (p.baseNotes !== baseCount) return false;
+        if (p.sus) return susStepFor(p.sus) !== null;
         if (p.extDegrees && p.extDegrees.length > 0) return p.extDegrees.every(l => resolveExt(l) !== null);
         return true;
       }
@@ -1153,11 +1160,17 @@ export default function ChordsTab({
     if (compatPatterns.length === 0) return null;
 
     // Chord content relative to the reference root.  Each voicing adds its own
-    // extensions, so the content is built per pattern.
+    // extensions / suspension, so the content is built per pattern.
     const relSteps = chordAbsRef.map(n => n - refRootAbs);
     const buildVoicing = (rootAbs: number, pattern: VoicingPattern): number[] => {
       let steps = relSteps;
-      if (pattern.extDegrees && pattern.extDegrees.length > 0) {
+      if (pattern.sus) {
+        // Replace the 3rd (the second-lowest base tone) with the 2nd / 4th.
+        const susStep = susStepFor(pattern.sus);
+        if (susStep !== null && relSteps.length >= 2) {
+          steps = relSteps.map((s, i) => (i === 1 ? susStep : s)).sort((a, b) => a - b);
+        }
+      } else if (pattern.extDegrees && pattern.extDegrees.length > 0) {
         const extSteps = pattern.extDegrees
           .map(resolveExt)
           .filter((s): s is number => s !== null);
@@ -3244,9 +3257,10 @@ function ExtensionControls({ extTendency, setExtTendency, checkedExts, setChecke
   setExtPlacement: (v: "top" | "mixed" | "spread") => void;
 }) {
   const tendencyOpts: { value: string; label: string; color: string; desc: string }[] = [
-    { value: "Any",    label: "Any",    color: "#9999ee", desc: "Any extension allowed (in or out of the scale)" },
-    { value: "Stable", label: "In Key", color: "#7aaa6a", desc: "Only extensions that stay in the scale (in key)" },
-    { value: "Avoid",  label: "Avoid",  color: "#c06060", desc: "Prefer avoid-note (out-of-scale) extensions" },
+    { value: "InKey",  label: "In Key", color: "#7aaa6a", desc: "Extensions follow the scale (the in-key degree)." },
+    { value: "Stable", label: "Stable", color: "#5cbf8a", desc: "In-key, favouring stable/consonant colours." },
+    { value: "Avoid",  label: "Avoid",  color: "#c06060", desc: "Textbook colour even if out of key (tension)." },
+    { value: "Any",    label: "Any",    color: "#9999ee", desc: "Any colour — in or out of key." },
   ];
   return (
     <div className="space-y-3">
@@ -3331,8 +3345,10 @@ function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns,
   // Quintal / Sus voicings are gated behind beta — they're advanced
   // colour voicings most users won't reach for in everyday chord
   // training, so the standard view stays focused on inversions.
-  const SUS_GROUPS = ["Sus2", "Sus4"];
-  const BETA_ONLY_GROUPS = new Set(["Quartal", "Quintal", "Sus2", "Sus4"]);
+  // Sus sections are generated now and render as normal sections (no sub-tab,
+  // not beta-gated).  Only Quartal / Quintal stay behind beta.
+  const SUS_GROUPS: string[] = [];
+  const BETA_ONLY_GROUPS = new Set(["Quartal", "Quintal"]);
   const nonSus = groups
     .filter(g => !SUS_GROUPS.includes(g))
     .filter(g => betaMode || !BETA_ONLY_GROUPS.has(g));
