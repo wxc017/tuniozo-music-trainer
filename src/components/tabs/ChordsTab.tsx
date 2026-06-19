@@ -2896,6 +2896,7 @@ export default function ChordsTab({
                   if (cardDroneOn && litCardIdx === chord.index) {
                     audioEngine.fadeDrone();   // smooth fade-out
                     setLitCardIdx(null);
+                    onHighlight([]);           // toggle off the visualizer too
                     return;
                   }
                   audioEngine.stopDrone();
