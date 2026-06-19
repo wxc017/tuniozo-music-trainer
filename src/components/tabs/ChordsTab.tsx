@@ -3360,9 +3360,34 @@ function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns,
     0,
   );
 
+  // A single voicing chip.
+  const renderPatternBtn = (p: VoicingPattern) => {
+    const on = checkedPatterns.has(p.id);
+    const color = "#9999ee";
+    const theoretical = isTheoreticalVoicing(p.id);
+    return (
+      <button key={p.id} onClick={() => setCheckedPatterns(toggleSet(checkedPatterns, p.id))}
+        title={theoretical ? "Theoretical — valid but uncommon as a literal voicing" : undefined}
+        className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition-colors ${
+          on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+        }`}
+        style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
+        {renderPatternLabel(p.label)}
+        {theoretical && <sup className="ml-0.5 text-[7px] text-[#c08a4a] italic" title="Theoretical — uncommon as a literal voicing">th</sup>}
+      </button>
+    );
+  };
+
+  // Sub-categorise each chord-type section by voicing type (Close / Open / Drop …).
+  const TYPE_ORDER = ["Close", "Open", "Drop 2", "Drop 3", "Drop 2&4"];
   const renderGroup = (g: string) => {
     const groupPatterns = patterns.filter(p => p.group === g);
     const count = groupPatterns.filter(p => checkedPatterns.has(p.id)).length;
+    const byType = TYPE_ORDER
+      .map(t => ({ type: t, pats: groupPatterns.filter(p => (p.voicingType ?? "") === t) }))
+      .filter(x => x.pats.length > 0);
+    const other = groupPatterns.filter(p => !TYPE_ORDER.includes(p.voicingType ?? ""));
+    if (other.length) byType.push({ type: "Other", pats: other });
     return (
       <div key={g} className="flex flex-col">
         <div className="flex items-center gap-1.5 mb-1">
@@ -3374,23 +3399,15 @@ function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns,
           <button onClick={() => deselectGroup(g)}
             className="text-[9px] text-[#555] hover:text-[#e06060] border border-[#222] rounded px-1 py-0.5">None</button>
         </div>
-        <div className="flex flex-wrap gap-1">
-          {groupPatterns.map(p => {
-            const on = checkedPatterns.has(p.id);
-            const color = "#9999ee";
-            const theoretical = isTheoreticalVoicing(p.id);
-            return (
-              <button key={p.id} onClick={() => setCheckedPatterns(toggleSet(checkedPatterns, p.id))}
-                title={theoretical ? "Theoretical — valid but uncommon as a literal voicing" : undefined}
-                className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition-colors ${
-                  on ? "text-white" : "bg-[#111] border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
-                }`}
-                style={on ? { backgroundColor: color + "30", borderColor: color, color } : {}}>
-                {renderPatternLabel(p.label)}
-                {theoretical && <sup className="ml-0.5 text-[7px] text-[#c08a4a] italic" title="Theoretical — uncommon as a literal voicing">th</sup>}
-              </button>
-            );
-          })}
+        <div className="flex flex-col gap-1.5">
+          {byType.map(({ type, pats }) => (
+            <div key={type}>
+              <p className="text-[8px] text-[#5a5a6a] uppercase tracking-wider mb-0.5">{type}</p>
+              <div className="flex flex-wrap gap-1">
+                {pats.map(renderPatternBtn)}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
