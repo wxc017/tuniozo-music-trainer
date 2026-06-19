@@ -107,6 +107,26 @@ export function generateVoicings(degrees: string[], opts: GenerateOptions = {}):
   if (rootI >= 0) push([...close0, rootI], "Doubled");
   if (fifthI >= 0 && fifthI !== rootI) push([...close0, fifthI], "Doubled");
 
+  // ── Cluster — fold compound extensions (9/11/13 → 2/4/6) into one octave and
+  //    stack tight.  Only meaningful when a compound extension is present. ──
+  const FOLD: Record<string, string> = { "9": "2", "11": "4", "13": "6" };
+  if (degrees.some(d => FOLD[d])) {
+    const folded = degrees.map(d => FOLD[d] ?? d);
+    const order = close0.slice().sort((a, b) => (PITCH_ORDER[folded[a]] ?? 99) - (PITCH_ORDER[folded[b]] ?? 99));
+    const key = "cluster:" + order.join(",");
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push({
+        id: "v-cluster-" + order.join("-"),
+        label: order.map(i => folded[i]).join(" "),
+        group: opts.group ?? "Cluster",
+        order, spread: false, minNotes: n, maxNotes: n,
+        baseNotes: opts.baseNotes, extDegrees: opts.extDegrees, sus: opts.sus,
+        cluster: true, voicingType: "Cluster",
+      });
+    }
+  }
+
   // Order the section by actual bass (inversion), then by the ordering itself.
   out.sort((a, b) => a.order[0] - b.order[0] || a.order.join().localeCompare(b.order.join()));
   return out;

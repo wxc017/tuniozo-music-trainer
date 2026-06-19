@@ -95,6 +95,9 @@ export interface VoicingPattern {
   // Suspension: "2" (sus2) or "4" (sus4) — the engine replaces the chord's 3rd
   // with the resolved 2nd / 4th before voicing.
   sus?: string;
+  // Cluster: the engine folds every chord tone into one octave and stacks them
+  // tight (9/11/13 fold down to 2nd/4th/6th seconds), ignoring `order`.
+  cluster?: boolean;
   // Stack mode: replaces the chord's pitch content with N stacked
   // P4s ("p4" → quartal) or P5s ("p5" → quintal) starting from the
   // chord's root.  When set, `order` and `spread` are ignored.  `n`

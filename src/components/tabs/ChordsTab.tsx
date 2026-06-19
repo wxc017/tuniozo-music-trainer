@@ -1164,6 +1164,13 @@ export default function ChordsTab({
     const relSteps = chordAbsRef.map(n => n - refRootAbs);
     const buildVoicing = (rootAbs: number, pattern: VoicingPattern): number[] => {
       let steps = relSteps;
+      if (pattern.cluster) {
+        // Fold every tone (base + extensions) into one octave and stack tight.
+        const all = [...relSteps];
+        for (const l of pattern.extDegrees ?? []) { const s = resolveExt(l); if (s !== null) all.push(s); }
+        const folded = [...new Set(all.map(s => ((s % edo) + edo) % edo))].sort((a, b) => a - b);
+        return clampToLayout(folded.map(s => rootAbs + s));
+      }
       if (pattern.sus) {
         // Replace the 3rd (the second-lowest base tone) with the 2nd / 4th.
         const susStep = susStepFor(pattern.sus);
@@ -3384,7 +3391,7 @@ function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns,
   };
 
   // Sub-categorise each chord-type section by voicing type (Close / Open / Drop …).
-  const TYPE_ORDER = ["Close", "Open", "Drop 2", "Drop 3", "Drop 2&3", "Drop 2&4", "Doubled"];
+  const TYPE_ORDER = ["Close", "Open", "Drop 2", "Drop 3", "Drop 2&3", "Drop 2&4", "Doubled", "Cluster"];
   // Select/deselect a set of pattern ids.
   const setIds = (ids: string[], sel: boolean) => {
     const n = new Set(checkedPatterns);
