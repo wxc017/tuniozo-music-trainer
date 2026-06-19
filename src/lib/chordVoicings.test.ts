@@ -4,16 +4,19 @@ import { generateVoicings, generateChordVoicings, assembleVoicing, chordToneStep
 const pc = (n: number) => ((n % 12) + 12) % 12;
 
 describe("generateVoicings", () => {
-  it("emits close + open + drop voicings per inversion", () => {
+  it("emits close + open + drops + doubled/rootless/shell for a seventh", () => {
     const v = generateVoicings(["1", "3", "5", "7"]);
     const labels = v.map(p => p.label);
     expect(labels).toContain("1 3 5 7");   // close root
     expect(labels).toContain("1 5 3 7");   // open / drop-2&4 root
     expect(labels).toContain("5 1 3 7");   // drop-2 of root (5 in bass)
     expect(labels).toContain("3 1 5 7");   // drop-3 of root (3 in bass)
-    // the 16 standard drop voicings + the harmonic-rank open (deduped)
-    expect(v.length).toBeGreaterThanOrEqual(16);
-    for (const p of v) expect(p.order.length).toBe(4);
+    const types = new Set(v.map(p => p.voicingType));
+    for (const t of ["Close", "Open", "Drop 2", "Drop 3", "Drop 2&3", "Drop 2&4", "Doubled", "Rootless", "Shell"]) {
+      expect(types).toContain(t);
+    }
+    // shell is the 3+7 guide tones
+    expect(labels).toContain("3 7");
   });
 
   it("groups by the actual bass when no section override is given", () => {
@@ -24,14 +27,14 @@ describe("generateVoicings", () => {
     expect(new Set(v.map(p => p.group))).toContain("2nd Inversion");
   });
 
-  it("triads have only Close + Open (no drops); 3 1 5 / 5 3 1 are Open", () => {
+  it("triads: 3 1 5 / 5 3 1 are Open (not drops); doublings included, no drops", () => {
     const v = generateVoicings(["1", "3", "5"]);
-    expect(v.length).toBe(6);   // close + open per inversion
-    expect(v.every(p => p.voicingType === "Close" || p.voicingType === "Open")).toBe(true);
     const find = (label: string) => v.find(p => p.label === label)!;
     expect(find("3 1 5").voicingType).toBe("Open");
     expect(find("5 3 1").voicingType).toBe("Open");
     expect(find("1 3 5").voicingType).toBe("Close");
+    expect(v.some(p => p.voicingType === "Doubled")).toBe(true);
+    expect(v.some(p => (p.voicingType ?? "").startsWith("Drop"))).toBe(false);
   });
 
   it("a section override puts every voicing under one group", () => {
@@ -89,9 +92,10 @@ describe("generateChordVoicings — chord-type sections", () => {
     const second = v.filter(p => p.group === "2nd");
     expect(ninth.every(p => p.baseNotes === 4 && p.extDegrees?.[0] === "9th")).toBe(true);
     expect(second.every(p => p.baseNotes === 3 && p.extDegrees?.[0] === "2nd")).toBe(true);
-    // 9th section voicings span 5 tones (1 3 5 7 9); 2nd section 4 (1 2 3 5)
-    expect(ninth.every(p => p.order.length === 5)).toBe(true);
-    expect(second.every(p => p.order.length === 4)).toBe(true);
+    // a full 5-tone 9th voicing and 4-tone add2 voicing both exist (the
+    // Doubled/Rootless/Shell variants differ in voice count)
+    expect(ninth.some(p => p.order.length === 5)).toBe(true);
+    expect(second.some(p => p.order.length === 4)).toBe(true);
   });
 
   it("ids are unique across sections", () => {
@@ -136,5 +140,11 @@ describe("chordPartials", () => {
   });
   it("an octave ≈ 1:2", () => {
     expect(chordPartials([0, 12], 12)).toEqual([1, 2]);
+  });
+  it("a wide (two-hand) spread keeps a clean low set", () => {
+    // bass C two octaves below a close C-E-G → fundamental + 4:5:6
+    expect(chordPartials([-24, 0, 4, 7], 12)).toEqual([1, 4, 5, 6]);
+    // bass + a 3-octave-spread open triad still resolves
+    expect(chordPartials([0, 19, 28, 36], 12)).not.toBeNull();
   });
 });

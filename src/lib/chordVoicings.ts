@@ -60,6 +60,7 @@ export function generateVoicings(degrees: string[], opts: GenerateOptions = {}):
   };
 
   const push = (order: number[], voicingType: string) => {
+    if (order.length < 2) return;
     const key = order.join(",");
     if (seen.has(key)) return;
     seen.add(key);
@@ -78,26 +79,54 @@ export function generateVoicings(degrees: string[], opts: GenerateOptions = {}):
     });
   };
 
-  const DROP_NAME: Record<string, string> = { "2": "Drop 2", "3": "Drop 3", "2,4": "Drop 2&4" };
+  const iOf = (d: string) => degrees.indexOf(d);
+  const rootI = iOf("1"), thirdI = iOf("3"), fifthI = iOf("5"), seventhI = iOf("7"), ninthI = iOf("9");
+  const rankSort = (idxs: number[]) =>
+    [...idxs].sort((x, y) => rankOf(degrees[x]) - rankOf(degrees[y]) || x - y);
+  const DROP_NAME: Record<string, string> = { "2": "Drop 2", "3": "Drop 3", "2,3": "Drop 2&3", "2,4": "Drop 2&4" };
+
+  // ── Close / Open / Drops, per inversion ──────────────────────────────
   for (let b = 0; b < n; b++) {
     const close = Array.from({ length: n }, (_, k) => (b + k) % n);
-    push(close, "Close");                           // close inversion
+    push(close, "Close");
     if (n === 3) {
       // Three-note chords have no drop voicings — just the OPEN position per
       // inversion (the middle voice lifted to the top, e.g. 1 3 5 → 1 5 3).
       push([close[0], close[2], close[1]], "Open");
-      continue;
-    }
-    if (opts.open ?? true) {
-      const others = degrees.map((_, i) => i).filter(i => i !== b)
-        .sort((x, y) => rankOf(degrees[x]) - rankOf(degrees[y]) || x - y);
-      push([b, ...others], "Open");                 // harmonic-rank open
-    }
-    for (const drops of [[2], [3], [2, 4]]) {        // drop-2 / drop-3 / drop-2&4
-      if (drops.some(k => k > n || k < 2)) continue;
-      push(applyDrop(close, drops), DROP_NAME[drops.join(",")] ?? "Drop");
+    } else {
+      if (opts.open ?? true) push([b, ...rankSort(close.slice(1))], "Open");  // harmonic-rank open
+      for (const drops of [[2], [3], [2, 3], [2, 4]]) {   // drop-2 / 3 / 2&3 / 2&4
+        if (drops.some(k => k > n || k < 2)) continue;
+        push(applyDrop(close, drops), DROP_NAME[drops.join(",")] ?? "Drop");
+      }
     }
   }
+
+  // ── Doublings — double the root / 5th an octave above close root position ──
+  const close0 = Array.from({ length: n }, (_, k) => k);
+  if (rootI >= 0) push([...close0, rootI], "Doubled");
+  if (fifthI >= 0 && fifthI !== rootI) push([...close0, fifthI], "Doubled");
+
+  // ── Rootless — omit the root (4+ note chords) ──
+  if (n >= 4 && rootI >= 0) {
+    const nonRoot = close0.filter(i => i !== rootI);
+    push(nonRoot, "Rootless");
+    push(rankSort(nonRoot), "Rootless");
+  }
+
+  // ── Shell — guide tones (3 + 7), optionally + 9 ──
+  if (thirdI >= 0 && seventhI >= 0) {
+    push([thirdI, seventhI], "Shell");
+    push([seventhI, thirdI], "Shell");
+    if (ninthI >= 0) push([thirdI, seventhI, ninthI], "Shell");
+  }
+
+  // ── Upper structure — root in the bass + the top three tones (5+ notes) ──
+  if (n >= 5 && rootI >= 0) {
+    const top3 = close0.filter(i => i !== rootI).slice(-3);
+    if (top3.length === 3) push([rootI, ...top3], "Upper");
+  }
+
   // Order the section by actual bass (inversion), then by the ordering itself.
   out.sort((a, b) => a.order[0] - b.order[0] || a.order.join().localeCompare(b.order.join()));
   return out;
@@ -195,9 +224,13 @@ export function assembleVoicing(
  * (octave placement included).  Returns null if no small-integer set fits.
  */
 export function chordPartials(
-  pitches: number[], edo: number, opts: { maxPartial?: number; tolCents?: number } = {},
+  pitches: number[], edo: number, opts: { maxPartial?: number; tolCents?: number; maxTop?: number } = {},
 ): number[] | null {
-  const maxPartial = opts.maxPartial ?? 32;
+  // `maxPartial` bounds the bass's partial number (m); wide / two-hand voicings
+  // keep m small but push the TOP note high, so the top partial gets its own,
+  // looser cap (`maxTop`).
+  const maxPartial = opts.maxPartial ?? 48;
+  const maxTop = opts.maxTop ?? 256;
   const tolCents = opts.tolCents ?? 22;
   const uniq = [...new Set(pitches)].sort((a, b) => a - b);
   if (uniq.length < 2) return null;
@@ -205,7 +238,7 @@ export function chordPartials(
   const ratios = centsFromBass.map(c => Math.pow(2, c / 1200));
   for (let m = 1; m <= maxPartial; m++) {
     const partials = ratios.map(r => Math.round(m * r));
-    let ok = partials[partials.length - 1] <= maxPartial * 4;
+    let ok = partials[partials.length - 1] <= maxTop;
     for (let i = 1; ok && i < partials.length; i++) {
       if (partials[i] <= partials[i - 1]) ok = false;             // strictly ascending
     }

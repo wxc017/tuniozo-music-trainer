@@ -3351,10 +3351,9 @@ function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns,
   // Quintal / Sus voicings are gated behind beta — they're advanced
   // colour voicings most users won't reach for in everyday chord
   // training, so the standard view stays focused on inversions.
-  // Sus sections are generated now and render as normal sections (no sub-tab,
-  // not beta-gated).  Only Quartal / Quintal stay behind beta.
+  // Sus / Quartal / Quintal are all surfaced now (no sub-tab, not beta-gated).
   const SUS_GROUPS: string[] = [];
-  const BETA_ONLY_GROUPS = new Set(["Quartal", "Quintal"]);
+  const BETA_ONLY_GROUPS = new Set<string>();
   const nonSus = groups
     .filter(g => !SUS_GROUPS.includes(g))
     .filter(g => betaMode || !BETA_ONLY_GROUPS.has(g));
@@ -3385,7 +3384,7 @@ function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns,
   };
 
   // Sub-categorise each chord-type section by voicing type (Close / Open / Drop …).
-  const TYPE_ORDER = ["Close", "Open", "Drop 2", "Drop 3", "Drop 2&4"];
+  const TYPE_ORDER = ["Close", "Open", "Drop 2", "Drop 3", "Drop 2&3", "Drop 2&4", "Doubled", "Rootless", "Shell", "Upper"];
   // Select/deselect a set of pattern ids.
   const setIds = (ids: string[], sel: boolean) => {
     const n = new Set(checkedPatterns);
