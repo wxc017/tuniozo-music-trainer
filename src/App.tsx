@@ -948,7 +948,7 @@ export default function App() {
   const lastOpt = lastOptionKey ? optionSessionStats.current.get(lastOptionKey) : null;
   const lastOptAcc = lastOpt && (lastOpt.c + lastOpt.w) ? `${Math.round(100 * lastOpt.c / (lastOpt.c + lastOpt.w))}%` : "";
 
-  const metroShown = showMetronomeTimer && !academicMode && section !== "mixed-groups";
+  const metroShown = showMetronomeTimer && !academicMode && section !== "mixed-groups" && section !== "ear-trainer";
   // Metronome strip content.  For most sections it pins at the very top; for
   // Tonal Audiation it moves into the sticky controls group, ABOVE the drone, per
   // direct user direction 2026-06-14 ("on top of the drone stuff not at the
