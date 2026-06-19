@@ -107,12 +107,6 @@ export function generateVoicings(degrees: string[], opts: GenerateOptions = {}):
   if (rootI >= 0) push([...close0, rootI], "Doubled");
   if (fifthI >= 0 && fifthI !== rootI) push([...close0, fifthI], "Doubled");
 
-  // ── Upper structure — root in the bass + the top three tones (5+ notes) ──
-  if (n >= 5 && rootI >= 0) {
-    const top3 = close0.filter(i => i !== rootI).slice(-3);
-    if (top3.length === 3) push([rootI, ...top3], "Upper");
-  }
-
   // Order the section by actual bass (inversion), then by the ordering itself.
   out.sort((a, b) => a.order[0] - b.order[0] || a.order.join().localeCompare(b.order.join()));
   return out;
