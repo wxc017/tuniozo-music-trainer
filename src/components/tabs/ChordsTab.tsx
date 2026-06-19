@@ -3422,13 +3422,21 @@ function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns,
         <div className="flex flex-col gap-1.5">
           {byType.map(({ type, pats }) => (
             <div key={type}>
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <p className="text-[8px] text-[#5a5a6a] uppercase tracking-wider">{type}</p>
-                <button onClick={() => setIds(pats.map(p => p.id), true)} title={`Select all ${type}`}
-                  className="w-2.5 h-2.5 rounded-full bg-[#2f4a2f] hover:bg-[#5cbf5c] border border-[#3a5a3a] transition-colors" />
-                <button onClick={() => setIds(pats.map(p => p.id), false)} title={`Deselect all ${type}`}
-                  className="w-2.5 h-2.5 rounded-full bg-[#4a2f2f] hover:bg-[#e06060] border border-[#5a3a3a] transition-colors" />
-              </div>
+              {(() => {
+                const allOn = pats.every(p => checkedPatterns.has(p.id));
+                const someOn = pats.some(p => checkedPatterns.has(p.id));
+                return (
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <button onClick={() => setIds(pats.map(p => p.id), !allOn)} title={`Toggle all ${type}`}
+                      className={`w-2.5 h-2.5 rounded-sm border transition-colors ${
+                        allOn ? "bg-[#7173e6] border-[#7173e6]"
+                          : someOn ? "bg-[#7173e655] border-[#5a5a7a]"
+                          : "bg-transparent border-[#3a3a4a] hover:border-[#5a5a7a]"
+                      }`} />
+                    <p className="text-[8px] text-[#5a5a6a] uppercase tracking-wider">{type}</p>
+                  </div>
+                );
+              })()}
               <div className="flex flex-wrap gap-1">
                 {pats.map(renderPatternBtn)}
               </div>
