@@ -1150,89 +1150,6 @@ export default function App() {
               strip either. */}
           {/* Drone strip + ear-trainer controls moved into the sticky visualizer
               wrapper below (so they pin to the top with the keyboard). */}
-          {false && section === "ear-trainer" && (<>
-          {/* Row 2: Ear-trainer controls */}
-          <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 flex flex-col gap-2">
-            {/* Top row: Tonic (shared) · Exercise range · Response mode · Play vol · ♪ Tonic */}
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Chords/Intervals show the Root in its own row BELOW the EDO
-                  picker (per direct user direction); other tabs keep it here. */}
-              {!(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && (<>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <label className="text-xs text-[#666]">Tonic</label>
-                {Array.from({ length: edo }, (_, i) => (
-                  <button key={i} onClick={() => setTonicPc(i)}
-                    className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
-                      tonicPc === i ? "bg-[#7173e6] text-white border-[#7173e6]"
-                                    : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`}>
-                    {noteLabelForSystem(edo, i, notationByEdo[edo])}
-                  </button>
-                ))}
-              </div>
-              <div className="w-px h-4 bg-[#2a2a2a]" />
-              </>)}
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Range</label>
-                <button onClick={() => setRangePickStep(s => s === 0 ? 1 : 0)}
-                  title={rangePickStep === 0
-                    ? "Click to pick low + high notes on the visualizer"
-                    : "Click again to cancel"}
-                  className={`px-2 py-1 rounded text-xs font-medium transition-colors border ${
-                    rangePickStep > 0
-                      ? "bg-[#7173e6] border-[#7173e6] text-white animate-pulse"
-                      : "bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#555]"
-                  }`}>
-                  {rangePickStep === 1 ? "Click low note…"
-                    : rangePickStep === 2 ? "Click high note…"
-                    : (() => {
-                        const loPc = ((lowestPitch % edo) + edo) % edo;
-                        const hiPc = ((highestPitch % edo) + edo) % edo;
-                        const loName = noteLabelForSystem(edo, loPc, notationByEdo[edo]);
-                        const hiName = noteLabelForSystem(edo, hiPc, notationByEdo[edo]);
-                        const loOct = 4 + Math.floor((lowestPitch - tonicPc) / edo);
-                        const hiOct = 4 + Math.floor((highestPitch - tonicPc) / edo);
-                        return `${loName}${loOct}–${hiName}${hiOct}`;
-                      })()}
-                </button>
-              </div>
-              <div className="w-px h-4 bg-[#2a2a2a]" />
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Response</label>
-                <select value={responseMode} onChange={e => setResponseMode(e.target.value as ResponseMode)}
-                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
-                  <option>Play Audio</option>
-                  <option>Show Target (Sing It)</option>
-                </select>
-              </div>
-              <div className="w-px h-4 bg-[#2a2a2a]" />
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Play Vol</label>
-                <input type="range" min={0} max={1.5} step={0.01} value={playVol}
-                  onChange={e => setPlayVol(Number(e.target.value))}
-                  className="w-20 accent-[#7173e6]" />
-                <span className="text-xs text-[#555] w-8">{Math.round(playVol * 100)}%</span>
-              </div>
-              <button onClick={async () => {
-                await ensureAudio();
-                // Pick the tonic-aligned pitch nearest the midpoint of the
-                // current pitch range.
-                const mid = Math.floor((lowestPitch + highestPitch) / 2);
-                const tonicNote = mid - (((mid - tonicPc) % edo + edo) % edo);
-                audioEngine.playNote(tonicNote, edo, 1.0, 0.8);
-                handleHighlight([tonicNote]);
-              }}
-                className="px-3 py-1 rounded text-xs font-medium transition-colors border bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"
-                title="Play and highlight tonic note">
-                ♪ Tonic
-              </button>
-            </div>
-          </div>
-
-          {/* Keyboard intentionally rendered OUTSIDE the header (after it,
-               as a direct child of root) so its `sticky top-0` works across
-               the full scroll range instead of detaching at the header's
-               bottom edge. See the sticky wrapper after the header block. */}
-          </>)}
 
           {/* EDO selector row — restricted to Scalar Explorations
               per direct user direction (2026-05-11): "edo option
@@ -1346,42 +1263,29 @@ export default function App() {
               <div className="w-px h-4 bg-[#2a2a2a]" />
             </>)}
             {!academicMode && (<>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-[#888] tracking-widest uppercase">Drone</span>
-                {droneIsOn && <span className="w-2 h-2 rounded-full bg-[#7173e6] animate-pulse inline-block" />}
-              </div>
-              <button onClick={startHeaderDrone}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${droneIsOn ? "bg-[#7173e6] border-[#7173e6] text-white" : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"}`}>
-                ON
+              <button onClick={() => { droneIsOn ? stopHeaderDrone() : startHeaderDrone(); }}
+                title={droneIsOn ? "Drone on — click to stop" : "Drone off — click to start"}
+                className={`px-2.5 py-1 rounded text-xs font-semibold tracking-wide transition-colors border ${droneIsOn ? "bg-[#7173e6] border-[#7173e6] text-white" : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"}`}>
+                Drone {droneIsOn ? "On" : "Off"}
               </button>
-              <button onClick={stopHeaderDrone}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors border ${!droneIsOn ? "bg-[#3a1a1a] border-[#5a2a2a] text-[#cc6666]" : "bg-[#1a1a1a] border-[#333] text-[#888] hover:text-white hover:border-[#555]"}`}>
-                OFF
-              </button>
-              <div className="w-px h-4 bg-[#2a2a2a]" />
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Instrument</label>
-                <select value={droneInstrument}
-                  onChange={async e => {
-                    const inst = e.target.value as DroneInstrument;
-                    setDroneInstrument(inst);
-                    audioEngine.setInstrument(inst);
-                    if (droneIsOn) {
-                      const { notes, gains } = buildDroneNotes(tonicPc);
-                      audioEngine.startDrone(notes, edo, droneVol, gains);
-                    }
-                  }}
-                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
-                  {DRONE_INSTRUMENTS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Drone Vol</label>
-                <input type="range" min={0} max={1.5} step={0.01} value={droneVol}
-                  onChange={e => handleDroneVolChange(Number(e.target.value))}
-                  className="w-20 accent-[#7173e6]" />
-                <span className="text-xs text-[#555] w-7">{Math.round(droneVol * 100)}%</span>
-              </div>
+              <select value={droneInstrument}
+                onChange={async e => {
+                  const inst = e.target.value as DroneInstrument;
+                  setDroneInstrument(inst);
+                  audioEngine.setInstrument(inst);
+                  if (droneIsOn) {
+                    const { notes, gains } = buildDroneNotes(tonicPc);
+                    audioEngine.startDrone(notes, edo, droneVol, gains);
+                  }
+                }}
+                title="Drone instrument"
+                className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
+                {DRONE_INSTRUMENTS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+              </select>
+              <input type="range" min={0} max={1.5} step={0.01} value={droneVol}
+                onChange={e => handleDroneVolChange(Number(e.target.value))}
+                title={`Drone volume ${Math.round(droneVol * 100)}%`}
+                className="w-16 accent-[#7173e6]" />
               <div className="w-px h-4 bg-[#2a2a2a]" />
             </>)}
               {!(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && (<>
@@ -1398,47 +1302,38 @@ export default function App() {
               </div>
               <div className="w-px h-4 bg-[#2a2a2a]" />
               </>)}
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Range</label>
-                <button onClick={() => setRangePickStep(s => s === 0 ? 1 : 0)}
-                  title={rangePickStep === 0
-                    ? "Click to pick low + high notes on the visualizer"
-                    : "Click again to cancel"}
-                  className={`px-2 py-1 rounded text-xs font-medium transition-colors border ${
-                    rangePickStep > 0
-                      ? "bg-[#7173e6] border-[#7173e6] text-white animate-pulse"
-                      : "bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#555]"
-                  }`}>
-                  {rangePickStep === 1 ? "Click low note…"
-                    : rangePickStep === 2 ? "Click high note…"
-                    : (() => {
-                        const loPc = ((lowestPitch % edo) + edo) % edo;
-                        const hiPc = ((highestPitch % edo) + edo) % edo;
-                        const loName = noteLabelForSystem(edo, loPc, notationByEdo[edo]);
-                        const hiName = noteLabelForSystem(edo, hiPc, notationByEdo[edo]);
-                        const loOct = 4 + Math.floor((lowestPitch - tonicPc) / edo);
-                        const hiOct = 4 + Math.floor((highestPitch - tonicPc) / edo);
-                        return `${loName}${loOct}–${hiName}${hiOct}`;
-                      })()}
-                </button>
-              </div>
+              <button onClick={() => setRangePickStep(s => s === 0 ? 1 : 0)}
+                title={rangePickStep === 0
+                  ? "Range — click to pick low + high notes on the visualizer"
+                  : "Click again to cancel"}
+                className={`px-2 py-1 rounded text-xs font-medium transition-colors border ${
+                  rangePickStep > 0
+                    ? "bg-[#7173e6] border-[#7173e6] text-white animate-pulse"
+                    : "bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#555]"
+                }`}>
+                {rangePickStep === 1 ? "Click low note…"
+                  : rangePickStep === 2 ? "Click high note…"
+                  : (() => {
+                      const loPc = ((lowestPitch % edo) + edo) % edo;
+                      const hiPc = ((highestPitch % edo) + edo) % edo;
+                      const loName = noteLabelForSystem(edo, loPc, notationByEdo[edo]);
+                      const hiName = noteLabelForSystem(edo, hiPc, notationByEdo[edo]);
+                      const loOct = 4 + Math.floor((lowestPitch - tonicPc) / edo);
+                      const hiOct = 4 + Math.floor((highestPitch - tonicPc) / edo);
+                      return `${loName}${loOct}–${hiName}${hiOct}`;
+                    })()}
+              </button>
+              <select value={responseMode} onChange={e => setResponseMode(e.target.value as ResponseMode)}
+                title="Response mode"
+                className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
+                <option>Play Audio</option>
+                <option>Show Target (Sing It)</option>
+              </select>
               <div className="w-px h-4 bg-[#2a2a2a]" />
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Response</label>
-                <select value={responseMode} onChange={e => setResponseMode(e.target.value as ResponseMode)}
-                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
-                  <option>Play Audio</option>
-                  <option>Show Target (Sing It)</option>
-                </select>
-              </div>
-              <div className="w-px h-4 bg-[#2a2a2a]" />
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-[#666]">Play Vol</label>
-                <input type="range" min={0} max={1.5} step={0.01} value={playVol}
-                  onChange={e => setPlayVol(Number(e.target.value))}
-                  className="w-20 accent-[#7173e6]" />
-                <span className="text-xs text-[#555] w-8">{Math.round(playVol * 100)}%</span>
-              </div>
+              <input type="range" min={0} max={1.5} step={0.01} value={playVol}
+                onChange={e => setPlayVol(Number(e.target.value))}
+                title={`Play volume ${Math.round(playVol * 100)}%`}
+                className="w-16 accent-[#7173e6]" />
               <button onClick={async () => {
                 await ensureAudio();
                 const mid = Math.floor((lowestPitch + highestPitch) / 2);
