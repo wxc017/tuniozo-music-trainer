@@ -1348,8 +1348,8 @@ export default function App() {
           {/* Controls bar — moved here from the header so it sticks to the top
               together with the keyboard (per direct user direction 2026-06-14
               "ensure this sticks to top like the visualizer"). */}
-          {!academicMode && (
-            <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 mb-2 flex flex-wrap items-center gap-3">
+          <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 mb-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+            {!academicMode && (<>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-[#888] tracking-widest uppercase">Drone</span>
                 {droneIsOn && <span className="w-2 h-2 rounded-full bg-[#7173e6] animate-pulse inline-block" />}
@@ -1386,10 +1386,8 @@ export default function App() {
                   className="w-20 accent-[#7173e6]" />
                 <span className="text-xs text-[#555] w-7">{Math.round(droneVol * 100)}%</span>
               </div>
-            </div>
-          )}
-          <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 mb-2 flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-3">
+              <div className="w-px h-4 bg-[#2a2a2a]" />
+            </>)}
               {!(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && (<>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <label className="text-xs text-[#666]">Tonic</label>
@@ -1456,7 +1454,6 @@ export default function App() {
                 title="Play and highlight tonic note">
                 ♪ Tonic
               </button>
-            </div>
           </div>
           {/* Keyboard — meaningless on Transcriptions (real tunes, standard tuning). */}
           {activeTab !== "transcriptions" && (
@@ -1510,12 +1507,14 @@ export default function App() {
             </div>
           )}
           </>)}
-          {/* Curtain — collapse / reveal the visualizer.  Deliberately subtle. */}
-          <button onClick={() => setVizCollapsed(v => !v)}
-            title={vizCollapsed ? "Show keyboard" : "Hide keyboard"}
-            className="w-full flex items-center justify-center h-2 group">
-            <span className={`h-px rounded-full transition-colors ${vizCollapsed ? "w-8 bg-[#262630]" : "w-6 bg-[#171717]"} group-hover:bg-[#3a3a4a]`} />
-          </button>
+          {/* Curtain — a small tab that sticks out under the keyboard. */}
+          <div className="flex justify-center">
+            <button onClick={() => setVizCollapsed(v => !v)}
+              title={vizCollapsed ? "Show keyboard" : "Hide keyboard"}
+              className="px-3 py-0.5 rounded-b-md text-[8px] leading-none bg-[#141414] border border-t-0 border-[#242424] text-[#555] hover:text-[#9999ee] hover:border-[#3a3a5a] transition-colors">
+              {vizCollapsed ? "▼" : "▲"}
+            </button>
+          </div>
           </div>
           )}
         </div>
