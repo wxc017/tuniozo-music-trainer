@@ -1338,17 +1338,13 @@ export default function App() {
           drop it for Transcriptions per direct user direction 2026-06-14. */}
       {section === "ear-trainer" && (
         <div className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 pt-2 pb-2 flex-shrink-0" style={{ position: "sticky", top: "var(--metro-h, 0px)" }}>
-          {/* Timer only — metronome is hidden in Tonal Audiation (per direct
-              user direction); the countdown timer stays. */}
-          {metroShown && (
-            <div className="flex items-center gap-3 mb-2 overflow-x-auto">
-              {timerStripInner}
-            </div>
-          )}
-          {/* Controls bar — moved here from the header so it sticks to the top
-              together with the keyboard (per direct user direction 2026-06-14
-              "ensure this sticks to top like the visualizer"). */}
+          {/* One consolidated control bar: timer + drone + range / response /
+              play-vol / tonic, all on a single wrapping row. */}
           <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 mb-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+            {metroShown && (<>
+              {timerStripInner}
+              <div className="w-px h-4 bg-[#2a2a2a]" />
+            </>)}
             {!academicMode && (<>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-[#888] tracking-widest uppercase">Drone</span>
