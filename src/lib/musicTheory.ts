@@ -92,6 +92,9 @@ export interface VoicingPattern {
   // Human-readable voicing type for the Show Answer card: "Close" / "Open" /
   // "Drop 2" / "Drop 3" / "Drop 2&4".
   voicingType?: string;
+  // Suspension: "2" (sus2) or "4" (sus4) — the engine replaces the chord's 3rd
+  // with the resolved 2nd / 4th before voicing.
+  sus?: string;
   // Stack mode: replaces the chord's pitch content with N stacked
   // P4s ("p4" → quartal) or P5s ("p5" → quintal) starting from the
   // chord's root.  When set, `order` and `spread` are ignored.  `n`

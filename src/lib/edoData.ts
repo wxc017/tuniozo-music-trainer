@@ -1355,30 +1355,39 @@ export function getPatternScaleMaps(edo: number): Record<string, ScaleFamilyMap>
 const _sizedDegreeMaps = new Map<string, ModeMap>();
 /** Build a degree map (degree name → octave-reduced step) from a scale's steps,
  *  naming each step by the nearest chromatic degree of this EDO. */
+// A sized spectrum code → its REGION-based standard degree name, so an enharmonic
+// sm3 (which fifth-chain naming calls "#2") reads as the minor 3rd "b3" the phrase
+// banks expect.  Size (s/l) is stripped; sup4/sub5 keep their own keys.
+const SIZED_TO_STD: Record<string, string> = {
+  m2: "b2", M2: "2", n2: "2",
+  m3: "b3", M3: "3", n3: "3",
+  "4": "4", T: "#4", sup4: "#4", sub5: "b5",
+  "5": "5",
+  m6: "b6", M6: "6", n6: "6",
+  m7: "b7", M7: "7", n7: "7",
+  "8": "8",
+};
+function sizedToStdDegree(code: string): string | null {
+  const base = code.replace(/^[sl](?=[mMnT]|\d)/, "");   // strip s/l, but not sup4 / sub5
+  return SIZED_TO_STD[base] ?? null;
+}
+
 export function degreeMapFromScale(edo: number, steps: number[]): ModeMap {
-  const entries = Object.entries(getDegreeMap(edo));
-  const stdNameFor = (k: number): string => {
-    let best = entries[0]?.[0] ?? "1", bd = Infinity;
-    for (const [name, st] of entries) {
-      const sk = ((st % edo) + edo) % edo;
-      const raw = Math.abs(sk - k);
-      const d = Math.min(raw, edo - raw);
-      if (d < bd) { bd = d; best = name; }
-    }
-    return best;
-  };
+  const sorted = [...new Set(steps.map(s => ((s % edo) + edo) % edo))].sort((a, b) => a - b);
   const map: ModeMap = {};
-  for (const s of steps) {
-    const k = ((s % edo) + edo) % edo;
-    // Name each scale step BOTH in the sized spectrum ("our new notation":
-    // sm3 / m3 / lm3, sT / T / lT, …) and the standard chromatic degree (b3 /
-    // #4 …), so the degree-named phrase banks still resolve to the scale's own
-    // (sized) steps while sized references resolve too.
+  sorted.forEach((k, i) => {
+    // Three names per scale step so every generator path resolves to the scale's
+    // own (sized) note: the sized spectrum code ("our new notation": sm3 / m3 /
+    // lm3, sT / T / lT, …), the ordinal scale degree (so diatonic chord stacks
+    // resolve "3"/"5"/"7" to the scale's notes), and the region-based standard
+    // name (so minor/major-degree phrase banks like "b3" land on the sized step).
     const sized = k === 0 ? "1" : fuzzyCode((k * 1200) / edo);
-    const std = k === 0 ? "1" : stdNameFor(k);
+    const ord = String(i + 1);
+    const std = k === 0 ? "1" : sizedToStdDegree(sized);
     if (!(sized in map)) map[sized] = k;
-    if (!(std in map)) map[std] = k;
-  }
+    if (!(ord in map)) map[ord] = k;
+    if (std && !(std in map)) map[std] = k;
+  });
   if (!("1" in map)) map["1"] = 0;
   return map;
 }
