@@ -80,7 +80,7 @@ export function generateVoicings(degrees: string[], opts: GenerateOptions = {}):
   };
 
   const iOf = (d: string) => degrees.indexOf(d);
-  const rootI = iOf("1"), thirdI = iOf("3"), fifthI = iOf("5"), seventhI = iOf("7"), ninthI = iOf("9");
+  const rootI = iOf("1"), fifthI = iOf("5");
   const rankSort = (idxs: number[]) =>
     [...idxs].sort((x, y) => rankOf(degrees[x]) - rankOf(degrees[y]) || x - y);
   const DROP_NAME: Record<string, string> = { "2": "Drop 2", "3": "Drop 3", "2,3": "Drop 2&3", "2,4": "Drop 2&4" };
@@ -106,20 +106,6 @@ export function generateVoicings(degrees: string[], opts: GenerateOptions = {}):
   const close0 = Array.from({ length: n }, (_, k) => k);
   if (rootI >= 0) push([...close0, rootI], "Doubled");
   if (fifthI >= 0 && fifthI !== rootI) push([...close0, fifthI], "Doubled");
-
-  // ── Rootless — omit the root (4+ note chords) ──
-  if (n >= 4 && rootI >= 0) {
-    const nonRoot = close0.filter(i => i !== rootI);
-    push(nonRoot, "Rootless");
-    push(rankSort(nonRoot), "Rootless");
-  }
-
-  // ── Shell — guide tones (3 + 7), optionally + 9 ──
-  if (thirdI >= 0 && seventhI >= 0) {
-    push([thirdI, seventhI], "Shell");
-    push([seventhI, thirdI], "Shell");
-    if (ninthI >= 0) push([thirdI, seventhI, ninthI], "Shell");
-  }
 
   // ── Upper structure — root in the bass + the top three tones (5+ notes) ──
   if (n >= 5 && rootI >= 0) {

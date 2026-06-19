@@ -12,11 +12,12 @@ describe("generateVoicings", () => {
     expect(labels).toContain("5 1 3 7");   // drop-2 of root (5 in bass)
     expect(labels).toContain("3 1 5 7");   // drop-3 of root (3 in bass)
     const types = new Set(v.map(p => p.voicingType));
-    for (const t of ["Close", "Open", "Drop 2", "Drop 3", "Drop 2&3", "Drop 2&4", "Doubled", "Rootless", "Shell"]) {
+    for (const t of ["Close", "Open", "Drop 2", "Drop 3", "Drop 2&3", "Drop 2&4", "Doubled"]) {
       expect(types).toContain(t);
     }
-    // shell is the 3+7 guide tones
-    expect(labels).toContain("3 7");
+    // shell / rootless were removed
+    expect(types.has("Shell")).toBe(false);
+    expect(types.has("Rootless")).toBe(false);
   });
 
   it("groups by the actual bass when no section override is given", () => {

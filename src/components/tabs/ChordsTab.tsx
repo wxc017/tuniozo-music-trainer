@@ -3384,7 +3384,7 @@ function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns,
   };
 
   // Sub-categorise each chord-type section by voicing type (Close / Open / Drop …).
-  const TYPE_ORDER = ["Close", "Open", "Drop 2", "Drop 3", "Drop 2&3", "Drop 2&4", "Doubled", "Rootless", "Shell", "Upper"];
+  const TYPE_ORDER = ["Close", "Open", "Drop 2", "Drop 3", "Drop 2&3", "Drop 2&4", "Doubled", "Upper"];
   // Select/deselect a set of pattern ids.
   const setIds = (ids: string[], sel: boolean) => {
     const n = new Set(checkedPatterns);
