@@ -2946,17 +2946,24 @@ export default function ChordsTab({
                   // mode OFF: play the chord once, like the random playback (per
                   // direct user direction 2026-06-14: drone until clicked off /
                   // alternate between playback and drone).
-                  if (cardDroneOn && litCardIdx === chord.index) {
+                  // Clicking the already-lit card always toggles it OFF — stop
+                  // any drone, clear the keyboard highlight, and unlight the card
+                  // — regardless of drone/playback mode (per direct user report
+                  // that the highlight stayed on a second click in playback mode).
+                  if (litCardIdx === chord.index) {
                     audioEngine.fadeDrone();   // smooth fade-out
+                    audioEngine.stopDrone();
                     setLitCardIdx(null);
-                    onHighlight([]);           // toggle off the visualizer too
+                    onHighlight([]);
                     return;
                   }
                   audioEngine.stopDrone();
                   setLitCardIdx(chord.index);
                   if (cardDroneOn) {
-                    // Quieter than the random playback (×0.2) + breathing swell.
-                    audioEngine.startDrone(chord.notes, edo, playVol * harmonyVol * 0.2, undefined, true);
+                    // A sustained, breathing pad — kept a bit under the one-shot
+                    // playback level so it sits in the mix rather than vanishing
+                    // (was ×0.2, far too quiet next to the ×2.2 playback boost).
+                    audioEngine.startDrone(chord.notes, edo, playVol * harmonyVol * 0.9, undefined, true);
                   } else {
                     audioEngine.playMultiVoice([{ frames: [chord.notes], noteDuration: 1.4, gain: playVol * harmonyVol * CHORD_BOOST }], edo, 0, 1);
                   }
