@@ -1172,10 +1172,16 @@ export default function ChordsTab({
         return clampToLayout(folded.map(s => rootAbs + s));
       }
       if (pattern.sus) {
-        // Replace the 3rd (the second-lowest base tone) with the 2nd / 4th.
+        // Replace the 3rd with the 2nd / 4th.  The base chord's steps are NOT
+        // guaranteed pitch-sorted (shape order can be root-5th-3rd-7th), so sort
+        // FIRST, then drop the second-lowest tone (the actual 3rd) — otherwise we
+        // clobbered the 5th and left the 3rd in, yielding a bogus "7sus2" that
+        // still showed an m3 (per direct user bug report).
         const susStep = susStepFor(pattern.sus);
         if (susStep !== null && relSteps.length >= 2) {
-          steps = relSteps.map((s, i) => (i === 1 ? susStep : s)).sort((a, b) => a - b);
+          const sorted = [...relSteps].sort((a, b) => a - b);
+          sorted[1] = susStep;
+          steps = [...new Set(sorted)].sort((a, b) => a - b);
         }
       } else if (pattern.extDegrees && pattern.extDegrees.length > 0) {
         const extSteps = pattern.extDegrees
