@@ -1933,8 +1933,9 @@ export default function ChordsTab({
       [{ frames: [chord], noteDuration: chordDur, gain: playVol * 0.7 * harmonyVol * CHORD_BOOST }],
       edo, 0, 1,
     );
-    onHighlight(chord, 0);
-  }, [ensureAudio, playVol, harmonyVol, chordDur, edo, onHighlight, isLooping]);
+    // Replay is audio-only — it must NOT light up the visualizer (per direct
+    // user direction): these per-chord buttons are an ear cue, not a reveal.
+  }, [ensureAudio, playVol, harmonyVol, chordDur, edo, isLooping]);
 
   const showFhAnswer = useCallback(async () => {
     await ensureAudio();
