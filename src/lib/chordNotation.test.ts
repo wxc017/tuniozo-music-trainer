@@ -1,6 +1,18 @@
 // ── chordSymbol — sized-interval chord labels ─────────────────────────
 import { describe, it, expect } from "vitest";
-import { chordSymbol, sizedCode } from "./chordNotation";
+import { chordSymbol, sizedCode, sizedCodeAtDegree } from "./chordNotation";
+
+describe("sizedCodeAtDegree", () => {
+  it("forces a degree even when the tone tempers into a neighbouring family", () => {
+    // ~635¢ globally sizes as a small fifth, but as a known 11th (a fourth) it
+    // must read as a large fourth — the bug where the 11th vanished as a 5th.
+    expect(sizedCode(635)).toBe("s5");
+    expect(sizedCodeAtDegree(635, 4)).toBe("l4");
+    // a normal 9th (sized 2nd) and 13th (sized 6th)
+    expect(sizedCodeAtDegree(204, 2)).toBe("M2");
+    expect(sizedCodeAtDegree(884, 6)).toBe("sM6");
+  });
+});
 
 describe("chordSymbol", () => {
   it("a genuine perfect 5th is implied (hidden)", () => {

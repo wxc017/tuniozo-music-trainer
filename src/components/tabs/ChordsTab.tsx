@@ -32,7 +32,7 @@ import { getSizedTonalityBanks, getApproachChords, APPROACH_KINDS, APPROACH_LABE
 import { xenIntervalsForEdo, bankToScaleFamMode } from "@/lib/tonalityChordPool";
 import { getScalesForEdo } from "@/lib/commonScales";
 import { formatRomanNumeral, formatRomanNumeralWithFamily } from "@/lib/formatRoman";
-import { chordSymbol, sizedCode } from "@/lib/chordNotation";
+import { chordSymbol, sizedCode, sizedCodeAtDegree } from "@/lib/chordNotation";
 import { notationLabel } from "@/lib/notationLabels";
 
 // Stack a chord's quality tones (step offsets from the root) as a notation
@@ -62,8 +62,29 @@ function romanWithSystem(roman: string, toneOffsets: number[], edo: number, syst
 // notation so i can see").  `baseOffsets` are the base chord's tone offsets
 // from the root; any played pc not among them is an extension, rendered as its
 // sized code bumped to a compound degree (2→9, 4→11, 6→13).
+// Map a voicing section label ("9th + 11th · CLOSE") to the compound degree
+// numbers it adds, ascending — so the labeler knows a tone IS the 11th even when
+// it tempers to a fifth-sized interval and can't be told apart by size alone.
+const EXT_LABEL_TO_DEG: Record<string, number> = {
+  "2nd": 2, "4th": 4, "6th": 6, "9th": 9, "11th": 11, "13th": 13,
+};
+function parseExtDegrees(voicingType: string): number[] {
+  const section = voicingType.split("·")[0];
+  const out: number[] = [];
+  for (const part of section.split("+")) {
+    const d = EXT_LABEL_TO_DEG[part.trim()];
+    if (d !== undefined) out.push(d);
+  }
+  return out.sort((a, b) => a - b);
+}
+
 function extensionSuffix(
   pitches: number[], tonicPc: number, rootPc: number, baseOffsets: number[], edo: number,
+  // The chord's KNOWN extension degrees (from its voicing section).  When given,
+  // each extension tone is labelled by its functional degree — sized against
+  // THAT degree's landmarks — instead of guessing the degree from temperament.
+  // Without it we fall back to size-based detection (legacy behaviour).
+  extDegrees?: number[],
 ): string {
   const base = new Set(baseOffsets.map(o => ((o % edo) + edo) % edo));
   const exts = [...new Set(pitches.map(p =>
@@ -71,6 +92,19 @@ function extensionSuffix(
     .filter(o => o !== 0 && !base.has(o))
     .sort((a, b) => a - b);
   const codes: string[] = [];
+  if (extDegrees && extDegrees.length) {
+    // Positional assignment: extension tones sorted ascending line up with the
+    // section's degrees sorted ascending (a 9th folds below an 11th below a 13th).
+    const n = Math.min(exts.length, extDegrees.length);
+    for (let i = 0; i < n; i++) {
+      const deg = extDegrees[i];
+      const baseDeg = deg > 7 ? deg - 7 : deg;           // 9→2, 11→4, 13→6
+      const code = sizedCodeAtDegree((exts[i] * 1200) / edo, baseDeg);
+      const m = /^([sl]?)([mM]?)(\d+)$/.exec(code);
+      if (m) codes.push(m[1] + m[2] + deg);
+    }
+    return codes.length ? ` ${codes.join(" ")}` : "";
+  }
   for (const o of exts) {
     const m = /^([sl]?)([mM]?)(\d+)$/.exec(sizedCode((o * 1200) / edo));
     if (!m) continue;
@@ -497,6 +531,7 @@ export default function ChordsTab({
     notes: number[];          // absolute pitches in playback order
     chordRootPc: number;      // pitch-class of the chord root
     voicingType: string;      // e.g. "Seventh · Drop 2"
+    baseOffsets: number[];    // base chord-tone offsets from root (no extensions)
   };
   interface FhAnswer {
     progression: string[];
@@ -1843,7 +1878,8 @@ export default function ChordsTab({
         ? [...voices.chords[idx]].sort((a, b) => a - b)
         : [];
       const chordRootPc = applied ? ((applied[0] % edo) + edo) % edo : 0;
-      return { index: idx + 1, numeral: rn, quality, notes, chordRootPc, voicingType: voices.voicingTypes[idx] ?? "" };
+      const baseOffsets = applied ? applied.map(n => (((n - applied[0]) % edo) + edo) % edo) : [];
+      return { index: idx + 1, numeral: rn, quality, notes, chordRootPc, voicingType: voices.voicingTypes[idx] ?? "", baseOffsets };
     });
     setFhAnswer({
       progression,
@@ -2616,7 +2652,7 @@ export default function ChordsTab({
               // seeing [the selected chords]; its broken for inversions").
               // Upper extensions (9/11/13) the voicing actually plays but the
               // base chord shape doesn't carry — append so they're visible.
-              const extSuffix = extensionSuffix(c.pitches, tonicPc, c.chordRootPc, c.chordToneOffsets, edo);
+              const extSuffix = extensionSuffix(c.pitches, tonicPc, c.chordRootPc, c.chordToneOffsets, edo, parseExtDegrees(c.voicingType));
               const headerLabel = sizedLabel + extSuffix + (bassNum && bassNum !== 1 ? `/${bassNum}` : "");
               return (
                 <button key={i}
@@ -2881,8 +2917,19 @@ export default function ChordsTab({
               // again (that shifted every degree by −tonicPc, so labels were
               // only correct in C; e.g. the tonic chord read as ₗVII in D).
               const rootCAns = (((chord.chordRootPc % edo) + edo) % edo) * 1200 / edo;
+              // Label the BASE chord (root/3/5/7) from cents, then append the
+              // extensions by their KNOWN degree — otherwise an 11th that tempers
+              // to a fifth-sized interval gets swallowed as the 5th and vanishes
+              // (per direct user bug report: "notation does not have the 11th").
+              const extDegsAns = parseExtDegrees(chord.voicingType);
+              const hasBaseAns = chord.baseOffsets.length > 0;
+              const baseCentsAns = hasBaseAns
+                ? chord.baseOffsets.map(o => rootCAns + (o * 1200) / edo)
+                : [rootCAns, ...chordToneOffsets.map(o => rootCAns + (o * 1200) / edo)];
               const sizedLabelAns = useSchulter
-                ? chordSymbol([rootCAns, ...chordToneOffsets.map(o => rootCAns + (o * 1200) / edo)])
+                ? chordSymbol(baseCentsAns) + (hasBaseAns
+                    ? extensionSuffix(chord.notes, tonicForLabel, chord.chordRootPc, chord.baseOffsets, edo, extDegsAns)
+                    : "")
                 : romanWithSystem(chord.numeral, chordToneOffsets, edo, notationSystem);
               // Inversions: keep the SELECTED chord's real root label and append a
               // jazz slash for the bass chord-tone (I/5 = I with its 5th in bass).

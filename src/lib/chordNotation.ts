@@ -33,6 +33,22 @@ export function sizedCode(cents: number): string {
   return best;
 }
 
+/** Sized code for an interval, FORCED to a specific degree number (2..7) by
+ *  picking the nearest landmark with that degree only.  Use when the tone's
+ *  functional role is known (e.g. an 11th that tempers wide enough to size as a
+ *  5th globally should still read as a fourth-family code: l4 → "11"). */
+export function sizedCodeAtDegree(cents: number, degree: number): string {
+  const c = ((cents % 1200) + 1200) % 1200;
+  let best = "", bd = Infinity;
+  for (const [lc, code] of LANDMARKS) {
+    if (degreeOf(code) !== degree) continue;
+    const raw = Math.abs(c - lc);
+    const d = Math.min(raw, 1200 - raw);
+    if (d < bd) { bd = d; best = code; }
+  }
+  return best || sizedCode(cents);
+}
+
 /** Sized interval name per EDO step (index 0..edo): "1", "sM2", "m3", "5", … */
 export function sizedIntervalNames(edo: number): string[] {
   return Array.from({ length: edo + 1 }, (_, s) => sizedCode((s * 1200) / edo));
