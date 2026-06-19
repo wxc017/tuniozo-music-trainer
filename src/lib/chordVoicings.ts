@@ -82,6 +82,12 @@ export function generateVoicings(degrees: string[], opts: GenerateOptions = {}):
   for (let b = 0; b < n; b++) {
     const close = Array.from({ length: n }, (_, k) => (b + k) % n);
     push(close, "Close");                           // close inversion
+    if (n === 3) {
+      // Three-note chords have no drop voicings — just the OPEN position per
+      // inversion (the middle voice lifted to the top, e.g. 1 3 5 → 1 5 3).
+      push([close[0], close[2], close[1]], "Open");
+      continue;
+    }
     if (opts.open ?? true) {
       const others = degrees.map((_, i) => i).filter(i => i !== b)
         .sort((x, y) => rankOf(degrees[x]) - rankOf(degrees[y]) || x - y);

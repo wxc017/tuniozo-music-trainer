@@ -24,6 +24,16 @@ describe("generateVoicings", () => {
     expect(new Set(v.map(p => p.group))).toContain("2nd Inversion");
   });
 
+  it("triads have only Close + Open (no drops); 3 1 5 / 5 3 1 are Open", () => {
+    const v = generateVoicings(["1", "3", "5"]);
+    expect(v.length).toBe(6);   // close + open per inversion
+    expect(v.every(p => p.voicingType === "Close" || p.voicingType === "Open")).toBe(true);
+    const find = (label: string) => v.find(p => p.label === label)!;
+    expect(find("3 1 5").voicingType).toBe("Open");
+    expect(find("5 3 1").voicingType).toBe("Open");
+    expect(find("1 3 5").voicingType).toBe("Close");
+  });
+
   it("a section override puts every voicing under one group", () => {
     const v = generateVoicings(["1", "3", "5", "7"], { group: "Seventh", baseNotes: 4 });
     expect(v.every(p => p.group === "Seventh")).toBe(true);
