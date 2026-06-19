@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateVoicings, generateChordVoicings, assembleVoicing, chordToneSteps } from "./chordVoicings";
+import { generateVoicings, generateChordVoicings, assembleVoicing, chordToneSteps, chordPartials } from "./chordVoicings";
 
 const pc = (n: number) => ((n % 12) + 12) % 12;
 
@@ -124,5 +124,17 @@ describe("assembleVoicing + chordToneSteps", () => {
   it("drop-2 of root puts the 5th in the bass", () => {
     const v = assembleVoicing(0, tones, find("5 1 3 7 9"), edo);
     expect(pc(v[0])).toBe(7);   // 5th in the bass
+  });
+});
+
+describe("chordPartials", () => {
+  it("a close major triad ≈ 4:5:6", () => {
+    expect(chordPartials([0, 4, 7], 12)).toEqual([4, 5, 6]);
+  });
+  it("an open triad (1 5 3) ≈ 2:3:5", () => {
+    expect(chordPartials([0, 7, 16], 12)).toEqual([2, 3, 5]);
+  });
+  it("an octave ≈ 1:2", () => {
+    expect(chordPartials([0, 12], 12)).toEqual([1, 2]);
   });
 });

@@ -187,3 +187,33 @@ export function assembleVoicing(
   const content = toneSteps.map(s => rootAbs + s).sort((a, b) => a - b);
   return applyVoicingPattern(content, edo, pattern);
 }
+
+/**
+ * Approximate a VOICED chord (absolute EDO steps) as the low-integer harmonic
+ * partials it sits closest to, bottom→top — e.g. a close major triad → 4:5:6,
+ * an open one → 2:3:5, a drop-2 dom7 → 5:7:8:12.  Reflects the literal voicing
+ * (octave placement included).  Returns null if no small-integer set fits.
+ */
+export function chordPartials(
+  pitches: number[], edo: number, opts: { maxPartial?: number; tolCents?: number } = {},
+): number[] | null {
+  const maxPartial = opts.maxPartial ?? 32;
+  const tolCents = opts.tolCents ?? 22;
+  const uniq = [...new Set(pitches)].sort((a, b) => a - b);
+  if (uniq.length < 2) return null;
+  const centsFromBass = uniq.map(p => ((p - uniq[0]) * 1200) / edo);
+  const ratios = centsFromBass.map(c => Math.pow(2, c / 1200));
+  for (let m = 1; m <= maxPartial; m++) {
+    const partials = ratios.map(r => Math.round(m * r));
+    let ok = partials[partials.length - 1] <= maxPartial * 4;
+    for (let i = 1; ok && i < partials.length; i++) {
+      if (partials[i] <= partials[i - 1]) ok = false;             // strictly ascending
+    }
+    for (let i = 0; ok && i < ratios.length; i++) {
+      const idealCents = 1200 * Math.log2(partials[i] / m);
+      if (Math.abs(idealCents - centsFromBass[i]) > tolCents) ok = false;
+    }
+    if (ok) return partials;
+  }
+  return null;
+}

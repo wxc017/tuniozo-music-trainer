@@ -15,7 +15,7 @@ import {
   type LilWarning, type VoicingPattern,
 } from "@/lib/musicTheory";
 import { diatonicExtensionStep } from "@/lib/chordExtensions";
-import { generateChordVoicings, assembleVoicing } from "@/lib/chordVoicings";
+import { generateChordVoicings, assembleVoicing, chordPartials } from "@/lib/chordVoicings";
 import {
   getExtLabelToSteps,
   getChordShapes, getEdoChordTypes, type EdoChordType,
@@ -2627,6 +2627,9 @@ export default function ChordsTab({
                     {c.voicingType && (
                       <div className="text-[9px] text-[#8a8aa0] mt-0.5 uppercase tracking-wide">{c.voicingType}</div>
                     )}
+                    {(() => { const pr = chordPartials(c.pitches, edo); return pr ? (
+                      <div className="text-[9px] text-[#6a8a8a] font-mono mt-0.5" title="Harmonic-series partials this voicing approximates">{pr.join(":")}</div>
+                    ) : null; })()}
                   </div>
                   {/* Voicing notes — one cell per pitch (the actual
                       voicing).  Degree (top, +<sup>N</sup> if the
@@ -2925,6 +2928,9 @@ export default function ChordsTab({
                   {chord.voicingType && (
                     <div className="text-[9px] text-[#8a8aa0] mt-0.5 uppercase tracking-wide">{chord.voicingType}</div>
                   )}
+                  {(() => { const pr = chordPartials(chord.notes, edo); return pr ? (
+                    <div className="text-[9px] text-[#6a8a8a] font-mono mt-0.5" title="Harmonic-series partials this voicing approximates">{pr.join(":")}</div>
+                  ) : null; })()}
                 </div>
                 {/* INTERVALS section — each tone's interval from the tonic; tap one
                     to hear that single note (the card itself plays the whole chord). */}
@@ -3380,6 +3386,20 @@ function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns,
 
   // Sub-categorise each chord-type section by voicing type (Close / Open / Drop …).
   const TYPE_ORDER = ["Close", "Open", "Drop 2", "Drop 3", "Drop 2&4"];
+  // Select/deselect a set of pattern ids.
+  const setIds = (ids: string[], sel: boolean) => {
+    const n = new Set(checkedPatterns);
+    ids.forEach(id => (sel ? n.add(id) : n.delete(id)));
+    setCheckedPatterns(n);
+  };
+  // Toggle every voicing of one TYPE across all sections (global shortcut).
+  const toggleType = (type: string) => {
+    const ofType = patterns.filter(p => (p.voicingType ?? "") === type);
+    const allOn = ofType.length > 0 && ofType.every(p => checkedPatterns.has(p.id));
+    setIds(ofType.map(p => p.id), !allOn);
+  };
+  const typesPresent = TYPE_ORDER.filter(t => patterns.some(p => (p.voicingType ?? "") === t));
+
   const renderGroup = (g: string) => {
     const groupPatterns = patterns.filter(p => p.group === g);
     const count = groupPatterns.filter(p => checkedPatterns.has(p.id)).length;
@@ -3402,7 +3422,13 @@ function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns,
         <div className="flex flex-col gap-1.5">
           {byType.map(({ type, pats }) => (
             <div key={type}>
-              <p className="text-[8px] text-[#5a5a6a] uppercase tracking-wider mb-0.5">{type}</p>
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <p className="text-[8px] text-[#5a5a6a] uppercase tracking-wider">{type}</p>
+                <button onClick={() => setIds(pats.map(p => p.id), true)} title={`Select all ${type}`}
+                  className="w-2.5 h-2.5 rounded-full bg-[#2f4a2f] hover:bg-[#5cbf5c] border border-[#3a5a3a] transition-colors" />
+                <button onClick={() => setIds(pats.map(p => p.id), false)} title={`Deselect all ${type}`}
+                  className="w-2.5 h-2.5 rounded-full bg-[#4a2f2f] hover:bg-[#e06060] border border-[#5a3a3a] transition-colors" />
+              </div>
               <div className="flex flex-wrap gap-1">
                 {pats.map(renderPatternBtn)}
               </div>
@@ -3416,6 +3442,25 @@ function VoicingPatternControls({ patterns, checkedPatterns, setCheckedPatterns,
   return (
     <div>
       <p className="text-xs text-[#888] mb-1 font-medium">VOICINGS <span className="text-[#555] font-normal">({totalChecked} selected)</span></p>
+      {/* Quick type shortcuts — toggle every Close / Open / Drop voicing across
+          all sections at once. */}
+      <div className="flex flex-wrap items-center gap-1 mb-2">
+        <span className="text-[9px] text-[#555] uppercase tracking-wide mr-1">Quick:</span>
+        {typesPresent.map(t => {
+          const ofType = patterns.filter(p => (p.voicingType ?? "") === t);
+          const allOn = ofType.length > 0 && ofType.every(p => checkedPatterns.has(p.id));
+          return (
+            <button key={t} onClick={() => toggleType(t)}
+              className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
+                allOn ? "border-[#7173e6] text-[#9999ee] bg-[#7173e618]" : "border-[#222] text-[#666] hover:text-[#aaa]"
+              }`}>
+              All {t}
+            </button>
+          );
+        })}
+        <button onClick={() => setIds(patterns.map(p => p.id), false)}
+          className="text-[9px] px-1.5 py-0.5 rounded border border-[#222] text-[#666] hover:text-[#e06060] ml-1">Clear all</button>
+      </div>
       <div className="flex flex-wrap gap-x-6 gap-y-3 items-start">
         {nonSus.map(g => {
           // Force 3rd Inversion onto its own row beneath 2nd Inversion.
