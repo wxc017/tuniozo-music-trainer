@@ -526,11 +526,6 @@ export default function App() {
   // section picker.  Always false in production (see BETA_AVAILABLE).
   const betaMode           = BETA_AVAILABLE && betaMode_raw;
   const [academicMode, setAcademicMode] = useLS<boolean>("lt_academic_mode", false);
-  // Metronome + countdown timer strip visibility.  Default OFF per
-  // direct user direction (2026-05-06): "remove metornome and timer
-  // from everything unless i toggle it on in settings".  The strip
-  // surfaces in App.tsx + Mixed Groups + DrumPatterns gates on this.
-  const [showMetronomeTimer, setShowMetronomeTimer] = useLS<boolean>("lt_show_metronome_timer", false);
   // Dynamically load academic components (only present in local dev)
   const [academicComps, setAcademicComps] = useState<{
     ReadingWorkflow?: ComponentType;
@@ -949,11 +944,11 @@ export default function App() {
   const lastOpt = lastOptionKey ? optionSessionStats.current.get(lastOptionKey) : null;
   const lastOptAcc = lastOpt && (lastOpt.c + lastOpt.w) ? `${Math.round(100 * lastOpt.c / (lastOpt.c + lastOpt.w))}%` : "";
 
-  const metroShown = showMetronomeTimer && !academicMode && section !== "mixed-groups";
-  // Metronome strip content.  For most sections it pins at the very top; for
-  // Tonal Audiation it moves into the sticky controls group, ABOVE the drone, per
-  // direct user direction 2026-06-14 ("on top of the drone stuff not at the
-  // tipity top").
+  // The metronome + timer strip lives ONLY in Tonal Audiation now (per direct
+  // user direction) — no settings toggle, no top-of-page strip elsewhere.
+  const metroShown = section === "ear-trainer" && !academicMode;
+  // Metronome + Timer strip content, rendered inside Tonal Audiation's sticky
+  // controls group (above the drone bar).
   const metroStripInner = (
     <>
       <MetronomeStrip
@@ -966,42 +961,13 @@ export default function App() {
       />
       <div className="w-px h-4 bg-[#2a2a2a]" />
       <CountdownTimer />
-      <button onClick={() => setShowMetronomeTimer(false)}
-        title="Hide metronome & timer (re-enable in Settings)"
-        className="ml-1 text-[#555] hover:text-[#cc6666] text-xs px-1.5 py-0.5 rounded border border-[#2a2a2a] hover:border-[#5a2a2a] transition-colors">
-        ✕
-      </button>
     </>
   );
-  // Timer only — Tonal Audiation keeps the countdown timer but not the
-  // metronome (per direct user direction).
-  const timerStripInner = (
-    <>
-      <CountdownTimer />
-      <button onClick={() => setShowMetronomeTimer(false)}
-        title="Hide timer (re-enable in Settings)"
-        className="ml-1 text-[#555] hover:text-[#cc6666] text-xs px-1.5 py-0.5 rounded border border-[#2a2a2a] hover:border-[#5a2a2a] transition-colors">
-        ✕
-      </button>
-    </>
-  );
-  // Top-level strip (and its --metro-h offset) only for non-ear-trainer sections.
-  const metroAtTop = metroShown && section !== "ear-trainer";
   return (
     <div
       className={`bg-[#0d0d0d] text-white flex flex-col ${(section === "reading-workflow" || section === "temperament-explorer" || section === "math-lab") ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}
-      style={{ "--metro-h": metroAtTop ? "44px" : "0px" } as React.CSSProperties}
+      style={{ "--metro-h": "0px" } as React.CSSProperties}
     >
-      {/* Metronome + Timer — pinned as an always-on strip at the very top so it
-          stays visible across most sections.  Root-level sticky headers (the
-          scalar-exploration visualizer) offset themselves below it via the
-          --metro-h variable.  Tonal Audiation renders it inside its controls
-          group instead (see the sticky wrapper below). */}
-      {metroAtTop && (
-        <div className="sticky top-0 z-[55] flex items-center gap-3 px-4 min-h-[44px] bg-[#0d0d0d] border-b border-[#1e1e1e] flex-shrink-0 overflow-x-auto" style={{ position: "sticky", top: 0 }}>
-          {metroStripInner}
-        </div>
-      )}
       {/* ── Header ── */}
       <div className="border-b border-[#1e1e1e] px-4 pt-4 pb-3 flex-shrink-0">
         <div className="space-y-3">
@@ -1130,15 +1096,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* Metronome + Timer strip — hidden in academic mode and
-              in Mixed Groups (which has its own per-pulse metronome).
-              Also gated on the `showMetronomeTimer` settings toggle
-              per direct user direction (2026-05-06): "remove
-              metornome and timer from everything unless i toggle it
-              on in settings" — default off so the page header stays
-              focused on the section content. */}
-          {/* Metronome + Timer strip moved to a pinned always-on bar at the
-              very top of the root (see the --metro-h sticky bar above). */}
+          {/* Metronome + Timer strip lives ONLY in Tonal Audiation now — inside
+              its sticky controls group (see the ear-trainer wrapper below).  No
+              settings toggle and no top-of-page strip elsewhere, per direct user
+              direction. */}
 
           {/* Drone strip — only in Tonal Audiation (ear-trainer) per
               direct user direction (2026-05-06): "drone option should
@@ -1259,7 +1220,7 @@ export default function App() {
               play-vol / tonic, all on a single wrapping row. */}
           <div className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 mb-2 flex flex-wrap items-center gap-x-3 gap-y-2">
             {metroShown && (<>
-              {timerStripInner}
+              {metroStripInner}
               <div className="w-px h-4 bg-[#2a2a2a]" />
             </>)}
             {!academicMode && (<>
@@ -2333,8 +2294,6 @@ export default function App() {
             setAcademicMode(v);
             setSection(v ? "reading-workflow" : "ear-trainer");
           }}
-          showMetronomeTimer={showMetronomeTimer}
-          onShowMetronomeTimerChange={setShowMetronomeTimer}
         />
       )}
 
