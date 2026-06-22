@@ -78,9 +78,9 @@ Conventions:
 - **sus / no-3rd:** the set just carries a 4th/2nd instead of a 3rd →
   `{4 5}/1` (sus4), `{M2 5}/1` (sus2).
 - **added 6th:** the set carries the 6th → `{sM3 5 M6}/1`.
-- **inversions:** append a jazz bass slash after the anchor → `{sM3 5}/1/5`
-  (the tonic chord with its 5th in the bass). The first slash separates set
-  from anchor; a second slash is the bass.
+- **inversions:** append the bass interval in brackets after the anchor →
+  `{sM3 5}/1[5]` (the tonic chord with its 5th in the bass). The `/` separates
+  set from anchor; `[…]` carries the bass, so the two never collide.
 
 There is **one** form — the complete set. Display density (e.g. collapsing the
 implied 5th, or sub-scripting the s/l size for the eye) is a UI concern, not a

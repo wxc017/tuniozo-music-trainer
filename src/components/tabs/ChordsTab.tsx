@@ -174,12 +174,12 @@ function Numeral({ num }: { num: string }) {
 function ChordSym({ symbol }: { symbol: string }) {
   // Canonical form C: "{<sized codes>}/<anchor>".  Render the anchor as the base
   // and the brace-delimited set as a superscript, each code's s/l size shown as a
-  // subscript (via <Numeral>).  A trailing "/bass" (jazz inversion slash) on the
-  // anchor side is split off and shown small.  e.g. "{sM3 5}/1" → 1 ⁽⁽ˢᴹ³ ⁵⁾⁾.
-  const cm = /^\{(.*)\}\/(.+)$/.exec(symbol);
+  // subscript (via <Numeral>).  A trailing "[bass]" (inversion) is split off and
+  // shown small.  e.g. "{sM3 5}/1" → 1 ⁽⁽ˢᴹ³ ⁵⁾⁾, "{sM3 5}/1[5]" → … [5].
+  const cm = /^\{(.*)\}\/([^[]+)(?:\[(.+)\])?$/.exec(symbol);
   if (cm) {
     const codes = cm[1] ? cm[1].split(" ").filter(Boolean) : [];
-    const [anchor, ...bass] = cm[2].split("/");
+    const anchor = cm[2], bass = cm[3];
     return <>
       <Numeral num={anchor} />
       {codes.length > 0 && (
@@ -187,7 +187,7 @@ function ChordSym({ symbol }: { symbol: string }) {
           {"{"}{codes.map((t, i) => <span key={i}>{i > 0 ? " " : ""}<Numeral num={t} /></span>)}{"}"}
         </sup>
       )}
-      {bass.length > 0 && <span className="text-[0.85em] opacity-80">/{bass.join("/")}</span>}
+      {bass && <span className="text-[0.85em] opacity-80">[{bass}]</span>}
     </>;
   }
   // Legacy fallback: "[root-interval prefix] <roman> [stacked interval codes]".
@@ -2957,7 +2957,7 @@ export default function ChordsTab({
               // Do NOT re-root on the bass — that renamed a I in 2nd inversion as
               // a "V" (per direct user direction 2026-06-13 "there is not a 1 in a
               // V nor a 3 … i should only be seeing [the selected chords]").
-              const headerLabel = sizedLabelAns + (bassNum && bassNum !== 1 ? `/${bassNum}` : "");
+              const headerLabel = sizedLabelAns + (bassNum && bassNum !== 1 ? `[${bassNum}]` : "");
               return (
               <div key={chord.index} role="button" tabIndex={0}
                 onClick={async () => {
