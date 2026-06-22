@@ -2,7 +2,7 @@
 
 Canonical reference for the chord notation used when porting 50-EDO (and every
 other EDO) to Tonal Audiation. The canonical symbol is **form C** — an anchored
-interval-set, `{<sized codes>}/<anchor>`. It is built from scratch on the
+interval-set, `{<sized codes>} | <anchor>`. It is built from scratch on the
 Interval-Spectrum size system; it deliberately keeps **nothing** from
 traditional notation except the single idea that **"1 is home."**
 
@@ -11,7 +11,7 @@ traditional notation except the single idea that **"1 is home."**
 ## 1. Principles
 
 1. **A chord is an anchored interval-set.** The canonical symbol is **form C**:
-   `{<codes>}/<anchor>`. The **anchor** names where the chord's root sits — its
+   `{<codes>} | <anchor>`. The **anchor** names where the chord's root sits — its
    sized interval up from home (`1` = tonic/home). The **set** lists every
    interval of the chord measured from its own root. There is **no Roman
    numeral** and no diatonic-function layer; position is just another sized
@@ -56,7 +56,7 @@ the two adjacent banded regions; the neutral zone is simply where `lm` meets
 ## 3. Chord grammar
 
 ```
-chord   ::= "{" set "}" "/" anchor
+chord   ::= "{" set "}" " | " anchor
 anchor  ::= code | "1"               ; root's sized interval from home; 1 = tonic
 set     ::= code { " " code }        ; ascending, root-relative; complete
 code    ::= [ "s" | "l" ] quality degreeNumber
@@ -76,11 +76,11 @@ Rules:
 
 Conventions:
 - **sus / no-3rd:** the set just carries a 4th/2nd instead of a 3rd →
-  `{4 5}/1` (sus4), `{M2 5}/1` (sus2).
-- **added 6th:** the set carries the 6th → `{sM3 5 M6}/1`.
+  `{4 5} | 1` (sus4), `{M2 5} | 1` (sus2).
+- **added 6th:** the set carries the 6th → `{sM3 5 M6} | 1`.
 - **inversions:** append the bass interval in brackets after the anchor →
-  `{sM3 5}/1[5]` (the tonic chord with its 5th in the bass). The `/` separates
-  set from anchor; `[…]` carries the bass, so the two never collide.
+  `{sM3 5} | 1[5]` (the tonic chord with its 5th in the bass). The ` | `
+  separates set from anchor; `[…]` carries the bass, so the two never collide.
 
 There is **one** form — the complete set. Display density (e.g. collapsing the
 implied 5th, or sub-scripting the s/l size for the eye) is a UI concern, not a
@@ -108,24 +108,24 @@ Their sized anchors from home: `1 · sM2 · sM3 · 4 · 5 · sM6 · sM7`.
 
 | old degree | symbol (form C) | set |
 |------------|-----------------|-----|
-| I   | `{sM3 5}/1`    | sM3 · 5 |
-| II  | `{lm3 5}/sM2`  | lm3 · 5 |
-| III | `{lm3 5}/sM3`  | lm3 · 5 |
-| IV  | `{sM3 5}/4`    | sM3 · 5 |
-| V   | `{sM3 5}/5`    | sM3 · 5 |
-| VI  | `{lm3 5}/sM6`  | lm3 · 5 |
-| VII | `{lm3 s5}/sM7` | lm3 · s5 |
+| I   | `{sM3 5} | 1`    | sM3 · 5 |
+| II  | `{lm3 5} | sM2`  | lm3 · 5 |
+| III | `{lm3 5} | sM3`  | lm3 · 5 |
+| IV  | `{sM3 5} | 4`    | sM3 · 5 |
+| V   | `{sM3 5} | 5`    | sM3 · 5 |
+| VI  | `{lm3 5} | sM6`  | lm3 · 5 |
+| VII | `{lm3 s5} | sM7` | lm3 · s5 |
 
 ### Sevenths & color chords
 
 | chord | symbol (form C) | set |
 |-------|-----------------|-----|
-| dominant 7 (V) | `{sM3 5 sm7}/5`     | sM3 · 5 · sm7 (7/4) |
-| major 7 (I)    | `{sM3 5 sM7}/1`     | sM3 · 5 · sM7 |
-| minor 7 (II)   | `{lm3 5 lm7}/sM2`   | lm3 · 5 · lm7 |
-| half-dim (VII) | `{lm3 s5 lm7}/sM7`  | lm3 · s5 · lm7 |
-| add6 (I)       | `{sM3 5 M6}/1`      | sM3 · 5 · M6 |
-| sus4 (V)       | `{4 5}/5`           | 4 · 5 |
+| dominant 7 (V) | `{sM3 5 sm7} | 5`     | sM3 · 5 · sm7 (7/4) |
+| major 7 (I)    | `{sM3 5 sM7} | 1`     | sM3 · 5 · sM7 |
+| minor 7 (II)   | `{lm3 5 lm7} | sM2`   | lm3 · 5 · lm7 |
+| half-dim (VII) | `{lm3 s5 lm7} | sM7`  | lm3 · s5 · lm7 |
+| add6 (I)       | `{sM3 5 M6} | 1`      | sM3 · 5 · M6 |
+| sus4 (V)       | `{4 5} | 5`           | 4 · 5 |
 
 ---
 
@@ -158,6 +158,6 @@ emits this convention for any sounding set of pitches, in any EDO.
 
 Store the **full explicit set** (form C); let the UI **collapse/expand** it for
 the eye — e.g. render the s/l size as a subscript, drop the implied `5`, or show
-just `{sM3}/1` and expand to `{sM3 5 sM7}/1` on hover/click. Density is a display
+just `{sM3} | 1` and expand to `{sM3 5 sM7} | 1` on hover/click. Density is a display
 concern, not a notation flaw — the stored data stays complete and precise, the
 screen stays fast to read for audiation.

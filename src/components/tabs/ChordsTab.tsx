@@ -172,10 +172,10 @@ function Numeral({ num }: { num: string }) {
   return <><sub className="text-[0.7em]">{m[1]}</sub>{m[2]}</>;
 }
 function ChordSym({ symbol }: { symbol: string }) {
-  // Canonical form C: "{<qualities>}/<root>[<inversion>]".  Render VERBATIM as
+  // Canonical form C: "{<qualities>} | <root>[<inversion>]".  Render VERBATIM as
   // flat text in that exact order — NO super-/sub-script and NO reordering (per
   // direct user direction 2026-06-21: "zero superscript or subscript").
-  if (/^\{.*\}\/[^[]+(?:\[.+\])?$/.test(symbol)) return <>{symbol}</>;
+  if (/^\{.*\} \| [^[]+(?:\[.+\])?$/.test(symbol)) return <>{symbol}</>;
   // Legacy fallback: "[root-interval prefix] <roman> [stacked interval codes]".
   // The numeral is the token made only of roman letters (+ optional b/#/s/l
   // prefix and °/+ suffix); tokens before it are the root-position interval
@@ -2931,12 +2931,12 @@ export default function ChordsTab({
                 ? chord.baseOffsets.map(o => rootCAns + (o * 1200) / edo)
                 : [rootCAns, ...chordToneOffsets.map(o => rootCAns + (o * 1200) / edo)];
               // Splice any extension codes INSIDE the form-C braces (before the
-              // "}/anchor") so the symbol stays a valid single set rather than
+              // "} | anchor") so the symbol stays a valid single set rather than
               // trailing codes after the anchor.
               const sizedLabelAns = useSchulter
-                ? chordSymbol(baseCentsAns).replace(/\}\/(.+)$/, `${hasBaseAns
+                ? chordSymbol(baseCentsAns).replace(/\} \| (.+)$/, `${hasBaseAns
                     ? extensionSuffix(chord.notes, tonicForLabel, chord.chordRootPc, chord.baseOffsets, edo, extDegsAns)
-                    : ""}}/$1`)
+                    : ""}} | $1`)
                 : romanWithSystem(chord.numeral, chordToneOffsets, edo, notationSystem);
               // Inversions: keep the SELECTED chord's real root label and append a
               // jazz slash for the bass chord-tone (I/5 = I with its 5th in bass).

@@ -14,10 +14,10 @@ describe("sizedCodeAtDegree", () => {
   });
 });
 
-describe("chordSymbol (canonical form C: {set}/anchor)", () => {
+describe("chordSymbol (canonical form C: {set} | anchor)", () => {
   it("keeps the perfect 5th explicit in the set, over a tonic anchor of 1", () => {
     // I major triad: 1 + sM3 + perfect 5th.
-    expect(chordSymbol([0, 386, 702])).toBe("{sM3 5}/1");
+    expect(chordSymbol([0, 386, 702])).toBe("{sM3 5} | 1");
   });
 
   it("a large fifth shows its raw code (l5) in the set, over its anchor", () => {
@@ -25,20 +25,20 @@ describe("chordSymbol (canonical form C: {set}/anchor)", () => {
     // 50-EDO case.  Raw Schulter code only; no d5/A5.
     expect(sizedCode(729)).toBe("l5");
     const sym = chordSymbol([702, 702 + 435, 702 + 729]);
-    expect(sym).toBe("{lM3 l5}/5");
+    expect(sym).toBe("{lM3 l5} | 5");
     expect(sym).not.toMatch(/[dA]5/);     // never d5 / A5
   });
 
   it("a small fifth shows its raw code (s5)", () => {
     expect(sizedCode(660)).toBe("s5");
     const sym = chordSymbol([0, 408, 660]);  // 1 + M3 + s5
-    expect(sym).toBe("{M3 s5}/1");
+    expect(sym).toBe("{M3 s5} | 1");
   });
 
   it("a tone that codes as a 5 stays a 5, never relabelled d5/A5", () => {
     expect(sizedCode(720)).toBe("5");        // an 18¢-sharp tone still codes "5"
     const sym = chordSymbol([0, 408, 720]);  // 1 + M3 + (sharp) 5
-    expect(sym).toBe("{M3 5}/1");
+    expect(sym).toBe("{M3 5} | 1");
     expect(sym).not.toMatch(/[dA]5/);
   });
 
@@ -47,7 +47,7 @@ describe("chordSymbol (canonical form C: {set}/anchor)", () => {
     // shows what's there (sM3, m6) and carries no fifth member.
     expect(sizedCode(792)).toBe("m6");
     const sym = chordSymbol([0, 386, 792]);
-    expect(sym).toBe("{sM3 m6}/1");
+    expect(sym).toBe("{sM3 m6} | 1");
     expect(sym).not.toContain("no5");        // absence of a 5 member = no fifth
   });
 });

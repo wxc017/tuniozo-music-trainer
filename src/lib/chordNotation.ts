@@ -1,6 +1,6 @@
 // ── Sized-interval chord notation (Tonal Audiation spec) ────────────
 // See docs/CHORD_NOTATION.md.  Canonical chord symbol = form C:
-// `{<sized interval codes>}/<anchor>` — a complete, brace-delimited SET of the
+// `{<sized interval codes>} | <anchor>` — a complete, brace-delimited SET of the
 // chord's intervals (each `[s|l]` + quality + degree, center = bare) measured
 // from its own root, over the root's sized interval from home (the anchor;
 // tonic = "1").  No Roman numerals, no °, no +, no neutral status, no hidden 5th.
@@ -102,7 +102,7 @@ export function sizedRoman(cents: number): string {
 }
 
 /** Build the canonical chord symbol (form C) from a list of tone pitches (cents
- *  from the tonic): `{<sized codes>}/<anchor>`.  The lowest tone is the root; the
+ *  from the tonic): `{<sized codes>} | <anchor>`.  The lowest tone is the root; the
  *  anchor is the root's own sized interval from home (tonic → "1"), and the set
  *  is every interval from the root, sized and listed ascending.
  *
@@ -136,5 +136,5 @@ export function chordSymbol(centsFromTonic: number[]): string {
     const display = ext(code);
     if (codes[codes.length - 1] !== display) codes.push(display);
   }
-  return `{${codes.join(" ")}}/${anchor}`;
+  return `{${codes.join(" ")}} | ${anchor}`;
 }
