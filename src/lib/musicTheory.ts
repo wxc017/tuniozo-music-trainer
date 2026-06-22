@@ -1168,6 +1168,7 @@ export const HARMONIC_GRAPH: Record<string, string[]> = {
   // ── Tritone subs — resolve to their target (down a half step) ──
   "TT/I":   ["I"],
   "TT/ii":  ["ii"],
+  "TT/IV":  ["IV"],
   "TT/V":   ["V"],
   "TT/vi":  ["vi"],
   // ── Secondary diminished — resolve to target (leading-tone approach) ──
@@ -1193,6 +1194,20 @@ const APPLIED_CHORDS = new Set([
   "TT/I","TT/ii","TT/V","TT/vi",
   "vii°/ii","vii°/iii","vii°/IV","vii°/V","vii°/vi",
 ]);
+
+/** Any "applied" chord — a secondary dominant / leading-tone, tritone sub, or
+ *  applied ii — recognised structurally (PREFIX/TARGET) so the generator treats
+ *  EVERY such chord as applied, not just the ones hand-listed above. */
+export function isAppliedChord(c: string): boolean {
+  return APPLIED_CHORDS.has(c) || /^(?:V7?|vii°|TT|ii|iiø)\/.+$/.test(c);
+}
+/** Parse an applied label into its function + tonicization target.
+ *  "V/ii"→{kind:"dom",target:"ii"}, "ii/V"→{kind:"pre",target:"V"}. */
+function parseApplied(c: string): { kind: "dom" | "pre"; target: string } | null {
+  const m = /^(V7?|vii°|TT|ii|iiø)\/(.+)$/.exec(c);
+  if (!m) return null;
+  return { kind: m[1] === "ii" || m[1] === "iiø" ? "pre" : "dom", target: m[2] };
+}
 
 /** Length options for generated loops */
 export const LOOP_LENGTHS = [1, 2, 3, 4, 5, 6, 8] as const;
@@ -1264,7 +1279,7 @@ export function generateFunctionalLoop(
   if (available.length < 2) return null;
 
   const avSet = new Set(available);
-  const diatonicStarts = available.filter(c => !APPLIED_CHORDS.has(c));
+  const diatonicStarts = available.filter(c => !isAppliedChord(c));
   const homes = available.filter(c => HOME_CHORDS.has(c));
   const startPool = diatonicStarts.length > 0 ? diatonicStarts : (homes.length > 0 ? homes : [available[0]]);
   const boostFactor = 3;
@@ -1326,6 +1341,71 @@ export function generateFunctionalLoop(
     if (trans.length > 0) transitions.set(chord, trans);
   }
 
+  // ── Completion pass ──────────────────────────────────────────────────────
+  // Guarantee EVERY available chord is fully wired into the chain — both
+  // resolving somewhere (outgoing) and reachable from the walk (incoming) — so
+  // secondary dominants, tritone subs, ii–Vs and ALL modal-interchange chords
+  // work even when the hand-authored table doesn't list that exact label.
+  const availOf = (...cands: string[]): string[] => {
+    const out: string[] = [];
+    for (const c of cands) for (const a of baseToAvail.get(baseLabel(c)) ?? []) if (!out.includes(a)) out.push(a);
+    return out;
+  };
+  const homesAvail = available.filter(c => HOME_CHORDS.has(c));
+  const domAvail = availOf("V", "V7", "v");
+  const addEdge = (from: string, to: string, w: number) => {
+    if (from === to) return;
+    let arr = transitions.get(from);
+    if (!arr) { arr = []; transitions.set(from, arr); }
+    if (!arr.some(t => t.target === to)) arr.push({ target: to, weight: boost.has(to) ? w * boostFactor : w });
+  };
+
+  // (a) Synthesize OUTGOING edges for any chord that resolved nowhere.
+  for (const c of available) {
+    if (transitions.get(c)?.length) continue;
+    const ap = parseApplied(c);
+    if (ap?.kind === "dom") {
+      for (const t of availOf(ap.target)) addEdge(c, t, 5);          // V/X, vii°/X, TT/X → X
+    } else if (ap?.kind === "pre") {
+      for (const t of availOf(`V/${ap.target}`)) addEdge(c, t, 5);   // ii/X → V/X
+      for (const t of availOf(`vii°/${ap.target}`)) addEdge(c, t, 2);
+      for (const t of availOf(`TT/${ap.target}`)) addEdge(c, t, 1);
+      for (const t of availOf(ap.target)) addEdge(c, t, 2);
+    } else {
+      // Borrowed / modal-interchange / anything unknown → resolve toward the
+      // dominant and home, with light pull to neighbouring borrowings.
+      for (const t of domAvail) addEdge(c, t, 3);
+      for (const t of availOf("vii°")) addEdge(c, t, 1);
+      for (const t of homesAvail) addEdge(c, t, 1);
+      for (const t of availOf("iv", "IV", "bVII", "bVI", "bII", "bIII")) addEdge(c, t, 1);
+    }
+    // Absolute backstop: still nothing → any non-applied chord.
+    if (!transitions.get(c)?.length)
+      for (const t of available) if (t !== c && !isAppliedChord(t)) addEdge(c, t, 1);
+  }
+
+  // (b) Guarantee REACHABILITY — every available chord must be some edge's target.
+  const targeted = new Set<string>();
+  for (const arr of transitions.values()) for (const t of arr) targeted.add(t.target);
+  for (const c of available) {
+    if (targeted.has(c)) continue;
+    const ap = parseApplied(c);
+    let sources: string[];
+    if (ap?.kind === "dom") {
+      // Secondary dominants are set up by their own ii, else reached from
+      // tonic / submediant / subdominant.
+      sources = availOf(`ii/${ap.target}`, `iiø/${ap.target}`);
+      if (sources.length === 0) sources = [...homesAvail, ...availOf("vi", "IV", "iv")];
+    } else if (ap?.kind === "pre") {
+      sources = [...homesAvail, ...availOf("vi", "IV", "iv", "iii")];
+    } else {
+      // Borrowed / modal — approached from tonic / subdominant / dominant.
+      sources = [...homesAvail, ...availOf("IV", "iv", "V", "vi")];
+    }
+    if (sources.length === 0) sources = available.filter(s => s !== c && !isAppliedChord(s));
+    for (const s of sources) addEdge(s, c, ap ? 2 : 1);
+  }
+
   // Weighted pick from transitions — same as melodicPatternData's pickFromTransitions
   const pickFromTransitions = (trans: Transition): string => {
     const total = trans.reduce((s, t) => s + t.weight, 0);
@@ -1354,16 +1434,16 @@ export function generateFunctionalLoop(
 
       if (!trans || trans.length === 0) {
         // No transitions — fallback to any non-applied, non-recent chord
-        const fallback = available.filter(c => c !== prev && !APPLIED_CHORDS.has(c) && !recent.includes(c));
+        const fallback = available.filter(c => c !== prev && !isAppliedChord(c) && !recent.includes(c));
         if (fallback.length > 0) { path.push(uniformPick(fallback)); }
         else {
-          const any = available.filter(c => c !== prev && !APPLIED_CHORDS.has(c));
+          const any = available.filter(c => c !== prev && !isAppliedChord(c));
           if (any.length > 0) { path.push(uniformPick(any)); }
           else { valid = false; break; }
         }
       } else if (isLastStep) {
         // Last chord: must not be applied, prefer chords that can loop back to start
-        let pool = trans.filter(t => !APPLIED_CHORDS.has(t.target));
+        let pool = trans.filter(t => !isAppliedChord(t.target));
         const canLoop = pool.filter(t => {
           const next = HARMONIC_GRAPH[t.target] ?? [];
           return next.some(n => n === start) || HOME_CHORDS.has(start);
@@ -1378,8 +1458,8 @@ export function generateFunctionalLoop(
       } else if (step === length - 2) {
         // Penultimate: avoid applied chords whose resolution can't close the loop
         const safe = trans.filter(t => {
-          if (!APPLIED_CHORDS.has(t.target)) return true;
-          const targets = (HARMONIC_GRAPH[t.target] ?? []).filter(r => avSet.has(r) && !APPLIED_CHORDS.has(r));
+          if (!isAppliedChord(t.target)) return true;
+          const targets = (HARMONIC_GRAPH[t.target] ?? []).filter(r => avSet.has(r) && !isAppliedChord(r));
           return targets.some(r => {
             const next = HARMONIC_GRAPH[r] ?? [];
             return next.some(n => n === start) || HOME_CHORDS.has(start);
@@ -1407,7 +1487,7 @@ export function generateFunctionalLoop(
   }
 
   // Last resort: simple progression from diatonic chords only (no consecutive repeats)
-  const diatonic = available.filter(c => !APPLIED_CHORDS.has(c));
+  const diatonic = available.filter(c => !isAppliedChord(c));
   if (diatonic.length < 2) return null;
   const path = [uniformPick(diatonic)];
   for (let i = 1; i < length; i++) {

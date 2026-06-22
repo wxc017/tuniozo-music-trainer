@@ -215,6 +215,26 @@ describe("generateFunctionalLoop", () => {
     expect(generateFunctionalLoop([], 4)).toBeNull();
   });
 
+  it("supports any available chord even when absent from the weight table (e.g. bII)", () => {
+    // bII (Neapolitan) is not in FUNCTIONAL_WEIGHTS_TABLE; the completion pass
+    // must make it both reachable and resolvable so the walk can actually use it.
+    const pool = ["I", "IV", "V", "bII"];
+    let seen = false;
+    for (let i = 0; i < 300 && !seen; i++) {
+      const loop = generateFunctionalLoop(pool, 4);
+      if (loop && loop.includes("bII")) seen = true;
+    }
+    expect(seen).toBe(true);
+  });
+
+  it("never dead-ends on an applied chord that isn't hand-listed (e.g. V/vii)", () => {
+    const pool = ["I", "V", "V/vii", "vii°"];
+    for (let i = 0; i < 80; i++) {
+      const loop = generateFunctionalLoop(pool, 4);
+      expect(loop === null || loop.length === 4).toBe(true);
+    }
+  });
+
   it("only uses chords from the available set", () => {
     const available = ["I", "IV", "V", "vi"];
     for (let trial = 0; trial < 50; trial++) {
