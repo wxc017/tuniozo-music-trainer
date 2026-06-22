@@ -2669,7 +2669,20 @@ export default function ChordsTab({
               // Upper extensions (9/11/13) the voicing actually plays but the
               // base chord shape doesn't carry — append so they're visible.
               const extSuffix = extensionSuffix(c.pitches, tonicPc, c.chordRootPc, c.chordToneOffsets, edo, parseExtDegrees(c.voicingType));
-              const headerLabel = sizedLabel + extSuffix + (bassNum && bassNum !== 1 ? `/${bassNum}` : "");
+              const headerLabel = sizedLabel + extSuffix + (bassNum && bassNum !== 1 ? `[${bassNum}]` : "");
+              // Applied chord → arrow to the sized anchor of the degree it
+              // tonicises (see the matching Show Answer logic).
+              const appliedM = /^(V|vii°|ii|iiø|TT)\/(.+)$/.exec(c.roman);
+              let targetAnchor: string | null = null;
+              if (useSchulter && appliedM) {
+                const shp = getChordShapes(edo);
+                const above = appliedM[1] === "V" ? shp.P5
+                  : appliedM[1] === "TT" ? shp.P5 + shp.d5
+                  : appliedM[1] === "vii°" ? shp.M7
+                  : shp.M2;
+                const tRootPc = ((c.chordRootPc - above) % edo + edo) % edo;
+                targetAnchor = sizedCode((tRootPc / edo) * 1200);
+              }
               return (
                 <button key={i}
                   onClick={() => {
@@ -2687,8 +2700,17 @@ export default function ChordsTab({
                       "remove the (major) stuff below the roman
                       numerals". */}
                   <div className="text-center mb-3">
-                    <div className="text-[16px] font-bold leading-tight font-mono" style={{ color: "#c8a0e0" }}>
+                    <div className="text-[16px] font-bold leading-tight font-mono flex items-center justify-center gap-1.5" style={{ color: "#c8a0e0" }}>
                       <ChordSym symbol={headerLabel} />
+                      {targetAnchor && appliedM && (
+                        <span className="inline-flex flex-col items-center leading-none">
+                          <span className="text-[10px] text-[#a98ac8] mb-0.5">{appliedM[1]}/</span>
+                          <span className="flex items-center gap-1">
+                            <span className="text-[#8a8aa0] text-[18px] leading-none">→</span>
+                            <span>{targetAnchor}</span>
+                          </span>
+                        </span>
+                      )}
                     </div>
                     {c.voicingType && (
                       <div className="text-[9px] text-[#8a8aa0] mt-0.5 uppercase tracking-wide">{c.voicingType}</div>

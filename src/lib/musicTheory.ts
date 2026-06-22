@@ -1406,6 +1406,24 @@ export function generateFunctionalLoop(
     for (const s of sources) addEdge(s, c, ap ? 2 : 1);
   }
 
+  // ── (c) Balance enabled applied chords ───────────────────────────────
+  // Every enabled applied chord should appear at a comparable rate.  The hand
+  // table wires V/X densely and omits vii°/X entirely, and step (b) orphans
+  // vii°/X behind ii/X when ii-V is on — so V/X dominated (~3:1) and vii°/X was
+  // almost never picked.  Give every applied chord a direct incoming edge from
+  // the natural set-up chords, then equalise the weight of all applied targets
+  // leaving any one source so no single kind drowns out the others.
+  const appliedSetup = [...homesAvail, ...availOf("vi", "IV", "iv", "iii")];
+  const APPLIED_W = 4;
+  for (const c of available) {
+    if (!parseApplied(c)) continue;
+    for (const s of appliedSetup) addEdge(s, c, APPLIED_W);
+  }
+  for (const arr of transitions.values())
+    for (const t of arr)
+      if (isAppliedChord(t.target))
+        t.weight = boost.has(t.target) ? APPLIED_W * boostFactor : APPLIED_W;
+
   // Weighted pick from transitions — same as melodicPatternData's pickFromTransitions
   const pickFromTransitions = (trans: Transition): string => {
     const total = trans.reduce((s, t) => s + t.weight, 0);
