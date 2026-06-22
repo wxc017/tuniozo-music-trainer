@@ -1999,6 +1999,12 @@ export default function ChordsTab({
     await ensureAudio();
     setFhShowAnswer(true);
     setIsLooping(true);
+    // Clear any card the user previously clicked/droned so the playback
+    // cursor (currentChordIdx, advanced by highlightAllVoices) is what
+    // lights the cards — each box highlights in sync with what's playing
+    // instead of staying frozen on the last-clicked card (see the
+    // litCardIdx-precedence comment in the card render).
+    setLitCardIdx(null);
     const voices = fhVoicesRef.current;
     if (voices && voices.chords.length) {
       const gapMs = loopGap * 1000;
