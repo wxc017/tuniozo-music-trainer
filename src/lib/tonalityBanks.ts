@@ -216,11 +216,23 @@ export function getSizedTonalityBanks(edo: number): TonalityBank[] {
       const keyOf = (steps: number[]) =>
         [...new Set(steps.map(s => (((s % edo) + edo) % edo)))].sort((a, b) => a - b).join(",");
       const seen = new Set([...primary, ...diatonic].map(c => keyOf(c.steps!)));
+      // Also dedup by LABEL against primary/diatonic.  The chord pool is keyed by
+      // bare label everywhere (selection state, chord map, the loop), so a modal
+      // borrowing that reuses a diatonic label (e.g. the chromatic-mediant "III"
+      // vs the diatonic "III" in a minor key — same name, different pitches)
+      // collapses onto the diatonic chord: selecting one highlights both, and the
+      // chord map's last-writer-wins makes the diatonic chord PLAY the borrowing's
+      // pitches.  Drop the colliding borrowing so each label means exactly one
+      // chord (per user report: enabling a diatonic chord's approach lit up two
+      // chords in Modal Interchange).
+      const seenLabels = new Set([...primary, ...diatonic].map(c => c.label));
       const result: ChordEntry[] = [];
       for (const c of out) {
         const k = keyOf(c.steps!);
         if (seen.has(k)) continue;
+        if (seenLabels.has(c.label)) continue;
         seen.add(k);
+        seenLabels.add(c.label);
         result.push(c);
       }
       return result;
