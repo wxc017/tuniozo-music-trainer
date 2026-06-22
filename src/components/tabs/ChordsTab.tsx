@@ -172,7 +172,25 @@ function Numeral({ num }: { num: string }) {
   return <><sub className="text-[0.7em]">{m[1]}</sub>{m[2]}</>;
 }
 function ChordSym({ symbol }: { symbol: string }) {
-  // A chord symbol is "[root-interval prefix] <roman> [stacked interval codes]".
+  // Canonical form C: "{<sized codes>}/<anchor>".  Render the anchor as the base
+  // and the brace-delimited set as a superscript, each code's s/l size shown as a
+  // subscript (via <Numeral>).  A trailing "/bass" (jazz inversion slash) on the
+  // anchor side is split off and shown small.  e.g. "{sM3 5}/1" → 1 ⁽⁽ˢᴹ³ ⁵⁾⁾.
+  const cm = /^\{(.*)\}\/(.+)$/.exec(symbol);
+  if (cm) {
+    const codes = cm[1] ? cm[1].split(" ").filter(Boolean) : [];
+    const [anchor, ...bass] = cm[2].split("/");
+    return <>
+      <Numeral num={anchor} />
+      {codes.length > 0 && (
+        <sup className="text-[0.7em]">
+          {"{"}{codes.map((t, i) => <span key={i}>{i > 0 ? " " : ""}<Numeral num={t} /></span>)}{"}"}
+        </sup>
+      )}
+      {bass.length > 0 && <span className="text-[0.85em] opacity-80">/{bass.join("/")}</span>}
+    </>;
+  }
+  // Legacy fallback: "[root-interval prefix] <roman> [stacked interval codes]".
   // The numeral is the token made only of roman letters (+ optional b/#/s/l
   // prefix and °/+ suffix); tokens before it are the root-position interval
   // indicator, tokens after are the stack.  e.g. "lm3 III sM3" → ₗₘ₃ "III" ⁽ˢᴹ³⁾.
@@ -2926,10 +2944,13 @@ export default function ChordsTab({
               const baseCentsAns = hasBaseAns
                 ? chord.baseOffsets.map(o => rootCAns + (o * 1200) / edo)
                 : [rootCAns, ...chordToneOffsets.map(o => rootCAns + (o * 1200) / edo)];
+              // Splice any extension codes INSIDE the form-C braces (before the
+              // "}/anchor") so the symbol stays a valid single set rather than
+              // trailing codes after the anchor.
               const sizedLabelAns = useSchulter
-                ? chordSymbol(baseCentsAns) + (hasBaseAns
+                ? chordSymbol(baseCentsAns).replace(/\}\/(.+)$/, `${hasBaseAns
                     ? extensionSuffix(chord.notes, tonicForLabel, chord.chordRootPc, chord.baseOffsets, edo, extDegsAns)
-                    : "")
+                    : ""}}/$1`)
                 : romanWithSystem(chord.numeral, chordToneOffsets, edo, notationSystem);
               // Inversions: keep the SELECTED chord's real root label and append a
               // jazz slash for the bass chord-tone (I/5 = I with its 5th in bass).

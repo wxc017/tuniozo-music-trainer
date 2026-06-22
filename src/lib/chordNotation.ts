@@ -1,7 +1,9 @@
 // ── Sized-interval chord notation (Tonal Audiation spec) ────────────
-// See docs/CHORD_NOTATION.md.  A chord symbol = a plain scale-degree Roman
-// numeral (the root's position; I = home) + a stack of sized interval codes
-// (`[s|l]` + quality + degree, center = bare).  No °, no +, no neutral status.
+// See docs/CHORD_NOTATION.md.  Canonical chord symbol = form C:
+// `{<sized interval codes>}/<anchor>` — a complete, brace-delimited SET of the
+// chord's intervals (each `[s|l]` + quality + degree, center = bare) measured
+// from its own root, over the root's sized interval from home (the anchor;
+// tonic = "1").  No Roman numerals, no °, no +, no neutral status, no hidden 5th.
 // EDO-agnostic: works from cents, so the same shape names the same chord anywhere.
 
 // Size/quality code for each interval, anchored at its JI/Pythagorean landmark.
@@ -99,85 +101,40 @@ export function sizedRoman(cents: number): string {
   return m[1] + r;                            // size prefix (s / l / none)
 }
 
-/** Build a chord symbol from a list of tone pitches (cents from the tonic).
- *  The lowest tone is the root; its degree-from-tonic gives the numeral, and
- *  every tone above it is a sized code from the root. */
+/** Build the canonical chord symbol (form C) from a list of tone pitches (cents
+ *  from the tonic): `{<sized codes>}/<anchor>`.  The lowest tone is the root; the
+ *  anchor is the root's own sized interval from home (tonic → "1"), and the set
+ *  is every interval from the root, sized and listed ascending.
+ *
+ *  The set is honest and complete — nothing is hidden:
+ *   - the perfect 5th is KEPT in the set (not implied/dropped); a sized fifth
+ *     (s5 / l5) shows its raw Schulter code; a missing 5th simply isn't listed
+ *     (absence of a 5 member = no fifth — no "no5" flag needed).
+ *   - when a 7 is present the upper 2nd / 4th / 6th promote to 9 / 11 / 13 so
+ *     tensions read as the compounds they are (keeping the sized prefix:
+ *     s11 / 11 / lM13, …).  Per direct user direction 2026-06-21: form C, the
+ *     anchored interval-set, replaces the Roman numeral entirely. */
 export function chordSymbol(centsFromTonic: number[]): string {
   if (!centsFromTonic.length) return "";
   const sorted = [...centsFromTonic].sort((a, b) => a - b);
   const root = sorted[0];
-  // Numeral degree + size prefix come from the root's interval to the tonic, but
-  // the CASE reflects the CHORD's quality: a minor third above the root →
-  // lowercase (ii, iii, …), major / other → uppercase.  The s/l size prefix is
-  // preserved (rendered as a subscript by the chord-symbol component).
-  const pm = /^([sl]?)(.+)$/.exec(sizedRoman(root));
-  // Bare Roman (degree + quality) — the size now lives in the root-position
-  // prefix below, so drop the redundant s/l here.
-  let numeral = pm ? pm[2] : sizedRoman(root);
-  if (pm && sorted.length >= 2) {
-    // Case from the chord's THIRD — the first degree-3 tone above the root —
-    // NOT sorted[1].  sorted[1] can be a DUPLICATED root (interval "1", when the
-    // caller both prepends the root and includes it in the tone list) or an
-    // extension (a 9th sorts below the third), either of which would wrongly
-    // flip a minor chord to uppercase.  Falls back to the first non-unison tone
-    // (sus chords have no 3rd).
-    let thirdIv: number | null = null, firstIv: number | null = null;
-    for (const c of sorted) {
-      const iv = c - root;
-      const code = sizedCode(iv);
-      if (code === "1" || code === "8") continue;        // skip root / octave (and duplicates)
-      if (firstIv === null) firstIv = iv;
-      if (/3$/.test(code)) { thirdIv = iv; break; }
-    }
-    const t = sizedCode(thirdIv ?? firstIv ?? (sorted[1] - root));
-    const minorChord = /m\d/.test(t) && !/M/.test(t);    // minor third above the root
-    numeral = minorChord ? pm[2].toLowerCase() : pm[2].toUpperCase();
-  }
-  // Root-position indicator: the root's own sized interval from the tonic, in
-  // FRONT of the numeral so it's explicit where the root sits — e.g. a flat-3
-  // rooted on the large-minor-3rd reads "lm3 III" (per direct user direction
-  // 2026-06-14).  Omitted for the tonic (unison / octave).
-  const rootCode = sizedCode(root);
-  const prefix = rootCode === "1" || rootCode === "8" ? "" : `${rootCode} `;
-  // A genuine perfect 5th is implied (hidden); a tempered 5th still coded "5" is
-  // shown as d5 / A5.  Either way the 5th is accounted for.  But a diminished or
-  // augmented 5th sizes as a DIFFERENT degree (l4 ~576¢, lm6 ~816¢) and keeps
-  // that sized code — so when a 3rd-bearing chord shows no 5-family tone at all,
-  // append "no5" so the altered interval doesn't read as a stray 4th / 6th.  Per
-  // direct user direction 2026-06-14: keep the sized code, just say no5.
-  // In a 7th chord the upper 2nd / 4th / 6th are tensions, so name them as the
-  // compound intervals they actually are to the chord — 2→9, 4→11, 6→13 — keeping
-  // the sized prefix (s11 / 11 / lM13, etc.).  Gated on a 7th being present so
-  // plain triads, sus / add and 6 chords keep their simple degree.  Per direct
-  // user direction 2026-06-14 ("i need to see l11 or s11 or 11").
+  // Anchor: the root's own sized interval from the tonic.  Home (unison / octave)
+  // renders as "1" so "1 = home" stays visible.
+  const anchorCode = sizedCode(root);
+  const anchor = anchorCode === "8" ? "1" : anchorCode;
+  // Tensions: when a 7 is present the upper 2nd / 4th / 6th are 9 / 11 / 13.
   const hasSeventh = sorted.some(c => { const k = sizedCode(c - root); return k !== "1" && k !== "8" && /7$/.test(k); });
   const ext = (code: string): string => {
     if (!hasSeventh) return code;
     const m = /^(.*?)([246])$/.exec(code);
     return m ? `${m[1]}${parseInt(m[2], 10) + 7}` : code;
   };
-  let fifthSeen = false, hasThird = false;
-  const stack: string[] = [];
+  const codes: string[] = [];
   for (const c of sorted) {
     const code = sizedCode(c - root);
-    if (code === "1" || code === "8") continue;                  // skip root / octave
-    if (/3$/.test(code)) hasThird = true;
-    // Fifth-region tones use ONLY our raw sized codes (Schulter) — never d5/A5.
-    // A perfect 5th ("5") is implied and hidden; a sized fifth (s5 / l5 / sub5)
-    // is shown as-is and still counts as the 5th, so no "no5".  Anything ELSE
-    // occupying the 5th's place isn't a fifth — it's shown by its own code and
-    // "no5" is flagged below.  Per direct user direction 2026-06-16 (zero
-    // deviation from our notation: raw intervals only).
-    if (/^(?:s|l|sub)?5$/.test(code)) {
-      fifthSeen = true;
-      if (code !== "5" && stack[stack.length - 1] !== code) stack.push(code);
-      continue;
-    }
+    if (code === "1" || code === "8") continue;          // skip root / octave duplicates
     const display = ext(code);
-    if (stack[stack.length - 1] !== display) stack.push(display);
+    if (codes[codes.length - 1] !== display) codes.push(display);
   }
-  // 3rd present but no 5-family tone — the altered 5th (l4 / lm6 / …) kept its own
-  // sized code above; flag the missing perfect 5th explicitly.
-  if (hasThird && !fifthSeen) stack.push("no5");
-  return prefix + (stack.length ? `${numeral} ${stack.join(" ")}` : numeral);
+  return `{${codes.join(" ")}}/${anchor}`;
 }

@@ -1,24 +1,30 @@
 # Tonal Audiation — Sized-Interval Chord Notation
 
-Canonical reference for the chord/Roman-numeral notation used when porting
-50-EDO (and every other EDO) to Tonal Audiation. It is built from scratch on
-the Interval-Spectrum size system; it deliberately keeps **nothing** from
+Canonical reference for the chord notation used when porting 50-EDO (and every
+other EDO) to Tonal Audiation. The canonical symbol is **form C** — an anchored
+interval-set, `{<sized codes>}/<anchor>`. It is built from scratch on the
+Interval-Spectrum size system; it deliberately keeps **nothing** from
 traditional notation except the single idea that **"1 is home."**
 
 ---
 
 ## 1. Principles
 
-1. **The numeral is pure position.** A Roman numeral names the chord root's
-   **scale-degree position** (`I` = tonic/home, `II`, `III`, …). It is *never*
-   decorated with quality or size. `I` is always just `I`.
-2. **Quality + microtonal size live in the interval codes**, never on the
-   numeral. (So there is no case to flip at the neutral boundary.)
+1. **A chord is an anchored interval-set.** The canonical symbol is **form C**:
+   `{<codes>}/<anchor>`. The **anchor** names where the chord's root sits — its
+   sized interval up from home (`1` = tonic/home). The **set** lists every
+   interval of the chord measured from its own root. There is **no Roman
+   numeral** and no diatonic-function layer; position is just another sized
+   interval.
+2. **Quality + microtonal size live entirely in the interval codes.** Both the
+   anchor and every set member are sized codes — one alphabet end to end.
 3. **Every interval code is `[size][quality][degree]`**, where
    `s` = small, `l` = large, **nothing = center**.
-4. **No `°`, no `+`, no privileged "default" third.** Diminished/augmented are
-   just *sized fifths*. Neutral thirds have **no special status** — they fall on
-   the `lm3`/`sM3` part of one continuous ladder.
+4. **No `°`, no `+`, no privileged "default" third, no hidden 5th.**
+   Diminished/augmented are just *sized fifths* (`s5` / `l5`); the set is
+   complete, so the perfect 5th is listed and a missing 5th is simply absent.
+   Neutral thirds have **no special status** — they fall on the `lm3`/`sM3`
+   part of one continuous ladder.
 5. **EDO-agnostic.** A symbol names a *shape*. The engine fills in the actual
    steps/cents per EDO by reading the root's interval-from-tonic off that EDO's
    Lumatone-visualizer key labels. The same symbol = the same shape everywhere.
@@ -50,39 +56,45 @@ the two adjacent banded regions; the neutral zone is simply where `lm` meets
 ## 3. Chord grammar
 
 ```
-chord   ::= degree  stack
-degree  ::= "I" | "II" | "III" | "IV" | "V" | "VI" | "VII" | "VIII" | …
-stack   ::= code { code }            ; ascending order, root-relative
+chord   ::= "{" set "}" "/" anchor
+anchor  ::= code | "1"               ; root's sized interval from home; 1 = tonic
+set     ::= code { " " code }        ; ascending, root-relative; complete
 code    ::= [ "s" | "l" ] quality degreeNumber
-quality ::= "m" | "M" | ""           ; "" for perfect degrees (4,5,8) and unison
+quality ::= "m" | "M" | ""           ; "" for perfect degrees (4,5,8)
 ```
 
 Rules:
-- **Perfect 5 (`5`) is the default** and may be omitted from the written form.
-- The **third is normally shown** (it sets the chord's color).
-- Everything above the fifth — altered 5th, 6th, 7th, extensions — is appended
-  **in ascending order**.
-- The **root numeral is never sized**; `I` is home.
+- **The set is complete and honest.** Every sounding interval from the root is
+  listed, ascending — including the **perfect 5th** (`5`), which is *not*
+  hidden. A sized fifth shows its raw code (`s5` / `l5`); a missing 5th is just
+  absent (no `no5` flag — absence is the statement).
+- **The third is part of the set** and sets the chord's color.
+- **Extensions:** when a 7 is present the upper 2nd / 4th / 6th promote to
+  9 / 11 / 13 (sized prefix kept: `s11`, `11`, `lM13`, …).
+- **The anchor is never special-cased** — it is the root's sized interval from
+  home, exactly like any other code; the tonic chord anchors on `1`.
 
-Conventions to confirm/extend:
-- **sus / no-3rd:** replace the third with a 4th code → `I 4` (sus4), `I M2`
-  (sus2).
-- **added 6th:** append the 6th → `I sM3 M6`.
-- **inversions:** (optional) slash with the bass degree, e.g. `I sM3 / III`.
+Conventions:
+- **sus / no-3rd:** the set just carries a 4th/2nd instead of a 3rd →
+  `{4 5}/1` (sus4), `{M2 5}/1` (sus2).
+- **added 6th:** the set carries the 6th → `{sM3 5 M6}/1`.
+- **inversions:** append a jazz bass slash after the anchor → `{sM3 5}/1/5`
+  (the tonic chord with its 5th in the bass). The first slash separates set
+  from anchor; a second slash is the bass.
 
-Forms:
-- **Full/explicit:** `I sM3 5 sM7`
-- **Compact** (drop default 5): `I sM3 sM7`
+There is **one** form — the complete set. Display density (e.g. collapsing the
+implied 5th, or sub-scripting the s/l size for the eye) is a UI concern, not a
+notation rule (see §8).
 
 ---
 
-## 4. Reading the degree from an EDO
+## 4. Reading the anchor from an EDO
 
-The numeral is the root's **position** in the chosen scale; the actual pitch is
-whatever that EDO's visualizer key shows.
+The anchor is the root's **sized interval from home**; the actual pitch is
+whatever that EDO's visualizer key shows at that interval.
 
-- `III` in **50-EDO major** = the key at `16\50` (`sM3` from the tonic).
-- `III` in **31-EDO major** = `10\31`.
+- the old "III" of **50-EDO major** anchors on `sM3` — the key at `16\50`.
+- in **31-EDO major** that same scale degree is `10\31`, still `sM3`.
 - Same symbol, the EDO supplies the steps.
 
 ---
@@ -90,40 +102,43 @@ whatever that EDO's visualizer key shows.
 ## 5. 50-EDO worked examples
 
 Major scale degrees (steps out of 50): `I=0  II=8  III=16  IV=21  V=29  VI=37  VII=45`.
+Their sized anchors from home: `1 · sM2 · sM3 · 4 · 5 · sM6 · sM7`.
 
-### Diatonic triads (perfect 5 omitted)
+### Diatonic triads (5th kept explicit in the set)
 
-| degree | symbol | tone stack |
-|--------|--------|-----------|
-| I   | `I sM3`      | sM3 · 5 |
-| II  | `II lm3`     | lm3 · 5 |
-| III | `III lm3`    | lm3 · 5 |
-| IV  | `IV sM3`     | sM3 · 5 |
-| V   | `V sM3`      | sM3 · 5 |
-| VI  | `VI lm3`     | lm3 · 5 |
-| VII | `VII lm3 s5` | lm3 · s5 |
+| old degree | symbol (form C) | set |
+|------------|-----------------|-----|
+| I   | `{sM3 5}/1`    | sM3 · 5 |
+| II  | `{lm3 5}/sM2`  | lm3 · 5 |
+| III | `{lm3 5}/sM3`  | lm3 · 5 |
+| IV  | `{sM3 5}/4`    | sM3 · 5 |
+| V   | `{sM3 5}/5`    | sM3 · 5 |
+| VI  | `{lm3 5}/sM6`  | lm3 · 5 |
+| VII | `{lm3 s5}/sM7` | lm3 · s5 |
 
 ### Sevenths & color chords
 
-| chord | symbol | tone stack |
-|-------|--------|-----------|
-| dominant 7 (V) | `V sM3 sm7` | sM3 · 5 · sm7 (7/4) |
-| major 7 (I) | `I sM3 sM7` | sM3 · 5 · sM7 |
-| minor 7 (II) | `II lm3 lm7` | lm3 · 5 · lm7 |
-| half-dim (VII) | `VII lm3 s5 lm7` | lm3 · s5 · lm7 |
-| add6 (I) | `I sM3 M6` | sM3 · 5 · M6 |
-| sus4 (V) | `V 4` | 4 · 5 |
+| chord | symbol (form C) | set |
+|-------|-----------------|-----|
+| dominant 7 (V) | `{sM3 5 sm7}/5`     | sM3 · 5 · sm7 (7/4) |
+| major 7 (I)    | `{sM3 5 sM7}/1`     | sM3 · 5 · sM7 |
+| minor 7 (II)   | `{lm3 5 lm7}/sM2`   | lm3 · 5 · lm7 |
+| half-dim (VII) | `{lm3 s5 lm7}/sM7`  | lm3 · s5 · lm7 |
+| add6 (I)       | `{sM3 5 M6}/1`      | sM3 · 5 · M6 |
+| sus4 (V)       | `{4 5}/5`           | 4 · 5 |
 
 ---
 
 ## 6. Why nothing is inherited from tradition
 
-- **No case-based major/minor** on the numeral → removes the neutral-boundary
-  discontinuity (a tiny pitch change can never flip a symbol's case).
+- **No Roman numeral / no diatonic function** → position is just the anchor's
+  sized interval from home; nothing assumes a 7-note scale or 12-EDO.
+- **No case-based major/minor** → a tiny pitch change can never flip a symbol;
+  quality lives in the size codes only.
 - **No `°` / `+`** → one consistent size mechanism for everything.
-- **No "default" third** → the symbol always tells the truth about the sound;
-  the common chord isn't privileged with a shorter name.
-- The only inheritance is **`I` = home**.
+- **No "default" third and no hidden 5th** → the set always tells the whole
+  truth about the sound; nothing is privileged with a shorter name.
+- The only inheritance is **`1` = home** (the anchor of the tonic chord).
 
 ---
 
@@ -141,7 +156,8 @@ emits this convention for any sounding set of pitches, in any EDO.
 
 ## 8. Display note (not a notation rule)
 
-Store the **full explicit stack**; let the UI **collapse/expand** it (e.g. show
-`I sM3` or a functional skeleton, expand to `I sM3 5 sM7` on hover/click).
-Density is a display concern, not a notation flaw — the data stays complete and
-precise, the screen stays fast to read for audiation.
+Store the **full explicit set** (form C); let the UI **collapse/expand** it for
+the eye — e.g. render the s/l size as a subscript, drop the implied `5`, or show
+just `{sM3}/1` and expand to `{sM3 5 sM7}/1` on hover/click. Density is a display
+concern, not a notation flaw — the stored data stays complete and precise, the
+screen stays fast to read for audiation.
