@@ -3751,6 +3751,23 @@ function ChordSelectionPanel({
     iiV:    "#4a9ac7",
     TT:     "#c7a14a",
   };
+  // Common-practice frequency rank for modal-interchange chords (lower = more
+  // common) so the Modal Interchange level lists the bread-and-butter borrowings
+  // first.  Covers both the major-key set (from parallel minor) and the
+  // minor-key set (from harmonic/melodic/Dorian/Phrygian).  Unranked → last.
+  const BORROWED_RANK: Record<string, number> = {
+    iv: 0, bVII: 1, bVI: 2, bIII: 3, "ii°": 4, "iiø": 4, bII: 5, v: 6, II: 7,
+    V: 0, "vii°": 1, IV: 2, ii: 3, I: 8,   // minor-context borrowings
+  };
+  const borrowRank = (label: string) => BORROWED_RANK[label] ?? 99;
+  // The "most used" items that get a ★ — modal interchange + per-approach-kind.
+  const STARRED_BORROWED = new Set(["iv", "bVII", "bVI", "V", "vii°", "IV"]);
+  const STARRED_APPROACH: Record<ApproachKind, Set<string>> = {
+    secdom: new Set(["V", "vi", "ii"]),   // V/V, V/vi, V/ii — the workhorses
+    secdim: new Set(["V"]),
+    iiV:    new Set(["V"]),               // ii–V into V
+    TT:     new Set(["V"]),               // tritone sub resolving to V
+  };
   const visibleLevels = bank.levels.filter(l => VISIBLE_LEVELS.has(l.name));
   return (
     <div className="border rounded overflow-hidden" style={{ borderColor: accent + "40" }}>
@@ -3780,7 +3797,10 @@ function ChordSelectionPanel({
               </div>
               {!isCollapsed && (
                 <div className="grid gap-1 p-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 auto-rows-fr">
-                  {level.chords.map(entry => {
+                  {(level.name === "Modal Interchange"
+                    ? [...level.chords].sort((a, b) => borrowRank(a.label) - borrowRank(b.label))
+                    : level.chords
+                  ).map(entry => {
                     const isChecked = checkedSet.has(entry.label);
                     const enabledApproaches = new Set(approachMap[entry.label] ?? []);
                     // Tonic doesn't need its own approach toggles — V/I,
@@ -3791,12 +3811,17 @@ function ChordSelectionPanel({
                     const TONIC_LABELS = new Set(["I", "i", "I°", "i°", "I+", "i+"]);
                     const isTonic = TONIC_LABELS.has(entry.label) || (entry.steps != null && entry.steps[0] === 0);
                     const showApproaches = !isTonic && level.name !== "Modal Interchange";
+                    const starBorrowed = level.name === "Modal Interchange" && STARRED_BORROWED.has(entry.label);
                     return (
                       <div key={entry.label}
-                        className="rounded overflow-hidden border transition-colors flex flex-col h-full"
+                        className="relative rounded overflow-hidden border transition-colors flex flex-col h-full"
                         style={isChecked
                           ? { background: accent + "30", borderColor: accent }
                           : { background: "#141414", borderColor: "#1a1a1a" }}>
+                        {starBorrowed && (
+                          <span className="absolute top-0.5 right-1 text-[9px] text-[#e0c050] pointer-events-none leading-none"
+                            title="Most common modal interchange">★</span>
+                        )}
                         <button onClick={() => toggleChord(entry.label)}
                           className={`flex-1 w-full px-2 py-1.5 text-base font-semibold text-left transition-colors ${
                             isChecked ? "" : "text-[#666] hover:text-[#888]"
@@ -3825,16 +3850,20 @@ function ChordSelectionPanel({
                               {APPROACH_KINDS.map(k => {
                                 const on = enabledApproaches.has(k);
                                 const color = APPROACH_COLORS[k];
+                                const starApproach = STARRED_APPROACH[k].has(entry.label);
                                 return (
                                   <button key={k}
                                     onClick={() => isChecked ? toggleApproach(entry.label, k) : toggleChord(entry.label)}
-                                    title={isChecked ? `${APPROACH_LABELS[k]}${entry.label}` : `Click to enable ${entry.label}`}
-                                    className={`flex-1 min-h-[24px] text-[10px] leading-tight px-1 py-1 rounded border transition-colors ${
+                                    title={isChecked ? `${APPROACH_LABELS[k]}${entry.label}${starApproach ? " — most common" : ""}` : `Click to enable ${entry.label}`}
+                                    className={`relative flex-1 min-h-[24px] text-[10px] leading-tight px-1 py-1 rounded border transition-colors ${
                                       !isChecked ? "bg-[#141414] text-[#555] border-[#222] hover:text-[#aaa] hover:border-[#444]"
                                       : on ? "text-black font-semibold"
                                       : "bg-[#1a1a1a] text-[#888] border-[#333] hover:text-[#ddd] hover:border-[#555]"
                                     }`}
                                     style={isChecked && on ? { background: color, borderColor: color } : undefined}>
+                                    {starApproach && (
+                                      <span className={`absolute top-0 right-0.5 text-[7px] leading-none ${on ? "text-black" : "text-[#e0c050]"}`}>★</span>
+                                    )}
                                     {APPROACH_LABELS[k]}
                                   </button>
                                 );
