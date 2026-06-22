@@ -172,10 +172,22 @@ function Numeral({ num }: { num: string }) {
   return <><sub className="text-[0.7em]">{m[1]}</sub>{m[2]}</>;
 }
 function ChordSym({ symbol }: { symbol: string }) {
-  // Canonical form C: "{<qualities>} | <root>[<inversion>]".  Render VERBATIM as
-  // flat text in that exact order — NO super-/sub-script and NO reordering (per
-  // direct user direction 2026-06-21: "zero superscript or subscript").
-  if (/^\{.*\} \| [^[]+(?:\[.+\])?$/.test(symbol)) return <>{symbol}</>;
+  // Canonical form C: "{<qualities>} | <root>[<inversion>]".  Render as a vertical
+  // FRACTION — qualities (numerator) over root[inversion] (denominator), the bar
+  // standing in for the " | " (per direct user direction 2026-06-21).  No braces
+  // when stacked (the bar already groups), no super-/sub-script.  Dense stacks
+  // fall back to the inline form so the fraction never goes wide-and-thin.
+  const cm = /^\{(.*)\} \| ([^[]+)(\[.+\])?$/.exec(symbol);
+  if (cm) {
+    const [, qualities, root, inv = ""] = cm;
+    if (qualities.length > 14) return <>{symbol}</>;   // too wide to stack — inline
+    return (
+      <span className="inline-flex flex-col items-center leading-tight align-middle text-center">
+        <span className="px-1">{qualities}</span>
+        <span className="px-1 border-t" style={{ borderColor: "currentColor" }}>{root}{inv}</span>
+      </span>
+    );
+  }
   // Legacy fallback: "[root-interval prefix] <roman> [stacked interval codes]".
   // The numeral is the token made only of roman letters (+ optional b/#/s/l
   // prefix and °/+ suffix); tokens before it are the root-position interval
@@ -3772,11 +3784,19 @@ function ChordSelectionPanel({
     "iv", "bVII", "bVI", "bIII", "bII", "ii°", "iiø",   // major-key borrowings
     "V", "vii°", "IV", "ii",                             // minor-key borrowings
   ]);
+  // Star the idiomatic applied-chord targets by SCALE DEGREE, not by a mode's
+  // exact spelling.  Applied dominants / ii–V / tritone subs into ii, iii, IV,
+  // V, vi are just as common in minor (where those degrees read iv, VI, III, v,
+  // ii°…) as in major, so normalise the label to its bare roman degree before
+  // matching.  Without this the stars only ever lit in major keys (per direct
+  // user report 2026-06-21: missing in harmonic minor / aeolian).
+  const bareDegree = (label: string): string =>
+    label.replace(/^[b#]+/, "").replace(/[°+ø\d].*$/, "").toUpperCase();
   const STARRED_APPROACH: Record<ApproachKind, Set<string>> = {
-    secdom: new Set(["V", "vi", "ii", "IV", "iii"]),  // V/V V/vi V/ii V/IV V/iii
-    secdim: new Set(["V", "vi", "ii"]),               // vii°/V vii°/vi vii°/ii
-    iiV:    new Set(["V", "vi", "IV", "ii"]),          // ii–V into V / vi / IV / ii
-    TT:     new Set(["V", "vi", "ii", "I"]),           // tritone subs into V/vi/ii/I
+    secdom: new Set(["II", "III", "IV", "V", "VI"]),  // V/ into ii iii IV V vi
+    secdim: new Set(["II", "V", "VI"]),               // vii°/ into ii V vi
+    iiV:    new Set(["II", "IV", "V", "VI"]),          // ii–V into ii IV V vi
+    TT:     new Set(["I", "II", "V", "VI"]),           // tritone subs into I ii V vi
   };
   const visibleLevels = bank.levels.filter(l => VISIBLE_LEVELS.has(l.name));
   return (
@@ -3813,14 +3833,16 @@ function ChordSelectionPanel({
                   ).map(entry => {
                     const isChecked = checkedSet.has(entry.label);
                     const enabledApproaches = new Set(approachMap[entry.label] ?? []);
-                    // Tonic doesn't need its own approach toggles — V/I,
-                    // vii°/I, ii-V→I, and TT/I are already covered by V,
-                    // vii°, the cadence flow, and bII respectively.
-                    // Detect by label (handles Major's null-steps refs)
+                    // Detect the tonic by label (handles Major's null-steps refs)
                     // plus by root step (handles explicit-shape banks).
                     const TONIC_LABELS = new Set(["I", "i", "I°", "i°", "I+", "i+"]);
                     const isTonic = TONIC_LABELS.has(entry.label) || (entry.steps != null && entry.steps[0] === 0);
-                    const showApproaches = !isTonic && level.name !== "Modal Interchange";
+                    const showApproaches = level.name !== "Modal Interchange";
+                    // The tonic only needs its TT (bII tritone-sub) approach —
+                    // V/I, vii°/I and ii-V→I are already covered by the V chord,
+                    // vii°, and the cadence flow.  Per direct user report
+                    // 2026-06-21 the tonic was missing TT entirely.
+                    const entryApproachKinds: readonly ApproachKind[] = isTonic ? ["TT"] : APPROACH_KINDS;
                     const starBorrowed = level.name === "Modal Interchange" && STARRED_BORROWED.has(entry.label);
                     return (
                       <div key={entry.label}
@@ -3857,10 +3879,10 @@ function ChordSelectionPanel({
                         <div className="flex flex-col gap-0.5">
                           {showApproaches && (
                             <div className="flex gap-0.5 px-1 pt-1">
-                              {APPROACH_KINDS.map(k => {
+                              {entryApproachKinds.map(k => {
                                 const on = enabledApproaches.has(k);
                                 const color = APPROACH_COLORS[k];
-                                const starApproach = STARRED_APPROACH[k].has(entry.label);
+                                const starApproach = STARRED_APPROACH[k].has(bareDegree(entry.label));
                                 return (
                                   <button key={k}
                                     onClick={() => isChecked ? toggleApproach(entry.label, k) : toggleChord(entry.label)}
