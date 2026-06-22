@@ -3028,7 +3028,15 @@ export default function ChordsTab({
                 <div className="text-center mb-3">
                   <div className="text-[16px] font-bold leading-tight font-mono flex items-center justify-center gap-1.5" style={{ color: "#c8a0e0" }}>
                     <ChordSym symbol={headerLabel} />
-                    {targetAnchor && <><span className="text-[#8a8aa0] text-[18px]">→</span><span>{targetAnchor}</span></>}
+                    {targetAnchor && appliedM && (
+                      <span className="inline-flex flex-col items-center leading-none">
+                        <span className="text-[10px] text-[#a98ac8] mb-0.5">{appliedM[1]}/</span>
+                        <span className="flex items-center gap-1">
+                          <span className="text-[#8a8aa0] text-[18px] leading-none">→</span>
+                          <span>{targetAnchor}</span>
+                        </span>
+                      </span>
+                    )}
                   </div>
                   {chord.voicingType && (
                     <div className="text-[9px] text-[#8a8aa0] mt-0.5 uppercase tracking-wide">{chord.voicingType}</div>
