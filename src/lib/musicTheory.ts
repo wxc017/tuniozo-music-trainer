@@ -1264,6 +1264,16 @@ export const FUNCTIONAL_WEIGHTS_TABLE: Record<string, Record<string, number>> = 
   bVI:  { bVII: 3, V: 2, iv: 2, i: 1 },
   bVII: { I: 4, i: 2, bIII: 2, IV: 2 },
   "#iv°": { V: 3, "vii°": 2 },
+  // ── Remaining modal-interchange borrowings ──────────────────────────
+  // Resolutions chosen so each borrowed colour behaves functionally instead
+  // of falling back to the generic "head toward V / home" wiring.
+  bII:  { V: 4, "vii°": 1, i: 1, I: 1 },         // Neapolitan → dominant
+  II:   { V: 4, "V/V": 1 },                       // major II = V-of-V colour → V
+  bV:   { IV: 2, I: 2, i: 1, V: 1 },              // Locrian / tritone colour
+  biii: { vi: 2, IV: 2, ii: 1, i: 1 },            // minor chromatic mediant (♭3)
+  siii: { vi: 2, IV: 2, i: 1 },                   // minor chromatic mediant (♮3)
+  bvi:  { bVII: 2, V: 2, iv: 1, i: 1 },           // minor chromatic mediant (♭6)
+  svi:  { ii: 2, V: 2, I: 1 },                    // minor chromatic mediant (♮6)
 };
 
 export function generateFunctionalLoop(
