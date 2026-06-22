@@ -3767,13 +3767,16 @@ function ChordSelectionPanel({
     V: 0, "vii°": 1, IV: 2, ii: 3, I: 8,   // minor-context borrowings
   };
   const borrowRank = (label: string) => BORROWED_RANK[label] ?? 99;
-  // The "most used" items that get a ★ — modal interchange + per-approach-kind.
-  const STARRED_BORROWED = new Set(["iv", "bVII", "bVI", "V", "vii°", "IV"]);
+  // The "most used" items that get a ★ — the common, idiomatic ones.
+  const STARRED_BORROWED = new Set([
+    "iv", "bVII", "bVI", "bIII", "bII", "ii°", "iiø",   // major-key borrowings
+    "V", "vii°", "IV", "ii",                             // minor-key borrowings
+  ]);
   const STARRED_APPROACH: Record<ApproachKind, Set<string>> = {
-    secdom: new Set(["V", "vi", "ii"]),   // V/V, V/vi, V/ii — the workhorses
-    secdim: new Set(["V"]),
-    iiV:    new Set(["V"]),               // ii–V into V
-    TT:     new Set(["V"]),               // tritone sub resolving to V
+    secdom: new Set(["V", "vi", "ii", "IV", "iii"]),  // V/V V/vi V/ii V/IV V/iii
+    secdim: new Set(["V", "vi", "ii"]),               // vii°/V vii°/vi vii°/ii
+    iiV:    new Set(["V", "vi", "IV", "ii"]),          // ii–V into V / vi / IV / ii
+    TT:     new Set(["V", "vi", "ii", "I"]),           // tritone subs into V/vi/ii/I
   };
   const visibleLevels = bank.levels.filter(l => VISIBLE_LEVELS.has(l.name));
   return (
