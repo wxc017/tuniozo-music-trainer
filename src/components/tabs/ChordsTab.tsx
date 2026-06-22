@@ -2956,6 +2956,22 @@ export default function ChordsTab({
               // a "V" (per direct user direction 2026-06-13 "there is not a 1 in a
               // V nor a 3 … i should only be seeing [the selected chords]").
               const headerLabel = sizedLabelAns + (bassNum && bassNum !== 1 ? `[${bassNum}]` : "");
+              // Applied chord ("V/IV", "vii°/iii", "ii/IV", "iiø/ii", "TT/V") →
+              // show an arrow to the sized ANCHOR of the degree it tonicises.  The
+              // target root is the applied chord's root minus the interval it sits
+              // above the target (a 5th for V/TT, the leading-tone M7 for vii°, a
+              // 2nd for ii/iiø).
+              const appliedM = /^(V|vii°|ii|iiø|TT)\/(.+)$/.exec(chord.numeral);
+              let targetAnchor: string | null = null;
+              if (useSchulter && appliedM) {
+                const shp = getChordShapes(edo);
+                const above = appliedM[1] === "V" ? shp.P5
+                  : appliedM[1] === "TT" ? shp.P5 + shp.d5
+                  : appliedM[1] === "vii°" ? shp.M7
+                  : shp.M2;                       // ii / iiø sit a 2nd above target
+                const tRootPc = ((chord.chordRootPc - above) % edo + edo) % edo;
+                targetAnchor = sizedCode((tRootPc / edo) * 1200);
+              }
               return (
               <div key={chord.index} role="button" tabIndex={0}
                 onClick={async () => {
@@ -3010,8 +3026,9 @@ export default function ChordsTab({
                 {/* Header — centered mauve Roman (literal copy of Show Target's
                     header).  Slash-form for inversions ("V/3" = 1st inv etc.). */}
                 <div className="text-center mb-3">
-                  <div className="text-[16px] font-bold leading-tight font-mono" style={{ color: "#c8a0e0" }}>
+                  <div className="text-[16px] font-bold leading-tight font-mono flex items-center justify-center gap-1.5" style={{ color: "#c8a0e0" }}>
                     <ChordSym symbol={headerLabel} />
+                    {targetAnchor && <><span className="text-[#8a8aa0] text-[18px]">→</span><span>{targetAnchor}</span></>}
                   </div>
                   {chord.voicingType && (
                     <div className="text-[9px] text-[#8a8aa0] mt-0.5 uppercase tracking-wide">{chord.voicingType}</div>
