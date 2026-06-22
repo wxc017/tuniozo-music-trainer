@@ -172,24 +172,10 @@ function Numeral({ num }: { num: string }) {
   return <><sub className="text-[0.7em]">{m[1]}</sub>{m[2]}</>;
 }
 function ChordSym({ symbol }: { symbol: string }) {
-  // Canonical form C: "{<sized codes>}/<anchor>".  Render the anchor as the base
-  // and the brace-delimited set as a superscript, each code's s/l size shown as a
-  // subscript (via <Numeral>).  A trailing "[bass]" (inversion) is split off and
-  // shown small.  e.g. "{sM3 5}/1" → 1 ⁽⁽ˢᴹ³ ⁵⁾⁾, "{sM3 5}/1[5]" → … [5].
-  const cm = /^\{(.*)\}\/([^[]+)(?:\[(.+)\])?$/.exec(symbol);
-  if (cm) {
-    const codes = cm[1] ? cm[1].split(" ").filter(Boolean) : [];
-    const anchor = cm[2], bass = cm[3];
-    return <>
-      <Numeral num={anchor} />
-      {codes.length > 0 && (
-        <sup className="text-[0.7em]">
-          {"{"}{codes.map((t, i) => <span key={i}>{i > 0 ? " " : ""}<Numeral num={t} /></span>)}{"}"}
-        </sup>
-      )}
-      {bass && <span className="text-[0.85em] opacity-80">[{bass}]</span>}
-    </>;
-  }
+  // Canonical form C: "{<qualities>}/<root>[<inversion>]".  Render VERBATIM as
+  // flat text in that exact order — NO super-/sub-script and NO reordering (per
+  // direct user direction 2026-06-21: "zero superscript or subscript").
+  if (/^\{.*\}\/[^[]+(?:\[.+\])?$/.test(symbol)) return <>{symbol}</>;
   // Legacy fallback: "[root-interval prefix] <roman> [stacked interval codes]".
   // The numeral is the token made only of roman letters (+ optional b/#/s/l
   // prefix and °/+ suffix); tokens before it are the root-position interval
