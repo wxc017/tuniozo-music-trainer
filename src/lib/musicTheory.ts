@@ -1267,8 +1267,8 @@ export const FUNCTIONAL_WEIGHTS_TABLE: Record<string, Record<string, number>> = 
   // ── Remaining modal-interchange borrowings ──────────────────────────
   // Resolutions chosen so each borrowed colour behaves functionally instead
   // of falling back to the generic "head toward V / home" wiring.
-  bII:  { V: 4, "vii°": 1, i: 1, I: 1 },         // Neapolitan → dominant
-  II:   { V: 4, "V/V": 1 },                       // major II = V-of-V colour → V
+  bII:  { V: 3, "vii°": 1, i: 1, I: 1, vi: 1 },   // Neapolitan → dominant, or its own colour
+  II:   { V: 3, I: 1, IV: 1, vi: 1 },             // major II: pulls to V but freely usable as colour
   bV:   { IV: 2, I: 2, i: 1, V: 1 },              // Locrian / tritone colour
   biii: { vi: 2, IV: 2, ii: 1, i: 1 },            // minor chromatic mediant (♭3)
   siii: { vi: 2, IV: 2, i: 1 },                   // minor chromatic mediant (♮3)
