@@ -1208,6 +1208,22 @@ export default function ChordsTab({
       }
       return baseCount >= p.minNotes && (!p.maxNotes || baseCount <= p.maxNotes);
     });
+    // Applied chords (secondary dominant / tritone sub) are built as a
+    // canonical 4-note dom7, and the 7th is a DEFINING chord tone — the
+    // tritone between its 3rd and 7th is what makes it sound like a dominant
+    // that pulls to its target.  A bare major triad on the dom root is
+    // indistinguishable from an ordinary major chord, which defeats
+    // secondary-dominant ear training, so the 7th is not an optional
+    // extension we can drop.  When the user's pool has no 4-note voicing
+    // selected (triad-only), the dom7 matched no pattern and voiceChord
+    // returned null — the chord came back empty and silent (per user report:
+    // V/iv in Small Aeolian was broken).  Fall back to the canonical closed
+    // seventh voicing, which generateChordVoicings always emits regardless of
+    // whether the Seventh group is checked, so the dom7 still voices in full.
+    if (compatPatterns.length === 0 && baseCount === 4) {
+      const closedSeventh = voicingPatterns.find(p => p.id === "v-Seventh-0-1-2-3");
+      if (closedSeventh) compatPatterns.push(closedSeventh);
+    }
     if (compatPatterns.length === 0) return null;
 
     // Chord content relative to the reference root.  Each voicing adds its own
