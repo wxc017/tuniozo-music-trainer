@@ -23,6 +23,15 @@ const LANDMARKS: ReadonlyArray<readonly [number, string]> = [
   [1200, "8"],
 ];
 
+const CODE_CENTS: Record<string, number> =
+  Object.fromEntries(LANDMARKS.map(([c, code]) => [code, c]));
+/** Landmark cents for a sized code ("sM3" → 386).  Inverse of the bands used by
+ *  sizedCode; unknown codes return 0.  Use to BUILD a chord at an exact sized
+ *  interval (then snap to the nearest EDO step). */
+export function centsForCode(code: string): number {
+  return CODE_CENTS[code] ?? 0;
+}
+
 /** Sized interval code for an interval in cents (octave-reduced). */
 export function sizedCode(cents: number): string {
   const c = ((cents % 1200) + 1200) % 1200;
