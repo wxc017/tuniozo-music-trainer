@@ -51,7 +51,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 // on-screen chord symbols (form C).
 function Frac({ top, bottom }: { top: string; bottom: string }) {
   return (
-    <span className="inline-flex flex-col items-center leading-tight text-center align-middle">
+    <span className="inline-flex flex-col items-stretch leading-tight text-center align-middle">
       <span className="px-1">{top}</span>
       <span className="px-1 border-t border-current">{bottom}</span>
     </span>

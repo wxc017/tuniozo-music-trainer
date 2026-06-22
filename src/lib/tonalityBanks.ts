@@ -8,7 +8,7 @@
 import { getChordShapes, getModeDegreeMap } from "./edoData";
 import { JI_FAMILY, JI_SCALE_NAMES } from "./jiScaleData";
 import { getScalesForEdo } from "./commonScales";
-import { sizedCode, centsForCode } from "./chordNotation";
+import { sizedCode } from "./chordNotation";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -62,48 +62,33 @@ export function getApproachChords(
   edo: number,
 ): ChordEntry[] {
   if (!targetSteps || targetSteps.length < 2) return [];
+  const sh = getChordShapes(edo);
+  const { MIN, DIM, M2, M3, P5, d5, m7, M7 } = sh;
+  // Applied chords are FUNCTIONAL chords built on the target (rooted a 5th above
+  // it for the dominant, on its leading tone for vii°, etc.) — so they already
+  // lead into the target's key.  They must stay CANONICAL dom7 / dim / min: the
+  // voicing engine recognises a secondary dominant by an exact dom7 interval
+  // match, so shading the dominant's own 3rd/7th to the target's small/large
+  // colour makes it unrecognisable and silent (a dominant is a dominant, not a
+  // "small dominant").  The target's shade lives on the target chord itself.
+  const dom7 = (r: number) => [r, r + M3, r + P5, r + m7];
+  const min = (r: number) => MIN.map(s => s + r);
+  const dim = (r: number) => DIM.map(s => s + r);
   const r = targetSteps[0];
-  // Read the target's LOCAL KEY off its OWN 3rd, then build every applied chord
-  // in that key — its shade (small / center / large) and mode (minor → harmonic
-  // minor, major → major) both come from the target.  So a small-minor chord is
-  // tonicised in small harmonic minor, a small-major chord in small major, etc.
-  // (per direct user direction 2026-06-21).  The intervals are sized to the
-  // shade and snapped to the nearest EDO step.
-  const t3code = sizedCode(((targetSteps[1] - r) / edo) * 1200);
-  const shade = /^[sl]/.test(t3code) ? t3code[0] : "";          // "s" | "l" | ""
-  const isMinor = /m\d/.test(t3code) && !/M/.test(t3code);
-  const stepOf = (code: string) => Math.round((centsForCode(code) / 1200) * edo);
-  // Sized scale intervals in the target's shade.  4th/5th stay perfect; the
-  // diminished 5th is our "s5"; only the 2/3/6/7-family carry the shade.
-  const M3 = stepOf(shade + "M3");     // the leading-tone-bearing major 3rd
-  const m3 = stepOf(shade + "m3");
-  const M2 = stepOf(shade + "M2");
-  const m2 = stepOf(shade + "m2");
-  const m7 = stepOf(shade + "m7");
-  const P5 = stepOf("5");
-  const d5 = stepOf("s5");             // diminished 5th = small fifth in our system
-  // Secondary dominants must voice as dom7 (root, M3, P5, m7) so voiceChord
-  // doesn't upgrade them to maj7 — the wrong 7th quality.
-  const dom7 = (root: number) => [root, root + M3, root + P5, root + m7];
-  const dim  = (root: number) => [root, root + m3, root + d5];
-  const min  = (root: number) => [root, root + m3, root + P5];
+  const isMajorTarget = (targetSteps[1] - r) === M3;
   switch (kind) {
     case "secdom":
       return [chord(`V/${targetLabel}`, dom7(r + P5))];
     case "secdim":
-      // vii°/X — leading-tone diminished on the local 7th (raised in minor):
-      // a major 3rd above the dominant root = the local leading tone.
-      return [chord(`vii°/${targetLabel}`, dim(r + P5 + M3))];
-    case "iiV": {
-      // ii of the local key: minor in a major key, half-diminished in a minor key.
-      const ii = isMinor
-        ? chord(`iiø/${targetLabel}`, dim(r + M2))
-        : chord(`ii/${targetLabel}`, min(r + M2));
-      return [ii, chord(`V/${targetLabel}`, dom7(r + P5))];
-    }
+      // vii°/X — diminished triad on the target's leading tone (a M7 above it)
+      return [chord(`vii°/${targetLabel}`, dim(r + M7))];
+    case "iiV":
+      return isMajorTarget
+        ? [chord(`ii/${targetLabel}`, min(r + M2)), chord(`V/${targetLabel}`, dom7(r + P5))]
+        : [chord(`iiø/${targetLabel}`, dim(r + M2)), chord(`V/${targetLabel}`, dom7(r + P5))];
     case "TT":
-      // Tritone sub of V → a dom7 a (shaded) half-step above the target (bII7).
-      return [chord(`TT/${targetLabel}`, dom7(r + m2))];
+      // Tritone-sub of V → also a dom7 (a half-step above the target)
+      return [chord(`TT/${targetLabel}`, dom7(r + P5 + d5))];
   }
 }
 

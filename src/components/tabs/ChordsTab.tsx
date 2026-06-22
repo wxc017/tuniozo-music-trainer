@@ -182,7 +182,7 @@ function ChordSym({ symbol }: { symbol: string }) {
     const [, qualities, root, inv = ""] = cm;
     if (qualities.length > 14) return <>{symbol}</>;   // too wide to stack — inline
     return (
-      <span className="inline-flex flex-col items-center leading-tight align-middle text-center">
+      <span className="inline-flex flex-col items-stretch leading-tight align-middle text-center">
         <span className="px-1">{qualities}</span>
         <span className="px-1 border-t" style={{ borderColor: "currentColor" }}>{root}{inv}</span>
       </span>
