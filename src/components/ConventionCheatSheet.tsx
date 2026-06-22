@@ -15,6 +15,15 @@ const QUALITY = [
   ["(none)", "Perfect", "perfect degrees 4 / 5 / 8 and the unison 1"],
   ["M", "Major", "the major band (2 / 3 / 6 / 7)"],
 ];
+// Applied-chord ("approach") buttons shown under each non-tonic chord.  Their
+// labels are the one place Roman numerals survive — they name the TARGET degree
+// being tonicised, not a fixed pitch.
+const APPROACHES = [
+  ["V/", "Secondary dominant", "the dominant 7th of the target (V/V, V/ii, …)"],
+  ["vii°/", "Secondary leading-tone", "the diminished chord a half-step below the target"],
+  ["ii-V", "Applied ii–V", "a ii–V cadence pointing at the target"],
+  ["TT", "Tritone sub", "a dominant a tritone away, resolving down a half-step"],
+];
 
 // Major-3rd region, copied from the Interval Spectrum (Major Thirds: 372–440¢).
 const M3_LO = 372, M3_HI = 440;
@@ -35,6 +44,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[#8888c0] mb-1.5">{title}</h3>
       {children}
     </div>
+  );
+}
+
+// A chord rendered as a fraction — qualities over root[inversion] — matching the
+// on-screen chord symbols (form C).
+function Frac({ top, bottom }: { top: string; bottom: string }) {
+  return (
+    <span className="inline-flex flex-col items-center leading-tight text-center align-middle">
+      <span className="px-1">{top}</span>
+      <span className="px-1 border-t border-current">{bottom}</span>
+    </span>
   );
 }
 
@@ -146,15 +166,47 @@ export default function ConventionCheatSheet() {
               </p>
             </Section>
 
-            <Section title="Chords">
+            <Section title="Chords — the fraction">
               <p className="text-xs text-[#aaa] leading-relaxed">
-                The Roman numeral is pure <strong>position</strong> — the chord root's scale degree
-                (<span className="font-mono">I</span> = home). Quality lives in the sized codes stacked on top; the
-                perfect 5th is the default and omitted.
+                A chord is a fraction: the <strong>qualities</strong> (its intervals from the root, as sized codes)
+                over the <strong>root</strong> (where it sits — its own sized interval from home,
+                <span className="font-mono"> 1</span> = home). The set is complete — the perfect 5th is kept, and a
+                missing 5th is simply absent. An <strong>inversion</strong> (the bass tone) is bracketed after the root.
               </p>
-              <div className="mt-2 font-mono text-xs text-[#cfe6ff] bg-[#0a0a14] border border-[#1e1e2a] rounded p-2 leading-6">
-                I sM3 &nbsp;·&nbsp; II m3 &nbsp;·&nbsp; V sM3 m7 &nbsp;·&nbsp; VII m3 s5
+              <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-xs text-[#cfe6ff] bg-[#0a0a14] border border-[#1e1e2a] rounded p-3">
+                <Frac top="sM3 5" bottom="1" />
+                <Frac top="lm3 5" bottom="sM2" />
+                <Frac top="sM3 5 sm7" bottom="5" />
+                <Frac top="lm3 s5" bottom="sM7[5]" />
               </div>
+              <p className="text-[11px] text-[#777] mt-1.5">
+                Inline it's written <span className="font-mono">{"{sM3 5} | 1"}</span> — the bar is the fraction laid on
+                its side. There are <strong>no diatonic Roman numerals</strong>: position is just another sized interval,
+                so nothing assumes a 7-note scale or 12-EDO.
+              </p>
+            </Section>
+
+            <Section title="Roman numerals — applied chords only">
+              <p className="text-xs text-[#aaa] leading-relaxed">
+                Roman numerals survive in just one place: the four <strong>approach buttons</strong> under each non-tonic
+                chord, which add a chord <em>leading into</em> it. The numeral names the <em>target degree</em> being
+                tonicised (the chord you're aiming at), not a fixed pitch:
+              </p>
+              <table className="w-full text-xs mt-1.5"><tbody>
+                {APPROACHES.map(([code, name, desc]) => (
+                  <tr key={name} className="border-t border-[#1a1a1a]">
+                    <td className="py-1 font-mono text-[#cfe6ff] w-14">{code}</td>
+                    <td className="py-1 text-[#ddd] w-40">{name}</td>
+                    <td className="py-1 text-[#888]">{desc}</td>
+                  </tr>
+                ))}
+              </tbody></table>
+              <p className="text-[11px] text-[#777] mt-1.5">
+                A <span className="text-[#e0c050]">★</span> marks the idiomatic targets — applied chords into the
+                <span className="font-mono"> ii</span>, <span className="font-mono">IV</span>,
+                <span className="font-mono"> V</span>, <span className="font-mono">vi</span> degrees, plus the tritone sub
+                into home. They're matched by scale degree, so they light up the same in major and minor.
+              </p>
             </Section>
 
             <p className="text-[10px] text-[#666] mt-3 leading-relaxed">

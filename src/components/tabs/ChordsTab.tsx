@@ -3793,8 +3793,8 @@ function ChordSelectionPanel({
   const bareDegree = (label: string): string =>
     label.replace(/^[b#]+/, "").replace(/[°+ø\d].*$/, "").toUpperCase();
   const STARRED_APPROACH: Record<ApproachKind, Set<string>> = {
-    secdom: new Set(["II", "III", "IV", "V", "VI"]),  // V/ into ii iii IV V vi
-    secdim: new Set(["II", "V", "VI"]),               // vii°/ into ii V vi
+    secdom: new Set(["II", "IV", "V", "VI"]),         // V/ into ii IV V vi (V/iii is rare)
+    secdim: new Set(["II", "IV", "V", "VI"]),         // vii°/ into ii IV V vi
     iiV:    new Set(["II", "IV", "V", "VI"]),          // ii–V into ii IV V vi
     TT:     new Set(["I", "II", "V", "VI"]),           // tritone subs into I ii V vi
   };
