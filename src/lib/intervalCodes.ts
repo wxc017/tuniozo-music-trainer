@@ -310,13 +310,17 @@ export function pythagoreanNoteLabel(edo: number, step: number): string {
   return best;
 }
 
-/** Note name for the chosen notation SYSTEM: "Schulter V2" → the Schulter-region
- *  / Gould system (sizedNoteLabel); anything else ("Schulter" et al.) → plain
- *  Pythagorean note names. */
+/** Absolute NOTE name for the chosen notation system.  Per direct user
+ *  direction, every system — including "Schulter V2" — spells NOTES with plain
+ *  chain-of-fifths Pythagorean names (so a picked tonic / clicked key reads as
+ *  the pitch actually sounded; e.g. C# = the 7-fifths step, not a sized/spectrum
+ *  superscript code).  The sized/spectrum namer (sizedNoteLabel) is kept for
+ *  INTERVAL labels and the Interval Spectrum tab, not for note names. */
 export function noteLabelForSystem(
-  edo: number, step: number, system: string | undefined, prefer?: "sharp" | "flat",
+  edo: number, step: number, system?: string, prefer?: "sharp" | "flat",
 ): string {
-  return system === "Schulter V2" ? sizedNoteLabel(edo, step, prefer) : pythagoreanNoteLabel(edo, step);
+  void system; void prefer;
+  return pythagoreanNoteLabel(edo, step);
 }
 
 // Quality-prefix remap for the 41/53 short-code tables (s/m/Clm/u/n/Cl/M/S…)
