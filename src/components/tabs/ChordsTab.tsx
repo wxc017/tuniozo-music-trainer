@@ -516,12 +516,24 @@ export default function ChordsTab({
   // chord it lights on the keyboard).  Clicking a card holds a sustained drone
   // of that chord; this index is also the "which card is droning" flag.
   const [litCardIdx, setLitCardIdx] = useState<number | null>(null);
+  // Mirror litCardIdx into a ref so teardown paths that run with empty deps
+  // / stale closures (stopLoop, the EDO-change effect, unmount) can tell
+  // whether THIS tab is currently holding a Show-Answer chord drone.  The
+  // engine has a single drone slot shared with the persistent tonic/audiation
+  // drone (App header + DrillDroneStrip), so we must NEVER call stopDrone()
+  // unless we ourselves started a card drone — otherwise Play / Stop would
+  // silence the user's audiation drone.  Per direct user direction
+  // 2026-06-24: the drone must keep sounding through Play AND Stop of the
+  // chord loop; the Stop button is only for the chord progression.
+  const litCardIdxRef = useRef<number | null>(null);
+  litCardIdxRef.current = litCardIdx;
   // Card click mode: ON = hold a sustained, swelling drone of the chord; OFF =
   // play the chord once (like the random playback), so the user can alternate
   // between plain playback and drone (per direct user direction 2026-06-14).
   const [cardDroneOn, setCardDroneOn] = useLS<boolean>("lt_crd_card_drone", true);
-  // Stop any held Show-Answer chord drone when the tab unmounts.
-  useEffect(() => () => { audioEngine.stopDrone(); }, []);
+  // Stop a held Show-Answer chord drone when the tab unmounts — but only the
+  // one we started, never the persistent tonic/audiation drone.
+  useEffect(() => () => { if (litCardIdxRef.current !== null) audioEngine.stopDrone(); }, []);
   // The transition currently being previewed for voice-leading
   // arrows.  When set to N, the harmonic lattice flashes arrows
   // showing the voice motion from chord N → chord N+1.  Driven by
@@ -670,7 +682,9 @@ export default function ChordsTab({
     setFhDetailInfo("");
     fhFramesRef.current = null;
     setPinnedChordIdxs(new Set());
-    audioEngine.stopDrone();   // a held Show-Answer chord drone is in the old EDO's pitches
+    // Only our own held chord drone carries stale (old-EDO) pitches — leave the
+    // persistent tonic/audiation drone alone (it restarts itself for the new EDO).
+    if (litCardIdxRef.current !== null) audioEngine.stopDrone();
     setLitCardIdx(null);
     setTonalitySet(prev => {
       // Compute the set of tonality names that actually appear in
@@ -1406,7 +1420,15 @@ export default function ChordsTab({
     isLoopingRef.current = false;
     setIsLooping(false);
     audioEngine.silencePlay();
-    audioEngine.stopDrone();   // also kill any held Show-Answer chord drone
+    // Stop ONLY a Show-Answer chord drone we started — never the persistent
+    // tonic/audiation drone (App header / DrillDroneStrip), which shares the
+    // engine's single drone slot.  This is what lets the audiation drone keep
+    // ringing through both Play (which calls stopLoop first) and the Stop
+    // button — the chord loop stops, the drone does not.
+    if (litCardIdxRef.current !== null) {
+      audioEngine.stopDrone();
+      setLitCardIdx(null);
+    }
   }, []);
 
   const buildLoopFrames = useCallback((progression: string[], chordMapOverride?: Record<string, number[]>, xenForNumeral?: Record<string, string[]>, scaleRootsOverride?: number[] | null, poolCheckedOverride?: Set<string> | null): { chords: number[][]; bass: number[][]; melody: number[][]; appliedShapes: (number[] | null)[]; voicingTypes: string[] } => {
