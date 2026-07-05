@@ -34,6 +34,7 @@ import VocalPercussion from "@/components/VocalPercussion";
 import MixedGroups from "@/components/MixedGroups";
 import ScoringMode from "@/components/ScoringMode";
 import PhraseDecomposition from "@/components/PhraseDecomposition";
+import CalisthenicsTab from "@/components/tabs/CalisthenicsTab";
 // Academic mode components — gitignored, only present in local dev
 const academicModules = import.meta.glob([
   "./components/ReadingWorkflo*.tsx",
@@ -963,6 +964,14 @@ export default function App() {
       <CountdownTimer />
     </>
   );
+
+  // Calisthenics is a self-contained, non-musical gamemode (a top-level
+  // section); render it as a full-screen takeover that bypasses the
+  // music/keyboard UI entirely.
+  if (section === "calisthenics") {
+    return <CalisthenicsTab onBack={() => setSection("ear-trainer")} />;
+  }
+
   return (
     <div
       className={`bg-[#0d0d0d] text-white flex flex-col ${(section === "reading-workflow" || section === "temperament-explorer" || section === "math-lab") ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}
@@ -988,6 +997,7 @@ export default function App() {
               ) : (() => {
                 const SECTION_BUTTONS: { id: string; label: string; beta?: boolean; group?: string }[] = [
                   // Ungrouped
+                  { id: "calisthenics",         label: "Calisthenics" },
                   { id: "drone-continuum",      label: "Drone Continuum",      beta: true },
                   { id: "rhythm-audiation",     label: "Rhythmic Audiation",   beta: true },
                   { id: "melodic-patterns",     label: "Melodic Patterns",     beta: true },

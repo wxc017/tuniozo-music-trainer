@@ -1,0 +1,213 @@
+// ─────────────────────────────────────────────────────────────────────────
+// Calisthenics gamemode — master list of elite rings / straight-arm skills.
+// Each skill maps to a set of muscle-group keys used by the MuscleMap graphic.
+// Data compiled from the FIG Code of Points and the Burningate (calisthenics)
+// code; ratings are debated, especially the underbalanced rings section.
+// ─────────────────────────────────────────────────────────────────────────
+
+export type MuscleKey =
+  | "ant_delts" | "rear_delts" | "pecs" | "biceps" | "triceps"
+  | "forearms" | "lats" | "traps" | "rhomboids" | "teres"
+  | "serratus" | "abs" | "obliques" | "erectors"
+  | "hip_flexors" | "quads" | "glutes";
+
+// Which figure(s) a muscle group shows up on in the anatomy graphic.
+export const MUSCLE_META: Record<MuscleKey, { label: string; views: ("front" | "back")[] }> = {
+  ant_delts:   { label: "Anterior Deltoids", views: ["front"] },
+  rear_delts:  { label: "Rear Deltoids",     views: ["back"] },
+  pecs:        { label: "Chest (Pectorals)", views: ["front"] },
+  biceps:      { label: "Biceps / Biceps Tendon", views: ["front"] },
+  triceps:     { label: "Triceps",           views: ["back"] },
+  forearms:    { label: "Forearms / Grip",   views: ["front", "back"] },
+  lats:        { label: "Lats",              views: ["back"] },
+  traps:       { label: "Trapezius",         views: ["back"] },
+  rhomboids:   { label: "Rhomboids",         views: ["back"] },
+  teres:       { label: "Teres Major",       views: ["back"] },
+  serratus:    { label: "Serratus Anterior", views: ["front"] },
+  abs:         { label: "Core / Abs",        views: ["front"] },
+  obliques:    { label: "Obliques",          views: ["front"] },
+  erectors:    { label: "Spinal Erectors",   views: ["back"] },
+  hip_flexors: { label: "Hip Flexors",       views: ["front"] },
+  quads:       { label: "Quads",             views: ["front"] },
+  glutes:      { label: "Glutes",            views: ["back"] },
+};
+
+export const ALL_MUSCLES: MuscleKey[] = Object.keys(MUSCLE_META) as MuscleKey[];
+
+export type SkillCategory = "static" | "posterior" | "anterior" | "press" | "cross_prog";
+
+export const CATEGORY_LABELS: Record<SkillCategory, string> = {
+  static:     "Static Holds",
+  posterior:  "Posterior Straight-Arm",
+  anterior:   "Anterior Straight-Arm",
+  press:      "Press / Pushup / Mount",
+  cross_prog: "Cross Entries & Progressions",
+};
+
+export const CATEGORY_ORDER: SkillCategory[] = [
+  "static", "posterior", "anterior", "press", "cross_prog",
+];
+
+export interface CaliSkill {
+  id: string;
+  name: string;
+  category: SkillCategory;
+  rating?: string;
+  tier?: "foundational" | "advanced" | "elite" | "super" | "ceiling";
+  muscles: MuscleKey[];
+  desc: string;
+}
+
+export const SKILLS: CaliSkill[] = [
+  // ── Static holds ──────────────────────────────────────────────────────
+  { id: "lsit", name: "L-sit", category: "static", tier: "foundational",
+    muscles: ["hip_flexors", "quads", "abs", "triceps"],
+    desc: "Legs held out horizontal while pressing down into support." },
+  { id: "back_lever", name: "Back Lever", category: "static", rating: "FIG B", tier: "foundational",
+    muscles: ["lats", "biceps", "ant_delts", "pecs", "abs"],
+    desc: "Horizontal hold facing up, suspended from the rings." },
+  { id: "front_lever", name: "Front Lever", category: "static", tier: "foundational",
+    muscles: ["lats", "teres", "rhomboids", "abs", "biceps"],
+    desc: "Horizontal hold facing up in an undergrip, straight body." },
+  { id: "planche", name: "Planche", category: "static", tier: "advanced",
+    muscles: ["ant_delts", "pecs", "biceps", "serratus", "abs", "forearms"],
+    desc: "Horizontal hold facing down, hands under the hips." },
+  { id: "iron_cross", name: "Iron Cross", category: "static", rating: "FIG B / BG 2", tier: "advanced",
+    muscles: ["pecs", "lats", "teres", "biceps"],
+    desc: "Arms straight out to the sides, body vertical." },
+  { id: "lv_cross", name: "L / V-Cross", category: "static", tier: "elite",
+    muscles: ["pecs", "lats", "teres", "biceps", "abs", "hip_flexors"],
+    desc: "Iron cross with the legs raised to an L or higher V." },
+  { id: "inv_cross", name: "Inverted Cross", category: "static", tier: "elite",
+    muscles: ["ant_delts", "pecs", "traps", "biceps"],
+    desc: "An upside-down iron cross, pressed and held above the rings." },
+  { id: "maltese", name: "Maltese (Swallow)", category: "static", rating: "BG 5.1", tier: "super",
+    muscles: ["pecs", "ant_delts", "biceps", "lats", "abs"],
+    desc: "Horizontal at ring height, arms wide and low, facing down." },
+  { id: "victorian", name: "Victorian Cross", category: "static", rating: "FIG E / BG 6.5", tier: "super",
+    muscles: ["lats", "rear_delts", "teres", "rhomboids", "biceps", "glutes"],
+    desc: "Horizontal facing up — an inverted maltese. The hardest static." },
+  { id: "reverse_planche", name: "Reverse Planche", category: "static", rating: "Near-impossible", tier: "ceiling",
+    muscles: ["lats", "rear_delts", "erectors", "glutes", "biceps"],
+    desc: "Straight-arm horizontal hold facing up; posterior mirror of planche." },
+  { id: "manna", name: "Manna", category: "static", tier: "elite",
+    muscles: ["hip_flexors", "abs", "triceps", "forearms"],
+    desc: "Piked legs raised overhead in a deep compression hold." },
+
+  // ── Posterior straight-arm family ─────────────────────────────────────
+  { id: "fl_raise", name: "Front Lever Raise", category: "posterior", tier: "advanced",
+    muscles: ["abs", "hip_flexors", "lats"],
+    desc: "Raise from a dead/inverted hang up into the front lever position." },
+  { id: "fl_pull", name: "Front Lever Pull", category: "posterior", tier: "advanced",
+    muscles: ["lats", "biceps", "abs"],
+    desc: "Dynamic pull toward the bar while held horizontal." },
+  { id: "fl_touch", name: "Front Lever Touch", category: "posterior", rating: "BG 2.4–3.9", tier: "advanced",
+    muscles: ["lats", "abs", "biceps"],
+    desc: "Front lever, pulling the hips up until they touch the bar." },
+  { id: "oa_fl", name: "One-Arm Front Lever", category: "posterior", rating: "Elite", tier: "elite",
+    muscles: ["lats", "obliques", "abs", "forearms", "biceps"],
+    desc: "A full front lever supported on a single arm." },
+  { id: "azarian", name: "Azarian", category: "posterior", rating: "FIG D", tier: "advanced",
+    muscles: ["biceps", "pecs", "lats"],
+    desc: "Slow backward roll from a hang into the iron cross / L-cross." },
+  { id: "nakayama", name: "Nakayama", category: "posterior", rating: "FIG E", tier: "elite",
+    muscles: ["lats", "biceps", "pecs"],
+    desc: "Back lever pressed up into the cross." },
+  { id: "pineda", name: "Pineda", category: "posterior", rating: "BG 4", tier: "elite",
+    muscles: ["lats", "rear_delts", "biceps"],
+    desc: "Front lever pulled through into a cross L-sit." },
+  { id: "caruso", name: "Caruso", category: "posterior", rating: "BG 7", tier: "super",
+    muscles: ["lats", "rear_delts", "teres", "biceps", "glutes"],
+    desc: "Straight-arm pull through a momentary front lever into the Victorian." },
+  { id: "baruso", name: "Baruso", category: "posterior", rating: "BG ~5", tier: "super",
+    muscles: ["lats", "rear_delts", "teres", "biceps"],
+    desc: "The Caruso performed on a straight bar (reduced range of motion)." },
+  { id: "zahran", name: "Zahran", category: "posterior", tier: "super",
+    muscles: ["lats", "rear_delts", "biceps", "glutes"],
+    desc: "Back lever pressed into the Victorian." },
+
+  // ── Anterior straight-arm family ──────────────────────────────────────
+  { id: "van_gelder", name: "Van Gelder", category: "anterior", rating: "FIG F", tier: "super",
+    muscles: ["ant_delts", "pecs", "biceps", "abs"],
+    desc: "Transitions among planche, back lever and maltese." },
+  { id: "balandin1", name: "Balandin 1", category: "anterior", rating: "FIG F", tier: "super",
+    muscles: ["pecs", "ant_delts", "biceps"],
+    desc: "Vertical (butterfly) pull to Maltese." },
+  { id: "balandin2", name: "Balandin 2", category: "anterior", rating: "FIG G", tier: "ceiling",
+    muscles: ["ant_delts", "pecs", "biceps", "traps"],
+    desc: "Vertical (butterfly) pull to Inverted Cross. One of the hardest elements." },
+  { id: "balandin3", name: "Balandin 3", category: "anterior", rating: "FIG E", tier: "super",
+    muscles: ["ant_delts", "pecs", "biceps"],
+    desc: "Vertical (butterfly) pull to Planche." },
+  { id: "cingolani", name: "Cingolani", category: "anterior", rating: "FIG F", tier: "super",
+    muscles: ["ant_delts", "traps", "biceps", "pecs"],
+    desc: "From hang, pull to support and press to handstand, straight body & arms." },
+  { id: "butterfly", name: "Butterfly", category: "anterior", tier: "super",
+    muscles: ["ant_delts", "pecs", "biceps"],
+    desc: "From inverted hang, straight-arm pull to inverted cross." },
+  { id: "inv_butterfly", name: "Inverted Butterfly", category: "anterior", rating: "FIG F/G", tier: "ceiling",
+    muscles: ["ant_delts", "pecs", "biceps"],
+    desc: "The anterior pull to inverted cross — hardest anterior pattern possible." },
+  { id: "carmona", name: "Carmona", category: "anterior", rating: "FIG F", tier: "ceiling",
+    muscles: ["pecs", "ant_delts", "biceps"],
+    desc: "The ultimate anterior strength movement, via maltese / inverted cross." },
+  { id: "zanetti", name: "Zanetti", category: "anterior", tier: "super",
+    muscles: ["pecs", "ant_delts", "biceps"],
+    desc: "Back lever pulled into Maltese." },
+  { id: "jovtchev", name: "Jovtchev", category: "anterior", tier: "super",
+    muscles: ["pecs", "ant_delts", "biceps"],
+    desc: "Inverted cross lowered into Maltese." },
+  { id: "rsa_planche_hs", name: "RSA Planche → HS", category: "anterior", rating: "Elite", tier: "elite",
+    muscles: ["ant_delts", "traps", "serratus", "biceps", "abs"],
+    desc: "Ring straight-arm (full) planche pressed to handstand." },
+
+  // ── Press / pushup / mount ────────────────────────────────────────────
+  { id: "planche_pushup", name: "Planche Pushup", category: "press", tier: "advanced",
+    muscles: ["ant_delts", "pecs", "triceps", "biceps"],
+    desc: "A pushup performed in the planche position, hands low." },
+  { id: "maltese_pushup", name: "Maltese Pushup", category: "press", tier: "super",
+    muscles: ["pecs", "ant_delts", "triceps", "biceps"],
+    desc: "Pressing in and out of the maltese." },
+  { id: "cross_pushup", name: "Cross Pushup", category: "press", tier: "elite",
+    muscles: ["pecs", "lats", "ant_delts", "biceps"],
+    desc: "Pressing in and out of the iron cross." },
+  { id: "pelican_pushup", name: "Pelican Pushup", category: "press", tier: "advanced",
+    muscles: ["pecs", "ant_delts", "biceps"],
+    desc: "A deep ring pushup where the shoulders extend behind the body." },
+  { id: "butterfly_mount", name: "Butterfly Mount", category: "press", tier: "elite",
+    muscles: ["pecs", "ant_delts", "biceps"],
+    desc: "A press-mount to support via a butterfly motion." },
+  { id: "elevator", name: "Elevator", category: "press", tier: "elite",
+    muscles: ["pecs", "lats", "ant_delts", "biceps"],
+    desc: "Controlled straight-arm lowering from support/handstand through positions." },
+
+  // ── Cross entries & progressions ──────────────────────────────────────
+  { id: "iron_cross_pullout", name: "Iron Cross Pullouts", category: "cross_prog", tier: "advanced",
+    muscles: ["pecs", "lats", "biceps"],
+    desc: "Dynamic support → cross; the main strength driver for the cross." },
+  { id: "cross_to_bl", name: "Cross to Back Lever", category: "cross_prog", tier: "advanced",
+    muscles: ["pecs", "lats", "biceps"],
+    desc: "Controlled straight-arm lower from cross into back lever." },
+  { id: "support_hang_cross", name: "Support to Hang to Cross", category: "cross_prog", tier: "advanced",
+    muscles: ["pecs", "lats", "biceps"],
+    desc: "Controlled descent from support through hang into the cross." },
+  { id: "hang_pull_bl", name: "Hang Pull to Back Lever", category: "cross_prog", tier: "foundational",
+    muscles: ["lats", "biceps", "abs"],
+    desc: "Pull from a hang up into the back lever." },
+];
+
+export const TIER_LABELS: Record<NonNullable<CaliSkill["tier"]>, string> = {
+  foundational: "Foundational",
+  advanced:     "Advanced",
+  elite:        "Elite",
+  super:        "Super-elite",
+  ceiling:      "Ceiling",
+};
+
+export const TIER_COLORS: Record<NonNullable<CaliSkill["tier"]>, string> = {
+  foundational: "#3b8f5a",
+  advanced:     "#c98a2b",
+  elite:        "#c85a3c",
+  super:        "#a8434e",
+  ceiling:      "#7173e6",
+};
