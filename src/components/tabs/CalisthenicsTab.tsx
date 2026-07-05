@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import MuscleMap from "@/components/calisthenics/MuscleMap";
+import SkillPose3D from "@/components/calisthenics/SkillPose3D";
+import { getPose, getAnimation } from "@/lib/calisthenicsPoses";
 import {
   SKILLS, CATEGORY_ORDER, CATEGORY_LABELS, MUSCLE_META, ALL_MUSCLES,
   TIER_COLORS,
@@ -113,35 +115,81 @@ export default function CalisthenicsTab() {
         {!selected ? (
           <div className="text-[#666] text-sm">Select a skill to see the muscles worked.</div>
         ) : (
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-6xl">
             <h2 className="text-2xl font-bold">{selected.name}</h2>
             <div className="text-xs text-[#7173e6] uppercase tracking-wide mt-1">
               {CATEGORY_LABELS[selected.category]}
             </div>
             <p className="text-[#bbb] mt-3 leading-relaxed">{selected.desc}</p>
 
-            <div className="mt-6 grid md:grid-cols-2 gap-6 items-start">
-              <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg p-4">
-                <MuscleMap active={selected.muscles} onMuscleClick={pickMuscle} />
-                <p className="text-[10px] text-[#555] text-center mt-2">Click a highlighted muscle to filter the list</p>
+            <div className="mt-6 grid xl:grid-cols-2 gap-8 items-start">
+            {/* ── Section 1: Muscle map ── */}
+            <section>
+              <div className="text-xs font-semibold uppercase tracking-wide text-[#7173e6] mb-3 border-b border-[#1e1e1e] pb-1.5">
+                Muscle Map
               </div>
+              <div className="flex flex-col gap-6 items-start">
+                <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg p-4 w-fit">
+                  <MuscleMap active={selected.muscles} onMuscleClick={pickMuscle} />
+                </div>
 
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-[#888] mb-2">Muscles Worked</div>
-                <div className="flex flex-wrap gap-2">
-                  {selected.muscles.map(m => (
-                    <button key={m} onClick={() => pickMuscle(m)}
-                      className="px-2.5 py-1 rounded text-xs bg-[#1c1c2e] border border-[#7173e6]/40 text-[#cdcdfa] hover:bg-[#26264a] flex items-baseline gap-1.5">
-                      <span className="font-medium">{MUSCLE_META[m].simple}</span>
-                      <span className="text-[10px] text-[#8a8ad0]">{MUSCLE_META[m].label}</span>
-                    </button>
-                  ))}
+                <div className="max-w-[21rem]">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-[#888] mb-2">Muscles Worked</div>
+                  <div className="flex flex-wrap gap-2">
+                    {selected.muscles.map(m => (
+                      <button key={m} onClick={() => pickMuscle(m)}
+                        className="px-2.5 py-1 rounded text-xs bg-[#1c1c2e] border border-[#7173e6]/40 text-[#cdcdfa] hover:bg-[#26264a] flex items-baseline gap-1.5">
+                        <span className="font-medium">{MUSCLE_META[m].simple}</span>
+                        <span className="text-[10px] text-[#8a8ad0]">{MUSCLE_META[m].label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
+            </section>
+
+            {/* ── Section 2: 3D view / positioning ── */}
+            {(() => {
+              const anim = getAnimation(selected.id, selected.name, selected.category);
+              const frames = anim ?? [getPose(selected.id, selected.name, selected.category)];
+              const cuePose = frames[frames.length - 1];
+              return (
+                <section>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-[#7173e6] mb-3 border-b border-[#1e1e1e] pb-1.5 flex items-center gap-2">
+                    3D View &amp; Positioning
+                    {anim
+                      ? <span className="text-[10px] normal-case font-normal text-[#c98a2b]">Animated transition</span>
+                      : <span className="text-[10px] normal-case font-normal text-[#3b8f5a]">Static hold</span>}
+                    {!cuePose.tuned && (
+                      <span className="text-[10px] normal-case font-normal text-[#777]">· pose approximate</span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                    <SkillPose3D frames={frames} animated={!!anim} />
+
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      <Cue label="Scapular position" text={cuePose.cue.scapula} />
+                      <Cue label="Grip / ring placement" text={cuePose.cue.grip} />
+                      <Cue label="Body line" text={cuePose.cue.line} />
+                    </div>
+                  </div>
+                </section>
+              );
+            })()}
             </div>
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+function Cue({ label, text }: { label: string; text: string }) {
+  return (
+    <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-[#8a8ad0] mb-1">{label}</div>
+      <div className="text-xs text-[#bbb] leading-relaxed">{text}</div>
     </div>
   );
 }
