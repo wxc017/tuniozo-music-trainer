@@ -990,7 +990,6 @@ export default function App() {
               ) : (() => {
                 const SECTION_BUTTONS: { id: string; label: string; beta?: boolean; group?: string }[] = [
                   // Ungrouped
-                  { id: "calisthenics",         label: "Calisthenics", group: "Other" },
                   { id: "drone-continuum",      label: "Drone Continuum",      beta: true },
                   { id: "rhythm-audiation",     label: "Rhythmic Audiation",   beta: true },
                   { id: "melodic-patterns",     label: "Melodic Patterns",     beta: true },
@@ -1019,6 +1018,8 @@ export default function App() {
                   { id: "interval-browser",     label: "Interval Browser",     group: "Analytical", beta: true },
                   { id: "lumatone-intervals",   label: "Lumatone Intervals",   group: "Analytical" },
                   { id: "microwave",            label: "Microwave",            beta: true },
+                  // Other — non-musical gamemodes, rendered as the last group
+                  { id: "calisthenics",         label: "Calisthenics",         group: "Other" },
                 ];
                 const visible = SECTION_BUTTONS.filter(b => !b.beta || betaMode);
                 if (betaMathLab) visible.push({ id: "math-lab", label: "Math Lab", beta: true });
