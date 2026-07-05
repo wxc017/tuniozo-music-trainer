@@ -965,16 +965,9 @@ export default function App() {
     </>
   );
 
-  // Calisthenics is a self-contained, non-musical gamemode (a top-level
-  // section); render it as a full-screen takeover that bypasses the
-  // music/keyboard UI entirely.
-  if (section === "calisthenics") {
-    return <CalisthenicsTab onBack={() => setSection("ear-trainer")} />;
-  }
-
   return (
     <div
-      className={`bg-[#0d0d0d] text-white flex flex-col ${(section === "reading-workflow" || section === "temperament-explorer" || section === "math-lab") ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}
+      className={`bg-[#0d0d0d] text-white flex flex-col ${(section === "reading-workflow" || section === "temperament-explorer" || section === "math-lab" || section === "calisthenics") ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}
       style={{ "--metro-h": "0px" } as React.CSSProperties}
     >
       {/* ── Header ── */}
@@ -997,7 +990,7 @@ export default function App() {
               ) : (() => {
                 const SECTION_BUTTONS: { id: string; label: string; beta?: boolean; group?: string }[] = [
                   // Ungrouped
-                  { id: "calisthenics",         label: "Calisthenics" },
+                  { id: "calisthenics",         label: "Calisthenics", group: "Other" },
                   { id: "drone-continuum",      label: "Drone Continuum",      beta: true },
                   { id: "rhythm-audiation",     label: "Rhythmic Audiation",   beta: true },
                   { id: "melodic-patterns",     label: "Melodic Patterns",     beta: true },
@@ -1654,6 +1647,13 @@ export default function App() {
       {section === "math-lab" && (
         <div className="flex-1 flex flex-col overflow-hidden">
           <MathLab />
+        </div>
+      )}
+
+      {/* ── Calisthenics ── */}
+      {section === "calisthenics" && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <CalisthenicsTab />
         </div>
       )}
 

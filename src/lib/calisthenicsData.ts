@@ -1,9 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Calisthenics gamemode — master list of elite rings / straight-arm skills.
-// Each skill maps to a set of muscle-group keys used by the MuscleMap graphic.
-// Data compiled from the FIG Code of Points and the Burningate (calisthenics)
-// code; ratings are debated, especially the underbalanced rings section.
+// Each skill maps to muscle-group keys; each muscle maps to the anatomy
+// package's muscle regions (react-body-highlighter) for the graphic.
+// Ratings from the FIG Code of Points and the Burningate (calisthenics) code.
 // ─────────────────────────────────────────────────────────────────────────
+
+import type { Muscle as BodyMuscle } from "react-body-highlighter";
 
 export type MuscleKey =
   | "ant_delts" | "rear_delts" | "pecs" | "biceps" | "triceps"
@@ -11,42 +13,40 @@ export type MuscleKey =
   | "serratus" | "abs" | "obliques" | "erectors"
   | "hip_flexors" | "quads" | "glutes";
 
-// Which figure(s) a muscle group shows up on in the anatomy graphic.
-export const MUSCLE_META: Record<MuscleKey, { label: string; views: ("front" | "back")[] }> = {
-  ant_delts:   { label: "Anterior Deltoids", views: ["front"] },
-  rear_delts:  { label: "Rear Deltoids",     views: ["back"] },
-  pecs:        { label: "Chest (Pectorals)", views: ["front"] },
-  biceps:      { label: "Biceps / Biceps Tendon", views: ["front"] },
-  triceps:     { label: "Triceps",           views: ["back"] },
-  forearms:    { label: "Forearms / Grip",   views: ["front", "back"] },
-  lats:        { label: "Lats",              views: ["back"] },
-  traps:       { label: "Trapezius",         views: ["back"] },
-  rhomboids:   { label: "Rhomboids",         views: ["back"] },
-  teres:       { label: "Teres Major",       views: ["back"] },
-  serratus:    { label: "Serratus Anterior", views: ["front"] },
-  abs:         { label: "Core / Abs",        views: ["front"] },
-  obliques:    { label: "Obliques",          views: ["front"] },
-  erectors:    { label: "Spinal Erectors",   views: ["back"] },
-  hip_flexors: { label: "Hip Flexors",       views: ["front"] },
-  quads:       { label: "Quads",             views: ["front"] },
-  glutes:      { label: "Glutes",            views: ["back"] },
+// label = anatomical name, simple = everyday name, pkg = region(s) highlighted
+// on the react-body-highlighter model (its vocabulary is coarser than ours).
+export const MUSCLE_META: Record<MuscleKey, { label: string; simple: string; pkg: BodyMuscle[] }> = {
+  ant_delts:   { label: "Anterior Deltoids", simple: "Shoulders (front)", pkg: ["front-deltoids"] },
+  rear_delts:  { label: "Rear Deltoids",     simple: "Shoulders (rear)",  pkg: ["back-deltoids"] },
+  pecs:        { label: "Pectorals",         simple: "Chest",             pkg: ["chest"] },
+  biceps:      { label: "Biceps / Tendon",   simple: "Biceps",            pkg: ["biceps"] },
+  triceps:     { label: "Triceps",           simple: "Triceps",           pkg: ["triceps"] },
+  forearms:    { label: "Forearms",          simple: "Forearms / grip",   pkg: ["forearm"] },
+  lats:        { label: "Latissimus Dorsi",  simple: "Back (lats)",       pkg: ["upper-back"] },
+  traps:       { label: "Trapezius",         simple: "Traps",             pkg: ["trapezius"] },
+  rhomboids:   { label: "Rhomboids",         simple: "Upper back",        pkg: ["upper-back"] },
+  teres:       { label: "Teres Major",       simple: "Back (armpit)",     pkg: ["upper-back"] },
+  serratus:    { label: "Serratus Anterior", simple: "Ribcage (side)",    pkg: ["obliques"] },
+  abs:         { label: "Rectus Abdominis",  simple: "Core / abs",        pkg: ["abs"] },
+  obliques:    { label: "Obliques",          simple: "Sides",             pkg: ["obliques"] },
+  erectors:    { label: "Spinal Erectors",   simple: "Lower back",        pkg: ["lower-back"] },
+  hip_flexors: { label: "Hip Flexors",       simple: "Hips (front)",      pkg: ["quadriceps"] },
+  quads:       { label: "Quadriceps",        simple: "Thighs (front)",    pkg: ["quadriceps"] },
+  glutes:      { label: "Gluteals",          simple: "Glutes",            pkg: ["gluteal"] },
 };
 
 export const ALL_MUSCLES: MuscleKey[] = Object.keys(MUSCLE_META) as MuscleKey[];
 
-export type SkillCategory = "static" | "posterior" | "anterior" | "press" | "cross_prog";
+export type SkillCategory = "static" | "posterior" | "anterior" | "press";
 
 export const CATEGORY_LABELS: Record<SkillCategory, string> = {
-  static:     "Static Holds",
-  posterior:  "Posterior Straight-Arm",
-  anterior:   "Anterior Straight-Arm",
-  press:      "Press / Pushup / Mount",
-  cross_prog: "Cross Entries & Progressions",
+  static:    "Static Holds",
+  posterior: "Posterior Straight-Arm",
+  anterior:  "Anterior Straight-Arm",
+  press:     "Press / Pushup / Mount",
 };
 
-export const CATEGORY_ORDER: SkillCategory[] = [
-  "static", "posterior", "anterior", "press", "cross_prog",
-];
+export const CATEGORY_ORDER: SkillCategory[] = ["static", "posterior", "anterior", "press"];
 
 export interface CaliSkill {
   id: string;
@@ -81,7 +81,7 @@ export const SKILLS: CaliSkill[] = [
   { id: "inv_cross", name: "Inverted Cross", category: "static", tier: "elite",
     muscles: ["ant_delts", "pecs", "traps", "biceps"],
     desc: "An upside-down iron cross, pressed and held above the rings." },
-  { id: "maltese", name: "Maltese (Swallow)", category: "static", rating: "BG 5.1", tier: "super",
+  { id: "maltese", name: "Maltese", category: "static", rating: "BG 5.1", tier: "super",
     muscles: ["pecs", "ant_delts", "biceps", "lats", "abs"],
     desc: "Horizontal at ring height, arms wide and low, facing down." },
   { id: "victorian", name: "Victorian Cross", category: "static", rating: "FIG E / BG 6.5", tier: "super",
@@ -94,7 +94,7 @@ export const SKILLS: CaliSkill[] = [
     muscles: ["hip_flexors", "abs", "triceps", "forearms"],
     desc: "Piked legs raised overhead in a deep compression hold." },
 
-  // ── Posterior straight-arm family ─────────────────────────────────────
+  // ── Posterior straight-arm family (incl. cross entries) ───────────────
   { id: "fl_raise", name: "Front Lever Raise", category: "posterior", tier: "advanced",
     muscles: ["abs", "hip_flexors", "lats"],
     desc: "Raise from a dead/inverted hang up into the front lever position." },
@@ -107,6 +107,18 @@ export const SKILLS: CaliSkill[] = [
   { id: "oa_fl", name: "One-Arm Front Lever", category: "posterior", rating: "Elite", tier: "elite",
     muscles: ["lats", "obliques", "abs", "forearms", "biceps"],
     desc: "A full front lever supported on a single arm." },
+  { id: "hang_pull_bl", name: "Hang Pull to Back Lever", category: "posterior", tier: "foundational",
+    muscles: ["lats", "biceps", "abs"],
+    desc: "Pull from a hang up into the back lever." },
+  { id: "iron_cross_pullout", name: "Iron Cross Pullouts", category: "posterior", tier: "advanced",
+    muscles: ["pecs", "lats", "biceps"],
+    desc: "Dynamic support → cross; the main strength driver for the cross." },
+  { id: "cross_to_bl", name: "Cross to Back Lever", category: "posterior", tier: "advanced",
+    muscles: ["pecs", "lats", "biceps"],
+    desc: "Controlled straight-arm lower from cross into back lever." },
+  { id: "support_hang_cross", name: "Support to Hang to Cross", category: "posterior", tier: "advanced",
+    muscles: ["pecs", "lats", "biceps"],
+    desc: "Controlled descent from support through hang into the cross." },
   { id: "azarian", name: "Azarian", category: "posterior", rating: "FIG D", tier: "advanced",
     muscles: ["biceps", "pecs", "lats"],
     desc: "Slow backward roll from a hang into the iron cross / L-cross." },
@@ -180,20 +192,6 @@ export const SKILLS: CaliSkill[] = [
   { id: "elevator", name: "Elevator", category: "press", tier: "elite",
     muscles: ["pecs", "lats", "ant_delts", "biceps"],
     desc: "Controlled straight-arm lowering from support/handstand through positions." },
-
-  // ── Cross entries & progressions ──────────────────────────────────────
-  { id: "iron_cross_pullout", name: "Iron Cross Pullouts", category: "cross_prog", tier: "advanced",
-    muscles: ["pecs", "lats", "biceps"],
-    desc: "Dynamic support → cross; the main strength driver for the cross." },
-  { id: "cross_to_bl", name: "Cross to Back Lever", category: "cross_prog", tier: "advanced",
-    muscles: ["pecs", "lats", "biceps"],
-    desc: "Controlled straight-arm lower from cross into back lever." },
-  { id: "support_hang_cross", name: "Support to Hang to Cross", category: "cross_prog", tier: "advanced",
-    muscles: ["pecs", "lats", "biceps"],
-    desc: "Controlled descent from support through hang into the cross." },
-  { id: "hang_pull_bl", name: "Hang Pull to Back Lever", category: "cross_prog", tier: "foundational",
-    muscles: ["lats", "biceps", "abs"],
-    desc: "Pull from a hang up into the back lever." },
 ];
 
 export const TIER_LABELS: Record<NonNullable<CaliSkill["tier"]>, string> = {
