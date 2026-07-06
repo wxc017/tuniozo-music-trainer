@@ -79,7 +79,7 @@ const RINGS_TOP_Y = 2.7;    // suspension height (top of the straps)
 const RING_Y = 0.9;         // ring (grip) height off the floor
 const RING_GAP = 0.5;       // centre-to-centre distance (FIG: 50cm)
 const RING_SCALE = 1.6;     // scale of the ring geometry — sized to the hands
-const RING_ROT: [number, number, number] = [0, 0, 0]; // orientation tuning
+const RING_ROT: [number, number, number] = [90, 0, 0]; // buckle/wrap points up
 
 function RingsModel() {
   const gltf = useGLTF(RINGS_URL);
@@ -90,10 +90,24 @@ function RingsModel() {
     });
     return m;
   }, [gltf]);
-  if (!ring) return null;
+
+  const fit = useMemo(() => {
+    if (!ring) return null;
+    const probe = new THREE.Mesh((ring as THREE.Mesh).geometry);
+    probe.scale.setScalar(RING_SCALE);
+    probe.rotation.set(d2r(RING_ROT[0]), d2r(RING_ROT[1]), d2r(RING_ROT[2]));
+    probe.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(probe);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    const size = new THREE.Vector3(); box.getSize(size);
+    return { offset: center.clone().multiplyScalar(-1), halfH: size.y / 2 };
+  }, [ring]);
+
+  if (!ring || !fit) return null;
   const rr = ring as THREE.Mesh;
   const halfGap = RING_GAP / 2;
-  const strapLen = RINGS_TOP_Y - RING_Y;
+  const ringTop = RING_Y + fit.halfH;         // where the strap attaches
+  const strapLen = RINGS_TOP_Y - ringTop;
   return (
     <>
       {[-1, 1].map((side) => (
@@ -103,11 +117,12 @@ function RingsModel() {
             material={rr.material}
             scale={RING_SCALE}
             rotation={[d2r(RING_ROT[0]), d2r(RING_ROT[1]), d2r(RING_ROT[2])]}
+            position={[fit.offset.x, fit.offset.y, fit.offset.z]}
           />
         </group>
       ))}
       {[-1, 1].map((side) => (
-        <mesh key={`s${side}`} position={[side * halfGap, RING_Y + strapLen / 2, 0]}>
+        <mesh key={`s${side}`} position={[side * halfGap, ringTop + strapLen / 2, 0]}>
           <cylinderGeometry args={[0.008, 0.008, strapLen, 8]} />
           <meshStandardMaterial color="#2b2b30" roughness={0.85} />
         </mesh>
@@ -334,7 +349,7 @@ export default function SkillPose3D({ frames, animated }: Props) {
   return (
     <div className="w-full">
       <div className="w-full h-[420px] rounded-lg overflow-hidden bg-gradient-to-b from-[#14141c] to-[#08080c] border border-[#1e1e1e]">
-        <Canvas camera={{ position: [2.9, 1.2, 3.7], fov: 44 }}>
+        <Canvas camera={{ position: [1.7, 0.5, 5.4], fov: 30 }}>
           <ambientLight intensity={0.75} />
           <directionalLight position={[3, 5, 2]} intensity={1.15} />
           <directionalLight position={[-3, 2, -2]} intensity={0.4} />
