@@ -72,24 +72,48 @@ function Ground() {
   );
 }
 
-// ── Real gymnastic rings apparatus (rings + straps) ─────────────────────────
-// Authored lying flat; rotate to hang, then pin the strap tops to a high point.
-const RINGS_TOP_Y = 2.7;                            // suspension height (high)
-const RINGS_ROT: [number, number, number] = [90, 0, 0]; // rings hang below straps
+// ── Real gymnastic rings ────────────────────────────────────────────────────
+// Use only the ring geometry from the model (its baked straps hang crooked),
+// scaled up to sit correctly around the hands, with clean vertical straps.
+const RINGS_TOP_Y = 2.7;    // suspension height (top of the straps)
+const RING_Y = 0.9;         // ring (grip) height off the floor
+const RING_GAP = 0.5;       // centre-to-centre distance (FIG: 50cm)
+const RING_SCALE = 1.6;     // scale of the ring geometry — sized to the hands
+const RING_ROT: [number, number, number] = [0, 0, 0]; // orientation tuning
 
 function RingsModel() {
   const gltf = useGLTF(RINGS_URL);
-  const scene = useMemo(() => {
-    const s = gltf.scene.clone(true);
-    s.rotation.set(d2r(RINGS_ROT[0]), d2r(RINGS_ROT[1]), d2r(RINGS_ROT[2]));
-    s.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(s);
-    s.position.y += RINGS_TOP_Y - box.max.y;         // hang from the high anchor
-    s.position.x -= (box.min.x + box.max.x) / 2;     // centre
-    s.position.z -= (box.min.z + box.max.z) / 2;
-    return s;
+  const ring = useMemo(() => {
+    let m: THREE.Mesh | null = null;
+    gltf.scene.traverse((o) => {
+      if (!m && (o as THREE.Mesh).isMesh && /ring/i.test(o.name)) m = o as THREE.Mesh;
+    });
+    return m;
   }, [gltf]);
-  return <primitive object={scene} />;
+  if (!ring) return null;
+  const rr = ring as THREE.Mesh;
+  const halfGap = RING_GAP / 2;
+  const strapLen = RINGS_TOP_Y - RING_Y;
+  return (
+    <>
+      {[-1, 1].map((side) => (
+        <group key={side} position={[side * halfGap, RING_Y, 0]}>
+          <mesh
+            geometry={rr.geometry}
+            material={rr.material}
+            scale={RING_SCALE}
+            rotation={[d2r(RING_ROT[0]), d2r(RING_ROT[1]), d2r(RING_ROT[2])]}
+          />
+        </group>
+      ))}
+      {[-1, 1].map((side) => (
+        <mesh key={`s${side}`} position={[side * halfGap, RING_Y + strapLen / 2, 0]}>
+          <cylinderGeometry args={[0.008, 0.008, strapLen, 8]} />
+          <meshStandardMaterial color="#2b2b30" roughness={0.85} />
+        </mesh>
+      ))}
+    </>
+  );
 }
 useGLTF.preload(RINGS_URL);
 
