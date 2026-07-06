@@ -261,11 +261,18 @@ function PrimitiveFigure({ frames, playing, speed }: { frames: Pose[]; playing: 
 }
 
 // ── Realistic GLB human (loads /models/human.glb when present) ───────────────
+// Placeholder rigged human: Cesium Man (Khronos glTF sample, CC-BY — credit
+// Cesium). Swap the file for any rigged .glb and keep the same path.
+// These transform constants are the first thing to tune in the see-loop.
+const GLB_SCALE = 1.0;
+const GLB_POS: [number, number, number] = [0, -0.95, 0];
+const GLB_ROT: [number, number, number] = [0, 0, 0];
+
 function GlbHuman() {
   const gltf = useGLTF(HUMAN_URL);
   return (
     <>
-      <primitive object={gltf.scene} position={[0, -0.95, 0]} />
+      <primitive object={gltf.scene} position={GLB_POS} rotation={GLB_ROT} scale={GLB_SCALE} />
       <RingRig />
     </>
   );
