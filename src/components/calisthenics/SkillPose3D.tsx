@@ -18,9 +18,11 @@ const RING_COLOR = "#c8a24b";
 const STRAP_COLOR = "#8a8a95";
 const FRAME_COLOR = "#33333c";
 
-const ANCHOR_Y = 1.4;             // height of the top beam the straps hang from
-const ANCHOR_X = 0.3;             // half-gap between the two strap anchors
-const RING_REST_Y = -0.05;        // resting ring height when nothing grips them
+// FIG apparatus norms: rings 50cm apart (centres), 18cm inner diameter,
+// hung from a high suspension point.
+const ANCHOR_Y = 1.95;            // height of the top beam the cables hang from
+const ANCHOR_X = 0.25;            // half-gap between cables → rings 50cm apart
+const RING_REST_Y = 0.0;          // resting ring height when nothing grips them
 
 const HUMAN_URL = "/models/human.glb";
 
@@ -60,25 +62,35 @@ function Joint({ r = 0.05 }: { r?: number }) {
 
 // ── The rig the rings hang off ──────────────────────────────────────────────
 function RigFrame() {
-  const beamY = ANCHOR_Y + 0.05;
-  const postH = beamY + 1.0;      // down to the floor at y = -0.95
+  const beamY = ANCHOR_Y + 0.09;
+  const floorY = -0.95;
+  const postX = 0.95;             // wide, stable stance
+  const postH = beamY - floorY;
+  const beamMat = <meshStandardMaterial color={FRAME_COLOR} metalness={0.55} roughness={0.45} />;
   return (
     <group>
-      {/* top beam */}
-      <mesh position={[0, beamY, -0.02]}>
-        <boxGeometry args={[ANCHOR_X * 2 + 0.35, 0.06, 0.06]} />
-        <meshStandardMaterial color={FRAME_COLOR} metalness={0.5} roughness={0.5} />
+      {/* top beam — spans the full frame width */}
+      <mesh position={[0, beamY, -0.04]}>
+        <boxGeometry args={[postX * 2 + 0.16, 0.1, 0.1]} />
+        {beamMat}
       </mesh>
       {/* uprights */}
-      {[-(ANCHOR_X + 0.15), ANCHOR_X + 0.15].map((x) => (
-        <mesh key={x} position={[x, beamY - postH / 2, -0.02]}>
-          <boxGeometry args={[0.06, postH, 0.06]} />
-          <meshStandardMaterial color={FRAME_COLOR} metalness={0.5} roughness={0.5} />
+      {[-postX, postX].map((x) => (
+        <mesh key={x} position={[x, beamY - postH / 2, -0.04]}>
+          <boxGeometry args={[0.1, postH, 0.1]} />
+          {beamMat}
+        </mesh>
+      ))}
+      {/* feet */}
+      {[-postX, postX].map((x) => (
+        <mesh key={`f${x}`} position={[x, floorY + 0.03, 0.1]}>
+          <boxGeometry args={[0.14, 0.06, 0.5]} />
+          {beamMat}
         </mesh>
       ))}
       {/* faint floor */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.95, 0]}>
-        <circleGeometry args={[1.3, 40]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, floorY, 0]}>
+        <circleGeometry args={[1.5, 48]} />
         <meshStandardMaterial color="#101018" roughness={1} />
       </mesh>
     </group>
@@ -126,7 +138,7 @@ function RingRig({ wristL, wristR }: {
     <>
       {[ringL, ringR].map((r, i) => (
         <mesh key={i} ref={r}>
-          <torusGeometry args={[0.1, 0.02, 14, 32]} />
+          <torusGeometry args={[0.104, 0.014, 16, 36]} />
           <meshStandardMaterial color={RING_COLOR} metalness={0.3} roughness={0.4} />
         </mesh>
       ))}
@@ -296,7 +308,7 @@ export default function SkillPose3D({ frames, animated }: Props) {
   return (
     <div className="w-full">
       <div className="w-full h-[380px] rounded-lg overflow-hidden bg-gradient-to-b from-[#14141c] to-[#08080c] border border-[#1e1e1e]">
-        <Canvas camera={{ position: [2.0, 0.5, 2.6], fov: 42 }}>
+        <Canvas camera={{ position: [2.6, 0.9, 3.3], fov: 44 }}>
           <ambientLight intensity={0.7} />
           <directionalLight position={[3, 5, 2]} intensity={1.1} />
           <directionalLight position={[-3, 2, -2]} intensity={0.4} />
@@ -319,7 +331,7 @@ export default function SkillPose3D({ frames, animated }: Props) {
               </Suspense>
             </GlbBoundary>
           ) : primitive}
-          <OrbitControls enablePan={false} minDistance={1.4} maxDistance={5} target={[0, 0.15, 0]} />
+          <OrbitControls enablePan={false} minDistance={1.6} maxDistance={7} target={[0, 0.5, 0]} />
         </Canvas>
       </div>
 
