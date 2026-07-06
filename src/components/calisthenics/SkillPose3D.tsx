@@ -75,7 +75,7 @@ function Ground() {
 // ── Real gymnastic rings apparatus (rings + straps) ─────────────────────────
 // Authored lying flat; rotate to hang, then pin the strap tops to a high point.
 const RINGS_TOP_Y = 2.7;                            // suspension height (high)
-const RINGS_ROT: [number, number, number] = [-90, 0, 0];
+const RINGS_ROT: [number, number, number] = [90, 0, 0]; // rings hang below straps
 
 function RingsModel() {
   const gltf = useGLTF(RINGS_URL);
@@ -276,28 +276,24 @@ const GLB_ROT: [number, number, number] = [0, 0, 0]; // extra rotation if needed
 
 function GlbHuman() {
   const gltf = useGLTF(HUMAN_URL);
-  const scene = useMemo(() => {
-    const s = gltf.scene.clone(true);
-    s.rotation.set(d2r(GLB_ROT[0]), d2r(GLB_ROT[1]), d2r(GLB_ROT[2]));
-    s.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(s);
+  // Do NOT clone a skinned mesh (breaks the skeleton). Fit via a wrapper group.
+  const fit = useMemo(() => {
+    const box = new THREE.Box3().setFromObject(gltf.scene);
     const size = new THREE.Vector3();
     box.getSize(size);
     const scale = GLB_TARGET_H / (size.y || 1);
-    s.scale.setScalar(scale);
-    s.updateMatrixWorld(true);
-    const box2 = new THREE.Box3().setFromObject(s);
-    s.position.y += FLOOR_Y - box2.min.y;           // feet on the floor
-    s.position.x -= (box2.min.x + box2.max.x) / 2;  // centre horizontally
-    s.position.z -= (box2.min.z + box2.max.z) / 2;
-    return s;
+    const position: [number, number, number] = [
+      -((box.min.x + box.max.x) / 2) * scale,
+      FLOOR_Y - box.min.y * scale,
+      -((box.min.z + box.max.z) / 2) * scale,
+    ];
+    return { scale, position };
   }, [gltf]);
 
   return (
-    <>
-      <primitive object={scene} />
-      <RingRig />
-    </>
+    <group position={fit.position} scale={fit.scale} rotation={[d2r(GLB_ROT[0]), d2r(GLB_ROT[1]), d2r(GLB_ROT[2])]}>
+      <primitive object={gltf.scene} />
+    </group>
   );
 }
 
