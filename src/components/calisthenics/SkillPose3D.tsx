@@ -26,6 +26,7 @@ const RING_REST_Y = 0.0;          // resting ring height when nothing grips them
 const FLOOR_Y = -0.95;            // ground plane / feet height
 
 const HUMAN_URL = "/models/human.glb";
+const RINGS_URL = "/models/rings.glb";
 
 const d2r = (d: number) => (d * Math.PI) / 180;
 const lerp = (a: number, b: number, u: number) => a + (b - a) * u;
@@ -61,42 +62,36 @@ function Joint({ r = 0.05 }: { r?: number }) {
   );
 }
 
-// ── The rig the rings hang off ──────────────────────────────────────────────
-function RigFrame() {
-  const beamY = ANCHOR_Y + 0.09;
-  const floorY = FLOOR_Y;
-  const postX = 0.95;             // wide, stable stance
-  const postH = beamY - floorY;
-  const beamMat = <meshStandardMaterial color={FRAME_COLOR} metalness={0.55} roughness={0.45} />;
+// ── Ground plane ────────────────────────────────────────────────────────────
+function Ground() {
   return (
-    <group>
-      {/* top beam — spans the full frame width */}
-      <mesh position={[0, beamY, -0.04]}>
-        <boxGeometry args={[postX * 2 + 0.16, 0.1, 0.1]} />
-        {beamMat}
-      </mesh>
-      {/* uprights */}
-      {[-postX, postX].map((x) => (
-        <mesh key={x} position={[x, beamY - postH / 2, -0.04]}>
-          <boxGeometry args={[0.1, postH, 0.1]} />
-          {beamMat}
-        </mesh>
-      ))}
-      {/* feet */}
-      {[-postX, postX].map((x) => (
-        <mesh key={`f${x}`} position={[x, floorY + 0.03, 0.1]}>
-          <boxGeometry args={[0.14, 0.06, 0.5]} />
-          {beamMat}
-        </mesh>
-      ))}
-      {/* faint floor */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, floorY, 0]}>
-        <circleGeometry args={[1.5, 48]} />
-        <meshStandardMaterial color="#101018" roughness={1} />
-      </mesh>
-    </group>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, FLOOR_Y, 0]}>
+      <circleGeometry args={[1.7, 48]} />
+      <meshStandardMaterial color="#101018" roughness={1} />
+    </mesh>
   );
 }
+
+// ── Real gymnastic rings apparatus (rings + straps) ─────────────────────────
+// Authored lying flat; rotate to hang, then pin the strap tops to a high point.
+const RINGS_TOP_Y = 2.7;                            // suspension height (high)
+const RINGS_ROT: [number, number, number] = [-90, 0, 0];
+
+function RingsModel() {
+  const gltf = useGLTF(RINGS_URL);
+  const scene = useMemo(() => {
+    const s = gltf.scene.clone(true);
+    s.rotation.set(d2r(RINGS_ROT[0]), d2r(RINGS_ROT[1]), d2r(RINGS_ROT[2]));
+    s.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(s);
+    s.position.y += RINGS_TOP_Y - box.max.y;         // hang from the high anchor
+    s.position.x -= (box.min.x + box.max.x) / 2;     // centre
+    s.position.z -= (box.min.z + box.max.z) / 2;
+    return s;
+  }, [gltf]);
+  return <primitive object={scene} />;
+}
+useGLTF.preload(RINGS_URL);
 
 // ── Rings + straps. Follow the wrists when given, else hang at rest. ─────────
 function RingRig({ wristL, wristR }: {
@@ -314,72 +309,36 @@ class GlbBoundary extends Component<{ fallback: ReactNode; children: ReactNode }
 
 type Props = { frames: Pose[]; animated: boolean };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function SkillPose3D({ frames, animated }: Props) {
-  const [playing, setPlaying] = useState(true);
-  const [speed, setSpeed] = useState(1);
-  const [realistic, setRealistic] = useState(false);
-
-  const primitive = <PrimitiveFigure frames={frames} playing={playing} speed={speed} />;
-
   return (
     <div className="w-full">
-      <div className="w-full h-[380px] rounded-lg overflow-hidden bg-gradient-to-b from-[#14141c] to-[#08080c] border border-[#1e1e1e]">
-        <Canvas camera={{ position: [2.6, 0.9, 3.3], fov: 44 }}>
-          <ambientLight intensity={0.7} />
-          <directionalLight position={[3, 5, 2]} intensity={1.1} />
+      <div className="w-full h-[420px] rounded-lg overflow-hidden bg-gradient-to-b from-[#14141c] to-[#08080c] border border-[#1e1e1e]">
+        <Canvas camera={{ position: [2.9, 1.2, 3.7], fov: 44 }}>
+          <ambientLight intensity={0.75} />
+          <directionalLight position={[3, 5, 2]} intensity={1.15} />
           <directionalLight position={[-3, 2, -2]} intensity={0.4} />
-          <RigFrame />
-          {realistic ? (
-            <GlbBoundary
-              fallback={
-                <>
-                  {primitive}
-                  <Html center position={[0, 1.0, 0]}>
-                    <div className="text-[10px] text-[#c98a2b] whitespace-nowrap bg-[#0a0a0e]/80 px-2 py-1 rounded">
-                      Drop human.glb in public/models/
-                    </div>
-                  </Html>
-                </>
-              }
-            >
-              <Suspense fallback={primitive}>
-                <GlbHuman />
-              </Suspense>
-            </GlbBoundary>
-          ) : primitive}
-          <OrbitControls enablePan={false} minDistance={1.6} maxDistance={7} target={[0, 0.5, 0]} />
+          <Ground />
+          <GlbBoundary
+            fallback={
+              <Html center position={[0, 1.0, 0]}>
+                <div className="text-[10px] text-[#c98a2b] whitespace-nowrap bg-[#0a0a0e]/80 px-2 py-1 rounded">
+                  Missing model in public/models/
+                </div>
+              </Html>
+            }
+          >
+            <Suspense fallback={null}>
+              <RingsModel />
+              <GlbHuman />
+            </Suspense>
+          </GlbBoundary>
+          <OrbitControls enablePan={false} minDistance={1.6} maxDistance={8} target={[0, 0.7, 0]} />
         </Canvas>
       </div>
 
-      {/* controls */}
-      <div className="flex items-center gap-2 mt-2 flex-wrap">
-        {animated && (
-          <>
-            <button onClick={() => setPlaying(p => !p)}
-              className="px-3 py-1.5 rounded text-xs font-medium bg-[#7173e6] text-white hover:bg-[#5f61d6]">
-              {playing ? "⏸ Pause" : "▶ Play"}
-            </button>
-            <div className="flex rounded overflow-hidden border border-[#2a2a2a]">
-              {[0.5, 1, 2].map(s => (
-                <button key={s} onClick={() => setSpeed(s)}
-                  className={`px-2.5 py-1.5 text-xs font-medium ${
-                    speed === s ? "bg-[#1c1c2e] text-white" : "bg-[#141414] text-[#888] hover:text-white"
-                  }`}>
-                  {s}×
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-        <button onClick={() => setRealistic(r => !r)}
-          className={`px-3 py-1.5 rounded text-xs font-medium border ${
-            realistic ? "bg-[#1c1c2e] text-white border-[#7173e6]/50" : "bg-[#141414] text-[#888] border-[#2a2a2a] hover:text-white"
-          }`}>
-          {realistic ? "◉ Realistic model" : "○ Realistic model"}
-        </button>
-        <span className="text-[11px] text-[#666] ml-auto">
-          {animated ? "Transition — looping · " : ""}drag to orbit, scroll to zoom
-        </span>
+      <div className="flex items-center gap-2 mt-2">
+        <span className="text-[11px] text-[#666]">Drag to orbit · scroll to zoom</span>
       </div>
     </div>
   );
