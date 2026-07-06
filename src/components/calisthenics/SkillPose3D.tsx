@@ -23,6 +23,7 @@ const FRAME_COLOR = "#33333c";
 const ANCHOR_Y = 1.95;            // height of the top beam the cables hang from
 const ANCHOR_X = 0.25;            // half-gap between cables → rings 50cm apart
 const RING_REST_Y = 0.0;          // resting ring height when nothing grips them
+const FLOOR_Y = -0.95;            // ground plane / feet height
 
 const HUMAN_URL = "/models/human.glb";
 
@@ -63,7 +64,7 @@ function Joint({ r = 0.05 }: { r?: number }) {
 // ── The rig the rings hang off ──────────────────────────────────────────────
 function RigFrame() {
   const beamY = ANCHOR_Y + 0.09;
-  const floorY = -0.95;
+  const floorY = FLOOR_Y;
   const postX = 0.95;             // wide, stable stance
   const postH = beamY - floorY;
   const beamMat = <meshStandardMaterial color={FRAME_COLOR} metalness={0.55} roughness={0.45} />;
@@ -273,18 +274,33 @@ function PrimitiveFigure({ frames, playing, speed }: { frames: Pose[]; playing: 
 }
 
 // ── Realistic GLB human (loads /models/human.glb when present) ───────────────
-// Placeholder rigged human: Cesium Man (Khronos glTF sample, CC-BY — credit
-// Cesium). Swap the file for any rigged .glb and keep the same path.
-// These transform constants are the first thing to tune in the see-loop.
-const GLB_SCALE = 1.0;
-const GLB_POS: [number, number, number] = [0, -0.95, 0];
-const GLB_ROT: [number, number, number] = [0, 0, 0];
+// Rigged human at public/models/human.glb (Mixamo skeleton). The loader
+// auto-fits any rigged .glb: scales to human height and drops feet to the floor.
+const GLB_TARGET_H = 1.75;        // metres, standing height to normalise to
+const GLB_ROT: [number, number, number] = [0, 0, 0]; // extra rotation if needed
 
 function GlbHuman() {
   const gltf = useGLTF(HUMAN_URL);
+  const scene = useMemo(() => {
+    const s = gltf.scene.clone(true);
+    s.rotation.set(d2r(GLB_ROT[0]), d2r(GLB_ROT[1]), d2r(GLB_ROT[2]));
+    s.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(s);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const scale = GLB_TARGET_H / (size.y || 1);
+    s.scale.setScalar(scale);
+    s.updateMatrixWorld(true);
+    const box2 = new THREE.Box3().setFromObject(s);
+    s.position.y += FLOOR_Y - box2.min.y;           // feet on the floor
+    s.position.x -= (box2.min.x + box2.max.x) / 2;  // centre horizontally
+    s.position.z -= (box2.min.z + box2.max.z) / 2;
+    return s;
+  }, [gltf]);
+
   return (
     <>
-      <primitive object={gltf.scene} position={GLB_POS} rotation={GLB_ROT} scale={GLB_SCALE} />
+      <primitive object={scene} />
       <RingRig />
     </>
   );
