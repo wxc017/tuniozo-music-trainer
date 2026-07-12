@@ -8,7 +8,7 @@
 import { getChordShapes, getModeDegreeMap } from "./edoData";
 import { JI_FAMILY, JI_SCALE_NAMES } from "./jiScaleData";
 import { getScalesForEdo } from "./commonScales";
-import { sizedCode } from "./chordNotation";
+import { sizedCode, chordSymbol } from "./chordNotation";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -216,24 +216,28 @@ export function getSizedTonalityBanks(edo: number): TonalityBank[] {
       const keyOf = (steps: number[]) =>
         [...new Set(steps.map(s => (((s % edo) + edo) % edo)))].sort((a, b) => a - b).join(",");
       const seen = new Set([...primary, ...diatonic].map(c => keyOf(c.steps!)));
-      // Also dedup by LABEL against primary/diatonic.  The chord pool is keyed by
-      // bare label everywhere (selection state, chord map, the loop), so a modal
-      // borrowing that reuses a diatonic label (e.g. the chromatic-mediant "III"
-      // vs the diatonic "III" in a minor key — same name, different pitches)
-      // collapses onto the diatonic chord: selecting one highlights both, and the
-      // chord map's last-writer-wins makes the diatonic chord PLAY the borrowing's
-      // pitches.  Drop the colliding borrowing so each label means exactly one
-      // chord (per user report: enabling a diatonic chord's approach lit up two
-      // chords in Modal Interchange).
-      const seenLabels = new Set([...primary, ...diatonic].map(c => c.label));
+      // The chord pool is keyed by bare label everywhere (selection state, chord
+      // map, React keys), but a sized EDO has MORE distinct chords than the roman
+      // space can name — so a borrowing can reuse a diatonic label for a genuinely
+      // different chord (the chromatic-mediant "III" vs the diatonic "III" in a
+      // minor key — same name, different pitches).  That collision collapsed them:
+      // selecting one highlighted both, and the chord map's last-writer-wins made
+      // the diatonic chord PLAY the borrowing's pitches (per user report: enabling
+      // a diatonic chord's approach lit up two chords in Modal Interchange).  Keep
+      // every borrowing, but when its roman label collides identify it by its
+      // SCHULTER chord symbol instead — the unique, notation-native name the
+      // picker already renders — so each chord stays distinct (per user: keep them
+      // all distinct, through the Schulter notation).
+      const usedLabels = new Set([...primary, ...diatonic].map(c => c.label));
       const result: ChordEntry[] = [];
       for (const c of out) {
         const k = keyOf(c.steps!);
-        if (seen.has(k)) continue;
-        if (seenLabels.has(c.label)) continue;
+        if (seen.has(k)) continue;                 // identical pitches to an existing chord
         seen.add(k);
-        seenLabels.add(c.label);
-        result.push(c);
+        let label = c.label;
+        if (usedLabels.has(label)) label = chordSymbol(c.steps!.map(s => (s * 1200) / edo));
+        usedLabels.add(label);
+        result.push({ ...c, label });
       }
       return result;
     };

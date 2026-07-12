@@ -52,6 +52,7 @@ import HarmonyWorkshop from "@/components/HarmonyWorkshop";
 import DrillResponse from "@/components/DrillResponse";
 import UncommonMetersMode from "@/components/UncommonMetersMode";
 import MetronomeStrip from "@/components/MetronomeStrip";
+import MetronomeMode from "@/components/MetronomeMode";
 import CountdownTimer from "@/components/CountdownTimer";
 import PracticeLogModal from "@/components/PracticeLogModal";
 import type { AccentImportMode } from "@/components/PracticeLogModal";
@@ -1013,12 +1014,13 @@ export default function App() {
                   { id: "mixed-groups",         label: "Mixed Groups",         beta: true },
                   { id: "drill-response",       label: "Drill & Response",     beta: true },
                   { id: "uncommon-meters",      label: "Uncommon Meters",      beta: true },
-                  { id: "konnakol",             label: "Solkattu",             beta: true },
+                  { id: "konnakol",             label: "Konnokol",             group: "Other" },
                   { id: "phrase-decomposition", label: "Phrase Decomposition", beta: true },
                   { id: "interval-browser",     label: "Interval Browser",     group: "Analytical", beta: true },
                   { id: "lumatone-intervals",   label: "Lumatone Intervals",   group: "Analytical" },
                   { id: "microwave",            label: "Microwave",            beta: true },
                   // Other — non-musical gamemodes, rendered as the last group
+                  { id: "metronome",            label: "Metronome",            group: "Other" },
                   { id: "calisthenics",         label: "Calisthenics",         group: "Other" },
                 ];
                 const visible = SECTION_BUTTONS.filter(b => !b.beta || betaMode);
@@ -1658,6 +1660,13 @@ export default function App() {
         </div>
       )}
 
+      {/* ── Metronome ── */}
+      {section === "metronome" && (
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <MetronomeMode />
+        </div>
+      )}
+
       {/* ── Melodic Patterns ── */}
       {section === "melodic-patterns" && (
         <div className="flex-1 overflow-y-auto px-4 py-4">
@@ -2293,7 +2302,7 @@ export default function App() {
               const BETA_SECTIONS = new Set([
                 "harmony-workshop",
                 "vocal-percussion","mixed-groups","drill-response","uncommon-meters",
-                "konnakol","phrase-decomposition","interval-browser",
+                "phrase-decomposition","interval-browser",
                 "microwave",
               ]);
               if (BETA_SECTIONS.has(section)) setSection("ear-trainer");

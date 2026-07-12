@@ -19,7 +19,12 @@ describe("modal-interchange wiring", () => {
     }
     // augmented "+" labels share their functional base (e.g. V+ → V).
     const base = (l: string) => l.replace(/\+$/, "");
-    const missing = [...miLabels].filter(l => !FUNCTIONAL_WEIGHTS_TABLE[base(l)]).sort();
+    // Borrowings whose roman label collided with a diatonic chord are identified
+    // by their Schulter chord symbol instead (form C: "{…} | anchor").  Those are
+    // resolved by generateFunctionalLoop's generic completion pass, not the
+    // curated table, so they're exempt from the resolution-row requirement.
+    const isChordSymbol = (l: string) => l.includes("{") || l.includes("|");
+    const missing = [...miLabels].filter(l => !isChordSymbol(l) && !FUNCTIONAL_WEIGHTS_TABLE[base(l)]).sort();
     expect(missing, `modal-interchange labels missing a resolution row: ${missing.join(", ")}`).toEqual([]);
   });
 });

@@ -1,27 +1,27 @@
 
 ══════════════════════════════════════════════════════════════════════════════
-  STYLE-BY-STYLE MUSICALITY — 4,000 grooves across 10 buckets in 85.2s
+  STYLE-BY-STYLE MUSICALITY — 4,000 grooves across 10 buckets in 515.8s
   library: 19,453 entries · path: generateInStyle (the Generate button)
 ══════════════════════════════════════════════════════════════════════════════
 
 ── PER-STYLE RATING (sorted by mean musical score) ───────────────────────────
   W=Western (backbeat gate) · ·=world (no-backbeat gate)
   style                          lib    n    score(mean±sd)   gate   backbt  kick  intlk  dens
-  W Pop / Rock / Metal           738  400    781.0± 80.3    45.3%  0.453 0.873 0.815 0.258
-  · West African                2688  400    758.0± 97.0    94.5%  0.490 0.583 0.802 0.255
-  · Afro-Cuban & Caribbean      1205  400    724.5±123.0    87.0%  0.566 0.549 0.701 0.307
-  W Funk / Hip-Hop / Electronic  1203  400    713.8±130.4    51.0%  0.532 0.627 0.835 0.449
-  · Brazilian & Latin America   1202  400    701.8±105.0    82.0%  0.561 0.902 0.678 0.106
-  · Jazz & Fusion               1202  400    686.6±135.0    96.5%  0.378 0.565 0.871 0.496
-  · Middle East & Mediterranean  4383  400    683.0±144.2    92.8%  0.563 0.830 0.882 0.350
-  · Balkan & Euro Folk          4428  400    681.7±136.6    86.3%  0.355 0.781 0.738 0.343
-  · East & SE Asian             1201  400    602.4±140.8    84.3%  0.296 0.615 0.713 0.283
-  · Indian                      1203  400    582.8±123.9    71.8%  0.598 0.735 0.592 0.222
+  W Pop / Rock / Metal           738  400    784.4± 83.9    36.8%  0.367 0.851 0.857 0.309
+  · West African                2688  400    752.9± 96.2    96.3%  0.530 0.638 0.794 0.264
+  · Afro-Cuban & Caribbean      1205  400    709.6±121.0    84.5%  0.511 0.608 0.692 0.257
+  W Funk / Hip-Hop / Electronic  1203  400    707.2±122.2    52.5%  0.523 0.635 0.830 0.385
+  · Brazilian & Latin America   1202  400    706.1±100.3    75.5%  0.525 0.892 0.667 0.131
+  · Middle East & Mediterranean  4383  400    684.7±140.4    94.3%  0.596 0.835 0.878 0.331
+  · Balkan & Euro Folk          4428  400    684.5±138.5    80.8%  0.334 0.815 0.711 0.356
+  · Jazz & Fusion               1202  400    681.6±130.5    97.3%  0.330 0.575 0.883 0.544
+  · East & SE Asian             1201  400    615.5±137.7    80.8%  0.324 0.662 0.714 0.248
+  · Indian                      1203  400    590.3±121.2    78.8%  0.637 0.705 0.603 0.236
 
 ── POOLED (all styles) ───────────────────────────────────────────────────────
-  musical score:  mean 691.6  p5 452.3  median 711.0  p95 890.8
+  musical score:  mean 691.7  p5 459.1  median 707.4  p95 885.1
   random baseline (see grooveMusicalityRandom.test.ts): mean ≈ 346
-  style-appropriate "sounds like a groove" gate pass:  79.1%
+  style-appropriate "sounds like a groove" gate pass:  77.7%
   NOTE: each style is judged by the RIGHT gate — backbeat buckets (rock/pop/metal,
   funk/hip-hop/electronic) on a 2-&-4 backbeat + kick anchor; every other tradition
   — INCLUDING jazz/swing (ride + comp, no fixed backbeat) — on a culture-neutral gate
