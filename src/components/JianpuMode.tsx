@@ -25,7 +25,8 @@ import { exportToPdf } from "@/lib/exportPdf";
 
 // ── Layout constants ─────────────────────────────────────────────────────────
 const LEFT_PAD        = 26;   // room for the piano brace on the left
-const DEFAULT_MEASURE_W = 210;
+const DEFAULT_MEASURE_W = 170;   // floor width for a bar (kept modest so margins stay tight)
+const INNER_PAD       = 8;    // horizontal margin inside a bar, before the first / after the last note
 const HEADER_H        = 44;
 const CELL_W          = 22;   // horizontal room reserved per finest subdivision
 // Layout is recomputed every render (module-level so the geometry helpers below
@@ -53,8 +54,9 @@ const HAND_GAP     = 26;   // extra separation between the two hands when braced
 const BAR_TOP_PAD  = 18;   // barline extends this far above the first voice baseline
 const BAR_BOT_PAD  = 22;   // …and this far below the last voice baseline
 const SYSTEM_PAD   = 22;   // gap below a system before the next row
-const SECTION_PAD  = 44;   // extra top gap on a row that opens a labelled section
+const SECTION_PAD  = 44;   // extra top gap on a row that opens a labelled section / cut line
 const SECTION_LABEL_DY = 44;  // section heading baseline above the bar top (clears the "+ note" line)
+const TS_PAD       = 22;   // extra bottom gap on a row carrying a time-signature label
 const CHORD_DY     = 24;   // vertical gap between stacked chord numbers
 const MIN_VOICES   = 2;    // always at least two voices (EOP-style)
 const MAX_VOICES   = 6;
@@ -85,7 +87,7 @@ function baselineY(voice: number, measure: number): number {
   return rowTopY(measure) + FIRST_VOICE + voice * VOICE_GAP + extra;
 }
 function slotToX(measure: number, slot: number, totalSlots: number): number {
-  return measureLeftX(measure) + 20 + (slot / totalSlots) * (measureWidth(measure) - 40);
+  return measureLeftX(measure) + INNER_PAD + (slot / totalSlots) * (measureWidth(measure) - 2 * INNER_PAD);
 }
 // Left-opening curly brace `{` from y1→y2, its right edge at x, tip pointing
 // left.  The tip (centre point) sits at `tipY` — defaults to the midpoint, but
@@ -305,7 +307,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const finest = notes.reduce((mn, n) => Math.min(mn, DURATION_SLOTS[n.duration]), 8);
     let maxCells = 4;
     for (let m = 0; m < barCount; m++) maxCells = Math.max(maxCells, totalSlotsOf(m) / finest);
-    const uniformW = Math.max(DEFAULT_MEASURE_W, Math.round(maxCells * cell) + 40);
+    const uniformW = Math.max(DEFAULT_MEASURE_W, Math.round(maxCells * cell) + 2 * INNER_PAD);
     const wArr: number[] = [];
     for (let m = 0; m < barCount; m++) wArr[m] = uniformW;
     // Section start of each bar, then that section's voice count (stored min or
@@ -326,14 +328,18 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     // Row geometry — height follows the row's section voice count; bars are
     // left-aligned (start at LEFT_PAD) and accumulate the uniform width.
     const maxRowLen = Math.max(...rowsArr.map(r => r.length));
+    const hasTsLabel = (m: number) => m === 0 || !!project?.setup.perBarTimeSig?.[m];
     const rowOfArr: number[] = [], colOfArr: number[] = [], rowTop: number[] = [], xArr: number[] = [];
     let y = HEADER_H;
     rowsArr.forEach((row, r) => {
-      if (sectionAt(row[0])) y += SECTION_PAD;
+      // A line the user deliberately started (a section OR a manual cut) gets
+      // headroom for a title above it; auto-wrapped continuations don't.
+      if (sectionAt(row[0]) || breakAt(row[0])) y += SECTION_PAD;
       rowTop[r] = y;
       let x = LEFT_PAD;   // far-left
       row.forEach((m, c) => { rowOfArr[m] = r; colOfArr[m] = c; xArr[m] = x; x += wArr[m]; });
       y += systemHeight(vcArr[row[0]] ?? minVoices, gapped);
+      if (row.some(hasTsLabel)) y += TS_PAD;   // room for the time-signature line
     });
     return { rowsArr, rowOfArr, colOfArr, rowTop, wArr, xArr, vcArr, hsArr, totalHeight: y, canvasW: LEFT_PAD * 2 + maxRowLen * uniformW };
   }, [setup?.barCount, project?.setup.perBarBreakBefore, project?.setup.perBarTimeSig, sectionLabels, perSection,
@@ -587,11 +593,43 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (perBarBreakBefore[m]) delete perBarBreakBefore[m]; else perBarBreakBefore[m] = true;
     updateSetup({ perBarBreakBefore });
   }, [project, updateSetup]);
-  // Append a measure (up to 64).  Bound to the `m` keybind and the "+ bar" button.
+  // Append a measure (up to 64).  Bound to the `m` keybind.
   const addMeasure = useCallback(() => {
     if (!project) return;
     updateSetup({ barCount: Math.min(64, project.setup.barCount + 1) });
   }, [project, updateSetup]);
+  // Delete bar `m`: drop its notes, pull later bars back one, and re-index every
+  // per-bar map (titles, sections, breaks, time sigs, section voice counts).
+  const deleteMeasure = useCallback((m: number) => {
+    if (!project || project.setup.barCount <= 1) return;
+    const shift = <T,>(map?: Record<number, T>): Record<number, T> | undefined => {
+      if (!map) return undefined;
+      const out: Record<number, T> = {};
+      for (const k of Object.keys(map)) { const i = +k; if (i < m) out[i] = map[i]; else if (i > m) out[i - 1] = map[i]; }
+      return out;
+    };
+    const nextNotes = notes
+      .filter(n => n.measure !== m)
+      .map(n => n.measure > m ? { ...n, measure: n.measure - 1 } : n)
+      .sort((a, b) => a.measure - b.measure || (a.voice ?? 0) - (b.voice ?? 0) || a.startSlot - b.startSlot);
+    const u: NoteEntryProject = {
+      ...project,
+      notes: nextNotes,
+      perSectionVoiceCount: shift(project.perSectionVoiceCount),
+      setup: {
+        ...project.setup,
+        barCount: project.setup.barCount - 1,
+        perBarTitle: shift(project.setup.perBarTitle),
+        perBarSection: shift(project.setup.perBarSection),
+        perBarBreakBefore: shift(project.setup.perBarBreakBefore),
+        perBarTimeSig: shift(project.setup.perBarTimeSig),
+        perBarVolta: shift(project.setup.perBarVolta),
+      },
+    };
+    saveProject(u); setProject(u); setNotes(nextNotes);
+    setSelectedIds([]);
+    setCursor(c => ({ voice: c.voice, measure: Math.min(c.measure, u.setup.barCount - 1), slot: 0 }));
+  }, [project, notes]);
   // Trim trailing empty rows (below content and the cursor) — collapses the
   // phantom rows created by navigating down past the bottom without writing.
   const collapseTrailingEmptyRows = useCallback((cursorMeasure: number) => {
@@ -854,8 +892,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     // Cut the line after the current measure (press again to rejoin); the ✂
     // button at each bar's end does the same.
     if (k === "b")                           { e.preventDefault(); toggleBreakBefore(cursor.measure + 1); return; }
-    // Append a measure to the score.
+    // Append a measure (m) / delete the current measure (Shift+M).
     if (k === "m")                           { e.preventDefault(); addMeasure(); return; }
+    if (k === "M")                           { e.preventDefault(); deleteMeasure(cursor.measure); return; }
     // Edit the current measure's time signature (type "n/d" under the bar).
     if (k === "g")                           { e.preventDefault(); document.getElementById(`jp-timesig-${cursor.measure}`)?.focus(); return; }
 
@@ -867,7 +906,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     }
     if (k === "Escape")        { e.preventDefault(); setSelectedIds([]); return; }
   }, [project, selectedIds, cursor, notes, inputDigit, moveSelected, moveCursorH, extendSelect, navVoice, addVoiceAbove, addVoiceBelow,
-      removeVoiceAt, toggleBreakBefore, addMeasure, undo,
+      removeVoiceAt, toggleBreakBefore, addMeasure, deleteMeasure, undo,
       stepDuration, toggleDot, toggleUnderline, toggleStaccato, alter, deleteSelectedOrCursor, bumpOctave, togglePianoBrace, toggleUnderlines]);
 
   const handleKeyRef = useRef(handleKey);
@@ -899,7 +938,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       const first = g[0];
       const voice = first.voice ?? 0;
       const total = totalSlotsOf(first.measure);
-      const x = slotToX(first.measure, first.startSlot, total);
+      // Place the note at the CENTRE of its rhythmic cell (start + half its span)
+      // so a bar of equal notes sits symmetrically — no phantom trailing slot.
+      const x = slotToX(first.measure, first.startSlot + noteSlots(first) / 2, total);
       const base = baselineY(voice, first.measure);
       const sorted = [...g].sort((a, b) => pitchRank(a) - pitchRank(b));
       const glyph = jianpuGlyphFor(first.duration, first.dotted);
@@ -1003,9 +1044,12 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       if (d < bestD) { bestD = d; voice = v; }
     }
     const total = totalSlotsOf(measure);
-    const innerLeft = measureLeftX(measure) + 20;
-    const frac = Math.min(0.999, Math.max(0, (x - innerLeft) / (measureWidth(measure) - 40)));
-    const snapped = Math.max(0, Math.min(total - gridSnap, Math.round((frac * total) / gridSnap) * gridSnap));
+    const innerLeft = measureLeftX(measure) + INNER_PAD;
+    const frac = Math.min(0.999, Math.max(0, (x - innerLeft) / (measureWidth(measure) - 2 * INNER_PAD)));
+    // Notes render centred in their cell, so subtract half a cell before snapping
+    // (a click on a note's centre maps back to its start slot).
+    const centeredSlot = frac * total - gridSnap / 2;
+    const snapped = Math.max(0, Math.min(total - gridSnap, Math.round(centeredSlot / gridSnap) * gridSnap));
     setCursor({ voice, measure, slot: snapped });
   };
 
@@ -1147,8 +1191,8 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     // it stays visible after you set it.  Also captured on export.
     if (m === 0 || project.setup.perBarTimeSig?.[m]) {
       const eff = effectiveTs(m);
-      svgSystems.push(<text key={`ts-${m}`} x={left + 4} y={barBot(m) + 15} fill={WHITE}
-        fontSize={13} fontWeight="bold" fontFamily="Helvetica, Arial, sans-serif">{eff.num}/{eff.den}</text>);
+      svgSystems.push(<text key={`ts-${m}`} x={left + measureWidth(m) / 2} y={barBot(m) + 16} fill={WHITE}
+        fontSize={13} fontWeight="bold" fontFamily="Helvetica, Arial, sans-serif" textAnchor="middle">{eff.num}/{eff.den}</text>);
     }
     if ((COL_OF[m] ?? 0) === 0) {
       svgSystems.push(<line key={`barL-${m}`} x1={left} x2={left} y1={barTop(m)} y2={barBot(m)}
@@ -1171,7 +1215,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     }
   }
 
-  const cursorX = slotToX(cursor.measure, cursor.slot, totalSlotsOf(cursor.measure));
+  const cursorX = slotToX(cursor.measure, cursor.slot + gridSnap / 2, totalSlotsOf(cursor.measure));
   const cursorY = baselineY(cursor.voice, cursor.measure);
 
   const btn = "px-2 py-1 rounded text-xs border transition-colors";
@@ -1320,19 +1364,26 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
             })}
           </div>
 
-          {/* Per-measure section-label editors — transparent text over the SVG
-              headings.  Reach one with the `s` keybind, then type a label to turn
-              the bar into a new exercise (big heading + line break).  Empty inputs
-              are click-through so they never block the "+ note" field beneath. */}
+          {/* Per-measure title / section editors — transparent text over the SVG
+              headings.  Reach one with the `s` keybind, or click the faint
+              "+ title" that appears at the start of every line (the first bar, a
+              section, or a cut line) — type a label to give that line a heading. */}
+          <style>{`.jp-section::placeholder{color:#3a3a3a;font-weight:400}`}</style>
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
             {Array.from({ length: project.setup.barCount }, (_, m) => {
               const left = measureLeftX(m);
               const hasSection = !!project.setup.perBarSection?.[m]?.trim();
+              // A line the user can title: the first bar, a section start, or a
+              // manually cut line — these carry headroom for a heading.
+              const isTitleLine = (COL_OF[m] ?? 0) === 0 &&
+                (m === 0 || !!project.setup.perBarBreakBefore?.[m] || hasSection);
               return (
                 <input
                   key={`ms-${m}`}
                   id={`jp-section-${m}`}
+                  className="jp-section"
                   value={project.setup.perBarSection?.[m] ?? ""}
+                  placeholder={isTitleLine && !hasSection ? "+ title" : ""}
                   onChange={e => updateBarSection(m, e.target.value)}
                   onPointerDown={e => e.stopPropagation()}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
@@ -1351,10 +1402,10 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
                     border: "none",
                     outline: "none",
                     padding: 0,
-                    // Only a labelled section captures clicks (to edit it); an empty
-                    // one lets pointer events fall through to the note field.  `s`
+                    // A titled line (or one that can be titled) captures clicks; an
+                    // empty non-title bar lets clicks fall to the note field.  `s`
                     // still focuses it programmatically regardless.
-                    pointerEvents: hasSection ? "auto" : "none",
+                    pointerEvents: hasSection || isTitleLine ? "auto" : "none",
                   }}
                 />
               );
@@ -1419,12 +1470,13 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
                   title="Time signature — type n/d, clear to remove"
                   style={{
                     position: "absolute",
-                    left: (left + 4) * scale,
-                    top: (barBot(m) + 3) * scale,
+                    left: (left + measureWidth(m) / 2 - 27) * scale,
+                    top: (barBot(m) + 5) * scale,
                     width: 54 * scale,
                     height: 16 * scale,
                     fontSize: 13 * scale,
                     fontWeight: "bold",
+                    textAlign: "center",
                     fontFamily: "Helvetica, Arial, sans-serif",
                     // Visible only while typing; otherwise transparent so the SVG
                     // label shows (and empty bars stay clean).
@@ -1467,9 +1519,10 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
             <Hint keys={["p"]} label="piano brace" />
             <Hint keys={["l"]} label="separate/beam (selection)" />
             <Hint keys={["n"]} label="measure note" />
-            <Hint keys={["s"]} label="section" />
+            <Hint keys={["s"]} label="title / section" />
             <Hint keys={["b"]} label="cut line" />
             <Hint keys={["m"]} label="add bar" />
+            <Hint keys={["Shift + M"]} label="del bar" />
             <Hint keys={["g"]} label="time sig" />
             <Hint keys={["Ctrl + Z"]} label="undo" />
           </>}

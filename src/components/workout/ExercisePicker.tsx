@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useWorkoutData, saveCustomExercise, deleteCustomExercise } from "@/lib/workoutStore";
-import { TRACKING_MODES, type TrackingMode } from "@/lib/workoutTypes";
+import { TRACKING_MODES, type TrackingMode, type CustomExercise } from "@/lib/workoutTypes";
 
-// Pick from YOUR saved exercises, or add a new one — choosing how it's tracked
-// (weight+reps, weight+time, reps, or time). New exercises are saved for reuse.
+// Pick from YOUR saved exercises — grouped by equipment (Rings / Parallettes /
+// Static Bar / Other), each split into CW-assisted and Non-assisted — or add a
+// new one, choosing how it's tracked. New exercises are saved for reuse.
 
 export interface PickedExercise { name: string; skillId?: string; mode: TrackingMode }
 
@@ -12,17 +13,49 @@ interface Props {
   onCancel: () => void;
 }
 
+const EQUIP_ORDER = ["Rings", "Parallettes", "Static Bar", "Other"] as const;
+type Equip = (typeof EQUIP_ORDER)[number];
+
+// Derive equipment + assisted-ness from the saved name, plus a short display
+// name (prefix and "— CW assisted" suffix stripped, since the headings convey
+// that already).
+function classify(name: string): { equip: Equip; assisted: boolean; disp: string } {
+  const assisted = /cw assisted/i.test(name);
+  let equip: Equip = "Other";
+  if (/^rings?\b/i.test(name)) equip = "Rings";
+  else if (/^parallettes\b/i.test(name)) equip = "Parallettes";
+  else if (/^static bar\b/i.test(name)) equip = "Static Bar";
+  const disp = name
+    .replace(/^(rings?|parallettes|static bar)\s+/i, "")
+    .replace(/\s*[—-]\s*cw assisted\s*$/i, "")
+    .trim() || name;
+  return { equip, assisted, disp };
+}
+
+type Row = CustomExercise & { disp: string };
+
 export default function ExercisePicker({ onPick, onCancel }: Props) {
   const { customExercises } = useWorkoutData();
   const [q, setQ] = useState("");
-  const [creating, setCreating] = useState<string | null>(null); // name pending a mode choice
+  const [creating, setCreating] = useState<string | null>(null);
   const query = q.trim().toLowerCase();
 
-  const customs = useMemo(
-    () => customExercises.filter(e => !query || e.name.toLowerCase().includes(query))
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    [customExercises, query],
-  );
+  const grouped = useMemo(() => {
+    const map = new Map<Equip, { assisted: Row[]; plain: Row[] }>();
+    const filtered = customExercises.filter(e => !query || e.name.toLowerCase().includes(query));
+    for (const e of filtered) {
+      const { equip, assisted, disp } = classify(e.name);
+      if (!map.has(equip)) map.set(equip, { assisted: [], plain: [] });
+      (assisted ? map.get(equip)!.assisted : map.get(equip)!.plain).push({ ...e, disp });
+    }
+    for (const g of map.values()) {
+      g.assisted.sort((a, b) => a.disp.localeCompare(b.disp));
+      g.plain.sort((a, b) => a.disp.localeCompare(b.disp));
+    }
+    return map;
+  }, [customExercises, query]);
+
+  const anyResults = [...grouped.values()].some(g => g.assisted.length || g.plain.length);
 
   const typed = q.trim();
   const exactMatch = customExercises.some(e => e.name.toLowerCase() === query);
@@ -37,16 +70,12 @@ export default function ExercisePicker({ onPick, onCancel }: Props) {
   return (
     <div className="wl-root fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: "rgba(0,0,0,.7)" }} onClick={onCancel}>
-      <div
-        className="wl-card w-full max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
+      <div className="wl-card w-full max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}>
         <div className="p-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--wl-line)" }}>
-          <input
-            autoFocus className="wl-input" value={q}
+          <input autoFocus className="wl-input" value={q}
             onChange={e => { setQ(e.target.value); setCreating(null); }}
-            placeholder="Search or type a new exercise…"
-          />
+            placeholder="Search or type a new exercise…" />
         </div>
 
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -74,29 +103,23 @@ export default function ExercisePicker({ onPick, onCancel }: Props) {
             </div>
           )}
 
-          {/* Your saved exercises */}
-          {customs.length > 0 && (
-            <div>
-              <div className="wl-collabel sticky top-0 px-4 py-1.5" style={{ background: "var(--wl-surface-2)", borderBottom: "1px solid var(--wl-line)" }}>
-                Your exercises
-              </div>
-              {customs.map(e => (
-                <div key={e.id} className="w-full flex items-center gap-2 px-4 py-2.5 hover:brightness-125"
-                  style={{ borderBottom: "1px solid color-mix(in srgb, var(--wl-line) 50%, transparent)" }}>
-                  <button onClick={() => onPick({ name: e.name, mode: e.mode })} className="flex-1 text-left flex items-center gap-2">
-                    <span className="text-sm" style={{ color: "var(--wl-text)" }}>{e.name}</span>
-                    <span className="ml-auto wl-mono" style={{ fontSize: 10, color: "var(--wl-faint)" }}>
-                      {TRACKING_MODES.find(m => m.id === e.mode)?.short}
-                    </span>
-                  </button>
-                  <button onClick={() => deleteCustomExercise(e.id)} className="wl-icon-btn wl-icon-btn--danger text-xs" title="Remove saved exercise">✕</button>
+          {/* Grouped saved exercises */}
+          {EQUIP_ORDER.map(equip => {
+            const g = grouped.get(equip);
+            if (!g || (!g.assisted.length && !g.plain.length)) return null;
+            return (
+              <div key={equip}>
+                <div className="wl-eyebrow sticky top-0 px-4 py-2" style={{ background: "var(--wl-surface)", borderBottom: "1px solid var(--wl-line)" }}>
+                  {equip}
                 </div>
-              ))}
-            </div>
-          )}
+                {g.assisted.length > 0 && <SubGroup title="CW assisted" rows={g.assisted} onPick={onPick} />}
+                {g.plain.length > 0 && <SubGroup title="Non assisted" rows={g.plain} onPick={onPick} />}
+              </div>
+            );
+          })}
 
           {/* Empty state */}
-          {customs.length === 0 && !canAdd && (
+          {!anyResults && !canAdd && (
             <div className="px-4 py-10 text-center text-sm wl-muted leading-relaxed">
               {customExercises.length === 0
                 ? <>No exercises yet.<br />Type a name above to add your first one.</>
@@ -107,6 +130,26 @@ export default function ExercisePicker({ onPick, onCancel }: Props) {
 
         <button onClick={onCancel} className="flex-shrink-0 p-3 text-sm wl-muted" style={{ borderTop: "1px solid var(--wl-line)" }}>Cancel</button>
       </div>
+    </div>
+  );
+}
+
+function SubGroup({ title, rows, onPick }: { title: string; rows: Row[]; onPick: (c: PickedExercise) => void }) {
+  return (
+    <div>
+      <div className="wl-collabel px-4 pt-2 pb-1" style={{ color: "var(--wl-accent)" }}>{title}</div>
+      {rows.map(e => (
+        <div key={e.id} className="w-full flex items-center gap-2 px-4 py-2.5 hover:brightness-125"
+          style={{ borderBottom: "1px solid color-mix(in srgb, var(--wl-line) 50%, transparent)" }}>
+          <button onClick={() => onPick({ name: e.name, mode: e.mode })} className="flex-1 text-left flex items-center gap-2">
+            <span className="text-sm" style={{ color: "var(--wl-text)" }}>{e.disp}</span>
+            <span className="ml-auto wl-mono" style={{ fontSize: 10, color: "var(--wl-faint)" }}>
+              {TRACKING_MODES.find(m => m.id === e.mode)?.short}
+            </span>
+          </button>
+          <button onClick={() => deleteCustomExercise(e.id)} className="wl-icon-btn wl-icon-btn--danger text-xs" title="Remove saved exercise">✕</button>
+        </div>
+      ))}
     </div>
   );
 }

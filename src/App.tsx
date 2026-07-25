@@ -1058,17 +1058,17 @@ export default function App() {
                   { id: "mixed-groups",         label: "Mixed Groups",         beta: true },
                   { id: "drill-response",       label: "Drill & Response",     beta: true },
                   { id: "uncommon-meters",      label: "Uncommon Meters",      beta: true },
-                  { id: "konnakol",             label: "Konnokol",             group: "Other" },
+                  { id: "konnakol",             label: "Konnokol",             group: "Rhythmic Studies" },
                   { id: "phrase-decomposition", label: "Phrase Decomposition", beta: true },
                   { id: "interval-browser",     label: "Interval Browser",     group: "Analytical", beta: true },
                   { id: "lumatone-intervals",   label: "Lumatone Intervals",   group: "Analytical" },
                   { id: "microwave",            label: "Microwave",            beta: true },
                   // Other — non-musical gamemodes, rendered as the last group
-                  { id: "metronome",            label: "Metronome",            group: "Spectrum Research" },
+                  { id: "metronome",            label: "Metronome",            group: "Rhythmic Studies" },
                   // Interval Spectrum sits last in Spectrum Research, after Metronome (per direct user direction).
                   { id: "interval-spectrum",    label: "Interval Spectrum",      group: "Spectrum Research" },
-                  { id: "calisthenics",         label: "Calisthenics",         group: "Other" },
-                  { id: "workout-log",          label: "Workout Log",          group: "Other" },
+                  { id: "calisthenics",         label: "Calisthenics",         group: "Fitness" },
+                  { id: "workout-log",          label: "Workout Log",          group: "Fitness" },
                 ];
                 const visible = SECTION_BUTTONS.filter(b => !b.beta || betaMode);
                 if (betaMathLab) visible.push({ id: "math-lab", label: "Math Lab", beta: true });
@@ -1105,10 +1105,14 @@ export default function App() {
                 // like "Analytical") render as a labelled, divided cluster.
                 const groupNames = visible.filter(b => b.group).map(b => b.group as string)
                   .filter((g, i, a) => a.indexOf(g) === i);
+                // Collapsed groups sink to the end (stable sort keeps the rest
+                // in their original order).
+                const orderedGroups = [...groupNames].sort(
+                  (a, b) => (navCollapsed.includes(a) ? 1 : 0) - (navCollapsed.includes(b) ? 1 : 0));
                 return (
                   <>
                     {visible.filter(b => !b.group).map(renderBtn)}
-                    {groupNames.map(g => {
+                    {orderedGroups.map(g => {
                       const collapsed = navCollapsed.includes(g);
                       return (
                         <div key={g} className="flex items-center gap-1 pl-2 ml-1 border-l border-[#2a2a3a]">

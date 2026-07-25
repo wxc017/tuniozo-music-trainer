@@ -10,6 +10,7 @@ import {
   type Workout, type LoggedExercise, type WorkoutSet, type WeightUnit, type TrackingMode,
   TRACKING_MODES, modeShowsWeight, modeShowsReps, modeShowsTime,
 } from "@/lib/workoutTypes";
+import { ensureNotifyPermission } from "@/lib/restNotify";
 
 // Live session logger — the phone-first screen. Every change writes straight
 // through to the store (which auto-syncs). Columns adapt to each exercise's
@@ -81,7 +82,8 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
           <ExerciseCard key={ex.id} ex={ex} unit={prefs.unit} workoutId={workout.id}
             onRemove={() => removeExercise(ex.id)} onSetMode={m => setMode(ex.id, m)}
             onAddSet={() => addSet(ex.id)} onRemoveSet={sid => removeSet(ex.id, sid)}
-            onPatchSet={(sid, sp) => patchSet(ex.id, sid, sp)} onRest={sec => setRestForSet({ sec })} />
+            onPatchSet={(sid, sp) => patchSet(ex.id, sid, sp)}
+            onRest={sec => { void ensureNotifyPermission(); setRestForSet({ sec }); }} />
         ))}
 
         <button onClick={() => setPicking(true)} className="wl-add">+ Add exercise</button>

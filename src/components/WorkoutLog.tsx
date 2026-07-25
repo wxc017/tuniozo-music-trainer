@@ -4,6 +4,7 @@ import SessionLogger from "./workout/SessionLogger";
 import WorkoutHistory from "./workout/WorkoutHistory";
 import TemplatesView from "./workout/TemplatesView";
 import { useWorkoutData, startWorkout, seedExercisesOnce } from "@/lib/workoutStore";
+import { registerRestSW } from "@/lib/restNotify";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -22,7 +23,7 @@ export default function WorkoutLog() {
   const [view, setView] = useState<View>("today");
   const [openId, setOpenId] = useState<string | null>(null);
 
-  useEffect(() => { seedExercisesOnce(); }, []);
+  useEffect(() => { seedExercisesOnce(); void registerRestSW(); }, []);
 
   if (openId) return <SessionLogger workoutId={openId} onClose={() => setOpenId(null)} />;
 

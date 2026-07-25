@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { scheduleRestNotification } from "@/lib/restNotify";
 
 // Full-screen rest countdown launched from a set's ⏱ button. Counts down the
 // set's rest seconds and beeps + vibrates at zero (best-effort; the Web Audio
@@ -13,6 +14,14 @@ interface Props {
 export default function RestTimer({ seconds, onDone, onCancel }: Props) {
   const [left, setLeft] = useState(seconds);
   const startedAt = useRef(Date.now());
+
+  // Schedule a phone notification for when rest ends, so the user can leave
+  // the app (e.g. to record/trim a clip) and still get pinged. Cancelled if
+  // they finish/skip early.
+  useEffect(() => {
+    const cancel = scheduleRestNotification(seconds);
+    return cancel;
+  }, [seconds]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
