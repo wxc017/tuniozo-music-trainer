@@ -1131,7 +1131,7 @@ export default function App() {
               })()}
             </div>
             <div className="flex items-center gap-2 ml-auto">
-              {!academicMode && <button onClick={stopAllAudio}
+              {!academicMode && section !== "workout-log" && <button onClick={stopAllAudio}
                 className="px-2 py-1 bg-[#1a1a1a] border border-[#2a2a2a] text-[#888] hover:bg-[#2a1a1a] hover:border-[#5a2a2a] hover:text-[#cc6666] active:bg-[#3a1a1a] active:text-[#ff7777] rounded text-xs font-medium transition-colors"
                 title="Stop all audio">
                 ■ Stop Audio

@@ -138,9 +138,9 @@ function ExerciseCard(props: {
 
       {/* column header */}
       <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
-        <span className="wl-collabel" style={{ width: "1.5rem" }}>#</span>
+        <span className="wl-collabel" style={{ width: "1.75rem" }}>#</span>
         {cols.map(c => <span key={c.key} className="wl-collabel flex-1 text-center">{c.label}</span>)}
-        <span className="wl-collabel" style={{ width: "2.6rem", textAlign: "center" }}>RPE</span>
+        <span className="wl-collabel" style={{ width: "3.1rem", textAlign: "center" }}>RPE</span>
         <span className="wl-collabel flex-1 text-center">Rest</span>
         <span style={{ width: "1.2rem" }} />
       </div>
@@ -148,9 +148,9 @@ function ExerciseCard(props: {
       <div className="px-3 pb-2 space-y-2">
         {ex.sets.map((s, i) => (
           <div key={s.id}>
-            <div className="flex items-center gap-1.5">
+            <div className="wl-setrow flex items-center gap-1.5">
               <button onClick={() => props.onPatchSet(s.id, { done: !s.done })}
-                className="w-6 h-6 rounded-full text-[10px] flex items-center justify-center flex-shrink-0 wl-num"
+                className="w-7 h-7 rounded-full text-[11px] flex items-center justify-center flex-shrink-0 wl-num"
                 style={{
                   border: `1px solid ${s.done ? "var(--wl-good)" : "var(--wl-line)"}`,
                   background: s.done ? "var(--wl-good)" : "transparent",
@@ -195,7 +195,7 @@ function RpeCell({ value, onChange }: { value?: number; onChange: (v: number | u
     : value >= 9 ? "var(--wl-hard)" : value >= 8 ? "var(--wl-warn)" : value >= 7 ? "var(--wl-accent)" : "var(--wl-good)";
   return (
     <select value={value ?? ""} onChange={e => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
-      className="wl-cell" style={{ width: "2.6rem", borderColor: color, padding: "7px 2px" }}>
+      className="wl-cell" style={{ width: "3.1rem", borderColor: color, padding: "7px 2px" }}>
       <option value="">–</option>
       {[6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10].map(n => <option key={n} value={n}>{n}</option>)}
     </select>

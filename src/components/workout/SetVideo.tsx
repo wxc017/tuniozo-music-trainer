@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
-  putVideo, getVideo, getVideoUrl, deleteVideo, releaseVideoUrl, newVideoId,
+  putVideo, getVideoUrl, deleteVideo, releaseVideoUrl, newVideoId,
 } from "@/lib/workoutVideoDb";
-import { cutVideoBlob, canCutVideo } from "@/lib/workoutVideoCut";
+import { cutFromElement, canCutVideo } from "@/lib/workoutVideoCut";
 import type { WorkoutSet } from "@/lib/workoutTypes";
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -116,12 +116,12 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
   const canCut = tOut - tIn > 0.2 && tOut - tIn < dur - 0.05; // a real sub-range
   const cut = useCallback(async () => {
     if (!set.videoId) return;
+    const v = videoRef.current;
+    if (!v) return;
     if (!canCutVideo()) { window.alert("Cutting isn't supported in this browser. Trim your clip in your gallery app instead, then re-upload."); return; }
-    const stored = await getVideo(set.videoId);
-    if (!stored) return;
     setCutPct(0);
     try {
-      const trimmed = await cutVideoBlob(stored.blob, tIn, tOut, f => setCutPct(Math.round(f * 100)));
+      const trimmed = await cutFromElement(v, tIn, tOut, f => setCutPct(Math.round(f * 100)));
       const newDur = Math.max(0.1, tOut - tIn);
       await putVideo({ id: set.videoId, blob: trimmed, mime: trimmed.type || "video/webm", durationSec: newDur, createdAt: Date.now(), setId: set.id, workoutId });
       releaseVideoUrl(set.videoId);
@@ -153,20 +153,20 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={busy}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px]"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-md text-[13px]"
           style={{ background: "var(--wl-surface-2)", border: "1px solid var(--wl-line)", color: "var(--wl-accent)", opacity: busy ? .5 : 1 }}
         >
-          {busy ? "Saving…" : "🎥 Record"}
+          {busy ? "Saving…" : "🎥 Add Video"}
         </button>
       ) : (
         <div className="rounded-lg overflow-hidden" style={{ border: "1px solid color-mix(in srgb, var(--wl-accent) 30%, var(--wl-line))", background: "var(--wl-surface-2)" }}>
           <button
             onClick={() => setOpen(o => !o)}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[11px]"
+            className="w-full flex items-center gap-2 px-2.5 py-2.5 text-[13px]"
             style={{ color: "var(--wl-accent-ink)" }}
           >
             <span>🎬</span>
-            <span className="font-medium">Clip linked</span>
+            <span className="font-medium">Video</span>
             <span className="wl-mono wl-faint">
               {tIn > 0 || (dur && tOut < dur) ? `trim ${fmt(tIn)}–${fmt(tOut)}` : fmt(dur)}
             </span>

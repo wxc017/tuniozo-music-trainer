@@ -1,15 +1,14 @@
 // In-browser video trimming with no heavy dependencies (no ffmpeg.wasm).
 //
-// Approach: play the source clip from `tIn` to `tOut` into an offscreen
-// <video>, capture its output via HTMLMediaElement.captureStream(), and
-// re-record that stream with MediaRecorder. The result is a real, smaller
-// Blob containing only the selected segment — so we can throw the full clip
-// away and keep just the cut.
+// We re-record the ON-SCREEN <video> element as it plays the selected segment,
+// via HTMLMediaElement.captureStream() + MediaRecorder. Using the visible,
+// already-rendered element is important on mobile: an offscreen/undisplayed
+// video often won't decode or advance currentTime, so the cut would silently
+// capture nothing and the original clip would remain.
 //
-// Tradeoff: this re-encodes in REAL TIME (a 20s cut takes ~20s) and needs
-// captureStream + MediaRecorder (supported on Android Chrome; not iOS Safari).
-// For short gym set clips that's fine and avoids a 30MB ffmpeg download that
-// GitHub Pages can't even run multithreaded (no cross-origin isolation).
+// Tradeoff: this re-encodes in REAL TIME (a 20s cut takes ~20s, and you see it
+// play through once). captureStream + MediaRecorder are supported on Android
+// Chrome; not on iOS Safari.
 
 export function canCutVideo(): boolean {
   if (typeof MediaRecorder === "undefined") return false;
@@ -27,62 +26,67 @@ function pickMime(): string {
 
 function seekTo(v: HTMLVideoElement, t: number): Promise<void> {
   return new Promise(res => {
+    if (Math.abs(v.currentTime - t) < 0.01) { res(); return; }
     const done = () => { v.removeEventListener("seeked", done); res(); };
     v.addEventListener("seeked", done);
     v.currentTime = t;
+    // Safety: some browsers don't fire seeked reliably — resolve after a beat.
+    setTimeout(done, 800);
   });
 }
 
-/** Cut [tIn, tOut] out of `srcBlob`, returning a new (smaller) Blob. */
-export async function cutVideoBlob(
-  srcBlob: Blob, tIn: number, tOut: number, onProgress?: (frac: number) => void,
+/** Cut [tIn, tOut] out of the LIVE on-screen video element, returning a new
+ *  (smaller) Blob containing only that segment. */
+export async function cutFromElement(
+  v: HTMLVideoElement, tIn: number, tOut: number, onProgress?: (frac: number) => void,
 ): Promise<Blob> {
-  const url = URL.createObjectURL(srcBlob);
-  const v = document.createElement("video");
-  try {
-    v.src = url;
-    v.muted = true;           // don't blast audio through the speaker while cutting
-    (v as any).playsInline = true;
-    await new Promise<void>((res, rej) => {
-      v.onloadedmetadata = () => res();
-      v.onerror = () => rej(new Error("Could not load the clip to cut."));
-    });
+  const capture: (() => MediaStream) | undefined =
+    (v as any).captureStream?.bind(v) ?? (v as any).mozCaptureStream?.bind(v);
+  if (!capture) throw new Error("captureStream unsupported");
 
-    const capture: (() => MediaStream) | undefined =
-      (v as any).captureStream?.bind(v) ?? (v as any).mozCaptureStream?.bind(v);
-    if (!capture) throw new Error("captureStream unsupported");
+  const wasMuted = v.muted;
+  v.muted = true; // don't blast audio through the speaker during the cut
 
-    const end = Math.min(tOut, v.duration || tOut);
-    const start = Math.max(0, Math.min(tIn, end - 0.05));
-    await seekTo(v, start);
-
-    const stream = capture();
-    const mime = pickMime();
-    const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-    const chunks: Blob[] = [];
-    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-    const stopped = new Promise<void>(res => { rec.onstop = () => res(); });
-
-    rec.start(100);
-    await v.play();
+  // Make sure the element has decodable data before we seek/play.
+  if (v.readyState < 2) {
     await new Promise<void>(res => {
-      const tick = () => {
-        onProgress?.(Math.min(1, (v.currentTime - start) / Math.max(0.01, end - start)));
-        if (v.currentTime >= end || v.ended) { res(); return; }
-        requestAnimationFrame(tick);
-      };
-      tick();
+      const h = () => { v.removeEventListener("canplay", h); res(); };
+      v.addEventListener("canplay", h);
+      setTimeout(h, 1500);
     });
-    v.pause();
-    rec.stop();
-    await stopped;
-
-    const out = new Blob(chunks, { type: mime || "video/webm" });
-    if (!out.size) throw new Error("Cut produced an empty clip.");
-    return out;
-  } finally {
-    v.pause();
-    v.src = "";
-    URL.revokeObjectURL(url);
   }
+
+  const end = Math.min(tOut, v.duration || tOut);
+  const start = Math.max(0, Math.min(tIn, end - 0.05));
+  await seekTo(v, start);
+
+  const stream = capture();
+  const mime = pickMime();
+  const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+  const chunks: Blob[] = [];
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const stopped = new Promise<void>(res => { rec.onstop = () => res(); });
+
+  rec.start(100);
+  await v.play();
+
+  await new Promise<void>((res) => {
+    const startedAt = performance.now();
+    const maxMs = (end - start) * 1000 + 4000; // hard cap so we never hang
+    const tick = () => {
+      onProgress?.(Math.min(1, (v.currentTime - start) / Math.max(0.01, end - start)));
+      if (v.currentTime >= end || v.ended || performance.now() - startedAt > maxMs) { res(); return; }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+
+  v.pause();
+  rec.stop();
+  await stopped;
+  v.muted = wasMuted;
+
+  const out = new Blob(chunks, { type: mime || "video/webm" });
+  if (!out.size) throw new Error("Cut produced an empty clip — your browser may not support in-app cutting. Trim in your gallery instead.");
+  return out;
 }

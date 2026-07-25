@@ -269,14 +269,15 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   useEffect(() => { setEdoText(String(edo)); }, [edo]);
   useEffect(() => { setBarsText(String(project?.setup.barCount ?? 8)); }, [project?.setup.barCount]);
 
-  // A time signature applies from the bar it's set on FORWARD until the next
-  // change (standard notation), so the effective meter is the nearest override
-  // at or before the bar, else the default.
+  // A time signature applies forward until the next change, but only WITHIN its
+  // group (a cut group has its own meter), so the effective meter is the nearest
+  // override at or before the bar back to the group start, else the default.
   const effectiveTs = useCallback((measure: number): MeasureTimeSig => {
     const per = setup?.perBarTimeSig;
-    if (per) for (let k = measure; k >= 0; k--) if (per[k]) return per[k];
+    const start = sectionStartOf(measure);
+    if (per) for (let k = measure; k >= start; k--) if (per[k]) return per[k];
     return setup?.defaultTimeSig ?? { num: 4, den: 4 };
-  }, [setup]);
+  }, [setup, sectionStartOf]);
   const totalSlotsOf = useCallback((measure: number): number => {
     if (!setup) return 32;
     return measureSlots(effectiveTs(measure));
@@ -304,20 +305,29 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       else last.push(m);
     }
     if (!rowsArr.length) rowsArr.push([0]);
-    // Uniform bar width — enough cells for the densest bar (finest subdivision ×
-    // its slot count) so 16ths never squish and all bars match.
-    const cell = system === "solfa" ? 34 : CELL_W;
-    const finest = notes.reduce((mn, n) => Math.min(mn, DURATION_SLOTS[n.duration]), 8);
-    let maxCells = 4;
-    for (let m = 0; m < barCount; m++) maxCells = Math.max(maxCells, totalSlotsOf(m) / finest);
-    const uniformW = Math.max(DEFAULT_MEASURE_W, Math.round(maxCells * cell) + 2 * INNER_PAD);
-    const wArr: number[] = [];
-    for (let m = 0; m < barCount; m++) wArr[m] = uniformW;
-    // Section start of each bar, then that section's voice count (stored min or
-    // the tallest note voice) — computed once so every bar in a section agrees.
+    // Section start of each bar — a group starts at bar 0, a section label, or a
+    // manual cut.  Everything below (width, meter, voices, numbering) is scoped to
+    // the group so cut groups stay independent.
     const startOf: number[] = [];
-    let cur = 0;
-    for (let m = 0; m < barCount; m++) { if (m > 0 && (sectionAt(m) || breakAt(m))) cur = m; startOf[m] = cur; }
+    { let c = 0; for (let m = 0; m < barCount; m++) { if (m > 0 && (sectionAt(m) || breakAt(m))) c = m; startOf[m] = c; } }
+    // Per-group measure numbering: 1a 2a … then 1b 2b … (a new letter per group).
+    const groupOrder = new Map<number, number>();
+    for (let m = 0; m < barCount; m++) { const s = startOf[m]; if (!groupOrder.has(s)) groupOrder.set(s, groupOrder.size); }
+    const numLabel: string[] = [];
+    for (let m = 0; m < barCount; m++) {
+      const gi = groupOrder.get(startOf[m]) ?? 0;
+      numLabel[m] = `${m - startOf[m] + 1}${String.fromCharCode(97 + (gi % 26))}`;
+    }
+    // Per-GROUP bar width — each group sizes to its own densest bar, so a 4/4
+    // group and a 5/8 group keep independent grids and one never resizes another.
+    const cell = system === "solfa" ? 34 : CELL_W;
+    const groupFinest: Record<number, number> = {};
+    for (const n of notes) { const s = startOf[n.measure] ?? 0; groupFinest[s] = Math.min(groupFinest[s] ?? 8, DURATION_SLOTS[n.duration]); }
+    const groupCells: Record<number, number> = {};
+    for (let m = 0; m < barCount; m++) { const s = startOf[m]; groupCells[s] = Math.max(groupCells[s] ?? 4, totalSlotsOf(m) / (groupFinest[s] ?? 8)); }
+    const wArr: number[] = [];
+    for (let m = 0; m < barCount; m++) { const s = startOf[m]; wArr[m] = Math.max(DEFAULT_MEASURE_W, Math.round(groupCells[s] * cell) + 2 * INNER_PAD); }
+    // Per-group voice count (stored min or the tallest note voice in the group).
     const maxVoice: Record<number, number> = {};
     for (const n of notes) { const s = startOf[n.measure] ?? 0; maxVoice[s] = Math.max(maxVoice[s] ?? 0, (n.voice ?? 0) + 1); }
     const vcForStart = (s: number) => Math.max(
@@ -328,10 +338,11 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       vcArr[m] = vc;
       hsArr[m] = braceFor(startOf[m]) ? Math.ceil(vc / 2) : null;
     }
-    // Row geometry — height follows the row's section voice count; bars are
-    // left-aligned (start at LEFT_PAD) and accumulate the uniform width.
-    const maxRowLen = Math.max(...rowsArr.map(r => r.length));
-    const hasTsLabel = (m: number) => m === 0 || !!project?.setup.perBarTimeSig?.[m];
+    // Row geometry — height follows the row's voice count; bars are left-aligned
+    // and accumulate their own widths.  Canvas width = the widest row.
+    const rowW = rowsArr.map(row => row.reduce((s, m) => s + wArr[m], 0));
+    const maxRowW = Math.max(...rowW);
+    const hasTsLabel = (m: number) => m === startOf[m] || !!project?.setup.perBarTimeSig?.[m];
     const rowOfArr: number[] = [], colOfArr: number[] = [], rowTop: number[] = [], xArr: number[] = [];
     let y = HEADER_H;
     rowsArr.forEach((row, r) => {
@@ -344,7 +355,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       y += systemHeight(vcArr[row[0]] ?? minVoices, hsArr[row[0]] != null);
       if (row.some(hasTsLabel)) y += TS_PAD;   // room for the time-signature line
     });
-    return { rowsArr, rowOfArr, colOfArr, rowTop, wArr, xArr, vcArr, hsArr, totalHeight: y, canvasW: LEFT_PAD * 2 + maxRowLen * uniformW };
+    return { rowsArr, rowOfArr, colOfArr, rowTop, wArr, xArr, vcArr, hsArr, numLabel, startOf, totalHeight: y, canvasW: LEFT_PAD * 2 + maxRowW };
   }, [setup?.barCount, project?.setup.perBarBreakBefore, project?.setup.perBarTimeSig, sectionLabels, perSection,
       project?.voiceCount, project?.pianoBrace, project?.perSectionPianoBrace, notes, totalSlotsOf, system, minVoices]);
   ROW_OF = layout.rowOfArr; COL_OF = layout.colOfArr; ROW_TOP = layout.rowTop;
@@ -837,24 +848,24 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if ((e.ctrlKey || e.metaKey) && (k === "z" || k === "Z")) { e.preventDefault(); undo(); return; }
 
     // ── Arrows (handled before the modifier guard so Ctrl/Shift work) ──
-    // ←→  move selected note, else move cursor: plain = one subdivision,
-    //     Shift = one beat, Ctrl/⌘ = jump to the next/previous measure.
-    // ↑↓  voice (or move note); Shift = change row.
+    // ←→  Ctrl/⌘ + arrow MOVES the selected note; plain/Shift just move the
+    //     cursor (fine / by-beat).  Space held grows the selection.
+    // ↑↓  voice (Shift = add voice; Ctrl = move the selected note's voice).
     if (k === "ArrowRight" || k === "ArrowLeft") {
       e.preventDefault();
       const dir = k === "ArrowRight" ? 1 : -1;
-      const mode = (e.ctrlKey || e.metaKey) ? "measure" : e.shiftKey ? "beat" : "fine";
-      if (spaceHeldRef.current) extendSelect(dir, mode);   // Space held → grow selection
-      else if (hasSel) moveSelected("h", dir);             // move the selected note(s)
-      else moveCursorH(dir, mode);                         // just move the cursor
+      if (spaceHeldRef.current) extendSelect(dir, e.shiftKey ? "beat" : "fine");   // Space → grow selection
+      else if ((e.ctrlKey || e.metaKey) && hasSel) moveSelected("h", dir);         // Ctrl → move the note(s)
+      else moveCursorH(dir, e.shiftKey ? "beat" : "fine");                         // otherwise move the cursor
       return;
     }
     if (k === "ArrowUp" || k === "ArrowDown") {
       e.preventDefault();
       const dir = k === "ArrowDown" ? 1 : -1;
-      // Shift+↑ = add an empty voice above the top; Shift+↓ = add one below.
-      // Plain ↑/↓ = move through voices (wrapping to the adjacent row).
-      if (e.shiftKey) (dir < 0 ? addVoiceAbove() : addVoiceBelow());
+      // Ctrl+↑/↓ = move the selected note to another voice; Shift+↑/↓ = add an
+      // empty voice above/below; plain ↑/↓ = move through voices.
+      if ((e.ctrlKey || e.metaKey) && hasSel) moveSelected("v", dir);
+      else if (e.shiftKey) (dir < 0 ? addVoiceAbove() : addVoiceBelow());
       else navVoice(dir);
       return;
     }
@@ -1180,9 +1191,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const right = left + measureWidth(m);
     svgSystems.push(<line key={`bar-${m}`} x1={right} x2={right}
       y1={barTop(m)} y2={barBot(m)} stroke={WHITE} strokeWidth={1.2} />);
-    // measure number (top-left of each bar) — lifted clear of the cursor box
+    // measure number (top-left of each bar) — per-group "1a 2a … 1b 2b …"
     svgSystems.push(<text key={`mn-${m}`} x={left - 4} y={barTop(m) - 10} fill="#8a8a8a"
-      fontSize={10} fontFamily="Helvetica, Arial, sans-serif">{m + 1}</text>);
+      fontSize={10} fontFamily="Helvetica, Arial, sans-serif">{layout.numLabel[m] ?? m + 1}</text>);
     // per-measure title / note, drawn above the bar (also captured on export)
     const barTitle = project.setup.perBarTitle?.[m];
     if (barTitle) svgSystems.push(<text key={`bt-${m}`} x={left} y={barTop(m) - 25} fill={WHITE}
@@ -1193,13 +1204,13 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const section = project.setup.perBarSection?.[m];
     if (section?.trim()) svgSystems.push(<text key={`sec-${m}`} x={left} y={barTop(m) - SECTION_LABEL_DY} fill={WHITE}
       fontSize={18} fontWeight="bold" fontFamily="Helvetica, Arial, sans-serif">{section}</text>);
-    // Time signature — drawn horizontally under the bar.  Shown at bar 0 (the
-    // starting meter) and wherever a meter is explicitly set (a change point), so
-    // it stays visible after you set it.  Also captured on export.
-    if (m === 0 || project.setup.perBarTimeSig?.[m]) {
+    // Time signature — drawn under the bar, left-aligned to the measure start so
+    // it lines up with the number / title.  Shown at each group start (its meter)
+    // and wherever a meter is explicitly set.  Also captured on export.
+    if (layout.startOf[m] === m || project.setup.perBarTimeSig?.[m]) {
       const eff = effectiveTs(m);
-      svgSystems.push(<text key={`ts-${m}`} x={left + measureWidth(m) / 2} y={barBot(m) + 16} fill={WHITE}
-        fontSize={13} fontWeight="bold" fontFamily="Helvetica, Arial, sans-serif" textAnchor="middle">{eff.num}/{eff.den}</text>);
+      svgSystems.push(<text key={`ts-${m}`} x={left} y={barBot(m) + 16} fill={WHITE}
+        fontSize={13} fontWeight="bold" fontFamily="Helvetica, Arial, sans-serif">{eff.num}/{eff.den}</text>);
     }
     if ((COL_OF[m] ?? 0) === 0) {
       svgSystems.push(<line key={`barL-${m}`} x1={left} x2={left} y1={barTop(m)} y2={barBot(m)}
@@ -1469,7 +1480,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
               const editing = tsEdit?.m === m;
               const eff = effectiveTs(m);
               const hasOverride = !!project.setup.perBarTimeSig?.[m];
-              const shown = hasOverride || m === 0;   // a visible label sits here
+              const shown = hasOverride || layout.startOf[m] === m;   // a visible label sits here (group start)
               return (
                 <input
                   key={`ts-${m}`}
@@ -1483,13 +1494,13 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
                   title="Time signature — type n/d, clear to remove"
                   style={{
                     position: "absolute",
-                    left: (left + measureWidth(m) / 2 - 27) * scale,
+                    left: left * scale,
                     top: (barBot(m) + 5) * scale,
                     width: 54 * scale,
                     height: 16 * scale,
                     fontSize: 13 * scale,
                     fontWeight: "bold",
-                    textAlign: "center",
+                    textAlign: "left",
                     fontFamily: "Helvetica, Arial, sans-serif",
                     // Visible only while typing; otherwise transparent so the SVG
                     // label shows (and empty bars stay clean).

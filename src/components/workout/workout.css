@@ -130,3 +130,24 @@
 .wl-root ::-webkit-scrollbar { width: 8px; height: 8px; }
 .wl-root ::-webkit-scrollbar-thumb { background: var(--wl-line); border-radius: 8px; }
 .wl-root ::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Mobile: expand controls for touch. `!important` overrides the compact
+      inline sizes used on desktop so phones get roomy inputs/buttons. ── */
+@media (max-width: 640px) {
+  .wl-root .wl-h1 { font-size: 27px; }
+  .wl-root .wl-h2 { font-size: 19px; }
+  .wl-root .wl-eyebrow { font-size: 12px; }
+  .wl-root .wl-collabel { font-size: 11px; }
+  .wl-root .wl-cell {
+    padding: 12px 6px !important; font-size: 16px !important;
+    min-height: 46px; border-radius: 10px;
+  }
+  .wl-root .wl-input { padding: 13px 14px !important; font-size: 16px !important; }
+  .wl-root .wl-btn { padding: 12px 15px !important; font-size: 15px !important; }
+  .wl-root .wl-seg { padding: 4px; }
+  .wl-root .wl-seg button { padding: 11px 16px !important; font-size: 14px !important; }
+  .wl-root .wl-tag { font-size: 11px !important; padding: 4px 9px !important; }
+  .wl-root .wl-add { padding: 16px !important; font-size: 15px !important; }
+  /* roomier set rows */
+  .wl-root .wl-setrow { gap: 8px !important; }
+}
