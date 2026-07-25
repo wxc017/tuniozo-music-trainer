@@ -183,7 +183,8 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
                   controls
                   onLoadedMetadata={onLoadedMeta}
                   onTimeUpdate={onTimeUpdate}
-                  className="w-full max-h-[50vh] rounded bg-black"
+                  className="rounded bg-black mx-auto"
+                  style={{ width: "auto", maxWidth: "100%", maxHeight: 240 }}
                 />
               )}
 

@@ -85,6 +85,7 @@
     "@types/three": "^0.183.1",
     "abcjs": "^6.6.2",
     "epubjs": "^0.3.93",
+    "fflate": "^0.8.3",
     "html-to-image": "^1.11.13",
     "jspdf": "^4.2.1",
     "pdfjs-dist": "^5.5.207",

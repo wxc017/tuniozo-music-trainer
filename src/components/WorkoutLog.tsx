@@ -5,6 +5,7 @@ import WorkoutHistory from "./workout/WorkoutHistory";
 import TemplatesView from "./workout/TemplatesView";
 import { useWorkoutData, startWorkout, seedExercisesOnce } from "@/lib/workoutStore";
 import { registerRestSW } from "@/lib/restNotify";
+import { exportBackup } from "@/lib/workoutBackup";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -22,8 +23,21 @@ export default function WorkoutLog() {
   const { workouts } = useWorkoutData();
   const [view, setView] = useState<View>("today");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => { seedExercisesOnce(); void registerRestSW(); }, []);
+
+  const doExport = async () => {
+    setExporting(true);
+    try {
+      const { shared, videoCount } = await exportBackup();
+      if (!shared) window.alert(`Backup saved to your downloads (${videoCount} video${videoCount === 1 ? "" : "s"}). Move it to your backup folder.`);
+    } catch (err) {
+      window.alert(`Export failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (openId) return <SessionLogger workoutId={openId} onClose={() => setOpenId(null)} />;
 
@@ -45,6 +59,13 @@ export default function WorkoutLog() {
         {view === "today" && <TodayView workouts={workouts} onOpen={setOpenId} />}
         {view === "calendar" && <WorkoutHistory onOpenWorkout={setOpenId} />}
         {view === "templates" && <TemplatesView onStart={setOpenId} />}
+      </div>
+
+      {/* Persistent footer: back up the whole log (data + videos) to a file. */}
+      <div className="flex-shrink-0 p-3" style={{ borderTop: "1px solid var(--wl-line)" }}>
+        <button onClick={doExport} disabled={exporting} className="wl-btn w-full">
+          {exporting ? "Preparing backup…" : "⤓ Export backup (data + videos)"}
+        </button>
       </div>
     </div>
   );
