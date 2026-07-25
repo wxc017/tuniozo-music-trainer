@@ -12,9 +12,30 @@ import { useState, useMemo } from "react";
 import {
   NoteEntryProject, Instrument, ScoreSetup,
   loadProjects, saveProject, deleteProject, newProject,
+  SOLFA_ANSWER_PROJECT_ID,
 } from "@/lib/noteEntryData";
 import NoteEntryMode from "./NoteEntryMode";
 import DrumNotationMode from "./DrumNotationMode";
+import JianpuMode from "./JianpuMode";
+
+const INSTRUMENT_LABELS: Record<Instrument, string> = {
+  harmonic: "Staff Notation",
+  drum: "Drum",
+  jianpu: "Sol-fa",
+};
+
+// Heading per locked mode (Sheet Music / Drum Notation / Sol-fa).
+const MODE_HEADINGS: Record<Instrument, string> = {
+  harmonic: "Sheet Music",
+  drum: "Drum Notation",
+  jianpu: "Sol-fa",
+};
+
+const INSTRUMENT_DESCRIPTIONS: Record<Instrument, string> = {
+  harmonic: "Pitched melody / chord transcription on a staff with treble or bass clef.",
+  drum: "Drum-set notation with selectable noteheads (drum / X / circle-X / diamond) and synthesized playback.",
+  jianpu: "Numbered notation (简谱): scale degrees 1–7 with octave dots and durations. Always two voices — right hand (upper) and left hand (lower).",
+};
 
 const DEFAULT_SETUP: ScoreSetup = {
   clef: "treble",
@@ -24,16 +45,18 @@ const DEFAULT_SETUP: ScoreSetup = {
 };
 
 function instrumentOf(p: NoteEntryProject): Instrument {
-  return p.instrument === "drum" ? "drum" : "harmonic";
+  if (p.instrument === "drum") return "drum";
+  if (p.instrument === "jianpu") return "jianpu";
+  return "harmonic";
 }
 
-export default function ScoringMode() {
+export default function ScoringMode({ lockedInstrument }: { lockedInstrument?: Instrument } = {}) {
   const [projects, setProjects] = useState<NoteEntryProject[]>(loadProjects);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newComposer, setNewComposer] = useState("");
-  const [newInstrument, setNewInstrument] = useState<Instrument>("harmonic");
+  const [newInstrument, setNewInstrument] = useState<Instrument>(lockedInstrument ?? "harmonic");
 
   const activeProject = useMemo(
     () => projects.find(p => p.id === activeId) ?? null,
@@ -45,7 +68,7 @@ export default function ScoringMode() {
   function handleCreate() {
     const title = newTitle.trim() || "Untitled";
     const project = newProject(title, DEFAULT_SETUP);
-    project.instrument = newInstrument;
+    project.instrument = lockedInstrument ?? newInstrument;
     const composer = newComposer.trim();
     if (composer) project.composer = composer;
     saveProject(project);
@@ -54,7 +77,7 @@ export default function ScoringMode() {
     setShowNewDialog(false);
     setNewTitle("");
     setNewComposer("");
-    setNewInstrument("harmonic");
+    setNewInstrument(lockedInstrument ?? "harmonic");
   }
 
   function handleDelete(id: string) {
@@ -74,6 +97,15 @@ export default function ScoringMode() {
         />
       );
     }
+    if (inst === "jianpu") {
+      return (
+        <JianpuMode
+          controlledActiveId={activeProject.id}
+          onBack={() => { setActiveId(null); refreshProjects(); }}
+          solfaOnly
+        />
+      );
+    }
     return (
       <NoteEntryMode
         controlledActiveId={activeProject.id}
@@ -86,9 +118,9 @@ export default function ScoringMode() {
   return (
     <div className="px-4 py-6 max-w-3xl mx-auto w-full">
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-base font-semibold text-white">Scoring</h2>
+        <h2 className="text-base font-semibold text-white">{lockedInstrument ? MODE_HEADINGS[lockedInstrument] : "Scoring"}</h2>
         <button
-          onClick={() => { setShowNewDialog(true); setNewTitle(""); setNewComposer(""); setNewInstrument("harmonic"); }}
+          onClick={() => { setShowNewDialog(true); setNewTitle(""); setNewComposer(""); setNewInstrument(lockedInstrument ?? "harmonic"); }}
           className="px-3 py-1.5 bg-[#7173e6] hover:bg-[#5a5cc7] text-white text-sm rounded font-medium transition-colors"
         >
           New score
@@ -101,6 +133,8 @@ export default function ScoringMode() {
         <ul className="divide-y divide-[#1a1a1a]">
           {projects
             .slice()
+            .filter(p => p.id !== SOLFA_ANSWER_PROJECT_ID)
+            .filter(p => !lockedInstrument || instrumentOf(p) === lockedInstrument)
             .sort((a, b) => b.createdAt - a.createdAt)
             .map(p => {
               const inst = instrumentOf(p);
@@ -123,10 +157,12 @@ export default function ScoringMode() {
                           className={`inline-block px-1.5 py-0.5 rounded mr-2 border ${
                             inst === "drum"
                               ? "border-[#5a4424] bg-[#1f1810] text-[#ddaa66]"
+                              : inst === "jianpu"
+                              ? "border-[#3a6a4a] bg-[#16221a] text-[#88cc99]"
                               : "border-[#3a3a6a] bg-[#16162a] text-[#9999ee]"
                           }`}
                         >
-                          {inst === "drum" ? "Drum" : "Harmonic"}
+                          {INSTRUMENT_LABELS[inst]}
                         </span>
                         {p.setup.barCount} bars · {p.setup.defaultTimeSig.num}/{p.setup.defaultTimeSig.den}
                         {inst === "harmonic" ? ` · ${p.setup.clef} clef` : ""}
@@ -200,29 +236,29 @@ export default function ScoringMode() {
               />
             </label>
 
-            <div>
-              <div className="text-[10px] text-[#666] uppercase tracking-wider mb-2">Instrument</div>
-              <div className="flex gap-2">
-                {(["harmonic", "drum"] as Instrument[]).map(i => (
-                  <button
-                    key={i}
-                    onClick={() => setNewInstrument(i)}
-                    className={`flex-1 px-3 py-2 rounded border text-sm transition-colors ${
-                      newInstrument === i
-                        ? "bg-[#7173e618] border-[#7173e6] text-[#9999ee]"
-                        : "bg-[#1a1a1a] border-[#2a2a2a] text-[#888] hover:text-[#ccc] hover:border-[#3a3a3a]"
-                    }`}
-                  >
-                    {i === "harmonic" ? "Harmonic" : "Drum"}
-                  </button>
-                ))}
+            {!lockedInstrument && (
+              <div>
+                <div className="text-[10px] text-[#666] uppercase tracking-wider mb-2">Instrument</div>
+                <div className="flex gap-2">
+                  {(["harmonic", "drum", "jianpu"] as Instrument[]).map(i => (
+                    <button
+                      key={i}
+                      onClick={() => setNewInstrument(i)}
+                      className={`flex-1 px-3 py-2 rounded border text-sm transition-colors ${
+                        newInstrument === i
+                          ? "bg-[#7173e618] border-[#7173e6] text-[#9999ee]"
+                          : "bg-[#1a1a1a] border-[#2a2a2a] text-[#888] hover:text-[#ccc] hover:border-[#3a3a3a]"
+                      }`}
+                    >
+                      {INSTRUMENT_LABELS[i]}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-[#555] mt-2">
+                  {INSTRUMENT_DESCRIPTIONS[newInstrument]}
+                </p>
               </div>
-              <p className="text-[10px] text-[#555] mt-2">
-                {newInstrument === "harmonic"
-                  ? "Pitched melody / chord transcription with treble or bass clef."
-                  : "Drum-set notation with selectable noteheads (drum / X / circle-X / diamond) and synthesized playback."}
-              </p>
-            </div>
+            )}
 
             <div className="flex gap-2 pt-2">
               <button

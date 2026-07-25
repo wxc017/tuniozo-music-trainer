@@ -13,6 +13,7 @@ import {
   defaultConfig,
   defaultBeat,
   DEFAULT_PLACEMENT,
+  DEFAULT_VOICE,
   type MetronomeConfig,
   type BeatConfig,
   type SubdivMode,
@@ -45,6 +46,8 @@ export default function MetronomeMode() {
   const [selected, setSelected] = useState<number | null>(null);
   // The currently sounding beat, for the visual playhead.
   const [active, setActive] = useState<{ beat: number; measure: number; sub: number; muted: boolean } | null>(null);
+  // The resolved plan for the measure now playing (what the grid previews).
+  const [plan, setPlan] = useState<{ sub: number; muted: boolean }[] | null>(null);
 
   const engineRef = useRef<MetronomeEngine | null>(null);
   if (engineRef.current === null) {
@@ -62,8 +65,10 @@ export default function MetronomeMode() {
     engine.setOnBeat(info =>
       setActive({ beat: info.beatIndex, measure: info.measureIndex, sub: info.subdivision, muted: info.muted }),
     );
+    engine.setOnMeasure(p => setPlan(p.beats));
     return () => {
       engine.setOnBeat(null);
+      engine.setOnMeasure(null);
       engine.dispose();
       engineRef.current = null;
     };
@@ -77,6 +82,7 @@ export default function MetronomeMode() {
       engine.stop();
       setRunning(false);
       setActive(null);
+      setPlan(null);
     } else {
       await engine.start();
       setRunning(true);
@@ -92,6 +98,9 @@ export default function MetronomeMode() {
   }
   function patchPlacement(patch: Partial<MetronomeConfig["placement"]>) {
     setConfig(prev => ({ ...prev, placement: { ...DEFAULT_PLACEMENT, ...prev.placement, ...patch } }));
+  }
+  function patchVoice(patch: Partial<MetronomeConfig["voice"]>) {
+    setConfig(prev => ({ ...prev, voice: { ...DEFAULT_VOICE, ...prev.voice, ...patch } }));
   }
   function patchBeat(idx: number, patch: Partial<BeatConfig>) {
     setConfig(prev => ({
@@ -132,6 +141,17 @@ export default function MetronomeMode() {
 
   const sel = selected !== null ? config.beats[selected] : null;
   const placement = config.placement ?? DEFAULT_PLACEMENT;
+  const voice = config.voice ?? DEFAULT_VOICE;
+
+  // What each beat node displays: while playing, the engine's resolved plan
+  // for the current measure; otherwise a static preview so nothing jumps when
+  // Start is pressed.  (Random modes only settle to concrete numbers once the
+  // engine rolls them each measure.)
+  const preview = useMemo(
+    () => config.beats.map(b => ({ sub: previewSub(b), muted: b.muted })),
+    [config.beats],
+  );
+  const view = running && plan && plan.length === config.beats.length ? plan : preview;
 
   return (
     <div className="max-w-4xl mx-auto py-4 space-y-4">
@@ -203,7 +223,12 @@ export default function MetronomeMode() {
             <span className="text-xs text-[#555]">measure{placement.holdMeasures === 1 ? "" : "s"}</span>
           </div>
         )}
-        <span className="text-[10px] text-[#555]">shuffles which beat carries each subdivision (downbeat accent stays put)</span>
+        <Toggle
+          on={voice.enabled}
+          onClick={() => patchVoice({ enabled: !voice.enabled })}
+          label="🔊 Announce changes"
+          color="#5a8a5a"
+        />
       </div>
 
       {/* ── Beat grid ── */}
@@ -211,15 +236,16 @@ export default function MetronomeMode() {
         {config.beats.map((beat, i) => {
           const isActive = running && active?.beat === i;
           const isSel = selected === i;
+          const v = view[i] ?? { sub: previewSub(beat), muted: beat.muted };
           return (
             <BeatNode
               key={i}
               index={i}
               beat={beat}
+              displaySub={v.sub}
+              displayMuted={v.muted || beat.muted}
               active={isActive}
               activeMeasure={active?.measure ?? 0}
-              activeSub={isActive ? active?.sub : undefined}
-              activeMuted={isActive ? active?.muted : undefined}
               selected={isSel}
               beatDurationMs={beatDurationMs}
               onClick={() => setSelected(isSel ? null : i)}
@@ -244,43 +270,49 @@ export default function MetronomeMode() {
   );
 }
 
+// Static preview subdivision for a beat when the metronome is idle — a
+// representative value so the grid shows real numbers (never "~") before
+// Start is pressed.  Random modes only settle once the engine rolls them.
+function previewSub(beat: BeatConfig): number {
+  switch (beat.mode) {
+    case "fixed":       return beat.subdivision;
+    case "cycle":       return beat.list[0] ?? beat.subdivision;
+    case "randomList":  return beat.list[0] ?? beat.subdivision;
+    case "randomRange": return Math.min(beat.rangeMin, beat.rangeMax);
+  }
+}
+
 // ── Beat node ─────────────────────────────────────────────────────────
 
 function BeatNode({
   index,
   beat,
+  displaySub,
+  displayMuted,
   active,
   activeMeasure,
-  activeSub,
-  activeMuted,
   selected,
   beatDurationMs,
   onClick,
 }: {
   index: number;
   beat: BeatConfig;
+  displaySub: number;   // subdivisions this beat plays in the current/previewed measure
+  displayMuted: boolean; // silenced this measure (manual or by a silence rule)
   active: boolean;
   activeMeasure: number;
-  activeSub?: number;
-  activeMuted?: boolean;
   selected: boolean;
   beatDurationMs: number;
   onClick: () => void;
 }) {
-  // While this beat is sounding, show the subdivision it actually played
-  // (so rotating / random subdivisions are visible); otherwise show the
-  // configured value ("~" for non-fixed modes when idle).
-  const restingSub = beat.mode === "fixed" ? beat.subdivision : (beat.list[0] ?? 1);
-  const shownSub = active && activeSub ? activeSub : restingSub;
-  const subCount = active && activeSub ? activeSub : beat.mode === "fixed" ? beat.subdivision : "~";
-  const dots = Math.min(shownSub, MAX_SUBDIV);
-  const suppressPulse = beat.muted || activeMuted;
+  const dots = Math.min(Math.max(1, displaySub), MAX_SUBDIV);
+  const suppressPulse = displayMuted;
 
   const borderColor = selected
     ? "#9999ee"
     : active
     ? "#e6a217"
-    : beat.muted
+    : displayMuted
     ? "#3a2a2a"
     : "#1e1e1e";
   const bg = selected ? "#9999ee14" : active ? "#e6a21714" : "#0a0a0a";
@@ -290,7 +322,7 @@ function BeatNode({
       onClick={onClick}
       style={{ borderColor, background: bg }}
       className={`relative flex flex-col items-center gap-2 w-24 px-3 py-3 rounded-lg border-[1.5px] transition-colors ${
-        beat.muted ? "opacity-50" : ""
+        displayMuted ? "opacity-50" : ""
       }`}
     >
       {/* top row: beat number + badges */}
@@ -298,14 +330,14 @@ function BeatNode({
         <span className="text-[10px] text-[#666] font-mono">{index + 1}</span>
         <span className="ml-auto flex gap-1">
           {beat.accent && <span className="text-[9px] text-[#e6a217] font-bold" title="Accent">▲</span>}
-          {beat.muted && <span className="text-[9px] text-[#cc6666]" title="Muted">✕</span>}
+          {displayMuted && <span className="text-[9px] text-[#cc6666]" title="Muted">✕</span>}
           {beat.mode !== "fixed" && <span className="text-[9px] text-[#7aa]" title={MODE_LABELS[beat.mode]}>⟳</span>}
         </span>
       </div>
 
-      {/* big subdivision number */}
+      {/* big subdivision number — the value this measure actually plays */}
       <div className={`text-2xl font-bold leading-none ${beat.accent ? "text-[#e6c078]" : "text-[#ccc]"}`}>
-        {subCount}
+        {displaySub}
       </div>
 
       {/* subdivision dots */}

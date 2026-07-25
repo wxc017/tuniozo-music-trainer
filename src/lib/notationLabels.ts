@@ -4,11 +4,14 @@
 // "Universal Solfège" is our built-in constructed solfège.  Everything else is
 // mined from the Xenharmonic Wiki — pure renames.
 
-import { solfegeName, fuzzyCode } from "./intervalCodes";
+import { fuzzyCode } from "./intervalCodes";
+import { customSolfege } from "./customSolfege";
 import { NOTATION_SYSTEMS } from "./notationSystems";
-import { SOLFEGE_SYSTEMS } from "./solfegeSystems";
 
 export const SCHULTER = "Schulter";
+// The single solfège system used everywhere now — the region-centered
+// "Spectrum-ege" from the Solfège chart (customSolfege).
+export const SPECTRUM_SOLFEGE = "Spectrum-ege";
 // "Schulter V2" — the region/Gould absolute NOTE system (see intervalCodes
 // sizedNoteName).  For interval labels it behaves like Schulter (the spectrum
 // coder); it only changes the "Notes" overlay (Pythagorean for plain Schulter,
@@ -32,10 +35,9 @@ export function notationsForEdo(edo: number): string[] {
     .filter(n => authorFor(n) !== null);
   return [SCHULTER, SCHULTER_V2, ...tidyNames(mined)];
 }
-/** Solfège systems available for an EDO (Universal first, then mined). */
-export function solfegesForEdo(edo: number): string[] {
-  // Drop the mined "extras" catch-all — we want discrete, named systems only.
-  return [UNIVERSAL_SOLFEGE, ...tidyNames((SOLFEGE_SYSTEMS[edo] ?? []).map(s => s.name).filter(n => !/^extras?$/i.test(n)))];
+/** Solfège is a single fixed system now — Spectrum-ege (region-centered). */
+export function solfegesForEdo(_edo: number): string[] {
+  return [SPECTRUM_SOLFEGE];
 }
 
 /** Interval label for a step under a notation system (falls back to Schulter). */
@@ -47,11 +49,11 @@ export function notationLabel(edo: number, system: string | undefined, step: num
   if (!system || system === SCHULTER || system === SCHULTER_V2) return fuzzyCode(cents);
   return (NOTATION_SYSTEMS[edo] ?? []).find(s => s.name === system)?.labels[k] ?? fuzzyCode(cents);
 }
-/** Solfège syllable for a step under a solfège system (falls back to Universal). */
-export function solfegeLabel(edo: number, system: string | undefined, step: number): string {
+/** Solfège syllable for a step — always the Spectrum-ege system (customSolfege),
+ *  the region-centered syllables from the Solfège chart. */
+export function solfegeLabel(edo: number, _system: string | undefined, step: number): string {
   const k = (((step % edo) + edo) % edo);
-  if (!system || system === UNIVERSAL_SOLFEGE) return solfegeName((k * 1200) / edo);
-  return (SOLFEGE_SYSTEMS[edo] ?? []).find(s => s.name === system)?.labels[k] ?? solfegeName((k * 1200) / edo);
+  return customSolfege((k * 1200) / edo);
 }
 
 /** Back-compat: notation label (used by existing overlay callers). */

@@ -43,7 +43,10 @@ export const REGIONS: Region[] = [
     subs: [{ name: "small (supraminor)", lo: 330, hi: 342 }, { name: "middle (central)", lo: 342, hi: 360 }, { name: "large (submajor)", lo: 360, hi: 372 }],
     jis: ["63/52", "17/14", "39/32", "11/9", "27/22", "16/13", "21/17", "26/21"] },
   { name: "Major Thirds", lo: 372, hi: 440, kind: "main",
-    subs: [{ name: "small", lo: 372, hi: 400 }, { name: "middle", lo: 400, hi: 423 }, { name: "large", lo: 423, hi: 440 }],
+    // small = the just / 31-EDO third (5/4 = 386), capped below 12-TET so it never
+    // reads as centre; middle centres on 12-TET (400); large runs Pythagorean
+    // (408) up to the supermajor 9/7 (435).
+    subs: [{ name: "small", lo: 372, hi: 394 }, { name: "middle", lo: 394, hi: 406 }, { name: "large", lo: 406, hi: 440 }],
     jis: ["5/4", "81/64", "14/11", "9/7"] },
   { name: "Interseptimal (M3–4)", lo: 440, hi: 468, kind: "between",
     jis: ["22/17", "13/10", "30/23", "64/49", "17/13"] },

@@ -9,7 +9,8 @@ import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import LumatoneKeyboard from "@/components/LumatoneKeyboard";
 import { computeLayout, type LayoutResult, type LumatoneData, type ComputedKey } from "@/lib/lumatoneLayout";
 import { getPastelLayoutFile } from "@/lib/edoData";
-import { fuzzyCode, solfegeName } from "@/lib/intervalCodes";
+import { fuzzyCode } from "@/lib/intervalCodes";
+import { customSolfege } from "@/lib/customSolfege";
 import { getScalesForEdo, type NamedScale } from "@/lib/commonScales";
 import { groupEdosByFamily } from "@/lib/edoFamilies";
 import { useDroneSynth } from "@/hooks/useDroneSynth";
@@ -63,10 +64,11 @@ export default function LumatoneIntervalsTab() {
     setEdo(n); setRootPc(0); setRing(null); setSelectedScales([]); stopAll();
   };
 
-  // Each key labelled by its spectrum interval from the root (code or solfège).
+  // Each key labelled by its spectrum interval from the root (code or the new
+  // region-centered solfège — customSolfege, not the older gamut syllables).
   const labelOf = (pitch: number) => {
     const cents = ((((pitch - rootPc) % edo) + edo) % edo) * 1200 / edo;
-    return nameMode === "solfege" ? solfegeName(cents) : fuzzyCode(cents);
+    return nameMode === "solfege" ? customSolfege(cents) : fuzzyCode(cents);
   };
 
   // ── Scale overlay ──────────────────────────────────────────────────

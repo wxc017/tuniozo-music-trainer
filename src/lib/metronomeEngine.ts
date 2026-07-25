@@ -59,6 +59,11 @@ export interface PlacementConfig {
   holdMeasures: number;
 }
 
+export interface VoiceConfig {
+  /** Speak upcoming subdivision changes one measure ahead ("5 on 2"). */
+  enabled: boolean;
+}
+
 export interface MetronomeConfig {
   bpm: number;
   volume: number;
@@ -67,9 +72,12 @@ export interface MetronomeConfig {
   silence: SilenceConfig;
   /** Randomize which beat the subdivisions land on (accents stay by position). */
   placement: PlacementConfig;
+  /** Spoken announcements of upcoming subdivision changes. */
+  voice: VoiceConfig;
 }
 
 export const DEFAULT_PLACEMENT: PlacementConfig = { enabled: false, holdMeasures: 1 };
+export const DEFAULT_VOICE: VoiceConfig = { enabled: false };
 
 /** What the visual layer receives on each scheduled beat. */
 export interface BeatInfo {
@@ -78,6 +86,12 @@ export interface BeatInfo {
   subdivision: number;    // subdivisions actually played this beat
   muted: boolean;         // whole beat silenced
   accent: boolean;        // accented beat
+}
+
+/** The fully-resolved plan for one measure, sent as the measure begins. */
+export interface MeasurePlan {
+  measureIndex: number;
+  beats: { sub: number; muted: boolean }[];
 }
 
 export function defaultBeat(subdivision = 1): BeatConfig {
@@ -107,6 +121,7 @@ export function defaultConfig(beatsPerMeasure = 4): MetronomeConfig {
       randomMuteRate: 0,
     },
     placement: { ...DEFAULT_PLACEMENT },
+    voice: { ...DEFAULT_VOICE },
   };
 }
 
@@ -163,6 +178,13 @@ function playClick(ctx: AudioContext, time: number, p: ClickParams, vol: number)
 // ── Engine ────────────────────────────────────────────────────────────
 
 type BeatCallback = (info: BeatInfo) => void;
+type MeasureCallback = (plan: MeasurePlan) => void;
+
+interface PlannedBeat {
+  sub: number;
+  muted: boolean;
+  accent: boolean;
+}
 
 export class MetronomeEngine {
   private ctx: AudioContext | null = null;
@@ -175,6 +197,16 @@ export class MetronomeEngine {
 
   private config: MetronomeConfig;
   private onBeat: BeatCallback | null = null;
+  private onMeasure: MeasureCallback | null = null;
+
+  // The resolved plan for the measure currently being scheduled, plus the
+  // plan for the NEXT measure (pre-computed one measure early so its random
+  // rolls can be announced ahead of time and then reused verbatim when the
+  // measure actually plays).
+  private currentPlan: PlannedBeat[] = [];
+  private planMeasure = -1;
+  private nextPlan: PlannedBeat[] = [];
+  private nextPlanMeasure = -1;
 
   // Per-beat rotation state: which subdivision is "held" and for which
   // measure-block it was chosen (so random modes re-roll only on switch).
@@ -202,6 +234,10 @@ export class MetronomeEngine {
     this.onBeat = cb;
   }
 
+  setOnMeasure(cb: MeasureCallback | null) {
+    this.onMeasure = cb;
+  }
+
   private async ensureCtx(): Promise<AudioContext> {
     if (!this.ctx) this.ctx = new AudioContext();
     if (this.ctx.state === "suspended") await this.ctx.resume();
@@ -218,6 +254,10 @@ export class MetronomeEngine {
     this.permBlock = -1;
     this.placedSubs = [];
     this.placedMeasure = -1;
+    this.currentPlan = [];
+    this.planMeasure = -1;
+    this.nextPlan = [];
+    this.nextPlanMeasure = -1;
     this.nextBeatTime = ctx.currentTime + 0.06;
     this.running = true;
     this.schedulerId = setInterval(() => this.schedule(ctx), LOOKAHEAD_MS);
@@ -231,6 +271,7 @@ export class MetronomeEngine {
     for (const id of this.beatTimeouts) clearTimeout(id);
     this.beatTimeouts = [];
     this.running = false;
+    if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel();
     if (this.ctx) this.ctx.suspend();
   }
 
@@ -258,7 +299,11 @@ export class MetronomeEngine {
       sub = list[block % list.length];
     } else if (beat.mode === "randomList") {
       const list = beat.list.length ? beat.list : [beat.subdivision];
-      sub = list[Math.floor(Math.random() * list.length)];
+      // Never repeat the previous pick — exclude it so the subdivision always
+      // changes from one cycle to the next (unless the list has no alternative).
+      const pool = prev ? list.filter(v => v !== prev.sub) : list;
+      const from = pool.length ? pool : list;
+      sub = from[Math.floor(Math.random() * from.length)];
     } else {
       // randomRange
       const lo = Math.min(beat.rangeMin, beat.rangeMax);
@@ -295,6 +340,43 @@ export class MetronomeEngine {
       this.placedMeasure = measure;
     }
     return this.placedSubs[beatIdx];
+  }
+
+  /** Resolve every beat of a measure at once (rolls randoms exactly once). */
+  private computePlan(measure: number, beats: BeatConfig[], count: number): PlannedBeat[] {
+    const plan: PlannedBeat[] = [];
+    for (let p = 0; p < count; p++) {
+      const s = this.subForPosition(p, beats, count, measure);
+      const gb = measure * count + p;
+      const m = this.isMuted(beats[p], p, measure, gb);
+      plan.push({ sub: s, muted: m, accent: beats[p].accent });
+    }
+    return plan;
+  }
+
+  /** Speak a short announcement (best-effort; ignored if unsupported). */
+  private speak(text: string) {
+    try {
+      const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
+      if (!synth) return;
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.15;
+      synth.speak(u);
+    } catch {
+      /* speech unsupported — ignore */
+    }
+  }
+
+  /** Build the "5 on 2" announcement for beats that change next measure. */
+  private announcement(current: PlannedBeat[], next: PlannedBeat[]): string {
+    const parts: string[] = [];
+    for (let p = 0; p < next.length; p++) {
+      const cur = current[p];
+      // Announce a change only when the beat gains a real subdivision (>1);
+      // dropping back to a plain beat (1) is not worth speaking.
+      if (next[p].sub > 1 && (!cur || next[p].sub !== cur.sub)) parts.push(`${next[p].sub} on ${p + 1}`);
+    }
+    return parts.join(", ");
   }
 
   /** Decide whether a whole beat is silenced by any active rule. */
@@ -338,12 +420,42 @@ export class MetronomeEngine {
       const beatIdx = this.beatInMeasure;
       const beat = beats[beatIdx];
       const measure = this.measureIndex;
-      const globalBeat = measure * count + beatIdx;
-
       const secPerBeat = 60 / Math.max(1, this.config.bpm);
-      const sub = this.subForPosition(beatIdx, beats, count, measure);
-      const muted = this.isMuted(beat, beatIdx, measure, globalBeat);
       const beatTime = this.nextBeatTime;
+
+      // On entering a new measure, take this measure's plan (pre-computed
+      // last measure so it matches any voice announcement), then look one
+      // measure ahead: compute the next plan, announce beats that will change,
+      // and broadcast this measure's plan to the UI (timed to the downbeat).
+      if (this.planMeasure !== measure) {
+        this.currentPlan =
+          this.nextPlanMeasure === measure && this.nextPlan.length === count
+            ? this.nextPlan
+            : this.computePlan(measure, beats, count);
+        this.planMeasure = measure;
+
+        // Pre-compute the next measure and queue its announcement.
+        this.nextPlan = this.computePlan(measure + 1, beats, count);
+        this.nextPlanMeasure = measure + 1;
+
+        const delay = Math.max(0, (beatTime - ctx.currentTime) * 1000);
+
+        if (this.config.voice?.enabled) {
+          const text = this.announcement(this.currentPlan, this.nextPlan);
+          if (text) this.beatTimeouts.push(setTimeout(() => this.speak(text), delay));
+        }
+
+        if (this.onMeasure) {
+          const cb = this.onMeasure;
+          const mi = measure;
+          const planBeats = this.currentPlan.map(pb => ({ sub: pb.sub, muted: pb.muted }));
+          this.beatTimeouts.push(setTimeout(() => cb({ measureIndex: mi, beats: planBeats }), delay));
+        }
+      }
+
+      const planned = this.currentPlan[beatIdx] ?? { sub: 1, muted: false, accent: beat.accent };
+      const sub = planned.sub;
+      const muted = planned.muted;
 
       if (!muted) {
         const secPerSub = secPerBeat / sub;

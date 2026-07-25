@@ -38,17 +38,40 @@ import { notationLabel } from "@/lib/notationLabels";
 // Stack a chord's quality tones (step offsets from the root) as a notation
 // system's interval labels (e.g. SKULO "sm3 m7", Kite "^3 v7") — skipping the
 // unison, perfect 5th and octave (same convention as the sized chordSymbol).
+// Sized interval codes render their size as a ↓/↑ arrow (small = ↓, large = ↑,
+// central = bare) instead of an s/l letter — the Tonal-Audiation convention.
+// Only touches a leading s/l that sits in front of a quality+degree (so "5"
+// and mined-system labels pass through untouched).
+export function arrowizeSizedCodes(s: string): string {
+  return s
+    .replace(/(^|[\s{|/])s(?=(?:[mMn]?\d|T))/g, "$1↓")
+    .replace(/(^|[\s{|/])l(?=(?:[mMn]?\d|T))/g, "$1↑");
+}
 function systemStack(toneOffsets: number[], edo: number, system: string | undefined): string {
   const fifth = Math.round((edo * 702) / 1200);
   const seen = new Set<number>();
   const out: string[] = [];
+  const schulter = !system || system === "Schulter" || system === "Schulter V2";
   for (const o of toneOffsets) {
     const k = (((o % edo) + edo) % edo);
     if (k === 0 || k === fifth || seen.has(k)) continue;
     seen.add(k);
-    out.push(notationLabel(edo, system, k));
+    const lbl = notationLabel(edo, system, k);
+    out.push(schulter ? arrowizeSizedCodes(lbl) : lbl);
   }
   return out.join(" ");
+}
+/** Prefix a chord's Roman label with the ROOT's size (small = s, large = l) so
+ *  the numeral itself carries a ↓/↑ arrow when the root's interval from the
+ *  tonic isn't central — e.g. in 31-EDO a chord whose root sits on a subminor
+ *  3rd reads "↓iii", not a bare "iii".  The s/l letter is rendered as an arrow
+ *  downstream (formatRoman / Numeral).  Applied chords (V/IV) and labels that
+ *  already carry a size prefix are left untouched. */
+export function sizeRootedRoman(label: string, rootStep: number, edo: number): string {
+  if (label.includes("/") || /^[slSL]/.test(label)) return label;
+  const k = (((rootStep % edo) + edo) % edo);
+  const m = /^([sl])/.exec(sizedCode((k * 1200) / edo));
+  return m ? m[1] + label : label;
 }
 /** Roman numeral (traditional, with #/b) + the system's scale-degree stack. */
 function romanWithSystem(roman: string, toneOffsets: number[], edo: number, system: string | undefined): string {
@@ -164,12 +187,12 @@ const JI_SCALE_NAMES_SET = new Set(JI_SCALE_NAMES);
 /** Render a chord symbol with its sized-quality codes superscripted:
  *  "lii sM3" → lii^(sM3).  Everything after the leading numeral (the first
  *  space) is the quality stack. */
-// Render a roman numeral with a leading s/l SIZE prefix shown as a subscript
-// (e.g. "sIII" → ₛIII, "liii" → ₗiii).  Plain numerals pass through.
+// Render a roman numeral with a leading s/l SIZE prefix shown as a ↓/↑ arrow
+// (e.g. "sIII" → ↓III, "liii" → ↑iii).  Plain numerals pass through.
 function Numeral({ num }: { num: string }) {
   const m = /^([sl])(.+)$/.exec(num);
   if (!m) return <>{num}</>;
-  return <><sub className="text-[0.7em]">{m[1]}</sub>{m[2]}</>;
+  return <>{m[1] === "s" ? "↓" : "↑"}{m[2]}</>;
 }
 function ChordSym({ symbol }: { symbol: string }) {
   // Canonical form C: "{<qualities>} | <root>[<inversion>]".  Render as a vertical
@@ -197,11 +220,11 @@ function ChordSym({ symbol }: { symbol: string }) {
   if (ri < 0) {
     const i = symbol.indexOf(" ");
     const num = i < 0 ? symbol : symbol.slice(0, i);
-    const rest = i < 0 ? "" : symbol.slice(i + 1);
+    const rest = i < 0 ? "" : arrowizeSizedCodes(symbol.slice(i + 1));
     return <><Numeral num={num} />{rest && <sup className="text-[0.7em]">{rest}</sup>}</>;
   }
-  const prefix = tokens.slice(0, ri).join(" ");
-  const rest = tokens.slice(ri + 1).join(" ");
+  const prefix = arrowizeSizedCodes(tokens.slice(0, ri).join(" "));
+  const rest = arrowizeSizedCodes(tokens.slice(ri + 1).join(" "));
   return <>
     {prefix && <span className="text-[0.72em] opacity-75 mr-[1px]">{prefix}</span>}
     <Numeral num={tokens[ri]} />
@@ -289,9 +312,13 @@ const STANDARD_THIRD_QUALITIES = new Set(["sus2", "min3", "maj3", "sus4"]);
 export default function ChordsTab({
   tonicPc, lowestPitch, highestPitch, edo, onHighlight, responseMode, onResult, onPlay, lastPlayed, ensureAudio, playVol = 0.55, layoutPitchRange, tabSettingsRef, answerButtons, highlightedPitches, vizType, layout, onKeyClick, betaMode = false, notationSystem,
 }: Props) {
-  // Schulter → our sized chord symbols; any other chosen notation → traditional
-  // roman numerals (I ii iii with #/b).
-  const useSchulter = !notationSystem || notationSystem === "Schulter";
+  // Form-C sized chord symbols ({sM3 5} | 1) were retired 2026-07-17 per direct
+  // user direction "bring back roman numerals" — reverting the 2026-06-21 "form
+  // C replaces the Roman numeral entirely" decision.  Every notation now takes
+  // the Roman-numeral path; size deviations show as ↓/↑ arrows (Numeral /
+  // arrowizeSizedCodes), extensions in jazz notation.  Kept as a named flag so
+  // the (now-dead) form-C branches read clearly and can be revived if wanted.
+  const useSchulter = false;
   const frameTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // ── Chord selection state ───────────────────────────────────────────
@@ -1950,13 +1977,18 @@ export default function ChordsTab({
     const gapMs = loopGap * 1000;
     const noteDur = chordDur;
 
-    // Show-Target branch: no audio, just step the visualizer through
-    // each chord and surface chord / inversion info at the bottom.
+    // Show-Target branch: step the visualizer through each chord and
+    // surface chord / inversion info at the bottom.  "Show Target (Sing
+    // It)" does this silently; "Sol-fa" additionally plays the audio so
+    // you can hear it while the target loop is shown (per direct user
+    // direction — Sol-fa = play audio + show target).
     // Inversion is detected from the lowest pitch class relative to
     // the chord root: 0 = root position, 3rd's pc offset = 1st inv,
     // 5th's pc offset = 2nd inv, 7th's pc offset = 3rd inv.
-    if (responseMode === "Show Target (Sing It)") {
-      onResult(`Watch the loop — sing it back...`);
+    const solfaMode = responseMode === "Sol-fa";
+    if (responseMode === "Show Target (Sing It)" || solfaMode) {
+      onResult(solfaMode ? `Listen and sing along — watch the loop...` : `Watch the loop — sing it back...`);
+      if (solfaMode) playVoices(voices, gapMs, noteDur, playVol * 0.7);
       const perChord = progression.map((rn, idx) => {
         const applied = voices.appliedShapes[idx];
         const quality = applied ? triadQuality(applied, edo) : "?";
@@ -2702,7 +2734,7 @@ export default function ChordsTab({
               const rootCT = (((c.chordRootPc % edo) + edo) % edo) * 1200 / edo;
               const sizedLabel = useSchulter
                 ? chordSymbol([rootCT, ...c.chordToneOffsets.map(o => rootCT + (o * 1200) / edo)])
-                : romanWithSystem(c.roman, c.chordToneOffsets, edo, notationSystem);
+                : romanWithSystem(sizeRootedRoman(c.roman, c.chordRootPc, edo), c.chordToneOffsets, edo, notationSystem);
               // Inversions: keep the SELECTED chord's real root label and append a
               // jazz slash for the bass chord-tone (I/5 = I with its 5th in bass).
               // Do NOT re-root the symbol on the bass: a I in 2nd inversion is
@@ -3389,7 +3421,7 @@ export default function ChordsTab({
                               : { borderColor: "#3a3a5a", color: "#888" }}
                           >
                             <span className="mr-0.5 text-[8px] opacity-60">[{i + 1}]</span>
-                            {chordMap[rn]?.length ? <ChordSym symbol={chordSymbol(chordMap[rn].map(s => (s * 1200) / edo))} /> : formatRomanNumeralWithFamily(rn, familyPrefix)}
+                            {formatRomanNumeralWithFamily(chordMap[rn]?.length ? sizeRootedRoman(rn, chordMap[rn][0], edo) : rn, familyPrefix)}
                           </button>
                         );
                       })}
@@ -3952,7 +3984,8 @@ function ChordSelectionPanel({
                           style={isChecked ? { color: accent } : undefined}>
                           {(() => {
                             const steps = entry.steps ?? chordMap[entry.label];
-                            const roman = formatRomanNumeralWithFamily(entry.label, familyPrefix);
+                            const rootedLabel = steps && steps.length ? sizeRootedRoman(entry.label, steps[0], edo) : entry.label;
+                            const roman = formatRomanNumeralWithFamily(rootedLabel, familyPrefix);
                             if (!steps || !steps.length) return roman;
                             // Schulter → sized chord symbol; other notation → roman (#/b) +
                             // the system's scale-degree symbols (s3, S3, Kite arrows…).

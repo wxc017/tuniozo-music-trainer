@@ -1,18 +1,18 @@
-// ── Notation / solfège picker ("n" popup) ──────────────────────────
-// Two independent sections — Notation and Solfège.  Each lists the open EDOs;
-// click a system to set that axis for that EDO.  Notation labels intervals;
-// solfège labels syllables — they're chosen separately and used separately.
+// ── Notation picker ("n" popup) ─────────────────────────────────────
+// Notation section only — pick the interval-symbol system per EDO.  Solfège is
+// no longer selectable: it's always "Spectrum-ege" (the region-centered
+// syllables from the Solfège chart), used everywhere.
 
-import { notationsForEdo, solfegesForEdo, authorFor, SCHULTER, UNIVERSAL_SOLFEGE } from "@/lib/notationLabels";
+import { notationsForEdo, authorFor, SCHULTER } from "@/lib/notationLabels";
 
 export default function NotationPicker({
-  edos, notation, solfege, onNotation, onSolfege, onClose,
+  edos, notation, onNotation, onClose,
 }: {
   edos: number[];
   notation: Record<number, string>;
-  solfege: Record<number, string>;
+  solfege?: Record<number, string>;
   onNotation: (edo: number, system: string) => void;
-  onSolfege: (edo: number, system: string) => void;
+  onSolfege?: (edo: number, system: string) => void;
   onClose: () => void;
 }) {
   const list = [...new Set(edos)].filter(e => Number.isFinite(e)).sort((a, b) => a - b);
@@ -61,12 +61,17 @@ export default function NotationPicker({
       <div className="w-full max-w-lg max-h-[85vh] overflow-auto bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl shadow-2xl p-5"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-[#cfe6ff]">Notation &amp; Solfège</h2>
+          <h2 className="text-lg font-bold text-[#cfe6ff]">Notation</h2>
           <button onClick={onClose} className="text-[#999] hover:text-[#cc6666] text-xl leading-none">✕</button>
         </div>
         <div className="flex flex-col gap-5">
           <Section title="Notation" optionsFor={notationsForEdo} value={notation} onPick={onNotation} fallback={SCHULTER} />
-          <Section title="Solfège" optionsFor={solfegesForEdo} value={solfege} onPick={onSolfege} fallback={UNIVERSAL_SOLFEGE} />
+          <div>
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#8888c0] mb-1.5">Solfège</h3>
+            <p className="text-xs text-[#888]">
+              Always <span className="text-[#cfe6ff] font-semibold">Spectrum-ege</span> — the region-centered syllables from the Solfège chart, used everywhere.
+            </p>
+          </div>
         </div>
       </div>
     </div>

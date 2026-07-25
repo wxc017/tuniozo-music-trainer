@@ -4,6 +4,40 @@ import { formatHalfAccidentals } from "./edoData";
 const SUPER_CHARS = new Set(["°", "ø", "+"]);
 const SPLIT_RE = /([°ø+])/;
 
+// ── Size → up/down arrow (jazz-xen convention) ──────────────────────
+// A plain Roman numeral (case = major/minor) already implies the diatonic
+// interval; an arrow marks a size that ISN'T implicit — ↓ = small (sub),
+// ↑ = large (super), bare = central.  Chord-type symbols (° ø +) and the
+// extension/quality suffix stay in ordinary jazz notation.  `s` / `l` are the
+// sized-code letters (chordNotation.ts sizedRoman); `S` / `L` the super/large
+// single-letter qualifiers (tonalityChordPool.ts).
+const SIZE_ARROW: Record<string, string> = {
+  s: "↓", "ₛ": "↓", "ˢ": "↓",
+  l: "↑", S: "↑", L: "↑",
+};
+
+/** Convert a leading-prefix run to display form: size letters become ↓/↑
+ *  arrows; accidentals (b # ♭ ♯ 𝄲 𝄳) and the neutral mark (N) pass through. */
+function arrowifyPrefix(raw: string): string {
+  let out = "";
+  for (const ch of raw) out += SIZE_ARROW[ch] ?? ch;
+  return out;
+}
+
+/** Convert one space-delimited suffix token: a sized interval code
+ *  ([s|l] + optional quality + degree) becomes an arrow code (s3 → ↓3,
+ *  lM7 → ↑M7).  Everything else — ordinary jazz qualities (7, M7, n7,
+ *  sus4, add9) — passes through untouched. */
+function arrowifySuffix(suffix: string): string {
+  return suffix
+    .split(" ")
+    .map(tok => {
+      const m = /^([sl])([mMn]?)(\d)$/.exec(tok);
+      return m ? (m[1] === "s" ? "↓" : "↑") + m[2] + m[3] : tok;
+    })
+    .join(" ");
+}
+
 /**
  * Renders a roman numeral label with chord-type symbols (°, ø, +) as superscript.
  * Handles compound labels like "iiø/V", "vii°/X", "V/vi", "bIII+", "#iv°".
@@ -24,7 +58,7 @@ export function formatRomanNumeral(label: string, edo?: number): React.ReactNode
     head = label.slice(0, spaceIdx);
     const suffix = label.slice(spaceIdx + 1);
     suffixSup = (
-      <sup style={{ fontSize: "0.7em", verticalAlign: "super", lineHeight: 0 }}>{suffix}</sup>
+      <sup style={{ fontSize: "0.7em", verticalAlign: "super", lineHeight: 0 }}>{arrowifySuffix(suffix)}</sup>
     );
   }
 
@@ -67,38 +101,42 @@ export function formatRomanNumeralWithFamily(label: string, familyPrefix: string
   );
 }
 
-// Per direct user direction: a leading prefix on a Roman numeral
-// indicates the chord root sits on a non-major scale-degree position
-// (e.g. sIII = root on subminor 3rd, bIII = root on minor 3rd, #IV =
-// root on aug 4th).  All such front prefixes render as SUBSCRIPT so
-// they read as a position-marker tag attached to the numeral —
-// distinct from the chord-quality SUPERSCRIPT suffix that follows
-// the numeral (s3 / n3 / S3 / M7 / etc.).
+// A leading prefix on a Roman numeral indicates the chord root sits on a
+// non-major scale-degree position.  The SIZE part (small / large) now renders
+// as a ↓ / ↑ arrow (arrowifyPrefix) — an inflection the plain numeral can't
+// imply — while accidentals (b / # / half-sharp / half-flat) pass through:
+//   sIII → ↓III (root on subminor 3rd),  liii → ↑iii (large minor 3rd),
+//   sV → ↓V (diminished 5th),  bIII → bIII,  #iv° → #iv°.
+// The arrow reads as a size marker before the numeral; the chord-quality
+// SUPERSCRIPT suffix that follows (↓3 / n3 / M7 / …) stays in jazz notation.
 //
 // Match: any run of accidental / size characters (b / # / s / l / S / L / N
 // / ♭ / ♯ / 𝄲 half-sharp / 𝄳 half-flat / ₛ / ˢ) before a Roman-numeral letter.
-// The size prefixes (s = small, l = large) only subscript when they sit in
-// front of an actual Roman numeral — standalone interval codes like "s5" or
-// "ln6" aren't followed by a Roman letter, so they're left untouched.
+// The size letters (s = small, l = large) only convert when they sit in front
+// of an actual Roman numeral — standalone interval codes like "s5" or "ln6"
+// aren't followed by a Roman letter, so they're left untouched.
 const LEADING_PREFIX_RE = /^([bslSLN#♭♯𝄲𝄳ₛˢ]+)([IiVvXx].*)$/;
 
 function formatSingleRoman(part: string, key: number): React.ReactNode {
-  let prefixSub: React.ReactNode = null;
+  let prefixNode: React.ReactNode = null;
   const pMatch = part.match(LEADING_PREFIX_RE);
   if (pMatch) {
-    prefixSub = (
-      <sub style={{ fontSize: "0.7em", verticalAlign: "sub", lineHeight: 0 }}>{pMatch[1]}</sub>
+    // Size letters → ↓ / ↑ arrows, accidentals pass through; rendered inline
+    // just before the numeral (no longer a subscript tag) so ↓III / ↑iii read
+    // at a glance.
+    prefixNode = (
+      <span style={{ fontSize: "0.85em", marginRight: 0.5 }}>{arrowifyPrefix(pMatch[1])}</span>
     );
     part = pMatch[2];
   }
 
   const segments = part.split(SPLIT_RE);
   if (segments.length === 1) {
-    return prefixSub ? <span key={key}>{prefixSub}{part}</span> : part;
+    return prefixNode ? <span key={key}>{prefixNode}{part}</span> : part;
   }
   return (
     <span key={key}>
-      {prefixSub}
+      {prefixNode}
       {segments.map((seg, i) =>
         SUPER_CHARS.has(seg)
           ? <sup key={i} style={{ fontSize: "0.7em", verticalAlign: "super", lineHeight: 0 }}>{seg}</sup>

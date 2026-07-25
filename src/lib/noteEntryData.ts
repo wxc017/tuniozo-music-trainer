@@ -1,5 +1,7 @@
 // ── Types ──────────────────────────────────────────────────────────────────────
 
+import { jianpuToPitch } from "./jianpu";
+
 export type ClefType = "treble" | "bass";
 export type Duration = "w" | "h" | "q" | "8" | "16" | "32";
 export type AccidentalType = "n" | "b" | "#";
@@ -99,6 +101,31 @@ export interface NoteData {
    *  7 = septuplet).  Consecutive notes sharing the same tuplet value
    *  get wrapped in a single VexFlow Tuplet bracket at render time. */
   tuplet?: 3 | 5 | 6 | 7;
+
+  // ── Jianpu (numbered notation) fields ──────────────────────────────
+  // Jianpu scores author notes directly as scale-degree + octave + accidental
+  // so the numbered renderer never reverse-engineers a staff pitch.  A
+  // concrete `pitch`/`accidental` is still derived and stored above so
+  // playback and MusicXML reuse the standard code paths.  Harmonic and drum
+  // modes ignore all of these.
+  /** Voice/line index (0 = top).  0/1 = the two default voices (RH/LH);
+   *  jianpu scores may add more voice lines, so this is an open index. */
+  voice?: number;
+  /** Scale degree 1–7 (rests use `isRest`; the number 0 is shown for a rest). */
+  jianpuDegree?: number;
+  /** Signed octave-dot count: +1 = one dot above (octave up), −1 = one below. */
+  jianpuOctave?: number;
+  /** Explicit accidental shown before the number ("#", "b", or "n" natural). */
+  jianpuAccidental?: "#" | "b" | "n";
+  /** Jianpu-only: chromatic alteration of the degree in EDO steps (0 = the bare
+   *  diatonic degree).  Supersedes `jianpuAccidental`; legacy notes fall back to
+   *  it (#→+1, b→−1). */
+  alteration?: number;
+  /** Jianpu-only: draw this note's duration underline separately (breaks the
+   *  beam) instead of beaming it with its neighbours.  Absent → beamed. */
+  separateUnderline?: boolean;
+  /** Jianpu-only: staccato — a dot drawn above the number/syllable. */
+  staccato?: boolean;
 }
 
 /** Actual slot count occupied by a note, accounting for the dot (1.5×). */
@@ -126,6 +153,11 @@ export interface ScoreSetup {
   /** Per-bar section title (e.g. "Verse", "Chorus", "Bridge").
    *  Drum mode renders this as a boxed text section above the bar. */
   perBarTitle?: Record<number, string>;
+  /** Per-bar section label (e.g. "A", "B", "Exercise 1 — arpeggios").
+   *  Jianpu/Sol-fa mode renders this as a large bold heading and forces
+   *  the bar to start a new line, so one sheet can hold many labelled
+   *  exercises under a single big title. */
+  perBarSection?: Record<number, string>;
   /** Per-bar manual line break.  When true, the bar starts a new
    *  row regardless of MEASURES_PER_ROW.  Bar 0 is always a row
    *  start so this flag is ignored on it. */
@@ -137,7 +169,7 @@ export interface SyncPoint {
   timestamp: number;
 }
 
-export type Instrument = "harmonic" | "drum";
+export type Instrument = "harmonic" | "drum" | "jianpu";
 
 export interface NoteEntryProject {
   id: string;
@@ -155,6 +187,24 @@ export interface NoteEntryProject {
   instrument?: Instrument;
   /** BPM for drum-mode playback.  Defaults to 100 when absent. */
   tempo?: number;
+  /** Jianpu-only display system: numbered ("jianpu") or tonic sol-fa
+   *  ("solfa").  Display-only — the underlying degree data is identical. */
+  displaySystem?: "jianpu" | "solfa";
+  /** Jianpu-only number of voice lines (≥ 2).  Grows when the user adds a
+   *  voice; empty extra voices collapse away.  Absent → 2.  Legacy/global
+   *  fallback — per-section counts in `perSectionVoiceCount` supersede it. */
+  voiceCount?: number;
+  /** Jianpu/Sol-fa mode: voice-line count per section, keyed by the section's
+   *  start bar (bar 0, or any bar carrying a `perBarSection` label).  Lets each
+   *  labelled exercise have its own number of voices independently.  A section
+   *  with no entry falls back to `voiceCount` (bar 0) or the 2-voice minimum. */
+  perSectionVoiceCount?: Record<number, number>;
+  /** Jianpu-only: join the voice lines with a piano grand-staff brace ({ )
+   *  so they read as two hands of one instrument. */
+  pianoBrace?: boolean;
+  /** Jianpu-only: equal divisions of the octave (default 12).  Degrees 1–7 are
+   *  the diatonic MOS from the EDO's best fifth; alterations move by EDO steps. */
+  edo?: number;
 }
 
 // ── Utilities ──────────────────────────────────────────────────────────────────
@@ -252,6 +302,10 @@ export function decomposeSlotsToRestSpecs(slots: number): RestSpec[] {
 
 const LS_KEY = "lt_note_entry_projects";
 
+/** Reserved project id used by the Sol-fa Spectrum chord trainer's embedded
+ *  Jianpu answer sheet.  Hidden from the Scoring project list. */
+export const SOLFA_ANSWER_PROJECT_ID = "__solfa_spectrum_answer__";
+
 export function loadProjects(): NoteEntryProject[] {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -314,6 +368,9 @@ export function generateMusicXML(project: NoteEntryProject): string {
   // focused on harmonic notation.
   if (project.instrument === "drum") {
     return generateDrumMusicXML(project);
+  }
+  if (project.instrument === "jianpu") {
+    return generateJianpuMusicXML(project);
   }
 
   const { setup, notes, title } = project;
@@ -419,6 +476,125 @@ export function generateMusicXML(project: NoteEntryProject): string {
 
   xml += `  </part>\n</score-partwise>`;
   return xml;
+}
+
+/**
+ * Two-part MusicXML for a jianpu score.  P1 = upper voice (right hand,
+ * treble), P2 = lower voice (left hand, bass).  Notes carry standard
+ * <pitch> derived from their degree/octave/accidental so any reader
+ * (MuseScore, LilyPond, Dorico) — including tools with a jianpu view —
+ * can render them.  Empty voices still emit a rest-filled part so the
+ * "always two voices" layout is preserved on import.
+ */
+export function generateJianpuMusicXML(project: NoteEntryProject): string {
+  const { setup, notes, title } = project;
+  const { keySignature, defaultTimeSig, barCount } = setup;
+  const DIV = 8;
+
+  const durToInfo: Record<Duration, { type: string; dur: number }> = {
+    "w":  { type: "whole",   dur: 32 },
+    "h":  { type: "half",    dur: 16 },
+    "q":  { type: "quarter", dur: 8  },
+    "8":  { type: "eighth",  dur: 4  },
+    "16": { type: "16th",    dur: 2  },
+    "32": { type: "32nd",    dur: 1  },
+  };
+
+  const safeTitle = xmlEscape(title);
+  const composerLine = project.composer
+    ? `\n  <identification><creator type="composer">${xmlEscape(project.composer)}</creator></identification>`
+    : "";
+
+  // Convert a jianpu note to <pitch> using the same theory as the renderer.
+  const pitchXml = (n: NoteData): string => {
+    // Approximate the chromatic alteration as a 12-EDO accidental for export.
+    const acc = n.alteration != null && n.alteration !== 0
+      ? (n.alteration > 0 ? "#" : "b")
+      : n.jianpuAccidental;
+    const jp = jianpuToPitch(n.jianpuDegree ?? 1, n.jianpuOctave ?? 0, acc, keySignature);
+    let s = `<pitch><step>${jp.step}</step>`;
+    if (jp.alter) s += `<alter>${jp.alter}</alter>`;
+    s += `<octave>${jp.octave}</octave></pitch>`;
+    return s;
+  };
+
+  const voicePart = (voice: number, clefSign: string, clefLine: number): string => {
+    let part = "";
+    for (let m = 0; m < barCount; m++) {
+      const ts = setup.perBarTimeSig?.[m] ?? defaultTimeSig;
+      const totalSlots = measureSlots(ts);
+      const mNotes = notes
+        .filter(n => n.measure === m && (n.voice ?? 0) === voice)
+        .sort((a, b) => a.startSlot - b.startSlot);
+
+      part += `    <measure number="${m + 1}">\n`;
+      if (m === 0) {
+        part += `      <attributes>\n`;
+        part += `        <divisions>${DIV}</divisions>\n`;
+        part += `        <key><fifths>${keySignature}</fifths></key>\n`;
+        part += `        <time><beats>${ts.num}</beats><beat-type>${ts.den}</beat-type></time>\n`;
+        part += `        <clef><sign>${clefSign}</sign><line>${clefLine}</line></clef>\n`;
+        part += `      </attributes>\n`;
+      } else {
+        const prevTs = setup.perBarTimeSig?.[m - 1] ?? defaultTimeSig;
+        if (ts.num !== prevTs.num || ts.den !== prevTs.den) {
+          part += `      <attributes><time><beats>${ts.num}</beats><beat-type>${ts.den}</beat-type></time></attributes>\n`;
+        }
+      }
+
+      const emitRest = (dur: Duration) => {
+        const { type, dur: d } = durToInfo[dur];
+        part += `      <note><rest/><duration>${d}</duration><type>${type}</type></note>\n`;
+      };
+
+      let cursor = 0;
+      for (const n of mNotes) {
+        if (n.startSlot > cursor) decomposeSlotsToRests(n.startSlot - cursor).forEach(emitRest);
+        if (n.isRest) {
+          emitRest(n.duration);
+        } else {
+          const { type, dur: d } = durToInfo[n.duration];
+          const dotDur = n.dotted ? Math.round(d * 1.5) : d;
+          part += `      <note>\n`;
+          part += `        ${pitchXml(n)}\n`;
+          part += `        <duration>${dotDur}</duration><type>${type}</type>${n.dotted ? "<dot/>" : ""}\n`;
+          part += `      </note>\n`;
+        }
+        cursor = n.startSlot + noteSlots(n);
+      }
+      if (cursor < totalSlots) decomposeSlotsToRests(totalSlots - cursor).forEach(emitRest);
+
+      part += `    </measure>\n`;
+    }
+    return part;
+  };
+
+  // One part per voice line: voice 0 → treble (RH), the rest → bass.
+  const maxVoice = notes.reduce((m, n) => Math.max(m, n.voice ?? 0), 0);
+  const voiceCount = Math.max(2, project.voiceCount ?? 2, maxVoice + 1);
+  const voiceName = (v: number) => v === 0 ? "Right hand" : voiceCount === 2 ? "Left hand" : `Voice ${v + 1}`;
+
+  const scorePartsXml = Array.from({ length: voiceCount }, (_, v) =>
+    `    <score-part id="P${v + 1}"><part-name>${voiceName(v)}</part-name></score-part>`).join("\n");
+  // Join the voices with a piano grand-staff brace when requested.
+  const partListXml = project.pianoBrace
+    ? `    <part-group type="start" number="1"><group-symbol>brace</group-symbol><group-barline>yes</group-barline></part-group>\n${scorePartsXml}\n    <part-group type="stop" number="1"/>`
+    : scorePartsXml;
+  const partsXml = Array.from({ length: voiceCount }, (_, v) => {
+    const clefSign = v === 0 ? "G" : "F";
+    const clefLine = v === 0 ? 2 : 4;
+    return `  <part id="P${v + 1}">\n${voicePart(v, clefSign, clefLine)}  </part>`;
+  }).join("\n");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="3.1">
+  <work><work-title>${safeTitle}</work-title></work>${composerLine}
+  <part-list>
+${partListXml}
+  </part-list>
+${partsXml}
+</score-partwise>`;
 }
 
 /** Drum-set MusicXML: percussion clef, <unpitched> notes with

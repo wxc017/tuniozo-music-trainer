@@ -1,0 +1,283 @@
+// ─────────────────────────────────────────────────────────────────────────
+// Workout Log — persistence + CRUD.
+//
+// Everything here is small JSON under `lt_workout_*` keys, so folderSync's
+// setItem interceptor fires `lt-data-changed` on every write and the log
+// auto-syncs (Google Drive + desktop folder) exactly like the practice log.
+//
+// A `lt-workout-changed` event lets React views re-read after a mutation
+// without prop-drilling a store through the whole tree.
+// ─────────────────────────────────────────────────────────────────────────
+
+import { useSyncExternalStore } from "react";
+import { lsGet, lsSet, localToday } from "./storage";
+import {
+  type Workout, type WorkoutTemplate, type WorkoutPrefs,
+  type LoggedExercise, type WorkoutSet, type TemplateExercise,
+  type TrackingMode, type CustomExercise,
+  DEFAULT_PREFS,
+} from "./workoutTypes";
+import { SKILLS } from "./calisthenicsData";
+
+const LOG_KEY = "lt_workout_log";
+const TEMPLATES_KEY = "lt_workout_templates";
+const PREFS_KEY = "lt_workout_prefs";
+const CUSTOM_EX_KEY = "lt_workout_custom_exercises";
+const CHANGE_EVENT = "lt-workout-changed";
+
+// ── ids ────────────────────────────────────────────────────────────────
+let counter = 0;
+export function uid(prefix = "w"): string {
+  counter = (counter + 1) % 1_000_000;
+  return `${prefix}_${Date.now().toString(36)}_${counter.toString(36)}`;
+}
+
+// ── raw reads / writes ───────────────────────────────────────────────────
+export function getWorkouts(): Workout[] {
+  const v = lsGet<Workout[]>(LOG_KEY, []);
+  return Array.isArray(v) ? v : [];
+}
+export function getTemplates(): WorkoutTemplate[] {
+  const v = lsGet<WorkoutTemplate[]>(TEMPLATES_KEY, []);
+  return Array.isArray(v) ? v : [];
+}
+export function getPrefs(): WorkoutPrefs {
+  return { ...DEFAULT_PREFS, ...lsGet<Partial<WorkoutPrefs>>(PREFS_KEY, {}) };
+}
+export function getCustomExercises(): CustomExercise[] {
+  const v = lsGet<CustomExercise[]>(CUSTOM_EX_KEY, []);
+  return Array.isArray(v) ? v : [];
+}
+
+/** Sensible default tracking mode for a catalog skill: static holds are timed,
+ *  everything else is reps. Users can flip it per-exercise in the logger. */
+export function defaultModeForSkill(skillId?: string): TrackingMode {
+  if (!skillId) return "weight_reps";
+  return SKILLS.find(s => s.id === skillId)?.category === "static" ? "time" : "reps";
+}
+
+function writeWorkouts(list: Workout[]): void { lsSet(LOG_KEY, list); emitChange(); }
+function writeTemplates(list: WorkoutTemplate[]): void { lsSet(TEMPLATES_KEY, list); emitChange(); }
+function writeCustomExercises(list: CustomExercise[]): void { lsSet(CUSTOM_EX_KEY, list); emitChange(); }
+
+/** Save (or update by case-insensitive name) a reusable custom exercise. */
+export function saveCustomExercise(name: string, mode: TrackingMode): CustomExercise {
+  const list = getCustomExercises();
+  const existing = list.find(e => e.name.toLowerCase() === name.trim().toLowerCase());
+  if (existing) {
+    existing.mode = mode;
+    rev++; writeCustomExercises(list);
+    return existing;
+  }
+  const ex: CustomExercise = { id: uid("cex"), name: name.trim(), mode, createdAt: Date.now() };
+  rev++; writeCustomExercises([...list, ex]);
+  return ex;
+}
+export function deleteCustomExercise(id: string): void {
+  rev++; writeCustomExercises(getCustomExercises().filter(e => e.id !== id));
+}
+export function setPrefs(patch: Partial<WorkoutPrefs>): void {
+  rev++;
+  lsSet(PREFS_KEY, { ...getPrefs(), ...patch }); emitChange();
+}
+
+// ── change subscription (for useSyncExternalStore) ───────────────────────
+const listeners = new Set<() => void>();
+/** Every mutator bumps `rev` (invalidating the snapshot cache) BEFORE its
+ *  write, then the write calls this to notify subscribers. */
+function emitChange(): void {
+  listeners.forEach(l => l());
+  try { window.dispatchEvent(new CustomEvent(CHANGE_EVENT)); } catch { /* jsdom */ }
+}
+function subscribe(cb: () => void): () => void {
+  listeners.add(cb);
+  // Also re-fire when a sync restore rewrites localStorage from another device.
+  const onExternal = () => cb();
+  window.addEventListener("lt-folder-sync-loaded", onExternal);
+  return () => { listeners.delete(cb); window.removeEventListener("lt-folder-sync-loaded", onExternal); };
+}
+
+/** Reactive snapshot of the whole log; re-renders on any mutation. */
+export function useWorkoutData(): {
+  workouts: Workout[]; templates: WorkoutTemplate[]; prefs: WorkoutPrefs; customExercises: CustomExercise[];
+} {
+  const workouts = useSyncExternalStore(subscribe, getWorkoutsSnapshot);
+  const templates = useSyncExternalStore(subscribe, getTemplatesSnapshot);
+  const prefs = useSyncExternalStore(subscribe, getPrefsSnapshot);
+  const customExercises = useSyncExternalStore(subscribe, getCustomSnapshot);
+  return { workouts, templates, prefs, customExercises };
+}
+
+// useSyncExternalStore requires referentially-stable snapshots between changes,
+// so cache the parsed arrays and only replace them when a mutation bumps `rev`.
+let rev = 0;
+let cachedWorkouts: Workout[] | null = null;
+let cachedTemplates: WorkoutTemplate[] | null = null;
+let cachedPrefs: WorkoutPrefs | null = null;
+let cachedCustom: CustomExercise[] | null = null;
+let cachedRev = -1;
+function refreshCache(): void {
+  if (cachedRev === rev && cachedWorkouts && cachedTemplates && cachedPrefs && cachedCustom) return;
+  cachedWorkouts = getWorkouts();
+  cachedTemplates = getTemplates();
+  cachedPrefs = getPrefs();
+  cachedCustom = getCustomExercises();
+  cachedRev = rev;
+}
+function getWorkoutsSnapshot(): Workout[] { refreshCache(); return cachedWorkouts!; }
+function getTemplatesSnapshot(): WorkoutTemplate[] { refreshCache(); return cachedTemplates!; }
+function getPrefsSnapshot(): WorkoutPrefs { refreshCache(); return cachedPrefs!; }
+function getCustomSnapshot(): CustomExercise[] { refreshCache(); return cachedCustom!; }
+// A cross-device sync restore rewrites localStorage without going through our
+// mutators, so bump rev on that path too, before subscribers re-read.
+if (typeof window !== "undefined") {
+  window.addEventListener("lt-folder-sync-loaded", () => { rev++; });
+}
+
+// ── Workout CRUD ─────────────────────────────────────────────────────────
+export function upsertWorkout(w: Workout): void {
+  const list = getWorkouts();
+  const i = list.findIndex(x => x.id === w.id);
+  if (i >= 0) list[i] = w; else list.push(w);
+  list.sort((a, b) => b.startedAt - a.startedAt);
+  rev++;
+  writeWorkouts(list);
+}
+export function deleteWorkout(id: string): void {
+  rev++;
+  writeWorkouts(getWorkouts().filter(w => w.id !== id));
+}
+export function getWorkout(id: string): Workout | undefined {
+  return getWorkouts().find(w => w.id === id);
+}
+export function workoutsOnDate(date: string): Workout[] {
+  return getWorkouts().filter(w => w.date === date);
+}
+
+/** Start a blank session (optionally from a template) and persist it. */
+export function startWorkout(template?: WorkoutTemplate): Workout {
+  const now = Date.now();
+  const w: Workout = {
+    id: uid("wk"),
+    date: localToday(),
+    startedAt: now,
+    title: template?.name,
+    templateId: template?.id,
+    exercises: (template?.exercises ?? []).map(te => templateExerciseToLogged(te)),
+  };
+  upsertWorkout(w);
+  return w;
+}
+
+function templateExerciseToLogged(te: TemplateExercise): LoggedExercise {
+  const n = Math.max(1, te.targetSets ?? 1);
+  const sets: WorkoutSet[] = Array.from({ length: n }, () => ({
+    id: uid("set"),
+    reps: te.targetReps,
+    holdSec: te.targetHoldSec,
+    rpe: te.targetRpe,
+    restSec: te.restSec,
+  }));
+  return { id: uid("ex"), skillId: te.skillId, name: te.name, mode: te.mode ?? defaultModeForSkill(te.skillId), sets };
+}
+
+export function makeExercise(name: string, mode: TrackingMode, skillId?: string): LoggedExercise {
+  return { id: uid("ex"), skillId, name, mode, sets: [makeSet()] };
+}
+export function makeSet(prefill?: Partial<WorkoutSet>): WorkoutSet {
+  return { id: uid("set"), restSec: getPrefs().defaultRestSec, ...prefill };
+}
+
+// ── Template CRUD ────────────────────────────────────────────────────────
+export function saveTemplate(t: WorkoutTemplate): void {
+  const list = getTemplates();
+  const i = list.findIndex(x => x.id === t.id);
+  if (i >= 0) list[i] = { ...t, updatedAt: Date.now() };
+  else list.push({ ...t, createdAt: t.createdAt || Date.now(), updatedAt: Date.now() });
+  rev++;
+  writeTemplates(list);
+}
+export function deleteTemplate(id: string): void {
+  rev++;
+  writeTemplates(getTemplates().filter(t => t.id !== id));
+}
+
+/** Derive a reusable template from a completed/in-progress workout. */
+export function templateFromWorkout(w: Workout, name: string): WorkoutTemplate {
+  return {
+    id: uid("tpl"),
+    name,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    exercises: w.exercises.map(ex => {
+      const first = ex.sets[0];
+      return {
+        skillId: ex.skillId,
+        name: ex.name,
+        mode: ex.mode,
+        targetSets: ex.sets.length,
+        targetReps: first?.reps,
+        targetHoldSec: first?.holdSec,
+        targetRpe: first?.rpe,
+        restSec: first?.restSec,
+      };
+    }),
+  };
+}
+
+// ── Derived stats for the history / charts view ──────────────────────────
+export interface ExerciseHistoryPoint {
+  date: string;
+  bestRpe?: number;
+  topWeight?: number;
+  totalReps: number;
+  totalHoldSec: number;
+  sets: number;
+}
+
+/** Per-date rollup for one exercise (matched by skillId when present, else name). */
+export function exerciseHistory(match: { skillId?: string; name: string }): ExerciseHistoryPoint[] {
+  const byDate = new Map<string, ExerciseHistoryPoint>();
+  for (const w of getWorkouts()) {
+    for (const ex of w.exercises) {
+      const same = match.skillId ? ex.skillId === match.skillId : ex.name.toLowerCase() === match.name.toLowerCase();
+      if (!same) continue;
+      const p = byDate.get(w.date) ?? { date: w.date, totalReps: 0, totalHoldSec: 0, sets: 0 };
+      for (const s of ex.sets) {
+        p.sets++;
+        p.totalReps += s.reps ?? 0;
+        p.totalHoldSec += s.holdSec ?? 0;
+        if (s.rpe != null) p.bestRpe = Math.max(p.bestRpe ?? 0, s.rpe);
+        if (s.weight != null) p.topWeight = Math.max(p.topWeight ?? -Infinity, s.weight);
+      }
+      byDate.set(w.date, p);
+    }
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Every distinct exercise ever logged (for the history picker). */
+export function loggedExerciseIndex(): { key: string; name: string; skillId?: string; count: number }[] {
+  const map = new Map<string, { key: string; name: string; skillId?: string; count: number }>();
+  for (const w of getWorkouts()) {
+    for (const ex of w.exercises) {
+      const key = ex.skillId ?? ex.name.toLowerCase();
+      const cur = map.get(key) ?? { key, name: ex.name, skillId: ex.skillId, count: 0 };
+      cur.count += ex.sets.length;
+      map.set(key, cur);
+    }
+  }
+  return [...map.values()].sort((a, b) => b.count - a.count);
+}
+
+/** Count of all videoIds currently referenced by the log (orphan pruning). */
+export function referencedVideoIds(): Set<string> {
+  const ids = new Set<string>();
+  for (const w of getWorkouts())
+    for (const ex of w.exercises)
+      for (const s of ex.sets)
+        if (s.videoId) ids.add(s.videoId);
+  return ids;
+}
+
+export { CHANGE_EVENT as WORKOUT_CHANGE_EVENT };

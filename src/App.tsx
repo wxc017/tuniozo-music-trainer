@@ -7,8 +7,9 @@ import BassFretboard from "@/components/BassFretboard";
 import { computeLayout, LayoutResult, ComputedKey } from "@/lib/lumatoneLayout";
 import { audioEngine, AudioEngine, DRONE_INSTRUMENTS, type DroneInstrument } from "@/lib/audioEngine";
 import IntervalsTab from "@/components/tabs/IntervalsTab";
-import ConventionCheatSheet from "@/components/ConventionCheatSheet";
 import ChordsTab from "@/components/tabs/ChordsTab";
+import SolfaSpectrumChords from "@/components/tonal/SolfaSpectrumChords";
+import OverBassReference from "@/components/tonal/OverBassReference";
 import ScalarPermutationsTab from "@/components/tabs/ScalarPermutationsTab";
 import DroneTab from "@/components/tabs/DroneTab";
 import DroneContinuumTab from "@/components/tabs/DroneContinuumTab";
@@ -23,11 +24,12 @@ import DrumPatterns from "@/components/DrumPatterns";
 import SplitPermutationsTab from "@/components/tabs/SplitPermutationsTab";
 import ParadiddleOrchestrationsTab from "@/components/tabs/ParadiddleOrchestrationsTab";
 import ModulationBorrowingTab from "@/components/tabs/ModulationBorrowingTab";
-import { sizedCode } from "@/lib/chordNotation";
-import { notationLabel, solfegeLabel } from "@/lib/notationLabels";
+import { sizedCode, sizedRomanArrow } from "@/lib/chordNotation";
+import { notationLabel, solfegeLabel, SCHULTER, SCHULTER_V2 } from "@/lib/notationLabels";
 import { sizedNoteName, sizedNoteLabel, isNaturalNote, noteLabelForSystem } from "@/lib/intervalCodes";
 import NotationPicker from "@/components/NotationPicker";
 import IntervalSpectrumTab from "@/components/tabs/IntervalSpectrumTab";
+import SolfegeChartTab from "@/components/tabs/SolfegeChartTab";
 import ChordChart from "@/components/ChordChart";
 import Konnakol from "@/components/Konnakol";
 import VocalPercussion from "@/components/VocalPercussion";
@@ -35,6 +37,7 @@ import MixedGroups from "@/components/MixedGroups";
 import ScoringMode from "@/components/ScoringMode";
 import PhraseDecomposition from "@/components/PhraseDecomposition";
 import CalisthenicsTab from "@/components/tabs/CalisthenicsTab";
+import WorkoutLog from "@/components/WorkoutLog";
 // Academic mode components — gitignored, only present in local dev
 const academicModules = import.meta.glob([
   "./components/ReadingWorkflo*.tsx",
@@ -101,7 +104,7 @@ const VIZ_LABELS: Record<VisualizerType, string> = {
 // Melody Bank, Jazz Cells, or Scale Traversals) and dispatches to
 // that engine.
 type Tab = "intervals"|"chords"|"permutations"|"drone"|"transcriptions";
-type ResponseMode = "Play Audio"|"Show Target (Sing It)";
+type ResponseMode = "Play Audio"|"Show Target (Sing It)"|"Sol-fa";
 
 const TAB_LABELS: Record<Tab, string> = {
   intervals: "Intervals", chords: "Chords",
@@ -455,6 +458,11 @@ export default function App() {
   }, []);
   const [droneVol, setDroneVol] = useLS<number>("lt_app_droneVol", 0.5);
   const [droneIsOn, setDroneIsOn] = useState(false);
+  // Spectrum Audiation: the trainer's root (continuous cents, 0–1200) is lifted
+  // here so the drone can lock onto it, plus an optional pure-fifth-above voice
+  // (tanpura style) for chord/harmonic audiation.
+  const [spectrumRoot, setSpectrumRoot] = useState(0);
+  const [spectrumDroneFifth, setSpectrumDroneFifth] = useLS<boolean>("lt_spectrum_drone_fifth", false);
   const [section, setSection] = useLS<string>("lt_app_section", "ear-trainer");
   // Permutations mode subtab (Split Permutations ↔ Paradiddle Orchestrations).
   const [permSubtab, setPermSubtab] = useLS<"split" | "paradiddle">("lt_app_perm_subtab", "split");
@@ -515,8 +523,12 @@ export default function App() {
   // All tabs are available in both response modes.  (Per user request
   // 2026-05-22, Intervals + Scalar Permutations are no longer hidden in
   // "Show Target (Sing It)" mode.)
+  // Sol-fa response mode only supports Intervals and Chords for now (per
+  // direct user direction) — hide Scalar Permutations / Transcriptions /
+  // Drone from the tab row while Sol-fa is selected.
   const visibleTemperamentTabs: Tab[] = temperamentTabs
-    .filter(t => t !== "drone" || betaChordDrone);
+    .filter(t => t !== "drone" || betaChordDrone)
+    .filter(t => responseMode !== "Sol-fa" || t === "intervals" || t === "chords");
   // Snap activeTab to a valid tab for the current temperament whenever
   // the user crosses a boundary, OR whenever the Chord Drone beta is
   // toggled off while the user is currently viewing the Drone tab.
@@ -770,6 +782,30 @@ export default function App() {
     setDroneIsOn(false);
   };
 
+  // ── Spectrum Audiation drone ───────────────────────────────────────
+  // Locks onto the trainer's continuous root (spectrumRoot, in cents) instead
+  // of an EDO tonic.  Optional pure fifth above (702¢, 3/2) for a tanpura-style
+  // root+5th drone.  Uses edo=1200 so notes are read as raw cents (the trainer
+  // tonic sits an octave below C4 = spectrumRoot − 1200).
+  const spectrumDroneNotes = (): number[] => {
+    const rootAbs = spectrumRoot - 1200;
+    return spectrumDroneFifth ? [rootAbs, rootAbs + 702] : [rootAbs];
+  };
+  const startSpectrumDrone = async () => {
+    await ensureAudio();
+    audioEngine.setInstrument(droneInstrument);
+    audioEngine.startDrone(spectrumDroneNotes(), 1200, droneVol);
+    setDroneIsOn(true);
+  };
+  // Live-follow: while the drone is on in Spectrum Audiation, restart it whenever
+  // the root, the fifth toggle, or the instrument changes so it tracks the mode.
+  useEffect(() => {
+    if (section !== "spectrum-audiation" || !droneIsOn) return;
+    audioEngine.setInstrument(droneInstrument);
+    audioEngine.startDrone(spectrumDroneNotes(), 1200, droneVol);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spectrumRoot, spectrumDroneFifth, droneInstrument]);
+
   // ── Global stop: kill ALL audio (drone, scheduled notes, metronome) ──
   const stopAllAudio = useCallback(() => {
     if (highlightTimer.current) { clearTimeout(highlightTimer.current); highlightTimer.current = null; }
@@ -792,13 +828,14 @@ export default function App() {
     if (highlightTimer.current) clearTimeout(highlightTimer.current);
     setHighlighted(new Set(pcs));
     // holdMs lets a caller override the default auto-clear:
-    //   undefined → default (Show Target holds forever; Play Audio clears 3s)
+    //   undefined → default (Show Target / Sol-fa hold forever; Play Audio
+    //               clears 3s — Sol-fa shows the target as well as playing)
     //   <= 0      → hold until the next highlight replaces it (e.g. Show
     //               Answer, where each chord must stay lit until the next
     //               chord onsets and the last chord persists)
     //   > 0       → clear after exactly holdMs
     if (holdMs === undefined) {
-      if (responseMode !== "Show Target (Sing It)") {
+      if (responseMode === "Play Audio") {
         highlightTimer.current = setTimeout(() => setHighlighted(new Set()), 3000);
       }
     } else if (holdMs > 0) {
@@ -968,7 +1005,7 @@ export default function App() {
 
   return (
     <div
-      className={`bg-[#0d0d0d] text-white flex flex-col ${(section === "reading-workflow" || section === "temperament-explorer" || section === "math-lab" || section === "calisthenics") ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}
+      className={`bg-[#0d0d0d] text-white flex flex-col ${(section === "reading-workflow" || section === "temperament-explorer" || section === "math-lab" || section === "calisthenics" || section === "workout-log") ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}
       style={{ "--metro-h": "0px" } as React.CSSProperties}
     >
       {/* ── Header ── */}
@@ -994,6 +1031,7 @@ export default function App() {
                   { id: "drone-continuum",      label: "Drone Continuum",      beta: true },
                   { id: "rhythm-audiation",     label: "Rhythmic Audiation",   beta: true },
                   { id: "melodic-patterns",     label: "Melodic Patterns",     beta: true },
+                  { id: "spectrum-audiation",   label: "Spectrum Audiation",   group: "Spectrum Research" },
                   { id: "chord-chart",          label: "Chord Chart",          group: "Sheet Music" },
                   // Ear & Feel game mode
                   { id: "ear-trainer",          label: "Tonal Audiation",      group: "Ear & Feel" },
@@ -1001,13 +1039,16 @@ export default function App() {
                   { id: "permutations",         label: "Permutations",         group: "Ear & Feel" },
                   // Sheet Music game mode (transcription, scoring, chord charts)
                   { id: "transcription",        label: "Transcription",        group: "Sheet Music" },
-                  { id: "note-entry",           label: "Scoring",              group: "Sheet Music" },
+                  { id: "note-entry",           label: "Sheet Music",          group: "Sheet Music" },
+                  { id: "drum-notation",        label: "Drum Notation",        group: "Sheet Music" },
+                  { id: "sol-fa",               label: "Sol-fa",               group: "Spectrum Research" },
                   // Analytical game mode
                   { id: "lattice",              label: "Harmonic Lattice",       group: "Analytical" },
                   { id: "scalar-exploration",   label: "Scalar Explorations",    group: "Analytical", beta: true },
                   { id: "modulation",           label: "Modulation & Borrowing", group: "Analytical" },
                   { id: "temperament-explorer", label: "Temperament Explorer",   group: "Analytical", beta: true },
-                  { id: "interval-spectrum",    label: "Interval Spectrum",      group: "Analytical" },
+                  { id: "solfege-chart",        label: "Solfège Chart",          group: "Spectrum Research" },
+                  { id: "over-bass",            label: "3-, 4-Part Chords",      group: "Spectrum Research" },
                   // Beta-gated
                   { id: "harmony-workshop",     label: "Harmony Workshop",     beta: true },
                   { id: "vocal-percussion",     label: "Vocal Percussion",     beta: true },
@@ -1020,8 +1061,11 @@ export default function App() {
                   { id: "lumatone-intervals",   label: "Lumatone Intervals",   group: "Analytical" },
                   { id: "microwave",            label: "Microwave",            beta: true },
                   // Other — non-musical gamemodes, rendered as the last group
-                  { id: "metronome",            label: "Metronome",            group: "Other" },
+                  { id: "metronome",            label: "Metronome",            group: "Spectrum Research" },
+                  // Interval Spectrum sits last in Spectrum Research, after Metronome (per direct user direction).
+                  { id: "interval-spectrum",    label: "Interval Spectrum",      group: "Spectrum Research" },
                   { id: "calisthenics",         label: "Calisthenics",         group: "Other" },
+                  { id: "workout-log",          label: "Workout Log",          group: "Other" },
                 ];
                 const visible = SECTION_BUTTONS.filter(b => !b.beta || betaMode);
                 if (betaMathLab) visible.push({ id: "math-lab", label: "Math Lab", beta: true });
@@ -1295,6 +1339,7 @@ export default function App() {
                 className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none">
                 <option>Play Audio</option>
                 <option>Show Target (Sing It)</option>
+                <option>Sol-fa</option>
               </select>
               <div className="w-px h-4 bg-[#2a2a2a]" />
               <input type="range" min={0} max={1.5} step={0.01} value={playVol}
@@ -1313,16 +1358,16 @@ export default function App() {
                 ♪ Tonic
               </button>
           </div>
-          {/* Keyboard — meaningless on Transcriptions (real tunes, standard tuning). */}
+          {/* Keyboard — meaningless on Transcriptions (real tunes, standard tuning).
+              Also hidden when the Spectrum view is selected on a tab that offers
+              the EDO/Spectrum toggle (per direct user direction). */}
           {activeTab !== "transcriptions" && (
           <div id="main-visualizer">
           {!vizCollapsed && (<>
           {edo !== 12 && (
             <div className="flex justify-end gap-1 mb-1">
-              <button onClick={() => setNotationOpen(true)}
-                className="px-2 py-0.5 rounded text-[10px] font-medium border bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff] transition-colors">
-                n: Notation / Solfège
-              </button>
+              {/* Notation / Solfège picker button removed from Tonal Audiation
+                  per direct user direction (the label toggles below stay). */}
               <button onClick={() => { setModShowIntervals(v => !v); setModShowSolfege(false); setModShowNotes(false); }}
                 className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${modShowIntervals
                   ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]" : "bg-[#14141a] border-[#2a2a3a] text-[#8888c0] hover:text-[#cfe6ff]"}`}>
@@ -1354,7 +1399,13 @@ export default function App() {
               labelOf={(modShowIntervals || modShowSolfege || modShowNotes) ? (pitch: number, prefer?: "sharp" | "flat") => {
                 if (modShowNotes) return noteLabelForSystem(edo, pitch, notationByEdo[edo], prefer);   // absolute note name
                 const step = ((((pitch - tonicPc) % edo) + edo) % edo);
-                return modShowSolfege ? solfegeLabel(edo, solfegeByEdo[edo], step) : notationLabel(edo, notationByEdo[edo], step);
+                if (modShowSolfege) return solfegeLabel(edo, solfegeByEdo[edo], step);
+                // Intervals overlay: Schulter (the default sized system) shows a
+                // Roman numeral with ↓/↑ size arrows; other picked notation
+                // systems keep their own labels.
+                const nSys = notationByEdo[edo];
+                if (!nSys || nSys === SCHULTER || nSys === SCHULTER_V2) return sizedRomanArrow((step * 1200) / edo);
+                return notationLabel(edo, nSys, step);
               } : undefined}
               isNatural={modShowNotes ? (p: number) => isNaturalNote(edo, p) : undefined}
 
@@ -1555,6 +1606,37 @@ export default function App() {
         </div>
       )}
 
+      {/* ── Spectrum Audiation ── standalone game mode; hotbar carries ONLY the
+          drone (root-locked to the trainer, optional pure fifth above). */}
+      {section === "spectrum-audiation" && (
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <div className="w-full">
+            <div className="w-full min-w-0">
+              {/* Drone toolbar removed — droning now lives in the Sing tab's Drone
+                  popup (o), which covers degrees, chords, bands, octave & instrument. */}
+              <SolfaSpectrumChords ensureAudio={ensureAudio} playVol={playVol}
+                rootCents={spectrumRoot} onRootCentsChange={setSpectrumRoot} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {section === "solfege-chart" && (
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <div className="w-full bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+            <SolfegeChartTab />
+          </div>
+        </div>
+      )}
+
+      {section === "over-bass" && (
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <div className="w-full bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
+            <OverBassReference />
+          </div>
+        </div>
+      )}
+
       {section === "lumatone-intervals" && (
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <div className="w-full bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
@@ -1604,10 +1686,20 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Scoring (Quick Transcriptions: Harmonic + Drum) ── */}
+      {/* ── Scoring — split into three modes: Sheet Music / Drum Notation / Sol-fa ── */}
       {section === "note-entry" && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          <ScoringMode />
+          <ScoringMode lockedInstrument="harmonic" />
+        </div>
+      )}
+      {section === "drum-notation" && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <ScoringMode lockedInstrument="drum" />
+        </div>
+      )}
+      {section === "sol-fa" && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <ScoringMode lockedInstrument="jianpu" />
         </div>
       )}
 
@@ -1657,6 +1749,13 @@ export default function App() {
       {section === "calisthenics" && (
         <div className="flex-1 flex flex-col overflow-hidden">
           <CalisthenicsTab />
+        </div>
+      )}
+
+      {/* ── Workout Log ── */}
+      {section === "workout-log" && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <WorkoutLog />
         </div>
       )}
 
@@ -1724,6 +1823,8 @@ export default function App() {
             like it is in scalar explorations".  Still gated to the
             chords tab; other Tonal Audiation tabs (intervals /
             mode-id / melody / etc.) keep the EDO selector hidden. */}
+        {/* Spectrum moved to its own "Spectrum Audiation" game mode — Tonal
+            Audiation is purely EDO now (EDO/Spectrum toggle removed). */}
         {(activeTab === "chords" || activeTab === "intervals" || activeTab === "permutations") && <div className="flex gap-2 flex-wrap items-center mb-3 pt-1.5">
           <span className="text-[10px] text-[#555] font-semibold tracking-wider mr-1">EDO</span>
           <div className="flex items-center gap-2 flex-wrap">
@@ -1834,7 +1935,8 @@ export default function App() {
               {TAB_LABELS[t]}
             </button>
           ))}
-          <ConventionCheatSheet />
+          {/* "Notation" cheat-sheet button removed from Tonal Audiation per
+              direct user direction. */}
           <div className="ml-auto flex items-center gap-2">
             {(slotHistory.length > 0 || currentSlotStats.current.size > 0) && (
               <button
@@ -2177,6 +2279,7 @@ export default function App() {
         })()}
 
         <div ref={tabContentRef} className="flex-1 pb-8">
+          {(<>
           {/* Tab content.  Pythagorean (41) and Schismatic (53) only expose
               Intervals / Chords / Scalar Permutations — Drone is filtered
               out by temperamentTabs above and never becomes activeTab in
@@ -2222,7 +2325,7 @@ export default function App() {
               <TranscriptionsTab key={tabKey} ensureAudio={ensureAudio} playVol={playVol} excludeSources={["drums"]} />
             </div>
           )}
-
+          </>)}
 
         </div>
       </div>

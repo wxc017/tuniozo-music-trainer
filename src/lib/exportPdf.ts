@@ -16,6 +16,9 @@ export interface PdfSection {
 export interface PdfOptions {
   showTitles: boolean;
   splitSections: boolean;
+  /** Page orientation.  Defaults to "landscape" (suits wide drum scores);
+   *  jianpu passes "portrait" for a printed-lead-sheet feel. */
+  orientation?: "portrait" | "landscape";
 }
 
 /**
@@ -73,12 +76,14 @@ export async function exportToPdf(
 
   if (items.length === 0) return;
 
-  // A4 landscape (842 × 595 pt) suits wide drum scores.
-  const PAGE_W = 842;
-  const PAGE_H = 595;
+  // A4 — landscape (842 × 595 pt) suits wide drum scores; portrait
+  // (595 × 842) reads like a printed lead sheet for jianpu.
+  const portrait = options.orientation === "portrait";
+  const PAGE_W = portrait ? 595 : 842;
+  const PAGE_H = portrait ? 842 : 595;
   const MARGIN = 36;
 
-  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const doc = new jsPDF({ orientation: portrait ? "portrait" : "landscape", unit: "pt", format: "a4" });
   let firstPage = true;
 
   for (let i = 0; i < items.length; i++) {

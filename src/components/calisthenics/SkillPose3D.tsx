@@ -1,7 +1,7 @@
 import { Component, Suspense, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, useGLTF, Html } from "@react-three/drei";
+import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import type { Pose, Vec3 } from "@/lib/calisthenicsPoses";
 
@@ -24,9 +24,9 @@ const ANCHOR_Y = 1.95;            // height of the top beam the cables hang from
 const ANCHOR_X = 0.25;            // half-gap between cables → rings 50cm apart
 const RING_REST_Y = 0.0;          // resting ring height when nothing grips them
 const FLOOR_Y = -0.95;            // ground plane / feet height
+const RING_RADIUS = 0.104;        // torus ring radius (hand grips the top)
 
 const HUMAN_URL = "/models/human.glb";
-const RINGS_URL = "/models/rings.glb";
 
 const d2r = (d: number) => (d * Math.PI) / 180;
 const lerp = (a: number, b: number, u: number) => a + (b - a) * u;
@@ -42,6 +42,54 @@ type JointKey = typeof JOINT_KEYS[number];
 const angleOf = (p: Pose, k: JointKey): Vec3 => (p.joints as any)[k] ?? [0, 0, 0];
 const rootRot = (p: Pose): Vec3 => p.root.rotation ?? [0, 0, 0];
 const rootPos = (p: Pose): Vec3 => p.root.position ?? [0, 0, 0];
+
+// Interpolated pose sample for a given loop phase `t` (frames play
+// start→end→start on a triangle wave, matching the primitive figure).
+interface Sampled { angle: (k: JointKey) => Vec3; rr: Vec3; rp: Vec3 }
+function sampleFrames(frames: Pose[], t: number): Sampled {
+  if (frames.length <= 1) {
+    const f = frames[0];
+    return { angle: (k) => angleOf(f, k), rr: rootRot(f), rp: rootPos(f) };
+  }
+  const n = frames.length - 1;
+  const cyc = t % 2;
+  const tri = cyc < 1 ? cyc : 2 - cyc;
+  const p = tri * n;
+  const i = Math.min(Math.floor(p), n - 1);
+  const u = p - i;
+  const a = frames[i], b = frames[i + 1];
+  return {
+    angle: (k) => lerp3(angleOf(a, k), angleOf(b, k), u),
+    rr: lerp3(rootRot(a), rootRot(b), u),
+    rp: lerp3(rootPos(a), rootPos(b), u),
+  };
+}
+
+// Forward-kinematics of the arms-down reference rig: given a pose's joint
+// angles, return the unit direction each limb segment points, expressed in the
+// pose's own local frame (+X right, +Y up, +Z toward camera, arms hanging at
+// rest).  These directions are what we aim the realistic model's bones at, so
+// the (already-tuned) pose angles drive the GLB regardless of its rig axes.
+const DOWN = new THREE.Vector3(0, -1, 0);
+function eulerQ(v: Vec3): THREE.Quaternion {
+  return new THREE.Quaternion().setFromEuler(new THREE.Euler(d2r(v[0]), d2r(v[1]), d2r(v[2]), "XYZ"));
+}
+function segmentDirs(angle: (k: JointKey) => Vec3): Record<string, THREE.Vector3> {
+  const torso = eulerQ(angle("spine")).multiply(eulerQ(angle("chest")));
+  const shL = torso.clone().multiply(eulerQ(angle("shoulderL")));
+  const shR = torso.clone().multiply(eulerQ(angle("shoulderR")));
+  const elL = shL.clone().multiply(eulerQ(angle("elbowL")));
+  const elR = shR.clone().multiply(eulerQ(angle("elbowR")));
+  const hipL = eulerQ(angle("hipL"));
+  const hipR = eulerQ(angle("hipR"));
+  const knL = hipL.clone().multiply(eulerQ(angle("kneeL")));
+  const knR = hipR.clone().multiply(eulerQ(angle("kneeR")));
+  const ap = (q: THREE.Quaternion) => DOWN.clone().applyQuaternion(q).normalize();
+  return {
+    upperArmL: ap(shL), foreArmL: ap(elL), upperArmR: ap(shR), foreArmR: ap(elR),
+    thighL: ap(hipL), shinL: ap(knL), thighR: ap(hipR), shinR: ap(knR),
+  };
+}
 
 // ── Small reusable meshes ───────────────────────────────────────────────────
 function Bone({ len, radius, color = BODY_COLOR }: { len: number; radius: number; color?: string }) {
@@ -72,67 +120,8 @@ function Ground() {
   );
 }
 
-// ── Real gymnastic rings ────────────────────────────────────────────────────
-// Use only the ring geometry from the model (its baked straps hang crooked),
-// scaled up to sit correctly around the hands, with clean vertical straps.
-const RINGS_TOP_Y = 2.7;    // suspension height (top of the straps)
-const RING_Y = 0.9;         // ring (grip) height off the floor
-const RING_GAP = 0.5;       // centre-to-centre distance (FIG: 50cm)
-const RING_SCALE = 1.6;     // scale of the ring geometry — sized to the hands
-const RING_ROT: [number, number, number] = [90, 0, 0]; // buckle/wrap points up
-
-function RingsModel() {
-  const gltf = useGLTF(RINGS_URL);
-  const ring = useMemo(() => {
-    let m: THREE.Mesh | null = null;
-    gltf.scene.traverse((o) => {
-      if (!m && (o as THREE.Mesh).isMesh && /ring/i.test(o.name)) m = o as THREE.Mesh;
-    });
-    return m;
-  }, [gltf]);
-
-  const fit = useMemo(() => {
-    if (!ring) return null;
-    const probe = new THREE.Mesh((ring as THREE.Mesh).geometry);
-    probe.scale.setScalar(RING_SCALE);
-    probe.rotation.set(d2r(RING_ROT[0]), d2r(RING_ROT[1]), d2r(RING_ROT[2]));
-    probe.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(probe);
-    const center = new THREE.Vector3(); box.getCenter(center);
-    const size = new THREE.Vector3(); box.getSize(size);
-    return { offset: center.clone().multiplyScalar(-1), halfH: size.y / 2 };
-  }, [ring]);
-
-  if (!ring || !fit) return null;
-  const rr = ring as THREE.Mesh;
-  const halfGap = RING_GAP / 2;
-  const ringTop = RING_Y + fit.halfH;         // where the strap attaches
-  const strapLen = RINGS_TOP_Y - ringTop;
-  return (
-    <>
-      {[-1, 1].map((side) => (
-        <group key={side} position={[side * halfGap, RING_Y, 0]}>
-          <mesh
-            geometry={rr.geometry}
-            material={rr.material}
-            scale={RING_SCALE}
-            rotation={[d2r(RING_ROT[0]), d2r(RING_ROT[1]), d2r(RING_ROT[2])]}
-            position={[fit.offset.x, fit.offset.y, fit.offset.z]}
-          />
-        </group>
-      ))}
-      {[-1, 1].map((side) => (
-        <mesh key={`s${side}`} position={[side * halfGap, ringTop + strapLen / 2, 0]}>
-          <cylinderGeometry args={[0.008, 0.008, strapLen, 8]} />
-          <meshStandardMaterial color="#2b2b30" roughness={0.85} />
-        </mesh>
-      ))}
-    </>
-  );
-}
-useGLTF.preload(RINGS_URL);
-
 // ── Rings + straps. Follow the wrists when given, else hang at rest. ─────────
+// One clean torus ring per side with a single strap up to the ceiling anchor.
 function RingRig({ wristL, wristR }: {
   wristL?: React.RefObject<THREE.Object3D | null>;
   wristR?: React.RefObject<THREE.Object3D | null>;
@@ -143,19 +132,24 @@ function RingRig({ wristL, wristR }: {
   const strapR = useRef<THREE.Mesh>(null);
   const v = useMemo(() => new THREE.Vector3(), []);
   const dir = useMemo(() => new THREE.Vector3(), []);
+  const anchor = useMemo(() => new THREE.Vector3(), []);
   const q = useMemo(() => new THREE.Quaternion(), []);
   const up = useMemo(() => new THREE.Vector3(0, 1, 0), []);
-  const anchorL = useMemo(() => new THREE.Vector3(-ANCHOR_X, ANCHOR_Y, 0), []);
-  const anchorR = useMemo(() => new THREE.Vector3(ANCHOR_X, ANCHOR_Y, 0), []);
 
   const place = (
     wrist: THREE.Object3D | null | undefined,
-    ring: THREE.Mesh | null, strap: THREE.Mesh | null, anchor: THREE.Vector3,
+    ring: THREE.Mesh | null, strap: THREE.Mesh | null, side: number,
   ) => {
     if (!ring || !strap) return;
     if (wrist) wrist.getWorldPosition(v);
-    else v.set(anchor.x, RING_REST_Y, 0);
-    ring.position.copy(v);
+    else v.set(side * ANCHOR_X, RING_REST_Y, 0);
+    // Straps hang straight down: anchor the ceiling point directly above the
+    // hand (same x/z), so each strap is vertical and they never cross.
+    anchor.set(wrist ? v.x : side * ANCHOR_X, ANCHOR_Y, wrist ? v.z : 0);
+    // The hand grips the TOP of the ring, so the ring hangs one radius below
+    // the wrist (rather than floating centred on it) and the strap runs from
+    // the ceiling anchor down to the hand (= ring top).
+    ring.position.set(v.x, v.y - RING_RADIUS, v.z);
     dir.subVectors(v, anchor);
     const len = dir.length() || 0.001;
     strap.position.set((v.x + anchor.x) / 2, (v.y + anchor.y) / 2, (v.z + anchor.z) / 2);
@@ -165,8 +159,8 @@ function RingRig({ wristL, wristR }: {
   };
 
   useFrame(() => {
-    place(wristL?.current, ringL.current, strapL.current, anchorL);
-    place(wristR?.current, ringR.current, strapR.current, anchorR);
+    place(wristL?.current, ringL.current, strapL.current, -1);
+    place(wristR?.current, ringR.current, strapR.current, 1);
   });
 
   return (
@@ -307,31 +301,155 @@ function PrimitiveFigure({ frames, playing, speed }: { frames: Pose[]; playing: 
   );
 }
 
-// ── Realistic GLB human (loads /models/human.glb when present) ───────────────
-// Rigged human at public/models/human.glb (Mixamo skeleton). The loader
-// auto-fits any rigged .glb: scales to human height and drops feet to the floor.
+// ── Realistic GLB human, posed & animated per skill ─────────────────────────
+// Rigged Mixamo human at public/models/human.glb. We drive its bones each
+// frame: run the (arms-down) pose angles through segmentDirs() to get where
+// each limb should point, then aim the corresponding Mixamo bone there. The
+// aim is done in the armature's own space (auto-detected from the rig), so it
+// works despite the T-pose rest and Mixamo's bone axes.
 const GLB_TARGET_H = 1.75;        // metres, standing height to normalise to
-const GLB_ROT: [number, number, number] = [0, 0, 0]; // extra rotation if needed
+const PIVOT_Y = 0.0;              // world height of the body-centre pivot (tune)
 
-function GlbHuman() {
+// Mixamo bone name → the segmentDirs key that aims it, plus its child bone
+// (the bone "points at" its child; that defines its aim axis).
+const LIMB_BONES: { bone: string; child: string; dir: string }[] = [
+  { bone: "LeftArm",      child: "LeftForeArm", dir: "upperArmL" },
+  { bone: "LeftForeArm",  child: "LeftHand",    dir: "foreArmL" },
+  { bone: "RightArm",     child: "RightForeArm", dir: "upperArmR" },
+  { bone: "RightForeArm", child: "RightHand",   dir: "foreArmR" },
+  { bone: "LeftUpLeg",    child: "LeftLeg",     dir: "thighL" },
+  { bone: "LeftLeg",      child: "LeftFoot",    dir: "shinL" },
+  { bone: "RightUpLeg",   child: "RightLeg",    dir: "thighR" },
+  { bone: "RightLeg",     child: "RightFoot",   dir: "shinR" },
+];
+
+interface LimbRig {
+  bone: THREE.Object3D;
+  name: string;                          // stripped bone name (e.g. "LeftArm")
+  restLocal: THREE.Quaternion;           // bone's rest local quaternion
+  localAxis: THREE.Vector3;              // direction toward child, in bone-local space
+  dir: string;                           // segmentDirs key
+  parentBaseWQ: THREE.Quaternion | null; // armature-space rest quat of parent (if parent is NOT an aimed limb)
+  parentLimb: string | null;             // parent's stripped name (if parent IS an aimed limb)
+}
+interface Rig {
+  xAxis: THREE.Vector3; yAxis: THREE.Vector3; zAxis: THREE.Vector3;  // character axes, armature space
+  limbs: LimbRig[];                                                  // ordered upper-before-lower
+  handL: THREE.Object3D | null;
+  handR: THREE.Object3D | null;
+}
+
+const strip = (o: THREE.Object3D) => o.name.replace(/^mixamorig:?/i, "");
+
+function GlbHumanPosed({
+  frames, playing, speed, handL, handR,
+}: {
+  frames: Pose[]; playing: boolean; speed: number;
+  handL: React.RefObject<THREE.Object3D | null>;
+  handR: React.RefObject<THREE.Object3D | null>;
+}) {
   const gltf = useGLTF(HUMAN_URL);
-  // Do NOT clone a skinned mesh (breaks the skeleton). Fit via a wrapper group.
+  const outer = useRef<THREE.Group>(null);
+  const pivot = useRef<THREE.Group>(null);
+  const rig = useRef<Rig | null>(null);
+  const t = useRef(0);
+
+  // Fit (scale + body-centre offset) — measured while the scene is untransformed.
   const fit = useMemo(() => {
     const box = new THREE.Box3().setFromObject(gltf.scene);
-    const size = new THREE.Vector3();
-    box.getSize(size);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const center = new THREE.Vector3(); box.getCenter(center);
     const scale = GLB_TARGET_H / (size.y || 1);
-    const position: [number, number, number] = [
-      -((box.min.x + box.max.x) / 2) * scale,
-      FLOOR_Y - box.min.y * scale,
-      -((box.min.z + box.max.z) / 2) * scale,
-    ];
-    return { scale, position };
+    return { scale, center };
   }, [gltf]);
 
+  // Build the bone rig once, when world matrices are first valid.  Everything
+  // is captured in the armature's own (rest) frame, which is fixed — so the
+  // per-frame aiming never touches world matrices and can't go stale.
+  const buildRig = (): Rig | null => {
+    const byName = new Map<string, THREE.Object3D>();
+    gltf.scene.traverse((o) => { const n = strip(o); if (n) byName.set(n, o); });
+    const hips = byName.get("Hips");
+    const head = byName.get("Head");
+    const armaL = byName.get("LeftArm");
+    const armaR = byName.get("RightArm");
+    if (!hips || !head || !armaL || !armaR) return null;
+
+    const armature = hips.parent ?? gltf.scene;
+    armature.updateWorldMatrix(true, true);
+    const armInv = armature.getWorldQuaternion(new THREE.Quaternion()).invert();
+    const wqArm = (o: THREE.Object3D) => armInv.clone().multiply(o.getWorldQuaternion(new THREE.Quaternion()));
+    const posArm = (o: THREE.Object3D) => armature.worldToLocal(o.getWorldPosition(new THREE.Vector3()));
+
+    const xAxis = posArm(armaR).sub(posArm(armaL)).normalize();  // character right
+    const yAxis = posArm(head).sub(posArm(hips)).normalize();    // up
+    // Anatomical forward (the way the chest faces).  For a camera-facing model
+    // the right hand is at world −X, so xAxis×yAxis points backward; use
+    // yAxis×xAxis so +Z of a pose (e.g. L-sit legs) points where the chest faces.
+    const zAxis = yAxis.clone().cross(xAxis).normalize();
+
+    const limbNames = new Set(LIMB_BONES.map((s) => s.bone));
+    const limbs: LimbRig[] = [];
+    for (const spec of LIMB_BONES) {
+      const bone = byName.get(spec.bone);
+      const child = byName.get(spec.child);
+      if (!bone || !child || !bone.parent) continue;
+      const parentName = strip(bone.parent);
+      const parentIsLimb = limbNames.has(parentName);
+      limbs.push({
+        bone,
+        name: spec.bone,
+        restLocal: bone.quaternion.clone(),
+        localAxis: child.position.clone().normalize(),
+        dir: spec.dir,
+        parentBaseWQ: parentIsLimb ? null : wqArm(bone.parent),
+        parentLimb: parentIsLimb ? parentName : null,
+      });
+    }
+    return { xAxis, yAxis, zAxis, limbs, handL: byName.get("LeftHand") ?? null, handR: byName.get("RightHand") ?? null };
+  };
+
+  useFrame((_, delta) => {
+    if (!rig.current) {
+      rig.current = buildRig();
+      if (!rig.current) return;
+      handL.current = rig.current.handL;
+      handR.current = rig.current.handR;
+    }
+    const r = rig.current;
+
+    if (frames.length > 1 && playing) t.current += delta * 0.5 * speed;
+    const s = sampleFrames(frames, t.current);
+    const dirs = segmentDirs(s.angle);
+    const toArm = (d: THREE.Vector3) =>
+      r.xAxis.clone().multiplyScalar(d.x).add(r.yAxis.clone().multiplyScalar(d.y)).add(r.zAxis.clone().multiplyScalar(d.z)).normalize();
+
+    // Aim each limb in armature space.  LIMB_BONES lists upper bones before
+    // their children, and we record each bone's resulting armature-space quat
+    // (`wpost`) so a forearm/shin composes onto its just-aimed parent.
+    const wpost: Record<string, THREE.Quaternion> = {};
+    for (const l of r.limbs) {
+      const desired = dirs[l.dir];
+      const parentWQ = l.parentBaseWQ ?? wpost[l.parentLimb ?? ""];
+      if (!desired || !parentWQ) continue;
+      const Wpre = parentWQ.clone().multiply(l.restLocal);        // bone quat if at rest local
+      const axis = l.localAxis.clone().applyQuaternion(Wpre).normalize();
+      const qA = new THREE.Quaternion().setFromUnitVectors(axis, toArm(desired));
+      const Wp = qA.multiply(Wpre);                               // aimed armature-space quat
+      l.bone.quaternion.copy(parentWQ.clone().invert().multiply(Wp));
+      wpost[l.name] = Wp;
+    }
+
+    // Whole-body orientation + offset (root) on the pivot / outer groups.
+    if (pivot.current) pivot.current.rotation.set(d2r(s.rr[0]), d2r(s.rr[1]), d2r(s.rr[2]));
+    if (outer.current) outer.current.position.set(s.rp[0], PIVOT_Y + s.rp[1], s.rp[2]);
+  });
+
   return (
-    <group position={fit.position} scale={fit.scale} rotation={[d2r(GLB_ROT[0]), d2r(GLB_ROT[1]), d2r(GLB_ROT[2])]}>
-      <primitive object={gltf.scene} />
+    <group ref={outer} position={[0, PIVOT_Y, 0]} scale={fit.scale}>
+      <group ref={pivot}>
+        <primitive object={gltf.scene} position={[-fit.center.x, -fit.center.y, -fit.center.z]} />
+      </group>
     </group>
   );
 }
@@ -344,8 +462,9 @@ class GlbBoundary extends Component<{ fallback: ReactNode; children: ReactNode }
 
 type Props = { frames: Pose[]; animated: boolean };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function SkillPose3D({ frames, animated }: Props) {
+  const handL = useRef<THREE.Object3D | null>(null);
+  const handR = useRef<THREE.Object3D | null>(null);
   return (
     <div className="w-full">
       <div className="w-full h-[420px] rounded-lg overflow-hidden bg-gradient-to-b from-[#14141c] to-[#08080c] border border-[#1e1e1e]">
@@ -354,18 +473,12 @@ export default function SkillPose3D({ frames, animated }: Props) {
           <directionalLight position={[3, 5, 2]} intensity={1.15} />
           <directionalLight position={[-3, 2, -2]} intensity={0.4} />
           <Ground />
-          <GlbBoundary
-            fallback={
-              <Html center position={[0, 1.0, 0]}>
-                <div className="text-[10px] text-[#c98a2b] whitespace-nowrap bg-[#0a0a0e]/80 px-2 py-1 rounded">
-                  Missing model in public/models/
-                </div>
-              </Html>
-            }
-          >
-            <Suspense fallback={null}>
-              <RingsModel />
-              <GlbHuman />
+          {/* Realistic Mixamo human, posed per skill. Falls back to the
+              articulated primitive figure if the model can't load. */}
+          <GlbBoundary fallback={<PrimitiveFigure frames={frames} playing={animated} speed={1} />}>
+            <Suspense fallback={<PrimitiveFigure frames={frames} playing={animated} speed={1} />}>
+              <GlbHumanPosed frames={frames} playing={animated} speed={1} handL={handL} handR={handR} />
+              <RingRig wristL={handL} wristR={handR} />
             </Suspense>
           </GlbBoundary>
           <OrbitControls enablePan={false} minDistance={1.6} maxDistance={8} target={[0, 0.7, 0]} />

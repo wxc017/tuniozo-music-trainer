@@ -288,6 +288,14 @@ export default function IntervalsTab({
     lastPlayed.current = { frames, info: desc };
     setHasPlayed(true);
     audioEngine.playSequence(frames, edo, gapMs, 0.9);
+    // Sol-fa mode plays the audio AND shows the target as well (per direct
+    // user direction) — auto-reveal the degree/solfège card and light up
+    // the played notes on the keyboard instead of waiting for Show Answer.
+    if (responseMode === "Sol-fa") {
+      setShowTarget(`Intervals: ${desc}`);
+      setInfoText("");
+      highlightFrames(frames);
+    }
   };
 
   const highlightFrames = useCallback((frames: number[][]) => {

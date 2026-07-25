@@ -110,6 +110,15 @@ export function sizedRoman(cents: number): string {
   return m[1] + r;                            // size prefix (s / l / none)
 }
 
+/** Roman numeral for an interval from the tonic, with size as a ↓/↑ arrow
+ *  instead of an s/l letter — the Tonal-Audiation display convention.  Small
+ *  (sub) → ↓, large (super) → ↑, central → bare; case still carries
+ *  minor/major.  e.g. sM3 → "↓III", lm3 → "↑iii", 5 → "V", m3 → "iii". */
+export function sizedRomanArrow(cents: number): string {
+  const r = sizedRoman(cents);            // "sIII" / "liii" / "V" / "iii" …
+  return r.replace(/^s/, "↓").replace(/^l/, "↑");
+}
+
 /** Build the canonical chord symbol (form C) from a list of tone pitches (cents
  *  from the tonic): `{<sized codes>} | <anchor>`.  The lowest tone is the root; the
  *  anchor is the root's own sized interval from home (tonic → "1"), and the set
