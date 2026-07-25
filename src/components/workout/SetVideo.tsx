@@ -1,18 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
-  putVideo, getVideoUrl, deleteVideo, releaseVideoUrl, newVideoId,
+  putVideo, getVideo, getVideoUrl, deleteVideo, releaseVideoUrl, newVideoId,
 } from "@/lib/workoutVideoDb";
+import { cutVideoBlob, canCutVideo } from "@/lib/workoutVideoCut";
 import type { WorkoutSet } from "@/lib/workoutTypes";
 
 // ─────────────────────────────────────────────────────────────────────────
-// SetVideo — record a clip straight from the phone camera, link it to a set,
-// and mark a non-destructive trim (drag two handles, or "Mark start" the
-// instant the real rep begins so the setup footage is skipped on playback).
-//
-// Recording uses <input type="file" accept="video/*" capture="environment">,
-// which on Android opens the camera app, records, and hands back the file —
-// no getUserMedia permission dance, works in a plain PWA. The Blob goes into
-// IndexedDB (workoutVideoDb); the set only stores the videoId + trim marks.
+// SetVideo — attach a clip to a set (pick/record via the file input), mark a
+// start and end, then Cut to keep ONLY that segment. Cutting re-encodes the
+// selection into a new, smaller Blob and replaces the stored clip, so the
+// full-length original is discarded. The Blob lives in IndexedDB
+// (workoutVideoDb); the set stores the videoId + current trim bounds.
 // ─────────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -36,6 +34,7 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
   const [duration, setDuration] = useState(0);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
+  const [cutPct, setCutPct] = useState<number | null>(null); // null = not cutting
 
   const hasVideo = !!set.videoId;
 
@@ -98,13 +97,6 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
   const tIn = set.trimIn ?? 0;
   const tOut = set.trimOut ?? dur;
 
-  // Play only the trimmed window.
-  const playTrimmed = () => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.currentTime = tIn;
-    v.play();
-  };
   const onTimeUpdate = () => {
     const v = videoRef.current;
     if (v && tOut > 0 && v.currentTime >= tOut) v.pause();
@@ -118,6 +110,31 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
     const v = videoRef.current;
     if (v) onChange({ trimOut: Math.max(v.currentTime, tIn + 0.1) });
   };
+
+  // Actually cut: re-encode [tIn, tOut] into a new smaller Blob, replace the
+  // stored clip with it, and discard the full-length original.
+  const canCut = tOut - tIn > 0.2 && tOut - tIn < dur - 0.05; // a real sub-range
+  const cut = useCallback(async () => {
+    if (!set.videoId) return;
+    if (!canCutVideo()) { window.alert("Cutting isn't supported in this browser. Trim your clip in your gallery app instead, then re-upload."); return; }
+    const stored = await getVideo(set.videoId);
+    if (!stored) return;
+    setCutPct(0);
+    try {
+      const trimmed = await cutVideoBlob(stored.blob, tIn, tOut, f => setCutPct(Math.round(f * 100)));
+      const newDur = Math.max(0.1, tOut - tIn);
+      await putVideo({ id: set.videoId, blob: trimmed, mime: trimmed.type || "video/webm", durationSec: newDur, createdAt: Date.now(), setId: set.id, workoutId });
+      releaseVideoUrl(set.videoId);
+      onChange({ trimIn: 0, trimOut: newDur });
+      setDuration(newDur);
+      const u = await getVideoUrl(set.videoId);
+      setUrl(u);
+    } catch (err) {
+      window.alert(`Couldn't cut the clip: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setCutPct(null);
+    }
+  }, [set.videoId, set.id, workoutId, tIn, tOut, onChange]);
 
   return (
     <div className="mt-1">
@@ -170,11 +187,15 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
                 />
               )}
 
-              {/* Trim marks — non-destructive; applied on playback + export. */}
+              {/* Set the start and end, then Cut to keep only that segment. */}
               <div className="flex items-center gap-1.5 flex-wrap">
-                <button onClick={markStart} className="wl-btn wl-btn--ghost" style={{ padding: "5px 9px", fontSize: 11 }}>▶ Mark start</button>
-                <button onClick={markEnd} className="wl-btn wl-btn--ghost" style={{ padding: "5px 9px", fontSize: 11 }}>⏹ Mark end</button>
-                <button onClick={playTrimmed} className="wl-btn" style={{ padding: "5px 9px", fontSize: 11 }}>Preview cut</button>
+                <button onClick={markStart} disabled={cutPct !== null} className="wl-btn wl-btn--ghost" style={{ padding: "5px 9px", fontSize: 11 }}>▶ Set start</button>
+                <button onClick={markEnd} disabled={cutPct !== null} className="wl-btn wl-btn--ghost" style={{ padding: "5px 9px", fontSize: 11 }}>⏹ Set end</button>
+                <button onClick={cut} disabled={cutPct !== null || !canCut}
+                  className="wl-btn wl-btn--primary ml-auto" style={{ padding: "5px 12px", fontSize: 11 }}
+                  title={canCut ? "Keep only the selected segment" : "Move the start/end in to select a shorter segment"}>
+                  {cutPct !== null ? `Cutting… ${cutPct}%` : "✂ Cut"}
+                </button>
               </div>
 
               {dur > 0 && (
@@ -183,13 +204,16 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
                     onInput={v => onChange({ trimIn: Math.min(v, tOut - 0.1) })} onScrub={t => seek(videoRef, t)} />
                   <RangeHandle label="Out" value={tOut} min={0} max={dur}
                     onInput={v => onChange({ trimOut: Math.max(v, tIn + 0.1) })} onScrub={t => seek(videoRef, t)} />
-                  <div className="wl-mono text-[10px] wl-faint">Kept: {fmt(Math.max(0, tOut - tIn))} of {fmt(dur)}</div>
+                  <div className="wl-mono text-[10px] wl-faint">
+                    {cutPct !== null ? "Re-encoding the selection… (plays through once)"
+                      : `Keeping ${fmt(Math.max(0, tOut - tIn))} of ${fmt(dur)}`}
+                  </div>
                 </div>
               )}
 
               <div className="flex items-center gap-1.5">
-                <button onClick={() => fileRef.current?.click()} className="wl-btn" style={{ padding: "5px 9px", fontSize: 11 }}>Re-record</button>
-                <button onClick={remove} className="wl-btn wl-btn--danger ml-auto" style={{ padding: "5px 9px", fontSize: 11 }}>Delete clip</button>
+                <button onClick={() => fileRef.current?.click()} disabled={cutPct !== null} className="wl-btn" style={{ padding: "5px 9px", fontSize: 11 }}>Replace</button>
+                <button onClick={remove} disabled={cutPct !== null} className="wl-btn wl-btn--danger ml-auto" style={{ padding: "5px 9px", fontSize: 11 }}>Delete clip</button>
               </div>
             </div>
           )}

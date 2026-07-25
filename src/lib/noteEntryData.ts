@@ -200,8 +200,13 @@ export interface NoteEntryProject {
    *  with no entry falls back to `voiceCount` (bar 0) or the 2-voice minimum. */
   perSectionVoiceCount?: Record<number, number>;
   /** Jianpu-only: join the voice lines with a piano grand-staff brace ({ )
-   *  so they read as two hands of one instrument. */
+   *  so they read as two hands of one instrument.  Legacy/global default —
+   *  `perSectionPianoBrace` overrides it per section. */
   pianoBrace?: boolean;
+  /** Jianpu/Sol-fa mode: piano brace per section, keyed by the section's start
+   *  bar (same keying as `perSectionVoiceCount`).  Absent for a section → falls
+   *  back to the global `pianoBrace`. */
+  perSectionPianoBrace?: Record<number, boolean>;
   /** Jianpu-only: equal divisions of the octave (default 12).  Degrees 1–7 are
    *  the diatonic MOS from the EDO's best fifth; alterations move by EDO steps. */
   edo?: number;

@@ -231,27 +231,29 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
 
   const setup = project?.setup;
   const sectionLabels = project?.setup.perBarSection;
+  const breaks = project?.setup.perBarBreakBefore;
   const perSection = project?.perSectionVoiceCount;
   // Sol-fa is a single melodic line, so it may drop to one voice; jianpu keeps
   // the piano-style two-voice minimum.
   const minVoices = solfaOnly ? 1 : MIN_VOICES;
 
   // ── Sections & per-section voice counts ─────────────────────────────────────
-  // A "section" runs from a bar carrying a `perBarSection` label (or bar 0) up to
-  // the next such bar.  Each section has an independent voice-line count, so
-  // adding voices to one exercise never touches another.
+  // A "section" is an independent group: it starts at bar 0, at any bar with a
+  // section label, OR at a manually cut line.  Each group has its own voice count
+  // (and piano brace), so changing one exercise never touches another.
+  const isBoundary = useCallback((m: number) => m > 0 && (!!sectionLabels?.[m]?.trim() || !!breaks?.[m]), [sectionLabels, breaks]);
   const sectionStartOf = useCallback((measure: number): number => {
     let s = 0;
-    for (let m = 1; m <= measure; m++) if (sectionLabels?.[m]?.trim()) s = m;
+    for (let m = 1; m <= measure; m++) if (isBoundary(m)) s = m;
     return s;
-  }, [sectionLabels]);
+  }, [isBoundary]);
   const sectionRangeOf = useCallback((measure: number): [number, number] => {
     const bc = project?.setup.barCount ?? 1;
     const start = sectionStartOf(measure);
     let end = bc;
-    for (let m = start + 1; m < bc; m++) if (sectionLabels?.[m]?.trim()) { end = m; break; }
+    for (let m = start + 1; m < bc; m++) if (isBoundary(m)) { end = m; break; }
     return [start, end];
-  }, [project?.setup.barCount, sectionLabels, sectionStartOf]);
+  }, [project?.setup.barCount, isBoundary, sectionStartOf]);
   // Effective voice lines for the section holding `measure`: never below
   // MIN_VOICES, always enough to show its notes, plus any stored empty voices
   // (bar-0 section falls back to the legacy global `voiceCount`).
@@ -290,7 +292,8 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   // helpers above resolve each bar.
   const layout = useMemo(() => {
     const barCount = setup?.barCount ?? 1;
-    const gapped    = !!project?.pianoBrace;
+    // Piano brace is per section (falls back to the legacy global flag).
+    const braceFor = (s: number) => project?.perSectionPianoBrace?.[s] ?? !!project?.pianoBrace;
     const breakAt   = (m: number) => !!project?.setup.perBarBreakBefore?.[m];
     const sectionAt = (m: number) => !!sectionLabels?.[m]?.trim();
     // Rows: break on a section label, a manual cut, or a full row (MPR).
@@ -314,7 +317,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     // the tallest note voice) — computed once so every bar in a section agrees.
     const startOf: number[] = [];
     let cur = 0;
-    for (let m = 0; m < barCount; m++) { if (m > 0 && sectionAt(m)) cur = m; startOf[m] = cur; }
+    for (let m = 0; m < barCount; m++) { if (m > 0 && (sectionAt(m) || breakAt(m))) cur = m; startOf[m] = cur; }
     const maxVoice: Record<number, number> = {};
     for (const n of notes) { const s = startOf[n.measure] ?? 0; maxVoice[s] = Math.max(maxVoice[s] ?? 0, (n.voice ?? 0) + 1); }
     const vcForStart = (s: number) => Math.max(
@@ -323,7 +326,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     for (let m = 0; m < barCount; m++) {
       const vc = vcForStart(startOf[m]);
       vcArr[m] = vc;
-      hsArr[m] = gapped ? Math.ceil(vc / 2) : null;
+      hsArr[m] = braceFor(startOf[m]) ? Math.ceil(vc / 2) : null;
     }
     // Row geometry — height follows the row's section voice count; bars are
     // left-aligned (start at LEFT_PAD) and accumulate the uniform width.
@@ -338,12 +341,12 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       rowTop[r] = y;
       let x = LEFT_PAD;   // far-left
       row.forEach((m, c) => { rowOfArr[m] = r; colOfArr[m] = c; xArr[m] = x; x += wArr[m]; });
-      y += systemHeight(vcArr[row[0]] ?? minVoices, gapped);
+      y += systemHeight(vcArr[row[0]] ?? minVoices, hsArr[row[0]] != null);
       if (row.some(hasTsLabel)) y += TS_PAD;   // room for the time-signature line
     });
     return { rowsArr, rowOfArr, colOfArr, rowTop, wArr, xArr, vcArr, hsArr, totalHeight: y, canvasW: LEFT_PAD * 2 + maxRowLen * uniformW };
   }, [setup?.barCount, project?.setup.perBarBreakBefore, project?.setup.perBarTimeSig, sectionLabels, perSection,
-      project?.voiceCount, project?.pianoBrace, notes, totalSlotsOf, system, minVoices]);
+      project?.voiceCount, project?.pianoBrace, project?.perSectionPianoBrace, notes, totalSlotsOf, system, minVoices]);
   ROW_OF = layout.rowOfArr; COL_OF = layout.colOfArr; ROW_TOP = layout.rowTop;
   ROWS = layout.rowsArr; ROW_COUNT = layout.rowsArr.length;
   VC_OF = layout.vcArr; HS_OF = layout.hsArr; W_OF = layout.wArr; X_OF = layout.xArr; CANVAS_W = layout.canvasW;
@@ -364,11 +367,15 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (project) { const u = { ...project, displaySystem: s, notes }; saveProject(u); setProject(u); }
   }, [project, notes]);
 
+  // Toggle the piano brace for the cursor's section only (keyed by its start bar).
   const togglePianoBrace = useCallback(() => {
     if (!project) return;
-    const u = { ...project, pianoBrace: !project.pianoBrace, notes };
+    const s = sectionStartOf(cursor.measure);
+    const cur = project.perSectionPianoBrace?.[s] ?? !!project.pianoBrace;
+    const perSectionPianoBrace = { ...(project.perSectionPianoBrace ?? {}), [s]: !cur };
+    const u = { ...project, perSectionPianoBrace, notes };
     saveProject(u); setProject(u);
-  }, [project, notes]);
+  }, [project, notes, cursor.measure, sectionStartOf]);
 
   // Toggle beamed vs separate underline for the current selection (or the note
   // at the cursor when nothing is selected) — never all notes at once.
@@ -1200,7 +1207,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       // Piano grand-staff brace joining the voices — span it symmetrically
       // around the voice glyphs (equal margin above the top / below the bottom)
       // so its tip is always centred regardless of voice count.
-      if (project.pianoBrace) {
+      if (hsOf(m) != null) {
         const hs = hsOf(m);
         const bTop = baselineY(0, m) - 18;
         const bBot = baselineY(vcOf(m) - 1, m) + 4;
@@ -1215,7 +1222,13 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     }
   }
 
-  const cursorX = slotToX(cursor.measure, cursor.slot + gridSnap / 2, totalSlotsOf(cursor.measure));
+  // Align the cursor box to the note it sits on (centre of that note's cell); on
+  // an empty slot, centre it in a cell of the current entry duration.  This keeps
+  // the dashed box exactly over the glyph now that notes are cell-centred.
+  const cursorHost = notes.find(n => (n.voice ?? 0) === cursor.voice && n.measure === cursor.measure && !n.isRest
+    && cursor.slot >= n.startSlot && cursor.slot < n.startSlot + noteSlots(n));
+  const cursorCenterSlot = cursorHost ? cursorHost.startSlot + noteSlots(cursorHost) / 2 : cursor.slot + gridSnap / 2;
+  const cursorX = slotToX(cursor.measure, cursorCenterSlot, totalSlotsOf(cursor.measure));
   const cursorY = baselineY(cursor.voice, cursor.measure);
 
   const btn = "px-2 py-1 rounded text-xs border transition-colors";
