@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SetVideo from "./SetVideo";
 import ExercisePicker, { type PickedExercise } from "./ExercisePicker";
 import RestTimer from "./RestTimer";
@@ -84,7 +84,7 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
             onPatchSet={(sid, sp) => patchSet(ex.id, sid, sp)} onRest={sec => setRestForSet({ sec })} />
         ))}
 
-        <button onClick={() => setPicking(true)} className="wl-add">＋ Add exercise</button>
+        <button onClick={() => setPicking(true)} className="wl-add">+ Add exercise</button>
 
         <div className="flex flex-wrap gap-2 pt-2">
           <button onClick={finish} className="wl-btn wl-btn--primary flex-1" style={{ minWidth: 130 }}>Finish workout</button>
@@ -174,7 +174,7 @@ function ExerciseCard(props: {
       </div>
 
       <button onClick={props.onAddSet} className="w-full py-2 text-[11px] wl-mono"
-        style={{ color: "var(--wl-accent)", borderTop: "1px solid var(--wl-line)" }}>＋ Add set</button>
+        style={{ color: "var(--wl-accent)", borderTop: "1px solid var(--wl-line)" }}>+ Add set</button>
     </div>
   );
 }
@@ -200,11 +200,34 @@ function RpeCell({ value, onChange }: { value?: number; onChange: (v: number | u
   );
 }
 
+// Rest accepts "3:00" (m:ss) or plain seconds ("180" / "90"); stored as seconds.
+function parseRest(t: string): number | undefined {
+  const s = t.trim();
+  if (!s) return undefined;
+  if (s.includes(":")) {
+    const [m, sec] = s.split(":");
+    return (parseInt(m || "0", 10) || 0) * 60 + (parseInt(sec || "0", 10) || 0);
+  }
+  const n = parseInt(s, 10);
+  return isNaN(n) ? undefined : n;
+}
+function fmtRest(v?: number): string {
+  if (v == null) return "";
+  const m = Math.floor(v / 60), s = v % 60;
+  return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s}`;
+}
 function RestCell({ value, onChange, onStart }: { value?: number; onChange: (v: number | undefined) => void; onStart: () => void }) {
+  const [text, setText] = useState(() => fmtRest(value));
+  const [focused, setFocused] = useState(false);
+  // Reflect external value changes while not actively typing.
+  useEffect(() => { if (!focused) setText(fmtRest(value)); }, [value, focused]);
   return (
     <div className="flex items-center gap-0.5 flex-1">
-      <input type="number" inputMode="numeric" className="wl-cell flex-1" value={value ?? ""} min={0} step={15}
-        onChange={e => onChange(e.target.value === "" ? undefined : Number(e.target.value))} title="Rest seconds" />
+      <input type="text" inputMode="numeric" className="wl-cell flex-1" value={text} placeholder="m:ss"
+        onFocus={() => setFocused(true)}
+        onChange={e => { setText(e.target.value); onChange(parseRest(e.target.value)); }}
+        onBlur={() => { setFocused(false); setText(fmtRest(value)); }}
+        title="Rest — type 3:00 or seconds" />
       <button onClick={onStart} disabled={!value} className="text-[13px]" style={{ color: "var(--wl-accent)", opacity: value ? 1 : .3 }} title="Start rest timer">⏱</button>
     </div>
   );

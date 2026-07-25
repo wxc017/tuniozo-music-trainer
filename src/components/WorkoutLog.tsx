@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./workout/workout.css";
 import SessionLogger from "./workout/SessionLogger";
 import WorkoutHistory from "./workout/WorkoutHistory";
 import TemplatesView from "./workout/TemplatesView";
-import { useWorkoutData, startWorkout } from "@/lib/workoutStore";
+import { useWorkoutData, startWorkout, seedExercisesOnce } from "@/lib/workoutStore";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -21,6 +21,8 @@ export default function WorkoutLog() {
   const { workouts } = useWorkoutData();
   const [view, setView] = useState<View>("today");
   const [openId, setOpenId] = useState<string | null>(null);
+
+  useEffect(() => { seedExercisesOnce(); }, []);
 
   if (openId) return <SessionLogger workoutId={openId} onClose={() => setOpenId(null)} />;
 
@@ -56,7 +58,7 @@ function TodayView({ workouts, onOpen }: { workouts: Workout[]; onOpen: (id: str
     <div className="max-w-2xl mx-auto space-y-5">
       <button onClick={() => onOpen(startWorkout().id)} className="wl-btn wl-btn--primary w-full"
         style={{ padding: "16px", fontSize: 15, borderRadius: 16 }}>
-        ＋ Start workout
+        + Start workout
       </button>
 
       {todays.length > 0 && (

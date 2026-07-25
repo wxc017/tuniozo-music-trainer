@@ -19,7 +19,7 @@ export default function TemplatesView({ onStart }: Props) {
     <div className="max-w-2xl mx-auto space-y-3">
       <div className="wl-sechead">
         <span className="wl-eyebrow">Saved workouts</span>
-        <button onClick={newTemplate} className="wl-btn wl-btn--ghost ml-auto" style={{ padding: "6px 12px" }}>＋ New</button>
+        <button onClick={newTemplate} className="wl-btn wl-btn--ghost ml-auto" style={{ padding: "6px 12px" }}>+ New</button>
       </div>
 
       {templates.length === 0 && (
@@ -88,7 +88,7 @@ function TemplateEditor({ template, onClose }: { template: WorkoutTemplate; onCl
         </div>
       ))}
 
-      <button onClick={() => setPicking(true)} className="wl-add">＋ Add exercise</button>
+      <button onClick={() => setPicking(true)} className="wl-add">+ Add exercise</button>
       {picking && <ExercisePicker onPick={addExercise} onCancel={() => setPicking(false)} />}
     </div>
   );

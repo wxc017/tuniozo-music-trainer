@@ -356,6 +356,9 @@ export default function App() {
   const [statusText, setStatusText] = useState<string>("");
   const [showPracticeLog, setShowPracticeLog] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  // Nav group headers (Sheet Music, Spectrum Research, …) can be clicked to
+  // collapse their button clusters; the collapsed set persists.
+  const [navCollapsed, setNavCollapsed] = useLS<string[]>("lt_nav_collapsed_groups", []);
 
   // tabKey increments when a preset is loaded → forces all tabs to re-mount
   const [tabKey, setTabKey] = useState(0);
@@ -1105,12 +1108,20 @@ export default function App() {
                 return (
                   <>
                     {visible.filter(b => !b.group).map(renderBtn)}
-                    {groupNames.map(g => (
-                      <div key={g} className="flex items-center gap-1 pl-2 ml-1 border-l border-[#2a2a3a]">
-                        <span className="text-[9px] uppercase tracking-wider text-[#8888c0] font-semibold mr-0.5">{g}</span>
-                        {visible.filter(b => b.group === g).map(renderBtn)}
-                      </div>
-                    ))}
+                    {groupNames.map(g => {
+                      const collapsed = navCollapsed.includes(g);
+                      return (
+                        <div key={g} className="flex items-center gap-1 pl-2 ml-1 border-l border-[#2a2a3a]">
+                          <button
+                            onClick={() => setNavCollapsed(collapsed ? navCollapsed.filter(x => x !== g) : [...navCollapsed, g])}
+                            title={collapsed ? `Show ${g}` : `Hide ${g}`}
+                            className="flex items-center gap-0.5 text-[9px] uppercase tracking-wider text-[#8888c0] font-semibold mr-0.5 hover:text-[#b0b0e8] transition-colors">
+                            <span className="text-[8px] leading-none">{collapsed ? "▸" : "▾"}</span>{g}
+                          </button>
+                          {!collapsed && visible.filter(b => b.group === g).map(renderBtn)}
+                        </div>
+                      );
+                    })}
                   </>
                 );
               })()}

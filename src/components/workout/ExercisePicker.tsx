@@ -55,7 +55,7 @@ export default function ExercisePicker({ onPick, onCancel }: Props) {
             <div className="px-3 py-3" style={{ borderBottom: "1px solid var(--wl-line)" }}>
               {creating == null ? (
                 <button onClick={() => setCreating(typed)} className="flex items-center gap-2 text-sm" style={{ color: "var(--wl-text)" }}>
-                  <span style={{ color: "var(--wl-accent)", fontSize: 18, lineHeight: 1 }}>＋</span>
+                  <span style={{ color: "var(--wl-accent)", fontSize: 18, lineHeight: 1 }}>+</span>
                   Add <b>“{typed}”</b> <span className="wl-faint">— new exercise</span>
                 </button>
               ) : (

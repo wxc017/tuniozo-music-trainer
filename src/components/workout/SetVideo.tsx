@@ -121,11 +121,13 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
 
   return (
     <div className="mt-1">
+      {/* No `capture` attribute: forcing capture makes many phones open the
+          camera in PHOTO mode. Plain accept="video/*" lets the camera app
+          record video (or lets you pick an existing clip). */}
       <input
         ref={fileRef}
         type="file"
         accept="video/*"
-        capture="environment"
         className="hidden"
         onChange={onPick}
       />

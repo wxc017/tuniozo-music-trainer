@@ -18,6 +18,7 @@ import {
   DEFAULT_PREFS,
 } from "./workoutTypes";
 import { SKILLS } from "./calisthenicsData";
+import { SEED_EXERCISES } from "./workoutSeed";
 
 const LOG_KEY = "lt_workout_log";
 const TEMPLATES_KEY = "lt_workout_templates";
@@ -75,6 +76,22 @@ export function saveCustomExercise(name: string, mode: TrackingMode): CustomExer
 }
 export function deleteCustomExercise(id: string): void {
   rev++; writeCustomExercises(getCustomExercises().filter(e => e.id !== id));
+}
+
+// One-time seed of the starter exercise list. Guarded by a flag so deleted
+// seeds don't respawn. Skips any name the user already has.
+const SEED_FLAG = "lt_workout_seeded_v1";
+export function seedExercisesOnce(): void {
+  try {
+    if (localStorage.getItem(SEED_FLAG)) return;
+    const existing = getCustomExercises();
+    const have = new Set(existing.map(e => e.name.toLowerCase()));
+    const add: CustomExercise[] = SEED_EXERCISES
+      .filter(s => !have.has(s.name.toLowerCase()))
+      .map(s => ({ id: uid("cex"), name: s.name, mode: s.mode, createdAt: Date.now() }));
+    if (add.length) { rev++; writeCustomExercises([...existing, ...add]); }
+    localStorage.setItem(SEED_FLAG, "1");
+  } catch { /* storage unavailable */ }
 }
 export function setPrefs(patch: Partial<WorkoutPrefs>): void {
   rev++;
@@ -154,6 +171,11 @@ export function workoutsOnDate(date: string): Workout[] {
   return getWorkouts().filter(w => w.date === date);
 }
 
+/** Default title from the current day, e.g. "Saturday, Jul 25". */
+function dayTitle(): string {
+  return new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+}
+
 /** Start a blank session (optionally from a template) and persist it. */
 export function startWorkout(template?: WorkoutTemplate): Workout {
   const now = Date.now();
@@ -161,7 +183,7 @@ export function startWorkout(template?: WorkoutTemplate): Workout {
     id: uid("wk"),
     date: localToday(),
     startedAt: now,
-    title: template?.name,
+    title: template?.name ?? dayTitle(),
     templateId: template?.id,
     exercises: (template?.exercises ?? []).map(te => templateExerciseToLogged(te)),
   };

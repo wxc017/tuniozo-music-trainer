@@ -230,6 +230,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   const setup = project?.setup;
   const sectionLabels = project?.setup.perBarSection;
   const perSection = project?.perSectionVoiceCount;
+  // Sol-fa is a single melodic line, so it may drop to one voice; jianpu keeps
+  // the piano-style two-voice minimum.
+  const minVoices = solfaOnly ? 1 : MIN_VOICES;
 
   // ── Sections & per-section voice counts ─────────────────────────────────────
   // A "section" runs from a bar carrying a `perBarSection` label (or bar 0) up to
@@ -252,11 +255,11 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   // (bar-0 section falls back to the legacy global `voiceCount`).
   const voiceCountOf = useCallback((measure: number): number => {
     const [start, end] = sectionRangeOf(measure);
-    const stored = perSection?.[start] ?? (start === 0 ? project?.voiceCount : undefined) ?? MIN_VOICES;
+    const stored = perSection?.[start] ?? (start === 0 ? project?.voiceCount : undefined) ?? minVoices;
     let maxNote = 0;
     for (const n of notes) if (n.measure >= start && n.measure < end) maxNote = Math.max(maxNote, (n.voice ?? 0) + 1);
-    return Math.max(MIN_VOICES, stored, maxNote);
-  }, [perSection, project?.voiceCount, notes, sectionRangeOf]);
+    return Math.max(minVoices, stored, maxNote);
+  }, [perSection, project?.voiceCount, notes, sectionRangeOf, minVoices]);
 
   const edo = project?.edo ?? 12;
   useEffect(() => { setEdoText(String(edo)); }, [edo]);
@@ -313,7 +316,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const maxVoice: Record<number, number> = {};
     for (const n of notes) { const s = startOf[n.measure] ?? 0; maxVoice[s] = Math.max(maxVoice[s] ?? 0, (n.voice ?? 0) + 1); }
     const vcForStart = (s: number) => Math.max(
-      MIN_VOICES, perSection?.[s] ?? (s === 0 ? project?.voiceCount ?? MIN_VOICES : MIN_VOICES), maxVoice[s] ?? 0);
+      minVoices, perSection?.[s] ?? (s === 0 ? project?.voiceCount ?? minVoices : minVoices), maxVoice[s] ?? 0);
     const vcArr: number[] = [], hsArr: (number | null)[] = [];
     for (let m = 0; m < barCount; m++) {
       const vc = vcForStart(startOf[m]);
@@ -330,11 +333,11 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       rowTop[r] = y;
       let x = LEFT_PAD;   // far-left
       row.forEach((m, c) => { rowOfArr[m] = r; colOfArr[m] = c; xArr[m] = x; x += wArr[m]; });
-      y += systemHeight(vcArr[row[0]] ?? MIN_VOICES, gapped);
+      y += systemHeight(vcArr[row[0]] ?? minVoices, gapped);
     });
     return { rowsArr, rowOfArr, colOfArr, rowTop, wArr, xArr, vcArr, hsArr, totalHeight: y, canvasW: LEFT_PAD * 2 + maxRowLen * uniformW };
   }, [setup?.barCount, project?.setup.perBarBreakBefore, project?.setup.perBarTimeSig, sectionLabels, perSection,
-      project?.voiceCount, project?.pianoBrace, notes, totalSlotsOf, system]);
+      project?.voiceCount, project?.pianoBrace, notes, totalSlotsOf, system, minVoices]);
   ROW_OF = layout.rowOfArr; COL_OF = layout.colOfArr; ROW_TOP = layout.rowTop;
   ROWS = layout.rowsArr; ROW_COUNT = layout.rowsArr.length;
   VC_OF = layout.vcArr; HS_OF = layout.hsArr; W_OF = layout.wArr; X_OF = layout.xArr; CANVAS_W = layout.canvasW;
@@ -608,7 +611,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   // count is keyed by the section's start bar, so other sections are untouched.
   const commitVoices = useCallback((nextNotes: NoteData[], sectionStart: number, storedVoiceCount: number, cursorVoice: number) => {
     if (!project) return;
-    const vc = Math.max(MIN_VOICES, Math.min(MAX_VOICES, storedVoiceCount));
+    const vc = Math.max(minVoices, Math.min(MAX_VOICES, storedVoiceCount));
     const sorted = [...nextNotes].sort((a, b) =>
       a.measure !== b.measure ? a.measure - b.measure
       : (a.voice ?? 0) !== (b.voice ?? 0) ? (a.voice ?? 0) - (b.voice ?? 0)
@@ -617,7 +620,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const u = { ...project, notes: sorted, perSectionVoiceCount };
     saveProject(u); setProject(u); setNotes(sorted);
     setCursor(c => ({ ...c, voice: cursorVoice }));
-  }, [project]);
+  }, [project, minVoices]);
 
   // Plain ↓ / ↑ — move through the voices; at the bottom voice, wrap to the top
   // voice of the measure right below (measure + MPR = the same column, next
@@ -659,11 +662,12 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   }, [project, notes, cursor.measure, cursor.voice, voiceCountOf, sectionRangeOf, commitVoices]);
 
   // Delete voice line `v` within the cursor's section: drop its notes and pull
-  // every lower voice up one.  Never drops the section below MIN_VOICES.
+  // every lower voice up one.  Never drops the section below its minimum (1 for
+  // sol-fa, 2 for jianpu).
   const removeVoiceAt = useCallback((v: number) => {
     if (!project) return;
     const vc = voiceCountOf(cursor.measure);
-    if (vc <= MIN_VOICES || v < 0 || v >= vc) return;
+    if (vc <= minVoices || v < 0 || v >= vc) return;
     const [start, end] = sectionRangeOf(cursor.measure);
     const inSection = (n: NoteData) => n.measure >= start && n.measure < end;
     const nextNotes = notes
@@ -671,7 +675,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       .map(n => (inSection(n) && (n.voice ?? 0) > v) ? { ...n, voice: (n.voice ?? 0) - 1 } : n);
     const newCursorVoice = cursor.voice > v ? cursor.voice - 1 : Math.min(cursor.voice, vc - 2);
     commitVoices(nextNotes, start, vc - 1, newCursorVoice);
-  }, [project, notes, cursor.measure, cursor.voice, voiceCountOf, sectionRangeOf, commitVoices]);
+  }, [project, notes, cursor.measure, cursor.voice, voiceCountOf, sectionRangeOf, commitVoices, minVoices]);
 
   // ── Move the selected note(s) ───────────────────────────────────────────────
   const moveSelected = useCallback((axis: "h" | "v", dir: -1 | 1) => {
