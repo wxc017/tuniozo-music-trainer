@@ -2329,11 +2329,14 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       const wi = walk.keys.includes(walkKey) ? Math.min(walk.index, rowNotes.length - 1) : -1;
       return (
         <div key={rowKey} className="flex items-start gap-2">
-          <div className="w-[62px] shrink-0 flex items-center justify-start gap-1.5">
-            {tag && <span className="text-[9px] font-mono" style={{ color: harm ? HARM_COLOR : "#777" }}>{tag}</span>}
+          <div className="w-[70px] shrink-0 flex items-center gap-1.5">
+            {/* Fixed-width tag slot (always present) so the ○ and ▶ line up
+                across the base line and its harmony voices. */}
+            <span className="w-[20px] shrink-0 text-[9px] font-mono leading-none overflow-hidden whitespace-nowrap"
+              style={{ color: harm ? HARM_COLOR : "#777" }}>{tag ?? ""}</span>
             {walkCircle(walkKey, false)}
             <button onClick={() => playSeq(rowNotes)} title="Hear this line"
-              className="bg-[#7173e6] hover:bg-[#5a5cc8] text-white px-2.5 py-1 rounded text-xs transition-colors shrink-0">▶</button>
+              className="bg-[#7173e6] hover:bg-[#5a5cc8] text-white px-2 py-1 rounded text-xs transition-colors shrink-0">▶</button>
           </div>
           <div className="flex gap-1 flex-wrap">
             {rowNotes.map((n, j) => (
