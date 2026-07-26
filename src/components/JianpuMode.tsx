@@ -893,10 +893,11 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     return { ...n, pitch: jp.pitch };
   }, []);
 
-  // The notes a modifier (duration / octave / dot / alter …) edits: ONLY the
-  // explicit selection.  Just hovering a note no longer changes it — those keys
-  // set the entry default instead; select a note (Space) to edit it.
-  const targetIds = useCallback((): string[] => selectedIds, [selectedIds]);
+  // The notes a modifier (duration / octave / dot / alter …) edits. Shift+key
+  // targets the note under the cursor (set in handleKey); otherwise the mouse
+  // selection. Plain keys (no Shift, no selection) just set the entry default.
+  const shiftTargetRef = useRef<string[] | null>(null);
+  const targetIds = useCallback((): string[] => shiftTargetRef.current ?? selectedIds, [selectedIds]);
 
   const applyToSelection = useCallback((fn: (n: NoteData) => NoteData) => {
     const ids = targetIds();
@@ -969,8 +970,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (k === "ArrowRight" || k === "ArrowLeft") {
       e.preventDefault();
       const dir = k === "ArrowRight" ? 1 : -1;
-      if (spaceHeldRef.current) extendSelect(dir, e.shiftKey ? "beat" : "fine");   // Space → grow selection
-      else if ((e.ctrlKey || e.metaKey) && hasSel) moveSelected("h", dir);         // Ctrl → move the note(s)
+      if ((e.ctrlKey || e.metaKey) && hasSel) moveSelected("h", dir);              // Ctrl → move the note(s)
       else moveCursorH(dir, e.shiftKey ? "beat" : "fine");                         // otherwise move the cursor
       return;
     }
@@ -984,27 +984,21 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       else navVoice(dir);
       return;
     }
-    // Space held → arrows range-select; a Space tap selects the note at the cursor.
-    if (k === " ") {
-      e.preventDefault();
-      if (!spaceHeldRef.current) {
-        spaceHeldRef.current = true;
-        anchorRef.current = cursor;
-        if (selectedIds.length > 0) {
-          // Second Space press toggles the selection OFF — regardless of where
-          // the cursor is (on the note or away from it).
-          setSelectedIds([]);
-        } else {
-          const { voice, measure, slot } = cursor;
-          const host = notes.find(n => (n.voice ?? 0) === voice && n.measure === measure && !n.isRest
-            && slot >= n.startSlot && slot < n.startSlot + noteSlots(n));
-          setSelectedIds(host ? [host.id] : []);
-        }
-      }
-      return;
-    }
-
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    if (k === " ") { e.preventDefault(); return; }  // Space no longer selects — swallow it.
+
+    // Shift + an action key (q/w/e/r/t/…) applies that action to the note the
+    // cursor is on — no need to select it first. Without Shift the keys set the
+    // entry default (or edit the mouse selection, if any).
+    if (e.shiftKey) {
+      const { voice, measure, slot } = cursor;
+      const host = notes.find(n => (n.voice ?? 0) === voice && n.measure === measure && !n.isRest
+        && slot >= n.startSlot && slot < n.startSlot + noteSlots(n));
+      shiftTargetRef.current = host ? [host.id] : [];
+    } else {
+      shiftTargetRef.current = null;
+    }
 
     if (k >= "1" && k <= "7") { e.preventDefault(); inputDigit(parseInt(k, 10), false); return; }
     if (k === "0")            { e.preventDefault(); inputDigit(0, true); return; }
