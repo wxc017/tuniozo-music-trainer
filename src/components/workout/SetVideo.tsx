@@ -159,65 +159,75 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
           {busy ? "Saving…" : "🎥 Add Video"}
         </button>
       ) : (
-        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid color-mix(in srgb, var(--wl-accent) 30%, var(--wl-line))", background: "var(--wl-surface-2)" }}>
-          <button
-            onClick={() => setOpen(o => !o)}
-            className="w-full flex items-center gap-2 px-2.5 py-2.5 text-[13px]"
-            style={{ color: "var(--wl-accent-ink)" }}
-          >
-            <span>🎬</span>
-            <span className="font-medium">Video</span>
-            <span className="wl-mono wl-faint">
-              {tIn > 0 || (dur && tOut < dur) ? `trim ${fmt(tIn)}–${fmt(tOut)}` : fmt(dur)}
-            </span>
-            <span className="ml-auto wl-faint">{open ? "▲" : "▼"}</span>
-          </button>
+        <button
+          onClick={() => setOpen(true)}
+          className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-[13px]"
+          style={{ border: "1px solid color-mix(in srgb, var(--wl-accent) 30%, var(--wl-line))", background: "var(--wl-surface-2)", color: "var(--wl-accent-ink)" }}
+        >
+          <span>🎬</span>
+          <span className="font-medium">Video</span>
+          <span className="wl-mono wl-faint">
+            {tIn > 0 || (dur && tOut < dur) ? `trim ${fmt(tIn)}–${fmt(tOut)}` : fmt(dur)}
+          </span>
+          <span className="ml-auto wl-faint">tap to open</span>
+        </button>
+      )}
 
-          {open && (
-            <div className="px-2.5 pb-2.5 flex flex-col gap-2">
-              {url && (
-                <video
-                  ref={videoRef}
-                  src={url}
-                  playsInline
-                  controls
-                  onLoadedMetadata={onLoadedMeta}
-                  onTimeUpdate={onTimeUpdate}
-                  className="rounded bg-black mx-auto"
-                  style={{ width: "auto", maxWidth: "100%", maxHeight: 240 }}
-                />
-              )}
+      {/* Fullscreen video popup */}
+      {open && hasVideo && (
+        <div className="wl-root fixed inset-0 z-[65] flex flex-col" style={{ background: "rgba(0,0,0,.94)" }}>
+          <div className="flex items-center gap-2 px-3 py-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--wl-line)" }}>
+            <span className="wl-h2">Video</span>
+            <span className="wl-mono wl-faint">{`${fmt(tIn)}–${fmt(tOut)}`}</span>
+            <button onClick={() => setOpen(false)} disabled={cutPct !== null} className="wl-btn ml-auto">Close</button>
+          </div>
 
-              {/* Set the start and end, then Cut to keep only that segment. */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button onClick={markStart} disabled={cutPct !== null} className="wl-btn wl-btn--ghost" style={{ padding: "5px 9px", fontSize: 11 }}>▶ Set start</button>
-                <button onClick={markEnd} disabled={cutPct !== null} className="wl-btn wl-btn--ghost" style={{ padding: "5px 9px", fontSize: 11 }}>⏹ Set end</button>
-                <button onClick={cut} disabled={cutPct !== null || !canCut}
-                  className="wl-btn wl-btn--primary ml-auto" style={{ padding: "5px 12px", fontSize: 11 }}
-                  title={canCut ? "Keep only the selected segment" : "Move the start/end in to select a shorter segment"}>
-                  {cutPct !== null ? `Cutting… ${cutPct}%` : "✂ Cut"}
-                </button>
-              </div>
+          {/* Video fills the available space */}
+          <div className="flex-1 min-h-0 flex items-center justify-center p-2">
+            {url && (
+              <video
+                ref={videoRef}
+                src={url}
+                playsInline
+                controls
+                onLoadedMetadata={onLoadedMeta}
+                onTimeUpdate={onTimeUpdate}
+                className="rounded bg-black"
+                style={{ maxWidth: "100%", maxHeight: "100%" }}
+              />
+            )}
+          </div>
 
-              {dur > 0 && (
-                <div className="flex flex-col gap-1">
-                  <RangeHandle label="In" value={tIn} min={0} max={Math.max(dur, tOut)}
-                    onInput={v => onChange({ trimIn: Math.min(v, tOut - 0.1) })} onScrub={t => seek(videoRef, t)} />
-                  <RangeHandle label="Out" value={tOut} min={0} max={dur}
-                    onInput={v => onChange({ trimOut: Math.max(v, tIn + 0.1) })} onScrub={t => seek(videoRef, t)} />
-                  <div className="wl-mono text-[10px] wl-faint">
-                    {cutPct !== null ? "Re-encoding the selection… (plays through once)"
-                      : `Keeping ${fmt(Math.max(0, tOut - tIn))} of ${fmt(dur)}`}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-1.5">
-                <button onClick={() => fileRef.current?.click()} disabled={cutPct !== null} className="wl-btn" style={{ padding: "5px 9px", fontSize: 11 }}>Replace</button>
-                <button onClick={remove} disabled={cutPct !== null} className="wl-btn wl-btn--danger ml-auto" style={{ padding: "5px 9px", fontSize: 11 }}>Delete clip</button>
-              </div>
+          {/* Controls */}
+          <div className="flex-shrink-0 p-3 flex flex-col gap-2" style={{ borderTop: "1px solid var(--wl-line)" }}>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button onClick={markStart} disabled={cutPct !== null} className="wl-btn wl-btn--ghost">▶ Set start</button>
+              <button onClick={markEnd} disabled={cutPct !== null} className="wl-btn wl-btn--ghost">⏹ Set end</button>
+              <button onClick={cut} disabled={cutPct !== null || !canCut}
+                className="wl-btn wl-btn--primary ml-auto"
+                title={canCut ? "Keep only the selected segment" : "Move the start/end in to select a shorter segment"}>
+                {cutPct !== null ? `Cutting… ${cutPct}%` : "✂ Cut"}
+              </button>
             </div>
-          )}
+
+            {dur > 0 && (
+              <div className="flex flex-col gap-1">
+                <RangeHandle label="In" value={tIn} min={0} max={Math.max(dur, tOut)}
+                  onInput={v => onChange({ trimIn: Math.min(v, tOut - 0.1) })} onScrub={t => seek(videoRef, t)} />
+                <RangeHandle label="Out" value={tOut} min={0} max={dur}
+                  onInput={v => onChange({ trimOut: Math.max(v, tIn + 0.1) })} onScrub={t => seek(videoRef, t)} />
+                <div className="wl-mono text-[11px] wl-faint">
+                  {cutPct !== null ? "Re-encoding the selection… (plays through once)"
+                    : `Keeping ${fmt(Math.max(0, tOut - tIn))} of ${fmt(dur)}`}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => fileRef.current?.click()} disabled={cutPct !== null} className="wl-btn">Replace</button>
+              <button onClick={remove} disabled={cutPct !== null} className="wl-btn wl-btn--danger ml-auto">Delete clip</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
