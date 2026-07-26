@@ -315,15 +315,15 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   useEffect(() => { if (project) onActiveEdo?.(edo); }, [edo, project, onActiveEdo]);
   useEffect(() => { setBarsText(String(project?.setup.barCount ?? 8)); }, [project?.setup.barCount]);
 
-  // A time signature applies forward until the next change, but only WITHIN its
-  // group (a cut group has its own meter), so the effective meter is the nearest
-  // override at or before the bar back to the group start, else the default.
+  // A time signature applies forward until the next change. Cutting a line
+  // keeps whatever meter is currently in effect (the nearest override anywhere
+  // before this bar) rather than resetting the new group to 4/4; a cut group
+  // can still set its own meter with an explicit time-signature override.
   const effectiveTs = useCallback((measure: number): MeasureTimeSig => {
     const per = setup?.perBarTimeSig;
-    const start = sectionStartOf(measure);
-    if (per) for (let k = measure; k >= start; k--) if (per[k]) return per[k];
+    if (per) for (let k = measure; k >= 0; k--) if (per[k]) return per[k];
     return setup?.defaultTimeSig ?? { num: 4, den: 4 };
-  }, [setup, sectionStartOf]);
+  }, [setup]);
   const totalSlotsOf = useCallback((measure: number): number => {
     if (!setup) return 32;
     return measureSlots(effectiveTs(measure));
@@ -1591,6 +1591,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
             {Array.from({ length: project.setup.barCount }, (_, m) => {
               if (m >= project.setup.barCount - 1) return null;
+              // Once the next line has a written title, its cut-scissors would sit
+              // right on top of the heading — hide it to keep the title clean.
+              if (project.setup.perBarSection?.[m + 1]?.trim()) return null;
               const active = !!project.setup.perBarBreakBefore?.[m + 1];
               const bx = measureLeftX(m) + measureWidth(m);
               return (
