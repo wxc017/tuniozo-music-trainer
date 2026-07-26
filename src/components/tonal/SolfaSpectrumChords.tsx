@@ -789,16 +789,16 @@ const stepLabel = (s: number[]): string => s.map(x => x + 1).join("·");
 const PENTA_STEPS = [0, 1, 2, 4, 5];
 const pentaStep = (p: number): number => PENTA_STEPS[mod(p, 5)] + 7 * Math.floor(p / 5);
 const pentaLine = (idxs: number[]): number[] => idxs.map(pentaStep);
+// A full interval lap: the [degree, degree+k] pair from seven successive scale
+// positions (14 notes), so it runs the whole cycle instead of stopping after one
+// octave. e.g. 4ths (k=3) → 1 5 2 6 3 1 5 2 6 3 1 5 2 6.
+const pentaInterval = (k: number): number[] => pentaLine(Array.from({ length: 7 }, (_, d) => [d, d + k]).flat());
 const PENTA_PATTERNS: { label: string; steps: number[] }[] = [
   { label: "penta ↑↓",        steps: pentaLine([0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0]) },
-  // Continuous interval cycles — keep stacking the interval, wrapping through
-  // octaves, until it lands back on the tonic (visits all 5 degrees). e.g.
-  // penta 4ths (+3 steps) = 1 5 2 6 3 1.  (6ths = +5 steps is an octave, so it
-  // stays a degree-and-its-octave figure.)
-  { label: "penta 3rds",      steps: pentaLine([0, 2, 4, 6, 8, 10]) },
-  { label: "penta 4ths",      steps: pentaLine([0, 3, 6, 9, 12, 15]) },
-  { label: "penta 5ths",      steps: pentaLine([0, 4, 8, 12, 16, 20]) },
-  { label: "penta 6ths",      steps: pentaLine([0, 5, 1, 6, 2, 7]) },
+  { label: "penta 3rds",      steps: pentaInterval(2) },
+  { label: "penta 4ths",      steps: pentaInterval(3) },
+  { label: "penta 5ths",      steps: pentaInterval(4) },
+  { label: "penta 6ths",      steps: pentaInterval(5) },
   { label: "penta groups 3",  steps: pentaLine([0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5]) },
   { label: "penta groups 4",  steps: pentaLine([0, 1, 2, 3, 1, 2, 3, 4, 2, 3, 4, 5]) },
   { label: "penta triads 1·3·5", steps: pentaLine([0, 2, 4, 1, 3, 5, 2, 4, 6, 3, 5, 7]) },
