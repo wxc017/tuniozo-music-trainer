@@ -791,9 +791,13 @@ const pentaStep = (p: number): number => PENTA_STEPS[mod(p, 5)] + 7 * Math.floor
 const pentaLine = (idxs: number[]): number[] => idxs.map(pentaStep);
 const PENTA_PATTERNS: { label: string; steps: number[] }[] = [
   { label: "penta ↑↓",        steps: pentaLine([0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0]) },
-  { label: "penta 3rds",      steps: pentaLine([0, 2, 1, 3, 2, 4, 3, 5]) },
-  { label: "penta 4ths",      steps: pentaLine([0, 3, 1, 4, 2, 5]) },
-  { label: "penta 5ths",      steps: pentaLine([0, 4, 1, 5, 2, 6, 3, 7]) },
+  // Continuous interval cycles — keep stacking the interval, wrapping through
+  // octaves, until it lands back on the tonic (visits all 5 degrees). e.g.
+  // penta 4ths (+3 steps) = 1 5 2 6 3 1.  (6ths = +5 steps is an octave, so it
+  // stays a degree-and-its-octave figure.)
+  { label: "penta 3rds",      steps: pentaLine([0, 2, 4, 6, 8, 10]) },
+  { label: "penta 4ths",      steps: pentaLine([0, 3, 6, 9, 12, 15]) },
+  { label: "penta 5ths",      steps: pentaLine([0, 4, 8, 12, 16, 20]) },
   { label: "penta 6ths",      steps: pentaLine([0, 5, 1, 6, 2, 7]) },
   { label: "penta groups 3",  steps: pentaLine([0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5]) },
   { label: "penta groups 4",  steps: pentaLine([0, 1, 2, 3, 1, 2, 3, 4, 2, 3, 4, 5]) },

@@ -83,9 +83,11 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
     let cancelled = false;
     (async () => {
       try {
-        // Echo cancellation + noise suppression on: cancels our own guide drone
-        // and knocks down background/room noise so only your voice is tracked.
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false } });
+        // Echo cancellation / noise suppression are SPEECH filters that gate out
+        // steady/sustained tones — they cut your voice (and the spectrum) the
+        // instant you hold a pitch. Off, so a sustained note is tracked
+        // continuously (the RMS/clarity gates in detectPitch handle silence).
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = stream;
         const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
@@ -108,7 +110,10 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
           if (active) {
             if (!guideOnRef.current || guideNoteRef.current !== noteIdx) {
               guideOnRef.current = true; guideNoteRef.current = noteIdx; guideStart = now;
-              const tf = targetFreqNear(tonicFreq, targetCents, voiceFreq);
+              // Play the guide drone TWO OCTAVES above the target: a bright,
+              // piercing timbre that cuts through your voice, and it sits above
+              // the 70–1200 Hz detection range so it doesn't pollute tracking.
+              const tf = targetFreqNear(tonicFreq, targetCents, voiceFreq) * 4;
               audioEngine.startRatioDroneVoice(GUIDE_KEY, tf / C4_FREQ, DRONE_GAIN, C4_FREQ).catch(() => {});
               setGuiding(true);
             }
