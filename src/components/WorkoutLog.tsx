@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import "./workout/workout.css";
 import SessionLogger from "./workout/SessionLogger";
 import WorkoutHistory from "./workout/WorkoutHistory";
@@ -7,9 +7,7 @@ import FloatingRestTimer from "./workout/FloatingRestTimer";
 import UndoBar from "./workout/UndoBar";
 import { useWorkoutData, startWorkout, seedExercisesOnce } from "@/lib/workoutStore";
 import { registerRestSW } from "@/lib/restNotify";
-import { exportBackup, importBackupFromFile } from "@/lib/workoutBackup";
-import { isDriveConnected, connectDrive, disconnectDrive, onDriveChange, initDriveDataSync } from "@/lib/workoutDrive";
-import { backupWorkoutsToDrive, restoreWorkoutsFromDrive } from "@/lib/workoutDriveBackup";
+import { initDriveDataSync } from "@/lib/workoutDrive";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -27,76 +25,10 @@ export default function WorkoutLog() {
   const { workouts } = useWorkoutData();
   const [view, setView] = useState<View>("today");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [exporting, setExporting] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [driveOn, setDriveOn] = useState(isDriveConnected());
-  const [driveBusy, setDriveBusy] = useState<null | "backup" | "restore">(null);
-  const importRef = useRef<HTMLInputElement>(null);
 
+  // Drive connect + backup/restore/export/import all live in Settings now.
+  // This just keeps the auto data-sync running while the log is open.
   useEffect(() => { seedExercisesOnce(); void registerRestSW(); initDriveDataSync(); }, []);
-  useEffect(() => onDriveChange(() => setDriveOn(isDriveConnected())), []);
-
-  const toggleDrive = async () => {
-    if (driveOn) { disconnectDrive(); return; }
-    try { await connectDrive(); }
-    catch (err) { window.alert(`Google Drive connect failed: ${err instanceof Error ? err.message : String(err)}`); }
-  };
-
-  const doExport = async () => {
-    setExporting(true);
-    try {
-      const { shared, videoCount } = await exportBackup();
-      if (!shared) window.alert(`Backup saved to your downloads (${videoCount} video${videoCount === 1 ? "" : "s"}). Move it to your backup folder.`);
-    } catch (err) {
-      window.alert(`Export failed: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // Full zip backup straight to the "Tunizo Workouts" Drive folder — data AND
-  // video blobs, in one file that's updated in place. Reliable cross-device path
-  // that the JSON sync can't cover (videos live in IndexedDB).
-  const doBackupToDrive = async () => {
-    setDriveBusy("backup");
-    try {
-      const { videoCount, bytes } = await backupWorkoutsToDrive();
-      window.alert(`Backed up to Google Drive (${videoCount} video${videoCount === 1 ? "" : "s"}, ${(bytes / 1e6).toFixed(1)} MB).`);
-    } catch (err) {
-      window.alert(`Backup to Drive failed: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setDriveBusy(null);
-    }
-  };
-
-  const doRestoreFromDrive = async () => {
-    if (!window.confirm("Restore the workout log from your Drive backup? New items are merged in (nothing is deleted).")) return;
-    setDriveBusy("restore");
-    try {
-      const { found, result } = await restoreWorkoutsFromDrive();
-      if (!found) { window.alert("No Drive backup found yet — tap “Back up to Drive” on another device first."); return; }
-      window.alert(`Restored from Drive: ${result!.workouts} workouts, ${result!.exercises} exercises, ${result!.templates} templates, ${result!.videos} videos.`);
-    } catch (err) {
-      window.alert(`Restore from Drive failed: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setDriveBusy(null);
-    }
-  };
-
-  const doImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setImporting(true);
-    try {
-      const r = await importBackupFromFile(file);
-      window.alert(`Imported: ${r.workouts} workouts, ${r.exercises} exercises, ${r.templates} templates, ${r.videos} videos.`);
-    } catch (err) {
-      window.alert(`Import failed: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setImporting(false);
-    }
-  };
 
   return (
     <>
@@ -120,32 +52,6 @@ export default function WorkoutLog() {
             {view === "today" && <TodayView workouts={workouts} onOpen={setOpenId} />}
             {view === "calendar" && <WorkoutHistory onOpenWorkout={setOpenId} />}
             {view === "templates" && <TemplatesView onStart={setOpenId} />}
-          </div>
-
-          {/* Persistent footer: Drive connect + back up / restore. */}
-          <div className="flex-shrink-0 p-3 flex flex-col gap-2" style={{ borderTop: "1px solid var(--wl-line)" }}>
-            <input ref={importRef} type="file" accept=".zip,application/zip" className="hidden" onChange={doImport} />
-            <button onClick={toggleDrive} className={`wl-btn w-full ${driveOn ? "wl-btn--ghost" : ""}`}>
-              {driveOn ? "☁ Google Drive connected — tap to disconnect" : "☁ Connect Google Drive (offload videos)"}
-            </button>
-            {driveOn && (
-              <div className="flex gap-2">
-                <button onClick={doBackupToDrive} disabled={driveBusy !== null} className="wl-btn wl-btn--primary flex-1">
-                  {driveBusy === "backup" ? "Backing up…" : "☁⤓ Back up to Drive"}
-                </button>
-                <button onClick={doRestoreFromDrive} disabled={driveBusy !== null} className="wl-btn flex-1">
-                  {driveBusy === "restore" ? "Restoring…" : "☁⤒ Restore from Drive"}
-                </button>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <button onClick={doExport} disabled={exporting || importing} className="wl-btn flex-1">
-                {exporting ? "Preparing…" : "⤓ Export backup"}
-              </button>
-              <button onClick={() => importRef.current?.click()} disabled={exporting || importing} className="wl-btn flex-1">
-                {importing ? "Importing…" : "⤒ Import backup"}
-              </button>
-            </div>
           </div>
         </div>
       )}
