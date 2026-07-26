@@ -352,55 +352,46 @@ const cellRun = (cell: number[], reps: number): number[] => {
 };
 // Angular / intervallic melodic material (fourths, triad pairs, wide leaps) — the
 // modern-line vocabulary, kept in its own section apart from the scalar patterns.
+// Curated angular / intervallic melodic material — modern-line vocabulary of
+// leaps that a singer actually gets mileage from. Titles are uniform:
+// "<interval contour> (<degree list>)".  Anything that just duplicated the
+// scalar interval runs (4th/5th pairs, stacked quartal/quintal LINES) lives in
+// Scale-in-Intervals, not here.
 const ANGULAR_PATTERNS: { label: string; steps: number[] }[] = [
-  // Fourths / fifths lines (the McCoy Tyner / quartal sound).
-  { label: "quartal 1·4·7·3…", steps: [0, 3, 6, 2, 5, 1, 4, 7] },        // stacked 4ths
-  { label: "quintal 1·5·2·6…", steps: [0, 4, 1, 5, 2, 6, 3, 7] },        // stacked 5ths
-  { label: "1·4·7 (4th stacks)", steps: cellRun([0, 3, 6], 4) },
-  { label: "4th↑ 4th↑ 2nd↓",   steps: cellRun([0, 3, 6, 5], 4) },
-  { label: "4th↑ 4th↑ 4th↓",   steps: cellRun([0, 3, 6, 3], 4) },
-  { label: "4th↑ 4th↑ 3rd↑", steps: cellRun([0, 3, 6, 8], 4) },   // up a 4th, 4th, then a 3rd up
-  { label: "4th↑ 4th↑ 3rd↓", steps: cellRun([0, 3, 6, 4], 4) },   // …with the last a 3rd down
-  // ("4th pairs" removed — it's the same as the "4ths" run in Scale-in-Intervals.)
-  // (Triad pairs moved to their own Scalar sub-tab — they're a structural device,
-  // not leap-contour material.)
-  // Spread arpeggios & pentatonics.
-  { label: "spread arp 1·5·3·7", steps: cellRun([0, 4, 2, 6], 3) },
-  // ("pentatonic in 4ths" removed — its [0,3,1,4,2,5,7] is the 4th-pairs figure
-  // plus an octave, and it isn't pentatonic: it uses the 4th and 6th.)
-  // Sequenced up the scale this leaves the pentatonic after the first cell, so
-  // it's named for the cell it actually is.
-  { label: "1·2·5·6 cell (sequenced)", steps: cellRun([0, 1, 4, 5], 4) },
-  // Wide intervallic leap cells — contour verified against each cell.
-  { label: "5th↑ 4th↓ (1·5·2)", steps: cellRun([0, 4, 1], 5) },
-  { label: "6th↑ 4th↓ (1·6·3)", steps: cellRun([0, 5, 2], 5) },
-  { label: "7th↑ 5th↓ (1·7·3)", steps: cellRun([0, 6, 2], 5) },
-  { label: "6th↑ 5th↓ (1·6·2·7 zigzag)", steps: cellRun([0, 5, 1, 6], 4) },
-  { label: "5th↑ 4th↑ 4th↓ (1·5·8·5)", steps: cellRun([0, 4, 7, 4], 3) },
-  // ── More 4ths / 5ths ──  (scale-step Δ → interval: +2=3rd, +3=4th, +4=5th,
-  // +5=6th, +6=7th, +7=octave.  Every label below is the literal degree list or a
-  // verified interval contour of the CELL.)
-  { label: "quartal ↓ 8·5·2·6·3·7·4·1", steps: [7, 4, 1, 5, 2, 6, 3, 0] },
-  { label: "quintal ↓ 8·4·7·3·6·2·5·1", steps: [7, 3, 6, 2, 5, 1, 4, 0] },
-  { label: "5th pairs (1·5 · 2·6 · 3·7)", steps: cellRun([0, 4], 6) },
-  { label: "1·4·7·10 (tall 4th stack)", steps: cellRun([0, 3, 6, 9], 3) },
+  // ── Quartal / quintal stack cells (the McCoy Tyner sound) ──
+  { label: "4th↑ 4th↑ (1·4·7)",        steps: cellRun([0, 3, 6], 4) },
+  { label: "4th↑ 4th↑ 4th↑ (1·4·7·10)", steps: cellRun([0, 3, 6, 9], 3) },
+  { label: "4th↑ 4th↑ 4th↓ (1·4·7·4)", steps: cellRun([0, 3, 6, 3], 4) },
+  { label: "4th↑ 4th↑ 2nd↓ (1·4·7·6)", steps: cellRun([0, 3, 6, 5], 4) },
+  { label: "4th↑ 4th↑ 3rd↑ (1·4·7·9)", steps: cellRun([0, 3, 6, 8], 4) },
+  { label: "4th↑ 4th↑ 3rd↓ (1·4·7·5)", steps: cellRun([0, 3, 6, 4], 4) },
+  { label: "5th↑ 5th↑ (1·5·9)",        steps: cellRun([0, 4, 8], 3) },
+  // ── Leap up, land back by a smaller leap (wide-interval cells) ──
+  { label: "5th↑ 4th↓ (1·5·2)",        steps: cellRun([0, 4, 1], 5) },
+  { label: "6th↑ 4th↓ (1·6·3)",        steps: cellRun([0, 5, 2], 5) },
+  { label: "7th↑ 5th↓ (1·7·3)",        steps: cellRun([0, 6, 2], 5) },
   { label: "5th↑ 4th↓ 5th↑ (1·5·2·6)", steps: cellRun([0, 4, 1, 5], 3) },
-  // ── Octave displacement — the widest angular material ──
-  { label: "1·8·2·9 (octave displaced)", steps: cellRun([0, 7, 1, 8], 3) },
-  { label: "1·8·5 (octave then 4th↓)", steps: cellRun([0, 7, 4], 4) },
-  { label: "1·7·2·8 (7th zigzag)", steps: cellRun([0, 6, 1, 7], 3) },
-  { label: "1·3·8 (3rd↑ then 6th↑)", steps: cellRun([0, 2, 7], 4) },
-  // ── Leap-and-step contour cells ──
-  { label: "5th↑ 2nd↓ (1·5·4)", steps: cellRun([0, 4, 3], 5) },
-  { label: "6th↑ 3rd↓ (1·6·4)", steps: cellRun([0, 5, 3], 5) },
-  { label: "7th↑ 2nd↓ (1·7·6)", steps: cellRun([0, 6, 5], 4) },
+  { label: "6th↑ 5th↓ (1·6·2·7)",      steps: cellRun([0, 5, 1, 6], 4) },
+  { label: "5th↑ 4th↑ 4th↓ (1·5·8·5)", steps: cellRun([0, 4, 7, 4], 3) },
+  // ── Leap up, resolve down by step (the classic "leap-and-step") ──
+  { label: "5th↑ 2nd↓ (1·5·4)",        steps: cellRun([0, 4, 3], 5) },
+  { label: "6th↑ 3rd↓ (1·6·4)",        steps: cellRun([0, 5, 3], 5) },
+  { label: "6th↑ 2nd↓ (1·6·5)",        steps: cellRun([0, 5, 4], 5) },
+  { label: "7th↑ 2nd↓ (1·7·6)",        steps: cellRun([0, 6, 5], 4) },
+  { label: "3rd↑ 6th↑ (1·3·8)",        steps: cellRun([0, 2, 7], 4) },
+  // ── Octave-displacement — the widest angular material ──
+  { label: "8ve↑ 4th↓ (1·8·5)",        steps: cellRun([0, 7, 4], 4) },
+  { label: "8ve↑ 5th↓ (1·8·4)",        steps: cellRun([0, 7, 3], 4) },
+  { label: "8ve displaced (1·8·2·9)",  steps: cellRun([0, 7, 1, 8], 3) },
+  { label: "7th zigzag (1·7·2·8)",     steps: cellRun([0, 6, 1, 7], 3) },
   // ── Spread arpeggios — chord tones in a wide order ──
-  { label: "spread 7th 1·5·7·3", steps: cellRun([0, 4, 6, 2], 3) },
-  { label: "spread triad 1·5·3", steps: cellRun([0, 4, 2], 5) },
-  { label: "1·3·5·9 (add-9 spread)", steps: cellRun([0, 2, 4, 8], 3) },
-  // ── Wedges — outer notes converge / diverge (Slonimsky-flavoured) ──
-  { label: "wedge in 1·8·2·7·3·6·4·5", steps: [0, 7, 1, 6, 2, 5, 3, 4] },
-  { label: "wedge out 4·5·3·6·2·7·1·8", steps: [3, 4, 2, 5, 1, 6, 0, 7] },
+  { label: "spread △7 (1·5·3·7)",      steps: cellRun([0, 4, 2, 6], 3) },
+  { label: "spread △7 (1·5·7·3)",      steps: cellRun([0, 4, 6, 2], 3) },
+  { label: "spread triad (1·5·3)",     steps: cellRun([0, 4, 2], 5) },
+  { label: "spread add9 (1·3·5·9)",    steps: cellRun([0, 2, 4, 8], 3) },
+  // ── Wedges — outer notes converge / diverge (Slonimsky) ──
+  { label: "wedge in (1·8·2·7·3·6·4·5)",  steps: [0, 7, 1, 6, 2, 5, 3, 4] },
+  { label: "wedge out (4·5·3·6·2·7·1·8)", steps: [3, 4, 2, 5, 1, 6, 0, 7] },
 ];
 // Voicing spread applied to a close-position chord.
 type Voicing = "close" | "open" | "drop2" | "drop3" | "drop23" | "drop24";
