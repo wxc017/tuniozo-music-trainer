@@ -10,6 +10,40 @@
 // play through once). captureStream + MediaRecorder are supported on Android
 // Chrome; not on iOS Safari.
 
+/**
+ * MediaRecorder WebM blobs (what `cutFromElement` produces) carry NO duration
+ * in their header — they're written as an open-ended live stream. A freshly cut
+ * clip therefore loads with `video.duration === Infinity` and won't seek: the
+ * native scrub bar sticks at the far end and you can't skip through it.
+ *
+ * The dependency-free fix: seek far past the end. That forces the browser to
+ * read to EOF, which establishes the true duration AND a seekable byte range.
+ * Then we reset to the start. Resolves the corrected duration (0 if it can't be
+ * determined). Safe to call on any clip — returns immediately if the duration
+ * is already finite.
+ */
+export function primeSeekable(v: HTMLVideoElement): Promise<number> {
+  return new Promise(resolve => {
+    if (isFinite(v.duration) && v.duration > 0) { resolve(v.duration); return; }
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      v.removeEventListener("durationchange", check);
+      v.removeEventListener("timeupdate", check);
+      const d = isFinite(v.duration) && v.duration > 0 ? v.duration : 0;
+      try { v.currentTime = 0; } catch { /* ignore */ }
+      resolve(d);
+    };
+    const check = () => { if (isFinite(v.duration) && v.duration > 0) finish(); };
+    v.addEventListener("durationchange", check);
+    v.addEventListener("timeupdate", check);
+    // A very large target makes the browser scan to the real end.
+    try { v.currentTime = 1e101; } catch { /* ignore */ }
+    setTimeout(finish, 2000); // safety: never hang
+  });
+}
+
 export function canCutVideo(): boolean {
   if (typeof MediaRecorder === "undefined") return false;
   const v = document.createElement("video");

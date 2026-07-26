@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import {
   putVideo, getVideo, getVideoUrl, deleteVideo, releaseVideoUrl, newVideoId,
 } from "@/lib/workoutVideoDb";
-import { cutFromElement, canCutVideo } from "@/lib/workoutVideoCut";
+import { cutFromElement, canCutVideo, primeSeekable } from "@/lib/workoutVideoCut";
 import { getClipUrl, releaseClipUrl, isDriveConnected, uploadVideoToDrive, deleteDriveVideo } from "@/lib/workoutDrive";
 import type { WorkoutSet } from "@/lib/workoutTypes";
 
@@ -83,8 +83,14 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
     }
   }, [set.videoId, set.id, workoutId, onChange]);
 
-  const onLoadedMeta = () => {
-    const d = videoRef.current?.duration ?? 0;
+  const onLoadedMeta = async () => {
+    const v = videoRef.current;
+    if (!v) return;
+    // A cut clip is a MediaRecorder WebM with no header duration → Infinity, and
+    // the scrub bar sticks at the end. primeSeekable forces a real, seekable
+    // duration before we trust it.
+    let d = v.duration;
+    if (!isFinite(d) || d <= 0) d = await primeSeekable(v);
     if (isFinite(d) && d > 0) {
       setDuration(d);
       if (set.trimOut == null) onChange({ trimOut: d });
