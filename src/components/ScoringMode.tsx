@@ -50,7 +50,7 @@ function instrumentOf(p: NoteEntryProject): Instrument {
   return "harmonic";
 }
 
-export default function ScoringMode({ lockedInstrument, onActiveEdo, solfege }: { lockedInstrument?: Instrument; onActiveEdo?: (edo: number) => void; solfege?: Record<number, string> } = {}) {
+export default function ScoringMode({ lockedInstrument, onActiveEdo, solfege, onSolfege }: { lockedInstrument?: Instrument; onActiveEdo?: (edo: number) => void; solfege?: Record<number, string>; onSolfege?: (edo: number, system: string) => void } = {}) {
   const [projects, setProjects] = useState<NoteEntryProject[]>(loadProjects);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -104,6 +104,7 @@ export default function ScoringMode({ lockedInstrument, onActiveEdo, solfege }: 
           onBack={() => { setActiveId(null); refreshProjects(); }}
           onActiveEdo={onActiveEdo}
           solfege={solfege}
+          onSolfege={onSolfege}
           solfaOnly
         />
       );

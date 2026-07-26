@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useWorkoutData, exerciseHistory, loggedExerciseIndex, exerciseClips, isCwAssisted } from "@/lib/workoutStore";
-import { getVideoUrl } from "@/lib/workoutVideoDb";
+import { getClipUrl } from "@/lib/workoutDrive";
 import type { Workout } from "@/lib/workoutTypes";
 
 // Calendar + progress charts — the "computer" view over the same synced log.
@@ -158,8 +158,9 @@ function FormTimeline({ match }: { match: { skillId?: string; name: string } }) 
 
   useEffect(() => {
     let alive = true;
-    Promise.all(clips.map(c => getVideoUrl(c.videoId).then(u => [c.videoId, u] as const)))
-      .then(pairs => { if (alive) setUrls(Object.fromEntries(pairs)); });
+    Promise.all(clips.map(c =>
+      getClipUrl({ videoId: c.videoId, driveFileId: c.driveFileId }).then(u => [clipKey(c), u] as const),
+    )).then(pairs => { if (alive) setUrls(Object.fromEntries(pairs)); });
     return () => { alive = false; };
   }, [clips]);
 
@@ -169,20 +170,29 @@ function FormTimeline({ match }: { match: { skillId?: string; name: string } }) 
     <div className="mt-4">
       <div className="wl-eyebrow mb-2">Form over time · {clips.length} clip{clips.length === 1 ? "" : "s"}</div>
       <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollSnapType: "x mandatory" }}>
-        {clips.map(c => (
-          <div key={c.videoId} className="flex-shrink-0" style={{ width: 170, scrollSnapAlign: "start" }}>
-            {urls[c.videoId] ? (
-              <video src={urls[c.videoId]!} controls playsInline preload="metadata"
-                className="rounded bg-black w-full" style={{ maxHeight: 260 }} />
-            ) : (
-              <div className="rounded bg-black w-full flex items-center justify-center" style={{ height: 120, color: "var(--wl-faint)", fontSize: 11 }}>loading…</div>
-            )}
-            <div className="wl-mono mt-1" style={{ fontSize: 11, color: "var(--wl-faint)" }}>{c.date}</div>
-          </div>
-        ))}
+        {clips.map(c => {
+          const key = clipKey(c);
+          return (
+            <div key={key} className="flex-shrink-0" style={{ width: 170, scrollSnapAlign: "start" }}>
+              {urls[key] ? (
+                <video src={urls[key]!} controls playsInline preload="metadata"
+                  className="rounded bg-black w-full" style={{ maxHeight: 260 }} />
+              ) : (
+                <div className="rounded bg-black w-full flex items-center justify-center" style={{ height: 120, color: "var(--wl-faint)", fontSize: 11 }}>
+                  {c.driveFileId ? "loading (Drive)…" : "loading…"}
+                </div>
+              )}
+              <div className="wl-mono mt-1" style={{ fontSize: 11, color: "var(--wl-faint)" }}>{c.date}{c.driveFileId ? " ☁" : ""}</div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
+}
+
+function clipKey(c: { videoId?: string; driveFileId?: string; setId: string }): string {
+  return c.videoId || c.driveFileId || c.setId;
 }
 
 function shiftMonth(d: Date, delta: number): Date { return new Date(d.getFullYear(), d.getMonth() + delta, 1); }

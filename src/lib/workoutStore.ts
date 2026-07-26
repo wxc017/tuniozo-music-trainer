@@ -291,14 +291,16 @@ export function isCwAssisted(name: string): boolean {
 
 /** Every video clip logged for one exercise, oldest → newest, for a form
  *  timeline (watch how form changed over time). */
-export interface ExerciseClip { date: string; videoId: string; setId: string; workoutId: string }
+export interface ExerciseClip { date: string; videoId?: string; driveFileId?: string; setId: string; workoutId: string }
 export function exerciseClips(match: { skillId?: string; name: string }): ExerciseClip[] {
   const out: ExerciseClip[] = [];
   for (const w of getWorkouts()) {
     for (const ex of w.exercises) {
       const same = match.skillId ? ex.skillId === match.skillId : ex.name.toLowerCase() === match.name.toLowerCase();
       if (!same) continue;
-      for (const s of ex.sets) if (s.videoId) out.push({ date: w.date, videoId: s.videoId, setId: s.id, workoutId: w.id });
+      for (const s of ex.sets) {
+        if (s.videoId || s.driveFileId) out.push({ date: w.date, videoId: s.videoId, driveFileId: s.driveFileId, setId: s.id, workoutId: w.id });
+      }
     }
   }
   return out.sort((a, b) => a.date.localeCompare(b.date) || a.workoutId.localeCompare(b.workoutId));

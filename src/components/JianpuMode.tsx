@@ -142,9 +142,12 @@ export interface JianpuModeProps {
   /** The app's per-EDO solfège selection (from the "n" overlay).  When the piece's
    *  EDO maps to "Movable Do", degrees read as do-re-mi; otherwise Spectrum-ege. */
   solfege?: Record<number, string>;
+  /** Set the app's solfège system for an EDO (so the editor's Major/Minor toggle
+   *  can switch the "n" overlay's Spectrum-ege ↔ Movable Do). */
+  onSolfege?: (edo: number, system: string) => void;
 }
 
-export default function JianpuMode({ controlledActiveId, onBack, embedded = false, solfaOnly = false, onActiveEdo, solfege }: JianpuModeProps) {
+export default function JianpuMode({ controlledActiveId, onBack, embedded = false, solfaOnly = false, onActiveEdo, solfege, onSolfege }: JianpuModeProps) {
   const [project, setProject] = useState<NoteEntryProject | null>(null);
   const [notes, setNotes] = useState<NoteData[]>([]);
   const [cursor, setCursor] = useState<Cursor>({ voice: 0, measure: 0, slot: 0 });
@@ -280,8 +283,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   }, [perSection, project?.voiceCount, notes, sectionRangeOf, minVoices]);
 
   const edo = project?.edo ?? 12;
-  // Solfège system for this EDO (from the "n" overlay): Movable Do → do-re-mi,
-  // else the universal Spectrum-ege.  The Major/Minor spelling stays per note.
+  // Movable-do (do-re-mi) vs universal Spectrum-ege is decided ONLY by the "n"
+  // overlay's solfège pick for this EDO.  The editor Major/Minor toggle switches
+  // that pick too, so the two stay in sync.
   const movableDo = edo === 12 && solfege?.[edo] === MOVABLE_DO;
   useEffect(() => { setEdoText(String(edo)); }, [edo]);
   // Tell the app this sheet's EDO so the global Notation ("n") overlay follows it.
@@ -463,11 +467,10 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   // ── Note construction ─────────────────────────────────────────────────────
   const makeNote = useCallback((degree: number, isRest: boolean, dur: Duration, dot: boolean,
                                 voice: number, measure: number, slot: number): NoteData => {
-    // In Movable-Do Minor, natural-minor lowers degrees 3/6/7 a semitone — bake
-    // that as alteration −1 so the PITCH (and the Spectrum-ege syllable) is a true
-    // minor third, not a major third.  Bake the Major/Minor spelling too so a
-    // later toggle never rewrites notes already on the page.
-    const minorMode = movableDo && project?.solfaStyle === "minor";
+    // Diatonic Minor lowers degrees 3/6/7 a semitone — bake that as alteration −1
+    // so the PITCH is a true minor third in EITHER display system (spectrum shows
+    // "Na", movable-do "Me").  Independent of the display system.
+    const minorMode = project?.solfaStyle === "minor";
     const alt = !isRest && minorMode && minorLowersDegree(degree) ? -1 : 0;
     const jp = isRest ? null : jianpuToPitch(degree, octave, alt < 0 ? "b" : undefined, fifths);
     return {
@@ -511,7 +514,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       const host = selHost ?? notes.find(n => (n.voice ?? 0) === voice && n.measure === measure && !n.isRest
         && slot >= n.startSlot && slot < n.startSlot + noteSlots(n));
       if (host) {
-        const minorMode = movableDo && project?.solfaStyle === "minor";
+        const minorMode = project?.solfaStyle === "minor";
         const alt = minorMode && minorLowersDegree(degree) ? -1 : 0;
         const jp = jianpuToPitch(degree, host.jianpuOctave ?? 0, alt < 0 ? "b" : host.jianpuAccidental, fifths);
         const mode = project?.solfaStyle === "minor" ? "minor" : "major";
@@ -1354,10 +1357,11 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
               {NOTATION_SYSTEM_LABELS[system]} ⇄
             </button>
           )}
-          {/* Movable-do mode (only when the "n" system is Movable Do) — sets the
-              Major/Minor spelling for the NEXT notes you enter. */}
-          {system === "solfa" && movableDo && (
-            <div className="flex gap-0.5" title="Movable-do spelling for the next notes">
+          {/* Scale mode (independent of the display system): Diatonic Minor lowers
+              the 3rd/6th/7th, so degree 3 is a real minor third — shown as "Na" in
+              Spectrum-ege or "Me" in Movable Do. */}
+          {system === "solfa" && edo === 12 && (
+            <div className="flex gap-0.5" title="Scale for the next notes">
               {(["major", "minor"] as const).map(s => {
                 const on = (project.solfaStyle === "minor" ? "minor" : "major") === s;
                 return (

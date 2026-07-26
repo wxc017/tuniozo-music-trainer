@@ -7,6 +7,7 @@ import FloatingRestTimer from "./workout/FloatingRestTimer";
 import { useWorkoutData, startWorkout, seedExercisesOnce } from "@/lib/workoutStore";
 import { registerRestSW } from "@/lib/restNotify";
 import { exportBackup, importBackupFromFile } from "@/lib/workoutBackup";
+import { isDriveConnected, connectDrive, disconnectDrive, onDriveChange } from "@/lib/workoutDrive";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -26,9 +27,17 @@ export default function WorkoutLog() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [driveOn, setDriveOn] = useState(isDriveConnected());
   const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { seedExercisesOnce(); void registerRestSW(); }, []);
+  useEffect(() => onDriveChange(() => setDriveOn(isDriveConnected())), []);
+
+  const toggleDrive = async () => {
+    if (driveOn) { disconnectDrive(); return; }
+    try { await connectDrive(); }
+    catch (err) { window.alert(`Google Drive connect failed: ${err instanceof Error ? err.message : String(err)}`); }
+  };
 
   const doExport = async () => {
     setExporting(true);
@@ -81,15 +90,20 @@ export default function WorkoutLog() {
             {view === "templates" && <TemplatesView onStart={setOpenId} />}
           </div>
 
-          {/* Persistent footer: back up / restore the whole log (data + videos). */}
-          <div className="flex-shrink-0 p-3 flex gap-2" style={{ borderTop: "1px solid var(--wl-line)" }}>
+          {/* Persistent footer: Drive connect + back up / restore. */}
+          <div className="flex-shrink-0 p-3 flex flex-col gap-2" style={{ borderTop: "1px solid var(--wl-line)" }}>
             <input ref={importRef} type="file" accept=".zip,application/zip" className="hidden" onChange={doImport} />
-            <button onClick={doExport} disabled={exporting || importing} className="wl-btn flex-1">
-              {exporting ? "Preparing…" : "⤓ Export backup"}
+            <button onClick={toggleDrive} className={`wl-btn w-full ${driveOn ? "wl-btn--ghost" : ""}`}>
+              {driveOn ? "☁ Google Drive connected — tap to disconnect" : "☁ Connect Google Drive (offload videos)"}
             </button>
-            <button onClick={() => importRef.current?.click()} disabled={exporting || importing} className="wl-btn flex-1">
-              {importing ? "Importing…" : "⤒ Import backup"}
-            </button>
+            <div className="flex gap-2">
+              <button onClick={doExport} disabled={exporting || importing} className="wl-btn flex-1">
+                {exporting ? "Preparing…" : "⤓ Export backup"}
+              </button>
+              <button onClick={() => importRef.current?.click()} disabled={exporting || importing} className="wl-btn flex-1">
+                {importing ? "Importing…" : "⤒ Import backup"}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -52,8 +52,10 @@ export interface WorkoutSet {
   rpe?: number;
   /** Rest taken AFTER this set, in seconds. */
   restSec?: number;
-  /** Key into the video IndexedDB store (workoutVideoDb.ts). */
+  /** Key into the video IndexedDB store (workoutVideoDb.ts) — local storage. */
   videoId?: string;
+  /** Google Drive file id when the clip has been offloaded to Drive. */
+  driveFileId?: string;
   /** Non-destructive trim marks, in seconds from the clip start. */
   trimIn?: number;
   trimOut?: number;

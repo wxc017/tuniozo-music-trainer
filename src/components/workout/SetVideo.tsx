@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
-  putVideo, getVideoUrl, deleteVideo, releaseVideoUrl, newVideoId,
+  putVideo, getVideo, getVideoUrl, deleteVideo, releaseVideoUrl, newVideoId,
 } from "@/lib/workoutVideoDb";
 import { cutFromElement, canCutVideo } from "@/lib/workoutVideoCut";
+import { getClipUrl, releaseClipUrl, isDriveConnected, uploadVideoToDrive, deleteDriveVideo } from "@/lib/workoutDrive";
 import type { WorkoutSet } from "@/lib/workoutTypes";
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -35,23 +36,26 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [cutPct, setCutPct] = useState<number | null>(null); // null = not cutting
+  const [uploading, setUploading] = useState(false);
 
-  const hasVideo = !!set.videoId;
+  const hasVideo = !!set.videoId || !!set.driveFileId;
+  const onDrive = !!set.driveFileId;
 
-  // Load the object URL when the panel opens (lazy — don't hydrate every set).
+  // Load the object URL when the panel opens (lazy). Resolves from Drive if the
+  // clip was offloaded, else from local IndexedDB.
   useEffect(() => {
     let alive = true;
-    if (open && set.videoId) {
-      getVideoUrl(set.videoId).then(u => { if (alive) setUrl(u); });
+    if (open && hasVideo) {
+      getClipUrl({ videoId: set.videoId, driveFileId: set.driveFileId }).then(u => { if (alive) setUrl(u); });
     }
     return () => { alive = false; };
-  }, [open, set.videoId]);
+  }, [open, set.videoId, set.driveFileId, hasVideo]);
 
   // Revoke this clip's object URL on unmount.
   useEffect(() => {
-    const id = set.videoId;
-    return () => { if (id) releaseVideoUrl(id); };
-  }, [set.videoId]);
+    const ref = { videoId: set.videoId, driveFileId: set.driveFileId };
+    return () => { if (ref.videoId) releaseVideoUrl(ref.videoId); releaseClipUrl(ref); };
+  }, [set.videoId, set.driveFileId]);
 
   const onPick = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -65,12 +69,13 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
       URL.revokeObjectURL(probeUrl);
       const id = set.videoId ?? newVideoId();
       if (set.videoId) await deleteVideo(set.videoId); // replace old blob
+      if (set.driveFileId) void deleteDriveVideo(set.driveFileId); // replace old Drive clip
       await putVideo({
         id, blob: file, mime: file.type || "video/mp4",
         durationSec: dur, createdAt: Date.now(),
         setId: set.id, workoutId,
       });
-      onChange({ videoId: id, trimIn: 0, trimOut: dur || undefined });
+      onChange({ videoId: id, driveFileId: undefined, trimIn: 0, trimOut: dur || undefined });
       setDuration(dur);
       setOpen(true);
     } finally {
@@ -88,10 +93,30 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
 
   const remove = useCallback(async () => {
     if (set.videoId) { await deleteVideo(set.videoId); releaseVideoUrl(set.videoId); }
+    if (set.driveFileId) { void deleteDriveVideo(set.driveFileId); releaseClipUrl({ driveFileId: set.driveFileId }); }
     setUrl(null);
-    onChange({ videoId: undefined, trimIn: undefined, trimOut: undefined });
+    onChange({ videoId: undefined, driveFileId: undefined, trimIn: undefined, trimOut: undefined });
     setOpen(false);
-  }, [set.videoId, onChange]);
+  }, [set.videoId, set.driveFileId, onChange]);
+
+  // Offload the local clip to Google Drive and drop the phone-side copy.
+  const offloadToDrive = useCallback(async () => {
+    if (!set.videoId || set.driveFileId || !isDriveConnected()) return;
+    const stored = await getVideo(set.videoId);
+    if (!stored) return;
+    setUploading(true);
+    try {
+      const ext = /mp4/i.test(stored.mime) ? "mp4" : /webm/i.test(stored.mime) ? "webm" : "mp4";
+      const fileId = await uploadVideoToDrive(stored.blob, `${set.id}.${ext}`);
+      await deleteVideo(set.videoId);
+      releaseVideoUrl(set.videoId);
+      onChange({ videoId: undefined, driveFileId: fileId });
+    } catch (err) {
+      window.alert(`Couldn't upload to Drive: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setUploading(false);
+    }
+  }, [set.videoId, set.driveFileId, set.id, onChange]);
 
   const dur = duration || set.trimOut || 0;
   const tIn = set.trimIn ?? 0;
@@ -113,7 +138,9 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
 
   // Actually cut: re-encode [tIn, tOut] into a new smaller Blob, replace the
   // stored clip with it, and discard the full-length original.
-  const canCut = tOut - tIn > 0.2 && tOut - tIn < dur - 0.05; // a real sub-range
+  // Cut only works on a local clip (Drive clips are streamed) — cut first,
+  // then move to Drive.
+  const canCut = !onDrive && tOut - tIn > 0.2 && tOut - tIn < dur - 0.05;
   const cut = useCallback(async () => {
     if (!set.videoId) return;
     const v = videoRef.current;
@@ -178,8 +205,9 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
         <div className="wl-root fixed inset-0 z-[65] flex flex-col" style={{ background: "rgba(0,0,0,.94)" }}>
           <div className="flex items-center gap-2 px-3 py-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--wl-line)" }}>
             <span className="wl-h2">Video</span>
+            {onDrive && <span className="wl-tag">☁ Drive</span>}
             <span className="wl-mono wl-faint">{`${fmt(tIn)}–${fmt(tOut)}`}</span>
-            <button onClick={() => setOpen(false)} disabled={cutPct !== null} className="wl-btn ml-auto">Close</button>
+            <button onClick={() => setOpen(false)} disabled={cutPct !== null || uploading} className="wl-btn ml-auto">Close</button>
           </div>
 
           {/* Video fills the available space */}
@@ -223,9 +251,18 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
               </div>
             )}
 
+            {/* Google Drive offload */}
+            {isDriveConnected() && !onDrive && (
+              <button onClick={offloadToDrive} disabled={cutPct !== null || uploading}
+                className="wl-btn wl-btn--ghost" title="Upload to Drive and free phone storage">
+                {uploading ? "Uploading to Drive…" : "☁ Move to Drive (frees phone)"}
+              </button>
+            )}
+            {onDrive && <div className="wl-mono text-[11px] wl-faint">Stored on Google Drive — streams when you play it.</div>}
+
             <div className="flex items-center gap-1.5">
-              <button onClick={() => fileRef.current?.click()} disabled={cutPct !== null} className="wl-btn">Replace</button>
-              <button onClick={remove} disabled={cutPct !== null} className="wl-btn wl-btn--danger ml-auto">Delete clip</button>
+              <button onClick={() => fileRef.current?.click()} disabled={cutPct !== null || uploading} className="wl-btn">Replace</button>
+              <button onClick={remove} disabled={cutPct !== null || uploading} className="wl-btn wl-btn--danger ml-auto">Delete clip</button>
             </div>
           </div>
         </div>
