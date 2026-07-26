@@ -1086,7 +1086,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       // Centre the head in its cell so equal notes sit symmetrically.  A held
       // note (half/whole) prints as "head – – –" with the head in beat 1, so its
       // head centres in that first beat (8 slots), not over the whole span.
-      const headSlots = glyph.dashes > 0 ? 8 : noteSlots(first);
+      // A dotted quarter/eighth keeps its head centred on the beat (over the
+      // undotted value); the extra half-beat prints in the next eighth cell.
+      const headSlots = glyph.dashes > 0 ? 8 : (glyph.dot ? DURATION_SLOTS[first.duration] : noteSlots(first));
       const x = slotToX(first.measure, first.startSlot + headSlots / 2, total);
       const base = baselineY(voice, first.measure);
       const sorted = [...g].sort((a, b) => pitchRank(a) - pitchRank(b));
@@ -1297,11 +1299,12 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (it.decorate) {
       if (it.separate) els.push(...underlinesAt(it.x, it.y, it.underlines, it.id, labelHalfW(it.label)));
       if (it.dot) {
-        // Dotted quarter/eighth: show the added half-beat as a dash with a
-        // second dash stacked above it (the eighth mark), not an aug-dot.
-        const dx = it.x + 13;
-        els.push(<line key={`${it.id}-dd1`} x1={dx - 4} x2={dx + 4} y1={it.y - 11} y2={it.y - 11} stroke={WHITE} strokeWidth={2} strokeLinecap="round" />);
-        els.push(<line key={`${it.id}-dd2`} x1={dx - 4} x2={dx + 4} y1={it.y - 5} y2={it.y - 5} stroke={WHITE} strokeWidth={2} strokeLinecap="round" />);
+        // Dotted quarter/eighth: head stays centred on its beat; the added
+        // half-beat prints in the NEXT eighth cell as a dash with a second dash
+        // stacked above it (the eighth mark). Keeps the note symmetric.
+        const dashX = slotToX(it.measure, it.startSlot + DURATION_SLOTS[it.duration] * 1.25, it.total);
+        els.push(<line key={`${it.id}-dd1`} x1={dashX - 6} x2={dashX + 6} y1={it.y - 6} y2={it.y - 6} stroke={WHITE} strokeWidth={2.4} strokeLinecap="round" />);
+        els.push(<line key={`${it.id}-dd2`} x1={dashX - 6} x2={dashX + 6} y1={it.y - 13} y2={it.y - 13} stroke={WHITE} strokeWidth={2.4} strokeLinecap="round" />);
       }
       for (let dsh = 1; dsh <= it.dashes; dsh++) {
         const dashSlot = it.startSlot + dsh * 8;
