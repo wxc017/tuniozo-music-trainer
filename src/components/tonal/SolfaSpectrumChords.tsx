@@ -1887,12 +1887,19 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         style={on ? { background: WALK_COLOR, borderColor: WALK_COLOR } : { borderColor: "#3a5a6a" }} />
     );
   };
-  // Diatonically harmonize the displayed notes by `delta` scale steps (each note →
-  // its scale step + delta).  Chromatic notes (not in the scale) pass through.
+  // Harmonize the displayed notes by `delta` scale steps (each note → its scale
+  // step + delta), stepping by the ACTUAL scale length so it stays in the mode
+  // even for non-7-note scales — e.g. pentatonic [1 2 3 5 6]: a 3rd↑ (+2) maps
+  // 1→3, 2→5, 3→6. Chromatic notes (not in the scale) pass through.
   const harmonizeNotes = (ns: SingNote[], rawScale: number[], delta: number): SingNote[] =>
     ns.map(n => {
+      const L = rawScale.length;
       const d = rawScale.findIndex(c => Math.abs(c - n.cents) < 1);
-      return d < 0 ? n : stepNote(rawScale, d + 7 * n.oct + delta);
+      if (d < 0) return n;
+      const s = d + delta;
+      const deg = mod(s, L);
+      const oct = n.oct + Math.floor(s / L);
+      return { syl: sylOf(rawScale[deg]), abs: rawScale[deg] + 1200 * oct - 1200 + rootCents, oct, cents: mod(rawScale[deg], 1200) };
     });
   const toggleDrone = async (id: string, absList: number[]) => {
     const wasDroning = droningId === id;
