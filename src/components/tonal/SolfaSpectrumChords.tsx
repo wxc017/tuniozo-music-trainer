@@ -1700,8 +1700,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         lineSeq("down", scale, [7, 6, 5, 4, 3, 2, 1, 0]),
         lineSeq("up · down", scale, [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0]),
       ] },
-      { cat: "scalar", sub: "scale", title: "SCALE IN INTERVALS (2nds–5ths)", seqs: [
-        lineSeq("2nds", scale, intervalCycle(1)),
+      { cat: "scalar", sub: "scale", title: "SCALE IN INTERVALS (3rds–5ths)", seqs: [
         lineSeq("3rds", scale, intervalCycle(2)),
         lineSeq("4ths", scale, intervalCycle(3)),
         lineSeq("5ths", scale, intervalCycle(4)),
