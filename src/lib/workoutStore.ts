@@ -75,6 +75,7 @@ export function saveCustomExercise(name: string, mode: TrackingMode): CustomExer
   return ex;
 }
 export function deleteCustomExercise(id: string): void {
+  captureUndo("exercise");
   rev++; writeCustomExercises(getCustomExercises().filter(e => e.id !== id));
 }
 
@@ -145,6 +146,36 @@ function getWorkoutsSnapshot(): Workout[] { refreshCache(); return cachedWorkout
 function getTemplatesSnapshot(): WorkoutTemplate[] { refreshCache(); return cachedTemplates!; }
 function getPrefsSnapshot(): WorkoutPrefs { refreshCache(); return cachedPrefs!; }
 function getCustomSnapshot(): CustomExercise[] { refreshCache(); return cachedCustom!; }
+
+// ── Undo (one-level) for destructive deletes ─────────────────────────────
+// Snapshots the whole log before a delete; undoLast() restores it. Media
+// blobs aren't touched by structural deletes (only SetVideo's Delete-clip
+// removes a blob), so undoing a workout/set/exercise delete is always safe.
+interface UndoSnap { workouts: Workout[]; templates: WorkoutTemplate[]; customExercises: CustomExercise[]; label: string; ts: number }
+let undoSnapshot: UndoSnap | null = null;
+
+export function captureUndo(label: string): void {
+  undoSnapshot = { workouts: getWorkouts(), templates: getTemplates(), customExercises: getCustomExercises(), label, ts: Date.now() };
+  rev++; emitChange();
+}
+export function undoLast(): void {
+  if (!undoSnapshot) return;
+  const s = undoSnapshot;
+  undoSnapshot = null;
+  rev++;
+  lsSet(LOG_KEY, s.workouts);
+  lsSet(TEMPLATES_KEY, s.templates);
+  lsSet(CUSTOM_EX_KEY, s.customExercises);
+  emitChange();
+}
+export function clearUndo(): void { if (undoSnapshot) { undoSnapshot = null; rev++; emitChange(); } }
+function getUndoRaw(): UndoSnap | null { return undoSnapshot; }
+
+/** Reactive current undo entry (or null). */
+export function useUndo(): { label: string; ts: number } | null {
+  const raw = useSyncExternalStore(subscribe, getUndoRaw);
+  return raw ? { label: raw.label, ts: raw.ts } : null;
+}
 // A cross-device sync restore rewrites localStorage without going through our
 // mutators, so bump rev on that path too, before subscribers re-read.
 if (typeof window !== "undefined") {
@@ -161,6 +192,7 @@ export function upsertWorkout(w: Workout): void {
   writeWorkouts(list);
 }
 export function deleteWorkout(id: string): void {
+  captureUndo("workout");
   rev++;
   writeWorkouts(getWorkouts().filter(w => w.id !== id));
 }
@@ -220,6 +252,7 @@ export function saveTemplate(t: WorkoutTemplate): void {
   writeTemplates(list);
 }
 export function deleteTemplate(id: string): void {
+  captureUndo("template");
   rev++;
   writeTemplates(getTemplates().filter(t => t.id !== id));
 }

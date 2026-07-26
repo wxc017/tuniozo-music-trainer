@@ -4,7 +4,7 @@ import ExercisePicker, { type PickedExercise } from "./ExercisePicker";
 import { startRest } from "@/lib/restTimerStore";
 import {
   upsertWorkout, makeExercise, makeSet, deleteWorkout,
-  templateFromWorkout, saveTemplate, useWorkoutData,
+  templateFromWorkout, saveTemplate, useWorkoutData, captureUndo,
 } from "@/lib/workoutStore";
 import {
   type Workout, type LoggedExercise, type WorkoutSet, type WeightUnit, type TrackingMode,
@@ -32,7 +32,7 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
     patch(w => { w.exercises.push(makeExercise(c.name, c.mode, c.skillId)); return w; });
     setPicking(false);
   };
-  const removeExercise = (exId: string) => patch(w => { w.exercises = w.exercises.filter(e => e.id !== exId); return w; });
+  const removeExercise = (exId: string) => { captureUndo("exercise"); patch(w => { w.exercises = w.exercises.filter(e => e.id !== exId); return w; }); };
   const setMode = (exId: string, mode: TrackingMode) =>
     patch(w => { const ex = w.exercises.find(e => e.id === exId); if (ex) ex.mode = mode; return w; });
   const addSet = (exId: string) =>
@@ -44,8 +44,10 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
       }
       return w;
     });
-  const removeSet = (exId: string, setId: string) =>
+  const removeSet = (exId: string, setId: string) => {
+    captureUndo("set");
     patch(w => { const ex = w.exercises.find(e => e.id === exId); if (ex) ex.sets = ex.sets.filter(s => s.id !== setId); return w; });
+  };
   const patchSet = (exId: string, setId: string, sp: Partial<WorkoutSet>) =>
     patch(w => { const s = w.exercises.find(e => e.id === exId)?.sets.find(x => x.id === setId); if (s) Object.assign(s, sp); return w; });
 

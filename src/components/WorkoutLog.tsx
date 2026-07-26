@@ -4,10 +4,11 @@ import SessionLogger from "./workout/SessionLogger";
 import WorkoutHistory from "./workout/WorkoutHistory";
 import TemplatesView from "./workout/TemplatesView";
 import FloatingRestTimer from "./workout/FloatingRestTimer";
+import UndoBar from "./workout/UndoBar";
 import { useWorkoutData, startWorkout, seedExercisesOnce } from "@/lib/workoutStore";
 import { registerRestSW } from "@/lib/restNotify";
 import { exportBackup, importBackupFromFile } from "@/lib/workoutBackup";
-import { isDriveConnected, connectDrive, disconnectDrive, onDriveChange } from "@/lib/workoutDrive";
+import { isDriveConnected, connectDrive, disconnectDrive, onDriveChange, initDriveDataSync } from "@/lib/workoutDrive";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -30,7 +31,7 @@ export default function WorkoutLog() {
   const [driveOn, setDriveOn] = useState(isDriveConnected());
   const importRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { seedExercisesOnce(); void registerRestSW(); }, []);
+  useEffect(() => { seedExercisesOnce(); void registerRestSW(); initDriveDataSync(); }, []);
   useEffect(() => onDriveChange(() => setDriveOn(isDriveConnected())), []);
 
   const toggleDrive = async () => {
@@ -107,8 +108,9 @@ export default function WorkoutLog() {
           </div>
         </div>
       )}
-      {/* Floating rest timer — persists across views, above the video popup. */}
+      {/* Floating overlays — persist across views, above the video popup. */}
       <FloatingRestTimer />
+      <UndoBar />
     </>
   );
 }

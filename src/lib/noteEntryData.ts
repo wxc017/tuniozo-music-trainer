@@ -215,6 +215,10 @@ export interface NoteEntryProject {
    *  bar (same keying as `perSectionVoiceCount`).  Absent for a section → falls
    *  back to the global `pianoBrace`. */
   perSectionPianoBrace?: Record<number, boolean>;
+  /** Jianpu/Sol-fa mode: explicit hand split per section (number of voices in the
+   *  UPPER hand of the piano brace), keyed by the section start.  Absent → the
+   *  auto split (⌈voices/2⌉).  Lets you grow one hand without rebalancing. */
+  perSectionHandSplit?: Record<number, number>;
   /** Jianpu-only: equal divisions of the octave (default 12).  Degrees 1–7 are
    *  the diatonic MOS from the EDO's best fifth; alterations move by EDO steps. */
   edo?: number;

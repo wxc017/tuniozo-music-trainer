@@ -5,9 +5,10 @@
 
 import {
   getSavedToken, requestAccessToken, clearToken,
-  uploadDriveFile, getDriveFileBlob, deleteDriveFile, findOrCreateFolder,
+  uploadDriveFile, getDriveFileBlob, deleteDriveFile, findOrCreateFolder, uploadSync,
 } from "./googleDrive";
 import { getVideoUrl } from "./workoutVideoDb";
+import { buildSyncPayload } from "./syncData";
 
 const FOLDER_NAME = "Tunizo Workouts";
 const FOLDER_ID_KEY = "lt_workout_drive_folder";
@@ -18,10 +19,29 @@ export function isDriveConnected(): boolean { return !!getSavedToken(); }
 export async function connectDrive(): Promise<void> {
   await requestAccessToken();
   emit();
+  // Push current log data up immediately so it's backed up on connect.
+  try { const t = getSavedToken(); if (t) await uploadSync(t, buildSyncPayload()); } catch { /* ignore */ }
 }
 export function disconnectDrive(): void {
   clearToken();
   emit();
+}
+
+// ── Auto-save the log DATA to Drive on every change (debounced) ──────────
+let dataSyncInit = false;
+let dataSyncTimer: number | null = null;
+export function initDriveDataSync(): void {
+  if (dataSyncInit || typeof window === "undefined") return;
+  dataSyncInit = true;
+  window.addEventListener("lt-data-changed", () => {
+    if (!isDriveConnected()) return;
+    if (dataSyncTimer) window.clearTimeout(dataSyncTimer);
+    dataSyncTimer = window.setTimeout(() => {
+      const token = getSavedToken();
+      if (!token) return;
+      uploadSync(token, buildSyncPayload()).catch(() => { /* offline / token lapsed */ });
+    }, 3000);
+  });
 }
 function emit(): void { try { window.dispatchEvent(new CustomEvent(CHANGE_EVENT)); } catch { /* jsdom */ } }
 export function onDriveChange(cb: () => void): () => void {

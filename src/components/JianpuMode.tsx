@@ -50,11 +50,6 @@ const NUM_FONT     = 22;
 // Curvy, rounded display face for the jianpu numerals/accidentals/dashes
 // (loaded from Google Fonts in index.html).  Falls back to Helvetica.
 const JIANPU_FONT  = "'Comfortaa', Helvetica, Arial, sans-serif";
-// Noto Music (loaded in index.html) covers the standard Unicode rest glyphs.
-const MUSIC_FONT   = "'Noto Music', serif";
-const REST_GLYPHS: Record<Duration, string> = {
-  w: "\u{1D13B}", h: "\u{1D13C}", q: "\u{1D13D}", "8": "\u{1D13E}", "16": "\u{1D13F}", "32": "\u{1D140}",
-};
 const FIRST_VOICE  = 40;   // baseline offset of the first (top) voice within a system
 const VOICE_GAP    = 56;   // vertical distance between successive voice lines
 const HAND_GAP     = 26;   // extra separation between the two hands when braced
@@ -123,6 +118,31 @@ function altOf(n: NoteData): number {
  *  a 2-letter syllable (e.g. "mo") sits centred over its line. */
 function labelHalfW(label: string): number {
   return 9 + Math.max(0, label.length - 1) * 4;
+}
+
+/** Standard music-notation rest drawn as SVG SHAPES (paths/rects), so it exports
+ *  to PDF cleanly — font glyphs don't embed.  Centred at (cx, cy). */
+function restShape(dur: Duration, cx: number, cy: number, key: string): React.ReactNode[] {
+  const els: React.ReactNode[] = [];
+  if (dur === "w" || dur === "h") {
+    // Whole rest hangs below a ledge; half rest sits on it.
+    els.push(<line key={`${key}-l`} x1={cx - 8} x2={cx + 8} y1={cy} y2={cy} stroke={WHITE} strokeWidth={1.2} />);
+    els.push(<rect key={`${key}-r`} x={cx - 6} y={dur === "w" ? cy - 5 : cy} width={12} height={5} fill={WHITE} />);
+    return els;
+  }
+  if (dur === "q") {
+    // Curvy quarter-rest squiggle.
+    els.push(<path key={`${key}-q`} fill="none" stroke={WHITE} strokeWidth={2.2} strokeLinecap="round"
+      d={`M ${cx - 1} ${cy - 9} C ${cx + 3.5} ${cy - 5.5} ${cx - 2.5} ${cy - 2.5} ${cx + 2} ${cy - 0.5} C ${cx + 5.5} ${cy + 1} ${cx - 2.5} ${cy + 4} ${cx + 2.5} ${cy + 9}`} />);
+    return els;
+  }
+  // Eighth / 16th / 32nd — a slanted stroke with 1 / 2 / 3 flag dots.
+  const flags = dur === "8" ? 1 : dur === "16" ? 2 : 3;
+  els.push(<line key={`${key}-s`} x1={cx + 3.5} y1={cy - 7} x2={cx - 3.5} y2={cy + 9} stroke={WHITE} strokeWidth={1.6} />);
+  for (let f = 0; f < flags; f++) {
+    els.push(<circle key={`${key}-f${f}`} cx={cx + 2 - f * 0.8} cy={cy - 6 + f * 5} r={2} fill={WHITE} />);
+  }
+  return els;
 }
 
 export interface JianpuModeProps {
@@ -357,9 +377,13 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       minVoices, perSection?.[s] ?? (s === 0 ? project?.voiceCount ?? minVoices : minVoices), maxVoice[s] ?? 0);
     const vcArr: number[] = [], hsArr: (number | null)[] = [];
     for (let m = 0; m < barCount; m++) {
-      const vc = vcForStart(startOf[m]);
+      const s = startOf[m];
+      const vc = vcForStart(s);
       vcArr[m] = vc;
-      hsArr[m] = braceFor(startOf[m]) ? Math.ceil(vc / 2) : null;
+      // Explicit per-section split (upper-hand voice count) if set, else auto ⌈vc/2⌉,
+      // always clamped to 1..vc-1 so both hands keep at least one voice.
+      const split = project?.perSectionHandSplit?.[s] ?? Math.ceil(vc / 2);
+      hsArr[m] = braceFor(s) ? Math.max(1, Math.min(vc - 1, split)) : null;
     }
     // Row geometry — height follows the row's voice count; bars are left-aligned
     // and accumulate their own widths.  Canvas width = the widest row.
@@ -648,11 +672,41 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (perBarBreakBefore[m]) delete perBarBreakBefore[m]; else perBarBreakBefore[m] = true;
     updateSetup({ perBarBreakBefore });
   }, [project, updateSetup]);
-  // Append a measure (up to 64).  Bound to the `m` keybind.
+  // Insert an empty bar at `insertAt`, pushing later bars up one and re-indexing
+  // every per-bar map (titles, sections, breaks, time sigs, section voice counts).
+  const insertMeasureAt = useCallback((insertAt: number) => {
+    if (!project || project.setup.barCount >= 64) return;
+    const shift = <T,>(map?: Record<number, T>): Record<number, T> | undefined => {
+      if (!map) return undefined;
+      const out: Record<number, T> = {};
+      for (const k of Object.keys(map)) { const i = +k; out[i >= insertAt ? i + 1 : i] = map[i]; }
+      return out;
+    };
+    const nextNotes = notes
+      .map(n => n.measure >= insertAt ? { ...n, measure: n.measure + 1 } : n)
+      .sort((a, b) => a.measure - b.measure || (a.voice ?? 0) - (b.voice ?? 0) || a.startSlot - b.startSlot);
+    const u: NoteEntryProject = {
+      ...project,
+      notes: nextNotes,
+      perSectionVoiceCount: shift(project.perSectionVoiceCount),
+      setup: {
+        ...project.setup,
+        barCount: project.setup.barCount + 1,
+        perBarTitle: shift(project.setup.perBarTitle),
+        perBarSection: shift(project.setup.perBarSection),
+        perBarBreakBefore: shift(project.setup.perBarBreakBefore),
+        perBarTimeSig: shift(project.setup.perBarTimeSig),
+        perBarVolta: shift(project.setup.perBarVolta),
+      },
+    };
+    saveProject(u); setProject(u); setNotes(nextNotes);
+  }, [project, notes]);
+  // Add a measure to the CURSOR's group (its last bar), not the end of the piece.
   const addMeasure = useCallback(() => {
     if (!project) return;
-    updateSetup({ barCount: Math.min(64, project.setup.barCount + 1) });
-  }, [project, updateSetup]);
+    const [, end] = sectionRangeOf(cursor.measure);
+    insertMeasureAt(end);
+  }, [project, cursor.measure, sectionRangeOf, insertMeasureAt]);
   // Delete bar `m`: drop its notes, pull later bars back one, and re-index every
   // per-bar map (titles, sections, breaks, time sigs, section voice counts).
   const deleteMeasure = useCallback((m: number) => {
@@ -700,9 +754,10 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (bc !== project.setup.barCount) updateSetup({ barCount: bc });
   }, [project, notes, updateSetup]);
 
-  // Persist notes + the stored voice count for ONE section + cursor voice.  The
-  // count is keyed by the section's start bar, so other sections are untouched.
-  const commitVoices = useCallback((nextNotes: NoteData[], sectionStart: number, storedVoiceCount: number, cursorVoice: number) => {
+  // Persist notes + the stored voice count (and optional hand split) for ONE
+  // section + cursor voice.  Keyed by the section's start bar, so other sections
+  // are untouched.  `handSplit` = upper-hand voice count (undefined → leave/auto).
+  const commitVoices = useCallback((nextNotes: NoteData[], sectionStart: number, storedVoiceCount: number, cursorVoice: number, handSplit?: number) => {
     if (!project) return;
     const vc = Math.max(minVoices, Math.min(MAX_VOICES, storedVoiceCount));
     const sorted = [...nextNotes].sort((a, b) =>
@@ -710,10 +765,28 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       : (a.voice ?? 0) !== (b.voice ?? 0) ? (a.voice ?? 0) - (b.voice ?? 0)
       : a.startSlot - b.startSlot);
     const perSectionVoiceCount = { ...(project.perSectionVoiceCount ?? {}), [sectionStart]: vc };
-    const u = { ...project, notes: sorted, perSectionVoiceCount };
+    const u: NoteEntryProject = { ...project, notes: sorted, perSectionVoiceCount };
+    if (handSplit != null) u.perSectionHandSplit = { ...(project.perSectionHandSplit ?? {}), [sectionStart]: Math.max(1, Math.min(vc - 1, handSplit)) };
     saveProject(u); setProject(u); setNotes(sorted);
     setCursor(c => ({ ...c, voice: cursorVoice }));
   }, [project, minVoices]);
+
+  // Insert an empty voice line at `insertIndex` within the cursor's section.
+  // `growUpper` records whether it joined the upper hand (so the piano-brace split
+  // moves with it instead of auto-rebalancing).
+  const insertVoice = useCallback((insertIndex: number, growUpper: boolean) => {
+    if (!project) return;
+    const vc = voiceCountOf(cursor.measure);
+    if (vc >= MAX_VOICES) return;
+    const [start, end] = sectionRangeOf(cursor.measure);
+    const shifted = notes.map(n =>
+      (n.measure >= start && n.measure < end && (n.voice ?? 0) >= insertIndex)
+        ? { ...n, voice: (n.voice ?? 0) + 1 } : n);
+    const curSplit = hsOf(cursor.measure) ?? Math.ceil(vc / 2);
+    const newSplit = growUpper ? curSplit + 1 : curSplit;
+    const newCursorVoice = cursor.voice >= insertIndex ? cursor.voice + 1 : cursor.voice;
+    commitVoices(shifted, start, vc + 1, newCursorVoice, hsOf(cursor.measure) != null ? newSplit : undefined);
+  }, [project, notes, cursor.measure, cursor.voice, voiceCountOf, sectionRangeOf, commitVoices]);
 
   // Plain ↓ / ↑ — move through the voices; at the bottom voice, wrap to the top
   // voice of the measure right below (measure + MPR = the same column, next
@@ -736,23 +809,25 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     }
   }, [project, cursor, voiceCountOf]);
 
-  // Shift+↓ — add an empty voice BELOW the bottom line of the cursor's section.
-  // Shift+↑ — add one ABOVE its top line (reindex that section's notes down one
-  // so the new voice 0 is blank).  Other sections are untouched.
+  // Shift+↑/↓ — add an empty voice at the TOP / BOTTOM of the hand the cursor is
+  // in.  With a piano brace this keeps the OTHER hand untouched (top of upper,
+  // bottom of upper, top of lower, bottom of lower); without a brace it's just the
+  // top / bottom of the section.
   const addVoiceBelow = useCallback(() => {
     if (!project) return;
     const vc = voiceCountOf(cursor.measure);
-    if (vc >= MAX_VOICES) return;
-    commitVoices(notes, sectionStartOf(cursor.measure), vc + 1, cursor.voice);
-  }, [project, notes, cursor.measure, cursor.voice, voiceCountOf, sectionStartOf, commitVoices]);
+    const hs = hsOf(cursor.measure);
+    if (hs == null) { insertVoice(vc, false); return; }        // bottom of section
+    const inUpper = cursor.voice < hs;
+    insertVoice(inUpper ? hs : vc, inUpper);                    // bottom of this hand
+  }, [project, cursor.measure, cursor.voice, voiceCountOf, insertVoice]);
   const addVoiceAbove = useCallback(() => {
     if (!project) return;
-    const vc = voiceCountOf(cursor.measure);
-    if (vc >= MAX_VOICES) return;
-    const [start, end] = sectionRangeOf(cursor.measure);
-    const shifted = notes.map(n => (n.measure >= start && n.measure < end) ? { ...n, voice: (n.voice ?? 0) + 1 } : n);
-    commitVoices(shifted, start, vc + 1, cursor.voice + 1);
-  }, [project, notes, cursor.measure, cursor.voice, voiceCountOf, sectionRangeOf, commitVoices]);
+    const hs = hsOf(cursor.measure);
+    if (hs == null) { insertVoice(0, false); return; }          // top of section
+    const inUpper = cursor.voice < hs;
+    insertVoice(inUpper ? 0 : hs, inUpper);                     // top of this hand
+  }, [project, cursor.measure, cursor.voice, insertVoice]);
 
   // Delete voice line `v` within the cursor's section: drop its notes and pull
   // every lower voice up one.  Never drops the section below its minimum (1 for
@@ -810,15 +885,10 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     return { ...n, pitch: jp.pitch };
   }, []);
 
-  // The notes an edit targets: the explicit multi-selection, else the single
-  // note under the cursor (so hovering a note acts as if it were selected).
-  const targetIds = useCallback((): string[] => {
-    if (selectedIds.length) return selectedIds;
-    const { voice, measure, slot } = cursor;
-    const host = notes.find(n => (n.voice ?? 0) === voice && n.measure === measure && !n.isRest
-      && slot >= n.startSlot && slot < n.startSlot + noteSlots(n));
-    return host ? [host.id] : [];
-  }, [selectedIds, cursor, notes]);
+  // The notes a modifier (duration / octave / dot / alter …) edits: ONLY the
+  // explicit selection.  Just hovering a note no longer changes it — those keys
+  // set the entry default instead; select a note (Space) to edit it.
+  const targetIds = useCallback((): string[] => selectedIds, [selectedIds]);
 
   const applyToSelection = useCallback((fn: (n: NoteData) => NoteData) => {
     const ids = targetIds();
@@ -1187,12 +1257,11 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   const svgNotes = rendered.items.flatMap(it => {
     const els: React.ReactNode[] = [];
 
-    // ── Rests ──  standard music-notation rest glyph (quarter / half / whole …)
-    // from Noto Music, sized to sit where the note number would.
+    // ── Rests ──  standard music-notation rest drawn as SVG shapes (exports to
+    // PDF cleanly, unlike a music-font glyph), centred where the note would sit.
     if (it.isRest) {
-      els.push(<text key={`${it.id}-r`} x={it.x} y={it.y - 4} fill={WHITE}
-        fontSize={26} fontFamily={MUSIC_FONT} textAnchor="middle">{REST_GLYPHS[it.duration]}</text>);
-      if (it.dot) els.push(<circle key={`${it.id}-dt`} cx={it.x + 11} cy={it.y - 8} r={2} fill={WHITE} />);
+      els.push(...restShape(it.duration, it.x, it.y - 8, it.id));
+      if (it.dot) els.push(<circle key={`${it.id}-dt`} cx={it.x + 11} cy={it.y - 10} r={2} fill={WHITE} />);
       return els;
     }
 
@@ -1382,7 +1451,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
           footer (e/r duration, t dot, q/w octave, ,/. alter) — no toolbar. */}
 
       {/* Score area (grows with content when embedded; scrolls when full-page) */}
-      <div ref={scoreAreaRef} className={`${embedded ? "overflow-x-auto" : "flex-1 overflow-x-hidden overflow-y-auto"} p-4 outline-none`} style={{ background: "#0b0b0b" }}>
+      <div ref={scoreAreaRef}
+        onScroll={() => { const a = document.activeElement as HTMLElement | null; if (a && a.tagName === "INPUT" && a.id?.startsWith("jp-")) a.blur(); }}
+        className={`${embedded ? "overflow-x-auto" : "flex-1 overflow-x-hidden overflow-y-auto"} p-4 outline-none`} style={{ background: "#0b0b0b" }}>
         <div
           ref={scoreRef}
           style={{ position: "relative", width: dispW, height: dispH, userSelect: "none", touchAction: "none" }}

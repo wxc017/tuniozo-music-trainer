@@ -100,6 +100,7 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
   }, [set.videoId, set.driveFileId, onChange]);
 
   // Offload the local clip to Google Drive and drop the phone-side copy.
+  // Runs automatically on close whenever Drive is connected.
   const offloadToDrive = useCallback(async () => {
     if (!set.videoId || set.driveFileId || !isDriveConnected()) return;
     const stored = await getVideo(set.videoId);
@@ -117,6 +118,11 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
       setUploading(false);
     }
   }, [set.videoId, set.driveFileId, set.id, onChange]);
+
+  const finalizeAndClose = useCallback(async () => {
+    await offloadToDrive(); // no-op unless connected + a local clip
+    setOpen(false);
+  }, [offloadToDrive]);
 
   const dur = duration || set.trimOut || 0;
   const tIn = set.trimIn ?? 0;
@@ -154,14 +160,15 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
       releaseVideoUrl(set.videoId);
       onChange({ trimIn: 0, trimOut: newDur });
       setDuration(newDur);
-      const u = await getVideoUrl(set.videoId);
-      setUrl(u);
+      setCutPct(null);
+      // Cut done → upload the trimmed clip to Drive (if connected) and close.
+      await offloadToDrive();
+      setOpen(false);
     } catch (err) {
       window.alert(`Couldn't cut the clip: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
       setCutPct(null);
     }
-  }, [set.videoId, set.id, workoutId, tIn, tOut, onChange]);
+  }, [set.videoId, set.id, workoutId, tIn, tOut, onChange, offloadToDrive]);
 
   return (
     <div className="mt-1">
@@ -207,7 +214,9 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
             <span className="wl-h2">Video</span>
             {onDrive && <span className="wl-tag">☁ Drive</span>}
             <span className="wl-mono wl-faint">{`${fmt(tIn)}–${fmt(tOut)}`}</span>
-            <button onClick={() => setOpen(false)} disabled={cutPct !== null || uploading} className="wl-btn ml-auto">Close</button>
+            <button onClick={finalizeAndClose} disabled={cutPct !== null || uploading} className="wl-btn ml-auto">
+              {uploading ? "Saving to Drive…" : "Close"}
+            </button>
           </div>
 
           {/* Video fills the available space */}
@@ -251,12 +260,9 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
               </div>
             )}
 
-            {/* Google Drive offload */}
+            {/* Auto-offload status (no button — happens on close). */}
             {isDriveConnected() && !onDrive && (
-              <button onClick={offloadToDrive} disabled={cutPct !== null || uploading}
-                className="wl-btn wl-btn--ghost" title="Upload to Drive and free phone storage">
-                {uploading ? "Uploading to Drive…" : "☁ Move to Drive (frees phone)"}
-              </button>
+              <div className="wl-mono text-[11px] wl-faint">Saves to Google Drive automatically when you close.</div>
             )}
             {onDrive && <div className="wl-mono text-[11px] wl-faint">Stored on Google Drive — streams when you play it.</div>}
 

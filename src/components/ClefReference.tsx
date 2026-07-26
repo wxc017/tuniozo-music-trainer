@@ -38,13 +38,15 @@ export default function ClefReference({ onClose }: { onClose: () => void }) {
     const el = ref.current;
     if (!el) return;
     el.innerHTML = "";
-    const width = 1020, height = 460;   // generous; cropped to the content below
+    const width = 1020, height = 300;
     const renderer = new Renderer(el, Renderer.Backends.SVG);
     renderer.resize(width, height);
     const ctx = renderer.getContext();
 
     const drawStave = (yTop: number, clef: string, keys: string[]) => {
-      const stave = new Stave(12, yTop, width - 30);
+      // spaceAbove/BelowStaffLn = 0 removes VexFlow's default reserved text
+      // margin above/below the staff (that was the ~inch of empty space).
+      const stave = new Stave(12, yTop, width - 30, { spaceAboveStaffLn: 0, spaceBelowStaffLn: 0 });
       stave.addClef(clef);
       stave.setContext(ctx).draw();
       const notes = makeNotes(keys, clef);
@@ -55,33 +57,10 @@ export default function ClefReference({ onClose }: { onClose: () => void }) {
       voice.draw(ctx, stave);
     };
 
-    // Ranges reach 3 ledger lines above AND below each staff, with real notes on
-    // them (they overlap around middle C, which is fine).
-    drawStave(120, "treble", keysFor(3, 3, 6, 2));    // F3 … E6 (3 ledgers each way)
-    drawStave(280, "bass", keysFor(1, 5, 4, 4));      // A1 … G4 (3 ledgers each way)
-
-    // Crop the SVG to exactly what was drawn (union of every element's bounds) —
-    // kills the empty top/bottom margins and never clips the low bass notes.
-    const svg = el.querySelector("svg");
-    if (svg) {
-      let minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
-      svg.querySelectorAll("path, rect, text, line, ellipse, circle, polygon").forEach(node => {
-        try {
-          const bb = (node as SVGGraphicsElement).getBBox();
-          if (bb.width || bb.height) {
-            minX = Math.min(minX, bb.x); maxX = Math.max(maxX, bb.x + bb.width);
-            minY = Math.min(minY, bb.y); maxY = Math.max(maxY, bb.y + bb.height);
-          }
-        } catch { /* skip nodes without a bbox */ }
-      });
-      if (Number.isFinite(minY)) {
-        const pad = 8;
-        const x = minX - pad, y = minY - pad, w = (maxX - minX) + pad * 2, h = (maxY - minY) + pad * 2;
-        svg.setAttribute("viewBox", `${x} ${y} ${w} ${h}`);
-        svg.setAttribute("width", String(Math.ceil(w)));
-        svg.setAttribute("height", String(Math.ceil(h)));
-      }
-    }
+    // With the reserved margin gone, place the top staff so E6 (3 ledgers up) sits
+    // near the top; the bass follows with room for A1 (3 ledgers down).
+    drawStave(48, "treble", keysFor(3, 3, 6, 2));   // F3 … E6 (3 ledgers each way)
+    drawStave(198, "bass", keysFor(1, 5, 4, 4));    // A1 … G4 (3 ledgers each way)
   }, []);
 
   return (
