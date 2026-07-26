@@ -18,7 +18,7 @@ import {
   loadProjects, saveProject,
 } from "@/lib/noteEntryData";
 import {
-  jianpuToPitch, jianpuGlyphFor, edoNoteLabel, regularSolfaSyllable,
+  jianpuToPitch, jianpuGlyphFor, edoNoteLabel, regularSolfaSyllable, minorLowersDegree,
   NOTATION_SYSTEM_LABELS, type NotationSystem,
 } from "@/lib/jianpu";
 import { MOVABLE_DO } from "@/lib/notationLabels";
@@ -50,6 +50,11 @@ const NUM_FONT     = 22;
 // Curvy, rounded display face for the jianpu numerals/accidentals/dashes
 // (loaded from Google Fonts in index.html).  Falls back to Helvetica.
 const JIANPU_FONT  = "'Comfortaa', Helvetica, Arial, sans-serif";
+// Noto Music (loaded in index.html) covers the standard Unicode rest glyphs.
+const MUSIC_FONT   = "'Noto Music', serif";
+const REST_GLYPHS: Record<Duration, string> = {
+  w: "\u{1D13B}", h: "\u{1D13C}", q: "\u{1D13D}", "8": "\u{1D13E}", "16": "\u{1D13F}", "32": "\u{1D140}",
+};
 const FIRST_VOICE  = 40;   // baseline offset of the first (top) voice within a system
 const VOICE_GAP    = 56;   // vertical distance between successive voice lines
 const HAND_GAP     = 26;   // extra separation between the two hands when braced
@@ -458,10 +463,13 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   // ── Note construction ─────────────────────────────────────────────────────
   const makeNote = useCallback((degree: number, isRest: boolean, dur: Duration, dot: boolean,
                                 voice: number, measure: number, slot: number): NoteData => {
-    const jp = isRest ? null : jianpuToPitch(degree, octave, undefined, fifths);
-    // Bake the current Major/Minor spelling into the note (so a later toggle of
-    // the entry default never rewrites notes already on the page).  It only shows
-    // when the "n" system is Movable Do; Spectrum-ege ignores it.
+    // In Movable-Do Minor, natural-minor lowers degrees 3/6/7 a semitone — bake
+    // that as alteration −1 so the PITCH (and the Spectrum-ege syllable) is a true
+    // minor third, not a major third.  Bake the Major/Minor spelling too so a
+    // later toggle never rewrites notes already on the page.
+    const minorMode = movableDo && project?.solfaStyle === "minor";
+    const alt = !isRest && minorMode && minorLowersDegree(degree) ? -1 : 0;
+    const jp = isRest ? null : jianpuToPitch(degree, octave, alt < 0 ? "b" : undefined, fifths);
     return {
       id: crypto.randomUUID(),
       measure, startSlot: slot, duration: dur, dotted: dot || undefined,
@@ -469,9 +477,10 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       pitch: jp ? jp.pitch : "b/4",
       jianpuDegree: isRest ? 0 : degree,
       jianpuOctave: isRest ? undefined : octave,
+      alteration: alt || undefined,
       solfaMode: isRest ? undefined : (project?.solfaStyle === "minor" ? "minor" : "major"),
     };
-  }, [octave, project?.solfaStyle]);
+  }, [octave, project?.solfaStyle, movableDo]);
 
   const placeNote = useCallback((degree: number, isRest: boolean) => {
     if (!project) return;
@@ -502,16 +511,18 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       const host = selHost ?? notes.find(n => (n.voice ?? 0) === voice && n.measure === measure && !n.isRest
         && slot >= n.startSlot && slot < n.startSlot + noteSlots(n));
       if (host) {
-        const jp = jianpuToPitch(degree, host.jianpuOctave ?? 0, host.jianpuAccidental, fifths);
+        const minorMode = movableDo && project?.solfaStyle === "minor";
+        const alt = minorMode && minorLowersDegree(degree) ? -1 : 0;
+        const jp = jianpuToPitch(degree, host.jianpuOctave ?? 0, alt < 0 ? "b" : host.jianpuAccidental, fifths);
         const mode = project?.solfaStyle === "minor" ? "minor" : "major";
-        commit(notes.map(n => n.id === host.id ? { ...n, jianpuDegree: degree, pitch: jp.pitch, solfaMode: mode } : n));
+        commit(notes.map(n => n.id === host.id ? { ...n, jianpuDegree: degree, alteration: alt || undefined, pitch: jp.pitch, solfaMode: mode } : n));
         setSelectedIds([]);
         setCursor({ voice: host.voice ?? 0, measure: host.measure, slot: host.startSlot });
         return;
       }
     }
     placeNote(degree, isRest);
-  }, [cursor, selectedIds, notes, commit, placeNote, project?.solfaStyle]);
+  }, [cursor, selectedIds, notes, commit, placeNote, project?.solfaStyle, movableDo]);
 
   const deleteSelectedOrCursor = useCallback(() => {
     if (selectedIds.length) {
@@ -970,11 +981,11 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const items: RI[] = [];
     const positions: NotePos[] = [];
     // Sol-fa syllable: when the "n" system is Movable Do, degrees read as do-re-mi
-    // (each note's baked Major/Minor spelling; default Major); otherwise the
-    // universal Spectrum-ege syllable.
-    const labelOf = (degree: number, alt: number, mode: "major" | "minor" | undefined): { text: string; prefix?: string } =>
+    // (the syllable follows the note's alteration — sharp "i" / flat forms);
+    // otherwise the universal Spectrum-ege syllable.
+    const labelOf = (degree: number, alt: number): { text: string; prefix?: string } =>
       (system === "solfa" && movableDo)
-        ? { text: regularSolfaSyllable(degree, alt, mode === "minor") }
+        ? { text: regularSolfaSyllable(degree, alt) }
         : edoNoteLabel(system, degree, alt, edo);
     // Per voice+measure list used to build continuous underline beams.
     const byVM = new Map<string, { startSlot: number; slots: number; x: number; y: number; underlines: number; isRest: boolean; separate: boolean; label: string }[]>();
@@ -996,21 +1007,21 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       const x = slotToX(first.measure, first.startSlot + headSlots / 2, total);
       const base = baselineY(voice, first.measure);
       const sorted = [...g].sort((a, b) => pitchRank(a) - pitchRank(b));
-      const firstLabel = first.isRest ? "0" : labelOf(first.jianpuDegree ?? 1, altOf(first), first.solfaMode).text;
+      const firstLabel = first.isRest ? "0" : labelOf(first.jianpuDegree ?? 1, altOf(first)).text;
       const vmKey = `${voice}:${first.measure}`;
       (byVM.get(vmKey) ?? byVM.set(vmKey, []).get(vmKey)!).push(
         { startSlot: first.startSlot, slots: noteSlots(first), x, y: base, underlines: glyph.underlines, isRest: first.isRest, separate: !!first.separateUnderline, label: firstLabel });
       sorted.forEach((n, i) => {
         const y = base - i * CHORD_DY;
         positions.push({ id: n.id, x, y });
-        const lbl = n.isRest ? null : labelOf(n.jianpuDegree ?? 1, altOf(n), n.solfaMode);
+        const lbl = n.isRest ? null : labelOf(n.jianpuDegree ?? 1, altOf(n));
         items.push({
           id: n.id, x, y,
           label: lbl ? lbl.text : "0",
           isRest: n.isRest,
           octave: n.isRest ? 0 : (n.jianpuOctave ?? 0),
           accidental: lbl?.prefix,   // alteration mark drawn before a jianpu number
-          underlines: glyph.underlines, dashes: glyph.dashes, dot: glyph.dot,
+          underlines: glyph.underlines, dashes: glyph.dashes, dot: glyph.dot, duration: n.duration,
           measure: first.measure, startSlot: first.startSlot, total,
           decorate: i === 0, separate: !!first.separateUnderline, staccato: !!n.staccato,
         });
@@ -1173,17 +1184,12 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   const svgNotes = rendered.items.flatMap(it => {
     const els: React.ReactNode[] = [];
 
-    // ── Rests ──  a centred dot, one per beat (multi-beat rests repeat it)
+    // ── Rests ──  standard music-notation rest glyph (quarter / half / whole …)
+    // from Noto Music, sized to sit where the note number would.
     if (it.isRest) {
-      const count = it.dashes + 1;
-      for (let z = 0; z < count; z++) {
-        const zslot = it.startSlot + z * 8;
-        if (z > 0 && zslot >= it.total) break;
-        const zx = z === 0 ? it.x : slotToX(it.measure, zslot + 4, it.total);   // centre each beat
-        els.push(<circle key={`${it.id}-r-${z}`} cx={zx} cy={it.y - 7} r={2.5} fill={WHITE} />);
-        els.push(...underlinesAt(zx, it.y, it.underlines, `${it.id}-${z}`));
-      }
-      if (it.dot) els.push(<circle key={`${it.id}-dt`} cx={it.x + 12} cy={it.y - 6} r={2} fill={WHITE} />);
+      els.push(<text key={`${it.id}-r`} x={it.x} y={it.y - 4} fill={WHITE}
+        fontSize={26} fontFamily={MUSIC_FONT} textAnchor="middle">{REST_GLYPHS[it.duration]}</text>);
+      if (it.dot) els.push(<circle key={`${it.id}-dt`} cx={it.x + 11} cy={it.y - 8} r={2} fill={WHITE} />);
       return els;
     }
 
@@ -1225,6 +1231,13 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const right = left + measureWidth(m);
     svgSystems.push(<line key={`bar-${m}`} x1={right} x2={right}
       y1={barTop(m)} y2={barBot(m)} stroke={WHITE} strokeWidth={1.2} />);
+    // Piano-brace hand divider: a faint dotted line between the two hands.
+    const hsm = hsOf(m);
+    if (hsm != null) {
+      const splitY = (baselineY(hsm - 1, m) + baselineY(hsm, m)) / 2;
+      svgSystems.push(<line key={`split-${m}`} x1={left} x2={right} y1={splitY} y2={splitY}
+        stroke={ACCENT} strokeWidth={1} opacity={0.55} strokeDasharray="2 3" />);
+    }
     // measure number (top-left of each bar) — per-group "1a 2a … 1b 2b …"
     svgSystems.push(<text key={`mn-${m}`} x={left - 4} y={barTop(m) - 10} fill="#8a8a8a"
       fontSize={10} fontFamily="Helvetica, Arial, sans-serif">{layout.numLabel[m] ?? m + 1}</text>);
@@ -1263,9 +1276,6 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
           : undefined;
         svgSystems.push(<path key={`brace-${m}`} d={bracePath(left - 2, bTop, bBot, tipY)}
           fill="none" stroke={WHITE} strokeWidth={1.4} />);
-        // Accent dot at the split point, so the hand/voice divide is obvious.
-        if (tipY != null) svgSystems.push(
-          <circle key={`brace-dot-${m}`} cx={left - 2} cy={tipY} r={3} fill={ACCENT} />);
       }
     }
   }
@@ -1646,6 +1656,6 @@ interface Beam { x1: number; x2: number; y: number; }
 interface RenderItem {
   id: string; x: number; y: number; label: string; isRest: boolean;
   octave: number; accidental?: string;   // alteration prefix (♯/♭/^/v)
-  underlines: number; dashes: number; dot: boolean;
+  underlines: number; dashes: number; dot: boolean; duration: Duration;
   measure: number; startSlot: number; total: number; decorate: boolean; separate: boolean; staccato?: boolean;
 }

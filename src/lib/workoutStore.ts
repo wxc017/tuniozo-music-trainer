@@ -252,6 +252,9 @@ export interface ExerciseHistoryPoint {
   date: string;
   bestRpe?: number;
   topWeight?: number;
+  /** Lowest weight that day — for CW-assisted work this is the best set
+   *  (least assistance), so progress is this trending toward 0. */
+  minWeight?: number;
   totalReps: number;
   totalHoldSec: number;
   sets: number;
@@ -270,12 +273,35 @@ export function exerciseHistory(match: { skillId?: string; name: string }): Exer
         p.totalReps += s.reps ?? 0;
         p.totalHoldSec += s.holdSec ?? 0;
         if (s.rpe != null) p.bestRpe = Math.max(p.bestRpe ?? 0, s.rpe);
-        if (s.weight != null) p.topWeight = Math.max(p.topWeight ?? -Infinity, s.weight);
+        if (s.weight != null) {
+          p.topWeight = Math.max(p.topWeight ?? -Infinity, s.weight);
+          p.minWeight = Math.min(p.minWeight ?? Infinity, s.weight);
+        }
       }
       byDate.set(w.date, p);
     }
   }
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Whether an exercise is counterweight-assisted (progress = weight → 0). */
+export function isCwAssisted(name: string): boolean {
+  return /cw assisted/i.test(name);
+}
+
+/** Every video clip logged for one exercise, oldest → newest, for a form
+ *  timeline (watch how form changed over time). */
+export interface ExerciseClip { date: string; videoId: string; setId: string; workoutId: string }
+export function exerciseClips(match: { skillId?: string; name: string }): ExerciseClip[] {
+  const out: ExerciseClip[] = [];
+  for (const w of getWorkouts()) {
+    for (const ex of w.exercises) {
+      const same = match.skillId ? ex.skillId === match.skillId : ex.name.toLowerCase() === match.name.toLowerCase();
+      if (!same) continue;
+      for (const s of ex.sets) if (s.videoId) out.push({ date: w.date, videoId: s.videoId, setId: s.id, workoutId: w.id });
+    }
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date) || a.workoutId.localeCompare(b.workoutId));
 }
 
 /** Every distinct exercise ever logged (for the history picker). */

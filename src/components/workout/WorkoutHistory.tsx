@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { useWorkoutData, exerciseHistory, loggedExerciseIndex } from "@/lib/workoutStore";
+import { useWorkoutData, exerciseHistory, loggedExerciseIndex, exerciseClips, isCwAssisted } from "@/lib/workoutStore";
+import { getVideoUrl } from "@/lib/workoutVideoDb";
 import type { Workout } from "@/lib/workoutTypes";
 
 // Calendar + progress charts — the "computer" view over the same synced log.
@@ -91,21 +92,28 @@ function ProgressChart() {
   const [metric, setMetric] = useState<"bestRpe" | "topWeight" | "volume">("topWeight");
 
   const active = index.find(e => e.key === sel) ?? index[0];
+  const assisted = isCwAssisted(active?.name ?? "");
   const data = useMemo(() => {
     if (!active) return [];
     return exerciseHistory({ skillId: active.skillId, name: active.name }).map(p => ({
       date: p.date.slice(5),
       bestRpe: p.bestRpe ?? null,
-      topWeight: p.topWeight ?? null,
+      // CW-assisted: track the LEAST assistance that day (best set), toward 0.
+      topWeight: (assisted ? p.minWeight : p.topWeight) ?? null,
       volume: p.totalReps || Math.round(p.totalHoldSec) || null,
     }));
-  }, [active]);
+  }, [active, assisted]);
 
   if (index.length === 0) {
     return <div className="text-sm wl-faint text-center py-8">Log some sets to see progress charts.</div>;
   }
 
-  const metricLabel = { bestRpe: "Best RPE", topWeight: "Top load", volume: "Volume (reps / hold s)" }[metric];
+  // For CW-assisted weight, less counterweight = more progress, so reverse the
+  // axis (0 at the top) and label it accordingly.
+  const reverseY = metric === "topWeight" && assisted;
+  const metricLabel = metric === "bestRpe" ? "Best RPE"
+    : metric === "volume" ? "Volume (reps / hold s)"
+    : assisted ? "Counterweight (0 = unassisted — higher is better)" : "Top load";
 
   return (
     <div className="wl-card p-4">
@@ -118,7 +126,7 @@ function ProgressChart() {
         <div className="wl-seg ml-auto">
           {(["topWeight", "bestRpe", "volume"] as const).map(m => (
             <button key={m} data-on={metric === m} onClick={() => setMetric(m)}>
-              {m === "topWeight" ? "Load" : m === "bestRpe" ? "RPE" : "Vol"}
+              {m === "topWeight" ? (assisted ? "Assist" : "Load") : m === "bestRpe" ? "RPE" : "Vol"}
             </button>
           ))}
         </div>
@@ -128,11 +136,51 @@ function ProgressChart() {
         <LineChart data={data} margin={{ top: 5, right: 8, bottom: 0, left: -20 }}>
           <CartesianGrid stroke="#2a2c36" />
           <XAxis dataKey="date" tick={{ fill: "#6b6e7a", fontSize: 10 }} stroke="#2a2c36" />
-          <YAxis tick={{ fill: "#6b6e7a", fontSize: 10 }} stroke="#2a2c36" domain={metric === "bestRpe" ? [5, 10] : ["auto", "auto"]} />
+          <YAxis tick={{ fill: "#6b6e7a", fontSize: 10 }} stroke="#2a2c36"
+            reversed={reverseY}
+            domain={metric === "bestRpe" ? [5, 10] : reverseY ? [0, "auto"] : ["auto", "auto"]} />
           <Tooltip contentStyle={{ background: "#16171d", border: "1px solid #2a2c36", borderRadius: 10, fontSize: 12 }} labelStyle={{ color: ACCENT }} />
           <Line type="monotone" dataKey={metric} stroke={ACCENT} strokeWidth={2} dot={{ r: 3, fill: ACCENT }} connectNulls />
         </LineChart>
       </ResponsiveContainer>
+
+      {active && <FormTimeline match={{ skillId: active.skillId, name: active.name }} />}
+    </div>
+  );
+}
+
+// Embedded form clips for the selected exercise, oldest → newest, so you can
+// watch how your form has changed over time.
+function FormTimeline({ match }: { match: { skillId?: string; name: string } }) {
+  const { workouts } = useWorkoutData();
+  const clips = useMemo(() => exerciseClips(match), [match.skillId, match.name, workouts]);
+  const [urls, setUrls] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    let alive = true;
+    Promise.all(clips.map(c => getVideoUrl(c.videoId).then(u => [c.videoId, u] as const)))
+      .then(pairs => { if (alive) setUrls(Object.fromEntries(pairs)); });
+    return () => { alive = false; };
+  }, [clips]);
+
+  if (clips.length === 0) return null;
+
+  return (
+    <div className="mt-4">
+      <div className="wl-eyebrow mb-2">Form over time · {clips.length} clip{clips.length === 1 ? "" : "s"}</div>
+      <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollSnapType: "x mandatory" }}>
+        {clips.map(c => (
+          <div key={c.videoId} className="flex-shrink-0" style={{ width: 170, scrollSnapAlign: "start" }}>
+            {urls[c.videoId] ? (
+              <video src={urls[c.videoId]!} controls playsInline preload="metadata"
+                className="rounded bg-black w-full" style={{ maxHeight: 260 }} />
+            ) : (
+              <div className="rounded bg-black w-full flex items-center justify-center" style={{ height: 120, color: "var(--wl-faint)", fontSize: 11 }}>loading…</div>
+            )}
+            <div className="wl-mono mt-1" style={{ fontSize: 11, color: "var(--wl-faint)" }}>{c.date}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

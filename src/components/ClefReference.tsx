@@ -38,37 +38,27 @@ export default function ClefReference({ onClose }: { onClose: () => void }) {
     const el = ref.current;
     if (!el) return;
     el.innerHTML = "";
-    const width = 860, height = 320;
+    const width = 720, height = 230;
     const renderer = new Renderer(el, Renderer.Backends.SVG);
     renderer.resize(width, height);
     const ctx = renderer.getContext();
 
     const drawStave = (yTop: number, clef: string, keys: string[]) => {
-      const stave = new Stave(14, yTop, width - 40);
+      const stave = new Stave(12, yTop, width - 30);
       stave.addClef(clef);
       stave.setContext(ctx).draw();
-      // Three empty ledger lines above (lines −1…−3) and below (lines 5…7).
-      const x1 = stave.getX() + 8, x2 = stave.getX() + stave.getWidth() - 8;
-      ctx.save();
-      ctx.setStrokeStyle("#b8b8b8");
-      ctx.setLineWidth(1);
-      for (const line of [-3, -2, -1, 5, 6, 7]) {
-        const y = stave.getYForLine(line);
-        ctx.beginPath();
-        ctx.moveTo(x1, y);
-        ctx.lineTo(x2, y);
-        ctx.stroke();
-      }
-      ctx.restore();
       const notes = makeNotes(keys, clef);
       const voice = new Voice({ numBeats: keys.length * 4, beatValue: 4 }).setStrict(false);
       voice.addTickables(notes);
-      new Formatter().joinVoices([voice]).format([voice], width - 120);
+      // VexFlow draws the correct short ledger lines under each note automatically.
+      new Formatter().joinVoices([voice]).format([voice], width - 100);
       voice.draw(ctx, stave);
     };
 
-    drawStave(80, "treble", keysFor(4, 0, 6, 0));   // C4 … C6
-    drawStave(210, "bass", keysFor(2, 0, 3, 6));     // C2 … B3
+    // Ranges overlap around middle C so both clefs show ledger lines above AND
+    // below with real notes on them.
+    drawStave(40, "treble", keysFor(3, 5, 6, 0));   // A3 … C6 (ledgers below + above)
+    drawStave(140, "bass", keysFor(2, 0, 4, 1));     // C2 … D4 (ledgers below + above)
   }, []);
 
   return (
