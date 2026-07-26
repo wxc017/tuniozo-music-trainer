@@ -3,12 +3,14 @@
 // native share sheet (send to Drive, Files, Nearby Share to a computer);
 // elsewhere we fall back to a normal download.
 
-import { zipSync, strToU8 } from "fflate";
+import { zipSync, unzipSync, strToU8, strFromU8 } from "fflate";
 import {
   getWorkouts, getTemplates, getCustomExercises, getPrefs, referencedVideoIds,
+  upsertWorkout, saveTemplate, saveCustomExercise, setPrefs,
 } from "./workoutStore";
-import { getVideo } from "./workoutVideoDb";
+import { getVideo, putVideo } from "./workoutVideoDb";
 import { localToday } from "./storage";
+import type { Workout, WorkoutTemplate, CustomExercise, WorkoutPrefs } from "./workoutTypes";
 
 function extFor(mime: string): string {
   if (/mp4/i.test(mime)) return "mp4";
@@ -75,4 +77,42 @@ export async function exportBackup(): Promise<{ shared: boolean; videoCount: num
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
   return { shared: false, videoCount };
+}
+
+export interface ImportResult { workouts: number; videos: number; templates: number; exercises: number }
+
+/** Load a backup .zip into the app (merges by id — safe to re-import). */
+export async function importBackupFromFile(file: File): Promise<ImportResult> {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  let entries: Record<string, Uint8Array>;
+  try { entries = unzipSync(buf); }
+  catch { throw new Error("Couldn't read that file — is it a Tunizo backup .zip?"); }
+
+  const jsonU8 = entries["workout-log.json"];
+  if (!jsonU8) throw new Error("Not a Tunizo backup (workout-log.json missing).");
+  let manifest: any;
+  try { manifest = JSON.parse(strFromU8(jsonU8)); }
+  catch { throw new Error("Backup data is corrupt."); }
+  if (manifest?.type !== "tunizo-workout-backup") throw new Error("Unrecognized backup file.");
+
+  // Videos first (restored with their original ids so sets stay linked).
+  let videos = 0;
+  for (const v of (manifest.videos ?? []) as { id: string; file: string; mime: string; durationSec?: number }[]) {
+    const data = entries[v.file];
+    if (!data) continue;
+    // .slice() yields a Uint8Array backed by a real ArrayBuffer (valid BlobPart).
+    const blob = new Blob([data.slice()], { type: v.mime || "video/webm" });
+    await putVideo({ id: v.id, blob, mime: v.mime || "video/webm", durationSec: v.durationSec ?? 0, createdAt: Date.now() });
+    videos++;
+  }
+
+  const workouts = (manifest.workouts ?? []) as Workout[];
+  for (const w of workouts) upsertWorkout(w);
+  const templates = (manifest.templates ?? []) as WorkoutTemplate[];
+  for (const t of templates) saveTemplate(t);
+  const exercises = (manifest.customExercises ?? []) as CustomExercise[];
+  for (const e of exercises) saveCustomExercise(e.name, e.mode);
+  if (manifest.prefs) setPrefs(manifest.prefs as Partial<WorkoutPrefs>);
+
+  return { workouts: workouts.length, videos, templates: templates.length, exercises: exercises.length };
 }

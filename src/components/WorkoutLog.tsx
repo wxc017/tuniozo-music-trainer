@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./workout/workout.css";
 import SessionLogger from "./workout/SessionLogger";
 import WorkoutHistory from "./workout/WorkoutHistory";
@@ -6,7 +6,7 @@ import TemplatesView from "./workout/TemplatesView";
 import FloatingRestTimer from "./workout/FloatingRestTimer";
 import { useWorkoutData, startWorkout, seedExercisesOnce } from "@/lib/workoutStore";
 import { registerRestSW } from "@/lib/restNotify";
-import { exportBackup } from "@/lib/workoutBackup";
+import { exportBackup, importBackupFromFile } from "@/lib/workoutBackup";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -25,6 +25,8 @@ export default function WorkoutLog() {
   const [view, setView] = useState<View>("today");
   const [openId, setOpenId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { seedExercisesOnce(); void registerRestSW(); }, []);
 
@@ -37,6 +39,21 @@ export default function WorkoutLog() {
       window.alert(`Export failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const doImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setImporting(true);
+    try {
+      const r = await importBackupFromFile(file);
+      window.alert(`Imported: ${r.workouts} workouts, ${r.exercises} exercises, ${r.templates} templates, ${r.videos} videos.`);
+    } catch (err) {
+      window.alert(`Import failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -64,10 +81,14 @@ export default function WorkoutLog() {
             {view === "templates" && <TemplatesView onStart={setOpenId} />}
           </div>
 
-          {/* Persistent footer: back up the whole log (data + videos) to a file. */}
-          <div className="flex-shrink-0 p-3" style={{ borderTop: "1px solid var(--wl-line)" }}>
-            <button onClick={doExport} disabled={exporting} className="wl-btn w-full">
-              {exporting ? "Preparing backup…" : "⤓ Export backup (data + videos)"}
+          {/* Persistent footer: back up / restore the whole log (data + videos). */}
+          <div className="flex-shrink-0 p-3 flex gap-2" style={{ borderTop: "1px solid var(--wl-line)" }}>
+            <input ref={importRef} type="file" accept=".zip,application/zip" className="hidden" onChange={doImport} />
+            <button onClick={doExport} disabled={exporting || importing} className="wl-btn flex-1">
+              {exporting ? "Preparing…" : "⤓ Export backup"}
+            </button>
+            <button onClick={() => importRef.current?.click()} disabled={exporting || importing} className="wl-btn flex-1">
+              {importing ? "Importing…" : "⤒ Import backup"}
             </button>
           </div>
         </div>

@@ -22,6 +22,7 @@ import {
   NOTATION_SYSTEM_LABELS, type NotationSystem,
 } from "@/lib/jianpu";
 import { exportToPdf } from "@/lib/exportPdf";
+import ClefReference from "./ClefReference";
 
 // ── Layout constants ─────────────────────────────────────────────────────────
 const LEFT_PAD        = 26;   // room for the piano brace on the left
@@ -146,6 +147,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   const [edoText, setEdoText] = useState("12");   // free-typed EDO, committed on blur
   const [barsText, setBarsText] = useState("8");  // free-typed bar count, committed on blur
   const [tsEdit, setTsEdit] = useState<{ m: number; text: string } | null>(null); // per-bar time-sig being typed
+  const [showClefRef, setShowClefRef] = useState(false);   // C2–C6 treble/bass reference
 
   const scoreRef = useRef<HTMLDivElement | null>(null);
   const scoreAreaRef = useRef<HTMLDivElement | null>(null);
@@ -921,6 +923,8 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (k === "M")                           { e.preventDefault(); deleteMeasure(cursor.measure); return; }
     // Edit the current measure's time signature (type "n/d" under the bar).
     if (k === "g")                           { e.preventDefault(); document.getElementById(`jp-timesig-${cursor.measure}`)?.focus(); return; }
+    // Toggle the C2–C6 treble/bass clef reference.
+    if (k === "c")                           { e.preventDefault(); setShowClefRef(v => !v); return; }
 
     if (k === "Backspace" || k === "Delete") {
       e.preventDefault();
@@ -1553,6 +1557,16 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       {/* Footer legend */}
       <div className="border-t border-[#1a1a1a] bg-[#0d0d0d] px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {/* Current entry defaults (what the next note gets). */}
+          <span className="flex items-center gap-2 text-[11px]">
+            <span className="px-1.5 py-0.5 rounded bg-[#16162a] border border-[#3a3a6a] text-[#9a9cf8]">
+              oct {octave > 0 ? `+${octave}` : octave}
+            </span>
+            <span className="px-1.5 py-0.5 rounded bg-[#16162a] border border-[#3a3a6a] text-[#9a9cf8]">
+              {DURATION_NAMES[duration]}{dotted ? " ·" : ""}
+            </span>
+          </span>
+          <Sep />
           <Hint keys={["1–7"]} label="pitch" />
           <Hint keys={["0"]} label="rest" />
           <Sep />
