@@ -1845,8 +1845,14 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     keys.length ? Math.min(...keys.map(k => walkNotesRef.current[k]?.length ?? 1)) - 1 : 0;
   const toggleWalk = (key: string) => setWalk(w => {
     const has = w.keys.includes(key);
-    const keys = has ? w.keys.filter(k => k !== key) : [...w.keys, key];
-    return { keys, index: has ? w.index : (w.keys.length ? w.index : 0), oct: w.oct };
+    if (has) {
+      const keys = w.keys.filter(k => k !== key);
+      return { keys, index: keys.length ? w.index : 0, oct: w.oct };
+    }
+    // Turning ON a base scale line (no '#') is mutually exclusive — it stops any
+    // other line that was going. Harmony voices ('#') still stack onto it.
+    const keys = key.includes("#") ? [...w.keys, key] : [key];
+    return { keys, index: key.includes("#") ? w.index : 0, oct: w.oct };
   });
   const walkStep = (d: number) => setWalk(w => ({ ...w, index: Math.max(0, Math.min(w.index + d, walkMaxIndex(w.keys))) }));
   const walkOct = (d: number) => setWalk(w => ({ ...w, oct: Math.max(-2, Math.min(2, w.oct + d)) }));
