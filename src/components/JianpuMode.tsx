@@ -131,9 +131,12 @@ function restShape(dur: Duration, cx: number, cy: number, key: string): React.Re
     return els;
   }
   if (dur === "q") {
-    // Curvy quarter-rest squiggle.
-    els.push(<path key={`${key}-q`} fill="none" stroke={WHITE} strokeWidth={2.2} strokeLinecap="round"
-      d={`M ${cx - 1} ${cy - 9} C ${cx + 3.5} ${cy - 5.5} ${cx - 2.5} ${cy - 2.5} ${cx + 2} ${cy - 0.5} C ${cx + 5.5} ${cy + 1} ${cx - 2.5} ${cy + 4} ${cx + 2.5} ${cy + 9}`} />);
+    // Standard quarter rest (𝄽): three angular zig-zag strokes down, then a
+    // small curled tail at the bottom — reads as a proper rest, not a squiggle.
+    els.push(<path key={`${key}-q`} fill="none" stroke={WHITE} strokeWidth={2.6}
+      strokeLinejoin="miter" strokeLinecap="round"
+      d={`M ${cx - 2.5} ${cy - 9} L ${cx + 3} ${cy - 4} L ${cx - 2.5} ${cy - 1} L ${cx + 3.5} ${cy + 3.5} `
+        + `C ${cx + 0.5} ${cy + 2.5} ${cx - 2} ${cy + 5} ${cx + 1.5} ${cy + 9}`} />);
     return els;
   }
   // Eighth / 16th / 32nd — a slanted stroke with 1 / 2 / 3 flag dots.
@@ -987,10 +990,16 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       if (!spaceHeldRef.current) {
         spaceHeldRef.current = true;
         anchorRef.current = cursor;
-        const { voice, measure, slot } = cursor;
-        const host = notes.find(n => (n.voice ?? 0) === voice && n.measure === measure && !n.isRest
-          && slot >= n.startSlot && slot < n.startSlot + noteSlots(n));
-        setSelectedIds(host ? [host.id] : []);
+        if (selectedIds.length > 0) {
+          // Second Space press toggles the selection OFF — regardless of where
+          // the cursor is (on the note or away from it).
+          setSelectedIds([]);
+        } else {
+          const { voice, measure, slot } = cursor;
+          const host = notes.find(n => (n.voice ?? 0) === voice && n.measure === measure && !n.isRest
+            && slot >= n.startSlot && slot < n.startSlot + noteSlots(n));
+          setSelectedIds(host ? [host.id] : []);
+        }
       }
       return;
     }
@@ -1632,7 +1641,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
                   key={`ts-${m}`}
                   id={`jp-timesig-${m}`}
                   value={editing ? tsEdit!.text : (shown ? `${eff.num}/${eff.den}` : "")}
-                  onFocus={() => setTsEdit({ m, text: `${eff.num}/${eff.den}` })}
+                  onFocus={e => { setTsEdit({ m, text: `${eff.num}/${eff.den}` }); e.currentTarget.select(); }}
                   onChange={e => setTsEdit({ m, text: e.target.value.replace(/[^0-9/]/g, "") })}
                   onBlur={() => { commitBarTimeSig(m, editing ? tsEdit!.text : `${eff.num}/${eff.den}`); setTsEdit(null); }}
                   onPointerDown={e => e.stopPropagation()}
