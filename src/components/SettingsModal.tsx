@@ -6,8 +6,7 @@ import { recordSynced } from "@/lib/syncMarker";
 import { computeSyncDiff, applySyncSelection, autoMergeAdditive, type SyncDiff } from "@/lib/syncMerge";
 import SyncMergeDialog from "./SyncMergeDialog";
 import { getDriveLog, subscribeDriveLog, clearDriveLog, dlog } from "@/lib/driveDebug";
-import { backupWorkoutsToDrive, restoreWorkoutsFromDrive } from "@/lib/workoutDriveBackup";
-import { exportBackup, importBackupFromFile } from "@/lib/workoutBackup";
+import { fullBackupToDrive, fullRestoreFromDrive, downloadFullBackup, importFullBackupZip } from "@/lib/fullBackup";
 import {
   isSupported as isFolderSyncSupported,
   getStatus as getFolderSyncStatus,
@@ -217,50 +216,57 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
     setTimeout(() => window.location.reload(), 500);
   };
 
-  // ── Workout Log backup (full zip incl. video blobs) ──────────────────────
-  const workoutBackupToDrive = async () => {
-    setWorkoutBusy("backup");
-    try {
-      const { videoCount, bytes } = await backupWorkoutsToDrive();
-      flash(`Workout log backed up to Drive (${videoCount} video${videoCount === 1 ? "" : "s"}, ${(bytes / 1e6).toFixed(1)} MB)`);
-    } catch (err) {
-      if (!handleAuthError(err)) flash(`Workout backup failed: ${err instanceof Error ? err.message : "unknown"}`);
-    } finally { setWorkoutBusy(null); }
-  };
-
-  const workoutRestoreFromDrive = async () => {
-    if (!window.confirm("Restore the workout log from your Drive backup? New items merge in — nothing is deleted.")) return;
-    setWorkoutBusy("restore");
-    try {
-      const { found, result } = await restoreWorkoutsFromDrive();
-      if (!found) { flash("No workout backup on Drive yet — back up from another device first"); return; }
-      flash(`Restored: ${result!.workouts} workouts, ${result!.videos} videos`);
-    } catch (err) {
-      if (!handleAuthError(err)) flash(`Workout restore failed: ${err instanceof Error ? err.message : "unknown"}`);
-    } finally { setWorkoutBusy(null); }
-  };
-
-  const workoutExportFile = async () => {
+  // Local "everything" backup — all data + every video clip in one .zip.
+  const localExportEverything = async () => {
     setWorkoutBusy("export");
     try {
-      const { shared, videoCount } = await exportBackup();
-      if (!shared) flash(`Workout backup downloaded (${videoCount} video${videoCount === 1 ? "" : "s"})`);
+      const info = await downloadFullBackup();
+      flash(`Saved everything locally — ${info.keyCount} data sets, ${info.videoCount} videos (${(info.bytes / 1e6).toFixed(1)} MB)`);
     } catch (err) {
       flash(`Export failed: ${err instanceof Error ? err.message : "unknown"}`);
     } finally { setWorkoutBusy(null); }
   };
 
-  const workoutImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const localImportEverything = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    if (!window.confirm("Import everything from this file? It restores data and video clips into this device.")) return;
     setWorkoutBusy("import");
     try {
-      const r = await importBackupFromFile(file);
-      flash(`Imported: ${r.workouts} workouts, ${r.videos} videos`);
+      const r = await importFullBackupZip(file);
+      flash(`Imported ${r.keyCount} data sets, ${r.videoCount} videos — reloading…`);
+      setTimeout(() => window.location.reload(), 800);
     } catch (err) {
       flash(`Import failed: ${err instanceof Error ? err.message : "unknown"}`);
     } finally { setWorkoutBusy(null); }
+  };
+
+  // The two-button Drive model: one full backup (all data + every video clip) up
+  // and down, via the everything-zip.
+  const driveExportEverything = async () => {
+    setGdriveStatus("busy");
+    flash("Exporting everything to Drive…");
+    try {
+      const info = await fullBackupToDrive();
+      flash(`Exported to Drive — ${info.keyCount} data sets, ${info.videoCount} videos (${(info.bytes / 1e6).toFixed(1)} MB)`);
+    } catch (err) {
+      if (!handleAuthError(err)) flash(`Export failed: ${err instanceof Error ? err.message : "unknown"}`);
+    } finally { setGdriveStatus("idle"); }
+  };
+
+  const driveRestoreEverything = async () => {
+    if (!window.confirm("Restore everything from your Drive backup? This replaces this device's data and video clips with the backup.")) return;
+    setGdriveStatus("busy");
+    flash("Restoring everything from Drive…");
+    try {
+      const { found, info } = await fullRestoreFromDrive();
+      if (!found) { flash("No Drive backup yet — Export to Drive from another device first"); return; }
+      flash(`Restored ${info!.keyCount} data sets, ${info!.videoCount} videos — reloading…`);
+      setTimeout(() => window.location.reload(), 800);
+    } catch (err) {
+      if (!handleAuthError(err)) flash(`Restore failed: ${err instanceof Error ? err.message : "unknown"}`);
+    } finally { setGdriveStatus("idle"); }
   };
 
   const handleGdriveSignOut = () => {
@@ -730,25 +736,25 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
                       </div>
                     </div>
                     <button
-                      onClick={handleGdriveSave}
+                      onClick={driveExportEverything}
                       disabled={gdriveStatus === "busy"}
                       className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors text-left disabled:opacity-50"
                     >
-                      <span className="text-base">↑</span>
+                      <span className="text-base">☁↑</span>
                       <div>
-                        <div className="font-medium">Save to Drive</div>
-                        <div className="text-xs text-[#555]">Upload current data to Google Drive</div>
+                        <div className="font-medium">Export to Drive</div>
+                        <div className="text-xs text-[#555]">Back up everything — all data and video clips</div>
                       </div>
                     </button>
                     <button
-                      onClick={handleGdriveLoad}
+                      onClick={driveRestoreEverything}
                       disabled={gdriveStatus === "busy"}
                       className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors text-left disabled:opacity-50"
                     >
-                      <span className="text-base">↓</span>
+                      <span className="text-base">☁↓</span>
                       <div>
-                        <div className="font-medium">Load from Drive</div>
-                        <div className="text-xs text-[#555]">Pull the latest data saved from another device (overwrites local)</div>
+                        <div className="font-medium">Restore from Drive</div>
+                        <div className="text-xs text-[#555]">Restore everything from your Drive backup (data + videos)</div>
                       </div>
                     </button>
                     <button
@@ -793,58 +799,6 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
             </div>
           )}
 
-          {/* Workout Log backup — full zip (data + video clips). Drive options
-              need a Google sign-in; the file export/import always works. */}
-          <div>
-            <h3 className="text-xs font-semibold text-[#88cc99] uppercase tracking-widest mb-3">Workout Log</h3>
-            <input ref={workoutImportRef} type="file" accept=".zip,application/zip" className="hidden" onChange={workoutImportFile} />
-            <div className="space-y-2">
-              {isGoogleDriveAvailable() && (
-                gdriveToken ? (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={workoutBackupToDrive}
-                      disabled={workoutBusy !== null}
-                      className="flex-1 flex items-center gap-2 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors disabled:opacity-50"
-                    >
-                      <span className="text-base">☁↑</span>
-                      <span className="font-medium">{workoutBusy === "backup" ? "Backing up…" : "Back up to Drive"}</span>
-                    </button>
-                    <button
-                      onClick={workoutRestoreFromDrive}
-                      disabled={workoutBusy !== null}
-                      className="flex-1 flex items-center gap-2 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors disabled:opacity-50"
-                    >
-                      <span className="text-base">☁↓</span>
-                      <span className="font-medium">{workoutBusy === "restore" ? "Restoring…" : "Restore from Drive"}</span>
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-xs text-[#555] px-1">Sign in with Google above to back up the workout log (with videos) to Drive.</p>
-                )
-              )}
-              <div className="flex gap-2">
-                <button
-                  onClick={workoutExportFile}
-                  disabled={workoutBusy !== null}
-                  className="flex-1 flex items-center gap-2 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors disabled:opacity-50"
-                >
-                  <span className="text-base">↓</span>
-                  <span className="font-medium">{workoutBusy === "export" ? "Preparing…" : "Export backup (.zip)"}</span>
-                </button>
-                <button
-                  onClick={() => workoutImportRef.current?.click()}
-                  disabled={workoutBusy !== null}
-                  className="flex-1 flex items-center gap-2 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors disabled:opacity-50"
-                >
-                  <span className="text-base">↑</span>
-                  <span className="font-medium">{workoutBusy === "import" ? "Importing…" : "Import backup (.zip)"}</span>
-                </button>
-              </div>
-              <p className="text-[10px] text-[#555] px-1">Includes video clips. Restore/import merges by id — nothing is deleted.</p>
-            </div>
-          </div>
-
           {/* Saved Data section */}
           <div>
             <h3 className="text-xs font-semibold text-[#e87010] uppercase tracking-widest mb-3">Saved Data</h3>
@@ -862,26 +816,28 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
                 </div>
               </div>
               <button
-                onClick={handleMusicExport}
-                className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors text-left"
+                onClick={localExportEverything}
+                disabled={workoutBusy !== null}
+                className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors text-left disabled:opacity-50"
               >
                 <span className="text-base">↓</span>
                 <div>
-                  <div className="font-medium">Export All Data</div>
-                  <div className="text-xs text-[#555]">Saved data: transcriptions, chord charts, practice log, exercises</div>
+                  <div className="font-medium">{workoutBusy === "export" ? "Preparing…" : "Export Everything (.zip)"}</div>
+                  <div className="text-xs text-[#555]">Save all data AND video clips to one local file</div>
                 </div>
               </button>
               <button
                 onClick={() => musicImportRef.current?.click()}
-                className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors text-left"
+                disabled={workoutBusy !== null}
+                className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors text-left disabled:opacity-50"
               >
                 <span className="text-base">↑</span>
                 <div>
-                  <div className="font-medium">Import All Data</div>
-                  <div className="text-xs text-[#555]">Restore saved data from a backup file</div>
+                  <div className="font-medium">{workoutBusy === "import" ? "Importing…" : "Import Everything (.zip)"}</div>
+                  <div className="text-xs text-[#555]">Restore all data and video clips from a backup file</div>
                 </div>
               </button>
-              <input ref={musicImportRef} type="file" accept=".json,.gz,.json.gz" onChange={handleMusicImportFile} className="hidden" />
+              <input ref={musicImportRef} type="file" accept=".zip,application/zip" onChange={localImportEverything} className="hidden" />
             </div>
           </div>
 

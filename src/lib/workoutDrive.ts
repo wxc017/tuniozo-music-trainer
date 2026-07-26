@@ -103,10 +103,14 @@ export async function getClipUrl(ref: { videoId?: string; driveFileId?: string }
   if (ref.driveFileId) {
     try { const u = await getDriveVideoUrl(ref.driveFileId); if (u) return u; }
     catch (err) { dlog(`video: Drive stream failed — ${err instanceof Error ? err.message : String(err)}`); }
+    // Offline fallback: a full-backup restore stores the clip in IndexedDB keyed
+    // by its driveFileId, so try that before giving up.
+    const local = await getVideoUrl(ref.driveFileId);
+    if (local) return local;
   }
   if (ref.videoId) {
     const u = await getVideoUrl(ref.videoId);
-    if (!u) dlog(`video: local file for ${ref.videoId.slice(0, 8)}… is NOT on this device — only its reference synced. Use Settings → Workout Log → Restore from Drive.`);
+    if (!u) dlog(`video: local file for ${ref.videoId.slice(0, 8)}… is NOT on this device — only its reference synced. Use Settings → Restore from Drive.`);
     return u;
   }
   dlog("video: set references no local videoId and no driveFileId");

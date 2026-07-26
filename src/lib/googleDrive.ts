@@ -133,6 +133,41 @@ export async function requestAccessToken(): Promise<string> {
   });
 }
 
+// Browser OAuth tokens expire in ~1h and the token flow has NO refresh token —
+// that's why the user had to keep re-logging in. But GSI can hand back a fresh
+// token silently (no popup, no user gesture) via prompt:"" as long as the Google
+// session and the existing grant are still valid. We call this automatically on
+// a 401, so a signed-in user stays signed in for as long as their Google session
+// lasts. Concurrent callers share one in-flight refresh.
+let silentRefresh: Promise<string | null> | null = null;
+export function refreshTokenSilent(): Promise<string | null> {
+  if (silentRefresh) return silentRefresh;
+  silentRefresh = (async () => {
+    try {
+      await loadGsi();
+      if (!window.google?.accounts?.oauth2) return null;
+      return await new Promise<string | null>(resolve => {
+        let settled = false;
+        const finish = (v: string | null) => { if (!settled) { settled = true; resolve(v); } };
+        const timer = setTimeout(() => { dlog("auth: silent refresh timed out"); finish(null); }, 10000);
+        try {
+          const client = window.google!.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID, scope: SCOPES, prompt: "",
+            callback: (resp) => {
+              clearTimeout(timer);
+              if (resp.access_token) { dlog("auth: silent refresh succeeded — fresh token"); saveToken(resp.access_token); finish(resp.access_token); }
+              else finish(null);
+            },
+            error_callback: (err) => { clearTimeout(timer); dlog(`auth: silent refresh failed (${err?.type ?? "?"}) — interactive sign-in needed`); finish(null); },
+          });
+          client.requestAccessToken();
+        } catch (e) { clearTimeout(timer); dlog(`auth: silent refresh threw ${e instanceof Error ? e.message : String(e)}`); finish(null); }
+      });
+    } finally { silentRefresh = null; }
+  })();
+  return silentRefresh;
+}
+
 // ── Drive REST helpers ──────────────────────────────────────────────────
 
 // 401 = expired/invalid token → drop it so the user re-signs and gets a fresh one.
@@ -168,11 +203,23 @@ async function logErrorBody(res: Response, label: string): Promise<void> {
   }
 }
 
-async function driveGet(token: string, url: string): Promise<Response> {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  await logErrorBody(res, "GET");
+// All Drive requests go through here: attaches the bearer token and, on a 401,
+// silently refreshes the token once and retries before giving up. That refresh-
+// and-retry is what keeps the user from having to sign in again every hour.
+async function driveFetch(url: string, init: RequestInit, token: string, retried = false): Promise<Response> {
+  const res = await fetch(url, { ...init, headers: { ...(init.headers ?? {}), Authorization: `Bearer ${token}` } });
+  if (res.status === 401 && !retried) {
+    dlog("auth: HTTP 401 — attempting silent token refresh + retry");
+    const fresh = await refreshTokenSilent();
+    if (fresh) return driveFetch(url, init, fresh, true);
+  }
+  await logErrorBody(res, init.method ?? "GET");
   throwIfAuthError(res.status);
   return res;
+}
+
+async function driveGet(token: string, url: string): Promise<Response> {
+  return driveFetch(url, {}, token);
 }
 
 async function findSyncFile(token: string): Promise<{ id: string; modifiedTime: string } | null> {
@@ -196,16 +243,11 @@ export async function uploadSync(token: string, payload: string): Promise<void> 
   const existing = await findSyncFile(token);
 
   if (existing) {
-    const res = await fetch(
+    const res = await driveFetch(
       `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=media`,
-      {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: payload,
-      },
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: payload },
+      token,
     );
-    await logErrorBody(res, "upload PATCH");
-    throwIfAuthError(res.status);
     if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
     dlog(`upload: PATCH existing file OK (${res.status})`);
   } else {
@@ -215,16 +257,11 @@ export async function uploadSync(token: string, payload: string): Promise<void> 
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n` +
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${payload}\r\n` +
       `--${boundary}--`;
-    const res = await fetch(
+    const res = await driveFetch(
       "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": `multipart/related; boundary=${boundary}` },
-        body,
-      },
+      { method: "POST", headers: { "Content-Type": `multipart/related; boundary=${boundary}` }, body },
+      token,
     );
-    await logErrorBody(res, "upload create");
-    throwIfAuthError(res.status);
     if (!res.ok) throw new Error(`Create failed: ${res.status}`);
     dlog(`upload: created new file OK (${res.status})`);
   }
@@ -251,10 +288,7 @@ export async function uploadDriveFile(
   const pre = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metaJson}\r\n--${boundary}\r\nContent-Type: ${meta.mimeType}\r\n\r\n`;
   const post = `\r\n--${boundary}--`;
   const body = new Blob([pre, blob, post], { type: `multipart/related; boundary=${boundary}` });
-  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", {
-    method: "POST", headers: { Authorization: `Bearer ${token}` }, body,
-  });
-  throwIfAuthError(res.status);
+  const res = await driveFetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", { method: "POST", body }, token);
   if (!res.ok) throw new Error(`Drive upload failed: ${res.status}`);
   return (await res.json()).id as string;
 }
@@ -266,10 +300,7 @@ export async function getDriveFileBlob(token: string, id: string): Promise<Blob>
 }
 
 export async function deleteDriveFile(token: string, id: string): Promise<void> {
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${id}`, {
-    method: "DELETE", headers: { Authorization: `Bearer ${token}` },
-  });
-  throwIfAuthError(res.status);
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${id}`, { method: "DELETE" }, token);
   if (!res.ok && res.status !== 404) throw new Error(`Drive delete failed: ${res.status}`);
 }
 
@@ -286,11 +317,7 @@ export async function findFileInFolder(
 
 /** Replace an existing Drive file's contents (media PATCH). */
 export async function updateDriveFileMedia(token: string, id: string, blob: Blob): Promise<void> {
-  const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`, {
-    method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: blob,
-  });
-  await logErrorBody(res, "file update PATCH");
-  throwIfAuthError(res.status);
+  const res = await driveFetch(`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`, { method: "PATCH", body: blob }, token);
   if (!res.ok) throw new Error(`Drive update failed: ${res.status}`);
 }
 
@@ -302,11 +329,10 @@ export async function findOrCreateFolder(token: string, name: string): Promise<s
     const d = await res.json();
     if (d.files?.[0]) return d.files[0].id as string;
   }
-  const res2 = await fetch("https://www.googleapis.com/drive/v3/files?fields=id", {
-    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+  const res2 = await driveFetch("https://www.googleapis.com/drive/v3/files?fields=id", {
+    method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder" }),
-  });
-  throwIfAuthError(res2.status);
+  }, token);
   if (!res2.ok) throw new Error(`Folder create failed: ${res2.status}`);
   return (await res2.json()).id as string;
 }

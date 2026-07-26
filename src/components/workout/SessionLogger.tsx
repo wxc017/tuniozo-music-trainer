@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import SetVideo from "./SetVideo";
 import ExercisePicker, { type PickedExercise } from "./ExercisePicker";
 import { startRest } from "@/lib/restTimerStore";
+import { exportWorkoutSession } from "@/lib/workoutExport";
 import {
   upsertWorkout, makeExercise, makeSet, deleteWorkout,
   templateFromWorkout, saveTemplate, useWorkoutData, captureUndo,
@@ -21,6 +22,7 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
   const { workouts, prefs } = useWorkoutData();
   const workout = useMemo(() => workouts.find(w => w.id === workoutId), [workouts, workoutId]);
   const [picking, setPicking] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   if (!workout) {
     return <div className="p-6 wl-muted">Workout not found. <button className="underline" style={{ color: "var(--wl-accent)" }} onClick={onClose}>Back</button></div>;
@@ -56,6 +58,12 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
     if (name) saveTemplate(templateFromWorkout(workout, name));
   };
   const removeWorkout = () => { if (window.confirm("Delete this entire workout?")) { deleteWorkout(workout.id); onClose(); } };
+  const shareSession = async () => {
+    setSharing(true);
+    try { await exportWorkoutSession(workout); }
+    catch (err) { window.alert(`Export failed: ${err instanceof Error ? err.message : String(err)}`); }
+    finally { setSharing(false); }
+  };
 
   const totalSets = workout.exercises.reduce((n, e) => n + e.sets.length, 0);
   const doneSets = workout.exercises.reduce((n, e) => n + e.sets.filter(s => s.done).length, 0);
@@ -89,6 +97,7 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
 
         <div className="flex flex-wrap gap-2 pt-2">
           <button onClick={saveAsTemplate} className="wl-btn flex-1">Save as template</button>
+          <button onClick={shareSession} disabled={sharing} className="wl-btn flex-1">{sharing ? "Preparing…" : "📤 Share / Export"}</button>
           <button onClick={removeWorkout} className="wl-btn wl-btn--danger">Delete</button>
         </div>
       </div>
