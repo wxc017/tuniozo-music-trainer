@@ -5,8 +5,11 @@
 
 export const C4_FREQ = 261.63;
 export const FMIN = 70, FMAX = 1200;   // vocal range we search
-export const RMS_GATE = 0.007;          // below this = silence
-export const CLARITY_GATE = 0.7;        // NSDF peak below this = noise, not a clean voiced note
+// Gates tuned up so ambient/mic self-noise and half-voiced frames are rejected:
+// this stops false detections on silence AND keeps harmonic-slip frames from
+// corrupting a sustained note. If it starts MISSING quiet singing, lower these.
+export const RMS_GATE = 0.014;          // below this = silence
+export const CLARITY_GATE = 0.82;       // NSDF peak below this = noise, not a clean voiced note
 
 /** Median of a short window — smooths frame-to-frame jitter. */
 export function median(xs: number[]): number {
