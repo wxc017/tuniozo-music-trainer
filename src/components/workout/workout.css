@@ -137,29 +137,29 @@
 /* Phone breakpoint — modestly enlarge controls + text for touch/readability.
    820px catches phones (portrait ~390-430, small landscape) but not laptops. */
 @media (max-width: 820px) {
-  .wl-root .wl-h1 { font-size: 22px !important; }
-  .wl-root .wl-h2 { font-size: 17px !important; }
-  .wl-root .wl-eyebrow { font-size: 12px !important; }
-  .wl-root .wl-collabel { font-size: 11px !important; }
+  .wl-root .wl-h1 { font-size: 18px !important; }
+  .wl-root .wl-h2 { font-size: 15px !important; }
+  .wl-root .wl-eyebrow { font-size: 10px !important; }
+  .wl-root .wl-collabel { font-size: 10px !important; }
   .wl-root .wl-cell {
-    padding: 10px 6px !important; font-size: 16px !important;
-    min-height: 44px; border-radius: 10px;
+    padding: 8px 5px !important; font-size: 14px !important;
+    min-height: 40px; border-radius: 9px;
   }
-  .wl-root .wl-input { padding: 12px 14px !important; font-size: 16px !important; }
-  .wl-root .wl-btn { padding: 11px 15px !important; font-size: 15px !important; }
-  .wl-root .wl-seg { padding: 4px; }
-  .wl-root .wl-seg button { padding: 10px 16px !important; font-size: 14px !important; }
-  .wl-root .wl-tag { font-size: 12px !important; padding: 4px 10px !important; }
-  .wl-root .wl-add { padding: 16px !important; font-size: 15px !important; }
-  .wl-root .wl-setrow { gap: 8px !important; }
+  .wl-root .wl-input { padding: 10px 12px !important; font-size: 14px !important; }
+  .wl-root .wl-btn { padding: 9px 13px !important; font-size: 13px !important; }
+  .wl-root .wl-seg { padding: 3px; }
+  .wl-root .wl-seg button { padding: 8px 13px !important; font-size: 12px !important; }
+  .wl-root .wl-tag { font-size: 11px !important; padding: 3px 9px !important; }
+  .wl-root .wl-add { padding: 13px !important; font-size: 13px !important; }
+  .wl-root .wl-setrow { gap: 7px !important; }
 
-  /* Nudge the pervasive small utility text up so nothing is squint-tiny. */
-  .wl-root .text-\[9px\]  { font-size: 12px !important; }
-  .wl-root .text-\[10px\] { font-size: 13px !important; }
-  .wl-root .text-\[11px\] { font-size: 13px !important; }
-  .wl-root .text-\[12px\] { font-size: 14px !important; }
-  .wl-root .text-\[13px\] { font-size: 14px !important; }
-  .wl-root .text-xs { font-size: 13px !important; }
-  .wl-root .text-sm { font-size: 15px !important; }
-  .wl-root .text-base { font-size: 16px !important; }
+  /* Keep small utility text just legible without going oversized. */
+  .wl-root .text-\[9px\]  { font-size: 11px !important; }
+  .wl-root .text-\[10px\] { font-size: 11px !important; }
+  .wl-root .text-\[11px\] { font-size: 12px !important; }
+  .wl-root .text-\[12px\] { font-size: 12px !important; }
+  .wl-root .text-\[13px\] { font-size: 13px !important; }
+  .wl-root .text-xs { font-size: 12px !important; }
+  .wl-root .text-sm { font-size: 13px !important; }
+  .wl-root .text-base { font-size: 14px !important; }
 }

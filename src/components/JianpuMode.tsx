@@ -435,9 +435,11 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const total = totalSlotsOf(measure);
     if (nextSlot >= total) {
       const nm = Math.min(project.setup.barCount - 1, measure + 1);
-      setCursor({ voice, measure: nm, slot: nm === measure ? total - gridSnap : 0 });
+      // Clamp so a long entry duration in a short bar can't push the slot
+      // negative (which would corrupt the cursor / snap it to the wrong place).
+      setCursor({ voice, measure: nm, slot: nm === measure ? Math.max(0, total - gridSnap) : 0 });
     } else {
-      setCursor({ voice, measure, slot: nextSlot });
+      setCursor({ voice, measure, slot: Math.max(0, nextSlot) });
     }
   }, [project, totalSlotsOf, gridSnap]);
 
@@ -932,8 +934,8 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       else deleteSelectedOrCursor();
       return;
     }
-    if (k === "Escape")        { e.preventDefault(); setSelectedIds([]); return; }
-  }, [project, selectedIds, cursor, notes, inputDigit, moveSelected, moveCursorH, extendSelect, navVoice, addVoiceAbove, addVoiceBelow,
+    if (k === "Escape")        { e.preventDefault(); if (showClefRef) setShowClefRef(false); else setSelectedIds([]); return; }
+  }, [project, selectedIds, cursor, notes, showClefRef, inputDigit, moveSelected, moveCursorH, extendSelect, navVoice, addVoiceAbove, addVoiceBelow,
       removeVoiceAt, toggleBreakBefore, addMeasure, deleteMeasure, undo,
       stepDuration, toggleDot, toggleUnderline, toggleStaccato, alter, deleteSelectedOrCursor, bumpOctave, togglePianoBrace, toggleUnderlines]);
 
@@ -1592,10 +1594,13 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
             <Hint keys={["m"]} label="add bar" />
             <Hint keys={["Shift + M"]} label="del bar" />
             <Hint keys={["g"]} label="time sig" />
+            <Hint keys={["c"]} label="clef ref" />
             <Hint keys={["Ctrl + Z"]} label="undo" />
           </>}
         </div>
       </div>
+
+      {showClefRef && <ClefReference onClose={() => setShowClefRef(false)} />}
     </div>
   );
 }
