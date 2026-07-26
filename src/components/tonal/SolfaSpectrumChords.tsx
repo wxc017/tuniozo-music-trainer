@@ -472,7 +472,7 @@ type SingCat = "scalar" | "chords" | "cycles";
 type ScalarSub = "scale" | "patterns" | "pentatonic" | "blues" | "triadpairs" | "angular" | "chromatic" | "resolution";
 const SCALAR_SUBS: { id: ScalarSub; label: string }[] = [
   { id: "scale", label: "Scale" }, { id: "patterns", label: "Patterns" }, { id: "pentatonic", label: "Pentatonic" },
-  { id: "blues", label: "Blues" }, { id: "triadpairs", label: "Triad Pairs" },
+  { id: "triadpairs", label: "Triad Pairs" },
   { id: "angular", label: "Angular" }, { id: "chromatic", label: "Chromatic" }, { id: "resolution", label: "Resolution" },
 ];
 interface SingGroup { title: string; seqs: SingSeq[]; cat: SingCat; sub?: ScalarSub; }
@@ -1032,6 +1032,12 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // ── Drone panel (o) ── pick scale degrees / diatonic chords to hold, each with
   // its own small/center/large band, optionally an octave down.
   const [droneOpen, setDroneOpen] = useState(false);
+  // Collapsed section headings (keyed by group title) — click a heading to fold
+  // its rows away for a tidier list.
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroupCollapsed = (title: string) => setCollapsedGroups(s => {
+    const n = new Set(s); n.has(title) ? n.delete(title) : n.add(title); return n;
+  });
   const [droneDegBand, setDroneDegBand] = useState<Band[]>([1, 1, 1, 1, 1, 1, 1]);
   const [droneChordType, setDroneChordType] = useState<ChordType>("triad");
   const [droneOct, setDroneOct] = useState(0);   // octave shift; base scale octave is 3
@@ -1061,7 +1067,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const dragRef = useRef<{ on: boolean; add: boolean }>({ on: false, add: true });
   // Blues is behind the beta gate for now (dev only), so it's off by default and
   // its toggle is hidden in production builds.
-  const [scalarGen, setScalarGen] = useState<Set<ScalarSub>>(new Set(SCALAR_SUBS.filter(s => import.meta.env.DEV || s.id !== "blues").map(s => s.id)));  // which scalar groups are GENERATED
+  const [scalarGen, setScalarGen] = useState<Set<ScalarSub>>(new Set(SCALAR_SUBS.map(s => s.id)));  // which scalar groups are GENERATED
 
   // Root/tonic as a continuous cents position in the octave (0 = C3), shared by
   // all spectrum modes.  Click the root spectrum line or randomize it.  Controlled
@@ -1727,22 +1733,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         lineSeq("upper & lower neighbours (all)", scale, endOnTonic([0, 1, 0, -1, 0, 2, 3, 2, 1, 2, 4, 5, 4, 3, 4, 6, 7, 6, 5, 6])),
         chromSeq("every tritone → its 3rd (inward)", endOnTonicCents(tritoneResLine(chroma))),
       ] },
-      // ── Blues — one group per intonation, so the 12-EDO / 7-limit / 11-limit
-      // versions of the SAME pattern sit side by side to compare. ──
-      ...BLUES_SCALES.map(bs => {
-        const n = bs.cents.length;
-        const up = Array.from({ length: n + 1 }, (_, i) => i);
-        return {
-          cat: "scalar" as SingCat, sub: "blues" as ScalarSub, title: `BLUES · ${bs.label.toUpperCase()}`,
-          seqs: [
-            chromSeq("up", bluesLine(bs.cents, up)),
-            chromSeq("down", bluesLine(bs.cents, [...up].reverse())),
-            chromSeq("up · down", bluesLine(bs.cents, [...up, ...up.slice(0, -1).reverse()])),
-            ...BLUES_CELLS.map(c => chromSeq(c.label, endOnTonicCents(bluesSeq(bs.cents, c.cell)))),
-            ...PERM_3.map(p => chromSeq(`perm ${stepLabel(p)}`, endOnTonicCents(bluesSeq(bs.cents, p)))),
-          ],
-        };
-      }),
+      // (Blues removed.)
       // ── Triad pairs — every adjacent pair in the scale, each run six ways. ──
       ...[0, 1, 2, 3, 4, 5, 6].map(d => ({
         cat: "scalar" as SingCat, sub: "triadpairs" as ScalarSub,
@@ -2755,7 +2746,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
             {fieldRow(
               "SCALAR GEN",
               <>
-                {SCALAR_SUBS.filter(s => import.meta.env.DEV || s.id !== "blues").map(s => (
+                {SCALAR_SUBS.map(s => (
                   <button key={s.id} onClick={() => toggleIn(setScalarGen, s.id, true)} className={chip(scalarGen.has(s.id))}>{s.label}</button>
                 ))}
               </>,
@@ -2910,7 +2901,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
           {/* Scalar sub-categories — keep the long list broken into sections. */}
           {singTab === "scalar" && (
             <div className="inline-flex rounded-lg border border-[#242424] bg-[#0b0b0b] p-0.5 gap-0.5 flex-wrap">
-              {SCALAR_SUBS.filter(s => import.meta.env.DEV || s.id !== "blues").map(s => (
+              {SCALAR_SUBS.map(s => (
                 <button key={s.id} onClick={() => setScalarSub(s.id)}
                   className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-colors ${scalarSub === s.id ? "bg-[#7173e6] text-white" : "text-[#777] hover:text-[#cfcfcf]"}`}>{s.label}</button>
               ))}
@@ -3007,11 +2998,17 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                   <Panel title={`${bandTitleOf(sec.band).toUpperCase()} · ${sec.scaleLabel.toUpperCase()}`} accent={BAND_COLORS[sec.band]}>
                     <div className="space-y-3">
                       {groups.length === 0 && <div className="text-[11px] text-[#555]">Nothing selected for this tab.</div>}
-                      {groups.map((g, gi) => (
+                      {groups.map((g, gi) => {
+                        const collapsed = collapsedGroups.has(g.title);
+                        return (
                         <div key={gi} className="space-y-1.5">
-                          <div className="text-[10px] text-[#555] font-semibold tracking-wider">{g.title}</div>
+                          <button onClick={() => toggleGroupCollapsed(g.title)}
+                            className="flex items-center gap-1 text-[10px] text-[#666] hover:text-[#aaa] font-semibold tracking-wider transition-colors">
+                            <span className="text-[8px] w-2 inline-block">{collapsed ? "▶" : "▼"}</span>{g.title}
+                          </button>
                           {/* Chords tab packs TWO per row; cycles and scalar rows are
                               wide, so those stack full-width. */}
+                          {!collapsed && (
                           <div className={singTab === "chords" ? "grid grid-cols-2 gap-x-3 gap-y-1.5 items-start" : "space-y-1.5"}>
                             {g.seqs.filter(seq => !(singTab === "chords" && ROMAN_NUMERALS.includes(seq.label) && hiddenDeg.has(ROMAN_NUMERALS.indexOf(seq.label)))).map((seq, qi) => renderSeq(
                               seq, qi, sec.rawScale, `${si}:${gi}:${qi}`,
@@ -3021,8 +3018,10 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                               { cat: g.sub ?? g.cat, group: g.title, label: seq.label },
                             ))}
                           </div>
+                          )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </Panel>
                 </div>
