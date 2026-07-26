@@ -10,6 +10,7 @@ import {
 } from "./googleDrive";
 import { getVideoUrl } from "./workoutVideoDb";
 import { buildSyncPayload } from "./syncData";
+import { dlog } from "./driveDebug";
 
 const FOLDER_NAME = "Tunizo Workouts";
 const FOLDER_ID_KEY = "lt_workout_drive_folder";
@@ -85,8 +86,9 @@ export async function getDriveVideoUrl(fileId: string): Promise<string | null> {
   const cached = urlCache.get(fileId);
   if (cached) return cached;
   const token = getSavedToken();
-  if (!token) return null;
+  if (!token) { dlog(`video: clip is on Drive (${fileId.slice(0, 8)}…) but not signed in — can't stream`); return null; }
   const blob = await getDriveFileBlob(token, fileId);
+  dlog(`video: streamed ${blob.size} bytes from Drive (${fileId.slice(0, 8)}…)`);
   const url = URL.createObjectURL(blob);
   urlCache.set(fileId, url);
   return url;
@@ -99,9 +101,15 @@ export function releaseDriveVideoUrl(fileId: string): void {
 /** Resolve a clip URL from Drive (if driveFileId) or IndexedDB (videoId). */
 export async function getClipUrl(ref: { videoId?: string; driveFileId?: string }): Promise<string | null> {
   if (ref.driveFileId) {
-    try { const u = await getDriveVideoUrl(ref.driveFileId); if (u) return u; } catch { /* fall through */ }
+    try { const u = await getDriveVideoUrl(ref.driveFileId); if (u) return u; }
+    catch (err) { dlog(`video: Drive stream failed — ${err instanceof Error ? err.message : String(err)}`); }
   }
-  if (ref.videoId) return getVideoUrl(ref.videoId);
+  if (ref.videoId) {
+    const u = await getVideoUrl(ref.videoId);
+    if (!u) dlog(`video: local file for ${ref.videoId.slice(0, 8)}… is NOT on this device — only its reference synced. Use Settings → Workout Log → Restore from Drive.`);
+    return u;
+  }
+  dlog("video: set references no local videoId and no driveFileId");
   return null;
 }
 export function releaseClipUrl(ref: { videoId?: string; driveFileId?: string }): void {

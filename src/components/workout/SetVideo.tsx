@@ -32,6 +32,7 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [url, setUrl] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [duration, setDuration] = useState(0);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
@@ -46,7 +47,12 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
   useEffect(() => {
     let alive = true;
     if (open && hasVideo) {
-      getClipUrl({ videoId: set.videoId, driveFileId: set.driveFileId }).then(u => { if (alive) setUrl(u); });
+      setLoadFailed(false);
+      getClipUrl({ videoId: set.videoId, driveFileId: set.driveFileId }).then(u => {
+        if (!alive) return;
+        setUrl(u);
+        if (!u) setLoadFailed(true);
+      });
     }
     return () => { alive = false; };
   }, [open, set.videoId, set.driveFileId, hasVideo]);
@@ -227,7 +233,7 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
 
           {/* Video fills the available space */}
           <div className="flex-1 min-h-0 flex items-center justify-center p-2">
-            {url && (
+            {url ? (
               <video
                 ref={videoRef}
                 src={url}
@@ -238,6 +244,14 @@ export default function SetVideo({ set, workoutId, onChange }: Props) {
                 className="rounded bg-black"
                 style={{ maxWidth: "100%", maxHeight: "100%" }}
               />
+            ) : loadFailed ? (
+              <div className="max-w-sm text-center px-6" style={{ color: "var(--wl-muted)" }}>
+                <div className="text-3xl mb-2">🎞️</div>
+                <div className="text-sm">This clip's video file isn't on this device.</div>
+                <div className="text-xs mt-2">Only the reference syncs automatically — the video itself travels in the backup. On the device that has it, open <span className="wl-accent">Settings → Workout Log → Back up to Drive</span>, then here tap <span className="wl-accent">Restore from Drive</span> and reopen.</div>
+              </div>
+            ) : (
+              <div className="text-sm" style={{ color: "var(--wl-muted)" }}>Loading…</div>
             )}
           </div>
 
