@@ -359,6 +359,7 @@ const ANGULAR_PATTERNS: { label: string; steps: number[] }[] = [
   { label: "1·4·7 (4th stacks)", steps: cellRun([0, 3, 6], 4) },
   { label: "4th↑ 4th↑ 2nd↓",   steps: cellRun([0, 3, 6, 5], 4) },
   { label: "4th↑ 4th↑ 4th↓",   steps: cellRun([0, 3, 6, 3], 4) },
+  { label: "+4 +4 +3 (5th 5th 4th)", steps: cellRun([0, 4, 8, 11], 4) },  // ascending 5th·5th·4th leap cell
   // 4ths whose roots climb by step: 1·4 · 2·5 · 3·6 …  (the old [0,3,1,4] cell
   // both mislabelled the descent — 3→1 is a 3rd, not a 2nd — and repeated each
   // pair, since rep r+1 restated the cell's own second pair.)
