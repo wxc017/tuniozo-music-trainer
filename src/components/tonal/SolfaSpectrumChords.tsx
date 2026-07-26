@@ -1061,7 +1061,9 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const [logBy, setLogBy] = useState<"day" | "cat">("day");             // group the logbook by day or category
   const [logSel, setLogSel] = useState<Set<string>>(new Set());         // multi-selected pattern ids
   const dragRef = useRef<{ on: boolean; add: boolean }>({ on: false, add: true });
-  const [scalarGen, setScalarGen] = useState<Set<ScalarSub>>(new Set(SCALAR_SUBS.map(s => s.id)));  // which scalar groups are GENERATED
+  // Blues is behind the beta gate for now (dev only), so it's off by default and
+  // its toggle is hidden in production builds.
+  const [scalarGen, setScalarGen] = useState<Set<ScalarSub>>(new Set(SCALAR_SUBS.filter(s => import.meta.env.DEV || s.id !== "blues").map(s => s.id)));  // which scalar groups are GENERATED
 
   // Root/tonic as a continuous cents position in the octave (0 = C3), shared by
   // all spectrum modes.  Click the root spectrum line or randomize it.  Controlled
@@ -2753,7 +2755,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
             {fieldRow(
               "SCALAR GEN",
               <>
-                {SCALAR_SUBS.map(s => (
+                {SCALAR_SUBS.filter(s => import.meta.env.DEV || s.id !== "blues").map(s => (
                   <button key={s.id} onClick={() => toggleIn(setScalarGen, s.id, true)} className={chip(scalarGen.has(s.id))}>{s.label}</button>
                 ))}
               </>,
@@ -2908,7 +2910,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
           {/* Scalar sub-categories — keep the long list broken into sections. */}
           {singTab === "scalar" && (
             <div className="inline-flex rounded-lg border border-[#242424] bg-[#0b0b0b] p-0.5 gap-0.5 flex-wrap">
-              {SCALAR_SUBS.map(s => (
+              {SCALAR_SUBS.filter(s => import.meta.env.DEV || s.id !== "blues").map(s => (
                 <button key={s.id} onClick={() => setScalarSub(s.id)}
                   className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-colors ${scalarSub === s.id ? "bg-[#7173e6] text-white" : "text-[#777] hover:text-[#cfcfcf]"}`}>{s.label}</button>
               ))}
