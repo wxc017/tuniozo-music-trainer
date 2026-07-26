@@ -263,7 +263,16 @@ export function getKnownOptions(): Record<string, string> {
 // ── Extra keys (non-lt_ prefix) that should be included in export/import ──
 const EXTRA_EXPORT_KEYS = new Set(["konnakol_custom_presets"]);
 
+// Device-local keys that must NEVER travel between devices even though they
+// carry the lt_ prefix. The Google Drive access token is the critical one: if
+// it synced, restoring on another device would overwrite that device's own
+// token with a foreign/expired/narrower-scope one — the cause of persistent
+// 403s (an appDataFolder call needs the drive.appdata scope the borrowed token
+// may lack). Auth is per-device; it stays put.
+const NON_EXPORT_KEYS = new Set(["lt_gdrive_token"]);
+
 export function isExportKey(key: string): boolean {
+  if (NON_EXPORT_KEYS.has(key)) return false;
   return key.startsWith("lt_") || EXTRA_EXPORT_KEYS.has(key);
 }
 

@@ -130,6 +130,9 @@ export interface NoteData {
    *  or "minor" (Do Re Me…).  Absent → the universal Spectrum-ege syllable.
    *  Stored per note so later changing the entry default never rewrites it. */
   solfaMode?: "major" | "minor";
+  /** Jianpu/Sol-fa: a held continuation — renders as dash(es) "–" instead of a
+   *  number/syllable, for sustaining a note across beats or barlines. */
+  held?: boolean;
 }
 
 /** Actual slot count occupied by a note, accounting for the dot (1.5×). */

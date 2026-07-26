@@ -392,7 +392,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const hasTsLabel = (m: number) => m === startOf[m] || !!project?.setup.perBarTimeSig?.[m];
     const rowOfArr: number[] = [], colOfArr: number[] = [], rowTop: number[] = [], xArr: number[] = [];
     let y = HEADER_H;
+    const rowCut: number[] = [];   // clean page-break y at the top of each row's block
     rowsArr.forEach((row, r) => {
+      rowCut[r] = y;               // before the heading pad → safe break between rows
       // A line the user deliberately started (a section OR a manual cut) gets
       // headroom for a title above it; auto-wrapped continuations don't.
       if (sectionAt(row[0]) || breakAt(row[0])) y += SECTION_PAD;
@@ -402,7 +404,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       y += systemHeight(vcArr[row[0]] ?? minVoices, hsArr[row[0]] != null);
       if (row.some(hasTsLabel)) y += TS_PAD;   // room for the time-signature line
     });
-    return { rowsArr, rowOfArr, colOfArr, rowTop, wArr, xArr, vcArr, hsArr, numLabel, startOf, totalHeight: y, canvasW: LEFT_PAD * 2 + maxRowW };
+    return { rowsArr, rowOfArr, colOfArr, rowTop, rowCut, wArr, xArr, vcArr, hsArr, numLabel, startOf, totalHeight: y, canvasW: LEFT_PAD * 2 + maxRowW };
   }, [setup?.barCount, project?.setup.perBarBreakBefore, project?.setup.perBarTimeSig, sectionLabels, perSection,
       project?.voiceCount, project?.pianoBrace, project?.perSectionPianoBrace, notes, totalSlotsOf, system, minVoices]);
   ROW_OF = layout.rowOfArr; COL_OF = layout.colOfArr; ROW_TOP = layout.rowTop;
@@ -509,11 +511,11 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     };
   }, [octave, project?.solfaStyle, movableDo]);
 
-  const placeNote = useCallback((degree: number, isRest: boolean) => {
+  const placeNote = useCallback((degree: number, isRest: boolean, held = false) => {
     if (!project) return;
     const { voice, measure, slot } = cursor;
     const newLen = DURATION_SLOTS[duration] * (dotted ? 1.5 : 1);
-    const newNote = makeNote(degree, isRest, duration, dotted, voice, measure, slot);
+    const newNote = { ...makeNote(degree, isRest, duration, dotted, voice, measure, slot), held: held || undefined };
     const newEnd = slot + newLen;
     const kept = notes.filter(n => {
       if ((n.voice ?? 0) !== voice || n.measure !== measure) return true;
@@ -527,6 +529,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     // voice); the user moves between beats with the arrow keys.
     if (!embedded) advanceCursor(voice, measure, slot + newLen);
   }, [project, cursor, duration, dotted, notes, makeNote, commit, advanceCursor, embedded]);
+  // Held continuation ("–"): a sustaining beat at the current duration, for
+  // holding a note across beats / barlines.  Bound to the `-` keybind.
+  const placeHeld = useCallback(() => { placeNote(1, false, true); }, [placeNote]);
 
   const inputDigit = useCallback((degree: number, isRest: boolean) => {
     const { voice, measure, slot } = cursor;
@@ -998,7 +1003,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     // Quick-access modifiers on the letter row directly below the numbers:
     //   q/w = octave −/+   e/r = duration shorter/longer   t = dot
     //   u = underline (eighth)   o = staccato   . / , = alteration up / down
-    if (k === "q" || k === "-" || k === "_") { e.preventDefault(); bumpOctave(-1); return; }
+    //   - = held "–" continuation (sustain across beats / barlines)
+    if (k === "-" || k === "_")              { e.preventDefault(); placeHeld(); return; }
+    if (k === "q")                           { e.preventDefault(); bumpOctave(-1); return; }
     if (k === "w" || k === "+" || k === "=") { e.preventDefault(); bumpOctave(1); return; }
     if (k === "e" || k === "]")              { e.preventDefault(); stepDuration(-1); return; } // shorter
     if (k === "r" || k === "[")              { e.preventDefault(); stepDuration(1); return; }  // longer
@@ -1033,7 +1040,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     }
     if (k === "Escape")        { e.preventDefault(); if (showClefRef) setShowClefRef(false); else setSelectedIds([]); return; }
   }, [project, selectedIds, cursor, notes, showClefRef, inputDigit, moveSelected, moveCursorH, extendSelect, navVoice, addVoiceAbove, addVoiceBelow,
-      removeVoiceAt, toggleBreakBefore, addMeasure, deleteMeasure, undo,
+      removeVoiceAt, toggleBreakBefore, addMeasure, deleteMeasure, undo, placeHeld,
       stepDuration, toggleDot, toggleUnderline, toggleStaccato, alter, deleteSelectedOrCursor, bumpOctave, togglePianoBrace, toggleUnderlines]);
 
   const handleKeyRef = useRef(handleKey);
@@ -1080,19 +1087,19 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       const x = slotToX(first.measure, first.startSlot + headSlots / 2, total);
       const base = baselineY(voice, first.measure);
       const sorted = [...g].sort((a, b) => pitchRank(a) - pitchRank(b));
-      const firstLabel = first.isRest ? "0" : labelOf(first.jianpuDegree ?? 1, altOf(first)).text;
+      const firstLabel = first.isRest ? "0" : first.held ? "–" : labelOf(first.jianpuDegree ?? 1, altOf(first)).text;
       const vmKey = `${voice}:${first.measure}`;
       (byVM.get(vmKey) ?? byVM.set(vmKey, []).get(vmKey)!).push(
         { startSlot: first.startSlot, slots: noteSlots(first), x, y: base, underlines: glyph.underlines, isRest: first.isRest, separate: !!first.separateUnderline, label: firstLabel });
       sorted.forEach((n, i) => {
         const y = base - i * CHORD_DY;
         positions.push({ id: n.id, x, y });
-        const lbl = n.isRest ? null : labelOf(n.jianpuDegree ?? 1, altOf(n));
+        const lbl = n.isRest || n.held ? null : labelOf(n.jianpuDegree ?? 1, altOf(n));
         items.push({
           id: n.id, x, y,
-          label: lbl ? lbl.text : "0",
+          label: n.isRest ? "0" : n.held ? "–" : (lbl ? lbl.text : "0"),
           isRest: n.isRest,
-          octave: n.isRest ? 0 : (n.jianpuOctave ?? 0),
+          octave: n.isRest || n.held ? 0 : (n.jianpuOctave ?? 0),
           accidental: lbl?.prefix,   // alteration mark drawn before a jianpu number
           underlines: glyph.underlines, dashes: glyph.dashes, dot: glyph.dot, duration: n.duration,
           measure: first.measure, startSlot: first.startSlot, total,
@@ -1144,9 +1151,12 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   // ── Export ────────────────────────────────────────────────────────────────
   const handleExportPdf = useCallback(async () => {
     if (!project || !scoreRef.current) return;
+    // Safe page-break rows (between systems), scaled into the exported SVG's
+    // coordinate space so a piano brace / group is never split across a page.
+    const cutYs = layout.rowCut.slice(1).map(yy => yy * (scaleRef.current || 1));
     await exportToPdf([{ title: project.title, element: scoreRef.current }],
-      project.title.replace(/\s+/g, "_"), { showTitles: true, splitSections: false, orientation: "portrait" });
-  }, [project]);
+      project.title.replace(/\s+/g, "_"), { showTitles: true, splitSections: false, orientation: "portrait", cutYs });
+  }, [project, layout]);
 
   // ── Pointer interaction (click / drag-select) ───────────────────────────────
   const localXY = (e: { clientX: number; clientY: number }) => {
@@ -1675,6 +1685,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
           <Hint keys={["q", "w"]} label="octave" />
           <Hint keys={["e", "r"]} label="duration" />
           <Hint keys={["t"]} label="dot" />
+          <Hint keys={["-"]} label="hold –" />
           <Hint keys={["u"]} label="underline" />
           <Hint keys={["o"]} label="staccato" />
           <Hint keys={[",", "."]} label="alter" />

@@ -65,8 +65,10 @@ import { useMetronome } from "@/hooks/useMetronome";
 import { useLS, lsSet, getKnownOptions, localToday } from "@/lib/storage";
 import { initFolderSync, getStatus as getFolderSyncStatus, reconnectFolder, type SyncState } from "@/lib/folderSync";
 import { recordAnswer, getDayTotals, accuracy, setImportBias, getImportBias, clearImportBias, removeSlotAnswers } from "@/lib/stats";
-import { getSavedToken, downloadSync, uploadSync, clearToken } from "@/lib/googleDrive";
-import { buildSyncPayload, restoreFromSyncPayload } from "@/lib/syncData";
+import { getSavedToken, downloadSync, uploadSync, getSyncInfo } from "@/lib/googleDrive";
+import { buildSyncPayload } from "@/lib/syncData";
+import { getSyncedAt, recordSynced } from "@/lib/syncMarker";
+import { autoMergeAdditive } from "@/lib/syncMerge";
 import { getLayoutFile, pcToNoteNameWithEnharmonic, formatHalfAccidentals } from "@/lib/edoData";
 import { groupEdosByFamily } from "@/lib/edoFamilies";
 // Side-effect import: registers the 19 curated JI scales (Pythagorean,
@@ -383,6 +385,32 @@ export default function App() {
   // melody/jazz/patterns/drone, so leaving activeTab on one of those
   // would render nothing.
 
+  // Auto-merge on open: if signed into Google Drive and another device saved newer
+  // data since this device last synced, pull it and ADDITIVELY merge — i.e. bring
+  // over items other devices created, but never change or delete anything local.
+  // (Changes/deletions are only ever applied through the reviewed "Load from
+  // Drive" dialog, so opening the app can't silently lose work.) Reloads only if
+  // something was actually added. Silent on failure (offline / expired token).
+  useEffect(() => {
+    const token = getSavedToken();
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const info = await getSyncInfo(token);
+        if (cancelled || !info?.modifiedTime) return;
+        if (info.modifiedTime <= getSyncedAt()) return; // nothing newer on Drive (ISO strings compare correctly)
+        const data = await downloadSync(token);
+        if (cancelled || !data) return;
+        const added = autoMergeAdditive(data);
+        recordSynced(info.modifiedTime);
+        if (added > 0) window.location.reload();
+      } catch { /* offline / token expired — skip; manual sync still available */ }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Listen for cross-component navigation requests
   useEffect(() => {
     function handleNav(e: Event) {
@@ -618,15 +646,9 @@ export default function App() {
     gdriveInitDone.current = true;
     const token = getSavedToken();
     if (!token) return;
-    // Download from Drive on page load
-    (async () => {
-      try {
-        const data = await downloadSync(token);
-        if (data) restoreFromSyncPayload(data);
-      } catch (err) {
-        if (err instanceof Error && err.message.includes("401")) clearToken();
-      }
-    })();
+    // NB: pulling from Drive is handled by the safe additive-merge effect above.
+    // This effect only handles the PUSH side (auto-backup) so it never blindly
+    // overwrites local data.
     // Upload to Drive when tab becomes hidden (user switches tab or closes)
     const handleVisChange = () => {
       if (document.visibilityState !== "hidden") return;

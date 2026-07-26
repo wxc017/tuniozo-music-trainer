@@ -6,6 +6,7 @@
 import {
   getSavedToken, requestAccessToken, clearToken,
   uploadDriveFile, getDriveFileBlob, deleteDriveFile, findOrCreateFolder, uploadSync,
+  GDRIVE_TOKEN_EVENT,
 } from "./googleDrive";
 import { getVideoUrl } from "./workoutVideoDb";
 import { buildSyncPayload } from "./syncData";
@@ -45,8 +46,15 @@ export function initDriveDataSync(): void {
 }
 function emit(): void { try { window.dispatchEvent(new CustomEvent(CHANGE_EVENT)); } catch { /* jsdom */ } }
 export function onDriveChange(cb: () => void): () => void {
+  // Fire on our own connect/disconnect AND on any shared-token change (e.g. the
+  // user signed in from the Settings panel) so the workout-log toggle always
+  // mirrors the single Google connection.
   window.addEventListener(CHANGE_EVENT, cb);
-  return () => window.removeEventListener(CHANGE_EVENT, cb);
+  window.addEventListener(GDRIVE_TOKEN_EVENT, cb);
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, cb);
+    window.removeEventListener(GDRIVE_TOKEN_EVENT, cb);
+  };
 }
 
 async function folderId(token: string): Promise<string> {

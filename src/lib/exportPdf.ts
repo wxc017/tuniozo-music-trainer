@@ -19,6 +19,10 @@ export interface PdfOptions {
   /** Page orientation.  Defaults to "landscape" (suits wide drum scores);
    *  jianpu passes "portrait" for a printed-lead-sheet feel. */
   orientation?: "portrait" | "landscape";
+  /** Safe vertical break positions (natural SVG y coords, ascending) — page
+   *  slices snap to the largest one within budget so a system / piano brace is
+   *  never cut across a page.  Omit → slice at exact page heights. */
+  cutYs?: number[];
 }
 
 /**
@@ -129,7 +133,16 @@ export async function exportToPdf(
       }
 
       const budget = pageNumWithinSection === 0 ? pageBudgetFirst : pageBudgetFollow;
-      const sliceH = Math.min(budget, naturalH - svgYCursor);
+      let sliceH = Math.min(budget, naturalH - svgYCursor);
+      // Snap the slice end to a safe break (between systems) so a piano brace /
+      // group isn't cut across the page.  If none fits the budget (one system is
+      // taller than a page), fall back to the full-budget slice.
+      if (options.cutYs && options.cutYs.length && svgYCursor + sliceH < naturalH - 0.5) {
+        const sliceEnd = svgYCursor + sliceH;
+        let best = -1;
+        for (const c of options.cutYs) if (c > svgYCursor + 1 && c <= sliceEnd + 0.5) best = Math.max(best, c);
+        if (best > svgYCursor) sliceH = best - svgYCursor;
+      }
       const renderH = sliceH * widthScale;
 
       // Clone + viewBox the clone to the current slice so svg2pdf

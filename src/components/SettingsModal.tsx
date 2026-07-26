@@ -1,7 +1,11 @@
 import { useRef, useState, useEffect } from "react";
 import { exportMusicData, importMusicData, getMusicDataSummary, exportAcademicData, importAcademicData, getAcademicDataSummary } from "@/lib/storage";
-import { isGoogleDriveAvailable, requestAccessToken, uploadSync, downloadSync, getSyncInfo, getSavedToken, clearToken } from "@/lib/googleDrive";
-import { buildSyncPayload, restoreFromSyncPayload } from "@/lib/syncData";
+import { isGoogleDriveAvailable, requestAccessToken, uploadSync, downloadSync, getSyncInfo, getSavedToken, clearToken, GDRIVE_TOKEN_EVENT } from "@/lib/googleDrive";
+import { buildSyncPayload } from "@/lib/syncData";
+import { recordSynced } from "@/lib/syncMarker";
+import { computeSyncDiff, applySyncSelection, autoMergeAdditive, type SyncDiff } from "@/lib/syncMerge";
+import SyncMergeDialog from "./SyncMergeDialog";
+import { getDriveLog, subscribeDriveLog, clearDriveLog, dlog } from "@/lib/driveDebug";
 import {
   isSupported as isFolderSyncSupported,
   getStatus as getFolderSyncStatus,
@@ -50,6 +54,18 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
   const [gdriveToken, setGdriveToken] = useState<string | null>(() => getSavedToken());
   const [gdriveStatus, setGdriveStatus] = useState<"idle" | "busy">("idle");
   const [gdriveSyncTime, setGdriveSyncTime] = useState<string | null>(null);
+  const [driveLog, setDriveLog] = useState<string[]>(() => getDriveLog());
+  const [showDriveLog, setShowDriveLog] = useState(true);
+  // Pending "Load from Drive" merge awaiting user review.
+  const [mergeState, setMergeState] = useState<{ data: string; diff: SyncDiff; modifiedTime: string | null } | null>(null);
+  useEffect(() => subscribeDriveLog(setDriveLog), []);
+  // Reflect a connection made/broken elsewhere (e.g. the workout-log Drive
+  // toggle) so this panel shows the one shared Google sign-in.
+  useEffect(() => {
+    const sync = () => setGdriveToken(getSavedToken());
+    window.addEventListener(GDRIVE_TOKEN_EVENT, sync);
+    return () => window.removeEventListener(GDRIVE_TOKEN_EVENT, sync);
+  }, []);
 
   // Folder sync state
   const [folderStatus, setFolderStatus] = useState<SyncStatus>({ state: "disconnected" });
@@ -73,12 +89,42 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
     setTimeout(() => setMsg(""), 2500);
   };
 
-  // Fetch last sync time on mount if logged in
+  // Record a COMPLETED sync (push or pull): update UI state and the persistent
+  // baseline (Drive modifiedTime + local content signature) so App.tsx's
+  // auto-pull knows this device is in sync as of now. Use this only after data
+  // actually moved — not for the passive mount fetch below.
+  const rememberSync = (modifiedTime: string | null) => {
+    setGdriveSyncTime(modifiedTime);
+    if (modifiedTime) recordSynced(modifiedTime);
+  };
+
+  // 401 = expired → drop the token so the UI returns to "Sign in" for a fresh one.
+  // 403 = missing permission → keep the user signed in (re-signing wouldn't help)
+  // and tell them to revoke + re-grant. Returns true if the error was handled.
+  const handleAuthError = (err: unknown): boolean => {
+    const m = err instanceof Error ? err.message : "";
+    if (m.includes("401")) {
+      setGdriveToken(null); clearToken();
+      flash("Session expired — sign in again");
+      return true;
+    }
+    if (m.includes("403")) {
+      flash("Google Drive denied access. Revoke this app at myaccount.google.com/permissions, then sign in again and allow all Drive permissions.");
+      return true;
+    }
+    return false;
+  };
+
+  // Fetch last sync time on mount if logged in (display only — does NOT set the
+  // sync baseline, since we don't know that local matches Drive here).
   useEffect(() => {
     if (!gdriveToken) return;
     getSyncInfo(gdriveToken).then(info => {
       setGdriveSyncTime(info?.modifiedTime ?? null);
     }).catch(err => {
+      // Only expiry (401) ends the session. A 403 (missing permission) must NOT
+      // wipe the token — that hides the Save/Load buttons and strands the user;
+      // they stay signed in and can retry / re-grant.
       if (err instanceof Error && err.message.includes("401")) {
         setGdriveToken(null); clearToken();
       }
@@ -86,6 +132,7 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
   }, [gdriveToken]);
 
   const handleGoogleSignIn = async () => {
+    dlog("UI: 'Sign in with Google' clicked");
     try {
       setGdriveStatus("busy");
       flash("Signing in…");
@@ -95,16 +142,19 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
       try {
         const data = await downloadSync(token);
         if (data) {
-          restoreFromSyncPayload(data);
+          // Additive merge, not overwrite: bring over Drive items this device
+          // doesn't have, but keep anything local. Use "Load from Drive" for a
+          // full reviewed merge (changes / deletions).
+          const added = autoMergeAdditive(data);
           onDataImported();
-          flash("Signed in and synced!");
+          flash(added > 0 ? `Signed in — merged ${added} item${added === 1 ? "" : "s"} from Drive` : "Signed in and synced!");
         } else {
           // No file yet — upload current data
           await uploadSync(token, buildSyncPayload());
           flash("Signed in — data saved to Drive");
         }
         const info = await getSyncInfo(token);
-        setGdriveSyncTime(info?.modifiedTime ?? null);
+        rememberSync(info?.modifiedTime ?? null);
       } catch { flash("Signed in"); }
     } catch (err) {
       flash(`Sign-in failed: ${err instanceof Error ? err.message : "unknown"}`);
@@ -121,18 +171,46 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
       const payload = buildSyncPayload();
       await uploadSync(gdriveToken, payload);
       const info = await getSyncInfo(gdriveToken);
-      setGdriveSyncTime(info?.modifiedTime ?? null);
+      rememberSync(info?.modifiedTime ?? null);
       flash("Saved to Google Drive!");
     } catch (err) {
-      if (err instanceof Error && err.message.includes("401")) {
-        setGdriveToken(null); clearToken();
-        flash("Session expired — sign in again");
-      } else {
-        flash(`Save failed: ${err instanceof Error ? err.message : "unknown"}`);
-      }
+      if (!handleAuthError(err)) flash(`Save failed: ${err instanceof Error ? err.message : "unknown"}`);
     } finally {
       setGdriveStatus("idle");
     }
+  };
+
+  // Pull from Drive and open a review dialog showing exactly what would be added,
+  // changed, or deleted — so loading a device with fewer items never silently
+  // wipes local-only data. Nothing is written until the user hits Apply.
+  const handleGdriveLoad = async () => {
+    if (!gdriveToken) return;
+    try {
+      setGdriveStatus("busy");
+      flash("Loading from Google Drive…");
+      const data = await downloadSync(gdriveToken);
+      if (!data) { flash("No data on Drive yet — Save first on another device"); return; }
+      const diff = computeSyncDiff(data);
+      const info = await getSyncInfo(gdriveToken);
+      if (!diff.items.length && !diff.values.length) {
+        rememberSync(info?.modifiedTime ?? null); // already in sync; update baseline
+        flash("Already up to date with Drive");
+        return;
+      }
+      setMergeState({ data, diff, modifiedTime: info?.modifiedTime ?? null });
+    } catch (err) {
+      if (!handleAuthError(err)) flash(`Load failed: ${err instanceof Error ? err.message : "unknown"}`);
+    } finally {
+      setGdriveStatus("idle");
+    }
+  };
+
+  const applyMerge = (applied: Set<string>) => {
+    if (!mergeState) return;
+    applySyncSelection(mergeState.data, mergeState.diff, applied);
+    if (mergeState.modifiedTime) recordSynced(mergeState.modifiedTime);
+    flash("Merged — reloading…");
+    setTimeout(() => window.location.reload(), 500);
   };
 
   const handleGdriveSignOut = () => {
@@ -613,12 +691,53 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
                       </div>
                     </button>
                     <button
+                      onClick={handleGdriveLoad}
+                      disabled={gdriveStatus === "busy"}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg text-sm text-[#ccc] hover:text-white transition-colors text-left disabled:opacity-50"
+                    >
+                      <span className="text-base">↓</span>
+                      <div>
+                        <div className="font-medium">Load from Drive</div>
+                        <div className="text-xs text-[#555]">Pull the latest data saved from another device (overwrites local)</div>
+                      </div>
+                    </button>
+                    <button
                       onClick={handleGdriveSignOut}
                       className="w-full px-3 py-1.5 text-xs text-[#555] hover:text-[#999] transition-colors text-left"
                     >
                       Sign out
                     </button>
                   </>
+                )}
+              </div>
+
+              {/* Debug log — diagnoses sign-in / sync issues on devices with no
+                  reachable browser console (e.g. a phone). */}
+              <div className="mt-3 pt-2 border-t border-[#1a1a1a]">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setShowDriveLog(s => !s)}
+                    className="text-[10px] uppercase tracking-widest text-[#555] hover:text-[#888]"
+                  >
+                    {showDriveLog ? "▾" : "▸"} Debug log ({driveLog.length})
+                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={async () => {
+                        try { await navigator.clipboard.writeText(driveLog.join("\n")); flash("Log copied to clipboard"); }
+                        catch { flash("Copy failed — select the text manually"); }
+                      }}
+                      className="text-[10px] text-[#4285f4] hover:underline"
+                    >
+                      Copy
+                    </button>
+                    <button onClick={() => clearDriveLog()} className="text-[10px] text-[#555] hover:text-[#888]">Clear</button>
+                  </div>
+                </div>
+                {showDriveLog && (
+                  <pre className="mt-2 text-[10px] leading-relaxed text-[#8aa88a] bg-black/50 border border-[#222] rounded p-2 max-h-48 overflow-auto whitespace-pre-wrap select-text">
+                    {driveLog.length ? driveLog.join("\n") : "No log yet — tap Sign in with Google and watch here."}
+                  </pre>
                 )}
               </div>
             </div>
@@ -719,6 +838,14 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
           </div>
         </div>
       </div>
+
+      {mergeState && (
+        <SyncMergeDialog
+          diff={mergeState.diff}
+          onApply={applyMerge}
+          onCancel={() => setMergeState(null)}
+        />
+      )}
     </div>
   );
 }
