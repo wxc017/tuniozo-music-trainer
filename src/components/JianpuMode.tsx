@@ -1296,7 +1296,13 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     }
     if (it.decorate) {
       if (it.separate) els.push(...underlinesAt(it.x, it.y, it.underlines, it.id, labelHalfW(it.label)));
-      if (it.dot) els.push(<circle key={`${it.id}-dt`} cx={it.x + 12} cy={it.y - 6} r={2} fill={WHITE} />);
+      if (it.dot) {
+        // Dotted quarter/eighth: show the added half-beat as a dash with a
+        // second dash stacked above it (the eighth mark), not an aug-dot.
+        const dx = it.x + 13;
+        els.push(<line key={`${it.id}-dd1`} x1={dx - 4} x2={dx + 4} y1={it.y - 11} y2={it.y - 11} stroke={WHITE} strokeWidth={2} strokeLinecap="round" />);
+        els.push(<line key={`${it.id}-dd2`} x1={dx - 4} x2={dx + 4} y1={it.y - 5} y2={it.y - 5} stroke={WHITE} strokeWidth={2} strokeLinecap="round" />);
+      }
       for (let dsh = 1; dsh <= it.dashes; dsh++) {
         const dashSlot = it.startSlot + dsh * 8;
         if (dashSlot >= it.total) break;
