@@ -3,6 +3,7 @@ import "./workout/workout.css";
 import SessionLogger from "./workout/SessionLogger";
 import WorkoutHistory from "./workout/WorkoutHistory";
 import TemplatesView from "./workout/TemplatesView";
+import FloatingRestTimer from "./workout/FloatingRestTimer";
 import { useWorkoutData, startWorkout, seedExercisesOnce } from "@/lib/workoutStore";
 import { registerRestSW } from "@/lib/restNotify";
 import { exportBackup } from "@/lib/workoutBackup";
@@ -39,35 +40,41 @@ export default function WorkoutLog() {
     }
   };
 
-  if (openId) return <SessionLogger workoutId={openId} onClose={() => setOpenId(null)} />;
-
   return (
-    <div className="wl-root flex flex-col h-full">
-      <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--wl-line)" }}>
-        <div>
-          <div className="wl-eyebrow">Training</div>
-          <div className="wl-h1">Workout Log</div>
-        </div>
-        <div className="wl-seg ml-auto">
-          {(["today", "calendar", "templates"] as View[]).map(v => (
-            <button key={v} data-on={view === v} onClick={() => setView(v)}>{v}</button>
-          ))}
-        </div>
-      </div>
+    <>
+      {openId ? (
+        <SessionLogger workoutId={openId} onClose={() => setOpenId(null)} />
+      ) : (
+        <div className="wl-root flex flex-col h-full">
+          <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--wl-line)" }}>
+            <div>
+              <div className="wl-eyebrow">Training</div>
+              <div className="wl-h1">Workout Log</div>
+            </div>
+            <div className="wl-seg ml-auto">
+              {(["today", "calendar", "templates"] as View[]).map(v => (
+                <button key={v} data-on={view === v} onClick={() => setView(v)}>{v}</button>
+              ))}
+            </div>
+          </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 p-4">
-        {view === "today" && <TodayView workouts={workouts} onOpen={setOpenId} />}
-        {view === "calendar" && <WorkoutHistory onOpenWorkout={setOpenId} />}
-        {view === "templates" && <TemplatesView onStart={setOpenId} />}
-      </div>
+          <div className="flex-1 overflow-y-auto min-h-0 p-4">
+            {view === "today" && <TodayView workouts={workouts} onOpen={setOpenId} />}
+            {view === "calendar" && <WorkoutHistory onOpenWorkout={setOpenId} />}
+            {view === "templates" && <TemplatesView onStart={setOpenId} />}
+          </div>
 
-      {/* Persistent footer: back up the whole log (data + videos) to a file. */}
-      <div className="flex-shrink-0 p-3" style={{ borderTop: "1px solid var(--wl-line)" }}>
-        <button onClick={doExport} disabled={exporting} className="wl-btn w-full">
-          {exporting ? "Preparing backup…" : "⤓ Export backup (data + videos)"}
-        </button>
-      </div>
-    </div>
+          {/* Persistent footer: back up the whole log (data + videos) to a file. */}
+          <div className="flex-shrink-0 p-3" style={{ borderTop: "1px solid var(--wl-line)" }}>
+            <button onClick={doExport} disabled={exporting} className="wl-btn w-full">
+              {exporting ? "Preparing backup…" : "⤓ Export backup (data + videos)"}
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Floating rest timer — persists across views, above the video popup. */}
+      <FloatingRestTimer />
+    </>
   );
 }
 

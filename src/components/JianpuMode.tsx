@@ -18,7 +18,7 @@ import {
   loadProjects, saveProject,
 } from "@/lib/noteEntryData";
 import {
-  jianpuToPitch, jianpuGlyphFor, edoNoteLabel,
+  jianpuToPitch, jianpuGlyphFor, edoNoteLabel, regularSolfaSyllable,
   NOTATION_SYSTEM_LABELS, type NotationSystem,
 } from "@/lib/jianpu";
 import { exportToPdf } from "@/lib/exportPdf";
@@ -378,6 +378,12 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (project) { const u = { ...project, displaySystem: s, notes }; saveProject(u); setProject(u); }
   }, [project, notes]);
 
+  // Sol-fa syllable style (12-EDO): spectrum (Da/Na/Fa) · major (do re mi) · minor.
+  const setSolfaStyle = useCallback((s: "spectrum" | "major" | "minor") => {
+    if (!project) return;
+    const u = { ...project, solfaStyle: s, notes }; saveProject(u); setProject(u);
+  }, [project, notes]);
+
   // Toggle the piano brace for the cursor's section only (keyed by its start bar).
   const togglePianoBrace = useCallback(() => {
     if (!project) return;
@@ -437,6 +443,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   const makeNote = useCallback((degree: number, isRest: boolean, dur: Duration, dot: boolean,
                                 voice: number, measure: number, slot: number): NoteData => {
     const jp = isRest ? null : jianpuToPitch(degree, octave, undefined, fifths);
+    // Bake the current movable-do mode into the note (so a later toggle of the
+    // entry default never rewrites notes already on the page).
+    const style = project?.solfaStyle;
     return {
       id: crypto.randomUUID(),
       measure, startSlot: slot, duration: dur, dotted: dot || undefined,
@@ -444,8 +453,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       pitch: jp ? jp.pitch : "b/4",
       jianpuDegree: isRest ? 0 : degree,
       jianpuOctave: isRest ? undefined : octave,
+      solfaMode: isRest || style === "spectrum" || !style ? undefined : style,
     };
-  }, [octave]);
+  }, [octave, project?.solfaStyle]);
 
   const placeNote = useCallback((degree: number, isRest: boolean) => {
     if (!project) return;
@@ -467,28 +477,24 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   }, [project, cursor, duration, dotted, notes, makeNote, commit, advanceCursor, embedded]);
 
   const inputDigit = useCallback((degree: number, isRest: boolean) => {
+    const { voice, measure, slot } = cursor;
     if (!isRest) {
-      const { voice, measure, slot } = cursor;
-      const covers = (v: number) => notes.some(n => (n.voice ?? 0) === v && n.measure === measure && !n.isRest
+      // Over an existing note in this voice → change its degree in place (keep
+      // its duration / octave), rather than dropping into another voice.
+      const host = notes.find(n => (n.voice ?? 0) === voice && n.measure === measure && !n.isRest
         && slot >= n.startSlot && slot < n.startSlot + noteSlots(n));
-      if (covers(voice)) {
-        // Two notes may never share a beat in one voice — a simultaneous note
-        // always drops into the next free voice (no chord stacking anywhere).
-        let v = voice + 1;
-        while (v < MAX_VOICES && covers(v)) v++;
-        const newLen = DURATION_SLOTS[duration] * (dotted ? 1.5 : 1);
-        const kept = notes.filter(n => {
-          if ((n.voice ?? 0) !== v || n.measure !== measure) return true;
-          return n.startSlot + noteSlots(n) <= slot || n.startSlot >= slot + newLen;
-        });
-        commit([...kept, makeNote(degree, false, duration, dotted, v, measure, slot)]);
+      if (host) {
+        const jp = jianpuToPitch(degree, host.jianpuOctave ?? 0, host.jianpuAccidental, fifths);
+        const style = project?.solfaStyle;
+        const mode = style === "spectrum" || !style ? undefined : style;
+        commit(notes.map(n => n.id === host.id ? { ...n, jianpuDegree: degree, pitch: jp.pitch, solfaMode: mode } : n));
         setSelectedIds([]);
-        setCursor({ voice: v, measure, slot });
+        setCursor({ voice, measure, slot: host.startSlot });
         return;
       }
     }
     placeNote(degree, isRest);
-  }, [cursor, notes, duration, dotted, makeNote, commit, placeNote]);
+  }, [cursor, notes, commit, placeNote, project?.solfaStyle]);
 
   const deleteSelectedOrCursor = useCallback(() => {
     if (selectedIds.length) {
@@ -944,6 +950,12 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     interface RI extends RenderItem {}
     const items: RI[] = [];
     const positions: NotePos[] = [];
+    // Sol-fa syllable: a note carrying a movable-do mode (baked at input) reads
+    // as Major/Minor do-re-mi; otherwise the universal Spectrum-ege syllable.
+    const labelOf = (degree: number, alt: number, mode: "major" | "minor" | undefined): { text: string; prefix?: string } =>
+      (system === "solfa" && edo === 12 && mode)
+        ? { text: regularSolfaSyllable(degree, alt, mode === "minor") }
+        : edoNoteLabel(system, degree, alt, edo);
     // Per voice+measure list used to build continuous underline beams.
     const byVM = new Map<string, { startSlot: number; slots: number; x: number; y: number; underlines: number; isRest: boolean; separate: boolean; label: string }[]>();
 
@@ -956,20 +968,22 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       const first = g[0];
       const voice = first.voice ?? 0;
       const total = totalSlotsOf(first.measure);
-      // Place the note at the CENTRE of its rhythmic cell (start + half its span)
-      // so a bar of equal notes sits symmetrically — no phantom trailing slot.
-      const x = slotToX(first.measure, first.startSlot + noteSlots(first) / 2, total);
+      const glyph = jianpuGlyphFor(first.duration, first.dotted);
+      // Centre the head in its cell so equal notes sit symmetrically.  A held
+      // note (half/whole) prints as "head – – –" with the head in beat 1, so its
+      // head centres in that first beat (8 slots), not over the whole span.
+      const headSlots = glyph.dashes > 0 ? 8 : noteSlots(first);
+      const x = slotToX(first.measure, first.startSlot + headSlots / 2, total);
       const base = baselineY(voice, first.measure);
       const sorted = [...g].sort((a, b) => pitchRank(a) - pitchRank(b));
-      const glyph = jianpuGlyphFor(first.duration, first.dotted);
-      const firstLabel = first.isRest ? "0" : edoNoteLabel(system, first.jianpuDegree ?? 1, altOf(first), edo).text;
+      const firstLabel = first.isRest ? "0" : labelOf(first.jianpuDegree ?? 1, altOf(first), first.solfaMode).text;
       const vmKey = `${voice}:${first.measure}`;
       (byVM.get(vmKey) ?? byVM.set(vmKey, []).get(vmKey)!).push(
         { startSlot: first.startSlot, slots: noteSlots(first), x, y: base, underlines: glyph.underlines, isRest: first.isRest, separate: !!first.separateUnderline, label: firstLabel });
       sorted.forEach((n, i) => {
         const y = base - i * CHORD_DY;
         positions.push({ id: n.id, x, y });
-        const lbl = n.isRest ? null : edoNoteLabel(system, n.jianpuDegree ?? 1, altOf(n), edo);
+        const lbl = n.isRest ? null : labelOf(n.jianpuDegree ?? 1, altOf(n), n.solfaMode);
         items.push({
           id: n.id, x, y,
           label: lbl ? lbl.text : "0",
@@ -1145,7 +1159,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       for (let z = 0; z < count; z++) {
         const zslot = it.startSlot + z * 8;
         if (z > 0 && zslot >= it.total) break;
-        const zx = z === 0 ? it.x : slotToX(it.measure, zslot, it.total);
+        const zx = z === 0 ? it.x : slotToX(it.measure, zslot + 4, it.total);   // centre each beat
         els.push(<circle key={`${it.id}-r-${z}`} cx={zx} cy={it.y - 7} r={2.5} fill={WHITE} />);
         els.push(...underlinesAt(zx, it.y, it.underlines, `${it.id}-${z}`));
       }
@@ -1175,7 +1189,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       for (let dsh = 1; dsh <= it.dashes; dsh++) {
         const dashSlot = it.startSlot + dsh * 8;
         if (dashSlot >= it.total) break;
-        const dx = slotToX(it.measure, dashSlot, it.total);
+        const dx = slotToX(it.measure, dashSlot + 4, it.total);   // centre each held beat
         els.push(<text key={`${it.id}-d${dsh}`} x={dx} y={it.y} fill={WHITE}
           fontSize={NUM_FONT} fontFamily={JIANPU_FONT} textAnchor="middle">–</text>);
       }
@@ -1229,6 +1243,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
           : undefined;
         svgSystems.push(<path key={`brace-${m}`} d={bracePath(left - 2, bTop, bBot, tipY)}
           fill="none" stroke={WHITE} strokeWidth={1.4} />);
+        // Accent dot at the split point, so the hand/voice divide is obvious.
+        if (tipY != null) svgSystems.push(
+          <circle key={`brace-dot-${m}`} cx={left - 2} cy={tipY} r={3} fill={ACCENT} />);
       }
     }
   }
@@ -1238,7 +1255,8 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   // the dashed box exactly over the glyph now that notes are cell-centred.
   const cursorHost = notes.find(n => (n.voice ?? 0) === cursor.voice && n.measure === cursor.measure && !n.isRest
     && cursor.slot >= n.startSlot && cursor.slot < n.startSlot + noteSlots(n));
-  const cursorCenterSlot = cursorHost ? cursorHost.startSlot + noteSlots(cursorHost) / 2 : cursor.slot + gridSnap / 2;
+  const cursorHeadSlots = cursorHost ? (jianpuGlyphFor(cursorHost.duration, cursorHost.dotted).dashes > 0 ? 8 : noteSlots(cursorHost)) : gridSnap;
+  const cursorCenterSlot = cursorHost ? cursorHost.startSlot + cursorHeadSlots / 2 : cursor.slot + gridSnap / 2;
   const cursorX = slotToX(cursor.measure, cursorCenterSlot, totalSlotsOf(cursor.measure));
   const cursorY = baselineY(cursor.voice, cursor.measure);
 
@@ -1306,6 +1324,22 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
               {NOTATION_SYSTEM_LABELS[system]} ⇄
             </button>
           )}
+          {/* Sol-fa syllable style (12-EDO only) — sets what degrees 1–7 read as. */}
+          {system === "solfa" && edo === 12 && (
+            <div className="flex gap-0.5" title="Sol-fa syllables for degrees 1–7">
+              {(["major", "minor"] as const).map(s => {
+                const on = (project.solfaStyle ?? "spectrum") === s;
+                return (
+                  <button key={s} onClick={() => setSolfaStyle(on ? "spectrum" : s)}
+                    className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${on
+                      ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]"
+                      : "bg-[#111] border-[#2a2a2a] text-[#888] hover:text-[#ccc] hover:border-[#3a3a5a]"}`}>
+                    {s === "major" ? "Diatonic Major" : "Diatonic Minor"}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>}
 
@@ -1330,10 +1364,6 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
 
           {/* Transient overlay — never captured by PDF export */}
           <svg width={dispW} height={dispH} viewBox={`0 0 ${width} ${height}`} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
-            {notes.length === 0 && (
-              <text x={cursorX + 24} y={cursorY} fill="#555"
-                fontSize={12} fontFamily="Helvetica, Arial, sans-serif">type 1–7 to start</text>
-            )}
             {selectedIds.map(id => {
               const p = rendered.positions.find(pp => pp.id === id);
               if (!p) return null;

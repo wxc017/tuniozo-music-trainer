@@ -134,33 +134,32 @@
 /* ── Mobile: expand EVERYTHING for touch + readability. `!important`
       overrides the compact inline/utility sizes used on desktop so phones get
       roomy controls and legible text. ── */
-/* Breakpoint is deliberately high (1200px) so it still matches when Chrome's
-   "Desktop site" mode forces a ~980px viewport — otherwise none of this
-   applies on the phone and everything renders at tiny desktop sizes. */
-@media (max-width: 1200px) {
-  .wl-root .wl-h1 { font-size: 34px !important; }
-  .wl-root .wl-h2 { font-size: 24px !important; }
-  .wl-root .wl-eyebrow { font-size: 15px !important; }
-  .wl-root .wl-collabel { font-size: 15px !important; }
+/* Phone breakpoint — modestly enlarge controls + text for touch/readability.
+   820px catches phones (portrait ~390-430, small landscape) but not laptops. */
+@media (max-width: 820px) {
+  .wl-root .wl-h1 { font-size: 22px !important; }
+  .wl-root .wl-h2 { font-size: 17px !important; }
+  .wl-root .wl-eyebrow { font-size: 12px !important; }
+  .wl-root .wl-collabel { font-size: 11px !important; }
   .wl-root .wl-cell {
-    padding: 15px 6px !important; font-size: 21px !important;
-    min-height: 58px; border-radius: 11px;
+    padding: 10px 6px !important; font-size: 16px !important;
+    min-height: 44px; border-radius: 10px;
   }
-  .wl-root .wl-input { padding: 16px 16px !important; font-size: 20px !important; }
-  .wl-root .wl-btn { padding: 15px 18px !important; font-size: 19px !important; }
-  .wl-root .wl-seg { padding: 5px; }
-  .wl-root .wl-seg button { padding: 13px 20px !important; font-size: 18px !important; }
-  .wl-root .wl-tag { font-size: 15px !important; padding: 5px 12px !important; }
-  .wl-root .wl-add { padding: 22px !important; font-size: 19px !important; }
-  .wl-root .wl-setrow { gap: 9px !important; }
+  .wl-root .wl-input { padding: 12px 14px !important; font-size: 16px !important; }
+  .wl-root .wl-btn { padding: 11px 15px !important; font-size: 15px !important; }
+  .wl-root .wl-seg { padding: 4px; }
+  .wl-root .wl-seg button { padding: 10px 16px !important; font-size: 14px !important; }
+  .wl-root .wl-tag { font-size: 12px !important; padding: 4px 10px !important; }
+  .wl-root .wl-add { padding: 16px !important; font-size: 15px !important; }
+  .wl-root .wl-setrow { gap: 8px !important; }
 
-  /* Bump the pervasive small utility text sizes so nothing is squint-tiny. */
-  .wl-root .text-\[9px\]  { font-size: 16px !important; }
-  .wl-root .text-\[10px\] { font-size: 17px !important; }
-  .wl-root .text-\[11px\] { font-size: 18px !important; }
-  .wl-root .text-\[12px\] { font-size: 19px !important; }
-  .wl-root .text-\[13px\] { font-size: 19px !important; }
-  .wl-root .text-xs { font-size: 18px !important; }
-  .wl-root .text-sm { font-size: 20px !important; }
-  .wl-root .text-base { font-size: 22px !important; }
+  /* Nudge the pervasive small utility text up so nothing is squint-tiny. */
+  .wl-root .text-\[9px\]  { font-size: 12px !important; }
+  .wl-root .text-\[10px\] { font-size: 13px !important; }
+  .wl-root .text-\[11px\] { font-size: 13px !important; }
+  .wl-root .text-\[12px\] { font-size: 14px !important; }
+  .wl-root .text-\[13px\] { font-size: 14px !important; }
+  .wl-root .text-xs { font-size: 13px !important; }
+  .wl-root .text-sm { font-size: 15px !important; }
+  .wl-root .text-base { font-size: 16px !important; }
 }

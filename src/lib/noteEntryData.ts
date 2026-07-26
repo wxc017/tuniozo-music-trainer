@@ -126,6 +126,10 @@ export interface NoteData {
   separateUnderline?: boolean;
   /** Jianpu-only: staccato — a dot drawn above the number/syllable. */
   staccato?: boolean;
+  /** Sol-fa (12-EDO) movable-do mode baked in at input time: "major" (Do Re Mi…)
+   *  or "minor" (Do Re Me…).  Absent → the universal Spectrum-ege syllable.
+   *  Stored per note so later changing the entry default never rewrites it. */
+  solfaMode?: "major" | "minor";
 }
 
 /** Actual slot count occupied by a note, accounting for the dot (1.5×). */
@@ -190,6 +194,10 @@ export interface NoteEntryProject {
   /** Jianpu-only display system: numbered ("jianpu") or tonic sol-fa
    *  ("solfa").  Display-only — the underlying degree data is identical. */
   displaySystem?: "jianpu" | "solfa";
+  /** Sol-fa syllable style (12-EDO): "spectrum" (region-centered Da/Na/Fa,
+   *  default), "major" (Do Re Mi Fa Sol La Ti), or "minor" (Do Re Me Fa Sol Le
+   *  Te).  Only remaps how degrees 1–7 read. */
+  solfaStyle?: "spectrum" | "major" | "minor";
   /** Jianpu-only number of voice lines (≥ 2).  Grows when the user adds a
    *  voice; empty extra voices collapse away.  Absent → 2.  Legacy/global
    *  fallback — per-section counts in `perSectionVoiceCount` supersede it. */

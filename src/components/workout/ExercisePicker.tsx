@@ -110,7 +110,7 @@ export default function ExercisePicker({ onPick, onCancel }: Props) {
             return (
               <div key={equip}>
                 <div className="sticky top-0 wl-mono"
-                  style={{ background: "var(--wl-surface)", borderBottom: "1px solid var(--wl-line)", padding: "12px 16px", fontSize: 18, fontWeight: 700, letterSpacing: ".04em", color: "var(--wl-accent)" }}>
+                  style={{ background: "var(--wl-surface)", borderBottom: "1px solid var(--wl-line)", padding: "10px 16px", fontSize: 15, fontWeight: 700, letterSpacing: ".04em", color: "var(--wl-accent)" }}>
                   {equip}
                 </div>
                 {g.assisted.length > 0 && <SubGroup title="CW assisted" rows={g.assisted} onPick={onPick} />}
@@ -139,20 +139,20 @@ function SubGroup({ title, rows, onPick }: { title: string; rows: Row[]; onPick:
   return (
     <div>
       {/* Subheading — indented one level under the equipment header. */}
-      <div className="wl-mono" style={{ paddingLeft: 32, paddingRight: 16, paddingTop: 10, paddingBottom: 4, fontSize: 14, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--wl-accent-ink)", opacity: .85 }}>
+      <div className="wl-mono" style={{ paddingLeft: 30, paddingRight: 16, paddingTop: 8, paddingBottom: 3, fontSize: 11, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--wl-accent-ink)", opacity: .85 }}>
         {title}
       </div>
       {rows.map(e => (
         /* Exercise — indented a second level. */
         <div key={e.id} className="w-full flex items-center gap-2 hover:brightness-125"
-          style={{ paddingLeft: 48, paddingRight: 14, paddingTop: 15, paddingBottom: 15, borderBottom: "1px solid color-mix(in srgb, var(--wl-line) 50%, transparent)" }}>
+          style={{ paddingLeft: 44, paddingRight: 14, paddingTop: 11, paddingBottom: 11, borderBottom: "1px solid color-mix(in srgb, var(--wl-line) 50%, transparent)" }}>
           <button onClick={() => onPick({ name: e.name, mode: e.mode })} className="flex-1 text-left flex items-center gap-3">
-            <span style={{ color: "var(--wl-text)", fontSize: 21 }}>{e.disp}</span>
-            <span className="ml-auto wl-mono" style={{ fontSize: 13, color: "var(--wl-faint)" }}>
+            <span style={{ color: "var(--wl-text)", fontSize: 16 }}>{e.disp}</span>
+            <span className="ml-auto wl-mono" style={{ fontSize: 12, color: "var(--wl-faint)" }}>
               {TRACKING_MODES.find(m => m.id === e.mode)?.short}
             </span>
           </button>
-          <button onClick={() => deleteCustomExercise(e.id)} className="wl-icon-btn wl-icon-btn--danger" style={{ fontSize: 18, padding: "0 6px" }} title="Remove saved exercise">✕</button>
+          <button onClick={() => deleteCustomExercise(e.id)} className="wl-icon-btn wl-icon-btn--danger" style={{ fontSize: 16, padding: "0 6px" }} title="Remove saved exercise">✕</button>
         </div>
       ))}
     </div>

@@ -467,6 +467,8 @@ export default function App() {
   const [spectrumRoot, setSpectrumRoot] = useState(0);
   const [spectrumDroneFifth, setSpectrumDroneFifth] = useLS<boolean>("lt_spectrum_drone_fifth", false);
   const [section, setSection] = useLS<string>("lt_app_section", "ear-trainer");
+  // Collapse the top gamemode-tab row (e.g. to focus on the Workout Log).
+  const [navHidden, setNavHidden] = useLS<boolean>("lt_nav_hidden", false);
   // Permutations mode subtab (Split Permutations ↔ Paradiddle Orchestrations).
   const [permSubtab, setPermSubtab] = useLS<"split" | "paradiddle">("lt_app_perm_subtab", "split");
   // Migrate the old section id so a persisted "split-permutations" still lands
@@ -1017,7 +1019,14 @@ export default function App() {
 
           {/* Row 1: Title + Section selector + Export/Import + EDO */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setNavHidden(h => !h)}
+              className="flex-shrink-0 px-2 py-1 bg-[#1a1a1a] border border-[#2a2a2a] text-[#888] hover:text-white rounded text-xs font-medium transition-colors"
+              title={navHidden ? "Show mode tabs" : "Hide mode tabs"}
+            >
+              {navHidden ? "☰ Modes" : "⟨ Hide"}
+            </button>
+            <div className="flex items-center gap-2 flex-wrap" style={{ display: navHidden ? "none" : undefined }}>
               {academicMode ? (
                 <select
                   value={section}

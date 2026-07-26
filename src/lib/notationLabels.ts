@@ -9,8 +9,9 @@ import { customSolfege } from "./customSolfege";
 import { NOTATION_SYSTEMS } from "./notationSystems";
 
 export const SCHULTER = "Schulter";
-// The single solfège system used everywhere now — the region-centered
-// "Spectrum-ege" from the Solfège chart (customSolfege).
+// The universal solfège system used everywhere now — the region-centered
+// "Spectrum-ege" from the Solfège chart (customSolfege).  (Regular movable-do
+// Major/Minor lives in the Sol-fa scoring editor, not here.)
 export const SPECTRUM_SOLFEGE = "Spectrum-ege";
 // "Schulter V2" — the region/Gould absolute NOTE system (see intervalCodes
 // sizedNoteName).  For interval labels it behaves like Schulter (the spectrum
@@ -35,7 +36,7 @@ export function notationsForEdo(edo: number): string[] {
     .filter(n => authorFor(n) !== null);
   return [SCHULTER, SCHULTER_V2, ...tidyNames(mined)];
 }
-/** Solfège is a single fixed system now — Spectrum-ege (region-centered). */
+/** Solfège is a single universal system now — Spectrum-ege (region-centered). */
 export function solfegesForEdo(_edo: number): string[] {
   return [SPECTRUM_SOLFEGE];
 }

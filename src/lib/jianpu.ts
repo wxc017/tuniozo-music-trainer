@@ -253,3 +253,21 @@ export function edoNoteLabel(
   else if (alteration < 0) prefix = (edo === 12 ? "♭" : "v").repeat(-alteration);
   return { text: String(degree), prefix };
 }
+
+// ── Standard movable-do solfège (12-EDO only) ────────────────────────────────
+// Remaps what degrees 1–7 read as: Major → Do Re Mi Fa Sol La Ti; Minor (natural)
+// → Do Re Me Fa Sol Le Te.  Alterations shift along the 12 chromatic syllables.
+const REG_MAJOR_DEG = [0, 2, 4, 5, 7, 9, 11];   // semitone of degrees 1–7 (major)
+const REG_MINOR_DEG = [0, 2, 3, 5, 7, 8, 10];   // …natural minor (♭3 ♭6 ♭7)
+const REG_MAJOR_CHROM = ["Do", "Di", "Re", "Ri", "Mi", "Fa", "Fi", "Sol", "Si", "La", "Li", "Ti"];
+const REG_MINOR_CHROM = ["Do", "Ra", "Re", "Me", "Mi", "Fa", "Se", "Sol", "Le", "La", "Te", "Ti"];
+
+export type SolfaStyle = "spectrum" | "major" | "minor";
+
+/** Regular do-re-mi syllable for degree 1–7 (+ alteration) in Major or Minor. */
+export function regularSolfaSyllable(degree: number, alteration: number, minor: boolean): string {
+  const d = (((degree - 1) % 7) + 7) % 7;
+  const base = (minor ? REG_MINOR_DEG : REG_MAJOR_DEG)[d];
+  const semi = (((base + alteration) % 12) + 12) % 12;
+  return (minor ? REG_MINOR_CHROM : REG_MAJOR_CHROM)[semi];
+}

@@ -69,7 +69,7 @@ export default function NotationPicker({
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#8888c0] mb-1.5">Solfège</h3>
             <p className="text-xs text-[#888]">
-              Always <span className="text-[#cfe6ff] font-semibold">Spectrum-ege</span> — the region-centered syllables from the Solfège chart, used everywhere.
+              Always <span className="text-[#cfe6ff] font-semibold">Spectrum-ege</span> — the region-centered syllables from the Solfège chart, used everywhere.  (Regular movable-do Major / Minor lives in the Sol-fa editor.)
             </p>
           </div>
         </div>

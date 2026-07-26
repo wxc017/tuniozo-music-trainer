@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import SetVideo from "./SetVideo";
 import ExercisePicker, { type PickedExercise } from "./ExercisePicker";
-import RestTimer from "./RestTimer";
+import { startRest } from "@/lib/restTimerStore";
 import {
   upsertWorkout, makeExercise, makeSet, deleteWorkout,
   templateFromWorkout, saveTemplate, useWorkoutData,
@@ -10,7 +10,6 @@ import {
   type Workout, type LoggedExercise, type WorkoutSet, type WeightUnit, type TrackingMode,
   TRACKING_MODES, modeShowsWeight, modeShowsReps, modeShowsTime,
 } from "@/lib/workoutTypes";
-import { ensureNotifyPermission } from "@/lib/restNotify";
 
 // Live session logger — the phone-first screen. Every change writes straight
 // through to the store (which auto-syncs). Columns adapt to each exercise's
@@ -22,7 +21,6 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
   const { workouts, prefs } = useWorkoutData();
   const workout = useMemo(() => workouts.find(w => w.id === workoutId), [workouts, workoutId]);
   const [picking, setPicking] = useState(false);
-  const [restForSet, setRestForSet] = useState<{ sec: number } | null>(null);
 
   if (!workout) {
     return <div className="p-6 wl-muted">Workout not found. <button className="underline" style={{ color: "var(--wl-accent)" }} onClick={onClose}>Back</button></div>;
@@ -83,7 +81,7 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
             onRemove={() => removeExercise(ex.id)} onSetMode={m => setMode(ex.id, m)}
             onAddSet={() => addSet(ex.id)} onRemoveSet={sid => removeSet(ex.id, sid)}
             onPatchSet={(sid, sp) => patchSet(ex.id, sid, sp)}
-            onRest={sec => { void ensureNotifyPermission(); setRestForSet({ sec }); }} />
+            onRest={sec => startRest(sec)} />
         ))}
 
         <button onClick={() => setPicking(true)} className="wl-add">+ Add exercise</button>
@@ -96,7 +94,6 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
       </div>
 
       {picking && <ExercisePicker onPick={addExercise} onCancel={() => setPicking(false)} />}
-      {restForSet && <RestTimer seconds={restForSet.sec} onDone={() => setRestForSet(null)} onCancel={() => setRestForSet(null)} />}
     </div>
   );
 }
