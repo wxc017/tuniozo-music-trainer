@@ -789,10 +789,14 @@ const stepLabel = (s: number[]): string => s.map(x => x + 1).join("·");
 const PENTA_STEPS = [0, 1, 2, 4, 5];
 const pentaStep = (p: number): number => PENTA_STEPS[mod(p, 5)] + 7 * Math.floor(p / 5);
 const pentaLine = (idxs: number[]): number[] => idxs.map(pentaStep);
-// A full interval lap: the [degree, degree+k] pair from seven successive scale
-// positions (14 notes), so it runs the whole cycle instead of stopping after one
-// octave. e.g. 4ths (k=3) → 1 5 2 6 3 1 5 2 6 3 1 5 2 6.
-const pentaInterval = (k: number): number[] => pentaLine(Array.from({ length: 7 }, (_, d) => [d, d + k]).flat());
+// A full interval cycle for a scale of `L` notes: the [degree, degree+k] pair
+// from every degree (0…L-1), then a final tonic (index L) where the cycle
+// returns. 2L+1 notes. Used for BOTH the pentatonic and the diatonic
+// scale-in-intervals so they share one logic. e.g. penta 4ths (L=5, k=3) →
+// 1 5 2 6 3 1 5 2 6 3 1.
+const intervalPairs = (L: number, k: number): number[] =>
+  [...Array.from({ length: L }, (_, d) => [d, d + k]).flat(), L];
+const pentaInterval = (k: number): number[] => pentaLine(intervalPairs(5, k));
 const PENTA_PATTERNS: { label: string; steps: number[] }[] = [
   { label: "penta ↑↓",        steps: pentaLine([0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0]) },
   { label: "penta 3rds",      steps: pentaInterval(2) },
@@ -1704,12 +1708,11 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       { cat: "scalar", sub: "scale", title: "SCALE", seqs: [
         lineSeq("up", scale, [0, 1, 2, 3, 4, 5, 6, 7]),
         lineSeq("down", scale, [7, 6, 5, 4, 3, 2, 1, 0]),
-        lineSeq("up · down", scale, [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0]),
       ] },
       { cat: "scalar", sub: "scale", title: "SCALE IN INTERVALS (3rds–5ths)", seqs: [
-        lineSeq("3rds", scale, intervalCycle(2)),
-        lineSeq("4ths", scale, intervalCycle(3)),
-        lineSeq("5ths", scale, intervalCycle(4)),
+        lineSeq("3rds", scale, intervalPairs(7, 2)),
+        lineSeq("4ths", scale, intervalPairs(7, 3)),
+        lineSeq("5ths", scale, intervalPairs(7, 4)),
       ] },
       ...PATTERN_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "patterns" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(seqPattern(p.cell)))) })),
       { cat: "scalar", sub: "patterns", title: "PERMUTATIONS · 3-NOTE (1·2·3)", seqs: PERM_3.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqPattern(p)))) },
