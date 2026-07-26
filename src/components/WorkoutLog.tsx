@@ -9,6 +9,7 @@ import { useWorkoutData, startWorkout, seedExercisesOnce } from "@/lib/workoutSt
 import { registerRestSW } from "@/lib/restNotify";
 import { exportBackup, importBackupFromFile } from "@/lib/workoutBackup";
 import { isDriveConnected, connectDrive, disconnectDrive, onDriveChange, initDriveDataSync } from "@/lib/workoutDrive";
+import { backupWorkoutsToDrive, restoreWorkoutsFromDrive } from "@/lib/workoutDriveBackup";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -29,6 +30,7 @@ export default function WorkoutLog() {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [driveOn, setDriveOn] = useState(isDriveConnected());
+  const [driveBusy, setDriveBusy] = useState<null | "backup" | "restore">(null);
   const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { seedExercisesOnce(); void registerRestSW(); initDriveDataSync(); }, []);
@@ -49,6 +51,35 @@ export default function WorkoutLog() {
       window.alert(`Export failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setExporting(false);
+    }
+  };
+
+  // Full zip backup straight to the "Tunizo Workouts" Drive folder — data AND
+  // video blobs, in one file that's updated in place. Reliable cross-device path
+  // that the JSON sync can't cover (videos live in IndexedDB).
+  const doBackupToDrive = async () => {
+    setDriveBusy("backup");
+    try {
+      const { videoCount, bytes } = await backupWorkoutsToDrive();
+      window.alert(`Backed up to Google Drive (${videoCount} video${videoCount === 1 ? "" : "s"}, ${(bytes / 1e6).toFixed(1)} MB).`);
+    } catch (err) {
+      window.alert(`Backup to Drive failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setDriveBusy(null);
+    }
+  };
+
+  const doRestoreFromDrive = async () => {
+    if (!window.confirm("Restore the workout log from your Drive backup? New items are merged in (nothing is deleted).")) return;
+    setDriveBusy("restore");
+    try {
+      const { found, result } = await restoreWorkoutsFromDrive();
+      if (!found) { window.alert("No Drive backup found yet — tap “Back up to Drive” on another device first."); return; }
+      window.alert(`Restored from Drive: ${result!.workouts} workouts, ${result!.exercises} exercises, ${result!.templates} templates, ${result!.videos} videos.`);
+    } catch (err) {
+      window.alert(`Restore from Drive failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setDriveBusy(null);
     }
   };
 
@@ -97,6 +128,16 @@ export default function WorkoutLog() {
             <button onClick={toggleDrive} className={`wl-btn w-full ${driveOn ? "wl-btn--ghost" : ""}`}>
               {driveOn ? "☁ Google Drive connected — tap to disconnect" : "☁ Connect Google Drive (offload videos)"}
             </button>
+            {driveOn && (
+              <div className="flex gap-2">
+                <button onClick={doBackupToDrive} disabled={driveBusy !== null} className="wl-btn wl-btn--primary flex-1">
+                  {driveBusy === "backup" ? "Backing up…" : "☁⤓ Back up to Drive"}
+                </button>
+                <button onClick={doRestoreFromDrive} disabled={driveBusy !== null} className="wl-btn flex-1">
+                  {driveBusy === "restore" ? "Restoring…" : "☁⤒ Restore from Drive"}
+                </button>
+              </div>
+            )}
             <div className="flex gap-2">
               <button onClick={doExport} disabled={exporting || importing} className="wl-btn flex-1">
                 {exporting ? "Preparing…" : "⤓ Export backup"}

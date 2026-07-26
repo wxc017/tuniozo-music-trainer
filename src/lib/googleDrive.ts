@@ -273,6 +273,27 @@ export async function deleteDriveFile(token: string, id: string): Promise<void> 
   if (!res.ok && res.status !== 404) throw new Error(`Drive delete failed: ${res.status}`);
 }
 
+/** Find a file by exact name inside a folder (newest first); null if none. */
+export async function findFileInFolder(
+  token: string, folderId: string, name: string,
+): Promise<{ id: string; modifiedTime: string } | null> {
+  const q = encodeURIComponent(`name='${name.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`);
+  const res = await driveGet(token, `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)&orderBy=modifiedTime desc&pageSize=1`);
+  if (!res.ok) throw new Error(`Find file failed: ${res.status}`);
+  const d = await res.json();
+  return d.files?.[0] ?? null;
+}
+
+/** Replace an existing Drive file's contents (media PATCH). */
+export async function updateDriveFileMedia(token: string, id: string, blob: Blob): Promise<void> {
+  const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`, {
+    method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: blob,
+  });
+  await logErrorBody(res, "file update PATCH");
+  throwIfAuthError(res.status);
+  if (!res.ok) throw new Error(`Drive update failed: ${res.status}`);
+}
+
 /** Find (or create) a folder by name in the user's Drive; returns its id. */
 export async function findOrCreateFolder(token: string, name: string): Promise<string> {
   const q = encodeURIComponent(`name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);

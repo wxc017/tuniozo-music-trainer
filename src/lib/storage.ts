@@ -271,8 +271,22 @@ const EXTRA_EXPORT_KEYS = new Set(["konnakol_custom_presets"]);
 // may lack). Auth is per-device; it stays put.
 const NON_EXPORT_KEYS = new Set(["lt_gdrive_token"]);
 
+// Device-local VIEW state (which nav is hidden, which panels are collapsed, the
+// active tab). It's per-device UI preference — syncing it is meaningless and it
+// just clutters the merge review dialog (e.g. a confusing "nav hidden" entry).
+function isDeviceLocalUiKey(key: string): boolean {
+  return (
+    key === "lt_nav_hidden" ||
+    key === "lt_app_tab" ||
+    key === "lt_app_perm_subtab" ||
+    /_collapsed(_|$)/.test(key) ||
+    /_tab$/.test(key) ||
+    /_subtab$/.test(key)
+  );
+}
+
 export function isExportKey(key: string): boolean {
-  if (NON_EXPORT_KEYS.has(key)) return false;
+  if (NON_EXPORT_KEYS.has(key) || isDeviceLocalUiKey(key)) return false;
   return key.startsWith("lt_") || EXTRA_EXPORT_KEYS.has(key);
 }
 
