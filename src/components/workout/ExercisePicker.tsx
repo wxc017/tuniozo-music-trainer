@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useWorkoutData, saveCustomExercise, deleteCustomExercise } from "@/lib/workoutStore";
+import { useWorkoutData, saveCustomExercise } from "@/lib/workoutStore";
 import { TRACKING_MODES, type TrackingMode, type CustomExercise } from "@/lib/workoutTypes";
 
 // Pick from YOUR saved exercises — grouped by equipment (Rings / Parallettes /
@@ -73,7 +73,7 @@ export default function ExercisePicker({ onPick, onCancel }: Props) {
       <div className="wl-card w-full max-w-md max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}>
         <div className="p-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--wl-line)" }}>
-          <input autoFocus className="wl-input" value={q}
+          <input className="wl-input" value={q}
             onChange={e => { setQ(e.target.value); setCreating(null); }}
             placeholder="Search or type a new exercise…" />
         </div>
@@ -144,16 +144,14 @@ function SubGroup({ title, rows, onPick }: { title: string; rows: Row[]; onPick:
       </div>
       {rows.map(e => (
         /* Exercise — indented a second level. */
-        <div key={e.id} className="w-full flex items-center gap-2 hover:brightness-125"
+        <button key={e.id} onClick={() => onPick({ name: e.name, mode: e.mode })}
+          className="w-full text-left flex items-center gap-3 hover:brightness-125"
           style={{ paddingLeft: 40, paddingRight: 14, paddingTop: 9, paddingBottom: 9, borderBottom: "1px solid color-mix(in srgb, var(--wl-line) 50%, transparent)" }}>
-          <button onClick={() => onPick({ name: e.name, mode: e.mode })} className="flex-1 text-left flex items-center gap-3">
-            <span style={{ color: "var(--wl-text)", fontSize: 14 }}>{e.disp}</span>
-            <span className="ml-auto wl-mono" style={{ fontSize: 11, color: "var(--wl-faint)" }}>
-              {TRACKING_MODES.find(m => m.id === e.mode)?.short}
-            </span>
-          </button>
-          <button onClick={() => deleteCustomExercise(e.id)} className="wl-icon-btn wl-icon-btn--danger" style={{ fontSize: 15, padding: "0 6px" }} title="Remove saved exercise">✕</button>
-        </div>
+          <span style={{ color: "var(--wl-text)", fontSize: 14 }}>{e.disp}</span>
+          <span className="ml-auto wl-mono" style={{ fontSize: 11, color: "var(--wl-faint)" }}>
+            {TRACKING_MODES.find(m => m.id === e.mode)?.short}
+          </span>
+        </button>
       ))}
     </div>
   );

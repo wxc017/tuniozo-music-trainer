@@ -34,27 +34,31 @@ export default function FloatingRestTimer() {
   const s = Math.floor(left % 60);
 
   return (
-    <div className="wl-root fixed left-1/2 z-[90]" style={{ top: 8, transform: "translateX(-50%)", pointerEvents: "none" }}>
-      <div className="flex items-center gap-2 rounded-full"
+    // `wl-root` supplies the color variables, but its base rule also sets
+    // height:100% + a solid background — override both here so this is just a
+    // small floating pill, not a full-screen black box.
+    <div className="wl-root fixed z-[90]"
+      style={{ top: 10, right: 10, pointerEvents: "none", height: "auto", background: "transparent" }}>
+      <div className="flex items-center gap-2.5 rounded-full"
         style={{
           pointerEvents: "auto",
-          padding: "7px 8px 7px 14px",
+          padding: "10px 12px 10px 20px",
           background: done ? "var(--wl-good)" : "var(--wl-surface-2)",
-          border: `1px solid ${done ? "var(--wl-good)" : "color-mix(in srgb, var(--wl-accent) 40%, var(--wl-line))"}`,
-          boxShadow: "0 8px 30px rgba(0,0,0,.5)",
+          border: `1px solid ${done ? "var(--wl-good)" : "color-mix(in srgb, var(--wl-accent) 45%, var(--wl-line))"}`,
+          boxShadow: "0 8px 30px rgba(0,0,0,.55)",
         }}>
-        <span className="wl-num" style={{ fontSize: 19, fontWeight: 700, color: done ? "#0d0d0f" : "var(--wl-text)" }}>
+        <span className="wl-num" style={{ fontSize: 30, fontWeight: 700, lineHeight: 1, color: done ? "#0d0d0f" : "var(--wl-text)" }}>
           {done ? "Rest done" : `${m}:${String(s).padStart(2, "0")}`}
         </span>
         {!done && (
           <button onClick={() => addRest(30)} className="wl-mono"
-            style={{ fontSize: 13, padding: "5px 9px", borderRadius: 999, background: "var(--wl-surface)", color: "var(--wl-accent-ink)", border: "1px solid var(--wl-line)" }}>
+            style={{ fontSize: 16, padding: "9px 13px", borderRadius: 999, background: "var(--wl-surface)", color: "var(--wl-accent-ink)", border: "1px solid var(--wl-line)" }}>
             +30
           </button>
         )}
         <button onClick={stopRest} className="wl-mono"
-          style={{ fontSize: 13, padding: "5px 11px", borderRadius: 999, background: done ? "#0d0d0f" : "var(--wl-accent)", color: done ? "var(--wl-good)" : "#1a1408", fontWeight: 600, border: "none" }}>
-          {done ? "✓ Done" : "Skip"}
+          style={{ fontSize: 16, padding: "9px 16px", borderRadius: 999, background: done ? "#0d0d0f" : "var(--wl-accent)", color: done ? "var(--wl-good)" : "#1a1408", fontWeight: 700, border: "none" }}>
+          {done ? "✓ Done" : "Skip ✕"}
         </button>
       </div>
     </div>

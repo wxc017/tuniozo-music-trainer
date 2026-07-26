@@ -49,7 +49,6 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
   const patchSet = (exId: string, setId: string, sp: Partial<WorkoutSet>) =>
     patch(w => { const s = w.exercises.find(e => e.id === exId)?.sets.find(x => x.id === setId); if (s) Object.assign(s, sp); return w; });
 
-  const finish = () => { patch(w => { w.endedAt = Date.now(); return w; }); onClose(); };
   const saveAsTemplate = () => {
     const name = window.prompt("Template name:", workout.title || "My Workout");
     if (name) saveTemplate(templateFromWorkout(workout, name));
@@ -87,8 +86,7 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
         <button onClick={() => setPicking(true)} className="wl-add">+ Add exercise</button>
 
         <div className="flex flex-wrap gap-2 pt-2">
-          <button onClick={finish} className="wl-btn wl-btn--primary flex-1" style={{ minWidth: 130 }}>Finish workout</button>
-          <button onClick={saveAsTemplate} className="wl-btn">Save as template</button>
+          <button onClick={saveAsTemplate} className="wl-btn flex-1">Save as template</button>
           <button onClick={removeWorkout} className="wl-btn wl-btn--danger">Delete</button>
         </div>
       </div>

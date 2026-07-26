@@ -21,6 +21,7 @@ import {
   jianpuToPitch, jianpuGlyphFor, edoNoteLabel, regularSolfaSyllable,
   NOTATION_SYSTEM_LABELS, type NotationSystem,
 } from "@/lib/jianpu";
+import { MOVABLE_DO } from "@/lib/notationLabels";
 import { exportToPdf } from "@/lib/exportPdf";
 import ClefReference from "./ClefReference";
 
@@ -130,9 +131,15 @@ export interface JianpuModeProps {
   /** Sol-fa-only: lock the notation system to sol-fa syllables and hide the
    *  jianpu/sol-fa toggle (the "Sol-fa" scoring mode has no numbered notation). */
   solfaOnly?: boolean;
+  /** Report this sheet's EDO to the app so the global Notation ("n") overlay is
+   *  scoped to the piece's EDO instead of whatever the rest of the app is on. */
+  onActiveEdo?: (edo: number) => void;
+  /** The app's per-EDO solfège selection (from the "n" overlay).  When the piece's
+   *  EDO maps to "Movable Do", degrees read as do-re-mi; otherwise Spectrum-ege. */
+  solfege?: Record<number, string>;
 }
 
-export default function JianpuMode({ controlledActiveId, onBack, embedded = false, solfaOnly = false }: JianpuModeProps) {
+export default function JianpuMode({ controlledActiveId, onBack, embedded = false, solfaOnly = false, onActiveEdo, solfege }: JianpuModeProps) {
   const [project, setProject] = useState<NoteEntryProject | null>(null);
   const [notes, setNotes] = useState<NoteData[]>([]);
   const [cursor, setCursor] = useState<Cursor>({ voice: 0, measure: 0, slot: 0 });
@@ -268,7 +275,12 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   }, [perSection, project?.voiceCount, notes, sectionRangeOf, minVoices]);
 
   const edo = project?.edo ?? 12;
+  // Solfège system for this EDO (from the "n" overlay): Movable Do → do-re-mi,
+  // else the universal Spectrum-ege.  The Major/Minor spelling stays per note.
+  const movableDo = edo === 12 && solfege?.[edo] === MOVABLE_DO;
   useEffect(() => { setEdoText(String(edo)); }, [edo]);
+  // Tell the app this sheet's EDO so the global Notation ("n") overlay follows it.
+  useEffect(() => { if (project) onActiveEdo?.(edo); }, [edo, project, onActiveEdo]);
   useEffect(() => { setBarsText(String(project?.setup.barCount ?? 8)); }, [project?.setup.barCount]);
 
   // A time signature applies forward until the next change, but only WITHIN its
@@ -447,9 +459,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   const makeNote = useCallback((degree: number, isRest: boolean, dur: Duration, dot: boolean,
                                 voice: number, measure: number, slot: number): NoteData => {
     const jp = isRest ? null : jianpuToPitch(degree, octave, undefined, fifths);
-    // Bake the current movable-do mode into the note (so a later toggle of the
-    // entry default never rewrites notes already on the page).
-    const style = project?.solfaStyle;
+    // Bake the current Major/Minor spelling into the note (so a later toggle of
+    // the entry default never rewrites notes already on the page).  It only shows
+    // when the "n" system is Movable Do; Spectrum-ege ignores it.
     return {
       id: crypto.randomUUID(),
       measure, startSlot: slot, duration: dur, dotted: dot || undefined,
@@ -457,7 +469,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       pitch: jp ? jp.pitch : "b/4",
       jianpuDegree: isRest ? 0 : degree,
       jianpuOctave: isRest ? undefined : octave,
-      solfaMode: isRest || style === "spectrum" || !style ? undefined : style,
+      solfaMode: isRest ? undefined : (project?.solfaStyle === "minor" ? "minor" : "major"),
     };
   }, [octave, project?.solfaStyle]);
 
@@ -483,22 +495,23 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   const inputDigit = useCallback((degree: number, isRest: boolean) => {
     const { voice, measure, slot } = cursor;
     if (!isRest) {
-      // Over an existing note in this voice → change its degree in place (keep
-      // its duration / octave), rather than dropping into another voice.
-      const host = notes.find(n => (n.voice ?? 0) === voice && n.measure === measure && !n.isRest
+      // Retune an existing note in place (keep its duration / octave) instead of
+      // adding a voice.  Target the single selected note if there is one, else
+      // the note under the cursor.
+      const selHost = selectedIds.length === 1 ? notes.find(n => n.id === selectedIds[0] && !n.isRest) : undefined;
+      const host = selHost ?? notes.find(n => (n.voice ?? 0) === voice && n.measure === measure && !n.isRest
         && slot >= n.startSlot && slot < n.startSlot + noteSlots(n));
       if (host) {
         const jp = jianpuToPitch(degree, host.jianpuOctave ?? 0, host.jianpuAccidental, fifths);
-        const style = project?.solfaStyle;
-        const mode = style === "spectrum" || !style ? undefined : style;
+        const mode = project?.solfaStyle === "minor" ? "minor" : "major";
         commit(notes.map(n => n.id === host.id ? { ...n, jianpuDegree: degree, pitch: jp.pitch, solfaMode: mode } : n));
         setSelectedIds([]);
-        setCursor({ voice, measure, slot: host.startSlot });
+        setCursor({ voice: host.voice ?? 0, measure: host.measure, slot: host.startSlot });
         return;
       }
     }
     placeNote(degree, isRest);
-  }, [cursor, notes, commit, placeNote, project?.solfaStyle]);
+  }, [cursor, selectedIds, notes, commit, placeNote, project?.solfaStyle]);
 
   const deleteSelectedOrCursor = useCallback(() => {
     if (selectedIds.length) {
@@ -956,10 +969,11 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     interface RI extends RenderItem {}
     const items: RI[] = [];
     const positions: NotePos[] = [];
-    // Sol-fa syllable: a note carrying a movable-do mode (baked at input) reads
-    // as Major/Minor do-re-mi; otherwise the universal Spectrum-ege syllable.
+    // Sol-fa syllable: when the "n" system is Movable Do, degrees read as do-re-mi
+    // (each note's baked Major/Minor spelling; default Major); otherwise the
+    // universal Spectrum-ege syllable.
     const labelOf = (degree: number, alt: number, mode: "major" | "minor" | undefined): { text: string; prefix?: string } =>
-      (system === "solfa" && edo === 12 && mode)
+      (system === "solfa" && movableDo)
         ? { text: regularSolfaSyllable(degree, alt, mode === "minor") }
         : edoNoteLabel(system, degree, alt, edo);
     // Per voice+measure list used to build continuous underline beams.
@@ -1041,7 +1055,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     }
 
     return { items, positions, beams };
-  }, [project, notes, totalSlotsOf, system, layout, edo]);
+  }, [project, notes, totalSlotsOf, system, layout, edo, movableDo]);
 
   // ── Export ────────────────────────────────────────────────────────────────
   const handleExportPdf = useCallback(async () => {
@@ -1330,13 +1344,14 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
               {NOTATION_SYSTEM_LABELS[system]} ⇄
             </button>
           )}
-          {/* Sol-fa syllable style (12-EDO only) — sets what degrees 1–7 read as. */}
-          {system === "solfa" && edo === 12 && (
-            <div className="flex gap-0.5" title="Sol-fa syllables for degrees 1–7">
+          {/* Movable-do mode (only when the "n" system is Movable Do) — sets the
+              Major/Minor spelling for the NEXT notes you enter. */}
+          {system === "solfa" && movableDo && (
+            <div className="flex gap-0.5" title="Movable-do spelling for the next notes">
               {(["major", "minor"] as const).map(s => {
-                const on = (project.solfaStyle ?? "spectrum") === s;
+                const on = (project.solfaStyle === "minor" ? "minor" : "major") === s;
                 return (
-                  <button key={s} onClick={() => setSolfaStyle(on ? "spectrum" : s)}
+                  <button key={s} onClick={() => setSolfaStyle(s)}
                     className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${on
                       ? "bg-[#252550] border-[#7173e6] text-[#cfe6ff]"
                       : "bg-[#111] border-[#2a2a2a] text-[#888] hover:text-[#ccc] hover:border-[#3a3a5a]"}`}>

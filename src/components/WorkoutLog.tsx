@@ -148,12 +148,10 @@ function Section({ eyebrow, count, children }: { eyebrow: string; count?: string
 function WorkoutRow({ w, onOpen }: { w: Workout; onOpen: (id: string) => void }) {
   const sets = w.exercises.reduce((n, e) => n + e.sets.length, 0);
   const clips = w.exercises.reduce((n, e) => n + e.sets.filter(s => s.videoId).length, 0);
-  const inProgress = !w.endedAt;
   return (
     <button onClick={() => onOpen(w.id)} className="wl-card wl-card--hover w-full text-left p-3.5">
       <div className="flex items-center gap-2">
         <span className="wl-h2" style={{ fontSize: 15 }}>{w.title || "Workout"}</span>
-        {inProgress && <span className="wl-tag" style={{ color: "var(--wl-warn)", background: "color-mix(in srgb, var(--wl-warn) 14%, transparent)", borderColor: "color-mix(in srgb, var(--wl-warn) 30%, transparent)" }}>live</span>}
         <span className="wl-count">{w.date}</span>
       </div>
       <div className="text-[12px] wl-muted mt-1.5 truncate">{w.exercises.map(e => e.name).join(" · ") || "empty"}</div>

@@ -1723,7 +1723,7 @@ export default function App() {
       )}
       {section === "sol-fa" && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          <ScoringMode lockedInstrument="jianpu" />
+          <ScoringMode lockedInstrument="jianpu" onActiveEdo={setEdo} solfege={solfegeByEdo} />
         </div>
       )}
 

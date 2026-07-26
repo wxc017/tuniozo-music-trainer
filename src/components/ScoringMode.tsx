@@ -50,7 +50,7 @@ function instrumentOf(p: NoteEntryProject): Instrument {
   return "harmonic";
 }
 
-export default function ScoringMode({ lockedInstrument }: { lockedInstrument?: Instrument } = {}) {
+export default function ScoringMode({ lockedInstrument, onActiveEdo, solfege }: { lockedInstrument?: Instrument; onActiveEdo?: (edo: number) => void; solfege?: Record<number, string> } = {}) {
   const [projects, setProjects] = useState<NoteEntryProject[]>(loadProjects);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -102,6 +102,8 @@ export default function ScoringMode({ lockedInstrument }: { lockedInstrument?: I
         <JianpuMode
           controlledActiveId={activeProject.id}
           onBack={() => { setActiveId(null); refreshProjects(); }}
+          onActiveEdo={onActiveEdo}
+          solfege={solfege}
           solfaOnly
         />
       );

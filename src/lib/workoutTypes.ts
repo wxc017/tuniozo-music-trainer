@@ -116,4 +116,4 @@ export interface WorkoutPrefs {
   defaultRestSec: number;
 }
 
-export const DEFAULT_PREFS: WorkoutPrefs = { unit: "kg", defaultRestSec: 120 };
+export const DEFAULT_PREFS: WorkoutPrefs = { unit: "lb", defaultRestSec: 120 };

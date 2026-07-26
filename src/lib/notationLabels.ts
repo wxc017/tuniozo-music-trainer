@@ -9,10 +9,13 @@ import { customSolfege } from "./customSolfege";
 import { NOTATION_SYSTEMS } from "./notationSystems";
 
 export const SCHULTER = "Schulter";
-// The universal solfège system used everywhere now — the region-centered
-// "Spectrum-ege" from the Solfège chart (customSolfege).  (Regular movable-do
-// Major/Minor lives in the Sol-fa scoring editor, not here.)
+// The universal solfège system — the region-centered "Spectrum-ege" from the
+// Solfège chart (customSolfege).
 export const SPECTRUM_SOLFEGE = "Spectrum-ege";
+// Standard movable-do (12-EDO only).  Its Major/Minor mode is chosen in the
+// Sol-fa editor; the main-app display uses the Major spelling.
+export const MOVABLE_DO = "Movable Do";
+const MOVABLE_DO_MAJOR_12 = ["Do", "Di", "Re", "Ri", "Mi", "Fa", "Fi", "Sol", "Si", "La", "Li", "Ti"];
 // "Schulter V2" — the region/Gould absolute NOTE system (see intervalCodes
 // sizedNoteName).  For interval labels it behaves like Schulter (the spectrum
 // coder); it only changes the "Notes" overlay (Pythagorean for plain Schulter,
@@ -36,9 +39,10 @@ export function notationsForEdo(edo: number): string[] {
     .filter(n => authorFor(n) !== null);
   return [SCHULTER, SCHULTER_V2, ...tidyNames(mined)];
 }
-/** Solfège is a single universal system now — Spectrum-ege (region-centered). */
-export function solfegesForEdo(_edo: number): string[] {
-  return [SPECTRUM_SOLFEGE];
+/** Solfège systems for an EDO.  Spectrum-ege everywhere; 12-EDO also offers
+ *  standard Movable Do. */
+export function solfegesForEdo(edo: number): string[] {
+  return edo === 12 ? [SPECTRUM_SOLFEGE, MOVABLE_DO] : [SPECTRUM_SOLFEGE];
 }
 
 /** Interval label for a step under a notation system (falls back to Schulter). */
@@ -50,10 +54,11 @@ export function notationLabel(edo: number, system: string | undefined, step: num
   if (!system || system === SCHULTER || system === SCHULTER_V2) return fuzzyCode(cents);
   return (NOTATION_SYSTEMS[edo] ?? []).find(s => s.name === system)?.labels[k] ?? fuzzyCode(cents);
 }
-/** Solfège syllable for a step — always the Spectrum-ege system (customSolfege),
- *  the region-centered syllables from the Solfège chart. */
-export function solfegeLabel(edo: number, _system: string | undefined, step: number): string {
+/** Solfège syllable for a step — Spectrum-ege by default; Movable Do (12-EDO)
+ *  shows the do-re-mi Major spelling. */
+export function solfegeLabel(edo: number, system: string | undefined, step: number): string {
   const k = (((step % edo) + edo) % edo);
+  if (edo === 12 && system === MOVABLE_DO) return MOVABLE_DO_MAJOR_12[k];
   return customSolfege((k * 1200) / edo);
 }
 
