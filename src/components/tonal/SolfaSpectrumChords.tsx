@@ -471,11 +471,11 @@ type SingSeq =
   | { kind: "chords"; label: string; chords: { label?: string; tones: SingNote[]; borrowed?: boolean }[]; mi?: boolean };
 type SingCat = "scalar" | "chords" | "cycles";
 // Sub-categories within the Scalar tab (own sub-tab bar) so it isn't one long list.
-type ScalarSub = "scale" | "patterns" | "pentatonic" | "symmetric" | "blues" | "triadpairs" | "angular" | "chromatic" | "resolution";
+type ScalarSub = "scale" | "patterns" | "pentatonic" | "bergonzi" | "blues" | "angular" | "chromatic" | "resolution";
 const SCALAR_SUBS: { id: ScalarSub; label: string }[] = [
   { id: "scale", label: "Scale" }, { id: "patterns", label: "Patterns" }, { id: "pentatonic", label: "Pentatonic" },
-  { id: "symmetric", label: "Symmetric" }, { id: "triadpairs", label: "Triad Pairs" },
   { id: "angular", label: "Angular" }, { id: "chromatic", label: "Chromatic" }, { id: "resolution", label: "Resolution" },
+  { id: "bergonzi", label: "Bergonzi" },
 ];
 interface SingGroup { title: string; seqs: SingSeq[]; cat: SingCat; sub?: ScalarSub; }
 interface SingSection { band: Band; mode: ModeId; scaleLabel: string; scale: SingNote[]; rawScale: number[]; groups: SingGroup[]; }
@@ -500,7 +500,7 @@ const REGION_PC: Record<string, number> = {
   // so a neutral 3rd parks in the m3 bin but still sounds at ~350¢.
   [RG.n2]: 1, [RG.n3]: 3, [RG.n6]: 8, [RG.n7]: 10,
 };
-const MODES: { id: ModeId; label: string; short: string; regions: string[] }[] = [
+const MODES: { id: ModeId; label: string; short: string; regions: string[]; sym?: number[]; arp?: number[] }[] = [
   { id: "amb", label: "Ambiguous",  short: "~",   regions: ["", RG.n2, RG.n3, RG.P4, RG.P5, RG.n6, RG.n7] },
   { id: "lyd", label: "Lydian",     short: "lyd", regions: ["", RG.M2, RG.M3, RG.TT, RG.P5, RG.M6, RG.M7] },
   { id: "maj", label: "Major",      short: "maj", regions: ["", RG.M2, RG.M3, RG.P4, RG.P5, RG.M6, RG.M7] },
@@ -522,6 +522,13 @@ const MODES: { id: ModeId; label: string; short: string; regions: string[] }[] =
   { id: "phrygdom", label: "Phrygian Dom", short: "phr♮3", regions: ["", RG.m2, RG.M3, RG.P4, RG.P5, RG.m6, RG.m7] },
   { id: "ukrdor",   label: "Ukr. Dorian",  short: "dor♯4", regions: ["", RG.M2, RG.m3, RG.TT, RG.P5, RG.M6, RG.m7] },
   { id: "lyds2",    label: "Lydian ♯2",    short: "lyd♯2", regions: ["", RG.m3, RG.M3, RG.TT, RG.P5, RG.M6, RG.M7] },
+  // ── Symmetric scales — not 7-region MOS, so `regions` is a placeholder (only
+  // used by the diatonic apparatus, which these skip) and `sym` holds the actual
+  // pc scale.  `arp` is the characteristic arpeggio (aug triad / dim7). ──
+  { id: "wholetone", label: "Whole-Tone",  short: "WT",   regions: ["", RG.M2, RG.M3, RG.P4, RG.P5, RG.M6, RG.M7], sym: [0, 2, 4, 6, 8, 10],       arp: [0, 2, 4] },
+  { id: "augment6",  label: "Augmented",   short: "aug",  regions: ["", RG.M2, RG.M3, RG.P4, RG.P5, RG.M6, RG.M7], sym: [0, 3, 4, 7, 8, 11],       arp: [0, 2, 4] },
+  { id: "octWH",     label: "Octatonic °",  short: "oct°", regions: ["", RG.M2, RG.M3, RG.P4, RG.P5, RG.M6, RG.M7], sym: [0, 2, 3, 5, 6, 8, 9, 11], arp: [0, 2, 4, 6] },
+  { id: "octHW",     label: "Octatonic 7",  short: "oct7", regions: ["", RG.M2, RG.M3, RG.P4, RG.P5, RG.M6, RG.M7], sym: [0, 1, 3, 4, 6, 7, 9, 10], arp: [0, 2, 4, 6] },
   // ── Maqamat — the scales the NEUTRAL regions actually exist for.  Given in
   // their common ascending forms (maqam intonation varies by region and by
   // performer; the neutral degrees here sit in the Schulter neutral bands rather
@@ -555,6 +562,7 @@ const MODE_FAMILIES: { label: string; ids: ModeId[] }[] = [
   { label: "Church",       ids: ["lyd", "maj", "mix", "dor", "min", "phr", "loc"] },
   { label: "Melodic min",  ids: ["melmin", "lyddom", "mixb6", "dorb2", "locn2", "alt", "lydaug"] },
   { label: "Harmonic min", ids: ["harmmin", "phrygdom", "ukrdor", "lyds2"] },
+  { label: "Symmetric",    ids: ["wholetone", "augment6", "octWH", "octHW"] },
   { label: "Maqam",        ids: ["rast", "bayati", "sikah", "huzam"] },
 ];
 // A degree's sub-band [lo,hi] for a region, tolerating regions without the
@@ -833,14 +841,9 @@ const PENTA_BASES: { label: string; root: number; struct: number[] }[] = [
   { label: "min · on 2 · Dorian",                 root: 2,  struct: MIN_PENT },
 ];
 
-// Symmetric (non-diatonic) scales — they don't fit the 7-region diatonic MOS,
-// so they're built here as pc structures and get the same cell vocabulary.
-const SYM_SCALES: { label: string; scale: number[]; arp: number[] }[] = [
-  { label: "WHOLE-TONE",                     scale: [0, 2, 4, 6, 8, 10],       arp: [0, 2, 4] },
-  { label: "AUGMENTED",                      scale: [0, 3, 4, 7, 8, 11],       arp: [0, 2, 4] },
-  { label: "OCTATONIC · whole–half (dim7)",  scale: [0, 2, 3, 5, 6, 8, 9, 11], arp: [0, 2, 4, 6] },
-  { label: "OCTATONIC · half–whole (dom♭9)", scale: [0, 1, 3, 4, 6, 7, 9, 10], arp: [0, 2, 4, 6] },
-];
+// Symmetric (non-diatonic) scales don't fit the 7-region diatonic MOS, so they
+// live in the MODES list as `sym` scales (selectable under Harmonic minor) and
+// get this same cell vocabulary instead of the diatonic apparatus.
 const symCells = (s: { scale: number[]; arp: number[] }): { label: string; idx: number[] }[] => {
   const N = s.scale.length;
   return [
@@ -1760,9 +1763,6 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         lineSeq("7ths", scale, intervalPairs(7, 6)),
       ] },
       ...PATTERN_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "patterns" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(seqPattern(p.cell)))) })),
-      { cat: "scalar", sub: "patterns", title: "PERMUTATIONS · 3-NOTE (1·2·3)", seqs: PERM_3.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqPattern(p)))) },
-      // Bergonzi Melodic Structures — all 24 orderings of the 4-note structure.
-      { cat: "scalar", sub: "patterns", title: "PERMUTATIONS · 4-NOTE (Bergonzi, all 24)", seqs: PERM_4.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqPattern(p)))) },
       // Pentatonic superimposition — one shape, re-rooted per section (on 1, off
       // 5, off ♭7, side-slip …).  Cents-built through the band chroma so the
       // superimposed tensions carry the spectrum tuning.
@@ -1770,13 +1770,6 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         cat: "scalar" as SingCat, sub: "pentatonic" as ScalarSub, title: `PENT · ${b.label}`,
         seqs: PENTA_CELLS.map(c => chromSeq(c.label, endOnTonicCents(
           scPcs(b.struct, c.cell).map(pc => chromaCents(chroma, b.root + pc))))),
-      })),
-      // Symmetric scales — the same cell structures over whole-tone / augmented /
-      // octatonic, which don't fit the 7-region diatonic scaffold.
-      ...SYM_SCALES.map(s => ({
-        cat: "scalar" as SingCat, sub: "symmetric" as ScalarSub, title: s.label,
-        seqs: symCells(s).map(c => chromSeq(c.label, endOnTonicCents(
-          scPcs(s.scale, c.idx).map(pc => chromaCents(chroma, pc))))),
       })),
       ...ANGULAR_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "angular" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(p.steps))) })),
       { cat: "scalar", sub: "chromatic", title: "CHROMATIC", seqs: [
@@ -1796,10 +1789,12 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         lineSeq("upper & lower neighbours (all)", scale, endOnTonic([0, 1, 0, -1, 0, 2, 3, 2, 1, 2, 4, 5, 4, 3, 4, 6, 7, 6, 5, 6])),
         chromSeq("every tritone → its 3rd (inward)", endOnTonicCents(tritoneResLine(chroma))),
       ] },
-      // (Blues removed.)
-      // ── Triad pairs — every adjacent pair in the scale, each run six ways. ──
+      // ── Bergonzi — his Melodic Structures (3- and 4-note orderings) and triad
+      // pairs (Vol 7): pure cell-fluency vocabulary, kept in its own tab. ──
+      { cat: "scalar", sub: "bergonzi", title: "MELODIC STRUCTURES · 3-NOTE (all 6)", seqs: PERM_3.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqPattern(p)))) },
+      { cat: "scalar", sub: "bergonzi", title: "MELODIC STRUCTURES · 4-NOTE (all 24)", seqs: PERM_4.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqPattern(p)))) },
       ...[0, 1, 2, 3, 4, 5, 6].map(d => ({
-        cat: "scalar" as SingCat, sub: "triadpairs" as ScalarSub,
+        cat: "scalar" as SingCat, sub: "bergonzi" as ScalarSub,
         title: `TRIAD PAIR ${mod(d, 7) + 1}·${mod(d + 2, 7) + 1}·${mod(d + 4, 7) + 1} + ${mod(d + 1, 7) + 1}·${mod(d + 3, 7) + 1}·${mod(d + 5, 7) + 1}`,
         seqs: TRIAD_PAIR_PATTERNS.map(tp => lineSeq(tp.label, scale, endOnTonic(tp.make(d)))),
       })),
@@ -1812,12 +1807,45 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     return { band, mode: modeId, scaleLabel, scale: scale.map((_, i) => stepNote(scale, i)), rawScale: scale, groups: kept };
   };
 
+  // A symmetric scale (whole-tone / augmented / octatonic) doesn't fit the
+  // 7-region diatonic apparatus, so it gets a lean section: the scale itself and
+  // its cell vocabulary, cents-built through the band chroma.  No chords/cycles/
+  // diatonic patterns — those assume 7 degrees.
+  const buildSymSection = (band: Band, modeId: ModeId, m: { label: string; sym: number[]; arp: number[] }, chroma: number[]): SingSection => {
+    const scaleCents = [...m.sym.map(pc => chromaCents(chroma, pc)), 1200];
+    const cell = { scale: m.sym, arp: m.arp };
+    const groups: SingGroup[] = [
+      { cat: "scalar", sub: "scale", title: `${m.label.toUpperCase()} SCALE`, seqs: [
+        chromSeq("up", scaleCents),
+        chromSeq("down", [...scaleCents].reverse()),
+      ] },
+      { cat: "scalar", sub: "patterns", title: `${m.label.toUpperCase()} · cells`,
+        seqs: symCells(cell).map(c => chromSeq(c.label, endOnTonicCents(
+          scPcs(m.sym, c.idx).map(pc => chromaCents(chroma, pc))))) },
+    ];
+    const kept = groups.filter(g => scalarGen.has(g.sub!));
+    return { band, mode: modeId, scaleLabel: m.label, scale: scaleCents.map(centsNote), rawScale: scaleCents, groups: kept };
+  };
+
   // Generate one section per selected band, for each selected mode.
   const generateSing = () => {
     const bands: Band[] = [0, 1, 2];   // always small · center · large
     const modes = singModes.size ? [...singModes] : (["maj"] as ModeId[]);
+    const majRegions = MODE_BY_ID.get("maj")!.regions;   // neutral 12-note tuning reference
     const sections: SingSection[] = [];
     for (const modeId of modes) {
+      const symMode = MODE_BY_ID.get(modeId);
+      if (symMode?.sym) {
+        for (const band of bands) {
+          const edo = edoForBand(band);
+          const c2 = perfectCents(majRegions[1], specBand2, edo);
+          const c4 = perfectCents(majRegions[3], specBand4, edo);
+          const c5 = perfectCents(majRegions[4], specBand5, edo);
+          const chroma = singChroma(majRegions, band, c2, c4, c5, edo);
+          sections.push(buildSymSection(band, modeId, { label: symMode.label, sym: symMode.sym, arp: symMode.arp! }, chroma));
+        }
+        continue;
+      }
       const m = MODE_BY_ID.get(modeId)!;
       // Spectrum: the 2nd/4th/5th are shared across all three bands so they never
       // smear.  EDO: each section is a distinct tuning, so they take that
