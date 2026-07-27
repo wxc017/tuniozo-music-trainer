@@ -831,20 +831,17 @@ const PENTA_CELLS: { label: string; cell: number[] }[] = [
   { label: "skip 1·2·4·5", cell: seqCell([0, 1, 3, 4], 5) },
   { label: "1·5·3·2",      cell: seqCell([0, 4, 2, 1], 5) },
 ];
-// Superimposition bases — WHICH root the pentatonic sits on (chromatic offset
-// from the key tonic) and the colour that yields.  This is the modern-jazz
-// device (Shaw / Garzone / Potter): one pentatonic shape, re-rooted, so the same
-// structure paints a different set of tensions over the tonic.
-const PENTA_BASES: { label: string; root: number; struct: number[] }[] = [
-  { label: "maj · on 1 (1 2 3 5 6)",              root: 0,  struct: MAJ_PENT },
-  { label: "maj · on 2 · 9th (Lydian 2 3 ♯4 6 7)", root: 2,  struct: MAJ_PENT },
-  { label: "maj · off 5 · 9·11·13 (5 6 7 2 3)",   root: 7,  struct: MAJ_PENT },
-  { label: "maj · off ♭7 · Dorian/Mixo",          root: 10, struct: MAJ_PENT },
-  { label: "maj · ½-step up · side-slip (out)",   root: 1,  struct: MAJ_PENT },
-  { label: "min · on 1",                          root: 0,  struct: MIN_PENT },
-  { label: "min · off 5 (McCoy/Coltrane)",        root: 7,  struct: MIN_PENT },
-  { label: "min · on 2 · Dorian",                 root: 2,  struct: MIN_PENT },
-];
+// Degree spelling of a pentatonic FROM ITS OWN ROOT (root = 1), so each base's
+// shape is legible: major pentatonic reads "1 2 3 5 6", minor "1 ♭3 4 5 ♭7".
+const DEG_NAMES = ["1", "♭2", "2", "♭3", "3", "4", "♯4", "5", "♭6", "6", "♭7", "7"] as const;
+const pentaDegrees = (struct: number[]): string =>
+  struct.map(pc => DEG_NAMES[mod(pc, 12)]).join(" ");
+// The diatonic pentatonic as SCALE-STEP indices: the scale minus its 4th and 7th
+// degrees (the two semitone-tension positions).  Rooting patterns on each of its
+// 5 degrees gives the 5 pentatonic modes — always inside the 7-note scale.  Used
+// by the TONIC-RELATIVE family so no chromatic tones leak in.
+const PENTA_IN_SCALE = [0, 1, 2, 4, 5];
+const pentaScaleStep = (i: number): number => PENTA_IN_SCALE[mod(i, 5)] + 7 * Math.floor(i / 5);
 
 // Symmetric (non-diatonic) scales don't fit the 7-region diatonic MOS, so they
 // live in the MODES list as `sym` scales (selectable under Harmonic minor) and
@@ -1075,7 +1072,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const [droneOpen, setDroneOpen] = useState(false);
   // Collapsed section headings (keyed by group title) — click a heading to fold
   // its rows away for a tidier list.
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["CHORD-RELATIVE"]));
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["CHORD-RELATIVE · superimposed"]));
   const toggleGroupCollapsed = (title: string) => setCollapsedGroups(s => {
     const n = new Set(s); n.has(title) ? n.delete(title) : n.add(title); return n;
   });
@@ -1758,7 +1755,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         lineSeq("7ths", scale, intervalPairs(7, 6)),
       ] },
       ...PATTERN_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "patterns" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(seqPattern(p.cell)))) })),
-      ...pentaGroups(chroma, diaPcs),
+      ...pentaGroups(scale, chroma, diaPcs),
       ...ANGULAR_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "angular" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(p.steps))) })),
       { cat: "scalar", sub: "chromatic", title: "CHROMATIC", seqs: [
         chromSeq("12-note chromatic", endOnTonicCents(chromaticScaleLine(chroma))),
@@ -1801,21 +1798,36 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   //   • CHORD-RELATIVE — a pentatonic rooted on EACH scale degree (the chord
   //     roots), quality matched to that degree's own third — pentatonic-per-chord.
   // Plus the 4-note pentatonic Melodic Structures (all 24) on the home shape.
-  const pentaGroups = (chroma: number[], degreePcs: number[]): SingGroup[] => {
-    const N = degreePcs.length;
-    const tonic: SingGroup[] = PENTA_BASES.map(b => ({
-      cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE", title: `PENT · ${b.label}`,
-      seqs: PENTA_CELLS.map(c => chromSeq(c.label, endOnTonicCents(scPcs(b.struct, c.cell).map(pc => chromaCents(chroma, b.root + pc))))),
+  const pentaGroups = (scale: number[], chroma: number[], diaPcs: number[]): SingGroup[] => {
+    // TONIC-RELATIVE — the diatonic pentatonic rooted on each of its 5 degrees.
+    // Everything is read from `scale`, so only the 7 in-key notes are ever sung.
+    // The shape is spelled from that root (root = 1) so each mode reads clearly.
+    const shapeFromRoot = (b: number): string => {
+      const r = scale[PENTA_IN_SCALE[b]];
+      return [0, 1, 2, 3, 4].map(i => {
+        const st = pentaScaleStep(b + i);
+        const c = scale[mod(st, 7)] + 1200 * Math.floor(st / 7) - r;
+        return DEG_NAMES[mod(Math.round(c / 100), 12)];
+      }).join(" ");
+    };
+    const tonic: SingGroup[] = [0, 1, 2, 3, 4].map(b => ({
+      cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE · diatonic",
+      title: `PENT · on ${PENTA_IN_SCALE[b] + 1} (${shapeFromRoot(b)})`,
+      seqs: PENTA_CELLS.map(c => lineSeq(c.label, scale, endOnTonic(c.cell.map(i => pentaScaleStep(b + i))))),
     }));
     tonic.push({
-      cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE", title: "STRUCTURES · 4-NOTE (all 24, on 1)",
-      seqs: PERM_4.map(p => chromSeq(stepLabel(p), endOnTonicCents(scPcs(MAJ_PENT, seqCell(p, 5)).map(pc => chromaCents(chroma, pc))))),
+      cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE · diatonic", title: "STRUCTURES · 4-NOTE (all 24, on 1)",
+      seqs: PERM_4.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqCell(p, 5).map(i => pentaScaleStep(i))))),
     });
-    const chord: SingGroup[] = degreePcs.map((rootPc, d) => {
-      const third = mod(degreePcs[(d + 2) % N] - rootPc, 12);   // this degree's own 3rd
+    // CHORD-RELATIVE — a pentatonic superimposed on each chord root, quality
+    // matched to that degree's own third; MAY introduce chromatic tensions (the
+    // whole point of superimposition), so it is NOT limited to the 7 notes.
+    const chord: SingGroup[] = diaPcs.map((rootPc, d) => {
+      const third = mod(diaPcs[(d + 2) % 7] - rootPc, 12);
       const struct = third <= 3 ? MIN_PENT : MAJ_PENT;
       return {
-        cat: "scalar", sub: "pentatonic", parent: "CHORD-RELATIVE", title: `PENT · on ${d + 1} (${third <= 3 ? "min" : "maj"})`,
+        cat: "scalar", sub: "pentatonic", parent: "CHORD-RELATIVE · superimposed",
+        title: `PENT · on ${d + 1} (${third <= 3 ? "min" : "maj"}: ${pentaDegrees(struct)})`,
         seqs: PENTA_CELLS.map(c => chromSeq(c.label, endOnTonicCents(scPcs(struct, c.cell).map(pc => chromaCents(chroma, rootPc + pc))))),
       };
     });
@@ -1837,7 +1849,6 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     // Sequence a cell from every degree of the N-note scale (structure over scale).
     const seqN = (cell: number[]): number[] => { const s: number[] = []; for (let r = 0; r < N; r++) for (const o of cell) s.push(r + o); return s; };
     const scaleCents = [...sc, 1200];
-    const symPcs = [...m.sym, 12];
     const res: number[] = [];
     for (let d = 0; d < N; d++) res.push(d, d - 1, d, d + 1);   // each tone ↔ its neighbours
 
@@ -1849,15 +1860,10 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         seqs: Array.from({ length: Math.max(0, N - 2) }, (_, i) => i + 2).map(k => line(`+${k} steps`, intervalPairs(N, k))) },
       ...PATTERN_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "patterns" as ScalarSub, title: g.title, seqs: g.items.map(p => line(p.label, seqN(p.cell))) })),
       { cat: "scalar", sub: "patterns", title: `${L} ARPS`, seqs: [line(N > 6 ? "dim7 arps" : "aug arps", seqN(m.arp))] },
-      // Pentatonic superimposition — chromatic-pc based, so it works over any tonic.
-      ...pentaGroups(chroma, m.sym),
+      // No pentatonic (superimposition is a functional-harmony device — meaningless
+      // over a symmetric scale) and no chromatic (a symmetric scale already IS
+      // half-chromatic, so approach tones just land on other scale tones).
       ...ANGULAR_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "angular" as ScalarSub, title: g.title, seqs: g.items.map(p => line(p.label, p.steps)) })),
-      { cat: "scalar", sub: "chromatic", title: "CHROMATIC", seqs: [
-        chromSeq("12-note chromatic", endOnTonicCents(chromaticScaleLine(chroma))),
-        chromSeq("approach from below (all)", endOnTonicCents(approachLine(chroma, symPcs))),
-        chromSeq("approach from above (all)", endOnTonicCents(approachAboveLine(chroma, symPcs))),
-        chromSeq("enclosure (all)", endOnTonicCents(enclosureLine(chroma, symPcs))),
-      ] },
       { cat: "scalar", sub: "resolution", title: "RESOLUTION", seqs: [
         line("each tone ↔ its neighbours", res),
       ] },
