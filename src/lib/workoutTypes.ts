@@ -50,6 +50,8 @@ export interface WorkoutSet {
   weight?: number;
   /** Rate of Perceived Exertion, 1–10 in 0.5 steps. */
   rpe?: number;
+  /** Self-rated movement quality for this set, 1 (sloppy) – 5 (clean). */
+  form?: number;
   /** Rest taken AFTER this set, in seconds. */
   restSec?: number;
   /** Key into the video IndexedDB store (workoutVideoDb.ts) — local storage. */

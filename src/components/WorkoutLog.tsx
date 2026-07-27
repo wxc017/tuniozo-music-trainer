@@ -3,7 +3,6 @@ import "./workout/workout.css";
 import SessionLogger from "./workout/SessionLogger";
 import WorkoutHistory from "./workout/WorkoutHistory";
 import TemplatesView from "./workout/TemplatesView";
-import FloatingRestTimer from "./workout/FloatingRestTimer";
 import UndoBar from "./workout/UndoBar";
 import { useWorkoutData, startWorkout, seedExercisesOnce } from "@/lib/workoutStore";
 import { registerRestSW } from "@/lib/restNotify";
@@ -56,7 +55,6 @@ export default function WorkoutLog() {
         </div>
       )}
       {/* Floating overlays — persist across views, above the video popup. */}
-      <FloatingRestTimer />
       <UndoBar />
     </>
   );

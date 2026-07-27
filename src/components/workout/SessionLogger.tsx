@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import SetVideo from "./SetVideo";
+import SessionTimer from "./SessionTimer";
 import ExercisePicker, { type PickedExercise } from "./ExercisePicker";
-import { startRest } from "@/lib/restTimerStore";
 import { exportWorkoutSession } from "@/lib/workoutExport";
 import {
   upsertWorkout, makeExercise, makeSet, deleteWorkout,
@@ -81,6 +81,9 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
         </span>
       </div>
 
+      {/* the one session timer — pinned above the scroll area */}
+      <div className="flex-shrink-0"><SessionTimer /></div>
+
       {/* body */}
       <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 space-y-3">
         <div className="wl-mono text-[11px] wl-faint">{workout.date}</div>
@@ -89,8 +92,7 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
           <ExerciseCard key={ex.id} ex={ex} unit={prefs.unit} workoutId={workout.id}
             onRemove={() => removeExercise(ex.id)} onSetMode={m => setMode(ex.id, m)}
             onAddSet={() => addSet(ex.id)} onRemoveSet={sid => removeSet(ex.id, sid)}
-            onPatchSet={(sid, sp) => patchSet(ex.id, sid, sp)}
-            onRest={sec => startRest(sec)} />
+            onPatchSet={(sid, sp) => patchSet(ex.id, sid, sp)} />
         ))}
 
         <button onClick={() => setPicking(true)} className="wl-add">+ Add exercise</button>
@@ -111,7 +113,7 @@ function ExerciseCard(props: {
   ex: LoggedExercise; unit: WeightUnit; workoutId: string;
   onRemove: () => void; onSetMode: (m: TrackingMode) => void;
   onAddSet: () => void; onRemoveSet: (setId: string) => void;
-  onPatchSet: (setId: string, patch: Partial<WorkoutSet>) => void; onRest: (sec: number) => void;
+  onPatchSet: (setId: string, patch: Partial<WorkoutSet>) => void;
 }) {
   const { ex, unit } = props;
   const [modeOpen, setModeOpen] = useState(false);
@@ -147,7 +149,7 @@ function ExerciseCard(props: {
         <span className="wl-collabel" style={{ width: "1.75rem" }}>#</span>
         {cols.map(c => <span key={c.key} className="wl-collabel flex-1 text-center">{c.label}</span>)}
         <span className="wl-collabel" style={{ width: "3.1rem", textAlign: "center" }}>RPE</span>
-        <span className="wl-collabel flex-1 text-center">Rest</span>
+        <span className="wl-collabel flex-1 text-center">Form</span>
         <span style={{ width: "1.2rem" }} />
       </div>
 
@@ -172,8 +174,7 @@ function ExerciseCard(props: {
               ))}
 
               <RpeCell value={s.rpe} onChange={v => props.onPatchSet(s.id, { rpe: v })} />
-              <RestCell value={s.restSec} onChange={v => props.onPatchSet(s.id, { restSec: v })}
-                onStart={() => s.restSec && props.onRest(s.restSec)} />
+              <FormCell value={s.form} onChange={v => props.onPatchSet(s.id, { form: v })} />
               <button onClick={() => props.onRemoveSet(s.id)} className="wl-icon-btn wl-icon-btn--danger text-xs" style={{ width: "1.2rem" }}>✕</button>
             </div>
             <SetVideo set={s} workoutId={props.workoutId} onChange={sp => props.onPatchSet(s.id, sp)} />
@@ -208,35 +209,20 @@ function RpeCell({ value, onChange }: { value?: number; onChange: (v: number | u
   );
 }
 
-// Rest accepts "3:00" (m:ss) or plain seconds ("180" / "90"); stored as seconds.
-function parseRest(t: string): number | undefined {
-  const s = t.trim();
-  if (!s) return undefined;
-  if (s.includes(":")) {
-    const [m, sec] = s.split(":");
-    return (parseInt(m || "0", 10) || 0) * 60 + (parseInt(sec || "0", 10) || 0);
-  }
-  const n = parseInt(s, 10);
-  return isNaN(n) ? undefined : n;
-}
-function fmtRest(v?: number): string {
-  if (v == null) return "";
-  const m = Math.floor(v / 60), s = v % 60;
-  return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s}`;
-}
-function RestCell({ value, onChange, onStart }: { value?: number; onChange: (v: number | undefined) => void; onStart: () => void }) {
-  const [text, setText] = useState(() => fmtRest(value));
-  const [focused, setFocused] = useState(false);
-  // Reflect external value changes while not actively typing.
-  useEffect(() => { if (!focused) setText(fmtRest(value)); }, [value, focused]);
+// Self-rated movement quality for the set: 1 (sloppy) – 5 (clean). Tap a star
+// to set; tap the current rating again to clear.
+function FormCell({ value, onChange }: { value?: number; onChange: (v: number | undefined) => void }) {
   return (
-    <div className="flex items-center gap-0.5 flex-1">
-      <input type="text" inputMode="numeric" className="wl-cell flex-1" value={text} placeholder="m:ss"
-        onFocus={() => setFocused(true)}
-        onChange={e => { setText(e.target.value); onChange(parseRest(e.target.value)); }}
-        onBlur={() => { setFocused(false); setText(fmtRest(value)); }}
-        title="Rest — type 3:00 or seconds" />
-      <button onClick={onStart} disabled={!value} className="text-[13px]" style={{ color: "var(--wl-accent)", opacity: value ? 1 : .3 }} title="Start rest timer">⏱</button>
+    <div className="flex items-center justify-center gap-0.5 flex-1" title="Rate your form (1–5)">
+      {[1, 2, 3, 4, 5].map(n => {
+        const on = value != null && n <= value;
+        return (
+          <button key={n} onClick={() => onChange(value === n ? undefined : n)}
+            className="text-[15px] leading-none" style={{ color: on ? "var(--wl-accent)" : "var(--wl-line)" }}>
+            {on ? "★" : "☆"}
+          </button>
+        );
+      })}
     </div>
   );
 }
