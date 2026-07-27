@@ -843,17 +843,7 @@ const PENTA_BASES: { label: string; root: number; struct: number[] }[] = [
 
 // Symmetric (non-diatonic) scales don't fit the 7-region diatonic MOS, so they
 // live in the MODES list as `sym` scales (selectable under Harmonic minor) and
-// get this same cell vocabulary instead of the diatonic apparatus.
-const symCells = (s: { scale: number[]; arp: number[] }): { label: string; idx: number[] }[] => {
-  const N = s.scale.length;
-  return [
-    { label: "up · down",   idx: upDownIdx(N) },
-    { label: "3rds",        idx: intervalPairs(N, 2) },
-    { label: "4ths",        idx: intervalPairs(N, 3) },
-    { label: "groups of 4", idx: rollGroups(N, 4) },
-    { label: N > 6 ? "dim7 arps" : "aug arps", idx: seqCell(s.arp, N) },
-  ];
-};
+// get the full scalar vocabulary applied structure-over-scale in buildSymSection.
 
 // ── Blues — with the blue notes where they actually live ─────────────
 // The blue notes are NOT 12-EDO degrees.  Performance and recording studies put
@@ -1808,20 +1798,54 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   };
 
   // A symmetric scale (whole-tone / augmented / octatonic) doesn't fit the
-  // 7-region diatonic apparatus, so it gets a lean section: the scale itself and
-  // its cell vocabulary, cents-built through the band chroma.  No chords/cycles/
-  // diatonic patterns — those assume 7 degrees.
+  // 7-region diatonic HARMONY (chords/cycles), but every scalar pattern is just a
+  // structure — a list of scale-step indices — so the whole scalar vocabulary
+  // runs over it once we index by the scale's own length N (octave = +N) instead
+  // of a hardcoded 7.  `deg` reads the N-note cents scale with octave carry; the
+  // module cells (patterns, angular, permutations, triad pairs) are reused as-is.
   const buildSymSection = (band: Band, modeId: ModeId, m: { label: string; sym: number[]; arp: number[] }, chroma: number[]): SingSection => {
-    const scaleCents = [...m.sym.map(pc => chromaCents(chroma, pc)), 1200];
-    const cell = { scale: m.sym, arp: m.arp };
+    const sc = m.sym.map(pc => chromaCents(chroma, pc));   // within-octave cents, length N
+    const N = sc.length;
+    const L = m.label.toUpperCase();
+    const deg = (i: number): number => sc[mod(i, N)] + 1200 * Math.floor(i / N);
+    const line = (label: string, idxs: number[]): SingSeq => chromSeq(label, endOnTonicCents(idxs.map(deg)));
+    // Sequence a cell from every degree of the N-note scale (structure over scale).
+    const seqN = (cell: number[]): number[] => { const s: number[] = []; for (let r = 0; r < N; r++) for (const o of cell) s.push(r + o); return s; };
+    const scaleCents = [...sc, 1200];
+    const symPcs = [...m.sym, 12];
+    const res: number[] = [];
+    for (let d = 0; d < N; d++) res.push(d, d - 1, d, d + 1);   // each tone ↔ its neighbours
+
     const groups: SingGroup[] = [
-      { cat: "scalar", sub: "scale", title: `${m.label.toUpperCase()} SCALE`, seqs: [
-        chromSeq("up", scaleCents),
-        chromSeq("down", [...scaleCents].reverse()),
+      { cat: "scalar", sub: "scale", title: `${L} SCALE`, seqs: [
+        chromSeq("up", scaleCents), chromSeq("down", [...scaleCents].reverse()),
       ] },
-      { cat: "scalar", sub: "patterns", title: `${m.label.toUpperCase()} · cells`,
-        seqs: symCells(cell).map(c => chromSeq(c.label, endOnTonicCents(
-          scPcs(m.sym, c.idx).map(pc => chromaCents(chroma, pc))))) },
+      { cat: "scalar", sub: "scale", title: `${L} IN INTERVALS`,
+        seqs: Array.from({ length: Math.max(0, N - 2) }, (_, i) => i + 2).map(k => line(`+${k} steps`, intervalPairs(N, k))) },
+      ...PATTERN_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "patterns" as ScalarSub, title: g.title, seqs: g.items.map(p => line(p.label, seqN(p.cell))) })),
+      { cat: "scalar", sub: "patterns", title: `${L} ARPS`, seqs: [line(N > 6 ? "dim7 arps" : "aug arps", seqN(m.arp))] },
+      // Pentatonic superimposition — chromatic-pc based, so it works over any tonic.
+      ...PENTA_BASES.map(b => ({
+        cat: "scalar" as SingCat, sub: "pentatonic" as ScalarSub, title: `PENT · ${b.label}`,
+        seqs: PENTA_CELLS.map(c => chromSeq(c.label, endOnTonicCents(scPcs(b.struct, c.cell).map(pc => chromaCents(chroma, b.root + pc))))),
+      })),
+      ...ANGULAR_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "angular" as ScalarSub, title: g.title, seqs: g.items.map(p => line(p.label, p.steps)) })),
+      { cat: "scalar", sub: "chromatic", title: "CHROMATIC", seqs: [
+        chromSeq("12-note chromatic", endOnTonicCents(chromaticScaleLine(chroma))),
+        chromSeq("approach from below (all)", endOnTonicCents(approachLine(chroma, symPcs))),
+        chromSeq("approach from above (all)", endOnTonicCents(approachAboveLine(chroma, symPcs))),
+        chromSeq("enclosure (all)", endOnTonicCents(enclosureLine(chroma, symPcs))),
+      ] },
+      { cat: "scalar", sub: "resolution", title: "RESOLUTION", seqs: [
+        line("each tone ↔ its neighbours", res),
+      ] },
+      { cat: "scalar", sub: "bergonzi", title: "MELODIC STRUCTURES · 3-NOTE", seqs: PERM_3.map(p => line(stepLabel(p), seqN(p))) },
+      { cat: "scalar", sub: "bergonzi", title: "MELODIC STRUCTURES · 4-NOTE", seqs: PERM_4.map(p => line(stepLabel(p), seqN(p))) },
+      ...Array.from({ length: N }, (_, d) => ({
+        cat: "scalar" as SingCat, sub: "bergonzi" as ScalarSub,
+        title: `TRIAD PAIR ${mod(d, N) + 1}·${mod(d + 2, N) + 1}·${mod(d + 4, N) + 1}`,
+        seqs: TRIAD_PAIR_PATTERNS.map(tp => line(tp.label, tp.make(d))),
+      })),
     ];
     const kept = groups.filter(g => scalarGen.has(g.sub!));
     return { band, mode: modeId, scaleLabel: m.label, scale: scaleCents.map(centsNote), rawScale: scaleCents, groups: kept };
