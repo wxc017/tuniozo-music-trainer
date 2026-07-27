@@ -357,41 +357,47 @@ const cellRun = (cell: number[], reps: number): number[] => {
 // "<interval contour> (<degree list>)".  Anything that just duplicated the
 // scalar interval runs (4th/5th pairs, stacked quartal/quintal LINES) lives in
 // Scale-in-Intervals, not here.
-const ANGULAR_PATTERNS: { label: string; steps: number[] }[] = [
-  // ── Quartal / quintal stack cells (the McCoy Tyner sound) ──
-  { label: "4th↑ 4th↑ (1·4·7)",        steps: cellRun([0, 3, 6], 4) },
-  { label: "4th↑ 4th↑ 4th↑ (1·4·7·10)", steps: cellRun([0, 3, 6, 9], 3) },
-  { label: "4th↑ 4th↑ 4th↓ (1·4·7·4)", steps: cellRun([0, 3, 6, 3], 4) },
-  { label: "4th↑ 4th↑ 2nd↓ (1·4·7·6)", steps: cellRun([0, 3, 6, 5], 4) },
-  { label: "4th↑ 4th↑ 3rd↑ (1·4·7·9)", steps: cellRun([0, 3, 6, 8], 4) },
-  { label: "4th↑ 4th↑ 3rd↓ (1·4·7·5)", steps: cellRun([0, 3, 6, 4], 4) },
-  { label: "5th↑ 5th↑ (1·5·9)",        steps: cellRun([0, 4, 8], 3) },
-  // ── Leap up, land back by a smaller leap (wide-interval cells) ──
-  { label: "5th↑ 4th↓ (1·5·2)",        steps: cellRun([0, 4, 1], 5) },
-  { label: "6th↑ 4th↓ (1·6·3)",        steps: cellRun([0, 5, 2], 5) },
-  { label: "7th↑ 5th↓ (1·7·3)",        steps: cellRun([0, 6, 2], 5) },
-  { label: "5th↑ 4th↓ 5th↑ (1·5·2·6)", steps: cellRun([0, 4, 1, 5], 3) },
-  { label: "6th↑ 5th↓ (1·6·2·7)",      steps: cellRun([0, 5, 1, 6], 4) },
-  { label: "5th↑ 4th↑ 4th↓ (1·5·8·5)", steps: cellRun([0, 4, 7, 4], 3) },
-  // ── Leap up, resolve down by step (the classic "leap-and-step") ──
-  { label: "5th↑ 2nd↓ (1·5·4)",        steps: cellRun([0, 4, 3], 5) },
-  { label: "6th↑ 3rd↓ (1·6·4)",        steps: cellRun([0, 5, 3], 5) },
-  { label: "6th↑ 2nd↓ (1·6·5)",        steps: cellRun([0, 5, 4], 5) },
-  { label: "7th↑ 2nd↓ (1·7·6)",        steps: cellRun([0, 6, 5], 4) },
-  { label: "3rd↑ 6th↑ (1·3·8)",        steps: cellRun([0, 2, 7], 4) },
-  // ── Octave-displacement — the widest angular material ──
-  { label: "8ve↑ 4th↓ (1·8·5)",        steps: cellRun([0, 7, 4], 4) },
-  { label: "8ve↑ 5th↓ (1·8·4)",        steps: cellRun([0, 7, 3], 4) },
-  { label: "8ve displaced (1·8·2·9)",  steps: cellRun([0, 7, 1, 8], 3) },
-  { label: "7th zigzag (1·7·2·8)",     steps: cellRun([0, 6, 1, 7], 3) },
-  // ── Spread arpeggios — chord tones in a wide order ──
-  { label: "spread △7 (1·5·3·7)",      steps: cellRun([0, 4, 2, 6], 3) },
-  { label: "spread △7 (1·5·7·3)",      steps: cellRun([0, 4, 6, 2], 3) },
-  { label: "spread triad (1·5·3)",     steps: cellRun([0, 4, 2], 5) },
-  { label: "spread add9 (1·3·5·9)",    steps: cellRun([0, 2, 4, 8], 3) },
-  // ── Wedges — outer notes converge / diverge (Slonimsky) ──
-  { label: "wedge in (1·8·2·7·3·6·4·5)",  steps: [0, 7, 1, 6, 2, 5, 3, 4] },
-  { label: "wedge out (4·5·3·6·2·7·1·8)", steps: [3, 4, 2, 5, 1, 6, 0, 7] },
+const ANGULAR_GROUPS: { title: string; items: { label: string; steps: number[] }[] }[] = [
+  { title: "ANGULAR · QUARTAL / QUINTAL", items: [
+    { label: "4th↑ 4th↑ (1·4·7)",        steps: cellRun([0, 3, 6], 4) },
+    { label: "4th↑ 4th↑ 4th↑ (1·4·7·10)", steps: cellRun([0, 3, 6, 9], 3) },
+    { label: "4th↑ 4th↑ 4th↓ (1·4·7·4)", steps: cellRun([0, 3, 6, 3], 4) },
+    { label: "4th↑ 4th↑ 2nd↓ (1·4·7·6)", steps: cellRun([0, 3, 6, 5], 4) },
+    { label: "4th↑ 4th↑ 3rd↑ (1·4·7·9)", steps: cellRun([0, 3, 6, 8], 4) },
+    { label: "4th↑ 4th↑ 3rd↓ (1·4·7·5)", steps: cellRun([0, 3, 6, 4], 4) },
+    { label: "5th↑ 5th↑ (1·5·9)",        steps: cellRun([0, 4, 8], 3) },
+  ] },
+  { title: "ANGULAR · WIDE LEAPS", items: [
+    { label: "5th↑ 4th↓ (1·5·2)",        steps: cellRun([0, 4, 1], 5) },
+    { label: "6th↑ 4th↓ (1·6·3)",        steps: cellRun([0, 5, 2], 5) },
+    { label: "7th↑ 5th↓ (1·7·3)",        steps: cellRun([0, 6, 2], 5) },
+    { label: "5th↑ 4th↓ 5th↑ (1·5·2·6)", steps: cellRun([0, 4, 1, 5], 3) },
+    { label: "6th↑ 5th↓ (1·6·2·7)",      steps: cellRun([0, 5, 1, 6], 4) },
+    { label: "5th↑ 4th↑ 4th↓ (1·5·8·5)", steps: cellRun([0, 4, 7, 4], 3) },
+  ] },
+  { title: "ANGULAR · LEAP + STEP", items: [
+    { label: "5th↑ 2nd↓ (1·5·4)",        steps: cellRun([0, 4, 3], 5) },
+    { label: "6th↑ 3rd↓ (1·6·4)",        steps: cellRun([0, 5, 3], 5) },
+    { label: "6th↑ 2nd↓ (1·6·5)",        steps: cellRun([0, 5, 4], 5) },
+    { label: "7th↑ 2nd↓ (1·7·6)",        steps: cellRun([0, 6, 5], 4) },
+    { label: "3rd↑ 6th↑ (1·3·8)",        steps: cellRun([0, 2, 7], 4) },
+  ] },
+  { title: "ANGULAR · OCTAVE DISPLACED", items: [
+    { label: "8ve↑ 4th↓ (1·8·5)",        steps: cellRun([0, 7, 4], 4) },
+    { label: "8ve↑ 5th↓ (1·8·4)",        steps: cellRun([0, 7, 3], 4) },
+    { label: "8ve displaced (1·8·2·9)",  steps: cellRun([0, 7, 1, 8], 3) },
+    { label: "7th zigzag (1·7·2·8)",     steps: cellRun([0, 6, 1, 7], 3) },
+  ] },
+  { title: "ANGULAR · SPREAD ARPS", items: [
+    { label: "spread △7 (1·5·3·7)",      steps: cellRun([0, 4, 2, 6], 3) },
+    { label: "spread △7 (1·5·7·3)",      steps: cellRun([0, 4, 6, 2], 3) },
+    { label: "spread triad (1·5·3)",     steps: cellRun([0, 4, 2], 5) },
+    { label: "spread add9 (1·3·5·9)",    steps: cellRun([0, 2, 4, 8], 3) },
+  ] },
+  { title: "ANGULAR · WEDGES", items: [
+    { label: "wedge in (1·8·2·7·3·6·4·5)",  steps: [0, 7, 1, 6, 2, 5, 3, 4] },
+    { label: "wedge out (4·5·3·6·2·7·1·8)", steps: [3, 4, 2, 5, 1, 6, 0, 7] },
+  ] },
 ];
 // Voicing spread applied to a close-position chord.
 type Voicing = "close" | "open" | "drop2" | "drop3" | "drop23" | "drop24";
@@ -1715,7 +1721,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       // Bergonzi Melodic Structures — all 24 orderings of the 4-note structure.
       { cat: "scalar", sub: "patterns", title: "PERMUTATIONS · 4-NOTE (Bergonzi, all 24)", seqs: PERM_4.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqPattern(p)))) },
       { cat: "scalar", sub: "pentatonic", title: "PENTATONICS", seqs: PENTA_PATTERNS.map(p => lineSeq(p.label, scale, endOnTonic(p.steps))) },
-      { cat: "scalar", sub: "angular", title: "ANGULAR", seqs: ANGULAR_PATTERNS.map(p => lineSeq(p.label, scale, endOnTonic(p.steps))) },
+      ...ANGULAR_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "angular" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(p.steps))) })),
       { cat: "scalar", sub: "chromatic", title: "CHROMATIC", seqs: [
         chromSeq("12-note chromatic", endOnTonicCents(chromaticScaleLine(chroma))),
         // Approach / enclose EVERY scale tone (not just 1·3·5) — exhaustive.
