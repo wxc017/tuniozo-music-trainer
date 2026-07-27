@@ -309,12 +309,8 @@ const PATTERN_GROUPS: { title: string; items: { label: string; cell: number[] }[
     { label: "3·2·1·2",     cell: [2, 1, 0, 1] },
     { label: "1·2·3·4·5·4·3·2", cell: [0, 1, 2, 3, 4, 3, 2, 1] },
   ] },
+  // (the simple ascending pairs 3rd↑2nd↓ … 7th↑6th↓ moved to Scale-in-Intervals)
   { title: "BROKEN INTERVALS", items: [
-    { label: "3rd↑ 2nd↓", cell: [0, 2] },
-    { label: "4th↑ 3rd↓", cell: [0, 3] },
-    { label: "5th↑ 4th↓", cell: [0, 4] },
-    { label: "6th↑ 5th↓", cell: [0, 5] },
-    { label: "7th↑ 6th↓", cell: [0, 6] },
     { label: "3rd↓ 4th↑", cell: [2, 0] },
     { label: "4th↓ 5th↑", cell: [3, 0] },
     { label: "3rd↑ 3rd↑ 3rd↓", cell: [0, 2, 4, 2] },
@@ -340,7 +336,7 @@ const PATTERN_GROUPS: { title: string; items: { label: string; cell: number[] }[
     { label: "1·3·5·8", cell: [0, 2, 4, 7] },
     { label: "1·3·5·3·1", cell: [0, 2, 4, 2, 0] },
     { label: "5·3·1 (↓ triad)", cell: [4, 2, 0] },
-    { label: "1·5·3 (spread)", cell: [0, 4, 2] },
+    // ("1·5·3 spread" moved to Angular · Spread Arps)
   ] },
 ];
 // Repeat a cell of scale-step offsets from ascending roots (octave dots show the
@@ -1711,10 +1707,12 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         lineSeq("up", scale, [0, 1, 2, 3, 4, 5, 6, 7]),
         lineSeq("down", scale, [7, 6, 5, 4, 3, 2, 1, 0]),
       ] },
-      { cat: "scalar", sub: "scale", title: "SCALE IN INTERVALS (3rds–5ths)", seqs: [
+      { cat: "scalar", sub: "scale", title: "SCALE IN INTERVALS (3rds–7ths)", seqs: [
         lineSeq("3rds", scale, intervalPairs(7, 2)),
         lineSeq("4ths", scale, intervalPairs(7, 3)),
         lineSeq("5ths", scale, intervalPairs(7, 4)),
+        lineSeq("6ths", scale, intervalPairs(7, 5)),
+        lineSeq("7ths", scale, intervalPairs(7, 6)),
       ] },
       ...PATTERN_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "patterns" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(seqPattern(p.cell)))) })),
       { cat: "scalar", sub: "patterns", title: "PERMUTATIONS · 3-NOTE (1·2·3)", seqs: PERM_3.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqPattern(p)))) },
