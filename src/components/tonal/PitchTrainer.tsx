@@ -26,7 +26,8 @@ const BAND_NAMES = ["small", "center", "large"] as const;
 // Region + a small padding window we zoom to when you sing inside it.
 const regionOf = (cents: number) => MAIN.find(r => cents >= r.lo && cents <= r.hi);
 
-interface Target { cents: number; syl: string; }
+interface Target { cents: number; syl: string; band: number; }
+const BAND_EDO = ["50", "12", "39"] as const;   // small / center / large tunings
 
 const vowelColor = (syl: string) => {
   const v = syl.slice(-1).toLowerCase();
@@ -59,6 +60,11 @@ interface Reading { cents: number; freq: number; nearest: number; offset: number
 
 export default function PitchTrainer({ rootCents, targets }: { rootCents: number; targets: Target[] }) {
   const [on, setOn] = useState(false);
+  // Lock detection to ONE band (0 small/50 · 1 center/12 · 2 large/39) so it
+  // stops snapping to a neighbouring tuning ~30¢ away; null = auto-nearest.
+  const [lockBand, setLockBand] = useState<number | null>(null);
+  const lockBandRef = useRef<number | null>(null);
+  lockBandRef.current = lockBand;
   const [reading, setReading] = useState<Reading | null>(null);
   const [level, setLevel] = useState(0);
   const [guiding, setGuiding] = useState(false);   // guide drone currently sounding
@@ -95,7 +101,7 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
         if (ctx.state === "suspended") await ctx.resume();
         const src = ctx.createMediaStreamSource(stream);
         const analyser = ctx.createAnalyser();
-        analyser.fftSize = 2048;
+        analyser.fftSize = 4096;   // longer window → finer low-pitch resolution (less cents error)
         analyser.smoothingTimeConstant = 0;
         src.connect(analyser);
         const buf = new Float32Array(analyser.fftSize);
@@ -134,7 +140,11 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
           if (now - lastLevelPush > 33) { lastLevelPush = now; setLevel(Math.min(1, Math.sqrt(rms) * 3.2)); }
 
           const { freq: rawFreq } = detectPitch(buf, ctx.sampleRate, rms);
-          const tgts = targetsRef.current;
+          // When a band is locked, only consider that band's targets so it can't
+          // hop to a different-tuning neighbour of the same syllable.
+          const lb = lockBandRef.current;
+          const allT = targetsRef.current;
+          const tgts = lb == null ? allT : allT.filter(t => t.band === lb);
           if (rawFreq > 0 && tgts.length) {
             // Undo octave / harmonic slips relative to the note you were just on.
             const cont = now - lastGoodRef.current < 350;
@@ -194,8 +204,30 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
     };
   }, [on]);
 
+  // Keybinds while listening: 1/2/3 lock to small/center/large (50/12/39-EDO),
+  // 0 or ` returns to auto-nearest. Capture phase + stop so the parent's 1–7
+  // don't also fire.
+  useEffect(() => {
+    if (!on) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+      let hit = true;
+      if (e.key === "1") setLockBand(0);
+      else if (e.key === "2") setLockBand(1);
+      else if (e.key === "3") setLockBand(2);
+      else if (e.key === "0" || e.key === "`") setLockBand(null);
+      else hit = false;
+      if (hit) { e.preventDefault(); e.stopImmediatePropagation(); }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [on]);
+
+  // Same filtered set the detection loop uses, so reading.nearest indexes correctly.
+  const activeTargets = lockBand == null ? targets : targets.filter(t => t.band === lockBand);
   const inTune = reading && Math.abs(reading.offset) <= TOL_CENTS;
-  const near = reading ? targets[reading.nearest] : null;
+  const near = reading ? activeTargets[reading.nearest] : null;
   // Zoom to the interval region you're currently singing in (the closest note's
   // region), so the display shows that individual spectrum, not the whole octave.
   const region = near ? regionOf(near.cents) : null;
@@ -203,7 +235,7 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
   const hi = region ? region.hi : near ? Math.min(1200, near.cents + 130) : 1200;
   const span = hi - lo || 1;
   const posOf = (c: number) => Math.max(0, Math.min(100, ((c - lo) / span) * 100));
-  const inWindow = targets.filter(t => t.cents >= lo - 2 && t.cents <= hi + 2);
+  const inWindow = activeTargets.filter(t => t.cents >= lo - 2 && t.cents <= hi + 2);
   const regionLabel = region ? region.name.replace(/s$/, "").toLowerCase() : "";
 
   return (
@@ -211,7 +243,21 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
       <div className="px-3 py-1.5 border-b border-[#161616] flex items-center gap-2 bg-[#0a0a0a]">
         <span className="w-1.5 h-3 rounded-sm" style={{ background: "#7aa87a" }} />
         <span className="text-[10px] font-semibold tracking-widest text-[#8a8a8a]">PITCH TRAINER</span>
-        <span className="text-[10px] text-[#6a6a6a]" title="With speakers, the mic hears the drone and mistakes it for your voice. Headphones fix that.">🎧 headphones</span>
+        {/* Band lock — hold the target to one tuning instead of snapping nearest. */}
+        <div className="flex items-center gap-1">
+          {[0, 1, 2].map(b => (
+            <button key={b} onClick={() => setLockBand(lockBand === b ? null : b)}
+              title={`Lock to ${BAND_NAMES[b]} · ${BAND_EDO[b]}-EDO  (key ${b + 1})`}
+              className="px-1.5 py-0.5 rounded text-[10px] font-mono border transition-colors"
+              style={lockBand === b
+                ? { background: BAND_COLORS[b], borderColor: BAND_COLORS[b], color: "#000" }
+                : { borderColor: "#333", color: "#888" }}>{BAND_EDO[b]}</button>
+          ))}
+          {lockBand !== null && (
+            <button onClick={() => setLockBand(null)} title="Auto (nearest) — key 0" className="text-[9px] text-[#666] hover:text-[#aaa]">auto</button>
+          )}
+        </div>
+        <span className="text-[10px] text-[#6a6a6a]" title="With speakers, the mic hears the drone and mistakes it for your voice. Headphones fix that.">🎧</span>
         <button onClick={() => { setErr(""); setOn(o => !o); }}
           className={`ml-auto px-2.5 py-0.5 rounded text-[11px] font-semibold border transition-colors ${on ? "bg-[#c04a4a] border-[#c04a4a] text-white" : "bg-[#1a1a1a] border-[#333] text-[#aaa] hover:text-white"}`}>
           {on ? "● stop" : "🎤 start"}

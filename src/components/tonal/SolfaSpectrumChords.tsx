@@ -2157,12 +2157,15 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // generated band-scales (octave-reduced), deduped, so the trainer scores your
   // singing against the actual points it just produced.
   const pitchTargets = (() => {
-    const out: { cents: number; syl: string }[] = [];
+    const out: { cents: number; syl: string; band: number }[] = [];
     for (const sec of singSections)
       for (const n of sec.scale) {
         const c = ((n.cents % 1200) + 1200) % 1200;
-        if (!out.some(o => Math.abs(o.cents - c) < 4 || Math.abs(o.cents - c) > 1196))
-          out.push({ cents: c, syl: n.syl });
+        // Keep band-specific targets (dedupe only within the same band) so the
+        // Pitch trainer can LOCK to one band (small/center/large = 50/12/39-EDO)
+        // instead of snapping to the nearest across all three.
+        if (!out.some(o => o.band === sec.band && (Math.abs(o.cents - c) < 4 || Math.abs(o.cents - c) > 1196)))
+          out.push({ cents: c, syl: n.syl, band: sec.band });
       }
     return out.sort((a, b) => a.cents - b.cents);
   })();
