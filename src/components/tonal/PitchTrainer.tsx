@@ -125,7 +125,7 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
             }
           } else if (guideOnRef.current && now - guideStart >= MIN_DRONE_MS) {
             guideOnRef.current = false; guideNoteRef.current = -1;
-            audioEngine.stopRatioDroneVoice(GUIDE_KEY);
+            audioEngine.fadeOutRatioDroneVoice(GUIDE_KEY);   // smooth release, not a hard cut
             setGuiding(false);
           }
         };

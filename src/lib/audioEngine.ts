@@ -1544,6 +1544,23 @@ export class AudioEngine {
     this.droneVoices.delete(key);
   }
 
+  /** Fade a single voice out over `ms`, then tear it down.  Used by the guide
+   *  drone so drifting in/out of tune doesn't hard-cut the sample (a click) —
+   *  it releases smoothly instead.  A re-start at the same key (startRatioDrone-
+   *  Voice) still hard-stops the fading voice first, so no voices pile up. */
+  fadeOutRatioDroneVoice(key: string, ms = 160) {
+    const v = this.droneVoices.get(key);
+    if (!v) return;
+    const ctx = this.getCtx();
+    const t = ctx.currentTime;
+    try {
+      v.noteGain.gain.cancelScheduledValues(t);
+      v.noteGain.gain.setValueAtTime(Math.max(0.0001, v.noteGain.gain.value), t);
+      v.noteGain.gain.linearRampToValueAtTime(0.0001, t + ms / 1000);
+    } catch { this.stopRatioDroneVoice(key); return; }
+    v.timers.push(setTimeout(() => this.stopRatioDroneVoice(key), ms + 30));
+  }
+
   /** Live-update a single voice's gain without restarting it. */
   setRatioDroneVoiceGain(key: string, gain: number) {
     const v = this.droneVoices.get(key);
