@@ -477,7 +477,7 @@ const SCALAR_SUBS: { id: ScalarSub; label: string }[] = [
   { id: "angular", label: "Angular" }, { id: "chromatic", label: "Chromatic" }, { id: "resolution", label: "Resolution" },
   { id: "bergonzi", label: "Bergonzi" },
 ];
-interface SingGroup { title: string; seqs: SingSeq[]; cat: SingCat; sub?: ScalarSub; }
+interface SingGroup { title: string; seqs: SingSeq[]; cat: SingCat; sub?: ScalarSub; parent?: string; }
 interface SingSection { band: Band; mode: ModeId; scaleLabel: string; scale: SingNote[]; rawScale: number[]; groups: SingGroup[]; }
 
 // Modes defined by REGION NAME per scale degree (index 0 = tonic), so "amb" can
@@ -825,6 +825,11 @@ const PENTA_CELLS: { label: string; cell: number[] }[] = [
   { label: "↓ groups of 3", cell: seqCell([2, 1, 0], 5) },
   { label: "1·3·5 triads", cell: seqCell([0, 2, 4], 5) },
   { label: "4th↑ 2nd↓",    cell: seqCell([0, 3, 1], 5) },
+  // Wide-leap cells that exploit the minor-3rd gaps — the pentatonic's whole
+  // point (Potter "fours & sixes"), not just stepwise motion.
+  { label: "wide 1·4·2·5", cell: seqCell([0, 3, 1, 4], 5) },
+  { label: "skip 1·2·4·5", cell: seqCell([0, 1, 3, 4], 5) },
+  { label: "1·5·3·2",      cell: seqCell([0, 4, 2, 1], 5) },
 ];
 // Superimposition bases — WHICH root the pentatonic sits on (chromatic offset
 // from the key tonic) and the colour that yields.  This is the modern-jazz
@@ -1070,7 +1075,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const [droneOpen, setDroneOpen] = useState(false);
   // Collapsed section headings (keyed by group title) — click a heading to fold
   // its rows away for a tidier list.
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["CHORD-RELATIVE"]));
   const toggleGroupCollapsed = (title: string) => setCollapsedGroups(s => {
     const n = new Set(s); n.has(title) ? n.delete(title) : n.add(title); return n;
   });
@@ -1753,14 +1758,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         lineSeq("7ths", scale, intervalPairs(7, 6)),
       ] },
       ...PATTERN_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "patterns" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(seqPattern(p.cell)))) })),
-      // Pentatonic superimposition — one shape, re-rooted per section (on 1, off
-      // 5, off ♭7, side-slip …).  Cents-built through the band chroma so the
-      // superimposed tensions carry the spectrum tuning.
-      ...PENTA_BASES.map(b => ({
-        cat: "scalar" as SingCat, sub: "pentatonic" as ScalarSub, title: `PENT · ${b.label}`,
-        seqs: PENTA_CELLS.map(c => chromSeq(c.label, endOnTonicCents(
-          scPcs(b.struct, c.cell).map(pc => chromaCents(chroma, b.root + pc))))),
-      })),
+      ...pentaGroups(chroma, diaPcs),
       ...ANGULAR_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "angular" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(p.steps))) })),
       { cat: "scalar", sub: "chromatic", title: "CHROMATIC", seqs: [
         chromSeq("12-note chromatic", endOnTonicCents(chromaticScaleLine(chroma))),
@@ -1797,6 +1795,33 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     return { band, mode: modeId, scaleLabel, scale: scale.map((_, i) => stepNote(scale, i)), rawScale: scale, groups: kept };
   };
 
+  // Pentatonic superimposition, split into two collapsible families:
+  //   • TONIC-RELATIVE — one shape re-rooted at fixed chromatic offsets from the
+  //     key tonic (on 1, off 5, off ♭7, side-slip …).  Context-free colour study.
+  //   • CHORD-RELATIVE — a pentatonic rooted on EACH scale degree (the chord
+  //     roots), quality matched to that degree's own third — pentatonic-per-chord.
+  // Plus the 4-note pentatonic Melodic Structures (all 24) on the home shape.
+  const pentaGroups = (chroma: number[], degreePcs: number[]): SingGroup[] => {
+    const N = degreePcs.length;
+    const tonic: SingGroup[] = PENTA_BASES.map(b => ({
+      cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE", title: `PENT · ${b.label}`,
+      seqs: PENTA_CELLS.map(c => chromSeq(c.label, endOnTonicCents(scPcs(b.struct, c.cell).map(pc => chromaCents(chroma, b.root + pc))))),
+    }));
+    tonic.push({
+      cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE", title: "STRUCTURES · 4-NOTE (all 24, on 1)",
+      seqs: PERM_4.map(p => chromSeq(stepLabel(p), endOnTonicCents(scPcs(MAJ_PENT, seqCell(p, 5)).map(pc => chromaCents(chroma, pc))))),
+    });
+    const chord: SingGroup[] = degreePcs.map((rootPc, d) => {
+      const third = mod(degreePcs[(d + 2) % N] - rootPc, 12);   // this degree's own 3rd
+      const struct = third <= 3 ? MIN_PENT : MAJ_PENT;
+      return {
+        cat: "scalar", sub: "pentatonic", parent: "CHORD-RELATIVE", title: `PENT · on ${d + 1} (${third <= 3 ? "min" : "maj"})`,
+        seqs: PENTA_CELLS.map(c => chromSeq(c.label, endOnTonicCents(scPcs(struct, c.cell).map(pc => chromaCents(chroma, rootPc + pc))))),
+      };
+    });
+    return [...tonic, ...chord];
+  };
+
   // A symmetric scale (whole-tone / augmented / octatonic) doesn't fit the
   // 7-region diatonic HARMONY (chords/cycles), but every scalar pattern is just a
   // structure — a list of scale-step indices — so the whole scalar vocabulary
@@ -1825,10 +1850,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       ...PATTERN_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "patterns" as ScalarSub, title: g.title, seqs: g.items.map(p => line(p.label, seqN(p.cell))) })),
       { cat: "scalar", sub: "patterns", title: `${L} ARPS`, seqs: [line(N > 6 ? "dim7 arps" : "aug arps", seqN(m.arp))] },
       // Pentatonic superimposition — chromatic-pc based, so it works over any tonic.
-      ...PENTA_BASES.map(b => ({
-        cat: "scalar" as SingCat, sub: "pentatonic" as ScalarSub, title: `PENT · ${b.label}`,
-        seqs: PENTA_CELLS.map(c => chromSeq(c.label, endOnTonicCents(scPcs(b.struct, c.cell).map(pc => chromaCents(chroma, b.root + pc))))),
-      })),
+      ...pentaGroups(chroma, m.sym),
       ...ANGULAR_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "angular" as ScalarSub, title: g.title, seqs: g.items.map(p => line(p.label, p.steps)) })),
       { cat: "scalar", sub: "chromatic", title: "CHROMATIC", seqs: [
         chromSeq("12-note chromatic", endOnTonicCents(chromaticScaleLine(chroma))),
@@ -3116,30 +3138,51 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                   <Panel title={`${bandTitleOf(sec.band).toUpperCase()} · ${sec.scaleLabel.toUpperCase()}`} accent={BAND_COLORS[sec.band]}>
                     <div className="space-y-3">
                       {groups.length === 0 && <div className="text-[11px] text-[#555]">Nothing selected for this tab.</div>}
-                      {groups.map((g, gi) => {
-                        const collapsed = collapsedGroups.has(g.title);
-                        return (
-                        <div key={gi} className="space-y-1.5">
-                          <button onClick={() => toggleGroupCollapsed(g.title)}
-                            className="flex items-center gap-1 text-[10px] text-[#666] hover:text-[#aaa] font-semibold tracking-wider transition-colors">
-                            <span className="text-[8px] w-2 inline-block">{collapsed ? "▶" : "▼"}</span>{g.title}
-                          </button>
-                          {/* Chords tab packs TWO per row; cycles and scalar rows are
-                              wide, so those stack full-width. */}
-                          {!collapsed && (
-                          <div className={singTab === "chords" ? "grid grid-cols-2 gap-x-3 gap-y-1.5 items-start" : "space-y-1.5"}>
-                            {g.seqs.filter(seq => !(singTab === "chords" && ROMAN_NUMERALS.includes(seq.label) && hiddenDeg.has(ROMAN_NUMERALS.indexOf(seq.label)))).map((seq, qi) => renderSeq(
-                              seq, qi, sec.rawScale, `${si}:${gi}:${qi}`,
-                              // Band-independent id: the same pattern in the small /
-                              // center / large columns shares one logbook entry.
-                              `${sec.mode}|${g.title}|${seq.label}`,
-                              { cat: g.sub ?? g.cat, group: g.title, label: seq.label },
-                            ))}
-                          </div>
-                          )}
-                        </div>
-                        );
-                      })}
+                      {(() => {
+                        // Some groups belong to a collapsible PARENT family (e.g. the
+                        // Tonic-relative / Chord-relative pentatonic split).  Render a
+                        // parent header at each transition and hide its children when
+                        // the parent is collapsed.
+                        const out: ReactNode[] = [];
+                        let curParent: string | undefined;
+                        groups.forEach((g, gi) => {
+                          if (g.parent && g.parent !== curParent) {
+                            curParent = g.parent;
+                            const pCol = collapsedGroups.has(g.parent);
+                            out.push(
+                              <button key={`p:${g.parent}`} onClick={() => toggleGroupCollapsed(g.parent!)}
+                                className="flex items-center gap-1 text-[11px] text-[#8a8ac0] hover:text-[#c6c6e6] font-bold tracking-widest uppercase transition-colors pt-1">
+                                <span className="text-[9px] w-2 inline-block">{pCol ? "▶" : "▼"}</span>{g.parent}
+                              </button>,
+                            );
+                          }
+                          if (!g.parent) curParent = undefined;
+                          if (g.parent && collapsedGroups.has(g.parent)) return;   // hidden under collapsed parent
+                          const collapsed = collapsedGroups.has(g.title);
+                          out.push(
+                            <div key={gi} className={`space-y-1.5 ${g.parent ? "pl-2 border-l border-[#1e1e2a] ml-1" : ""}`}>
+                              <button onClick={() => toggleGroupCollapsed(g.title)}
+                                className="flex items-center gap-1 text-[10px] text-[#666] hover:text-[#aaa] font-semibold tracking-wider transition-colors">
+                                <span className="text-[8px] w-2 inline-block">{collapsed ? "▶" : "▼"}</span>{g.title}
+                              </button>
+                              {/* Chords tab packs TWO per row; cycles and scalar rows are
+                                  wide, so those stack full-width. */}
+                              {!collapsed && (
+                              <div className={singTab === "chords" ? "grid grid-cols-2 gap-x-3 gap-y-1.5 items-start" : "space-y-1.5"}>
+                                {g.seqs.filter(seq => !(singTab === "chords" && ROMAN_NUMERALS.includes(seq.label) && hiddenDeg.has(ROMAN_NUMERALS.indexOf(seq.label)))).map((seq, qi) => renderSeq(
+                                  seq, qi, sec.rawScale, `${si}:${gi}:${qi}`,
+                                  // Band-independent id: the same pattern in the small /
+                                  // center / large columns shares one logbook entry.
+                                  `${sec.mode}|${g.title}|${seq.label}`,
+                                  { cat: g.sub ?? g.cat, group: g.title, label: seq.label },
+                                ))}
+                              </div>
+                              )}
+                            </div>,
+                          );
+                        });
+                        return out;
+                      })()}
                     </div>
                   </Panel>
                 </div>
