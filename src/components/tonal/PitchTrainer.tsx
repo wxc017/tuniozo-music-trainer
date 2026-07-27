@@ -204,19 +204,18 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
     };
   }, [on]);
 
-  // Keybinds while listening: 1/2/3 lock to small/center/large (50/12/39-EDO),
-  // 0 or ` returns to auto-nearest. Capture phase + stop so the parent's 1–7
-  // don't also fire.
+  // Keybinds while listening: h/j/k lock to small/center/large (50/12/39-EDO),
+  // g returns to auto-nearest. (1–7 stay the parent's "start on degree".)
   useEffect(() => {
     if (!on) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
       let hit = true;
-      if (e.key === "1") setLockBand(0);
-      else if (e.key === "2") setLockBand(1);
-      else if (e.key === "3") setLockBand(2);
-      else if (e.key === "0" || e.key === "`") setLockBand(null);
+      if (e.key === "h") setLockBand(0);
+      else if (e.key === "j") setLockBand(1);
+      else if (e.key === "k") setLockBand(2);
+      else if (e.key === "g") setLockBand(null);
       else hit = false;
       if (hit) { e.preventDefault(); e.stopImmediatePropagation(); }
     };
@@ -247,7 +246,7 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
         <div className="flex items-center gap-1">
           {[0, 1, 2].map(b => (
             <button key={b} onClick={() => setLockBand(lockBand === b ? null : b)}
-              title={`Lock to ${BAND_NAMES[b]} · ${BAND_EDO[b]}-EDO  (key ${b + 1})`}
+              title={`Lock to ${BAND_NAMES[b]} · ${BAND_EDO[b]}-EDO  (key ${["h", "j", "k"][b]})`}
               className="px-1.5 py-0.5 rounded text-[10px] font-mono border transition-colors"
               style={lockBand === b
                 ? { background: BAND_COLORS[b], borderColor: BAND_COLORS[b], color: "#000" }

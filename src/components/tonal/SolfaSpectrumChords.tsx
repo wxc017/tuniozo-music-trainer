@@ -3065,6 +3065,17 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                   if (a != null) void holdDrone(`drdeg:${d}`, [a + octShift]);
                 }
               };
+              // Set the tuning band for EVERY degree at once (small/center/large =
+              // 50/12/39-EDO), re-voicing a held degree drone to match.
+              const setAllBands = (b: Band) => {
+                setDroneDegBand(Array(7).fill(b));
+                const h = droneHoldRef.current;
+                if (h && h.id.startsWith("drdeg:")) {
+                  const d = Number(h.id.slice("drdeg:".length));
+                  const a = secByBand.get(b)?.scale[d]?.abs;
+                  if (a != null) void holdDrone(h.id, [a + octShift]);
+                }
+              };
               const stepOct = (delta: number) => {
                 const nx = Math.max(-3, Math.min(3, droneOct + delta));
                 const applied = nx - droneOct;
@@ -3093,6 +3104,15 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                     <button onClick={() => stepOct(-1)} className="px-2 py-0.5 rounded bg-[#141414] border border-[#242424] text-[#c8c8c8] hover:border-[#4a9ac7]">8ve ↓</button>
                     <span className="font-mono text-sm text-[#cfe6ff] w-6 text-center">{3 + droneOct}</span>
                     <button onClick={() => stepOct(1)} className="px-2 py-0.5 rounded bg-[#141414] border border-[#242424] text-[#c8c8c8] hover:border-[#4a9ac7]">8ve ↑</button>
+                    <span className="w-px h-4 bg-[#242424] mx-0.5" />
+                    <span className="text-[10px] text-[#666] font-semibold">TUNING</span>
+                    <select value={droneDegBand[1]} onChange={e => setAllBands(Number(e.target.value) as Band)}
+                      title="Tune every drone degree to one band / EDO"
+                      className="bg-[#141414] border border-[#242424] rounded text-[11px] text-[#bbb] px-1 py-0.5">
+                      <option value={0}>small · 50-EDO</option>
+                      <option value={1}>center · 12-EDO</option>
+                      <option value={2}>large · 39-EDO</option>
+                    </select>
                   </div>
                   <div className="flex items-start gap-2 flex-wrap">
                     <span className="text-[10px] text-[#666] font-semibold w-[56px] pt-1.5">DEGREES</span>
