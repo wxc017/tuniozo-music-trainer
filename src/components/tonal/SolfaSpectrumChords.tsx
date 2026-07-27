@@ -1277,6 +1277,10 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // controls (4th/5th fixed via c4/c5); the 5 chromatic pitches get their OWN
   // region-band tuning so they're distinct pitches, not fixed semitone offsets.
   const singChroma = (regions: string[], band: Band, c2: number, c4: number, c5: number, edo?: EdoTuning): number[] => {
+    // EDO mode: the whole 12-note chromatic is the fifth-generated MOS of this
+    // tuning — every pc is `mosCents`, so the 5 chromatic pitches are the proper
+    // meantone sharps/flats (diatonic-chromatic equivalence), not random spreads.
+    if (edo) return Array.from({ length: 12 }, (_, pc) => mosCents(pc, edo));
     const chroma = new Array(12).fill(0);
     const dia = new Set([0]);
     for (let d = 1; d < 7; d++) {
