@@ -471,10 +471,10 @@ type SingSeq =
   | { kind: "chords"; label: string; chords: { label?: string; tones: SingNote[]; borrowed?: boolean }[]; mi?: boolean };
 type SingCat = "scalar" | "chords" | "cycles";
 // Sub-categories within the Scalar tab (own sub-tab bar) so it isn't one long list.
-type ScalarSub = "scale" | "patterns" | "pentatonic" | "blues" | "triadpairs" | "angular" | "chromatic" | "resolution";
+type ScalarSub = "scale" | "patterns" | "pentatonic" | "symmetric" | "blues" | "triadpairs" | "angular" | "chromatic" | "resolution";
 const SCALAR_SUBS: { id: ScalarSub; label: string }[] = [
   { id: "scale", label: "Scale" }, { id: "patterns", label: "Patterns" }, { id: "pentatonic", label: "Pentatonic" },
-  { id: "triadpairs", label: "Triad Pairs" },
+  { id: "symmetric", label: "Symmetric" }, { id: "triadpairs", label: "Triad Pairs" },
   { id: "angular", label: "Angular" }, { id: "chromatic", label: "Chromatic" }, { id: "resolution", label: "Resolution" },
 ];
 interface SingGroup { title: string; seqs: SingSeq[]; cat: SingCat; sub?: ScalarSub; }
@@ -776,40 +776,81 @@ const PERM_3 = permute([0, 1, 2]);        // all 6 orderings of a 3-note cell (1
 const PERM_4 = permute([0, 1, 2, 3]);
 const stepLabel = (s: number[]): string => s.map(x => x + 1).join("·");
 
-// ── Pentatonics (Ricker / Weiskopf) — the major pentatonic's scale steps
-// (omit the 4th & 7th), and singable patterns over them. ──
-const PENTA_STEPS = [0, 1, 2, 4, 5];
-const pentaStep = (p: number): number => PENTA_STEPS[mod(p, 5)] + 7 * Math.floor(p / 5);
-const pentaLine = (idxs: number[]): number[] => idxs.map(pentaStep);
 // A full interval cycle for a scale of `L` notes: the [degree, degree+k] pair
 // from every degree (0…L-1), then a final tonic (index L) where the cycle
-// returns. 2L+1 notes. Used for BOTH the pentatonic and the diatonic
-// scale-in-intervals so they share one logic. e.g. penta 4ths (L=5, k=3) →
-// 1 5 2 6 3 1 5 2 6 3 1.
+// returns. 2L+1 notes. Used for the diatonic scale-in-intervals and the
+// pentatonic/symmetric cells below, so they all share one logic. e.g. penta
+// 4ths (L=5, k=3) → 1 5 2 6 3 1 5 2 6 3 1.
 const intervalPairs = (L: number, k: number): number[] =>
   [...Array.from({ length: L }, (_, d) => [d, d + k]).flat(), L];
-const pentaInterval = (k: number): number[] => pentaLine(intervalPairs(5, k));
-const PENTA_PATTERNS: { label: string; steps: number[] }[] = [
-  { label: "penta ↑↓",        steps: pentaLine([0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0]) },
-  { label: "penta 3rds",      steps: pentaInterval(2) },
-  { label: "penta 4ths",      steps: pentaInterval(3) },
-  { label: "penta 5ths",      steps: pentaInterval(4) },
-  { label: "penta 6ths",      steps: pentaInterval(5) },
-  { label: "penta groups 3",  steps: pentaLine([0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5]) },
-  { label: "penta groups 4",  steps: pentaLine([0, 1, 2, 3, 1, 2, 3, 4, 2, 3, 4, 5]) },
-  { label: "penta triads 1·3·5", steps: pentaLine([0, 2, 4, 1, 3, 5, 2, 4, 6, 3, 5, 7]) },
-  { label: "penta 1·2·3·5",   steps: pentaLine([0, 1, 2, 3]) },
-  { label: "penta 1·2·3·5 ×deg", steps: pentaLine([0, 1, 2, 3, 1, 2, 3, 4, 2, 3, 4, 5]) },
-  { label: "penta 1·3·2·1",   steps: pentaLine([0, 2, 1, 0, 1, 3, 2, 1, 2, 4, 3, 2]) },
-  { label: "penta 4th↑ 2nd↓", steps: pentaLine([0, 3, 1, 4, 2, 5, 3, 6]) },
-  { label: "penta wide 1·4·2·5", steps: pentaLine([0, 3, 1, 4, 2, 5, 3, 6, 4, 7]) },
-  // Descending groupings + a wide leap cell — the gaps the pentatonic is prized
-  // for read very differently coming down.
-  { label: "penta groups 5",   steps: pentaLine([0, 1, 2, 3, 4, 1, 2, 3, 4, 5, 2, 3, 4, 5, 6]) },
-  { label: "penta ↓ groups 3", steps: pentaLine([2, 1, 0, 3, 2, 1, 4, 3, 2, 5, 4, 3]) },
-  { label: "penta ↓ groups 4", steps: pentaLine([3, 2, 1, 0, 4, 3, 2, 1, 5, 4, 3, 2]) },
-  { label: "penta 1·5·3·2",    steps: pentaLine([0, 4, 2, 1, 1, 5, 3, 2, 2, 6, 4, 3]) },
+
+// ── Structure application: pentatonic superimposition + symmetric scales ─────
+// A pattern is a STRUCTURE (an index cell); a scale is a list of ascending pc
+// offsets within one octave.  scPc wraps the index by the scale length, carrying
+// octaves, so ONE cell sequences over a 5-note pentatonic, a 6-note whole-tone,
+// or an 8-note octatonic exactly as the diatonic cells run over 7.  The pcs are
+// mapped through the band-tuned 12-note chroma at build time, so every structure
+// inherits the 50/12/39-EDO spectrum — structures, pentatonics, symmetric
+// scales, chords and cycles are all the same idea applied to different note-sets.
+const scPc = (scale: number[], i: number): number =>
+  scale[mod(i, scale.length)] + 12 * Math.floor(i / scale.length);
+const scPcs = (scale: number[], idxs: number[]): number[] => idxs.map(i => scPc(scale, i));
+const upDownIdx = (n: number): number[] =>
+  [...Array.from({ length: n + 1 }, (_, i) => i), ...Array.from({ length: n }, (_, i) => n - 1 - i)];
+// Sequence a cell from every degree of an n-note scale (index space).
+const seqCell = (cell: number[], n: number): number[] =>
+  Array.from({ length: n }, (_, r) => cell.map(o => r + o)).flat();
+const rollGroups = (n: number, g: number): number[] =>
+  Array.from({ length: n }, (_, r) => Array.from({ length: g }, (_, j) => r + j)).flat();
+
+// Major / minor pentatonic as pc structures (semitones from the pentatonic's own
+// root), and the singable cells run over them.
+const MAJ_PENT = [0, 2, 4, 7, 9];
+const MIN_PENT = [0, 3, 5, 7, 10];
+const PENTA_CELLS: { label: string; cell: number[] }[] = [
+  { label: "up · down",    cell: upDownIdx(5) },
+  { label: "3rds",         cell: intervalPairs(5, 2) },
+  { label: "4ths",         cell: intervalPairs(5, 3) },
+  { label: "5ths",         cell: intervalPairs(5, 4) },
+  { label: "groups of 3",  cell: seqCell([0, 1, 2], 5) },
+  { label: "groups of 4",  cell: seqCell([0, 1, 2, 3], 5) },
+  { label: "↓ groups of 3", cell: seqCell([2, 1, 0], 5) },
+  { label: "1·3·5 triads", cell: seqCell([0, 2, 4], 5) },
+  { label: "4th↑ 2nd↓",    cell: seqCell([0, 3, 1], 5) },
 ];
+// Superimposition bases — WHICH root the pentatonic sits on (chromatic offset
+// from the key tonic) and the colour that yields.  This is the modern-jazz
+// device (Shaw / Garzone / Potter): one pentatonic shape, re-rooted, so the same
+// structure paints a different set of tensions over the tonic.
+const PENTA_BASES: { label: string; root: number; struct: number[] }[] = [
+  { label: "maj · on 1 (1 2 3 5 6)",              root: 0,  struct: MAJ_PENT },
+  { label: "maj · on 2 · 9th (Lydian 2 3 ♯4 6 7)", root: 2,  struct: MAJ_PENT },
+  { label: "maj · off 5 · 9·11·13 (5 6 7 2 3)",   root: 7,  struct: MAJ_PENT },
+  { label: "maj · off ♭7 · Dorian/Mixo",          root: 10, struct: MAJ_PENT },
+  { label: "maj · ½-step up · side-slip (out)",   root: 1,  struct: MAJ_PENT },
+  { label: "min · on 1",                          root: 0,  struct: MIN_PENT },
+  { label: "min · off 5 (McCoy/Coltrane)",        root: 7,  struct: MIN_PENT },
+  { label: "min · on 2 · Dorian",                 root: 2,  struct: MIN_PENT },
+];
+
+// Symmetric (non-diatonic) scales — they don't fit the 7-region diatonic MOS,
+// so they're built here as pc structures and get the same cell vocabulary.
+const SYM_SCALES: { label: string; scale: number[]; arp: number[] }[] = [
+  { label: "WHOLE-TONE",                     scale: [0, 2, 4, 6, 8, 10],       arp: [0, 2, 4] },
+  { label: "AUGMENTED",                      scale: [0, 3, 4, 7, 8, 11],       arp: [0, 2, 4] },
+  { label: "OCTATONIC · whole–half (dim7)",  scale: [0, 2, 3, 5, 6, 8, 9, 11], arp: [0, 2, 4, 6] },
+  { label: "OCTATONIC · half–whole (dom♭9)", scale: [0, 1, 3, 4, 6, 7, 9, 10], arp: [0, 2, 4, 6] },
+];
+const symCells = (s: { scale: number[]; arp: number[] }): { label: string; idx: number[] }[] => {
+  const N = s.scale.length;
+  return [
+    { label: "up · down",   idx: upDownIdx(N) },
+    { label: "3rds",        idx: intervalPairs(N, 2) },
+    { label: "4ths",        idx: intervalPairs(N, 3) },
+    { label: "groups of 4", idx: rollGroups(N, 4) },
+    { label: N > 6 ? "dim7 arps" : "aug arps", idx: seqCell(s.arp, N) },
+  ];
+};
 
 // ── Blues — with the blue notes where they actually live ─────────────
 // The blue notes are NOT 12-EDO degrees.  Performance and recording studies put
@@ -1722,7 +1763,21 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       { cat: "scalar", sub: "patterns", title: "PERMUTATIONS · 3-NOTE (1·2·3)", seqs: PERM_3.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqPattern(p)))) },
       // Bergonzi Melodic Structures — all 24 orderings of the 4-note structure.
       { cat: "scalar", sub: "patterns", title: "PERMUTATIONS · 4-NOTE (Bergonzi, all 24)", seqs: PERM_4.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqPattern(p)))) },
-      { cat: "scalar", sub: "pentatonic", title: "PENTATONICS", seqs: PENTA_PATTERNS.map(p => lineSeq(p.label, scale, endOnTonic(p.steps))) },
+      // Pentatonic superimposition — one shape, re-rooted per section (on 1, off
+      // 5, off ♭7, side-slip …).  Cents-built through the band chroma so the
+      // superimposed tensions carry the spectrum tuning.
+      ...PENTA_BASES.map(b => ({
+        cat: "scalar" as SingCat, sub: "pentatonic" as ScalarSub, title: `PENT · ${b.label}`,
+        seqs: PENTA_CELLS.map(c => chromSeq(c.label, endOnTonicCents(
+          scPcs(b.struct, c.cell).map(pc => chromaCents(chroma, b.root + pc))))),
+      })),
+      // Symmetric scales — the same cell structures over whole-tone / augmented /
+      // octatonic, which don't fit the 7-region diatonic scaffold.
+      ...SYM_SCALES.map(s => ({
+        cat: "scalar" as SingCat, sub: "symmetric" as ScalarSub, title: s.label,
+        seqs: symCells(s).map(c => chromSeq(c.label, endOnTonicCents(
+          scPcs(s.scale, c.idx).map(pc => chromaCents(chroma, pc))))),
+      })),
       ...ANGULAR_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "angular" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(p.steps))) })),
       { cat: "scalar", sub: "chromatic", title: "CHROMATIC", seqs: [
         chromSeq("12-note chromatic", endOnTonicCents(chromaticScaleLine(chroma))),
