@@ -834,8 +834,43 @@ const PENTA_CELLS: { label: string; cell: number[] }[] = [
 // Degree spelling of a pentatonic FROM ITS OWN ROOT (root = 1), so each base's
 // shape is legible: major pentatonic reads "1 2 3 5 6", minor "1 ♭3 4 5 ♭7".
 const DEG_NAMES = ["1", "♭2", "2", "♭3", "3", "4", "♯4", "5", "♭6", "6", "♭7", "7"] as const;
-const pentaDegrees = (struct: number[]): string =>
-  struct.map(pc => DEG_NAMES[mod(pc, 12)]).join(" ");
+// Spell a pentatonic's notes as KEY degrees, in the pentatonic's own order from
+// its root (root = chromatic offset from the tonic).  e.g. min pent on 2 →
+// 2 4 5 6 1; maj pent on 5 → 5 6 7 2 3.
+const pentaDegrees = (root: number, struct: number[]): string =>
+  struct.map(pc => DEG_NAMES[mod(root + pc, 12)]).join(" ");
+// Superimposition catalogue by chord quality (over the tonic = chord root): the
+// pentatonics that live in each quality's chord-scale and the tension colour they
+// paint.  Verified as subsets of the parent scale (Mixo / altered / Dorian /
+// Locrian); the ♭5- and ♯9-rooted ones are the classic "altered" pentatonics.
+const SUPERIMP: { quality: string; items: { struct: number[]; root: number }[] }[] = [
+  { quality: "MAJ7 / Lydian", items: [
+    { struct: MAJ_PENT, root: 0 },   // 1 2 3 5 6
+    { struct: MAJ_PENT, root: 7 },   // 5 6 7 2 3  (3 5 7 9 13 — bright)
+    { struct: MAJ_PENT, root: 2 },   // 2 3 ♯4 6 7 (Lydian ♯11)
+  ] },
+  { quality: "DOM7 / Mixo", items: [
+    { struct: MAJ_PENT, root: 0 },   // 1 2 3 5 6
+    { struct: MAJ_PENT, root: 10 },  // ♭7 1 2 4 5 (adds 11)
+    { struct: MIN_PENT, root: 7 },   // 5 ♭7 1 2 4
+    { struct: MIN_PENT, root: 2 },   // 2 4 5 6 1 (Dorian 13)
+  ] },
+  { quality: "7ALT", items: [
+    { struct: MAJ_PENT, root: 6 },   // ♯4 ♭6 ♭7 ♭2 ♭3  (♯11 ♭13 ♭7 ♭9 ♯9)
+    { struct: MIN_PENT, root: 3 },   // ♭3 ♭5 ♭6 ♭7 ♭2  (the ♭III minor pent)
+  ] },
+  { quality: "MIN7 / Dorian", items: [
+    { struct: MIN_PENT, root: 0 },   // 1 ♭3 4 5 ♭7
+    { struct: MIN_PENT, root: 2 },   // 2 4 5 6 1 (Dorian 13)
+    { struct: MIN_PENT, root: 7 },   // 5 ♭7 1 2 4
+    { struct: MAJ_PENT, root: 10 },  // ♭7 1 2 4 5
+  ] },
+  { quality: "M7♭5 / Locrian", items: [
+    { struct: MIN_PENT, root: 3 },   // ♭3 ♭5 ♭6 ♭7 ♭2
+    { struct: MIN_PENT, root: 10 },  // ♭7 ♭2 ♭3 4 ♭6
+    { struct: MAJ_PENT, root: 1 },   // ♭2 ♭3 4 ♭6 ♭7
+  ] },
+];
 
 // Symmetric (non-diatonic) scales don't fit the 7-region diatonic MOS, so they
 // live in the MODES list as `sym` scales (selectable under Harmonic minor) and
@@ -1808,7 +1843,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         if (!inKey(rootPc, struct)) return;
         tonic.push({
           cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE · in-key",
-          title: `PENT · ${q} on ${d + 1} (${pentaDegrees(struct)})`,
+          title: `PENT · ${q} on ${d + 1} · ${pentaDegrees(rootPc, struct)}`,
           seqs: cellsFor(rootPc, struct),
         });
       });
@@ -1817,18 +1852,14 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE · in-key", title: "STRUCTURES · 4-NOTE (all 24, maj on 1)",
       seqs: PERM_4.map(p => chromSeq(stepLabel(p), endOnTonicCents(scPcs(MAJ_PENT, seqCell(p, 5)).map(pc => chromaCents(chroma, pc))))),
     });
-    // CHORD-RELATIVE — a pentatonic superimposed on each chord root, quality
-    // matched to that degree's own third; MAY introduce chromatic tensions (the
-    // whole point of superimposition), so it is NOT limited to the 7 notes.
-    const chord: SingGroup[] = diaPcs.map((rootPc, d) => {
-      const third = mod(diaPcs[(d + 2) % 7] - rootPc, 12);
-      const struct = third <= 3 ? MIN_PENT : MAJ_PENT;
-      return {
-        cat: "scalar", sub: "pentatonic", parent: "CHORD-RELATIVE · superimposed",
-        title: `PENT · on ${d + 1} (${third <= 3 ? "min" : "maj"}: ${pentaDegrees(struct)})`,
-        seqs: cellsFor(rootPc, struct),
-      };
-    });
+    // CHORD-RELATIVE — superimposition catalogue by chord quality, over the tonic
+    // (tonic = chord root).  One parent per quality; each entry is a pentatonic
+    // living in that chord-scale, labelled with the tensions it paints.
+    const chord: SingGroup[] = SUPERIMP.flatMap(qg => qg.items.map(it => ({
+      cat: "scalar" as SingCat, sub: "pentatonic" as ScalarSub, parent: `CHORD · ${qg.quality}`,
+      title: `${it.struct === MAJ_PENT ? "maj" : "min"} pent on ${DEG_NAMES[it.root]} · ${pentaDegrees(it.root, it.struct)}`,
+      seqs: cellsFor(it.root, it.struct),
+    })));
     return [...tonic, ...chord];
   };
 
