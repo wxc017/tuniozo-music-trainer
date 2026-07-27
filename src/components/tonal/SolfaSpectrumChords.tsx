@@ -836,12 +836,6 @@ const PENTA_CELLS: { label: string; cell: number[] }[] = [
 const DEG_NAMES = ["1", "♭2", "2", "♭3", "3", "4", "♯4", "5", "♭6", "6", "♭7", "7"] as const;
 const pentaDegrees = (struct: number[]): string =>
   struct.map(pc => DEG_NAMES[mod(pc, 12)]).join(" ");
-// The diatonic pentatonic as SCALE-STEP indices: the scale minus its 4th and 7th
-// degrees (the two semitone-tension positions).  Rooting patterns on each of its
-// 5 degrees gives the 5 pentatonic modes — always inside the 7-note scale.  Used
-// by the TONIC-RELATIVE family so no chromatic tones leak in.
-const PENTA_IN_SCALE = [0, 1, 2, 4, 5];
-const pentaScaleStep = (i: number): number => PENTA_IN_SCALE[mod(i, 5)] + 7 * Math.floor(i / 5);
 
 // Symmetric (non-diatonic) scales don't fit the 7-region diatonic MOS, so they
 // live in the MODES list as `sym` scales (selectable under Harmonic minor) and
@@ -1072,8 +1066,9 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const [droneOpen, setDroneOpen] = useState(false);
   // Collapsed section headings (keyed by group title) — click a heading to fold
   // its rows away for a tidier list.
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["CHORD-RELATIVE · superimposed"]));
-  const toggleGroupCollapsed = (title: string) => setCollapsedGroups(s => {
+  // Track EXPANDED groups — default empty, so every group/parent starts collapsed.
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const toggleGroupExpanded = (title: string) => setExpandedGroups(s => {
     const n = new Set(s); n.has(title) ? n.delete(title) : n.add(title); return n;
   });
   const [droneDegBand, setDroneDegBand] = useState<Band[]>([1, 1, 1, 1, 1, 1, 1]);
@@ -1755,7 +1750,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         lineSeq("7ths", scale, intervalPairs(7, 6)),
       ] },
       ...PATTERN_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "patterns" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(seqPattern(p.cell)))) })),
-      ...pentaGroups(scale, chroma, diaPcs),
+      ...pentaGroups(chroma, diaPcs),
       ...ANGULAR_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "angular" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(p.steps))) })),
       { cat: "scalar", sub: "chromatic", title: "CHROMATIC", seqs: [
         chromSeq("12-note chromatic", endOnTonicCents(chromaticScaleLine(chroma))),
@@ -1798,26 +1793,29 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   //   • CHORD-RELATIVE — a pentatonic rooted on EACH scale degree (the chord
   //     roots), quality matched to that degree's own third — pentatonic-per-chord.
   // Plus the 4-note pentatonic Melodic Structures (all 24) on the home shape.
-  const pentaGroups = (scale: number[], chroma: number[], diaPcs: number[]): SingGroup[] => {
-    // TONIC-RELATIVE — the diatonic pentatonic rooted on each of its 5 degrees.
-    // Everything is read from `scale`, so only the 7 in-key notes are ever sung.
-    // The shape is spelled from that root (root = 1) so each mode reads clearly.
-    const shapeFromRoot = (b: number): string => {
-      const r = scale[PENTA_IN_SCALE[b]];
-      return [0, 1, 2, 3, 4].map(i => {
-        const st = pentaScaleStep(b + i);
-        const c = scale[mod(st, 7)] + 1200 * Math.floor(st / 7) - r;
-        return DEG_NAMES[mod(Math.round(c / 100), 12)];
-      }).join(" ");
-    };
-    const tonic: SingGroup[] = [0, 1, 2, 3, 4].map(b => ({
-      cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE · diatonic",
-      title: `PENT · on ${PENTA_IN_SCALE[b] + 1} (${shapeFromRoot(b)})`,
-      seqs: PENTA_CELLS.map(c => lineSeq(c.label, scale, endOnTonic(c.cell.map(i => pentaScaleStep(b + i))))),
-    }));
+  const pentaGroups = (chroma: number[], diaPcs: number[]): SingGroup[] => {
+    const scaleSet = new Set(diaPcs.map(pc => mod(pc, 12)));
+    const inKey = (root: number, struct: number[]): boolean => struct.every(pc => scaleSet.has(mod(root + pc, 12)));
+    const cellsFor = (root: number, struct: number[]): SingSeq[] =>
+      PENTA_CELLS.map(c => chromSeq(c.label, endOnTonicCents(scPcs(struct, c.cell).map(pc => chromaCents(chroma, root + pc)))));
+    // TONIC-RELATIVE — every major / minor pentatonic that stays ENTIRELY in the
+    // key.  This is how pentatonics are actually catalogued: in C major, maj pent
+    // on I/IV/V and min pent on ii/iii/vi — three collections, six roots — not the
+    // five modal rotations of one collection.
+    const tonic: SingGroup[] = [];
+    diaPcs.forEach((rootPc, d) => {
+      ([["maj", MAJ_PENT], ["min", MIN_PENT]] as const).forEach(([q, struct]) => {
+        if (!inKey(rootPc, struct)) return;
+        tonic.push({
+          cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE · in-key",
+          title: `PENT · ${q} on ${d + 1} (${pentaDegrees(struct)})`,
+          seqs: cellsFor(rootPc, struct),
+        });
+      });
+    });
     tonic.push({
-      cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE · diatonic", title: "STRUCTURES · 4-NOTE (all 24, on 1)",
-      seqs: PERM_4.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqCell(p, 5).map(i => pentaScaleStep(i))))),
+      cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE · in-key", title: "STRUCTURES · 4-NOTE (all 24, maj on 1)",
+      seqs: PERM_4.map(p => chromSeq(stepLabel(p), endOnTonicCents(scPcs(MAJ_PENT, seqCell(p, 5)).map(pc => chromaCents(chroma, pc))))),
     });
     // CHORD-RELATIVE — a pentatonic superimposed on each chord root, quality
     // matched to that degree's own third; MAY introduce chromatic tensions (the
@@ -1828,7 +1826,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       return {
         cat: "scalar", sub: "pentatonic", parent: "CHORD-RELATIVE · superimposed",
         title: `PENT · on ${d + 1} (${third <= 3 ? "min" : "maj"}: ${pentaDegrees(struct)})`,
-        seqs: PENTA_CELLS.map(c => chromSeq(c.label, endOnTonicCents(scPcs(struct, c.cell).map(pc => chromaCents(chroma, rootPc + pc))))),
+        seqs: cellsFor(rootPc, struct),
       };
     });
     return [...tonic, ...chord];
@@ -3154,20 +3152,20 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                         groups.forEach((g, gi) => {
                           if (g.parent && g.parent !== curParent) {
                             curParent = g.parent;
-                            const pCol = collapsedGroups.has(g.parent);
+                            const pCol = !expandedGroups.has(g.parent);
                             out.push(
-                              <button key={`p:${g.parent}`} onClick={() => toggleGroupCollapsed(g.parent!)}
+                              <button key={`p:${g.parent}`} onClick={() => toggleGroupExpanded(g.parent!)}
                                 className="flex items-center gap-1 text-[11px] text-[#8a8ac0] hover:text-[#c6c6e6] font-bold tracking-widest uppercase transition-colors pt-1">
                                 <span className="text-[9px] w-2 inline-block">{pCol ? "▶" : "▼"}</span>{g.parent}
                               </button>,
                             );
                           }
                           if (!g.parent) curParent = undefined;
-                          if (g.parent && collapsedGroups.has(g.parent)) return;   // hidden under collapsed parent
-                          const collapsed = collapsedGroups.has(g.title);
+                          if (g.parent && !expandedGroups.has(g.parent)) return;   // hidden under collapsed parent
+                          const collapsed = !expandedGroups.has(g.title);
                           out.push(
                             <div key={gi} className={`space-y-1.5 ${g.parent ? "pl-2 border-l border-[#1e1e2a] ml-1" : ""}`}>
-                              <button onClick={() => toggleGroupCollapsed(g.title)}
+                              <button onClick={() => toggleGroupExpanded(g.title)}
                                 className="flex items-center gap-1 text-[10px] text-[#666] hover:text-[#aaa] font-semibold tracking-wider transition-colors">
                                 <span className="text-[8px] w-2 inline-block">{collapsed ? "▶" : "▼"}</span>{g.title}
                               </button>
