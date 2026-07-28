@@ -8,11 +8,14 @@ export const FMIN = 70, FMAX = 1200;   // vocal range we search
 // Gates tuned up so ambient/mic self-noise and half-voiced frames are rejected:
 // this stops false detections on silence AND keeps harmonic-slip frames from
 // corrupting a sustained note. If it starts MISSING quiet singing, lower these.
-export const RMS_GATE = 0.005;          // below this = silence (kept low so quiet
+export const RMS_GATE = 0.003;          // below this = silence (kept low so quiet
                                         // sustained singing still registers)
-export const CLARITY_GATE = 0.82;       // NSDF peak below this = noise, not a clean
+export const CLARITY_GATE = 0.72;       // NSDF peak below this = noise, not a clean
                                         // voiced note — this (volume-independent) is
-                                        // what actually rejects ambient noise/silence
+                                        // what actually rejects ambient noise/silence.
+                                        // Lowered so quiet / breathy singing registers
+                                        // without having to belt it (raise toward 0.82
+                                        // if ambient noise starts triggering false notes)
 
 /** Median of a short window — smooths frame-to-frame jitter. */
 export function median(xs: number[]): number {

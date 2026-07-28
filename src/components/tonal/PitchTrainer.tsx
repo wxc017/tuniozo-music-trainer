@@ -116,10 +116,11 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
           if (active) {
             if (!guideOnRef.current || guideNoteRef.current !== noteIdx) {
               guideOnRef.current = true; guideNoteRef.current = noteIdx; guideStart = now;
-              // Play the guide drone TWO OCTAVES above the target: a bright,
-              // piercing timbre that cuts through your voice, and it sits above
-              // the 70–1200 Hz detection range so it doesn't pollute tracking.
-              const tf = targetFreqNear(tonicFreq, targetCents, voiceFreq) * 4;
+              // Play the guide drone in the SAME octave you're singing in, so it
+              // sits right next to your voice instead of piercing two octaves above.
+              // Note: now inside the 70–1200 Hz detection range, so with SPEAKERS the
+              // mic can hear the drone and track it — use headphones (🎧 hint above).
+              const tf = targetFreqNear(tonicFreq, targetCents, voiceFreq);
               audioEngine.startRatioDroneVoice(GUIDE_KEY, tf / C4_FREQ, DRONE_GAIN, C4_FREQ).catch(() => {});
               setGuiding(true);
             }
