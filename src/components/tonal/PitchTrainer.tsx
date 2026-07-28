@@ -11,7 +11,7 @@ import { C4_FREQ, detectPitch, median, circDelta } from "@/lib/pitchDetect";
 
 const GUIDE_LEVEL = 0.45;    // absolute output gain of the synth guide voice (direct to the
                              // mic context's output — no shared drone-bus limiter, so the
-                             // cycle drones can't duck it). Loud + sharp so it cuts through.
+                             // cycle drones can't duck it). Loud + clean so beating reads.
 
 const TOL_CENTS = 8;         // you're "on the note" inside ±this many cents. Kept tight on
                              // purpose: the bands (50/12/39-EDO) sit only ~10-25¢ apart, so a
@@ -89,10 +89,11 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
   const prevCentsRef = useRef(-1);     // last committed cents (for movement / directional bias)
 
   // ── Synth guide voice ──────────────────────────────────────────────
-  // The guide drone is its OWN synth voice — a SHARP sawtooth reed, NOT the app's
-  // sampled drone instrument. So it's a different, cutting timbre from the cycle
-  // circle-drones, and being on its own signal path (straight to the mic context
-  // output, no shared drone-bus limiter) the cycle chords can't duck or bury it.
+  // The guide drone is its OWN synth voice — a clean, mostly-sine tone (dominant
+  // fundamental), NOT the app's sampled drone instrument. That keeps a different
+  // timbre from the cycle circle-drones AND makes beating against your voice easy to
+  // hear; on its own signal path (straight to the mic context output, no shared
+  // drone-bus limiter) the cycle chords can't duck or bury it.
   const guideVoiceRef = useRef<{ oscs: OscillatorNode[]; gain: GainNode } | null>(null);
   const killGuideVoice = (fade = 0.16) => {
     const ac = ctxRef.current, v = guideVoiceRef.current;
@@ -110,17 +111,22 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
     killGuideVoice(0.03);                          // clear the prior note before retuning
     const g = ac.createGain();
     g.gain.setValueAtTime(0, ac.currentTime);
-    const lp = ac.createBiquadFilter();            // tame only the very top (anti-harsh)
-    lp.type = "lowpass"; lp.frequency.value = 7000;
-    lp.connect(g); g.connect(ac.destination);
-    // Sawtooth = dense harmonics → a sharp reed that cuts through a chord drone and
-    // your own voice; a square an octave up adds extra bite.
-    const saw = ac.createOscillator(); saw.type = "sawtooth"; saw.frequency.value = freq;
-    const sawG = ac.createGain(); sawG.gain.value = 0.6; saw.connect(sawG); sawG.connect(lp); saw.start();
-    const sq = ac.createOscillator(); sq.type = "square"; sq.frequency.value = freq * 2;
-    const sqG = ac.createGain(); sqG.gain.value = 0.12; sq.connect(sqG); sqG.connect(lp); sq.start();
+    g.connect(ac.destination);
+    // A clean tone with a DOMINANT fundamental (near-sine) so you hear slow, clear
+    // amplitude beating against your voice at the unison — that's what you tune to.
+    // A little 2nd/3rd partial gives it presence to cut a chord drone, but no buzzy
+    // saw/square: dense harmonics smear the beat and sound farty down low.
+    const oscs: OscillatorNode[] = [];
+    for (const [mult, amp] of [[1, 0.85], [2, 0.13], [3, 0.06]] as const) {
+      const o = ac.createOscillator();
+      o.type = "sine";
+      o.frequency.value = freq * mult;
+      const pg = ac.createGain(); pg.gain.value = amp;
+      o.connect(pg); pg.connect(g); o.start();
+      oscs.push(o);
+    }
     g.gain.linearRampToValueAtTime(GUIDE_LEVEL, ac.currentTime + 0.05);
-    guideVoiceRef.current = { oscs: [saw, sq], gain: g };
+    guideVoiceRef.current = { oscs, gain: g };
   };
 
   useEffect(() => {
@@ -158,9 +164,10 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
           if (active) {
             if (!guideOnRef.current || guideNoteRef.current !== noteIdx) {
               guideOnRef.current = true; guideNoteRef.current = noteIdx; guideStart = now;
-              // Guide drone in the SAME octave you're singing in (right next to your
-              // voice), as its own sharp synth voice — a different, cutting timbre from
-              // the cycle drones and loud enough to hear over them.
+              // Guide drone in the SAME octave you're singing in (a unison right next
+              // to your voice) as its own clean synth tone — a different timbre from the
+              // cycle drones, loud enough to hear over them, and pure enough that the
+              // beating slows to a stop as you lock in.
               // Note: inside the 70–1200 Hz detection range, so with SPEAKERS the mic
               // can hear it and track it — use headphones (🎧 hint above).
               const tf = targetFreqNear(tonicFreq, targetCents, voiceFreq);
