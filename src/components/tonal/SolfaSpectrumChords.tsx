@@ -2584,8 +2584,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                   const voiceWalked = j === walk.index && walkedVoices.has(k);
                   return (
                   <button key={k}
-                    onClick={e => { e.stopPropagation(); if (cardOn) playOne(t.abs); else toggleDrone(noteId, [t.abs]); }}
-                    title={cardOn ? "Click to hear this note momentarily over the drone" : "Click to drone just this note (click again to stop)"}
+                    onClick={e => { e.stopPropagation(); if (droningId !== null) playOne(t.abs); else toggleDrone(noteId, [t.abs]); }}
+                    title={droningId !== null ? "Click to hear this note momentarily over the drone" : "Click to drone just this note (click again to stop)"}
                     className={`group text-xs font-mono leading-tight rounded-sm px-1 hover:bg-[#7173e6]/20 ${voiceWalked ? "bg-[#4a9ac7]/25 ring-2 ring-[#4a9ac7]/70" : noteOn ? "bg-[#e0b060]/25 ring-1 ring-[#e0b060]/60" : t.root ? "bg-[#e0609f]/18 ring-1 ring-[#e0609f]/40" : ""}`}>{noteGlyph(t)}</button>
                   );
                 })}

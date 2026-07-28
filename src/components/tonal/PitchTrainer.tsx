@@ -7,14 +7,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { REGIONS } from "@/lib/intervalSpectrum";
-import { audioEngine } from "@/lib/audioEngine";
 import { C4_FREQ, detectPitch, median, circDelta } from "@/lib/pitchDetect";
 
-const GUIDE_KEY = "pitch-trainer-guide";   // keyed drone voice = the selected instrument sample
+const GUIDE_LEVEL = 0.45;    // absolute output gain of the synth guide voice (direct to the
+                             // mic context's output — no shared drone-bus limiter, so the
+                             // cycle drones can't duck it). Loud + sharp so it cuts through.
 
-const TOL_CENTS = 8;         // you're "on the note" inside ±this many cents (realistic for voice)
+const TOL_CENTS = 8;         // you're "on the note" inside ±this many cents. Kept tight on
+                             // purpose: the bands (50/12/39-EDO) sit only ~10-25¢ apart, so a
+                             // wide window would read "on" for the WRONG band and defeat the
+                             // microtonal training. Precision is the point — narrow it, don't
+                             // widen it. (Loosen only to warm up.)
 const STABLE_SPREAD = 40;       // recent frames must agree within this (cents) = a held voice
-const DRONE_GAIN = 1.0;         // guide-drone voice gain (logical 0..2, sampled instrument)
 const MIN_DRONE_MS = 1000;      // once it starts, the guide drone holds at least this long
 const BIAS_CENTS = 30;          // when clearly moving off a note, switch to the next one this early
 
@@ -84,6 +88,41 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
   const guideNoteRef = useRef(-1);     // which target the guide drone is sounding
   const prevCentsRef = useRef(-1);     // last committed cents (for movement / directional bias)
 
+  // ── Synth guide voice ──────────────────────────────────────────────
+  // The guide drone is its OWN synth voice — a SHARP sawtooth reed, NOT the app's
+  // sampled drone instrument. So it's a different, cutting timbre from the cycle
+  // circle-drones, and being on its own signal path (straight to the mic context
+  // output, no shared drone-bus limiter) the cycle chords can't duck or bury it.
+  const guideVoiceRef = useRef<{ oscs: OscillatorNode[]; gain: GainNode } | null>(null);
+  const killGuideVoice = (fade = 0.16) => {
+    const ac = ctxRef.current, v = guideVoiceRef.current;
+    if (!ac || !v) { guideVoiceRef.current = null; return; }
+    const t = ac.currentTime;
+    v.gain.gain.cancelScheduledValues(t);
+    v.gain.gain.setValueAtTime(v.gain.gain.value, t);
+    v.gain.gain.linearRampToValueAtTime(0, t + fade);
+    v.oscs.forEach(o => { try { o.stop(t + fade + 0.03); } catch { /* already stopped */ } });
+    guideVoiceRef.current = null;
+  };
+  const buildGuideVoice = (freq: number) => {
+    const ac = ctxRef.current;
+    if (!ac) return;
+    killGuideVoice(0.03);                          // clear the prior note before retuning
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0, ac.currentTime);
+    const lp = ac.createBiquadFilter();            // tame only the very top (anti-harsh)
+    lp.type = "lowpass"; lp.frequency.value = 7000;
+    lp.connect(g); g.connect(ac.destination);
+    // Sawtooth = dense harmonics → a sharp reed that cuts through a chord drone and
+    // your own voice; a square an octave up adds extra bite.
+    const saw = ac.createOscillator(); saw.type = "sawtooth"; saw.frequency.value = freq;
+    const sawG = ac.createGain(); sawG.gain.value = 0.6; saw.connect(sawG); sawG.connect(lp); saw.start();
+    const sq = ac.createOscillator(); sq.type = "square"; sq.frequency.value = freq * 2;
+    const sqG = ac.createGain(); sqG.gain.value = 0.12; sq.connect(sqG); sqG.connect(lp); sq.start();
+    g.gain.linearRampToValueAtTime(GUIDE_LEVEL, ac.currentTime + 0.05);
+    guideVoiceRef.current = { oscs: [saw, sq], gain: g };
+  };
+
   useEffect(() => {
     if (!on) return;
     let cancelled = false;
@@ -93,7 +132,10 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
         // steady/sustained tones — they cut your voice (and the spectrum) the
         // instant you hold a pitch. Off, so a sustained note is tracked
         // continuously (the RMS/clarity gates in detectPitch handle silence).
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+        // autoGainControl is left ON, though: unlike those two it doesn't gate
+        // tones, it just boosts a quiet mic up to a usable level so quiet singing
+        // clears the detection gates.
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } });
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = stream;
         const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
@@ -116,17 +158,18 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
           if (active) {
             if (!guideOnRef.current || guideNoteRef.current !== noteIdx) {
               guideOnRef.current = true; guideNoteRef.current = noteIdx; guideStart = now;
-              // Play the guide drone in the SAME octave you're singing in, so it
-              // sits right next to your voice instead of piercing two octaves above.
-              // Note: now inside the 70–1200 Hz detection range, so with SPEAKERS the
-              // mic can hear the drone and track it — use headphones (🎧 hint above).
+              // Guide drone in the SAME octave you're singing in (right next to your
+              // voice), as its own sharp synth voice — a different, cutting timbre from
+              // the cycle drones and loud enough to hear over them.
+              // Note: inside the 70–1200 Hz detection range, so with SPEAKERS the mic
+              // can hear it and track it — use headphones (🎧 hint above).
               const tf = targetFreqNear(tonicFreq, targetCents, voiceFreq);
-              audioEngine.startRatioDroneVoice(GUIDE_KEY, tf / C4_FREQ, DRONE_GAIN, C4_FREQ).catch(() => {});
+              buildGuideVoice(tf);
               setGuiding(true);
             }
           } else if (guideOnRef.current && now - guideStart >= MIN_DRONE_MS) {
             guideOnRef.current = false; guideNoteRef.current = -1;
-            audioEngine.fadeOutRatioDroneVoice(GUIDE_KEY);   // smooth release, not a hard cut
+            killGuideVoice();   // smooth release, not a hard cut
             setGuiding(false);
           }
         };
@@ -193,7 +236,7 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
     return () => {
       cancelled = true;
       cancelAnimationFrame(rafRef.current);
-      audioEngine.stopRatioDroneVoice(GUIDE_KEY);
+      killGuideVoice(0);
       guideOnRef.current = false; guideNoteRef.current = -1;
       streamRef.current?.getTracks().forEach(t => t.stop());
       streamRef.current = null;
