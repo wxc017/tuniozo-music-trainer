@@ -269,7 +269,10 @@ const EXTRA_EXPORT_KEYS = new Set(["konnakol_custom_presets"]);
 // token with a foreign/expired/narrower-scope one — the cause of persistent
 // 403s (an appDataFolder call needs the drive.appdata scope the borrowed token
 // may lack). Auth is per-device; it stays put.
-const NON_EXPORT_KEYS = new Set(["lt_gdrive_token"]);
+// lt_gdrive_token is device-local auth; lt_full_backup_sig / lt_workout_drive_folder
+// are device-local Drive bookkeeping — never export/sync/hash them (the sig one
+// would otherwise make its own backup-signature change every time it's stored).
+const NON_EXPORT_KEYS = new Set(["lt_gdrive_token", "lt_full_backup_sig", "lt_workout_drive_folder"]);
 
 // Device-local VIEW state (which nav is hidden, which panels are collapsed, the
 // active tab). It's per-device UI preference — syncing it is meaningless and it
@@ -290,14 +293,56 @@ export function isExportKey(key: string): boolean {
   return key.startsWith("lt_") || EXTRA_EXPORT_KEYS.has(key);
 }
 
+// ── What's actually worth backing up ──────────────────────────────────────
+// The lt_ prefix is opt-OUT, so every tool's default/UI state got swept into
+// backups even when the user never touched it. Real backups need only (a) the
+// content you create — always stored as an array of {id} objects, matched by
+// shape so new content types need no registration — plus (b) a few keys that
+// hold content as a single blob, and (c) a short list of meaningful preferences.
+// Everything else is transient default state each device regenerates on its own.
+
+// Content stored as a single blob (not an id-array) — must survive a restore.
+const CONTENT_SYNC_KEYS = new Set([
+  "lt_note_entry_projects", "lt_chord_charts", "lt_practice_log", "lt_drum_log",
+  "lt_accent_log", "lt_drum_grooves", "lt_workout_log", "lt_workout_templates",
+  "lt_workout_custom_exercises", "lt_presets", "konnakol_custom_presets",
+  "lt_trx_savedSongs", "lt_trx_loops", "lt_sp_kept_mixes", "lt_tx_saved",
+]);
+// Preferences genuinely worth carrying between devices.
+const PREF_SYNC_KEYS = new Set([
+  "lt_workout_prefs",
+  "lt_app_edo", "lt_app_tonic", "lt_app_lowestPitch", "lt_app_highestPitch",
+  "lt_app_responseMode", "lt_app_droneVol",
+  "lt_metronome_bpm", "lt_metronome_cfg",
+]);
+
+/** A JSON array whose every element is an object with an `id` — the shape all
+ *  user content collections take (scores, logs, exercises, …). */
+function isIdCollection(val: string | null | undefined): boolean {
+  if (val == null) return false;
+  try {
+    const p = JSON.parse(val);
+    return Array.isArray(p) && p.length > 0 && p.every(e => e && typeof e === "object" && "id" in e);
+  } catch { return false; }
+}
+
+/** Value-aware backup gate: content (id-collections + known content blobs) is
+ *  always kept; scalar keys are kept only if they're an allowlisted preference;
+ *  everything else (transient tool/default state) is dropped. */
+export function shouldSyncEntry(key: string, value: string | null | undefined): boolean {
+  if (!isExportKey(key)) return false;
+  if (CONTENT_SYNC_KEYS.has(key) || PREF_SYNC_KEYS.has(key)) return true;
+  return isIdCollection(value);
+}
+
 // ── Export / Import all lt_ data + extra keys ─────────────────────────
 
 export function exportData(): void {
   const data: Record<string, string> = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i)!;
-    if (!isExportKey(key)) continue;
     let val = localStorage.getItem(key)!;
+    if (!shouldSyncEntry(key, val)) continue;
     if (key === PRACTICE_LOG_KEY) {
       // Always emit the compact integer-encoded form in the export file
       val = JSON.stringify(encodePracticeLog(readPracticeLog(val)));
@@ -395,7 +440,7 @@ export async function importMusicData(input: ArrayBuffer | string): Promise<{ ok
     return { ok: false, error: "Invalid saved data file format." };
   }
   const entries = Object.entries(parsed.data) as [string, string][];
-  const validEntries = entries.filter(([k]) => MUSIC_DATA_KEYS.has(k) || isExportKey(k));
+  const validEntries = entries.filter(([k, v]) => MUSIC_DATA_KEYS.has(k) || shouldSyncEntry(k, v));
   if (!validEntries.length) return { ok: false, error: "No saved data found in file." };
   const skipped: string[] = [];
   for (const [k, v] of validEntries) {
@@ -593,7 +638,7 @@ export function importData(json: string): { ok: boolean; error?: string } {
     return { ok: false, error: "Not a Music Trainer backup (no 'data' field)." };
   }
   const entries = Object.entries(parsed.data) as [string, string][];
-  const validEntries = entries.filter(([k]) => isExportKey(k));
+  const validEntries = entries.filter(([k, v]) => shouldSyncEntry(k, v));
   if (!validEntries.length) return { ok: false, error: "No recognized data keys in file." };
   const skipped: string[] = [];
   for (const [k, v] of validEntries) {

@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { useWorkoutData, exerciseHistory, loggedExerciseIndex, exerciseClips, isCwAssisted } from "@/lib/workoutStore";
-import { getClipUrl } from "@/lib/workoutDrive";
-import type { Workout } from "@/lib/workoutTypes";
+import { useMemo, useState } from "react";
+import { useWorkoutData, getPrefs } from "@/lib/workoutStore";
+import type { Workout, WorkoutSet } from "@/lib/workoutTypes";
 
-// Calendar + progress charts — the "computer" view over the same synced log.
+// Calendar — the "computer" view over the same synced log. Tap a day to see its
+// workout inline (read-only, no video); an Edit button opens the live logger.
 
 interface Props { onOpenWorkout: (id: string) => void }
 
@@ -14,6 +13,9 @@ const ACCENT = "#d7ac52";
 function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+
+const setsOn = (list: Workout[] | undefined): number =>
+  list ? list.reduce((n, w) => n + w.exercises.reduce((m, e) => m + e.sets.length, 0), 0) : 0;
 
 export default function WorkoutHistory({ onOpenWorkout }: Props) {
   const { workouts } = useWorkoutData();
@@ -32,7 +34,7 @@ export default function WorkoutHistory({ onOpenWorkout }: Props) {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Calendar */}
+      {/* Calendar — sets per day */}
       <div className="wl-card p-4">
         <div className="flex items-center justify-between mb-3">
           <button onClick={() => setCursor(shiftMonth(cursor, -1))} className="wl-icon-btn px-2 py-1">‹</button>
@@ -45,6 +47,7 @@ export default function WorkoutHistory({ onOpenWorkout }: Props) {
             if (!cell) return <div key={i} />;
             const key = ymd(cell);
             const list = byDate.get(key);
+            const sets = setsOn(list);
             const isToday = key === ymd(new Date());
             const sel = key === selDate;
             return (
@@ -56,143 +59,72 @@ export default function WorkoutHistory({ onOpenWorkout }: Props) {
                   boxShadow: isToday ? `inset 0 0 0 1px color-mix(in srgb, ${ACCENT} 50%, transparent)` : undefined,
                 }}>
                 <span style={{ color: list ? "var(--wl-text)" : "var(--wl-faint)", fontWeight: list ? 600 : 400 }}>{cell.getDate()}</span>
-                {list && <span style={{ width: 5, height: 5, borderRadius: 9, background: ACCENT, marginTop: 2 }} />}
+                {sets > 0 && <span style={{ fontSize: 9, lineHeight: 1, color: ACCENT, fontWeight: 700, marginTop: 2 }}>{sets} {sets === 1 ? "set" : "sets"}</span>}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Selected-day sessions */}
+      {/* Selected-day workout, shown inline (read-only, no videos) */}
       {selDate && (
-        <div className="space-y-2">
-          <div className="wl-eyebrow">{selDate}</div>
+        <div className="space-y-3">
+          <div className="wl-eyebrow">{selDate} · {setsOn(selWorkouts)} sets</div>
           {selWorkouts.length === 0 && <div className="text-sm wl-faint">No workout logged.</div>}
-          {selWorkouts.map(w => (
-            <button key={w.id} onClick={() => onOpenWorkout(w.id)} className="wl-card wl-card--hover w-full text-left p-3.5">
-              <div className="flex items-center gap-2">
-                <span className="wl-h2" style={{ fontSize: 15 }}>{w.title || "Workout"}</span>
-                <span className="wl-count">{w.exercises.length} ex · {w.exercises.reduce((n, e) => n + e.sets.length, 0)} sets</span>
-              </div>
-              <div className="text-[12px] wl-muted mt-1.5 truncate">{w.exercises.map(e => e.name).join(" · ") || "empty"}</div>
-            </button>
-          ))}
+          {selWorkouts.map(w => <DaySession key={w.id} w={w} onEdit={() => onOpenWorkout(w.id)} />)}
         </div>
       )}
-
-      <ProgressChart />
     </div>
   );
 }
 
-function ProgressChart() {
-  const { workouts } = useWorkoutData();
-  const index = useMemo(() => loggedExerciseIndex(), [workouts]);
-  const [sel, setSel] = useState<string>("");
-  const [metric, setMetric] = useState<"bestRpe" | "topWeight" | "volume">("topWeight");
-
-  const active = index.find(e => e.key === sel) ?? index[0];
-  const assisted = isCwAssisted(active?.name ?? "");
-  const data = useMemo(() => {
-    if (!active) return [];
-    return exerciseHistory({ skillId: active.skillId, name: active.name }).map(p => ({
-      date: p.date.slice(5),
-      bestRpe: p.bestRpe ?? null,
-      // CW-assisted: track the LEAST assistance that day (best set), toward 0.
-      topWeight: (assisted ? p.minWeight : p.topWeight) ?? null,
-      volume: p.totalReps || Math.round(p.totalHoldSec) || null,
-    }));
-  }, [active, assisted]);
-
-  if (index.length === 0) {
-    return <div className="text-sm wl-faint text-center py-8">Log some sets to see progress charts.</div>;
-  }
-
-  // For CW-assisted weight, less counterweight = more progress, so reverse the
-  // axis (0 at the top) and label it accordingly.
-  const reverseY = metric === "topWeight" && assisted;
-  const metricLabel = metric === "bestRpe" ? "Best RPE"
-    : metric === "volume" ? "Volume (reps / hold s)"
-    : assisted ? "Counterweight (0 = unassisted — higher is better)" : "Top load";
-
+function DaySession({ w, onEdit }: { w: Workout; onEdit: () => void }) {
+  const unit = getPrefs().unit;
   return (
-    <div className="wl-card p-4">
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className="wl-eyebrow">Progress</span>
-        <select value={active?.key ?? ""} onChange={e => setSel(e.target.value)}
-          className="wl-input wl-mono" style={{ width: "auto", padding: "5px 8px", fontSize: 12 }}>
-          {index.map(e => <option key={e.key} value={e.key}>{e.name}</option>)}
-        </select>
-        <div className="wl-seg ml-auto">
-          {(["topWeight", "bestRpe", "volume"] as const).map(m => (
-            <button key={m} data-on={metric === m} onClick={() => setMetric(m)}>
-              {m === "topWeight" ? (assisted ? "Assist" : "Load") : m === "bestRpe" ? "RPE" : "Vol"}
-            </button>
-          ))}
-        </div>
+    <div className="wl-card">
+      <div className="flex items-center gap-2 px-3.5 py-2.5" style={{ borderBottom: "1px solid var(--wl-line)" }}>
+        <span className="wl-h2" style={{ fontSize: 15 }}>{w.title || "Workout"}</span>
+        <span className="wl-count">{w.exercises.length} ex · {w.exercises.reduce((n, e) => n + e.sets.length, 0)} sets</span>
+        <button onClick={onEdit} className="wl-btn ml-auto" style={{ padding: "5px 12px", fontSize: 12 }}>Edit ›</button>
       </div>
-      <div className="text-[11px] wl-muted mb-2">{active?.name} — {metricLabel}</div>
-      <ResponsiveContainer width="100%" height={220}>
-        <LineChart data={data} margin={{ top: 5, right: 8, bottom: 0, left: -20 }}>
-          <CartesianGrid stroke="#2a2c36" />
-          <XAxis dataKey="date" tick={{ fill: "#6b6e7a", fontSize: 10 }} stroke="#2a2c36" />
-          <YAxis tick={{ fill: "#6b6e7a", fontSize: 10 }} stroke="#2a2c36"
-            reversed={reverseY}
-            domain={metric === "bestRpe" ? [5, 10] : reverseY ? [0, "auto"] : ["auto", "auto"]} />
-          <Tooltip contentStyle={{ background: "#16171d", border: "1px solid #2a2c36", borderRadius: 10, fontSize: 12 }} labelStyle={{ color: ACCENT }} />
-          <Line type="monotone" dataKey={metric} stroke={ACCENT} strokeWidth={2} dot={{ r: 3, fill: ACCENT }} connectNulls />
-        </LineChart>
-      </ResponsiveContainer>
-
-      {active && <FormTimeline match={{ skillId: active.skillId, name: active.name }} />}
-    </div>
-  );
-}
-
-// Embedded form clips for the selected exercise, oldest → newest, so you can
-// watch how your form has changed over time.
-function FormTimeline({ match }: { match: { skillId?: string; name: string } }) {
-  const { workouts } = useWorkoutData();
-  const clips = useMemo(() => exerciseClips(match), [match.skillId, match.name, workouts]);
-  const [urls, setUrls] = useState<Record<string, string | null>>({});
-
-  useEffect(() => {
-    let alive = true;
-    Promise.all(clips.map(c =>
-      getClipUrl({ videoId: c.videoId, driveFileId: c.driveFileId }).then(u => [clipKey(c), u] as const),
-    )).then(pairs => { if (alive) setUrls(Object.fromEntries(pairs)); });
-    return () => { alive = false; };
-  }, [clips]);
-
-  if (clips.length === 0) return null;
-
-  return (
-    <div className="mt-4">
-      <div className="wl-eyebrow mb-2">Form over time · {clips.length} clip{clips.length === 1 ? "" : "s"}</div>
-      <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollSnapType: "x mandatory" }}>
-        {clips.map(c => {
-          const key = clipKey(c);
-          return (
-            <div key={key} className="flex-shrink-0" style={{ width: 170, scrollSnapAlign: "start" }}>
-              {urls[key] ? (
-                <video src={urls[key]!} controls playsInline preload="metadata"
-                  className="rounded bg-black w-full" style={{ maxHeight: 260 }} />
-              ) : (
-                <div className="rounded bg-black w-full flex items-center justify-center" style={{ height: 120, color: "var(--wl-faint)", fontSize: 11 }}>
-                  {c.driveFileId ? "loading (Drive)…" : "loading…"}
+      <div className="px-3.5 py-2.5 space-y-3">
+        {w.exercises.length === 0 && <div className="text-sm wl-faint">No exercises.</div>}
+        {w.exercises.map(ex => (
+          <div key={ex.id}>
+            <div className="text-sm font-medium mb-1" style={{ color: "var(--wl-text)" }}>{ex.name}</div>
+            <div className="space-y-0.5">
+              {ex.sets.map((s, i) => (
+                <div key={s.id} className="flex items-baseline gap-2 wl-mono" style={{ fontSize: 12 }}>
+                  <span style={{ color: "var(--wl-faint)", minWidth: "1.4rem" }}>{i + 1}</span>
+                  <span style={{ color: "var(--wl-text)" }}>{setBrief(s, unit)}</span>
+                  {s.form != null && <span style={{ marginLeft: "auto", color: "var(--wl-accent)", letterSpacing: 1 }}>{stars(s.form)}</span>}
+                  {(s.videoId || s.driveFileId) && <span style={{ color: "var(--wl-accent-ink)" }}>🎬</span>}
                 </div>
-              )}
-              <div className="wl-mono mt-1" style={{ fontSize: 11, color: "var(--wl-faint)" }}>{c.date}{c.driveFileId ? " ☁" : ""}</div>
+              ))}
             </div>
-          );
-        })}
+            {ex.sets.some(s => s.note) && (
+              <div className="mt-1 space-y-0.5">
+                {ex.sets.filter(s => s.note).map(s => (
+                  <div key={s.id} className="text-[12px]" style={{ color: "var(--wl-muted)", fontStyle: "italic" }}>“{s.note}”</div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-function clipKey(c: { videoId?: string; driveFileId?: string; setId: string }): string {
-  return c.videoId || c.driveFileId || c.setId;
+function stars(n: number): string { return [1, 2, 3, 4, 5].map(x => x <= n ? "★" : "☆").join(""); }
+
+function setBrief(s: WorkoutSet, unit: string): string {
+  const parts: string[] = [];
+  if (s.weight != null && s.weight !== 0) parts.push(`${s.weight > 0 ? "+" : ""}${s.weight}${unit}`);
+  if (s.reps != null) parts.push(`${s.reps} reps`);
+  if (s.holdSec != null) parts.push(`${s.holdSec}s`);
+  if (s.rpe != null) parts.push(`RPE ${s.rpe}`);
+  return parts.join(" · ") || "—";
 }
 
 function shiftMonth(d: Date, delta: number): Date { return new Date(d.getFullYear(), d.getMonth() + delta, 1); }

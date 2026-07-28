@@ -119,3 +119,31 @@ export async function getClipUrl(ref: { videoId?: string; driveFileId?: string }
 export function releaseClipUrl(ref: { videoId?: string; driveFileId?: string }): void {
   if (ref.driveFileId) releaseDriveVideoUrl(ref.driveFileId);
 }
+
+/** Like getClipUrl, but returns the FAILURE REASON instead of null — so the UI
+ *  can show why a specific Drive clip won't load (404 / auth / network) rather
+ *  than a generic "couldn't load". */
+export async function resolveClipUrl(ref: { videoId?: string; driveFileId?: string }): Promise<{ url: string } | { error: string }> {
+  if (ref.driveFileId) {
+    const token = getSavedToken();
+    if (token) {
+      try {
+        const u = await getDriveVideoUrl(ref.driveFileId);
+        if (u) return { url: u };
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        const local = await getVideoUrl(ref.driveFileId);
+        if (local) return { url: local };
+        return { error: `Drive error (${reason})` };
+      }
+    }
+    const local = await getVideoUrl(ref.driveFileId);
+    if (local) return { url: local };
+    return { error: token ? "Drive returned no data for this clip" : "Not signed in to Drive" };
+  }
+  if (ref.videoId) {
+    const u = await getVideoUrl(ref.videoId);
+    return u ? { url: u } : { error: "Clip file isn't on this device" };
+  }
+  return { error: "No clip reference" };
+}

@@ -168,6 +168,29 @@ export function refreshTokenSilent(): Promise<string | null> {
   return silentRefresh;
 }
 
+// Proactive keep-alive: while the app is open and signed in, silently renew the
+// token on focus (throttled) so it's replaced BEFORE it expires — instead of
+// only reacting to a 401 from a background fetch, which can't open the popup
+// fallback and dies with "popup_failed_to_open". This still needs third-party
+// cookies enabled (the silent renewal reads your Google session cookie); when
+// they're blocked it fails quietly and an interactive sign-in is required.
+let autoRefreshInit = false;
+let lastRefreshAt = 0;
+export function initTokenAutoRefresh(): void {
+  if (autoRefreshInit || typeof document === "undefined") return;
+  autoRefreshInit = true;
+  const maybeRefresh = () => {
+    if (document.visibilityState !== "visible" || !getSavedToken()) return;
+    // Tokens last ~1h; refresh at most every ~25 min so it never lapses in use.
+    const now = Date.now();
+    if (now - lastRefreshAt < 25 * 60 * 1000) return;
+    lastRefreshAt = now;
+    void refreshTokenSilent();
+  };
+  document.addEventListener("visibilitychange", maybeRefresh);
+  window.addEventListener("focus", maybeRefresh);
+}
+
 // ── Drive REST helpers ──────────────────────────────────────────────────
 
 // 401 = expired/invalid token → drop it so the user re-signs and gets a fresh one.

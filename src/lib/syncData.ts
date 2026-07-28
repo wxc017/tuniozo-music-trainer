@@ -1,11 +1,12 @@
-import { isExportKey } from "./storage";
+import { shouldSyncEntry } from "./storage";
 
 // Build sync payload — same format as "Export Everything"
 export function buildSyncPayload(): string {
   const data: Record<string, string> = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i)!;
-    if (isExportKey(key)) data[key] = localStorage.getItem(key)!;
+    const val = localStorage.getItem(key)!;
+    if (shouldSyncEntry(key, val)) data[key] = val;
   }
   return JSON.stringify({ version: 1, exported: new Date().toISOString(), data });
 }
@@ -18,7 +19,7 @@ export function restoreFromSyncPayload(json: string): { ok: boolean; error?: str
       return { ok: false, error: "Invalid sync data." };
     }
     const entries = Object.entries(parsed.data) as [string, string][];
-    const valid = entries.filter(([k]) => isExportKey(k));
+    const valid = entries.filter(([k, v]) => shouldSyncEntry(k, v));
     if (!valid.length) return { ok: false, error: "No data found." };
     valid.forEach(([k, v]) => localStorage.setItem(k, v));
     return { ok: true };

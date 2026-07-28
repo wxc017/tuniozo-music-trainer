@@ -30,17 +30,23 @@ describe("JianpuMode rendering", () => {
     await act(async () => { await Promise.resolve(); });
 
     const circles = container.querySelectorAll("circle").length;
-    const lines = container.querySelectorAll("line").length;
+    // The faint cell grid is drawn with <line> too, so count only the SOLID
+    // lines — barlines, beams and duration strokes — by excluding the dashed
+    // ones.  Otherwise this number tracks the grid resolution, not the notation.
+    const solidLines = Array.from(container.querySelectorAll("line"))
+      .filter(l => !l.getAttribute("stroke-dasharray")).length;
     const texts = Array.from(container.querySelectorAll("text")).map(t => t.textContent);
 
-    // 3 bars, 1 row (MPR=3) → 3 right barlines + 1 leading barline = 4 barlines.
-    // + 1 beam line (eighth note's underline) = 5 lines total.
-    // 1 octave dot for note "a"; numbers "1"/"2" plus a "–" dash for the half.
+    // 3 bars, 1 row → 3 right barlines + 1 leading barline = 4 barlines,
+    // + 1 beam (the eighth's underline)
+    // + 1 vertical stroke (the half note's length mark) = 6 solid lines.
     expect(texts).toContain("1");
     expect(texts).toContain("2");
-    expect(texts).toContain("–");
+    // Length is carried by the stroke beside the syllable now, NOT by trailing
+    // horizontal dashes — those were removed so every note keeps to its own cell.
+    expect(texts).not.toContain("–");
     expect(circles).toBe(1);      // octave dot
-    expect(lines).toBe(5);        // 4 barlines + 1 beam
+    expect(solidLines).toBe(6);
 
     await act(async () => { root.unmount(); });
     container.remove();

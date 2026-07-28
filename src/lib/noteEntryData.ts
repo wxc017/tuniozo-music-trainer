@@ -160,6 +160,12 @@ export interface ScoreSetup {
   /** Per-bar section title (e.g. "Verse", "Chorus", "Bridge").
    *  Drum mode renders this as a boxed text section above the bar. */
   perBarTitle?: Record<number, string>;
+  /** MID-BAR annotations: measure → slot → text, for anything that lands off the
+   *  downbeat — most often a chord that changes part-way through the bar.  Slot 0
+   *  is deliberately excluded: that position is `perBarTitle`.  Nested by measure
+   *  (rather than a flat "m:slot" key) so inserting or deleting a bar re-indexes
+   *  it with the same shift that moves every other per-bar map. */
+  perSlotNote?: Record<number, Record<number, string>>;
   /** Per-bar section label (e.g. "A", "B", "Exercise 1 — arpeggios").
    *  Jianpu/Sol-fa mode renders this as a large bold heading and forces
    *  the bar to start a new line, so one sheet can hold many labelled
@@ -201,6 +207,12 @@ export interface NoteEntryProject {
    *  default), "major" (Do Re Mi Fa Sol La Ti), or "minor" (Do Re Me Fa Sol Le
    *  Te).  Only remaps how degrees 1–7 read. */
   solfaStyle?: "spectrum" | "major" | "minor";
+  /** Root chosen in the clef-reference overlay (`c`), remembered per song so the
+   *  octave bands come back on their own tonic instead of resetting to none. */
+  clefRefRoot?: string;
+  /** Folder this score is filed under in the Scoring list.  Absent/empty = loose
+   *  at the top level.  A plain name, so renaming a folder is just a re-tag. */
+  folder?: string;
   /** Jianpu-only number of voice lines (≥ 2).  Grows when the user adds a
    *  voice; empty extra voices collapse away.  Absent → 2.  Legacy/global
    *  fallback — per-section counts in `perSectionVoiceCount` supersede it. */
@@ -345,6 +357,68 @@ export function saveProject(project: NoteEntryProject): void {
 
 export function deleteProject(id: string): void {
   localStorage.setItem(LS_KEY, JSON.stringify(loadProjects().filter(p => p.id !== id)));
+}
+
+// ── Score folders ──────────────────────────────────────────────────────────────
+// The folder LIST is stored separately from the projects so a folder can exist
+// while empty — otherwise a newly created folder would vanish before you had
+// anything to put in it.  Membership itself lives on each project (`folder`).
+
+const FOLDERS_KEY = "lt_note_entry_folders";
+
+export function loadFolders(): string[] {
+  try {
+    const raw = localStorage.getItem(FOLDERS_KEY);
+    const list = raw ? (JSON.parse(raw) as string[]) : [];
+    return Array.isArray(list) ? list.filter(f => typeof f === "string" && f.trim()) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveFolders(folders: string[]): void {
+  // De-duplicate case-insensitively and keep a stable alphabetical order.
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const f of folders) {
+    const name = f.trim();
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+  }
+  out.sort((a, b) => a.localeCompare(b));
+  localStorage.setItem(FOLDERS_KEY, JSON.stringify(out));
+}
+
+/** Move a score into `folder` (empty/undefined = back out to the top level). */
+export function setProjectFolder(id: string, folder: string | undefined): void {
+  const all = loadProjects();
+  const p = all.find(pp => pp.id === id);
+  if (!p) return;
+  const name = folder?.trim();
+  if (name) p.folder = name; else delete p.folder;
+  localStorage.setItem(LS_KEY, JSON.stringify(all));
+}
+
+/** Remove a folder, returning every score in it to the top level. */
+export function deleteFolder(name: string): void {
+  saveFolders(loadFolders().filter(f => f !== name));
+  const all = loadProjects();
+  let touched = false;
+  for (const p of all) if (p.folder === name) { delete p.folder; touched = true; }
+  if (touched) localStorage.setItem(LS_KEY, JSON.stringify(all));
+}
+
+/** Rename a folder, re-tagging every score filed under it. */
+export function renameFolder(from: string, to: string): void {
+  const name = to.trim();
+  if (!name || name === from) return;
+  saveFolders([...loadFolders().filter(f => f !== from), name]);
+  const all = loadProjects();
+  let touched = false;
+  for (const p of all) if (p.folder === from) { p.folder = name; touched = true; }
+  if (touched) localStorage.setItem(LS_KEY, JSON.stringify(all));
 }
 
 export function newProject(title: string, setup: ScoreSetup): NoteEntryProject {

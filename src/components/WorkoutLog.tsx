@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import "./workout/workout.css";
 import SessionLogger from "./workout/SessionLogger";
 import WorkoutHistory from "./workout/WorkoutHistory";
+import ProgressView from "./workout/ProgressView";
 import TemplatesView from "./workout/TemplatesView";
+import WeekVolume from "./workout/WeekVolume";
 import UndoBar from "./workout/UndoBar";
 import { useWorkoutData, startWorkout, seedExercisesOnce } from "@/lib/workoutStore";
 import { registerRestSW } from "@/lib/restNotify";
 import { initDriveDataSync } from "@/lib/workoutDrive";
+import { initTokenAutoRefresh } from "@/lib/googleDrive";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -18,7 +21,7 @@ import type { Workout } from "@/lib/workoutTypes";
 // export (share sheet / download), added next.
 // ─────────────────────────────────────────────────────────────────────────
 
-type View = "today" | "calendar" | "templates";
+type View = "today" | "week" | "calendar" | "progress" | "templates";
 
 export default function WorkoutLog() {
   const { workouts } = useWorkoutData();
@@ -27,7 +30,7 @@ export default function WorkoutLog() {
 
   // Drive connect + backup/restore/export/import all live in Settings now.
   // This just keeps the auto data-sync running while the log is open.
-  useEffect(() => { seedExercisesOnce(); void registerRestSW(); initDriveDataSync(); }, []);
+  useEffect(() => { seedExercisesOnce(); void registerRestSW(); initDriveDataSync(); initTokenAutoRefresh(); }, []);
 
   return (
     <>
@@ -41,15 +44,17 @@ export default function WorkoutLog() {
               <div className="wl-h1">Workout Log</div>
             </div>
             <div className="wl-seg ml-auto">
-              {(["today", "calendar", "templates"] as View[]).map(v => (
+              {(["today", "week", "calendar", "progress", "templates"] as View[]).map(v => (
                 <button key={v} data-on={view === v} onClick={() => setView(v)}>{v}</button>
               ))}
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto min-h-0 p-4">
+            {view === "week" && <WeekVolume />}
             {view === "today" && <TodayView workouts={workouts} onOpen={setOpenId} />}
             {view === "calendar" && <WorkoutHistory onOpenWorkout={setOpenId} />}
+            {view === "progress" && <ProgressView />}
             {view === "templates" && <TemplatesView onStart={setOpenId} />}
           </div>
         </div>
@@ -108,7 +113,7 @@ function Section({ eyebrow, count, children }: { eyebrow: string; count?: string
 
 function WorkoutRow({ w, onOpen }: { w: Workout; onOpen: (id: string) => void }) {
   const sets = w.exercises.reduce((n, e) => n + e.sets.length, 0);
-  const clips = w.exercises.reduce((n, e) => n + e.sets.filter(s => s.videoId).length, 0);
+  const clips = w.exercises.reduce((n, e) => n + e.sets.filter(s => s.videoId || s.driveFileId).length, 0);
   return (
     <button onClick={() => onOpen(w.id)} className="wl-card wl-card--hover w-full text-left p-3.5">
       <div className="flex items-center gap-2">

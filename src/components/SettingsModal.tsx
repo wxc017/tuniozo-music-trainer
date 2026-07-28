@@ -6,7 +6,7 @@ import { recordSynced } from "@/lib/syncMarker";
 import { computeSyncDiff, applySyncSelection, autoMergeAdditive, type SyncDiff } from "@/lib/syncMerge";
 import SyncMergeDialog from "./SyncMergeDialog";
 import { getDriveLog, subscribeDriveLog, clearDriveLog, dlog } from "@/lib/driveDebug";
-import { fullBackupToDrive, fullRestoreFromDrive, downloadFullBackup, importFullBackupZip } from "@/lib/fullBackup";
+import { fullBackupToDrive, previewFullRestoreFromDrive, applyFullRestore, downloadFullBackup, importFullBackupZip, type RestorePreview } from "@/lib/fullBackup";
 import {
   isSupported as isFolderSyncSupported,
   getStatus as getFolderSyncStatus,
@@ -61,6 +61,8 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
   const [showDriveLog, setShowDriveLog] = useState(true);
   // Pending "Load from Drive" merge awaiting user review.
   const [mergeState, setMergeState] = useState<{ data: string; diff: SyncDiff; modifiedTime: string | null } | null>(null);
+  // Pending "Restore everything from Drive" awaiting user review.
+  const [restoreState, setRestoreState] = useState<RestorePreview | null>(null);
   useEffect(() => subscribeDriveLog(setDriveLog), []);
   // Reflect a connection made/broken elsewhere (e.g. the workout-log Drive
   // toggle) so this panel shows the one shared Google sign-in.
@@ -249,24 +251,43 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
     flash("Exporting everything to Drive…");
     try {
       const info = await fullBackupToDrive();
-      flash(`Exported to Drive — ${info.keyCount} data sets, ${info.videoCount} videos (${(info.bytes / 1e6).toFixed(1)} MB)`);
+      if (info.skipped) flash("Already up to date on Drive — nothing changed since last export");
+      else flash(`Exported to Drive — ${info.keyCount} data sets, ${info.videoCount} videos (${(info.bytes / 1e6).toFixed(1)} MB)`);
     } catch (err) {
       if (!handleAuthError(err)) flash(`Export failed: ${err instanceof Error ? err.message : "unknown"}`);
     } finally { setGdriveStatus("idle"); }
   };
 
+  // Pull the backup, diff it, and open a review dialog. Only the clips this
+  // device is missing are listed (and later downloaded) — overlapping ones are
+  // skipped, so an incremental restore is quick.
   const driveRestoreEverything = async () => {
-    if (!window.confirm("Restore everything from your Drive backup? This replaces this device's data and video clips with the backup.")) return;
     setGdriveStatus("busy");
-    flash("Restoring everything from Drive…");
+    flash("Checking Drive backup…");
     try {
-      const { found, info } = await fullRestoreFromDrive();
-      if (!found) { flash("No Drive backup yet — Export to Drive from another device first"); return; }
-      flash(`Restored ${info!.keyCount} data sets, ${info!.videoCount} videos — reloading…`);
-      setTimeout(() => window.location.reload(), 800);
+      const preview = await previewFullRestoreFromDrive();
+      if (!preview.found) { flash("No Drive backup yet — Export to Drive from another device first"); return; }
+      const changes = (preview.diff?.items.length ?? 0) + (preview.diff?.values.length ?? 0) + (preview.newVideos?.length ?? 0);
+      if (changes === 0) { flash("Already up to date with Drive"); return; }
+      setRestoreState(preview);
     } catch (err) {
       if (!handleAuthError(err)) flash(`Restore failed: ${err instanceof Error ? err.message : "unknown"}`);
     } finally { setGdriveStatus("idle"); }
+  };
+
+  const applyRestore = async (applied: Set<string>) => {
+    if (!restoreState) return;
+    setRestoreState(null);
+    setGdriveStatus("busy");
+    flash("Restoring selected items…");
+    try {
+      const { keyCount, videoCount } = await applyFullRestore(restoreState, applied);
+      flash(`Restored ${keyCount} data sets, ${videoCount} clips — reloading…`);
+      setTimeout(() => window.location.reload(), 800);
+    } catch (err) {
+      if (!handleAuthError(err)) flash(`Restore failed: ${err instanceof Error ? err.message : "unknown"}`);
+      setGdriveStatus("idle");
+    }
   };
 
   const handleGdriveSignOut = () => {
@@ -902,6 +923,16 @@ export default function SettingsModal({ onClose, onDataImported, betaPlayRotatio
           diff={mergeState.diff}
           onApply={applyMerge}
           onCancel={() => setMergeState(null)}
+        />
+      )}
+
+      {restoreState?.diff && (
+        <SyncMergeDialog
+          diff={restoreState.diff}
+          videos={restoreState.newVideos ?? []}
+          skippedVideos={restoreState.skippedVideos ?? 0}
+          onApply={applyRestore}
+          onCancel={() => setRestoreState(null)}
         />
       )}
     </div>

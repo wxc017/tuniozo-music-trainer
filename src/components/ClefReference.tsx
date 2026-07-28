@@ -14,6 +14,20 @@ import { Renderer, Stave, StaveNote, Voice, Formatter, Annotation } from "vexflo
 const LETTERS = ["c", "d", "e", "f", "g", "a", "b"];
 const SVGNS = "http://www.w3.org/2000/svg";
 
+// Root notes offered in the dropdown (first char = the letter used to position
+// the octave bands; the accidental is display-only for a flat/sharp tonic).
+const ROOTS = ["C", "C♯", "D♭", "D", "D♯", "E♭", "E", "F", "F♯", "G♭", "G", "G♯", "A♭", "A", "A♯", "B♭", "B"];
+
+// Each octave register gets its own translucent colour so the bands read at a
+// glance without number labels or borders (which looked like ledger lines).
+const BAND_COLORS: Record<number, string> = {
+  [-2]: "rgba(236, 72,153,0.16)",   // pink
+  [-1]: "rgba( 59,130,246,0.16)",   // blue
+  [0]:  "rgba( 34,197, 94,0.17)",   // green (middle register)
+  [1]:  "rgba(234,179,  8,0.18)",   // amber
+  [2]:  "rgba(168, 85,247,0.16)",   // purple
+};
+
 /** Inclusive list of "letter/octave" keys from one pitch up to another. */
 function keysFor(fromOct: number, fromIdx: number, toOct: number, toIdx: number): string[] {
   const out: string[] = [];
@@ -36,9 +50,17 @@ function makeNotes(keys: string[], clef: string): StaveNote[] {
   });
 }
 
-export default function ClefReference({ onClose }: { onClose: () => void }) {
+// `root` is owned by the caller so it can be persisted on the song; when it
+// isn't supplied the panel keeps its own (session-only) state as before.
+export default function ClefReference({ onClose, root: rootProp, onRootChange }: {
+  onClose: () => void;
+  root?: string;
+  onRootChange?: (r: string) => void;
+}) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [root, setRoot] = useState("");
+  const [ownRoot, setOwnRoot] = useState("");
+  const root = rootProp ?? ownRoot;
+  const setRoot = (r: string) => { if (onRootChange) onRootChange(r); else setOwnRoot(r); };
 
   useEffect(() => {
     const el = ref.current;
@@ -72,55 +94,70 @@ export default function ClefReference({ onClose }: { onClose: () => void }) {
     if (rl && LETTERS.includes(rl)) {
       const svg = el.querySelector("svg");
       if (svg) {
-        const band = (stave: Stave, keyY: Record<string, number>) => {
+        // Each stave draws a capped range of registers (bass −2…0, treble
+        // 0…+2, overlapping at the 0 band). A missing endpoint just outside the
+        // drawn notes is extrapolated, since one octave is a constant height.
+        const band = (stave: Stave, keyY: Record<string, number>, minLabel: number, maxLabel: number) => {
           const x0 = stave.getNoteStartX();
           const x1 = stave.getX() + stave.getWidth() - 6;
+          // One octave is a constant vertical distance; measure it from any
+          // fully-drawn pair so a band whose top or bottom note falls just
+          // outside the drawn range (e.g. the −2 register) can be extrapolated.
+          let octaveH = 0;
+          for (let o = 0; o <= 7; o++) {
+            const a = keyY[`${rl}/${o}`], b = keyY[`${rl}/${o + 1}`];
+            if (a != null && b != null) { octaveH = a - b; break; }
+          }
           // A band spans root/o (bottom) → root/(o+1) (top); label = o − 3 so
           // that root3–root4 = 0 (the middle jianpu register).
-          for (let o = 0; o <= 7; o++) {
-            const yb = keyY[`${rl}/${o}`];
-            const yt = keyY[`${rl}/${o + 1}`];
+          for (let label = minLabel; label <= maxLabel; label++) {
+            const o = label + 3;
+            let yb = keyY[`${rl}/${o}`];
+            let yt = keyY[`${rl}/${o + 1}`];
+            if (yb == null && yt != null && octaveH) yb = yt + octaveH;   // extend down
+            if (yt == null && yb != null && octaveH) yt = yb - octaveH;   // extend up
             if (yb == null || yt == null) continue;
-            const label = o - 3;
+            if (yt < 0 || yb > height) continue;   // keep inside the drawing area
+            // Fill only — no border (borders read as ledger lines) and no
+            // number; the colour alone distinguishes the octave register.
+            // `stroke` must be set EXPLICITLY: the rect is inserted as a child of
+            // VexFlow's <svg>, so without it the rect inherits the stroke paint
+            // set on that root and draws a black outline.
             const rect = document.createElementNS(SVGNS, "rect");
             rect.setAttribute("x", String(x0));
             rect.setAttribute("y", String(yt));
             rect.setAttribute("width", String(x1 - x0));
             rect.setAttribute("height", String(yb - yt));
-            rect.setAttribute("fill", "rgba(113,115,230,0.14)");
-            rect.setAttribute("stroke", "rgba(113,115,230,0.6)");
-            rect.setAttribute("stroke-width", "1");
-            rect.setAttribute("rx", "4");
+            rect.setAttribute("fill", BAND_COLORS[label] ?? "rgba(113,115,230,0.14)");
+            rect.setAttribute("stroke", "none");
+            rect.setAttribute("stroke-width", "0");
             svg.insertBefore(rect, svg.firstChild);   // behind the notes
-            const txt = document.createElementNS(SVGNS, "text");
-            txt.setAttribute("x", String(x0 + 6));
-            txt.setAttribute("y", String((yt + yb) / 2 + 5));
-            txt.setAttribute("fill", "#5457c8");
-            txt.setAttribute("font-size", "16");
-            txt.setAttribute("font-weight", "bold");
-            txt.textContent = label > 0 ? `+${label}` : String(label);
-            svg.appendChild(txt);
           }
         };
-        band(treble.stave, treble.keyY);
-        band(bass.stave, bass.keyY);
+        band(treble.stave, treble.keyY, 0, 2);     // 0 … +2
+        band(bass.stave, bass.keyY, -2, 1);        // −2 … +1 (extra box on top)
       }
     }
   }, [root]);
 
   return (
-    <div className="fixed top-3 right-3 z-[60] max-w-[94vw] max-h-[92vh] overflow-y-auto pointer-events-auto bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl shadow-2xl px-3 pt-1.5 pb-2">
+    <div className="fixed top-3 right-3 z-[60] max-w-[94vw] max-h-[92vh] overflow-y-auto pointer-events-auto select-none bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl shadow-2xl px-3 pt-1.5 pb-2">
       <div className="flex items-center justify-between mb-0.5 gap-3">
         <h2 className="text-xs font-bold text-[#cfe6ff]">Clef reference — treble &amp; bass</h2>
         <div className="flex items-center gap-2">
           <label className="text-[10px] text-[#888] flex items-center gap-1">
             root
-            <input
+            {/* A dropdown (not a text field) so choosing a root never traps the
+                keyboard — after picking, focus returns to the score so the q/w/e/r
+                note keybinds keep working with the reference open. */}
+            <select
               value={root}
-              onChange={e => setRoot(e.target.value.replace(/[^A-Ga-g#b]/g, "").slice(0, 2))}
-              placeholder="C"
-              className="w-9 bg-[#161616] border border-[#2a2a2a] rounded px-1.5 py-0.5 text-xs text-white uppercase outline-none focus:border-[#7173e6]"
-            />
+              onChange={e => { setRoot(e.target.value); e.currentTarget.blur(); }}
+              className="bg-[#161616] border border-[#2a2a2a] rounded px-1 py-0.5 text-xs text-white outline-none focus:border-[#7173e6]"
+            >
+              <option value="">—</option>
+              {ROOTS.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
           </label>
           <span className="text-[10px] text-[#666]"><span className="font-mono text-[#999]">c</span> / Esc to close</span>
           <button onClick={onClose} className="text-[#999] hover:text-[#cc6666] text-lg leading-none">✕</button>

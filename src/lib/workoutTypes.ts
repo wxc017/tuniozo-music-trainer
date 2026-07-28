@@ -12,6 +12,9 @@
 // applied at playback and (later) at export time.
 // ─────────────────────────────────────────────────────────────────────────
 
+import type { MuscleGroup } from "./muscleGroups";
+export type { MuscleGroup };
+
 export type WeightUnit = "kg" | "lb";
 
 // How a set's "work done" is measured. Chosen per exercise; decides which
@@ -34,6 +37,9 @@ export interface CustomExercise {
   id: string;
   name: string;
   mode: TrackingMode;
+  /** Muscle groups the user tagged this exercise with — used for weekly volume
+   *  when the name doesn't auto-resolve to catalog muscles. */
+  muscleGroups?: MuscleGroup[];
   createdAt: number;
 }
 

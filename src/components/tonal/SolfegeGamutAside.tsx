@@ -29,6 +29,14 @@ const vowelColor = (syl: string) => {
   const v = syl.slice(-1);
   return v === "a" ? "#8fbf8f" : v === "e" || v === "i" ? "#c99a55" : "#6f93b8";
 };
+// Colour key for the syllable column — the colour IS the vowel ladder
+// (u · o · a · e · i = −− · − · centre · + · ++), so it reads as "how far off
+// the region's neutral prototype am I, and in which direction".
+const VOWEL_KEY: { color: string; vowels: string; sign: string; what: string }[] = [
+  { color: "#6f93b8", vowels: "-u · -o", sign: "−− · −", what: "flat of centre — darker / lower in the region" },
+  { color: "#8fbf8f", vowels: "-a", sign: "0", what: "the region's neutral centre" },
+  { color: "#c99a55", vowels: "-e · -i", sign: "+ · ++", what: "sharp of centre — brighter / higher in the region" },
+];
 
 interface Row {
   kind: "main" | "between" | "anchor";
@@ -85,6 +93,21 @@ export default function SolfegeGamutAside() {
       <div className="px-3 py-1.5 border-b border-[#161616] flex items-center gap-2 bg-[#0a0a0a]">
         <span className="w-1.5 h-3 rounded-sm" style={{ background: "#7aa87a" }} />
         <span className="text-[10px] font-semibold tracking-widest text-[#8a8a8a]">SOLFÈGE GAMUT</span>
+      </div>
+      {/* Colour cheat-sheet for the Solfège column — one row per vowel shade. */}
+      <div className="px-3 py-2 border-b border-[#161616] bg-[#0a0a0a] flex flex-col gap-1">
+        <span className="text-[8px] tracking-[0.15em] text-[#6a6a6a] uppercase">Colour = vowel = size within the region</span>
+        {VOWEL_KEY.map(k => (
+          <div key={k.vowels} className="flex items-baseline gap-2">
+            <span className="w-2 h-2 rounded-sm shrink-0 translate-y-px" style={{ background: k.color }} />
+            <span className="font-semibold text-[10.5px] w-[52px] shrink-0" style={{ color: k.color }}>{k.vowels}</span>
+            <span className="text-[10px] text-[#8a8a8a] w-[46px] shrink-0 tabular-nums">{k.sign}</span>
+            <span className="text-[9.5px] text-[#707070] leading-snug">{k.what}</span>
+          </div>
+        ))}
+        <span className="text-[9px] text-[#5a5a5a] leading-snug mt-0.5">
+          The consonant names the interval region (K/V/R = 2nds, N/J/M = 3rds, …); the vowel places you inside it.
+        </span>
       </div>
       <div>
         <table className="border-collapse text-[11px] w-full">

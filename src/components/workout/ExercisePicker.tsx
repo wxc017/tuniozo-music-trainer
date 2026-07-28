@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useWorkoutData, saveCustomExercise } from "@/lib/workoutStore";
 import { TRACKING_MODES, type TrackingMode, type CustomExercise } from "@/lib/workoutTypes";
+import { GROUP_LABEL, GROUP_ORDER, type MuscleGroup } from "@/lib/muscleGroups";
 
 // Pick from YOUR saved exercises — grouped by equipment (Rings / Parallettes /
 // Static Bar / Other), each split into CW-assisted and Non-assisted — or add a
@@ -38,7 +39,12 @@ export default function ExercisePicker({ onPick, onCancel }: Props) {
   const { customExercises } = useWorkoutData();
   const [q, setQ] = useState("");
   const [creating, setCreating] = useState<string | null>(null);
+  const [pendingMode, setPendingMode] = useState<TrackingMode | null>(null);
+  const [groups, setGroups] = useState<Set<MuscleGroup>>(new Set());
   const query = q.trim().toLowerCase();
+
+  const resetCreate = () => { setCreating(null); setPendingMode(null); setGroups(new Set()); };
+  const toggleGroup = (g: MuscleGroup) => setGroups(prev => { const n = new Set(prev); n.has(g) ? n.delete(g) : n.add(g); return n; });
 
   const grouped = useMemo(() => {
     const map = new Map<Equip, { assisted: Row[]; plain: Row[] }>();
@@ -61,9 +67,9 @@ export default function ExercisePicker({ onPick, onCancel }: Props) {
   const exactMatch = customExercises.some(e => e.name.toLowerCase() === query);
   const canAdd = typed.length > 0 && !exactMatch;
 
-  const confirmCreate = (mode: TrackingMode) => {
-    if (!creating) return;
-    const saved = saveCustomExercise(creating, mode);
+  const saveNew = () => {
+    if (!creating || !pendingMode) return;
+    const saved = saveCustomExercise(creating, pendingMode, [...groups]);
     onPick({ name: saved.name, mode: saved.mode });
   };
 
@@ -74,7 +80,7 @@ export default function ExercisePicker({ onPick, onCancel }: Props) {
         onClick={e => e.stopPropagation()}>
         <div className="p-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--wl-line)" }}>
           <input className="wl-input" value={q}
-            onChange={e => { setQ(e.target.value); setCreating(null); }}
+            onChange={e => { setQ(e.target.value); resetCreate(); }}
             placeholder="Search or type a new exercise…" />
         </div>
 
@@ -87,16 +93,39 @@ export default function ExercisePicker({ onPick, onCancel }: Props) {
                   <span style={{ color: "var(--wl-accent)", fontSize: 18, lineHeight: 1 }}>+</span>
                   Add <b>“{typed}”</b> <span className="wl-faint">— new exercise</span>
                 </button>
-              ) : (
+              ) : pendingMode == null ? (
                 <div>
                   <div className="wl-collabel mb-2">How is “{creating}” tracked?</div>
                   <div className="grid grid-cols-2 gap-2">
                     {TRACKING_MODES.map(m => (
-                      <button key={m.id} onClick={() => confirmCreate(m.id)} className="wl-btn" style={{ padding: "10px 8px", textAlign: "center" }}>
+                      <button key={m.id} onClick={() => setPendingMode(m.id)} className="wl-btn" style={{ padding: "10px 8px", textAlign: "center" }}>
                         <div style={{ color: "var(--wl-text)", fontWeight: 600 }}>{m.label}</div>
                         <div className="wl-mono" style={{ fontSize: 10, color: "var(--wl-faint)" }}>{m.short}</div>
                       </button>
                     ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="wl-collabel mb-2">Which muscles does “{creating}” train? <span className="wl-faint">(for weekly volume — optional)</span></div>
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {GROUP_ORDER.map(g => {
+                      const on = groups.has(g);
+                      return (
+                        <button key={g} onClick={() => toggleGroup(g)} className="wl-tag" style={{ cursor: "pointer",
+                          background: on ? "var(--wl-accent)" : "var(--wl-surface-2)",
+                          color: on ? "#1a1408" : "var(--wl-muted)",
+                          border: `1px solid ${on ? "var(--wl-accent)" : "var(--wl-line)"}`, fontWeight: on ? 700 : 400 }}>
+                          {GROUP_LABEL[g]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={saveNew} className="wl-btn wl-btn--primary flex-1">
+                      {groups.size ? `Add with ${groups.size} muscle${groups.size === 1 ? "" : "s"}` : "Add (auto-detect muscles)"}
+                    </button>
+                    <button onClick={() => setPendingMode(null)} className="wl-btn">Back</button>
                   </div>
                 </div>
               )}

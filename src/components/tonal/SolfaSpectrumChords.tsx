@@ -471,11 +471,11 @@ type SingSeq =
   | { kind: "chords"; label: string; chords: { label?: string; tones: SingNote[]; borrowed?: boolean }[]; mi?: boolean };
 type SingCat = "scalar" | "chords" | "cycles";
 // Sub-categories within the Scalar tab (own sub-tab bar) so it isn't one long list.
-type ScalarSub = "scale" | "patterns" | "pentatonic" | "bergonzi" | "blues" | "angular" | "chromatic" | "resolution";
+type ScalarSub = "scale" | "patterns" | "pentatonic" | "blues" | "angular" | "chromatic" | "resolution" | "triadpairs";
 const SCALAR_SUBS: { id: ScalarSub; label: string }[] = [
   { id: "scale", label: "Scale" }, { id: "patterns", label: "Patterns" }, { id: "pentatonic", label: "Pentatonic" },
   { id: "angular", label: "Angular" }, { id: "chromatic", label: "Chromatic" }, { id: "resolution", label: "Resolution" },
-  { id: "bergonzi", label: "Bergonzi" },
+  { id: "triadpairs", label: "Triad Pairs" },
 ];
 interface SingGroup { title: string; seqs: SingSeq[]; cat: SingCat; sub?: ScalarSub; parent?: string; }
 interface SingSection { band: Band; mode: ModeId; scaleLabel: string; scale: SingNote[]; rawScale: number[]; groups: SingGroup[]; }
@@ -779,9 +779,19 @@ const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 // (contour-independent hearing — the opposite of memorising one formula).
 const permute = <T,>(a: T[]): T[][] => a.length <= 1 ? [a] : a.flatMap((x, i) => permute([...a.slice(0, i), ...a.slice(i + 1)]).map(p => [x, ...p]));
 const PERM_3 = permute([0, 1, 2]);        // all 6 orderings of a 3-note cell (1·2·3)
-// Bergonzi's actual method: the FOUR-note melodic structure through all 24
-// orderings (1234, 1243, 1324 … 4321), sequenced from every scale degree.
-const PERM_4 = permute([0, 1, 2, 3]);
+// Curated 4-note structures: ONE ordering per distinct up/down contour (8 of the
+// 24 — the rest are retrogrades/inversions you get live with r / i, so drilling
+// all 24 is production fluency, not new pitch-information to audiate).
+const BERGONZI_4 = [
+  [0, 1, 2, 3], // ▲▲▲
+  [0, 1, 3, 2], // ▲▲▼
+  [0, 2, 1, 3], // ▲▼▲
+  [0, 3, 2, 1], // ▲▼▼
+  [1, 0, 2, 3], // ▼▲▲
+  [2, 0, 3, 1], // ▼▲▼
+  [2, 1, 0, 3], // ▼▼▲
+  [3, 2, 1, 0], // ▼▼▼
+];
 const stepLabel = (s: number[]): string => s.map(x => x + 1).join("·");
 
 // A full interval cycle for a scale of `L` notes: the [degree, degree+k] pair
@@ -839,38 +849,6 @@ const DEG_NAMES = ["1", "♭2", "2", "♭3", "3", "4", "♯4", "5", "♭6", "6",
 // 2 4 5 6 1; maj pent on 5 → 5 6 7 2 3.
 const pentaDegrees = (root: number, struct: number[]): string =>
   struct.map(pc => DEG_NAMES[mod(root + pc, 12)]).join(" ");
-// Superimposition catalogue by chord quality (over the tonic = chord root): the
-// pentatonics that live in each quality's chord-scale and the tension colour they
-// paint.  Verified as subsets of the parent scale (Mixo / altered / Dorian /
-// Locrian); the ♭5- and ♯9-rooted ones are the classic "altered" pentatonics.
-const SUPERIMP: { quality: string; items: { struct: number[]; root: number }[] }[] = [
-  { quality: "MAJ7 / Lydian", items: [
-    { struct: MAJ_PENT, root: 0 },   // 1 2 3 5 6
-    { struct: MAJ_PENT, root: 7 },   // 5 6 7 2 3  (3 5 7 9 13 — bright)
-    { struct: MAJ_PENT, root: 2 },   // 2 3 ♯4 6 7 (Lydian ♯11)
-  ] },
-  { quality: "DOM7 / Mixo", items: [
-    { struct: MAJ_PENT, root: 0 },   // 1 2 3 5 6
-    { struct: MAJ_PENT, root: 10 },  // ♭7 1 2 4 5 (adds 11)
-    { struct: MIN_PENT, root: 7 },   // 5 ♭7 1 2 4
-    { struct: MIN_PENT, root: 2 },   // 2 4 5 6 1 (Dorian 13)
-  ] },
-  { quality: "7ALT", items: [
-    { struct: MAJ_PENT, root: 6 },   // ♯4 ♭6 ♭7 ♭2 ♭3  (♯11 ♭13 ♭7 ♭9 ♯9)
-    { struct: MIN_PENT, root: 3 },   // ♭3 ♭5 ♭6 ♭7 ♭2  (the ♭III minor pent)
-  ] },
-  { quality: "MIN7 / Dorian", items: [
-    { struct: MIN_PENT, root: 0 },   // 1 ♭3 4 5 ♭7
-    { struct: MIN_PENT, root: 2 },   // 2 4 5 6 1 (Dorian 13)
-    { struct: MIN_PENT, root: 7 },   // 5 ♭7 1 2 4
-    { struct: MAJ_PENT, root: 10 },  // ♭7 1 2 4 5
-  ] },
-  { quality: "M7♭5 / Locrian", items: [
-    { struct: MIN_PENT, root: 3 },   // ♭3 ♭5 ♭6 ♭7 ♭2
-    { struct: MIN_PENT, root: 10 },  // ♭7 ♭2 ♭3 4 ♭6
-    { struct: MAJ_PENT, root: 1 },   // ♭2 ♭3 4 ♭6 ♭7
-  ] },
-];
 
 // Symmetric (non-diatonic) scales don't fit the 7-region diatonic MOS, so they
 // live in the MODES list as `sym` scales (selectable under Harmonic minor) and
@@ -923,13 +901,12 @@ const BLUES_CELLS: { label: string; cell: number[] }[] = [
 
 // ── Triad pairs — two triads a scale-step apart, played as one hexatonic unit
 // (Campbell / Bergonzi Vol 7).  Built for EVERY degree of the scale. ──
+// Curated to the distinct shapes: the "down·" orderings are just retrogrades of
+// these (get them live with r), so drilling all six is production fluency.
 const TRIAD_PAIR_PATTERNS: { label: string; make: (d: number) => number[] }[] = [
   { label: "up · up",     make: d => [d, d + 2, d + 4, d + 1, d + 3, d + 5] },
   { label: "up · down",   make: d => [d, d + 2, d + 4, d + 5, d + 3, d + 1] },
-  { label: "down · up",   make: d => [d + 4, d + 2, d, d + 1, d + 3, d + 5] },
-  { label: "down · down", make: d => [d + 4, d + 2, d, d + 5, d + 3, d + 1] },
   { label: "interlocked", make: d => [d, d + 1, d + 2, d + 3, d + 4, d + 5] },
-  { label: "outer · inner", make: d => [d, d + 4, d + 2, d + 1, d + 5, d + 3] },
 ];
 
 // Common just-intonation landmarks (cents) shown as reference ticks on the
@@ -1124,6 +1101,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const [betaOpen, setBetaOpen] = useState(false);                // reveal Chords/Intervals (beta) modes
   const [hiddenDeg, setHiddenDeg] = useState<Set<number>>(new Set());   // 1-7 hide degrees (chords tab)
   const [patRetro, setPatRetro] = useState(false);                      // retrograde lines (r)
+  const [patExpand, setPatExpand] = useState(0);                        // diatonic interval expansion (+) / contraction (−), in scale steps ([ ])
   const [patInv, setPatInv] = useState<"none" | "dia" | "chrom">("none"); // inversion: diatonic (i) / chromatic (c)
   const [scalarSub, setScalarSub] = useState<ScalarSub>("scale");       // Scalar sub-tab (which one is VIEWED)
   const [scaleStart, setScaleStart] = useState(0);                      // 1-7 → scalar exercises start on this degree (0 = tonic)
@@ -1804,12 +1782,10 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         lineSeq("upper & lower neighbours (all)", scale, endOnTonic([0, 1, 0, -1, 0, 2, 3, 2, 1, 2, 4, 5, 4, 3, 4, 6, 7, 6, 5, 6])),
         chromSeq("every tritone → its 3rd (inward)", endOnTonicCents(tritoneResLine(chroma))),
       ] },
-      // ── Bergonzi — his Melodic Structures (3- and 4-note orderings) and triad
-      // pairs (Vol 7): pure cell-fluency vocabulary, kept in its own tab. ──
-      { cat: "scalar", sub: "bergonzi", title: "MELODIC STRUCTURES · 3-NOTE (all 6)", seqs: PERM_3.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqPattern(p)))) },
-      { cat: "scalar", sub: "bergonzi", title: "MELODIC STRUCTURES · 4-NOTE (all 24)", seqs: PERM_4.map(p => lineSeq(stepLabel(p), scale, endOnTonic(seqPattern(p)))) },
+      // Triad pairs (Campbell / Bergonzi Vol 7) — two triads a step apart as a
+      // hexatonic unit; their own tab now that the permutation drills are cut.
       ...[0, 1, 2, 3, 4, 5, 6].map(d => ({
-        cat: "scalar" as SingCat, sub: "bergonzi" as ScalarSub,
+        cat: "scalar" as SingCat, sub: "triadpairs" as ScalarSub,
         title: `TRIAD PAIR ${mod(d, 7) + 1}·${mod(d + 2, 7) + 1}·${mod(d + 4, 7) + 1} + ${mod(d + 1, 7) + 1}·${mod(d + 3, 7) + 1}·${mod(d + 5, 7) + 1}`,
         seqs: TRIAD_PAIR_PATTERNS.map(tp => lineSeq(tp.label, scale, endOnTonic(tp.make(d)))),
       })),
@@ -1837,30 +1813,23 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     // key.  This is how pentatonics are actually catalogued: in C major, maj pent
     // on I/IV/V and min pent on ii/iii/vi — three collections, six roots — not the
     // five modal rotations of one collection.
-    const tonic: SingGroup[] = [];
+    // Every major / minor pentatonic that stays ENTIRELY inside the selected
+    // scale — the pentatonic subsets you're internalising.  (Superimposition
+    // proper needs out-of-scale notes, so it doesn't belong in this mode; in-key,
+    // "tonic-relative" and "chord-relative" are the same six pentatonics.)  Each
+    // is spelled in the key's own degrees from its root: min on 2 → 2 4 5 6 1.
+    const groups: SingGroup[] = [];
     diaPcs.forEach((rootPc, d) => {
       ([["maj", MAJ_PENT], ["min", MIN_PENT]] as const).forEach(([q, struct]) => {
         if (!inKey(rootPc, struct)) return;
-        tonic.push({
-          cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE · in-key",
-          title: `PENT · ${q} on ${d + 1} · ${pentaDegrees(rootPc, struct)}`,
+        groups.push({
+          cat: "scalar", sub: "pentatonic", parent: "IN-KEY PENTATONICS",
+          title: `${q} pent on ${d + 1} · ${pentaDegrees(rootPc, struct)}`,
           seqs: cellsFor(rootPc, struct),
         });
       });
     });
-    tonic.push({
-      cat: "scalar", sub: "pentatonic", parent: "TONIC-RELATIVE · in-key", title: "STRUCTURES · 4-NOTE (all 24, maj on 1)",
-      seqs: PERM_4.map(p => chromSeq(stepLabel(p), endOnTonicCents(scPcs(MAJ_PENT, seqCell(p, 5)).map(pc => chromaCents(chroma, pc))))),
-    });
-    // CHORD-RELATIVE — superimposition catalogue by chord quality, over the tonic
-    // (tonic = chord root).  One parent per quality; each entry is a pentatonic
-    // living in that chord-scale, labelled with the tensions it paints.
-    const chord: SingGroup[] = SUPERIMP.flatMap(qg => qg.items.map(it => ({
-      cat: "scalar" as SingCat, sub: "pentatonic" as ScalarSub, parent: `CHORD · ${qg.quality}`,
-      title: `${it.struct === MAJ_PENT ? "maj" : "min"} pent on ${DEG_NAMES[it.root]} · ${pentaDegrees(it.root, it.struct)}`,
-      seqs: cellsFor(it.root, it.struct),
-    })));
-    return [...tonic, ...chord];
+    return groups;
   };
 
   // A symmetric scale (whole-tone / augmented / octatonic) doesn't fit the
@@ -1896,10 +1865,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       { cat: "scalar", sub: "resolution", title: "RESOLUTION", seqs: [
         line("each tone ↔ its neighbours", res),
       ] },
-      { cat: "scalar", sub: "bergonzi", title: "MELODIC STRUCTURES · 3-NOTE", seqs: PERM_3.map(p => line(stepLabel(p), seqN(p))) },
-      { cat: "scalar", sub: "bergonzi", title: "MELODIC STRUCTURES · 4-NOTE", seqs: PERM_4.map(p => line(stepLabel(p), seqN(p))) },
       ...Array.from({ length: N }, (_, d) => ({
-        cat: "scalar" as SingCat, sub: "bergonzi" as ScalarSub,
+        cat: "scalar" as SingCat, sub: "triadpairs" as ScalarSub,
         title: `TRIAD PAIR ${mod(d, N) + 1}·${mod(d + 2, N) + 1}·${mod(d + 4, N) + 1}`,
         seqs: TRIAD_PAIR_PATTERNS.map(tp => line(tp.label, tp.make(d))),
       })),
@@ -2245,9 +2212,12 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         else if (k === "b") { e.preventDefault(); setBandsOpen(o => !o); }                     // spectrum band editor
         else if (k === "l") { e.preventDefault(); setLogOpen(o => !o); }                       // logbook
         else if (k === "o") { e.preventDefault(); setDroneOpen(o => !o); }                      // drone panel
-        else if (k === "r") { e.preventDefault(); setPatRetro(o => !o); }                     // retrograde
+        else if (k === "r") { e.preventDefault(); setPatRetro(o => !o); }                     // retrograde (r+i = retrograde-inversion)
         else if (k === "i") { e.preventDefault(); setPatInv(m => m === "dia" ? "none" : "dia"); }   // diatonic (tonal) inversion
         else if (k === "c") { e.preventDefault(); setPatInv(m => m === "chrom" ? "none" : "chrom"); } // chromatic (real) inversion
+        else if (k === "]") { e.preventDefault(); setPatExpand(x => Math.min(5, x + 1)); }     // widen every interval by a scale step
+        else if (k === "[") { e.preventDefault(); setPatExpand(x => Math.max(-4, x - 1)); }    // narrow every interval by a scale step
+        else if (k === "\\") { e.preventDefault(); setPatExpand(0); }                          // reset expansion
         else if (/^[1-7]$/.test(k) && actionsRef.current.singTab === "chords") {
           e.preventDefault();
           const d = parseInt(k, 10) - 1;
@@ -2367,17 +2337,33 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // the key).  Chromatic notes always fall back to the cents mirror.
   const transformNotes = (notes: SingNote[], rawScale: number[]): SingNote[] => {
     let ns = notes;
+    const stepOf = (n: SingNote): number | null => {
+      const d = rawScale.findIndex(c => Math.abs(c - n.cents) < 1);
+      return d < 0 ? null : d + 7 * n.oct;
+    };
+    // Diatonic interval expansion / contraction: widen (or narrow) every melodic
+    // interval by `patExpand` scale steps, keeping its direction — a motivic
+    // transform that stays in the scale.  Only applies when every note is a scale
+    // tone (off-scale lines have no diatonic interval to scale).
+    if (patExpand !== 0 && ns.length > 1) {
+      const steps = ns.map(stepOf);
+      if (steps.every(s => s !== null)) {
+        const out = [steps[0] as number];
+        for (let i = 1; i < steps.length; i++) {
+          const d = (steps[i] as number) - (steps[i - 1] as number);
+          const mag = Math.max(0, Math.abs(d) + patExpand);       // narrow to a unison, never flip direction
+          out.push(out[i - 1] + Math.sign(d) * mag);
+        }
+        ns = out.map(s => stepNote(rawScale, s));
+      }
+    }
     const chromMirror = (f: number, n: SingNote) => centsNote(2 * f - (n.abs + 1200 - rootCents));
-    if (patInv === "chrom" && notes.length) {
-      const f = notes[0].abs + 1200 - rootCents;
+    if (patInv === "chrom" && ns.length) {
+      const f = ns[0].abs + 1200 - rootCents;
       ns = ns.map(n => chromMirror(f, n));
-    } else if (patInv === "dia" && notes.length) {
-      const stepOf = (n: SingNote): number | null => {
-        const d = rawScale.findIndex(c => Math.abs(c - n.cents) < 1);
-        return d < 0 ? null : d + 7 * n.oct;
-      };
-      const fStep = stepOf(notes[0]), fCents = notes[0].abs + 1200 - rootCents;
-      ns = notes.map(n => {
+    } else if (patInv === "dia" && ns.length) {
+      const fStep = stepOf(ns[0]), fCents = ns[0].abs + 1200 - rootCents;
+      ns = ns.map(n => {
         const st = stepOf(n);
         return fStep === null || st === null ? chromMirror(fCents, n) : stepNote(rawScale, 2 * fStep - st);
       });
@@ -3410,6 +3396,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
           <span className={patRetro ? "text-[#e0b060]" : ""}><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">r</kbd> retrograde{patRetro ? " ✓" : ""}</span>
           <span className={patInv === "dia" ? "text-[#e0b060]" : ""}><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">i</kbd> invert·diatonic{patInv === "dia" ? " ✓" : ""}</span>
           <span className={patInv === "chrom" ? "text-[#e0b060]" : ""}><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">c</kbd> invert·chromatic{patInv === "chrom" ? " ✓" : ""}</span>
+          <span className={patExpand !== 0 ? "text-[#e0b060]" : ""}><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">[</kbd> narrow <kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">]</kbd> widen{patExpand !== 0 ? ` · ${patExpand > 0 ? "+" : ""}${patExpand}` : ""}</span>
+          <span className="text-[#555]">(<kbd className="px-1 rounded bg-[#1e1e1e] border border-[#333] text-[#9ab] font-mono">r</kbd>+<kbd className="px-1 rounded bg-[#1e1e1e] border border-[#333] text-[#9ab] font-mono">i</kbd> = retro-invert)</span>
           {singTab === "chords" && <span><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">1–7</kbd> hide degree{hiddenDeg.size > 0 && <span className="text-[#c88f8f]"> · hidden {[...hiddenDeg].sort((a, b) => a - b).map(d => d + 1).join(" ")}</span>}</span>}
           <span><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">l</kbd> logbook{logSel.size > 0 && <span className="text-[#8ab88a]"> · {logSel.size} selected</span>}</span>
           <span><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">o</kbd> drone</span>

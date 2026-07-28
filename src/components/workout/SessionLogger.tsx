@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-import SetVideo from "./SetVideo";
+import { VideoRowButton, VideoThumb, SetVideoEditor } from "./SetVideo";
 import SessionTimer from "./SessionTimer";
 import ExercisePicker, { type PickedExercise } from "./ExercisePicker";
 import { exportWorkoutSession } from "@/lib/workoutExport";
 import {
   upsertWorkout, makeExercise, makeSet, deleteWorkout,
-  templateFromWorkout, saveTemplate, useWorkoutData, captureUndo,
+  templateFromWorkout, saveTemplate, useWorkoutData, captureUndo, lastNoteForExercise,
 } from "@/lib/workoutStore";
 import {
   type Workout, type LoggedExercise, type WorkoutSet, type WeightUnit, type TrackingMode,
@@ -23,6 +23,7 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
   const workout = useMemo(() => workouts.find(w => w.id === workoutId), [workouts, workoutId]);
   const [picking, setPicking] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [shareMenu, setShareMenu] = useState(false);
 
   if (!workout) {
     return <div className="p-6 wl-muted">Workout not found. <button className="underline" style={{ color: "var(--wl-accent)" }} onClick={onClose}>Back</button></div>;
@@ -58,9 +59,10 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
     if (name) saveTemplate(templateFromWorkout(workout, name));
   };
   const removeWorkout = () => { if (window.confirm("Delete this entire workout?")) { deleteWorkout(workout.id); onClose(); } };
-  const shareSession = async () => {
+  const shareSession = async (download: boolean) => {
+    setShareMenu(false);
     setSharing(true);
-    try { await exportWorkoutSession(workout); }
+    try { await exportWorkoutSession(workout, { download }); }
     catch (err) { window.alert(`Export failed: ${err instanceof Error ? err.message : String(err)}`); }
     finally { setSharing(false); }
   };
@@ -99,7 +101,24 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
 
         <div className="flex flex-wrap gap-2 pt-2">
           <button onClick={saveAsTemplate} className="wl-btn flex-1">Save as template</button>
-          <button onClick={shareSession} disabled={sharing} className="wl-btn flex-1">{sharing ? "Preparing…" : "📤 Share / Export"}</button>
+          <div className="relative flex-1">
+            <button onClick={() => setShareMenu(o => !o)} disabled={sharing} className="wl-btn w-full">
+              {sharing ? "Preparing…" : "📤 Share / Export ▾"}
+            </button>
+            {shareMenu && !sharing && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setShareMenu(false)} />
+                <div className="absolute bottom-full left-0 right-0 mb-1 z-30 wl-card p-1" style={{ borderRadius: 10 }}>
+                  <button onClick={() => shareSession(false)} className="w-full text-left px-3 py-2 rounded-md text-sm hover:brightness-125" style={{ color: "var(--wl-text)" }}>
+                    📲 Share… <span className="wl-faint text-xs">(send to another app)</span>
+                  </button>
+                  <button onClick={() => shareSession(true)} className="w-full text-left px-3 py-2 rounded-md text-sm hover:brightness-125" style={{ color: "var(--wl-text)" }}>
+                    ⬇ Download HTML <span className="wl-faint text-xs">(save the file)</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <button onClick={removeWorkout} className="wl-btn wl-btn--danger">Delete</button>
         </div>
       </div>
@@ -117,7 +136,16 @@ function ExerciseCard(props: {
 }) {
   const { ex, unit } = props;
   const [modeOpen, setModeOpen] = useState(false);
+  // Which set's video editor is open (null = none).
+  const [editor, setEditor] = useState<{ setId: string; justAdded: boolean } | null>(null);
+  const editorSet = editor ? ex.sets.find(s => s.id === editor.setId) : undefined;
+  const videoSets = ex.sets.filter(s => s.videoId || s.driveFileId);
+  // Sets whose note field is expanded (auto-open any set that already has one).
+  const [openNotes, setOpenNotes] = useState<Set<string>>(() => new Set(ex.sets.filter(s => s.note).map(s => s.id)));
+  const toggleNote = (id: string) => setOpenNotes(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const cols = columnsFor(ex.mode, unit);
+  // "Keep in mind" — the last note logged for this exercise in a previous session.
+  const reminder = useMemo(() => lastNoteForExercise({ skillId: ex.skillId, name: ex.name }, props.workoutId), [ex.skillId, ex.name, props.workoutId]);
 
   return (
     <div className="wl-card" style={{ borderRadius: 14 }}>
@@ -144,13 +172,26 @@ function ExerciseCard(props: {
         <button onClick={props.onRemove} className="wl-icon-btn wl-icon-btn--danger text-xs">✕</button>
       </div>
 
+      {/* Reminder — the last note you left on this exercise, from a past session. */}
+      {reminder && (
+        <div className="mx-3 mt-2.5 px-3 py-2 rounded-lg flex gap-2 items-start"
+          style={{ background: "color-mix(in srgb, var(--wl-accent) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--wl-accent) 30%, var(--wl-line))" }}>
+          <span style={{ fontSize: 13, lineHeight: 1.3 }}>📌</span>
+          <div className="min-w-0">
+            <div className="wl-collabel" style={{ color: "var(--wl-accent-ink)" }}>Keep in mind · {reminder.date}</div>
+            <div className="text-[13px] mt-0.5" style={{ color: "var(--wl-text)", whiteSpace: "pre-wrap" }}>{reminder.note}</div>
+          </div>
+        </div>
+      )}
+
       {/* column header */}
       <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
         <span className="wl-collabel" style={{ width: "1.75rem" }}>#</span>
         {cols.map(c => <span key={c.key} className="wl-collabel flex-1 text-center">{c.label}</span>)}
         <span className="wl-collabel" style={{ width: "3.1rem", textAlign: "center" }}>RPE</span>
+        <span style={{ width: "1.6rem" }} />
         <span className="wl-collabel flex-1 text-center">Form</span>
-        <span style={{ width: "1.2rem" }} />
+        <span style={{ width: "2.7rem" }} />
       </div>
 
       <div className="px-3 pb-2 space-y-2">
@@ -174,16 +215,43 @@ function ExerciseCard(props: {
               ))}
 
               <RpeCell value={s.rpe} onChange={v => props.onPatchSet(s.id, { rpe: v })} />
+              <VideoRowButton set={s} workoutId={props.workoutId}
+                onChange={sp => props.onPatchSet(s.id, sp)}
+                onOpen={justAdded => setEditor({ setId: s.id, justAdded })} />
               <FormCell value={s.form} onChange={v => props.onPatchSet(s.id, { form: v })} />
+              <button onClick={() => toggleNote(s.id)} className="wl-icon-btn text-xs" style={{ width: "1.2rem" }}
+                title="Note for this set" aria-label="Note for this set">
+                <span style={{ color: s.note ? "var(--wl-accent)" : "var(--wl-faint)" }}>🗒</span>
+              </button>
               <button onClick={() => props.onRemoveSet(s.id)} className="wl-icon-btn wl-icon-btn--danger text-xs" style={{ width: "1.2rem" }}>✕</button>
             </div>
-            <SetVideo set={s} workoutId={props.workoutId} onChange={sp => props.onPatchSet(s.id, sp)} />
+            {openNotes.has(s.id) && (
+              <input value={s.note ?? ""} autoFocus={!s.note}
+                onChange={e => props.onPatchSet(s.id, { note: e.target.value || undefined })}
+                placeholder="Note to keep in mind next time…"
+                className="wl-input mt-1.5 text-[13px]" style={{ padding: "6px 10px" }} />
+            )}
           </div>
         ))}
       </div>
 
       <button onClick={props.onAddSet} className="w-full py-2 text-[11px] wl-mono"
         style={{ color: "var(--wl-accent)", borderTop: "1px solid var(--wl-line)" }}>+ Add set</button>
+
+      {/* Clips for this exercise's sets, embedded small with a set-number badge. */}
+      {videoSets.length > 0 && (
+        <div className="flex gap-3 overflow-x-auto px-3 py-3" style={{ borderTop: "1px solid var(--wl-line)", scrollSnapType: "x mandatory" }}>
+          {ex.sets.map((s, i) => (s.videoId || s.driveFileId)
+            ? <VideoThumb key={s.id} set={s} index={i} />
+            : null)}
+        </div>
+      )}
+
+      {editor && editorSet && (
+        <SetVideoEditor set={editorSet} workoutId={props.workoutId}
+          onChange={sp => props.onPatchSet(editor.setId, sp)}
+          onClose={() => setEditor(null)} justAdded={editor.justAdded} />
+      )}
     </div>
   );
 }
@@ -198,11 +266,9 @@ function columnsFor(mode: TrackingMode, unit: WeightUnit): Col[] {
 }
 
 function RpeCell({ value, onChange }: { value?: number; onChange: (v: number | undefined) => void }) {
-  const color = value == null ? "var(--wl-line)"
-    : value >= 9 ? "var(--wl-hard)" : value >= 8 ? "var(--wl-warn)" : value >= 7 ? "var(--wl-accent)" : "var(--wl-good)";
   return (
     <select value={value ?? ""} onChange={e => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
-      className="wl-cell" style={{ width: "3.1rem", borderColor: color, padding: "7px 2px" }}>
+      className="wl-cell" style={{ width: "3.1rem", padding: "7px 2px" }}>
       <option value="">–</option>
       {[6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10].map(n => <option key={n} value={n}>{n}</option>)}
     </select>

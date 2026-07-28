@@ -28,9 +28,14 @@ import ClefReference from "./ClefReference";
 // ── Layout constants ─────────────────────────────────────────────────────────
 const LEFT_PAD        = 26;   // room for the piano brace on the left
 const DEFAULT_MEASURE_W = 170;   // floor width for a bar (kept modest so margins stay tight)
-const INNER_PAD       = 8;    // horizontal margin inside a bar, before the first / after the last note
+const INNER_PAD       = 0;    // no bar-edge inset: slot 0 sits on the left barline so
+                              // the 8th-cells divide the bar evenly and every syllable
+                              // centres in its cell (cell-centring gives its own margin)
 const HEADER_H        = 44;
-const CELL_W          = 22;   // horizontal room reserved per finest subdivision
+const CELL_W          = 22;   // pixels for ONE 8th-note cell (the base grid unit)
+const BEAT_SLOTS      = DURATION_SLOTS["q"];   // 8 — one beat, in slots
+const EIGHTH_SLOTS    = DURATION_SLOTS["8"];   // 4 — base cell for pixels-per-slot
+const GRID_ORDER: Duration[] = ["h", "q", "8", "16", "32"];  // snap grids, coarse→fine
 // Layout is recomputed every render (module-level so the geometry helpers below
 // see it): sections and manual breaks split the bars into rows of ≤ MPR, and
 // each bar's width follows its own time signature, so a bar's position/size is
@@ -46,7 +51,13 @@ let X_OF: number[]     = [LEFT_PAD];           // left-X of each bar (row-centre
 let CANVAS_W           = LEFT_PAD * 2 + DEFAULT_MEASURE_W;
 let VC_OF: number[]           = [2];    // voice-line count of each bar's section
 let HS_OF: (number | null)[]  = [null]; // hand-split (piano brace) of each bar's section
+let CELL_OF: number[]         = [BEAT_SLOTS]; // grid cell (slots) of each bar = its finest note, ≤ a beat
+function cellSlotsOf(m: number): number { return CELL_OF[m] ?? BEAT_SLOTS; }
 const NUM_FONT     = 22;
+// Stroke weight shared by every duration RULE — the 8th/16th underlines, the
+// beams joining them, and the vertical half/whole strokes.  One constant so the
+// marks that all mean "duration" read as the same pen at any grid size.
+const RULE_W       = 1.5;
 // Curvy, rounded display face for the jianpu numerals/accidentals/dashes
 // (loaded from Google Fonts in index.html).  Falls back to Helvetica.
 const JIANPU_FONT  = "'Comfortaa', Helvetica, Arial, sans-serif";
@@ -131,12 +142,17 @@ function restShape(dur: Duration, cx: number, cy: number, key: string): React.Re
     return els;
   }
   if (dur === "q") {
-    // Standard quarter rest (𝄽): three angular zig-zag strokes down, then a
-    // small curled tail at the bottom — reads as a proper rest, not a squiggle.
-    els.push(<path key={`${key}-q`} fill="none" stroke={WHITE} strokeWidth={2.6}
-      strokeLinejoin="miter" strokeLinecap="round"
-      d={`M ${cx - 2.5} ${cy - 9} L ${cx + 3} ${cy - 4} L ${cx - 2.5} ${cy - 1} L ${cx + 3.5} ${cy + 3.5} `
-        + `C ${cx + 0.5} ${cy + 2.5} ${cx - 2} ${cy + 5} ${cx + 1.5} ${cy + 9}`} />);
+    // Quarter rest (𝄽).  The zig-zag descends from the UPPER RIGHT, alternating
+    // down-left / down-right, and finishes with a crescent tail that bulges right
+    // before tipping back left.  Split into two sub-paths so the straight run
+    // keeps crisp mitred corners (butt caps — round ones bloat the tips into a
+    // blob at this size) while only the tail carries a rounded end.
+    els.push(<path key={`${key}-q`} fill="none" stroke={WHITE} strokeWidth={2.2}
+      strokeLinejoin="miter" strokeLinecap="butt"
+      d={`M ${cx + 3.2} ${cy - 9.5} L ${cx - 2.4} ${cy - 4.6} L ${cx + 2.8} ${cy - 0.6} L ${cx - 3.2} ${cy + 4.4}`} />);
+    els.push(<path key={`${key}-qt`} fill="none" stroke={WHITE} strokeWidth={1.9}
+      strokeLinecap="round"
+      d={`M ${cx - 3.2} ${cy + 4.4} C ${cx + 1.6} ${cy + 3.4} ${cx + 3.6} ${cy + 6.8} ${cx + 0.8} ${cy + 9.8}`} />);
     return els;
   }
   // Eighth / 16th / 32nd — a slanted stroke with 1 / 2 / 3 flag dots.
@@ -182,10 +198,19 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   const [duration, setDuration] = useState<Duration>("q");
   const [dotted, setDotted] = useState(false);
   const [octave, setOctave] = useState(0);
+  // Snap grid — the columns notes lock onto, INDEPENDENT of their duration, so
+  // you can drop e.g. quarter notes on any 16th column (across voices).  Cursor
+  // steps and click-placement snap to this; `[` / `]` change it.
+  const [gridDur, setGridDur] = useState<Duration>("8");
   const [edoText, setEdoText] = useState("12");   // free-typed EDO, committed on blur
   const [barsText, setBarsText] = useState("8");  // free-typed bar count, committed on blur
-  const [tsEdit, setTsEdit] = useState<{ m: number; text: string } | null>(null); // per-bar time-sig being typed
+  // Per-bar time-sig being typed.  `dirty` = the user actually changed the text,
+  // so merely focusing and leaving an input can never write anything.
+  const [tsEdit, setTsEdit] = useState<{ m: number; text: string; dirty: boolean } | null>(null);
   const [showClefRef, setShowClefRef] = useState(false);   // C2–C6 treble/bass reference
+  // "measure:slot" keys whose mid-bar note editor is open but still empty — an
+  // editor only persists once you type something into it.
+  const [openSlotNotes, setOpenSlotNotes] = useState<Set<string>>(new Set());
 
   const scoreRef = useRef<HTMLDivElement | null>(null);
   const scoreAreaRef = useRef<HTMLDivElement | null>(null);
@@ -315,15 +340,26 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   useEffect(() => { if (project) onActiveEdo?.(edo); }, [edo, project, onActiveEdo]);
   useEffect(() => { setBarsText(String(project?.setup.barCount ?? 8)); }, [project?.setup.barCount]);
 
-  // A time signature applies forward until the next change. Cutting a line
-  // keeps whatever meter is currently in effect (the nearest override anywhere
-  // before this bar) rather than resetting the new group to 4/4; a cut group
-  // can still set its own meter with an explicit time-signature override.
+  // Which bar opens the GROUP a bar belongs to — a group starts at bar 0, at a
+  // section label, or at a manual cut.  Computed here (not from `layout`, which
+  // needs bar widths and therefore meters) so `effectiveTs` can use it.
+  const groupStartOf = useCallback((measure: number): number => {
+    let start = 0;
+    for (let m = 1; m <= measure; m++) {
+      if (sectionLabels?.[m]?.trim() || project?.setup.perBarBreakBefore?.[m]) start = m;
+    }
+    return start;
+  }, [sectionLabels, project?.setup.perBarBreakBefore]);
+
+  // A time signature applies forward until the next change — but ONLY inside its
+  // own group.  Groups are independent sets of bars, so a meter set in one must
+  // not reach past the cut into the next; the walk therefore stops at the group
+  // start, and a group with no override of its own uses the score default.
   const effectiveTs = useCallback((measure: number): MeasureTimeSig => {
     const per = setup?.perBarTimeSig;
-    if (per) for (let k = measure; k >= 0; k--) if (per[k]) return per[k];
+    if (per) for (let k = measure, first = groupStartOf(measure); k >= first; k--) if (per[k]) return per[k];
     return setup?.defaultTimeSig ?? { num: 4, den: 4 };
-  }, [setup]);
+  }, [setup, groupStartOf]);
   const totalSlotsOf = useCallback((measure: number): number => {
     if (!setup) return 32;
     return measureSlots(effectiveTs(measure));
@@ -364,15 +400,37 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       const gi = groupOrder.get(startOf[m]) ?? 0;
       numLabel[m] = `${m - startOf[m] + 1}${String.fromCharCode(97 + (gi % 26))}`;
     }
-    // Per-GROUP bar width — each group sizes to its own densest bar, so a 4/4
-    // group and a 5/8 group keep independent grids and one never resizes another.
+    // Uniform pixels-per-slot across the whole score: every bar's width is just
+    // its slot count × a constant, so a 2/4 bar is exactly half a 4/4 bar and any
+    // two same-meter bars line up.  The constant is pinned to a FIXED reference —
+    // a full line of MPR 4/4 bars fills the container — NOT to whatever the
+    // widest row happens to hold.  Stretching to the actual content made meter
+    // invisible: a line of four 2/4 bars was blown up to fill the same width as a
+    // line of four 4/4 bars, so a short bar looked exactly like a long one.  Now
+    // a 2/4 line simply stops halfway across, which is the point.
     const cell = system === "solfa" ? 34 : CELL_W;
+    const REF_ROW_SLOTS = MPR * measureSlots({ num: 4, den: 4 });
+    const availW = Math.max(0, containerW - LEFT_PAD * 2 - 32);
+    const pxPerSlot = Math.max(cell / EIGHTH_SLOTS, availW > 0 ? availW / REF_ROW_SLOTS : 0);
+    // Grid cell PER GROUP, never coarser than an EIGHTH: the finest of the 8th
+    // cell, the chosen snap grid, and that group's OWN finest note.  The 8th cap
+    // is what keeps syllable placement stable — a half grid, a quarter grid and
+    // an 8th grid all resolve to the same 8th-note columns, so pressing [ / ] or
+    // entering a longer note never slides the syllables sideways; longer notes
+    // just fill their extra 8th cells with dashes.  Only actual 16ths/32nds in a
+    // group subdivide further (they have to, or two heads would share one x).
+    // Per-group so one exercise's fine notes don't force dashes into every other
+    // group.  Bar WIDTHS stay uniform (pxPerSlot), so a 2/4 bar is still exactly
+    // half a 4/4 bar regardless.
     const groupFinest: Record<number, number> = {};
-    for (const n of notes) { const s = startOf[n.measure] ?? 0; groupFinest[s] = Math.min(groupFinest[s] ?? 8, DURATION_SLOTS[n.duration]); }
-    const groupCells: Record<number, number> = {};
-    for (let m = 0; m < barCount; m++) { const s = startOf[m]; groupCells[s] = Math.max(groupCells[s] ?? 4, totalSlotsOf(m) / (groupFinest[s] ?? 8)); }
+    for (const n of notes) { const s = startOf[n.measure] ?? 0; groupFinest[s] = Math.min(groupFinest[s] ?? BEAT_SLOTS, DURATION_SLOTS[n.duration]); }
+    const cellArr: number[] = [];
+    for (let m = 0; m < barCount; m++) {
+      const gf = groupFinest[startOf[m]] ?? BEAT_SLOTS;
+      cellArr[m] = Math.max(1, Math.min(EIGHTH_SLOTS, DURATION_SLOTS[gridDur], gf));
+    }
     const wArr: number[] = [];
-    for (let m = 0; m < barCount; m++) { const s = startOf[m]; wArr[m] = Math.max(DEFAULT_MEASURE_W, Math.round(groupCells[s] * cell) + 2 * INNER_PAD); }
+    for (let m = 0; m < barCount; m++) wArr[m] = Math.max(cell, Math.round(totalSlotsOf(m) * pxPerSlot));
     // Per-group voice count (stored min or the tallest note voice in the group).
     const maxVoice: Record<number, number> = {};
     for (const n of notes) { const s = startOf[n.measure] ?? 0; maxVoice[s] = Math.max(maxVoice[s] ?? 0, (n.voice ?? 0) + 1); }
@@ -407,14 +465,27 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       y += systemHeight(vcArr[row[0]] ?? minVoices, hsArr[row[0]] != null);
       if (row.some(hasTsLabel)) y += TS_PAD;   // room for the time-signature line
     });
-    return { rowsArr, rowOfArr, colOfArr, rowTop, rowCut, wArr, xArr, vcArr, hsArr, numLabel, startOf, totalHeight: y, canvasW: LEFT_PAD * 2 + maxRowW };
+    return { rowsArr, rowOfArr, colOfArr, rowTop, rowCut, wArr, xArr, vcArr, hsArr, cellArr, pxPerSlot, numLabel, startOf, totalHeight: y, canvasW: LEFT_PAD * 2 + maxRowW };
   }, [setup?.barCount, project?.setup.perBarBreakBefore, project?.setup.perBarTimeSig, sectionLabels, perSection,
-      project?.voiceCount, project?.pianoBrace, project?.perSectionPianoBrace, notes, totalSlotsOf, system, minVoices]);
+      project?.voiceCount, project?.pianoBrace, project?.perSectionPianoBrace, notes, totalSlotsOf, system, minVoices, containerW, gridDur]);
   ROW_OF = layout.rowOfArr; COL_OF = layout.colOfArr; ROW_TOP = layout.rowTop;
   ROWS = layout.rowsArr; ROW_COUNT = layout.rowsArr.length;
   VC_OF = layout.vcArr; HS_OF = layout.hsArr; W_OF = layout.wArr; X_OF = layout.xArr; CANVAS_W = layout.canvasW;
+  CELL_OF = layout.cellArr;
+  // Pixels-per-slot the layout settled on (stretched to fill the width) — used
+  // to size the syllable font so it fills its cell at any grid resolution.
+  const pxPerSlot = layout.pxPerSlot;
 
-  const gridSnap = DURATION_SLOTS[duration] * (dotted ? 1.5 : 1);
+  // Cursor/click snap to the shared grid cell (the chosen snap grid, refined by
+  // any finer note present) — NOT the note duration, so notes of any length lock
+  // to the same columns.  Matches the drawn grid (CELL_OF).
+  const gridSnap = cellSlotsOf(cursor.measure);
+
+  // Sol-fa has NO note selection at all — no click-to-select, no rubber-band
+  // drag, no Space-extend, no highlight boxes.  You drive it purely with the
+  // cursor, which is the whole interaction model there.
+  const noSelect = system === "solfa";
+  useEffect(() => { if (noSelect) { setSelectedIds([]); setDragRect(null); } }, [noSelect]);
 
   const commit = useCallback((next: NoteData[]) => {
     const sorted = next.sort((a, b) =>
@@ -527,11 +598,12 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     });
     commit([...kept, newNote]);
     setSelectedIds([]);
-    // Embedded (trainer) mode: keep the cursor on this beat so further digits
-    // build the chord downward into successive voices (never stacking in one
-    // voice); the user moves between beats with the arrow keys.
-    if (!embedded) advanceCursor(voice, measure, slot + newLen);
-  }, [project, cursor, duration, dotted, notes, makeNote, commit, advanceCursor, embedded]);
+    // Advance past the note just written — one grid step for anything that fits a
+    // single cell, otherwise clear of its whole span, since the cursor never sits
+    // inside a sounding note.  Embedded (trainer) mode holds the cursor so further
+    // digits build a chord downward instead.
+    if (!embedded) advanceCursor(voice, measure, slot + Math.max(gridSnap, newLen));
+  }, [project, cursor, duration, dotted, notes, makeNote, commit, advanceCursor, embedded, gridSnap]);
   // Held continuation ("–"): a sustaining beat at the current duration, for
   // holding a note across beats / barlines.  Bound to the `-` keybind.
   const placeHeld = useCallback(() => { placeNote(1, false, true); }, [placeNote]);
@@ -601,6 +673,14 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       step = Math.max(1, Math.min(gridSnap, finest));
     }
     slot += dir * step;
+    // A sounding note owns every slot it spans, so the cursor never stops inside
+    // one — a half note takes you straight to the beat after it rather than
+    // parking on the 8th cells it already fills.  Going right lands just past the
+    // note; going left lands on its head.  (Rests don't block: you can overwrite
+    // them freely.)
+    const cover = notes.find(n => (n.voice ?? 0) === cur.voice && n.measure === measure && !n.isRest
+      && slot > n.startSlot && slot < n.startSlot + noteSlots(n));
+    if (cover) slot = dir > 0 ? cover.startSlot + noteSlots(cover) : cover.startSlot;
     if (slot < 0) {
       if (measure > 0) { measure -= 1; slot = totalSlotsOf(measure) - step; } else slot = 0;
     } else if (slot >= total) {
@@ -643,6 +723,16 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const perBarTitle = { ...(project.setup.perBarTitle ?? {}) };
     if (text.trim()) perBarTitle[m] = text; else delete perBarTitle[m];
     updateSetup({ perBarTitle });
+  }, [project, updateSetup]);
+  // Mid-bar note at a given slot (a chord that changes part-way through the bar).
+  // Slot 0 belongs to the bar title, so it never lands here.
+  const updateSlotNote = useCallback((m: number, slot: number, text: string) => {
+    if (!project) return;
+    const perSlotNote = { ...(project.setup.perSlotNote ?? {}) };
+    const bar = { ...(perSlotNote[m] ?? {}) };
+    if (text.trim()) bar[slot] = text; else delete bar[slot];
+    if (Object.keys(bar).length) perSlotNote[m] = bar; else delete perSlotNote[m];
+    updateSetup({ perSlotNote });
   }, [project, updateSetup]);
   // Per-section label (rendered large above the bar; also forces a line break).
   const updateBarSection = useCallback((m: number, text: string) => {
@@ -701,6 +791,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
         ...project.setup,
         barCount: project.setup.barCount + 1,
         perBarTitle: shift(project.setup.perBarTitle),
+        perSlotNote: shift(project.setup.perSlotNote),
         perBarSection: shift(project.setup.perBarSection),
         perBarBreakBefore: shift(project.setup.perBarBreakBefore),
         perBarTimeSig: shift(project.setup.perBarTimeSig),
@@ -737,6 +828,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
         ...project.setup,
         barCount: project.setup.barCount - 1,
         perBarTitle: shift(project.setup.perBarTitle),
+        perSlotNote: shift(project.setup.perSlotNote),
         perBarSection: shift(project.setup.perBarSection),
         perBarBreakBefore: shift(project.setup.perBarBreakBefore),
         perBarTimeSig: shift(project.setup.perBarTimeSig),
@@ -893,11 +985,20 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     return { ...n, pitch: jp.pitch };
   }, []);
 
-  // The notes a modifier (duration / octave / dot / alter …) edits. Shift+key
-  // targets the note under the cursor (set in handleKey); otherwise the mouse
-  // selection. Plain keys (no Shift, no selection) just set the entry default.
-  const shiftTargetRef = useRef<string[] | null>(null);
-  const targetIds = useCallback((): string[] => shiftTargetRef.current ?? selectedIds, [selectedIds]);
+  // The notes a modifier (duration / octave / dot / alter …) edits: the mouse
+  // selection when there is one, otherwise the note under the cursor.
+  //
+  // With nothing selected the CURSOR is the target — no modifier key needs Shift.
+  // You edit whatever you're parked on, and the same keypress also updates the
+  // entry default, so the next note you write inherits it.  Park on empty space
+  // and there's nothing to edit, so the keypress only sets that default.
+  const cursorTargetIds = useCallback((): string[] => notes
+    .filter(n => (n.voice ?? 0) === cursor.voice && n.measure === cursor.measure
+      && cursor.slot >= n.startSlot && cursor.slot < n.startSlot + noteSlots(n))
+    .map(n => n.id), [notes, cursor]);
+  const targetIds = useCallback((): string[] =>
+    selectedIds.length ? selectedIds : cursorTargetIds(),
+    [selectedIds, cursorTargetIds]);
 
   const applyToSelection = useCallback((fn: (n: NoteData) => NoteData) => {
     const ids = targetIds();
@@ -918,6 +1019,15 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     pickDuration(DURATION_ORDER[ni]);
   }, [duration, pickDuration]);
 
+  // Step the SNAP grid (the columns notes lock onto), independent of duration —
+  // a half…32nd range.  `[` = coarser, `]` = finer.  dir +1 = finer.
+  const stepGrid = useCallback((dir: 1 | -1) => {
+    setGridDur(g => {
+      const i = GRID_ORDER.indexOf(g);
+      return GRID_ORDER[Math.max(0, Math.min(GRID_ORDER.length - 1, i + dir))];
+    });
+  }, []);
+
   // Toggle the eighth-note underline: make the target an eighth (one underline)
   // if it isn't already, else revert it to a quarter (no underline).
   const toggleUnderline = useCallback(() => {
@@ -935,10 +1045,14 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   }, [targetIds, notes, commit]);
 
   const toggleDot = useCallback(() => {
-    const next = !dotted;
+    // Toggle relative to the TARGET's own state when there is one, not to the
+    // entry default — otherwise pressing `t` on a note whose dot already matches
+    // the default writes the same value back and looks like a dead key.
+    const ids = targetIds();
+    const next = ids.length ? notes.some(n => ids.includes(n.id) && !n.dotted) : !dotted;
     setDotted(next);
     applyToSelection(n => ({ ...n, dotted: next || undefined }));
-  }, [dotted, applyToSelection]);
+  }, [dotted, notes, targetIds, applyToSelection]);
 
   const bumpOctave = useCallback((delta: number) => {
     setOctave(o => Math.max(-3, Math.min(3, o + delta)));
@@ -988,63 +1102,77 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
 
     if (k === " ") { e.preventDefault(); return; }  // Space no longer selects — swallow it.
 
-    // Shift + an action key (q/w/e/r/t/…) applies that action to the note the
-    // cursor is on — no need to select it first. Without Shift the keys set the
-    // entry default (or edit the mouse selection, if any).
-    if (e.shiftKey) {
-      const { voice, measure, slot } = cursor;
-      const host = notes.find(n => (n.voice ?? 0) === voice && n.measure === measure && !n.isRest
-        && slot >= n.startSlot && slot < n.startSlot + noteSlots(n));
-      shiftTargetRef.current = host ? [host.id] : [];
-    } else {
-      shiftTargetRef.current = null;
-    }
+    // Action keys (q/w/e/r/t/u/o/,/.) need no modifier: they act on whatever the
+    // cursor is parked on, via targetIds()'s cursor fallback.  Shift is no longer
+    // special here — it's folded away below so Shift+q still reads as "q".
 
-    if (k >= "1" && k <= "7") { e.preventDefault(); inputDigit(parseInt(k, 10), false); return; }
-    if (k === "0")            { e.preventDefault(); inputDigit(0, true); return; }
+    // Shift turns the action letters into their uppercase form (Shift+q → "Q"),
+    // so fold single letters to lowercase for the matches below — otherwise
+    // Shift+q/w/e/r would fall through and do nothing.  "M" stays distinct from
+    // "m" (delete- vs add-measure), so it's excluded from the fold.
+    const key = k.length === 1 && k !== "M" ? k.toLowerCase() : k;
+
+    if (key >= "1" && key <= "7") { e.preventDefault(); inputDigit(parseInt(key, 10), false); return; }
+    if (key === "0")              { e.preventDefault(); inputDigit(0, true); return; }
 
     // Quick-access modifiers on the letter row directly below the numbers:
     //   q/w = octave −/+   e/r = duration shorter/longer   t = dot
     //   u = underline (eighth)   o = staccato   . / , = alteration up / down
-    //   - = held "–" continuation (sustain across beats / barlines)
-    if (k === "-" || k === "_")              { e.preventDefault(); placeHeld(); return; }
-    if (k === "q")                           { e.preventDefault(); bumpOctave(-1); return; }
-    if (k === "w" || k === "+" || k === "=") { e.preventDefault(); bumpOctave(1); return; }
-    if (k === "e" || k === "]")              { e.preventDefault(); stepDuration(-1); return; } // shorter
-    if (k === "r" || k === "[")              { e.preventDefault(); stepDuration(1); return; }  // longer
-    if (k === "t")                           { e.preventDefault(); toggleDot(); return; }
-    if (k === "u")                           { e.preventDefault(); toggleUnderline(); return; }  // eighth-note underline
-    if (k === "o")                           { e.preventDefault(); toggleStaccato(); return; }   // staccato dot
-    if (k === "." || k === ">")              { e.preventDefault(); alter(1); return; }   // alteration up
-    if (k === "," || k === "<")              { e.preventDefault(); alter(-1); return; }  // alteration down
-    if (k === "p")                           { e.preventDefault(); togglePianoBrace(); return; }
-    if (k === "l")                           { e.preventDefault(); toggleUnderlines(); return; }
+    //   [ / ] = snap grid coarser / finer   - = held "–" continuation
+    // Each edits the note under the cursor (and sets the entry default) — no
+    // modifier needed.  `,`/`.` accept their shifted forms `<`/`>` too, so the
+    // key works whether or not Shift happens to be down.
+    if (key === "-" || key === "_")                { e.preventDefault(); placeHeld(); return; }
+    if (key === "q")                               { e.preventDefault(); bumpOctave(-1); return; }
+    if (key === "w" || key === "+" || key === "=") { e.preventDefault(); bumpOctave(1); return; }
+    if (key === "e")                               { e.preventDefault(); stepDuration(-1); return; } // shorter
+    if (key === "r")                               { e.preventDefault(); stepDuration(1); return; }  // longer
+    if (key === "[")                               { e.preventDefault(); stepGrid(-1); return; }   // grid coarser
+    if (key === "]")                               { e.preventDefault(); stepGrid(1); return; }    // grid finer
+    if (key === "t")                               { e.preventDefault(); toggleDot(); return; }
+    if (key === "u")                               { e.preventDefault(); toggleUnderline(); return; }  // eighth-note underline
+    if (key === "o")                               { e.preventDefault(); toggleStaccato(); return; }   // staccato dot
+    if (key === "." || key === ">")                { e.preventDefault(); alter(1); return; }   // alteration up
+    if (key === "," || key === "<")                { e.preventDefault(); alter(-1); return; }  // alteration down
+    if (key === "p")                               { e.preventDefault(); togglePianoBrace(); return; }
+    if (key === "l")                               { e.preventDefault(); toggleUnderlines(); return; }
     // Jump into the current measure's title field (Enter/Esc jumps back out).
-    if (k === "n")                           { e.preventDefault(); document.getElementById(`jp-title-${cursor.measure}`)?.focus(); return; }
+    // Annotate at the CURSOR: on the downbeat that's the bar's own note, and
+    // anywhere else it's a mid-bar note at that slot — which is how a chord that
+    // changes part-way through the bar gets written over the beat it lands on.
+    if (key === "n") {
+      e.preventDefault();
+      const { measure, slot } = cursor;
+      if (slot <= 0) { document.getElementById(`jp-title-${measure}`)?.focus(); return; }
+      setOpenSlotNotes(prev => new Set(prev).add(`${measure}:${slot}`));
+      // Focus after the editor has been rendered by the state change above.
+      requestAnimationFrame(() => document.getElementById(`jp-slotnote-${measure}-${slot}`)?.focus());
+      return;
+    }
     // Jump into the current measure's section-label field (labels this bar as a
     // new exercise: big heading + line break).
-    if (k === "s")                           { e.preventDefault(); document.getElementById(`jp-section-${cursor.measure}`)?.focus(); return; }
+    if (key === "s")                               { e.preventDefault(); document.getElementById(`jp-section-${cursor.measure}`)?.focus(); return; }
     // Cut the line after the current measure (press again to rejoin); the ✂
     // button at each bar's end does the same.
-    if (k === "b")                           { e.preventDefault(); toggleBreakBefore(cursor.measure + 1); return; }
+    if (key === "b")                               { e.preventDefault(); toggleBreakBefore(cursor.measure + 1); return; }
     // Append a measure (m) / delete the current measure (Shift+M).
-    if (k === "m")                           { e.preventDefault(); addMeasure(); return; }
-    if (k === "M")                           { e.preventDefault(); deleteMeasure(cursor.measure); return; }
+    if (key === "m")                               { e.preventDefault(); addMeasure(); return; }
+    if (key === "M")                               { e.preventDefault(); deleteMeasure(cursor.measure); return; }
     // Edit the current measure's time signature (type "n/d" under the bar).
-    if (k === "g")                           { e.preventDefault(); document.getElementById(`jp-timesig-${cursor.measure}`)?.focus(); return; }
+    if (key === "g")                               { e.preventDefault(); document.getElementById(`jp-timesig-${cursor.measure}`)?.focus(); return; }
     // Toggle the C2–C6 treble/bass clef reference.
-    if (k === "c")                           { e.preventDefault(); setShowClefRef(v => !v); return; }
+    if (key === "c")                               { e.preventDefault(); setShowClefRef(v => !v); return; }
 
-    if (k === "Backspace" || k === "Delete") {
+    if (key === "Backspace" || key === "Delete") {
       e.preventDefault();
       if (e.shiftKey) removeVoiceAt(cursor.voice);   // Shift+⌫ → delete the current voice line
       else deleteSelectedOrCursor();
       return;
     }
-    if (k === "Escape")        { e.preventDefault(); if (showClefRef) setShowClefRef(false); else setSelectedIds([]); return; }
+    if (key === "Escape")        { e.preventDefault(); if (showClefRef) setShowClefRef(false); else setSelectedIds([]); return; }
   }, [project, selectedIds, cursor, notes, showClefRef, inputDigit, moveSelected, moveCursorH, extendSelect, navVoice, addVoiceAbove, addVoiceBelow,
       removeVoiceAt, toggleBreakBefore, addMeasure, deleteMeasure, undo, placeHeld,
-      stepDuration, toggleDot, toggleUnderline, toggleStaccato, alter, deleteSelectedOrCursor, bumpOctave, togglePianoBrace, toggleUnderlines]);
+      stepDuration, stepGrid, toggleDot, toggleUnderline, toggleStaccato, alter, deleteSelectedOrCursor, bumpOctave, togglePianoBrace, toggleUnderlines]);
 
   const handleKeyRef = useRef(handleKey);
   handleKeyRef.current = handleKey;
@@ -1083,13 +1211,26 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       const voice = first.voice ?? 0;
       const total = totalSlotsOf(first.measure);
       const glyph = jianpuGlyphFor(first.duration, first.dotted);
-      // Centre the head in its cell so equal notes sit symmetrically.  A held
-      // note (half/whole) prints as "head – – –" with the head in beat 1, so its
-      // head centres in that first beat (8 slots), not over the whole span.
-      // A dotted quarter/eighth keeps its head centred on the beat (over the
-      // undotted value); the extra half-beat prints in the next eighth cell.
-      const headSlots = glyph.dashes > 0 ? 8 : (glyph.dot ? DURATION_SLOTS[first.duration] : noteSlots(first));
-      const x = slotToX(first.measure, first.startSlot + headSlots / 2, total);
+      // This bar's grid cell; head centres in the first cell of its onset (so it
+      // sits between grid lines, never on one).  EVERY note fills the cells its
+      // duration spans with dashes (proper numbered notation: a quarter on an 8th
+      // grid is "1 –"), so bars of quarters read as dense as bars of held wholes
+      // — the grid stays symmetric no matter the note values.
+      const cellS = cellSlotsOf(first.measure);
+      // Length never spills into neighbouring cells as horizontal dashes — every
+      // note occupies exactly its own 8th column.  Instead the length rides ON the
+      // glyph, in units of a HALF note: one full vertical stroke per half, plus a
+      // short tick for a leftover single beat.  So half = one dash, dotted half =
+      // a dash and a tick, whole = two dashes.  Notes under a half carry nothing
+      // (a plain quarter is bare), and their dot — when they have one — is the
+      // augmentation dot; the tick takes that job once strokes are in play.
+      const lenSlots = first.isRest ? 0 : noteSlots(first);
+      const sideDashes = lenSlots < DURATION_SLOTS["h"] ? 0 : Math.floor(lenSlots / DURATION_SLOTS["h"]);
+      const sideTick = sideDashes > 0 && lenSlots - sideDashes * DURATION_SLOTS["h"] === BEAT_SLOTS;
+      // Shrink the syllable so it fits its cell with margin — lets a 16th grid
+      // (small cells) sit comfortably; roomy cells (beat / 8th) keep full size.
+      const font = Math.min(NUM_FONT, Math.round(cellS * pxPerSlot * 0.58));
+      const x = slotToX(first.measure, first.startSlot + cellS / 2, total);
       const base = baselineY(voice, first.measure);
       const sorted = [...g].sort((a, b) => pitchRank(a) - pitchRank(b));
       const firstLabel = first.isRest ? "0" : first.held ? "–" : labelOf(first.jianpuDegree ?? 1, altOf(first)).text;
@@ -1106,8 +1247,8 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
           isRest: n.isRest,
           octave: n.isRest || n.held ? 0 : (n.jianpuOctave ?? 0),
           accidental: lbl?.prefix,   // alteration mark drawn before a jianpu number
-          underlines: glyph.underlines, dashes: glyph.dashes, dot: glyph.dot, duration: n.duration,
-          measure: first.measure, startSlot: first.startSlot, total,
+          underlines: glyph.underlines, sideDashes, sideTick, dot: glyph.dot, duration: n.duration,
+          measure: first.measure, startSlot: first.startSlot, total, cellSlots: cellS, font,
           decorate: i === 0, separate: !!first.separateUnderline, staccato: !!n.staccato,
         });
       });
@@ -1115,16 +1256,16 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     notePosRef.current = positions;
 
     // Continuous underline beams: within each voice+measure, connect consecutive
-    // underlined notes into one line (jianpu draws the time-reduction line under
-    // the whole run, not per beat).  The run breaks only when notes aren't
-    // contiguous — a rest, a gap, or a longer note between them — or when a note
-    // is flagged `separate` (which draws its own underline in svgNotes instead).
+    // underlined notes into one line (numbered notation draws the time-reduction
+    // line under the whole run, not per note).  The run breaks only when notes
+    // aren't contiguous — a rest, a gap, or a longer note between them — or when
+    // a note is flagged `separate` (which draws its own underline in svgNotes).
     const beams: Beam[] = [];
     for (const list of byVM.values()) {
       const arr = list.filter(e => !e.isRest && e.underlines > 0).sort((a, b) => a.startSlot - b.startSlot);
       let run: typeof arr = [];
       const flush = () => {
-        if (!run.length) { return; }
+        if (!run.length) return;
         const maxU = Math.max(...run.map(e => e.underlines));
         for (let L = 0; L < maxU; L++) {
           let i = 0;
@@ -1140,7 +1281,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
         run = [];
       };
       for (const e of arr) {
-        if (e.separate) { flush(); continue; }   // separate note: own underline, breaks beam
+        if (e.separate) { flush(); continue; }   // separate note: own underline, breaks the run
         // Break the line when this note doesn't start exactly where the previous
         // underlined note ended (a rest, gap, or longer note sits between them).
         const prev = run[run.length - 1];
@@ -1213,7 +1354,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     try { (e.target as Element).setPointerCapture(e.pointerId); } catch { /* ignore */ }
   };
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!isDownRef.current || !dragStartRef.current) return;
+    if (noSelect || !isDownRef.current || !dragStartRef.current) return;   // no rubber-band in sol-fa
     const { x, y } = localXY(e);
     const s = dragStartRef.current;
     if (Math.abs(x - s.x) > 4 || Math.abs(y - s.y) > 4) setDragRect({ x1: s.x, y1: s.y, x2: x, y2: y });
@@ -1227,6 +1368,15 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (!s) return;
     const { x, y } = localXY(e);
     const moved = Math.abs(x - s.x) + Math.abs(y - s.y);
+    if (noSelect) {
+      // Sol-fa: a click only ever parks the cursor — on the note's head if you
+      // hit one, otherwise on the cell you clicked.  Nothing is ever selected.
+      const hit = noteAt(x, y);
+      const n = hit ? notes.find(nn => nn.id === hit) : undefined;
+      if (n) setCursor({ voice: n.voice ?? 0, measure: n.measure, slot: n.startSlot });
+      else positionCursorAt(x, y);
+      return;
+    }
     if (moved > 5) {
       const x1 = Math.min(s.x, x), x2 = Math.max(s.x, x);
       const y1 = Math.min(s.y, y), y2 = Math.max(s.y, y);
@@ -1262,12 +1412,12 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   const underlinesAt = (x: number, y: number, count: number, key: string, hw = 9): React.ReactNode[] =>
     Array.from({ length: count }, (_, u) =>
       <line key={`${key}-u${u}`} x1={x - hw} x2={x + hw} y1={y + 5 + u * 4} y2={y + 5 + u * 4}
-        stroke={WHITE} strokeWidth={1.5} />);
+        stroke={WHITE} strokeWidth={RULE_W} />);
 
-  // Beamed notes' underlines are drawn as continuous beams; `separate` notes
-  // (and rests) draw their own underline in svgNotes.
+  // A run of consecutive 8ths/16ths shares one continuous underline; `separate`
+  // notes (and rests) draw their own in svgNotes.
   const svgBeams = rendered.beams.map((b, i) =>
-    <line key={`beam-${i}`} x1={b.x1} x2={b.x2} y1={b.y} y2={b.y} stroke={WHITE} strokeWidth={1.5} />);
+    <line key={`beam-${i}`} x1={b.x1} x2={b.x2} y1={b.y} y2={b.y} stroke={WHITE} strokeWidth={RULE_W} />);
 
   const svgNotes = rendered.items.flatMap(it => {
     const els: React.ReactNode[] = [];
@@ -1280,38 +1430,56 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       return els;
     }
 
-    // ── Pitched notes ──
+    // ── Pitched notes ──  (font scales with the bar's cell so 16th grids fit)
     els.push(<text key={`${it.id}-n`} x={it.x} y={it.y} fill={WHITE}
-      fontSize={NUM_FONT} fontFamily={JIANPU_FONT} textAnchor="middle">{it.label}</text>);
+      fontSize={it.font} fontFamily={JIANPU_FONT} textAnchor="middle">{it.label}</text>);
     if (it.accidental) {
       els.push(<text key={`${it.id}-a`} x={it.x - 11} y={it.y - 7} fill={WHITE}
         fontSize={12} fontFamily={JIANPU_FONT} textAnchor="end">{it.accidental}</text>);
     }
     for (let d = 0; d < Math.abs(it.octave); d++) {
-      const dy = it.octave > 0 ? it.y - NUM_FONT - 2 - d * 6 : it.y + 8 + it.underlines * 4 + d * 6;
+      const dy = it.octave > 0 ? it.y - it.font - 2 - d * 6 : it.y + 8 + it.underlines * 4 + d * 6;
       els.push(<circle key={`${it.id}-od${d}`} cx={it.x} cy={dy} r={2} fill={WHITE} />);
     }
     // Staccato — a dot above the number, clearing any octave-up dots.
     if (it.staccato) {
-      const above = it.octave > 0 ? it.y - NUM_FONT - 2 - (Math.abs(it.octave) - 1) * 6 - 6 : it.y - NUM_FONT - 6;
+      const above = it.octave > 0 ? it.y - it.font - 2 - (Math.abs(it.octave) - 1) * 6 - 6 : it.y - it.font - 6;
       els.push(<circle key={`${it.id}-st`} cx={it.x} cy={above} r={1.8} fill={WHITE} />);
     }
     if (it.decorate) {
+      // Only `separate` notes draw their own underline; a contiguous run of 8ths
+      // is joined into one continuous beam instead (see `beams` above).
       if (it.separate) els.push(...underlinesAt(it.x, it.y, it.underlines, it.id, labelHalfW(it.label)));
-      if (it.dot) {
-        // Dotted quarter/eighth: head stays centred on its beat; the added
-        // half-beat prints in the NEXT eighth cell as a dash with a second dash
-        // stacked above it (the eighth mark). Keeps the note symmetric.
-        const dashX = slotToX(it.measure, it.startSlot + DURATION_SLOTS[it.duration] * 1.25, it.total);
-        els.push(<line key={`${it.id}-dd1`} x1={dashX - 6} x2={dashX + 6} y1={it.y - 6} y2={it.y - 6} stroke={WHITE} strokeWidth={2.4} strokeLinecap="round" />);
-        els.push(<line key={`${it.id}-dd2`} x1={dashX - 6} x2={dashX + 6} y1={it.y - 13} y2={it.y - 13} stroke={WHITE} strokeWidth={2.4} strokeLinecap="round" />);
+      // The tick already spells the dotted half's extra beat, so the augmentation
+      // dot only prints on the short dotted notes that carry no strokes.
+      if (it.dot && !it.sideTick) {
+        // Dotted note: an augmentation dot sitting immediately right of the
+        // syllable (like the rests do), NOT a stacked pair of dashes in the next
+        // cell — the dot rides with the glyph so the grid columns stay clean.
+        // Stood off the glyph by the same clearance the octave dots use above /
+        // below it, so the three dot marks read as one family around the syllable.
+        const halfW = labelHalfW(it.label) * (it.font / NUM_FONT);
+        els.push(<circle key={`${it.id}-dt`} cx={it.x + halfW + it.font * 0.3 + 2} cy={it.y - it.font * 0.3}
+          r={Math.max(1.6, it.font * 0.095)} fill={WHITE} />);
       }
-      for (let dsh = 1; dsh <= it.dashes; dsh++) {
-        const dashSlot = it.startSlot + dsh * 8;
-        if (dashSlot >= it.total) break;
-        const dx = slotToX(it.measure, dashSlot + 4, it.total);   // centre each held beat
-        els.push(<text key={`${it.id}-d${dsh}`} x={dx} y={it.y} fill={WHITE}
-          fontSize={NUM_FONT} fontFamily={JIANPU_FONT} textAnchor="middle">–</text>);
+      // Long-note length mark: VERTICAL strokes side by side to the right of the
+      // syllable — tally marks rather than a horizontal dash train, so the note
+      // stays inside its own 8th column.  One full stroke per half note, then a
+      // half-height tick for a leftover beat (dotted half = stroke + tick).  Same
+      // stand-off from the glyph as the augmentation dot.
+      if (it.sideDashes) {
+        const halfW = labelHalfW(it.label) * (it.font / NUM_FONT);
+        const h = Math.max(4, it.font * 0.3);          // full stroke half-height
+        const gap = Math.max(3.5, it.font * 0.2);      // horizontal spacing
+        const midY = it.y - it.font * 0.3;
+        const x0 = it.x + halfW + it.font * 0.3 + 2;
+        const marks = it.sideDashes + (it.sideTick ? 1 : 0);
+        for (let k = 0; k < marks; k++) {
+          const xx = x0 + k * gap;
+          const hh = k < it.sideDashes ? h : h * 0.5;   // the trailing tick is shorter
+          els.push(<line key={`${it.id}-sd${k}`} x1={xx} x2={xx} y1={midY - hh} y2={midY + hh}
+            stroke={WHITE} strokeWidth={RULE_W} strokeLinecap="round" />);
+        }
       }
     }
     return els;
@@ -1325,6 +1493,19 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const right = left + measureWidth(m);
     svgSystems.push(<line key={`bar-${m}`} x1={right} x2={right}
       y1={barTop(m)} y2={barBot(m)} stroke={WHITE} strokeWidth={1.2} />);
+    // Faint dotted grid (like the drum-notation X-ray): a vertical guide at
+    // every cell boundary for THIS bar's resolution, so every note/dash reads as
+    // sitting in its own symmetric column.  Not pure #ffffff, so PDF export
+    // leaves it white (invisible on paper) — it's a screen-only aid.
+    {
+      const totalG = totalSlotsOf(m);
+      const cellS = cellSlotsOf(m);
+      for (let s = cellS; s < totalG; s += cellS) {
+        const gx = slotToX(m, s, totalG);
+        svgSystems.push(<line key={`grid-${m}-${s}`} x1={gx} x2={gx}
+          y1={barTop(m)} y2={barBot(m)} stroke="rgba(255,255,255,0.12)" strokeWidth={1} strokeDasharray="2 4" />);
+      }
+    }
     // Piano-brace hand divider: a faint dotted line between the two hands.
     const hsm = hsOf(m);
     if (hsm != null) {
@@ -1339,6 +1520,13 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const barTitle = project.setup.perBarTitle?.[m];
     if (barTitle) svgSystems.push(<text key={`bt-${m}`} x={left} y={barTop(m) - 25} fill={WHITE}
       fontSize={12} fontFamily="Helvetica, Arial, sans-serif">{barTitle}</text>);
+    // Mid-bar notes share that line, each starting at ITS OWN slot — so a chord
+    // change half-way through the bar sits over the beat it lands on.
+    for (const [slotKey, text] of Object.entries(project.setup.perSlotNote?.[m] ?? {})) {
+      const slot = +slotKey;
+      svgSystems.push(<text key={`sn-${m}-${slot}`} x={slotToX(m, slot, totalSlotsOf(m))} y={barTop(m) - 25}
+        fill={WHITE} fontSize={12} fontFamily="Helvetica, Arial, sans-serif">{text}</text>);
+    }
     // Section heading — large, bold, lifted into the row's extra top padding so
     // the "+ note" line and the notes sit clearly below it (this bar always opens
     // a new row, so there's room above it).
@@ -1374,15 +1562,24 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     }
   }
 
-  // Align the cursor box to the note it sits on (centre of that note's cell); on
-  // an empty slot, centre it in a cell of the current entry duration.  This keeps
-  // the dashed box exactly over the glyph now that notes are cell-centred.
-  const cursorHost = notes.find(n => (n.voice ?? 0) === cursor.voice && n.measure === cursor.measure && !n.isRest
+  // The box spans the note the cursor sits on, so its WIDTH reads the duration:
+  // a dotted quarter covers three 8th cells and a half covers four, where a plain
+  // quarter covers two.  A one-cell box would make every note look the same
+  // length.  On an empty slot it's just the one cell you'd write into.
+  const cursorCell = cellSlotsOf(cursor.measure);
+  const cursorNote = notes.find(n => (n.voice ?? 0) === cursor.voice && n.measure === cursor.measure
     && cursor.slot >= n.startSlot && cursor.slot < n.startSlot + noteSlots(n));
-  const cursorHeadSlots = cursorHost ? (jianpuGlyphFor(cursorHost.duration, cursorHost.dotted).dashes > 0 ? 8 : noteSlots(cursorHost)) : gridSnap;
-  const cursorCenterSlot = cursorHost ? cursorHost.startSlot + cursorHeadSlots / 2 : cursor.slot + gridSnap / 2;
-  const cursorX = slotToX(cursor.measure, cursorCenterSlot, totalSlotsOf(cursor.measure));
+  const cursorSpan = cursorNote ? Math.max(cursorCell, noteSlots(cursorNote)) : cursorCell;
+  const cursorStart = cursorNote ? cursorNote.startSlot : cursor.slot;
+  const cursorTotal = totalSlotsOf(cursor.measure);
+  const cursorX = slotToX(cursor.measure, cursorStart + cursorSpan / 2, cursorTotal);
   const cursorY = baselineY(cursor.voice, cursor.measure);
+  // Cursor box tracks the (possibly shrunk) syllable size at this cell.
+  const cursorFont = Math.min(NUM_FONT, Math.round(cursorCell * layout.pxPerSlot * 0.58));
+  // Half-width follows the span in pixels, with the single-cell box as the floor.
+  const cursorBoxHW = Math.max(9, Math.round(cursorFont * 0.7),
+    Math.round((slotToX(cursor.measure, cursorStart + cursorSpan, cursorTotal)
+      - slotToX(cursor.measure, cursorStart, cursorTotal)) / 2) - 2);
 
   const btn = "px-2 py-1 rounded text-xs border transition-colors";
   const btnOn = "bg-[#7173e618] border-[#7173e6] text-[#9999ee]";
@@ -1475,7 +1672,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       {/* Score area (grows with content when embedded; scrolls when full-page) */}
       <div ref={scoreAreaRef}
         onScroll={() => { const a = document.activeElement as HTMLElement | null; if (a && a.tagName === "INPUT" && a.id?.startsWith("jp-")) a.blur(); }}
-        className={`${embedded ? "overflow-x-auto" : "flex-1 overflow-x-hidden overflow-y-auto"} p-4 outline-none`} style={{ background: "#0b0b0b" }}>
+        className={`${embedded ? "overflow-x-auto" : "flex-1 overflow-x-hidden overflow-y-auto"} p-4 outline-none select-none`} style={{ background: "#0b0b0b" }}>
         <div
           ref={scoreRef}
           style={{ position: "relative", width: dispW, height: dispH, userSelect: "none", touchAction: "none" }}
@@ -1492,15 +1689,15 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
 
           {/* Transient overlay — never captured by PDF export */}
           <svg width={dispW} height={dispH} viewBox={`0 0 ${width} ${height}`} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
-            {selectedIds.map(id => {
+            {!noSelect && selectedIds.map(id => {
               const p = rendered.positions.find(pp => pp.id === id);
               if (!p) return null;
               return <rect key={id} x={p.x - 13} y={p.y - NUM_FONT - 2} width={26} height={NUM_FONT + 10}
                 fill={`${ACCENT}22`} stroke={ACCENT} strokeWidth={1} rx={3} />;
             })}
-            <rect x={cursorX - 13} y={cursorY - NUM_FONT - 2} width={26} height={NUM_FONT + 10}
+            <rect x={cursorX - cursorBoxHW} y={cursorY - cursorFont - 2} width={cursorBoxHW * 2} height={cursorFont + 10}
               fill="none" stroke={ACCENT} strokeWidth={1.4} rx={3} strokeDasharray="3 2" />
-            {dragRect && (
+            {!noSelect && dragRect && (
               <rect x={Math.min(dragRect.x1, dragRect.x2)} y={Math.min(dragRect.y1, dragRect.y2)}
                 width={Math.abs(dragRect.x2 - dragRect.x1)} height={Math.abs(dragRect.y2 - dragRect.y1)}
                 fill={`${ACCENT}18`} stroke={ACCENT} strokeWidth={1} />
@@ -1515,33 +1712,66 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
             {Array.from({ length: project.setup.barCount }, (_, m) => {
               const left = measureLeftX(m);
+              const right = left + measureWidth(m);
+              const total = totalSlotsOf(m);
+              // Slots in this bar carrying a mid-bar note, plus any the cursor has
+              // opened for typing but that are still empty.  Slot 0 is the bar
+              // title, never a mid-bar note.
+              const slots = [...new Set([
+                ...Object.keys(project.setup.perSlotNote?.[m] ?? {}).map(Number),
+                ...[...openSlotNotes].map(k => k.split(":").map(Number)).filter(([mm]) => mm === m).map(([, s]) => s),
+              ])].filter(s => s > 0 && s < total).sort((a, b) => a - b);
+              // Each editor runs from its own slot to wherever the next one
+              // begins, so their click targets never overlap.
+              const edgeX = (i: number) => i < slots.length ? slotToX(m, slots[i], total) : right;
+              const box = (x: number, w: number) => ({
+                position: "absolute" as const,
+                left: x * scale,
+                top: (barTop(m) - 25 - 11) * scale,
+                width: Math.max(12, w - 6) * scale,
+                height: 16 * scale,
+                fontSize: 12 * scale,
+                fontFamily: "Helvetica, Arial, sans-serif",
+                color: "transparent",
+                caretColor: "#fff",
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                padding: 0,
+                pointerEvents: "auto" as const,
+              });
               return (
-                <input
-                  key={`mt-${m}`}
-                  id={`jp-title-${m}`}
-                  className="jp-mtitle"
-                  value={project.setup.perBarTitle?.[m] ?? ""}
-                  placeholder="+ note"
-                  onChange={e => updateBarTitle(m, e.target.value)}
-                  onPointerDown={e => e.stopPropagation()}
-                  onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
-                  style={{
-                    position: "absolute",
-                    left: left * scale,
-                    top: (barTop(m) - 25 - 11) * scale,
-                    width: (measureWidth(m) - 6) * scale,
-                    height: 16 * scale,
-                    fontSize: 12 * scale,
-                    fontFamily: "Helvetica, Arial, sans-serif",
-                    color: "transparent",
-                    caretColor: "#fff",
-                    background: "transparent",
-                    border: "none",
-                    outline: "none",
-                    padding: 0,
-                    pointerEvents: "auto",
-                  }}
-                />
+                <div key={`mt-${m}`}>
+                  <input
+                    id={`jp-title-${m}`}
+                    className="jp-mtitle"
+                    value={project.setup.perBarTitle?.[m] ?? ""}
+                    placeholder="+ note"
+                    onChange={e => updateBarTitle(m, e.target.value)}
+                    onPointerDown={e => e.stopPropagation()}
+                    onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
+                    style={box(left, edgeX(0) - left)}
+                  />
+                  {slots.map((slot, i) => (
+                    <input
+                      key={`sn-${slot}`}
+                      id={`jp-slotnote-${m}-${slot}`}
+                      className="jp-mtitle"
+                      value={project.setup.perSlotNote?.[m]?.[slot] ?? ""}
+                      placeholder="+"
+                      onChange={e => updateSlotNote(m, slot, e.target.value)}
+                      onBlur={() => setOpenSlotNotes(prev => {
+                        // Drop an editor that was opened but left empty, so a
+                        // stray keypress doesn't leave a permanent "+" behind.
+                        if (project.setup.perSlotNote?.[m]?.[slot]) return prev;
+                        const next = new Set(prev); next.delete(`${m}:${slot}`); return next;
+                      })}
+                      onPointerDown={e => e.stopPropagation()}
+                      onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
+                      style={box(slotToX(m, slot, total), edgeX(i + 1) - slotToX(m, slot, total))}
+                    />
+                  ))}
+                </div>
               );
             })}
           </div>
@@ -1550,7 +1780,8 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
               headings.  Reach one with the `s` keybind, or click the faint
               "+ title" that appears at the start of every line (the first bar, a
               section, or a cut line) — type a label to give that line a heading. */}
-          <style>{`.jp-section::placeholder{color:#3a3a3a;font-weight:400}`}</style>
+          <style>{`.jp-section::placeholder{color:#3a3a3a;font-weight:400}
+            .jp-section,.jp-mtitle{user-select:none;-webkit-user-select:none}`}</style>
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
             {Array.from({ length: project.setup.barCount }, (_, m) => {
               const left = measureLeftX(m);
@@ -1604,6 +1835,10 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
               // right on top of the heading — hide it to keep the title clean.
               if (project.setup.perBarSection?.[m + 1]?.trim()) return null;
               const active = !!project.setup.perBarBreakBefore?.[m + 1];
+              // Once a bar has notes, hide its scissors so it doesn't clutter the
+              // written music — keep it only where a break is already set (so it
+              // stays removable). Cut anywhere with the `b` keybind.
+              if (!active && notes.some(n => n.measure === m)) return null;
               const bx = measureLeftX(m) + measureWidth(m);
               return (
                 <button
@@ -1632,6 +1867,42 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
             })}
           </div>
 
+          {/* Per-measure "rejoin line" buttons at the START of every bar that a
+              manual cut pushed onto a new line.  The ✂ that made the cut lives at
+              the END of the PREVIOUS bar — which after the cut sits on the row
+              above, and is hidden outright when the new line carries a title — so
+              without this there was no obvious way back.  Click to undo the cut
+              and pull the bar up to the previous line. */}
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            {Array.from({ length: project.setup.barCount }, (_, m) => {
+              if (!project.setup.perBarBreakBefore?.[m]) return null;
+              return (
+                <button
+                  key={`join-${m}`}
+                  title="Rejoin with the previous line (undo the cut)"
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={() => toggleBreakBefore(m)}
+                  style={{
+                    position: "absolute",
+                    left: (measureLeftX(m) - 20) * scale,
+                    top: (barTop(m) - 34) * scale,   // same band as the ✂ above the bar
+                    width: 18 * scale,
+                    height: 15 * scale,
+                    lineHeight: `${15 * scale}px`,
+                    fontSize: 12 * scale,
+                    textAlign: "center",
+                    color: ACCENT,
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    pointerEvents: "auto",
+                  }}
+                >⇤</button>
+              );
+            })}
+          </div>
+
           {/* Per-measure time-signature editors — under each bar.  Reach one with
               the `g` keybind (or click an existing change) and type "n/d".  Empty
               inputs are click-through; the SVG draws the visible label. */}
@@ -1647,9 +1918,19 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
                   key={`ts-${m}`}
                   id={`jp-timesig-${m}`}
                   value={editing ? tsEdit!.text : (shown ? `${eff.num}/${eff.den}` : "")}
-                  onFocus={e => { setTsEdit({ m, text: `${eff.num}/${eff.den}` }); e.currentTarget.select(); }}
-                  onChange={e => setTsEdit({ m, text: e.target.value.replace(/[^0-9/]/g, "") })}
-                  onBlur={() => { commitBarTimeSig(m, editing ? tsEdit!.text : `${eff.num}/${eff.den}`); setTsEdit(null); }}
+                  // Focus clears the box so you type the new meter straight in
+                  // rather than editing around the old one.
+                  onFocus={() => setTsEdit({ m, text: "", dirty: false })}
+                  onChange={e => setTsEdit({ m, text: e.target.value.replace(/[^0-9/]/g, ""), dirty: true })}
+                  // Commit ONLY this bar, and only if it is the one being edited
+                  // and the text actually changed.  Blurring an untouched input
+                  // used to write its INHERITED meter back as an explicit
+                  // override — which planted a time-signature label (and its row
+                  // padding) on bars the user never touched, visibly shifting
+                  // other lines of the score.
+                  onBlur={() => {
+                    if (editing) { if (tsEdit!.dirty) commitBarTimeSig(m, tsEdit!.text); setTsEdit(null); }
+                  }}
                   onPointerDown={e => e.stopPropagation()}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
                   title="Time signature — type n/d, clear to remove"
@@ -1692,6 +1973,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
             <span className="px-1.5 py-0.5 rounded bg-[#16162a] border border-[#3a3a6a] text-[#9a9cf8]">
               {DURATION_NAMES[duration]}{dotted ? " ·" : ""}
             </span>
+            <span className="px-1.5 py-0.5 rounded bg-[#16221a] border border-[#356a3a] text-[#8ff0a0]" title="Snap grid — the columns notes lock onto ([ / ] to change)">
+              grid {DURATION_NAMES[gridDur]}
+            </span>
           </span>
           <Sep />
           <Hint keys={["1–7"]} label="pitch" />
@@ -1699,6 +1983,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
           <Sep />
           <Hint keys={["q", "w"]} label="octave" />
           <Hint keys={["e", "r"]} label="duration" />
+          <Hint keys={["[", "]"]} label="snap grid" />
           <Hint keys={["t"]} label="dot" />
           <Hint keys={["-"]} label="hold –" />
           <Hint keys={["u"]} label="underline" />
@@ -1709,12 +1994,11 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
           <Hint keys={["↑", "↓"]} label="row" />
           <Hint keys={["Shift + ↑↓"]} label="add voice" />
           <Hint keys={["Shift + ⌫"]} label="del voice" />
-          <Hint keys={["Space"]} label="select" />
+          {!noSelect && <Hint keys={["Space"]} label="select" />}
           {!embedded && <>
             <Sep />
             <Hint keys={["p"]} label="piano brace" />
-            <Hint keys={["l"]} label="separate/beam (selection)" />
-            <Hint keys={["n"]} label="measure note" />
+            <Hint keys={["n"]} label="note at cursor" />
             <Hint keys={["s"]} label="title / section" />
             <Hint keys={["b"]} label="cut line" />
             <Hint keys={["m"]} label="add bar" />
@@ -1726,7 +2010,16 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
         </div>
       </div>
 
-      {showClefRef && <ClefReference onClose={() => setShowClefRef(false)} />}
+      {showClefRef && (
+        <ClefReference
+          onClose={() => setShowClefRef(false)}
+          root={project.clefRefRoot ?? ""}
+          onRootChange={r => {
+            const u = { ...project, clefRefRoot: r || undefined, notes };
+            saveProject(u); setProject(u);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1757,6 +2050,7 @@ interface Beam { x1: number; x2: number; y: number; }
 interface RenderItem {
   id: string; x: number; y: number; label: string; isRest: boolean;
   octave: number; accidental?: string;   // alteration prefix (♯/♭/^/v)
-  underlines: number; dashes: number; dot: boolean; duration: Duration;
-  measure: number; startSlot: number; total: number; decorate: boolean; separate: boolean; staccato?: boolean;
+  underlines: number; sideDashes: number; sideTick: boolean; dot: boolean; duration: Duration;
+  measure: number; startSlot: number; total: number; cellSlots: number; font: number;
+  decorate: boolean; separate: boolean; staccato?: boolean;
 }

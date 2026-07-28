@@ -8,7 +8,7 @@
 // everything else, so the user can see and choose exactly what to add, change,
 // or delete — nothing is removed without consent.
 
-import { isExportKey } from "./storage";
+import { shouldSyncEntry } from "./storage";
 
 export type ChangeKind = "add" | "update" | "remove";
 
@@ -34,9 +34,10 @@ export interface SyncDiff {
 // de-prefixed, spaced version of the raw key.
 const KEY_LABELS: Record<string, string> = {
   lt_note_entry_projects: "Scores (Sol-fa / Sheet / Drum)",
+  lt_note_entry_folders: "Score folders",
   lt_workout_log: "Workout log",
   lt_workout_templates: "Workout templates",
-  lt_workout_custom_exercises: "Custom exercises",
+  lt_workout_custom_exercises: "Workout exercises",
   lt_workout_prefs: "Workout settings",
   lt_chord_charts: "Chord charts",
   lt_practice_log: "Practice log",
@@ -45,8 +46,32 @@ const KEY_LABELS: Record<string, string> = {
   lt_presets: "Presets",
 };
 
+// The cryptic value keys are `lt_<tool>_<setting>`; map the tool prefix to the
+// feature it belongs to so a row reads "Chords · voicing patterns" instead of
+// the raw "crd vpatterns v3". Unknown prefixes just get a cleaned name.
+const CATEGORY_LABELS: Record<string, string> = {
+  crd: "Chords", trx: "Transcriptions", tx: "Backing track", sp: "Split permutations",
+  beta: "Experimental", lattice: "Lattice", scalar: "Scalar", phrase: "Phrase lab",
+  spectrum: "Spectrum", rhy: "Rhythm", cons: "Consonance", dc: "Drone continuum",
+  interplay: "Interplay", app: "App", metronome: "Metronome", timer: "Timer",
+  node: "Mixer", ra: "Rhythm drill", fiu: "Subdivision", scalarViz: "Scalar",
+};
+
 export function keyLabel(k: string): string {
-  return KEY_LABELS[k] || k.replace(/^lt_/, "").replace(/_/g, " ");
+  if (KEY_LABELS[k]) return KEY_LABELS[k];
+  const rest = k.replace(/^lt_/, "");
+  const m = rest.match(/^([a-z]+)_(.+)$/);
+  if (m && CATEGORY_LABELS[m[1]]) {
+    return `${CATEGORY_LABELS[m[1]]} · ${m[2].replace(/_/g, " ").replace(/\bv\d+$/, "").trim()}`;
+  }
+  return rest.replace(/_/g, " ");
+}
+
+/** Broad feature name for a key (used to group the settings review). */
+export function keyCategory(k: string): string {
+  if (KEY_LABELS[k]) return KEY_LABELS[k];
+  const m = k.replace(/^lt_/, "").match(/^([a-z]+)_/);
+  return (m && CATEGORY_LABELS[m[1]]) || "Other settings";
 }
 
 // Never merge these even though they carry the lt_ prefix (device-local).
@@ -82,7 +107,9 @@ export function computeSyncDiff(remoteJson: string): SyncDiff {
   catch { return { items, values }; }
 
   for (const [key, remoteVal] of Object.entries(data)) {
-    if (!isExportKey(key) || SKIP_KEYS.has(key)) continue;
+    // Skip anything not worth syncing (transient tool/default state), so even an
+    // older, fat backup no longer surfaces a wall of settings churn.
+    if (SKIP_KEYS.has(key) || !shouldSyncEntry(key, remoteVal)) continue;
     const localVal = localStorage.getItem(key);
     const remoteArr = parseCollection(remoteVal);
     const localArr = parseCollection(localVal);

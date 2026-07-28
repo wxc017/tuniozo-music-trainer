@@ -14,7 +14,7 @@ import { lsGet, lsSet, localToday } from "./storage";
 import {
   type Workout, type WorkoutTemplate, type WorkoutPrefs,
   type LoggedExercise, type WorkoutSet, type TemplateExercise,
-  type TrackingMode, type CustomExercise,
+  type TrackingMode, type CustomExercise, type MuscleGroup,
   DEFAULT_PREFS,
 } from "./workoutTypes";
 import { SKILLS } from "./calisthenicsData";
@@ -62,15 +62,16 @@ function writeTemplates(list: WorkoutTemplate[]): void { lsSet(TEMPLATES_KEY, li
 function writeCustomExercises(list: CustomExercise[]): void { lsSet(CUSTOM_EX_KEY, list); emitChange(); }
 
 /** Save (or update by case-insensitive name) a reusable custom exercise. */
-export function saveCustomExercise(name: string, mode: TrackingMode): CustomExercise {
+export function saveCustomExercise(name: string, mode: TrackingMode, muscleGroups?: MuscleGroup[]): CustomExercise {
   const list = getCustomExercises();
   const existing = list.find(e => e.name.toLowerCase() === name.trim().toLowerCase());
   if (existing) {
     existing.mode = mode;
+    if (muscleGroups?.length) existing.muscleGroups = muscleGroups;
     rev++; writeCustomExercises(list);
     return existing;
   }
-  const ex: CustomExercise = { id: uid("cex"), name: name.trim(), mode, createdAt: Date.now() };
+  const ex: CustomExercise = { id: uid("cex"), name: name.trim(), mode, createdAt: Date.now(), ...(muscleGroups?.length ? { muscleGroups } : {}) };
   rev++; writeCustomExercises([...list, ex]);
   return ex;
 }
@@ -351,6 +352,30 @@ export function loggedExerciseIndex(): { key: string; name: string; skillId?: st
     }
   }
   return [...map.values()].sort((a, b) => b.count - a.count);
+}
+
+/** The most recent note the user wrote for this exercise in a PAST session —
+ *  surfaced as a "keep in mind" reminder when the exercise is picked again.
+ *  Scans newest-first (workouts are stored startedAt-desc) and returns the
+ *  latest non-empty set note (falling back to an exercise-level note). */
+export function lastNoteForExercise(
+  match: { skillId?: string; name: string },
+  excludeWorkoutId?: string,
+): { note: string; date: string } | undefined {
+  for (const w of getWorkouts()) {
+    if (w.id === excludeWorkoutId) continue;
+    for (const ex of w.exercises) {
+      const same = match.skillId ? ex.skillId === match.skillId : ex.name.toLowerCase() === match.name.toLowerCase();
+      if (!same) continue;
+      for (let i = ex.sets.length - 1; i >= 0; i--) {
+        const n = ex.sets[i].note?.trim();
+        if (n) return { note: n, date: w.date };
+      }
+      const en = ex.note?.trim();
+      if (en) return { note: en, date: w.date };
+    }
+  }
+  return undefined;
 }
 
 /** Count of all videoIds currently referenced by the log (orphan pruning). */
