@@ -314,7 +314,7 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
 
   return (
     <div className="rounded-lg border border-[#1e1e1e] bg-[#0c0c0c] overflow-hidden">
-      <div className="px-3 py-1.5 border-b border-[#161616] flex items-center gap-2 bg-[#0a0a0a]">
+      <div className="px-3 py-1.5 border-b border-[#161616] flex flex-wrap items-center gap-2 bg-[#0a0a0a]">
         <span className="w-1.5 h-3 rounded-sm" style={{ background: "#7aa87a" }} />
         <span className="text-[10px] font-semibold tracking-widest text-[#8a8a8a]">PITCH TRAINER</span>
         {/* Band lock — hold the target to one tuning instead of snapping nearest. */}
@@ -341,7 +341,7 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
           <span className="w-7 font-mono text-[#7a7a7a]">{droneVol}%</span>
         </label>
         <button onClick={() => { setErr(""); setOn(o => !o); }}
-          className={`ml-auto px-2.5 py-0.5 rounded text-[11px] font-semibold border transition-colors ${on ? "bg-[#c04a4a] border-[#c04a4a] text-white" : "bg-[#1a1a1a] border-[#333] text-[#aaa] hover:text-white"}`}>
+          className={`ml-auto shrink-0 px-2.5 py-0.5 rounded text-[11px] font-semibold border transition-colors ${on ? "bg-[#c04a4a] border-[#c04a4a] text-white" : "bg-[#1a1a1a] border-[#333] text-[#aaa] hover:text-white"}`}>
           {on ? "● stop" : "🎤 start"}
         </button>
       </div>
