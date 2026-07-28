@@ -2584,8 +2584,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                   const voiceWalked = j === walk.index && walkedVoices.has(k);
                   return (
                   <button key={k}
-                    onClick={e => { e.stopPropagation(); if (droningId !== null) playOne(t.abs); else toggleDrone(noteId, [t.abs]); }}
-                    title={droningId !== null ? "Click to hear this note momentarily over the drone" : "Click to drone just this note (click again to stop)"}
+                    onClick={e => { e.stopPropagation(); playOne(t.abs); }}
+                    title="Click to hear this note momentarily"
                     className={`group text-xs font-mono leading-tight rounded-sm px-1 hover:bg-[#7173e6]/20 ${voiceWalked ? "bg-[#4a9ac7]/25 ring-2 ring-[#4a9ac7]/70" : noteOn ? "bg-[#e0b060]/25 ring-1 ring-[#e0b060]/60" : t.root ? "bg-[#e0609f]/18 ring-1 ring-[#e0609f]/40" : ""}`}>{noteGlyph(t)}</button>
                   );
                 })}
@@ -3302,7 +3302,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                       const on = droningId === id;
                       return (
                         <span key={d} className="flex flex-col items-center gap-0.5">
-                          <button onClick={() => { const abs = sec?.scale[d].abs; if (abs != null) toggleDrone(id, [abs + octShift]); }}
+                          <button onClick={() => { const abs = sec?.scale[d].abs; if (abs == null) return; const a = abs + octShift; if (on || droningId === null) toggleDrone(id, [a]); else playOne(a); }}
                             className={`px-1.5 py-1 rounded text-xs font-mono border transition-colors ${on ? "bg-[#e0b060]/30 border-[#e0b060] text-[#f0dcae] ring-2 ring-[#e0b060]/50" : "bg-[#141414] border-[#242424] text-[#c8c8c8] hover:border-[#4a9ac7]"}`}>
                             {sizedCode(cents)}
                           </button>
@@ -3323,7 +3323,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                       const sec = secByBand.get(droneDegBand[d]) ?? secByBand.get(1);
                       const on = droningId === `drrom:${d}`;
                       return (
-                        <button key={d} onClick={() => { if (!sec) return; const abs = SHAPE_TONES[droneChordType][0].offs.map(o => stepNote(sec.rawScale, d + o).abs + octShift); toggleDrone(`drrom:${d}`, abs); }}
+                        <button key={d} onClick={() => { if (!sec) return; const abs = SHAPE_TONES[droneChordType][0].offs.map(o => stepNote(sec.rawScale, d + o).abs + octShift); if (on || droningId === null) toggleDrone(`drrom:${d}`, abs); else abs.forEach(a => playOne(a)); }}
                           className={`px-2 py-1 rounded text-xs font-serif italic border transition-colors ${on ? "bg-[#e0b060]/25 border-[#e0b060] text-[#e6d3a0]" : "bg-[#141414] border-[#242424] text-[#c8c8c8] hover:border-[#4a9ac7]"}`}>
                           {romanBandArrow(sec ? sec.rawScale[d] : d * 2)}
                         </button>
