@@ -9,9 +9,12 @@ import { useEffect, useRef, useState } from "react";
 import { REGIONS } from "@/lib/intervalSpectrum";
 import { C4_FREQ, detectPitch, median, circDelta } from "@/lib/pitchDetect";
 
-const GUIDE_LEVEL = 0.45;    // absolute output gain of the synth guide voice (direct to the
-                             // mic context's output — no shared drone-bus limiter, so the
-                             // cycle drones can't duck it). Loud + clean so beating reads.
+// Guide-drone volume: driven by a 0..100% slider. 100% -> DRONE_VOL_MAX gain, so the
+// control's 10% == the old fixed 0.45 level. Output runs through a limiter (built per
+// mic session) so pushing the volume up stays clean instead of clipping.
+const DRONE_VOL_MAX = 4.5;
+const DRONE_VOL_DEFAULT = 25;   // % — starts noticeably louder than the old fixed level
+const guideGainFor = (volPct: number) => (Math.max(0, Math.min(100, volPct)) / 100) * DRONE_VOL_MAX;
 
 const TOL_CENTS = 8;         // you're "on the note" inside ±this many cents. Kept tight on
                              // purpose: the bands (50/12/39-EDO) sit only ~10-25¢ apart, so a
@@ -72,6 +75,9 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
   const [reading, setReading] = useState<Reading | null>(null);
   const [level, setLevel] = useState(0);
   const [guiding, setGuiding] = useState(false);   // guide drone currently sounding
+  const [droneVol, setDroneVol] = useState(DRONE_VOL_DEFAULT);   // guide-drone volume (%)
+  const droneVolRef = useRef(DRONE_VOL_DEFAULT);
+  droneVolRef.current = droneVol;
   const [err, setErr] = useState("");
   const rootRef = useRef(rootCents);
   rootRef.current = rootCents;
@@ -95,6 +101,7 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
   // hear; on its own signal path (straight to the mic context output, no shared
   // drone-bus limiter) the cycle chords can't duck or bury it.
   const guideVoiceRef = useRef<{ oscs: OscillatorNode[]; gain: GainNode } | null>(null);
+  const guideLimiterRef = useRef<DynamicsCompressorNode | null>(null);   // shared limiter on the guide path
   const killGuideVoice = (fade = 0.16) => {
     const ac = ctxRef.current, v = guideVoiceRef.current;
     if (!ac || !v) { guideVoiceRef.current = null; return; }
@@ -111,7 +118,7 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
     killGuideVoice(0.03);                          // clear the prior note before retuning
     const g = ac.createGain();
     g.gain.setValueAtTime(0, ac.currentTime);
-    g.connect(ac.destination);
+    g.connect(guideLimiterRef.current ?? ac.destination);
     // A clean tone with a DOMINANT fundamental (near-sine) so you hear slow, clear
     // amplitude beating against your voice at the unison — that's what you tune to.
     // A little 2nd/3rd partial gives it presence to cut a chord drone, but no buzzy
@@ -125,9 +132,18 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
       o.connect(pg); pg.connect(g); o.start();
       oscs.push(o);
     }
-    g.gain.linearRampToValueAtTime(GUIDE_LEVEL, ac.currentTime + 0.05);
+    g.gain.linearRampToValueAtTime(guideGainFor(droneVolRef.current), ac.currentTime + 0.05);
     guideVoiceRef.current = { oscs, gain: g };
   };
+  // Slider moved while a note is sounding → ramp the live guide voice to the new level.
+  useEffect(() => {
+    const ac = ctxRef.current, v = guideVoiceRef.current;
+    if (!ac || !v) return;
+    const t = ac.currentTime;
+    v.gain.gain.cancelScheduledValues(t);
+    v.gain.gain.setValueAtTime(v.gain.gain.value, t);
+    v.gain.gain.linearRampToValueAtTime(guideGainFor(droneVol), t + 0.05);
+  }, [droneVol]);
 
   useEffect(() => {
     if (!on) return;
@@ -147,6 +163,13 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
         const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
         ctxRef.current = ctx;
         if (ctx.state === "suspended") await ctx.resume();
+        // Limiter on the guide-drone path so the volume control can be pushed hard
+        // without the sine clipping into distortion.
+        const guideLimiter = ctx.createDynamicsCompressor();
+        guideLimiter.threshold.value = -2; guideLimiter.knee.value = 0;
+        guideLimiter.ratio.value = 20; guideLimiter.attack.value = 0.003; guideLimiter.release.value = 0.12;
+        guideLimiter.connect(ctx.destination);
+        guideLimiterRef.current = guideLimiter;
         const src = ctx.createMediaStreamSource(stream);
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 4096;   // longer window → finer low-pitch resolution (less cents error)
@@ -244,6 +267,7 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
       cancelled = true;
       cancelAnimationFrame(rafRef.current);
       killGuideVoice(0);
+      guideLimiterRef.current = null;
       guideOnRef.current = false; guideNoteRef.current = -1;
       streamRef.current?.getTracks().forEach(t => t.stop());
       streamRef.current = null;
@@ -308,6 +332,14 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
           )}
         </div>
         <span className="text-[10px] text-[#6a6a6a]" title="With speakers, the mic hears the drone and mistakes it for your voice. Headphones fix that.">🎧</span>
+        {/* Guide-drone volume — 10% is the old fixed level; crank it up (limited, so it stays clean). */}
+        <label className="flex items-center gap-1 text-[10px] text-[#6a6a6a]" title={`Guide-drone volume (${droneVol}%)`}>
+          🔊
+          <input type="range" min={5} max={100} step={5} value={droneVol}
+            onChange={e => setDroneVol(Number(e.target.value))}
+            className="w-16 h-1 accent-[#7aa8d0] cursor-pointer" />
+          <span className="w-7 font-mono text-[#7a7a7a]">{droneVol}%</span>
+        </label>
         <button onClick={() => { setErr(""); setOn(o => !o); }}
           className={`ml-auto px-2.5 py-0.5 rounded text-[11px] font-semibold border transition-colors ${on ? "bg-[#c04a4a] border-[#c04a4a] text-white" : "bg-[#1a1a1a] border-[#333] text-[#aaa] hover:text-white"}`}>
           {on ? "● stop" : "🎤 start"}
