@@ -3383,7 +3383,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       {/* Pitch trainer (p) — floating, non-blocking so it keeps listening while
           you sing the exercises.  Docked bottom-left above the keybind bar. */}
       {pitchOpen && mode === "sing" && (
-        <div className="fixed top-3 right-3 z-40 w-[340px] max-w-[92vw] shadow-2xl">
+        <div className="fixed top-3 right-3 z-40 w-[440px] max-w-[94vw] shadow-2xl">
           <PitchTrainer rootCents={rootCents} targets={pitchTargets} />
         </div>
       )}

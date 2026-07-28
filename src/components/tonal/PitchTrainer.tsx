@@ -50,11 +50,15 @@ function targetFreqNear(tonicFreq: number, targetCents: number, voiceFreq: numbe
   return tf;
 }
 
-// Undo octave / harmonic slips relative to the previous pitch (same logic as the
-// shared lib; kept local so the trainer's tuning stays independent).
+// Undo OCTAVE slips relative to the previous pitch. Only pure-octave candidates
+// (×2 / ÷2 / ×4 / ÷4) — deliberately NOT ×1.5 / ×3 (fifths / twelfths): those change
+// the pitch CLASS, so they could "correct" a note you're singing dead-on into a fifth
+// away and read wildly out of tune even with zero beating against the drone. Octave
+// shifts are pitch-class-neutral (and the reading is octave-reduced anyway), so this
+// can only fix a genuine octave jump, never invent a wrong note.
 function correctOctave(f: number, prevF: number): number {
   if (!prevF) return f;
-  const cands = [f, f * 2, f / 2, f * 3, f / 3, f * 1.5, f / 1.5, f * 4, f / 4];
+  const cands = [f, f * 2, f / 2, f * 4, f / 4];
   let best = f, bestD = Infinity;
   for (const c of cands) {
     const d = Math.abs(1200 * Math.log2(c / prevF));
