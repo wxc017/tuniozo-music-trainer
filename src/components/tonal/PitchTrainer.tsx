@@ -9,12 +9,22 @@ import { useEffect, useRef, useState } from "react";
 import { REGIONS } from "@/lib/intervalSpectrum";
 import { C4_FREQ, detectPitch, median, circDelta } from "@/lib/pitchDetect";
 
-// Guide-drone volume: driven by a 0..100% slider. 100% -> DRONE_VOL_MAX gain, so the
-// control's 10% == the old fixed 0.45 level. Output runs through a limiter (built per
-// mic session) so pushing the volume up stays clean instead of clipping.
-const DRONE_VOL_MAX = 4.5;
-const DRONE_VOL_DEFAULT = 25;   // % — starts noticeably louder than the old fixed level
+// Guide-drone volume: a 0..100% slider spanning the FULL usable range so it audibly
+// changes level the whole way. The voice is soft-clipped (see GUIDE_SHAPER_CURVE) to
+// push RMS up for real perceived loudness without static. 100% ≈ the loudest the output
+// allows without clipping. NB: the output ceiling is fixed and a single low tone is
+// inherently quieter to the ear than broadband music — if it's still low, raise your
+// OS / headphone volume (the app can't go past the system output).
+const DRONE_VOL_MAX = 0.95;     // output gain at 100% (post-shaper peak stays just under clip)
+const DRONE_VOL_DEFAULT = 85;   // % — loud by default; turn it down if it buries your voice
 const guideGainFor = (volPct: number) => (Math.max(0, Math.min(100, volPct)) / 100) * DRONE_VOL_MAX;
+// Soft-clip transfer curve for the guide voice: tanh raises RMS (loudness) with a soft
+// knee (no harsh static) and adds a little harmonic glue so a low tone still carries.
+const GUIDE_SHAPER_CURVE = (() => {
+  const n = 2048, c = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; c[i] = Math.tanh(1.8 * x); }
+  return c;
+})();
 
 const TOL_CENTS = 8;         // you're "on the note" inside ±this many cents. Kept tight on
                              // purpose: the bands (50/12/39-EDO) sit only ~10-25¢ apart, so a
@@ -105,7 +115,6 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
   // hear; on its own signal path (straight to the mic context output, no shared
   // drone-bus limiter) the cycle chords can't duck or bury it.
   const guideVoiceRef = useRef<{ oscs: OscillatorNode[]; gain: GainNode } | null>(null);
-  const guideLimiterRef = useRef<DynamicsCompressorNode | null>(null);   // shared limiter on the guide path
   const killGuideVoice = (fade = 0.16) => {
     const ac = ctxRef.current, v = guideVoiceRef.current;
     if (!ac || !v) { guideVoiceRef.current = null; return; }
@@ -120,20 +129,21 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
     const ac = ctxRef.current;
     if (!ac) return;
     killGuideVoice(0.03);                          // clear the prior note before retuning
+    // Signal path: oscillators -> pre (drives the soft-clipper) -> shaper -> g (output).
+    // The soft-clip lifts RMS for real loudness without static; a strong fundamental
+    // plus an octave keeps beating clear and gives presence in a more audible range.
+    const pre = ac.createGain(); pre.gain.value = 1;
+    const shaper = ac.createWaveShaper(); shaper.curve = GUIDE_SHAPER_CURVE; shaper.oversample = "2x";
     const g = ac.createGain();
     g.gain.setValueAtTime(0, ac.currentTime);
-    g.connect(guideLimiterRef.current ?? ac.destination);
-    // A clean tone with a DOMINANT fundamental (near-sine) so you hear slow, clear
-    // amplitude beating against your voice at the unison — that's what you tune to.
-    // A little 2nd/3rd partial gives it presence to cut a chord drone, but no buzzy
-    // saw/square: dense harmonics smear the beat and sound farty down low.
+    pre.connect(shaper); shaper.connect(g); g.connect(ac.destination);
     const oscs: OscillatorNode[] = [];
-    for (const [mult, amp] of [[1, 0.85], [2, 0.13], [3, 0.06]] as const) {
+    for (const [mult, amp] of [[1, 0.62], [2, 0.30], [3, 0.12]] as const) {
       const o = ac.createOscillator();
       o.type = "sine";
       o.frequency.value = freq * mult;
       const pg = ac.createGain(); pg.gain.value = amp;
-      o.connect(pg); pg.connect(g); o.start();
+      o.connect(pg); pg.connect(pre); o.start();
       oscs.push(o);
     }
     g.gain.linearRampToValueAtTime(guideGainFor(droneVolRef.current), ac.currentTime + 0.05);
@@ -167,13 +177,6 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
         const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
         ctxRef.current = ctx;
         if (ctx.state === "suspended") await ctx.resume();
-        // Limiter on the guide-drone path so the volume control can be pushed hard
-        // without the sine clipping into distortion.
-        const guideLimiter = ctx.createDynamicsCompressor();
-        guideLimiter.threshold.value = -2; guideLimiter.knee.value = 0;
-        guideLimiter.ratio.value = 20; guideLimiter.attack.value = 0.003; guideLimiter.release.value = 0.12;
-        guideLimiter.connect(ctx.destination);
-        guideLimiterRef.current = guideLimiter;
         const src = ctx.createMediaStreamSource(stream);
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 4096;   // longer window → finer low-pitch resolution (less cents error)
@@ -271,7 +274,6 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
       cancelled = true;
       cancelAnimationFrame(rafRef.current);
       killGuideVoice(0);
-      guideLimiterRef.current = null;
       guideOnRef.current = false; guideNoteRef.current = -1;
       streamRef.current?.getTracks().forEach(t => t.stop());
       streamRef.current = null;
