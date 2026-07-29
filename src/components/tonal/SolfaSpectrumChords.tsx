@@ -565,6 +565,9 @@ const MODE_FAMILIES: { label: string; ids: ModeId[] }[] = [
   { label: "Symmetric",    ids: ["wholetone", "augment6", "octWH", "octHW"] },
   { label: "Maqam",        ids: ["rast", "bayati", "sikah", "huzam"] },
 ];
+// The picker's own left-to-right reading order, used to order the multi-scale
+// n / m cycle so it walks the chips as they're laid out.
+const PICKER_ORDER: ModeId[] = MODE_FAMILIES.flatMap(f => f.ids);
 // A degree's sub-band [lo,hi] for a region, tolerating regions without the
 // small/center/large split (neutral regions) by using their full span.
 const REGION_ANY = new Map(REGIONS.map(r => [r.name, r]));
@@ -1012,7 +1015,30 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // Sing mode — pick mode(s) + which spectrum bands.  Each selected band makes
   // its own section (one small, one center, one large — never three of a kind).
   const [singModes, setSingModes] = useState<Set<ModeId>>(new Set(["maj"]));
+  // Multi-scale: every SELECTED mode is generated, but only ONE is on screen at a
+  // time — n / m cycle which.  Everything (patterns, chords, cycles, drone,
+  // spectrum, pitch targets) flips to that scale at once, and because the other
+  // scales stay generated the cycle is instant and the exercise list underneath
+  // doesn't re-randomize — so the same pattern can be compared across scales.
+  const [activeMode, setActiveMode] = useState<ModeId>("maj");
   const [singBands, setSingBands] = useState<Set<Band>>(new Set([0, 1, 2]));
+  // Cycle order follows the PICKER's left-to-right order, not the order the chips
+  // were clicked, so n / m walk the rows you're looking at.
+  const cycleModes = PICKER_ORDER.filter(id => singModes.has(id));
+  const cycleModesRef = useRef<ModeId[]>(cycleModes);
+  cycleModesRef.current = cycleModes;
+  // Keep the shown scale valid: dropping the active one falls to the first left.
+  useEffect(() => {
+    if (!singModes.has(activeMode)) setActiveMode(cycleModesRef.current[0] ?? "maj");
+  }, [singModes, activeMode]);
+  const stepMode = useCallback((dir: number) => {
+    const list = cycleModesRef.current;
+    if (list.length < 2) return;
+    setActiveMode(cur => {
+      const i = list.indexOf(cur);
+      return list[mod(i < 0 ? 0 : i + dir, list.length)];
+    });
+  }, []);
   // Shared spectrum-band selection for BOTH Chords and Sing: one universal set
   // for the "blendable" degrees (2·3·6·7) plus dedicated fine-tune controls for
   // the perfect 4th and 5th so they never smear out of tune.
@@ -1039,6 +1065,15 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     return s.size ? [...s] : [1 as Band];
   };
   const [singSections, setSingSections] = useState<SingSection[]>([]);
+  // The bands of the ONE scale currently shown.  Everything downstream (columns,
+  // drone, spectrum popup, pitch targets, echo pool) reads this, so cycling the
+  // active scale switches the whole page in one keystroke.
+  // Falls back to whatever was generated first, so a cycle that lands on a scale
+  // whose regeneration hasn't landed yet shows the old columns instead of blank.
+  const activeSections = (() => {
+    const hit = singSections.filter(s => s.mode === activeMode);
+    return hit.length ? hit : singSections.filter(s => s.mode === singSections[0]?.mode);
+  })();
   const [techOpen, setTechOpen] = useState(true);
   // Which chord types the Sing section generates (multi-select).
   const [chordTypes, setChordTypes] = useState<Set<ChordType>>(new Set(["triad", "seventh"]));
@@ -2219,6 +2254,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         else if (k === "p") { e.preventDefault(); setPitchOpen(o => !o); }                    // pitch trainer
         else if (k === "e") { e.preventDefault(); setEchoOpen(o => !o); }                     // echo call-and-response
         else if (k === "b") { e.preventDefault(); setBandsOpen(o => !o); }                     // spectrum band editor
+        else if (k === "n") { e.preventDefault(); stepMode(-1); }                              // previous selected scale
+        else if (k === "m") { e.preventDefault(); stepMode(1); }                               // next selected scale
         else if (k === "l") { e.preventDefault(); setLogOpen(o => !o); }                       // logbook
         else if (k === "o") { e.preventDefault(); setDroneOpen(o => !o); }                      // drone panel
         else if (k === "r") { e.preventDefault(); setPatRetro(o => !o); }                     // retrograde (r+i = retrograde-inversion)
@@ -2251,7 +2288,14 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     `px-2.5 py-0.5 rounded text-[11px] font-medium border transition-colors ${
       on ? "bg-[#7173e6] text-white border-[#7173e6]"
          : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`;
-  const numInput = (val: number, setter: (v: number) => void, min: number, max: number) => (
+  // Scale chips carry THREE states, not two: filled = the scale on screen now,
+  // outlined = selected and in the n / m cycle, plain = off.
+  const scaleChip = (on: boolean, act: boolean) =>
+    `px-2.5 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+      act ? "bg-[#7173e6] text-white border-[#7173e6]"
+      : on ? "bg-[#20204a] text-[#b9baf5] border-[#4a4ba8] hover:border-[#7173e6]"
+      : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`;
+  const numInput =(val: number, setter: (v: number) => void, min: number, max: number) => (
     <input type="text" inputMode="numeric" value={val}
       onChange={e => { const v = parseInt(e.target.value.replace(/\D/g, ""), 10); setter(Number.isFinite(v) ? v : 0); }}
       onBlur={() => setter(Math.max(min, Math.min(max, val || min)))}
@@ -2305,7 +2349,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // singing against the actual points it just produced.
   const pitchTargets = (() => {
     const out: { cents: number; syl: string; band: number }[] = [];
-    for (const sec of singSections)
+    for (const sec of activeSections)
       for (const n of sec.scale) {
         const c = ((n.cents % 1200) + 1200) % 1200;
         // Keep band-specific targets (dedupe only within the same band) so the
@@ -2323,7 +2367,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const echoPool: EchoPhrase[] = (() => {
     const toNote = (n: SingNote): EchoNote => ({ abs: n.abs, cents: ((n.cents % 1200) + 1200) % 1200, syl: n.syl, oct: n.oct });
     const out: EchoPhrase[] = [];
-    for (const sec of singSections)
+    for (const sec of activeSections)
       for (const g of sec.groups) {
         // Category used by the Echo pool toggles: scalar sub-name, or chords /
         // cycles / interchange (modal-interchange rows carry it in their title).
@@ -2893,9 +2937,25 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
               return fieldRow(
                 fam.label,
                 <>
-                  {ids.map(m => <button key={m.id} onClick={() => setSingModes(new Set([m.id]))} className={chip(singModes.has(m.id))}>{m.label}</button>)}
+                  {ids.map(m => {
+                    const on = singModes.has(m.id);
+                    const act = on && activeMode === m.id;
+                    return (
+                      <button key={m.id} className={scaleChip(on, act)}
+                        title={on ? (act ? "Showing — click to drop" : "Selected — click to show (n / m)") : "Add to the cycle"}
+                        // Unselected → add it AND show it.  Selected but not shown →
+                        // jump to it.  Showing → drop it (never below one).
+                        onClick={() => {
+                          if (!on) { toggleIn(setSingModes, m.id); setActiveMode(m.id); }
+                          else if (!act) setActiveMode(m.id);
+                          else toggleIn(setSingModes, m.id, true);
+                        }}>
+                        {m.label}
+                      </button>
+                    );
+                  })}
                 </>,
-                fi === 0 ? "Pick ONE scale — every band mirrors the same exercises re-tuned to it." : undefined,
+                fi === 0 ? "Pick any number of scales — n / m cycle which one the whole page shows (filled chip)." : undefined,
               );
             })}
             {/* Per-degree microtuning is only meaningful for the small/center/large
@@ -3016,7 +3076,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                     {fi > 0 && <span className="w-px h-4 bg-[#1e1e1e] mx-1" />}
                     {/* Full mode names, same as the SCALE row.  The scale you're
                         already in isn't offered — you can't borrow from yourself. */}
-                    {fam.ids.map(id => MODE_BY_ID.get(id)!).filter(m => m && !singModes.has(m.id)).map(m => (
+                    {fam.ids.map(id => MODE_BY_ID.get(id)!).filter(m => m && m.id !== activeMode).map(m => (
                       <button key={m.id} onClick={() => toggleIn(setBorrowModes, m.id)} className={chip(borrowModes.has(m.id))}>{m.label}</button>
                     ))}
                   </span>
@@ -3062,6 +3122,18 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                 </button>
               ))}
             </div>
+            {/* Which of the selected scales is on screen — click the arrows or hit
+                n / m.  Hidden when only one scale is selected (nothing to cycle). */}
+            {cycleModes.length > 1 && (
+              <div className="inline-flex items-center gap-1.5 rounded-lg border border-[#4a4ba8] bg-[#141433] px-2 py-1">
+                <button onClick={() => stepMode(-1)} title="Previous scale (n)"
+                  className="px-1.5 rounded bg-[#20204a] text-[#b9baf5] hover:bg-[#2b2b63] text-xs leading-none py-0.5">◀ <span className="opacity-60 font-mono">n</span></button>
+                <span className="text-xs font-semibold text-white">{MODE_BY_ID.get(activeMode)?.label ?? activeMode}</span>
+                <span className="text-[10px] text-[#8a8ad0] font-mono">{cycleModes.indexOf(activeMode) + 1}/{cycleModes.length}</span>
+                <button onClick={() => stepMode(1)} title="Next scale (m)"
+                  className="px-1.5 rounded bg-[#20204a] text-[#b9baf5] hover:bg-[#2b2b63] text-xs leading-none py-0.5"><span className="opacity-60 font-mono">m</span> ▶</button>
+              </div>
+            )}
             {/* Spectrum (z) · Gamut (x) · Pitch (p) · Echo (e) and degree show/hide
                 (press 1–7 on the Chords tab) are keyboard-only per direct user
                 direction — the buttons are hidden; the keydown handlers above and
@@ -3161,7 +3233,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
 
           {/* Bands side by side — one column each, all showing the active tab. */}
           <div className="flex gap-3 items-start overflow-x-auto pb-2">
-            {singSections.map((sec, si) => {
+            {activeSections.map((sec, si) => {
               const groups = sec.groups.filter(g => g.cat === singTab && (singTab !== "scalar" || g.sub === scalarSub));
               return (
                 <div key={si} className={`flex-1 ${singTab === "chords" ? "min-w-[480px]" : "min-w-[320px]"}`}>
@@ -3235,8 +3307,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
               <button onClick={() => setDroneOpen(false)} className="text-[#888] hover:text-white text-xs">✕ <span className="opacity-60">esc</span></button>
             </div>
             {(() => {
-              const firstMode = [...singModes][0];
-              const secByBand = new Map(singSections.filter(s => s.mode === firstMode).map(s => [s.band, s] as const));
+              const secByBand = new Map(activeSections.map(s => [s.band, s] as const));
               const octShift = droneOct * 1200;
               // Cycling a degree's band re-voices the held drone at the new band so
               // the selection (highlight) stays.  Octave / instrument changes do the
@@ -3354,7 +3425,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
               <span className="text-[11px] font-semibold tracking-widest text-[#8a8a8a]">SPECTRUM</span>
               <button onClick={() => setSpecOpen(false)} className="text-[#888] hover:text-white text-xs">✕ <span className="opacity-60">esc</span></button>
             </div>
-            {singSections.map((sec, si) => (
+            {activeSections.map((sec, si) => (
               <div key={si} className="mb-3 last:mb-0">
                 <div className="text-[10px] font-semibold mb-1" style={{ color: BAND_COLORS[sec.band] }}>{bandTitleOf(sec.band).toUpperCase()} · {sec.scaleLabel}</div>
                 {intervalSpectrum(sec.scale)}
@@ -3410,6 +3481,13 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
           {singTab === "chords" && <span><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">1–7</kbd> hide degree{hiddenDeg.size > 0 && <span className="text-[#c88f8f]"> · hidden {[...hiddenDeg].sort((a, b) => a - b).map(d => d + 1).join(" ")}</span>}</span>}
           <span><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">l</kbd> logbook{logSel.size > 0 && <span className="text-[#8ab88a]"> · {logSel.size} selected</span>}</span>
           <span><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">o</kbd> drone</span>
+          {cycleModes.length > 1 && (
+            <span className="text-[#b9baf5]">
+              <kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">n</kbd>
+              <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">m</kbd> scale
+              · {MODE_BY_ID.get(activeMode)?.label ?? activeMode} ({cycleModes.indexOf(activeMode) + 1}/{cycleModes.length})
+            </span>
+          )}
           {singTab === "scalar" && <span><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">1–7</kbd> start on degree{scaleStart > 0 && <span className="text-[#cfe6cf]"> · {scaleStart + 1}{scalarSub === "resolution" ? " (resolution exempt)" : ""}</span>}</span>}
         </div>
       )}
