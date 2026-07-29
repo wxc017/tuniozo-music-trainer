@@ -166,6 +166,12 @@ export interface ScoreSetup {
    *  (rather than a flat "m:slot" key) so inserting or deleting a bar re-indexes
    *  it with the same shift that moves every other per-bar map. */
   perSlotNote?: Record<number, Record<number, string>>;
+  /** DEDICATED CHORD LANE: measure → slot → chord symbol. Rendered on its OWN
+   *  italic line above the note-annotation line, so chords read as chords. Unlike
+   *  perSlotNote this allows slot 0 (a downbeat chord) too, so a chord can sit on
+   *  ANY eighth-note beat of the bar. Nested by measure so bar insert/delete
+   *  re-indexes it like every other per-bar map. */
+  perChord?: Record<number, Record<number, string>>;
   /** Per-bar section label (e.g. "A", "B", "Exercise 1 — arpeggios").
    *  Jianpu/Sol-fa mode renders this as a large bold heading and forces
    *  the bar to start a new line, so one sheet can hold many labelled

@@ -71,6 +71,8 @@ const SECTION_PAD  = 44;   // extra top gap on a row that opens a labelled secti
 const SECTION_LABEL_DY = 44;  // section heading baseline above the bar top (clears the "+ note" line)
 const TS_PAD       = 22;   // extra bottom gap on a row carrying a time-signature label
 const CHORD_DY     = 24;   // vertical gap between stacked chord numbers
+const CHORD_PAD    = 24;   // extra top gap on a row that carries the italic chord lane
+const CHORD_LANE_DY = 44;  // chord-lane baseline above the bar top (above the "+ note" line)
 const MIN_VOICES   = 2;    // always at least two voices (EOP-style)
 const MAX_VOICES   = 6;
 const WHITE        = "#ffffff";  // pure white so PDF export recolours → black
@@ -211,6 +213,8 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   // "measure:slot" keys whose mid-bar note editor is open but still empty — an
   // editor only persists once you type something into it.
   const [openSlotNotes, setOpenSlotNotes] = useState<Set<string>>(new Set());
+  // Chord-lane slots opened for typing (persist only once you type a chord in).
+  const [openChordSlots, setOpenChordSlots] = useState<Set<string>>(new Set());
 
   const scoreRef = useRef<HTMLDivElement | null>(null);
   const scoreAreaRef = useRef<HTMLDivElement | null>(null);
@@ -459,6 +463,8 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       // A line the user deliberately started (a section OR a manual cut) gets
       // headroom for a title above it; auto-wrapped continuations don't.
       if (sectionAt(row[0]) || breakAt(row[0])) y += SECTION_PAD;
+      // Reserve a line above the bar for the italic chord lane when this row uses it.
+      if (row.some(m => Object.keys(project?.setup.perChord?.[m] ?? {}).length > 0)) y += CHORD_PAD;
       rowTop[r] = y;
       let x = LEFT_PAD;   // far-left
       row.forEach((m, c) => { rowOfArr[m] = r; colOfArr[m] = c; xArr[m] = x; x += wArr[m]; });
@@ -466,7 +472,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       if (row.some(hasTsLabel)) y += TS_PAD;   // room for the time-signature line
     });
     return { rowsArr, rowOfArr, colOfArr, rowTop, rowCut, wArr, xArr, vcArr, hsArr, cellArr, pxPerSlot, numLabel, startOf, totalHeight: y, canvasW: LEFT_PAD * 2 + maxRowW };
-  }, [setup?.barCount, project?.setup.perBarBreakBefore, project?.setup.perBarTimeSig, sectionLabels, perSection,
+  }, [setup?.barCount, project?.setup.perBarBreakBefore, project?.setup.perBarTimeSig, project?.setup.perChord, sectionLabels, perSection,
       project?.voiceCount, project?.pianoBrace, project?.perSectionPianoBrace, notes, totalSlotsOf, system, minVoices, containerW, gridDur]);
   ROW_OF = layout.rowOfArr; COL_OF = layout.colOfArr; ROW_TOP = layout.rowTop;
   ROWS = layout.rowsArr; ROW_COUNT = layout.rowsArr.length;
@@ -734,6 +740,15 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (Object.keys(bar).length) perSlotNote[m] = bar; else delete perSlotNote[m];
     updateSetup({ perSlotNote });
   }, [project, updateSetup]);
+  // Chord-lane symbol at a given slot (any slot, incl. slot 0 = downbeat chord).
+  const updateChord = useCallback((m: number, slot: number, text: string) => {
+    if (!project) return;
+    const perChord = { ...(project.setup.perChord ?? {}) };
+    const bar = { ...(perChord[m] ?? {}) };
+    if (text.trim()) bar[slot] = text; else delete bar[slot];
+    if (Object.keys(bar).length) perChord[m] = bar; else delete perChord[m];
+    updateSetup({ perChord });
+  }, [project, updateSetup]);
   // Per-section label (rendered large above the bar; also forces a line break).
   const updateBarSection = useCallback((m: number, text: string) => {
     if (!project) return;
@@ -792,6 +807,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
         barCount: project.setup.barCount + 1,
         perBarTitle: shift(project.setup.perBarTitle),
         perSlotNote: shift(project.setup.perSlotNote),
+        perChord: shift(project.setup.perChord),
         perBarSection: shift(project.setup.perBarSection),
         perBarBreakBefore: shift(project.setup.perBarBreakBefore),
         perBarTimeSig: shift(project.setup.perBarTimeSig),
@@ -829,6 +845,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
         barCount: project.setup.barCount - 1,
         perBarTitle: shift(project.setup.perBarTitle),
         perSlotNote: shift(project.setup.perSlotNote),
+        perChord: shift(project.setup.perChord),
         perBarSection: shift(project.setup.perBarSection),
         perBarBreakBefore: shift(project.setup.perBarBreakBefore),
         perBarTimeSig: shift(project.setup.perBarTimeSig),
@@ -1147,6 +1164,15 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       setOpenSlotNotes(prev => new Set(prev).add(`${measure}:${slot}`));
       // Focus after the editor has been rendered by the state change above.
       requestAnimationFrame(() => document.getElementById(`jp-slotnote-${measure}-${slot}`)?.focus());
+      return;
+    }
+    // 'k' — add a CHORD at the cursor's beat (dedicated italic chord lane). Any
+    // slot including the downbeat (slot 0), so chords sit on any eighth-note beat.
+    if (key === "k") {
+      e.preventDefault();
+      const { measure, slot } = cursor;
+      setOpenChordSlots(prev => new Set(prev).add(`${measure}:${slot}`));
+      requestAnimationFrame(() => document.getElementById(`jp-chord-${measure}-${slot}`)?.focus());
       return;
     }
     // Jump into the current measure's section-label field (labels this bar as a
@@ -1527,12 +1553,22 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       svgSystems.push(<text key={`sn-${m}-${slot}`} x={slotToX(m, slot, totalSlotsOf(m))} y={barTop(m) - 25}
         fill={WHITE} fontSize={12} fontFamily="Helvetica, Arial, sans-serif">{text}</text>);
     }
+    // Dedicated CHORD LANE — italic, on its own line above the note-annotation line.
+    for (const [slotKey, text] of Object.entries(project.setup.perChord?.[m] ?? {})) {
+      const slot = +slotKey;
+      svgSystems.push(<text key={`ch-${m}-${slot}`} x={slotToX(m, slot, totalSlotsOf(m))} y={barTop(m) - CHORD_LANE_DY}
+        fill={WHITE} fontSize={12} fontStyle="italic" fontFamily="Helvetica, Arial, sans-serif">{text}</text>);
+    }
     // Section heading — large, bold, lifted into the row's extra top padding so
     // the "+ note" line and the notes sit clearly below it (this bar always opens
     // a new row, so there's room above it).
     const section = project.setup.perBarSection?.[m];
-    if (section?.trim()) svgSystems.push(<text key={`sec-${m}`} x={left} y={barTop(m) - SECTION_LABEL_DY} fill={WHITE}
-      fontSize={18} fontWeight="bold" fontFamily="Helvetica, Arial, sans-serif">{section}</text>);
+    if (section?.trim()) {
+      // Lift the heading above the chord lane when this bar also carries chords.
+      const secDy = SECTION_LABEL_DY + (Object.keys(project.setup.perChord?.[m] ?? {}).length > 0 ? CHORD_PAD : 0);
+      svgSystems.push(<text key={`sec-${m}`} x={left} y={barTop(m) - secDy} fill={WHITE}
+        fontSize={18} fontWeight="bold" fontFamily="Helvetica, Arial, sans-serif">{section}</text>);
+    }
     // Time signature — drawn under the bar, left-aligned to the measure start so
     // it lines up with the number / title.  Shown at each group start (its meter)
     // and wherever a meter is explicitly set.  Also captured on export.
@@ -1769,6 +1805,28 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
                       onPointerDown={e => e.stopPropagation()}
                       onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
                       style={box(slotToX(m, slot, total), edgeX(i + 1) - slotToX(m, slot, total))}
+                    />
+                  ))}
+                  {/* Chord-lane inputs — any slot incl. the downbeat (slot 0). Sit on
+                      their own italic line above the note-annotation line. */}
+                  {[...new Set([
+                    ...Object.keys(project.setup.perChord?.[m] ?? {}).map(Number),
+                    ...[...openChordSlots].map(k => k.split(":").map(Number)).filter(([mm]) => mm === m).map(([, s]) => s),
+                  ])].filter(s => s >= 0 && s < total).sort((a, b) => a - b).map(slot => (
+                    <input
+                      key={`ch-${slot}`}
+                      id={`jp-chord-${m}-${slot}`}
+                      className="jp-mtitle"
+                      value={project.setup.perChord?.[m]?.[slot] ?? ""}
+                      placeholder="+ chord"
+                      onChange={e => updateChord(m, slot, e.target.value)}
+                      onBlur={() => setOpenChordSlots(prev => {
+                        if (project.setup.perChord?.[m]?.[slot]) return prev;
+                        const next = new Set(prev); next.delete(`${m}:${slot}`); return next;
+                      })}
+                      onPointerDown={e => e.stopPropagation()}
+                      onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
+                      style={{ ...box(slotToX(m, slot, total), 90), top: (barTop(m) - CHORD_LANE_DY - 11) * scale, fontStyle: "italic" as const }}
                     />
                   ))}
                 </div>
