@@ -40,6 +40,7 @@ const STATIC_BAR: Item[] = [
 ];
 
 const PARALLETTES: Item[] = [
+  ["Reverse Planche", false],
   ["Planche", false],
   ["Planche Pushup", true],
 ];
