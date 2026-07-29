@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import "./workout/workout.css";
 import SessionLogger from "./workout/SessionLogger";
 import WorkoutHistory from "./workout/WorkoutHistory";
@@ -11,6 +11,7 @@ import { registerRestSW } from "@/lib/restNotify";
 import { initDriveDataSync } from "@/lib/workoutDrive";
 import { initTokenAutoRefresh } from "@/lib/googleDrive";
 import { pruneVideos } from "@/lib/workoutVideoDb";
+import { exportBackup, importBackupFromFile } from "@/lib/workoutBackup";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -44,6 +45,29 @@ export default function WorkoutLog() {
     setView("today");
   };
 
+  // Workout-only Export / Import (log + templates + exercises + video clips) — a
+  // self-contained .zip, so you can move workouts device-to-device WITHOUT the
+  // whole-app Drive sync.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [ioBusy, setIoBusy] = useState(false);
+  const doExport = async () => {
+    setIoBusy(true);
+    try { await exportBackup(); }
+    catch (e) { window.alert(`Export failed: ${e instanceof Error ? e.message : String(e)}`); }
+    finally { setIoBusy(false); }
+  };
+  const doImport = async (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    setIoBusy(true);
+    try {
+      const r = await importBackupFromFile(f);
+      window.alert(`Imported ${r.workouts} workouts, ${r.templates} templates, ${r.exercises} exercises, ${r.videos} videos.`);
+    } catch (err) { window.alert(`Import failed: ${err instanceof Error ? err.message : String(err)}`); }
+    finally { setIoBusy(false); }
+  };
+
   return (
     <>
       {openId ? (
@@ -70,6 +94,17 @@ export default function WorkoutLog() {
             {view === "calendar" && <WorkoutHistory onOpenWorkout={setOpenId} />}
             {view === "progress" && <ProgressView />}
             {view === "templates" && <TemplatesView onStart={setOpenId} />}
+          </div>
+
+          {/* Workout-only Export / Import — no whole-app sync needed. */}
+          <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5" style={{ borderTop: "1px solid var(--wl-line)" }}>
+            <button onClick={doExport} disabled={ioBusy} className="wl-btn flex-1" title="Save all workouts + video clips to a .zip file">
+              {ioBusy ? "…" : "⬆ Export workouts"}
+            </button>
+            <button onClick={() => fileInputRef.current?.click()} disabled={ioBusy} className="wl-btn flex-1" title="Load a workouts .zip (merges by id — safe to re-import)">
+              ⬇ Import workouts
+            </button>
+            <input ref={fileInputRef} type="file" accept=".zip,application/zip" onChange={doImport} style={{ display: "none" }} />
           </div>
         </div>
       )}
