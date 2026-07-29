@@ -149,7 +149,7 @@ export function VideoThumb({ set, index }: {
 
 // ── Fullscreen editor ──────────────────────────────────────────────────────
 
-export function SetVideoEditor({ set, workoutId, onChange, onClose, justAdded }: {
+export function SetVideoEditor({ set, workoutId, onChange, onClose }: {
   set: WorkoutSet; workoutId: string;
   onChange: (patch: Partial<WorkoutSet>) => void;
   onClose: () => void; justAdded: boolean;
@@ -161,7 +161,9 @@ export function SetVideoEditor({ set, workoutId, onChange, onClose, justAdded }:
   const [duration, setDuration] = useState(0);
   const [cutPct, setCutPct] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
-  const dirtyRef = useRef(justAdded);
+  // Only a CUT marks the clip dirty → uploaded to Drive on close. Adding or
+  // replacing a video keeps it LOCAL; it goes to Drive only when you trim it.
+  const dirtyRef = useRef(false);
 
   const hasVideo = !!set.videoId || !!set.driveFileId;
   const onDrive = !!set.driveFileId;
@@ -194,7 +196,7 @@ export function SetVideoEditor({ set, workoutId, onChange, onClose, justAdded }:
     if (set.videoId) await deleteVideo(set.videoId);
     if (set.driveFileId) void deleteDriveVideo(set.driveFileId);
     await putVideo({ id, blob: file, mime: file.type || "video/mp4", durationSec: dur, createdAt: Date.now(), setId: set.id, workoutId });
-    dirtyRef.current = true;
+    // Replacing keeps the new clip LOCAL — not dirty, so it isn't auto-offloaded.
     onChange({ videoId: id, driveFileId: undefined, trimIn: 0, trimOut: dur || undefined });
     setDuration(dur);
     setUrl(URL.createObjectURL(file));
