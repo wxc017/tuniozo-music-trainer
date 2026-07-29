@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import "./workout/workout.css";
 import SessionLogger from "./workout/SessionLogger";
 import WorkoutHistory from "./workout/WorkoutHistory";
@@ -11,7 +11,7 @@ import { registerRestSW } from "@/lib/restNotify";
 import { initDriveDataSync } from "@/lib/workoutDrive";
 import { initTokenAutoRefresh } from "@/lib/googleDrive";
 import { pruneVideos } from "@/lib/workoutVideoDb";
-import { exportBackup, importBackupFromFile } from "@/lib/workoutBackup";
+import { backupWorkoutsToDrive, restoreWorkoutsFromDrive } from "@/lib/workoutDriveBackup";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -45,26 +45,27 @@ export default function WorkoutLog() {
     setView("today");
   };
 
-  // Workout-only Export / Import (log + templates + exercises + video clips) — a
-  // self-contained .zip, so you can move workouts device-to-device WITHOUT the
-  // whole-app Drive sync.
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Workout-only backup/restore straight to Google Drive (log + templates +
+  // exercises + video clips) — a single file in a "Tunizo Workouts" folder,
+  // WITHOUT the whole-app data sync.
   const [ioBusy, setIoBusy] = useState(false);
   const doExport = async () => {
     setIoBusy(true);
-    try { await exportBackup(); }
-    catch (e) { window.alert(`Export failed: ${e instanceof Error ? e.message : String(e)}`); }
+    try {
+      const r = await backupWorkoutsToDrive();
+      window.alert(`Backed up to Google Drive — ${r.videoCount} clip${r.videoCount === 1 ? "" : "s"}, ${(r.bytes / 1e6).toFixed(1)} MB.`);
+    } catch (e) { window.alert(`Backup failed: ${e instanceof Error ? e.message : String(e)}`); }
     finally { setIoBusy(false); }
   };
-  const doImport = async (e: ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = "";
-    if (!f) return;
+  const doImport = async () => {
+    if (!window.confirm("Restore workouts from your Google Drive backup? It merges into what's already on this device (safe to re-run).")) return;
     setIoBusy(true);
     try {
-      const r = await importBackupFromFile(f);
-      window.alert(`Imported ${r.workouts} workouts, ${r.templates} templates, ${r.exercises} exercises, ${r.videos} videos.`);
-    } catch (err) { window.alert(`Import failed: ${err instanceof Error ? err.message : String(err)}`); }
+      const r = await restoreWorkoutsFromDrive();
+      if (!r.found) { window.alert("No workout backup found on your Google Drive yet — back up first."); return; }
+      const x = r.result!;
+      window.alert(`Restored from Drive — ${x.workouts} workouts, ${x.templates} templates, ${x.exercises} exercises, ${x.videos} videos.`);
+    } catch (e) { window.alert(`Restore failed: ${e instanceof Error ? e.message : String(e)}`); }
     finally { setIoBusy(false); }
   };
 
@@ -96,15 +97,14 @@ export default function WorkoutLog() {
             {view === "templates" && <TemplatesView onStart={setOpenId} />}
           </div>
 
-          {/* Workout-only Export / Import — no whole-app sync needed. */}
+          {/* Workout-only backup/restore to Google Drive — no whole-app sync needed. */}
           <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5" style={{ borderTop: "1px solid var(--wl-line)" }}>
-            <button onClick={doExport} disabled={ioBusy} className="wl-btn flex-1" title="Save all workouts + video clips to a .zip file">
-              {ioBusy ? "…" : "⬆ Export workouts"}
+            <button onClick={doExport} disabled={ioBusy} className="wl-btn flex-1" title="Back up all workouts + video clips to your Google Drive">
+              {ioBusy ? "…" : "⬆ Back up to Drive"}
             </button>
-            <button onClick={() => fileInputRef.current?.click()} disabled={ioBusy} className="wl-btn flex-1" title="Load a workouts .zip (merges by id — safe to re-import)">
-              ⬇ Import workouts
+            <button onClick={doImport} disabled={ioBusy} className="wl-btn flex-1" title="Restore workouts from your Google Drive backup (merges, safe to re-run)">
+              ⬇ Restore from Drive
             </button>
-            <input ref={fileInputRef} type="file" accept=".zip,application/zip" onChange={doImport} style={{ display: "none" }} />
           </div>
         </div>
       )}
