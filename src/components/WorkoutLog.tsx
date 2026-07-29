@@ -6,10 +6,11 @@ import ProgressView from "./workout/ProgressView";
 import TemplatesView from "./workout/TemplatesView";
 import WeekVolume from "./workout/WeekVolume";
 import UndoBar from "./workout/UndoBar";
-import { useWorkoutData, startWorkout, seedExercisesOnce } from "@/lib/workoutStore";
+import { useWorkoutData, startWorkout, pruneStoredBuiltins, wipeWorkoutData } from "@/lib/workoutStore";
 import { registerRestSW } from "@/lib/restNotify";
 import { initDriveDataSync } from "@/lib/workoutDrive";
 import { initTokenAutoRefresh } from "@/lib/googleDrive";
+import { pruneVideos } from "@/lib/workoutVideoDb";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -30,7 +31,18 @@ export default function WorkoutLog() {
 
   // Drive connect + backup/restore/export/import all live in Settings now.
   // This just keeps the auto data-sync running while the log is open.
-  useEffect(() => { seedExercisesOnce(); void registerRestSW(); initDriveDataSync(); initTokenAutoRefresh(); }, []);
+  useEffect(() => { pruneStoredBuiltins(); void registerRestSW(); initDriveDataSync(); initTokenAutoRefresh(); }, []);
+
+  // Wipe every workout record on THIS device (double-confirmed — it's destructive).
+  // Built-in exercises come back on their own; Drive is untouched.
+  const wipeAll = () => {
+    if (!window.confirm("Wipe ALL workout data on this device? Log, templates, and your custom exercises will be deleted. This can't be undone (Drive backups are not affected).")) return;
+    if (!window.confirm("Really wipe everything? Last chance.")) return;
+    wipeWorkoutData();
+    void pruneVideos(new Set()).catch(() => {});   // keep none = delete every clip
+    setOpenId(null);
+    setView("today");
+  };
 
   return (
     <>
@@ -48,6 +60,8 @@ export default function WorkoutLog() {
                 <button key={v} data-on={view === v} onClick={() => setView(v)}>{v}</button>
               ))}
             </div>
+            <button onClick={wipeAll} title="Wipe all workout data on this device (Drive is untouched)"
+              className="wl-icon-btn text-sm" style={{ color: "var(--wl-faint)" }} aria-label="Wipe all workout data">🗑</button>
           </div>
 
           <div className="flex-1 overflow-y-auto min-h-0 p-4">

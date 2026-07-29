@@ -50,6 +50,22 @@ export function getCustomExercises(): CustomExercise[] {
   return Array.isArray(v) ? v : [];
 }
 
+// Built-in starter exercises are HARD-CODED (from SEED_EXERCISES) — never stored,
+// never synced, so they can't duplicate across devices. Stable ids (name-derived)
+// keep references consistent. ONLY user-created exercises live in storage.
+const cexSlug = (name: string) => name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const BUILTIN_EXERCISES: CustomExercise[] = SEED_EXERCISES.map(s => ({
+  id: `cex_builtin_${cexSlug(s.name)}`, name: s.name, mode: s.mode, createdAt: 0,
+}));
+const BUILTIN_NAMES = new Set(BUILTIN_EXERCISES.map(e => e.name.toLowerCase()));
+export function isBuiltinExerciseId(id: string): boolean { return id.startsWith("cex_builtin_"); }
+/** Built-in starter list ∪ the user's own stored exercises (built-in wins on a name
+ *  clash). This is what the picker shows; storage/sync hold ONLY user exercises. */
+export function getAllExercises(): CustomExercise[] {
+  const user = getCustomExercises().filter(e => !BUILTIN_NAMES.has(e.name.trim().toLowerCase()));
+  return [...BUILTIN_EXERCISES, ...user];
+}
+
 /** Sensible default tracking mode for a catalog skill: static holds are timed,
  *  everything else is reps. Users can flip it per-exercise in the logger. */
 export function defaultModeForSkill(skillId?: string): TrackingMode {
@@ -63,8 +79,12 @@ function writeCustomExercises(list: CustomExercise[]): void { lsSet(CUSTOM_EX_KE
 
 /** Save (or update by case-insensitive name) a reusable custom exercise. */
 export function saveCustomExercise(name: string, mode: TrackingMode, muscleGroups?: MuscleGroup[]): CustomExercise {
+  const nm = name.trim();
+  // A built-in name resolves to the hard-coded exercise — never store a copy of it.
+  const builtin = BUILTIN_EXERCISES.find(e => e.name.toLowerCase() === nm.toLowerCase());
+  if (builtin) return builtin;
   const list = getCustomExercises();
-  const existing = list.find(e => e.name.toLowerCase() === name.trim().toLowerCase());
+  const existing = list.find(e => e.name.toLowerCase() === nm.toLowerCase());
   if (existing) {
     existing.mode = mode;
     if (muscleGroups?.length) existing.muscleGroups = muscleGroups;
@@ -80,20 +100,30 @@ export function deleteCustomExercise(id: string): void {
   rev++; writeCustomExercises(getCustomExercises().filter(e => e.id !== id));
 }
 
-// One-time seed of the starter exercise list. Guarded by a flag so deleted
-// seeds don't respawn. Skips any name the user already has.
+// Built-in exercises are hard-coded now (BUILTIN_EXERCISES) and never stored. Older
+// versions COPIED the starter list into the stored custom list with per-device random
+// ids, so a Drive sync (which merges by id) duplicated every exercise across devices.
+// This strips those stored copies back out — idempotent, so it self-heals if a stale
+// device re-syncs them in. Runs at startup in place of the old seeding.
 const SEED_FLAG = "lt_workout_seeded_v1";
-export function seedExercisesOnce(): void {
+export function pruneStoredBuiltins(): void {
   try {
-    if (localStorage.getItem(SEED_FLAG)) return;
-    const existing = getCustomExercises();
-    const have = new Set(existing.map(e => e.name.toLowerCase()));
-    const add: CustomExercise[] = SEED_EXERCISES
-      .filter(s => !have.has(s.name.toLowerCase()))
-      .map(s => ({ id: uid("cex"), name: s.name, mode: s.mode, createdAt: Date.now() }));
-    if (add.length) { rev++; writeCustomExercises([...existing, ...add]); }
-    localStorage.setItem(SEED_FLAG, "1");
+    const list = getCustomExercises();
+    const kept = list.filter(e => !BUILTIN_NAMES.has(e.name.trim().toLowerCase()));
+    if (kept.length !== list.length) { rev++; writeCustomExercises(kept); }
+    localStorage.removeItem(SEED_FLAG);   // the old one-time seed guard is now obsolete
   } catch { /* storage unavailable */ }
+}
+
+/** Wipe ALL workout data on THIS device — log, templates, user exercises, prefs, and
+ *  the old seed flag. Built-in exercises come back automatically (they're hard-coded).
+ *  Video blobs are cleared by the caller. Does NOT touch Drive. */
+export function wipeWorkoutData(): void {
+  rev++;
+  for (const k of [LOG_KEY, TEMPLATES_KEY, CUSTOM_EX_KEY, PREFS_KEY, SEED_FLAG]) {
+    try { localStorage.removeItem(k); } catch { /* */ }
+  }
+  emitChange();
 }
 export function setPrefs(patch: Partial<WorkoutPrefs>): void {
   rev++;
@@ -140,7 +170,7 @@ function refreshCache(): void {
   cachedWorkouts = getWorkouts();
   cachedTemplates = getTemplates();
   cachedPrefs = getPrefs();
-  cachedCustom = getCustomExercises();
+  cachedCustom = getAllExercises();   // built-ins ∪ user exercises (built-ins never stored)
   cachedRev = rev;
 }
 function getWorkoutsSnapshot(): Workout[] { refreshCache(); return cachedWorkouts!; }
