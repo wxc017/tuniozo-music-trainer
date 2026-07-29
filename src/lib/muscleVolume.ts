@@ -55,7 +55,7 @@ export interface ExMuscles { primary: MuscleKey[]; secondary: MuscleKey[] }
 const CURATED: Record<string, ExMuscles> = {
   "planche":                { primary: ["ant_delts", "pecs", "biceps"], secondary: ["serratus", "abs", "forearms"] },
   "planche pushup":         { primary: ["ant_delts", "pecs", "triceps"], secondary: ["biceps", "serratus", "abs"] },
-  "reverse planche":        { primary: ["rear_delts", "lats", "erectors"], secondary: ["glutes", "triceps"] },
+  "reverse planche":        { primary: ["rear_delts", "lats", "triceps"], secondary: ["erectors", "glutes"] },
   "victorian cross":        { primary: ["lats", "rear_delts", "biceps"], secondary: ["teres", "rhomboids"] },
   "front lever":            { primary: ["lats", "biceps"], secondary: ["teres", "rhomboids", "abs", "rear_delts"] },
   "front lever pullup":     { primary: ["lats", "biceps"], secondary: ["rhomboids", "abs", "teres"] },
@@ -79,7 +79,7 @@ const CURATED: Record<string, ExMuscles> = {
 // glutes/erectors appear only where the movement truly trains them.
 const KEYWORD_MUSCLES: [RegExp, MuscleKey[]][] = [
   // straight-arm skills (in case of naming variants)
-  [/reverse planche/, ["lats", "rear_delts", "erectors"]],
+  [/reverse planche/, ["lats", "rear_delts", "erectors", "triceps"]],
   [/planche pushup|planche push up/, ["ant_delts", "pecs", "triceps", "biceps"]],
   [/planche/, ["ant_delts", "pecs", "biceps", "serratus", "abs"]],
   [/front lever (pull|raise|row)/, ["lats", "biceps", "abs", "rhomboids"]],

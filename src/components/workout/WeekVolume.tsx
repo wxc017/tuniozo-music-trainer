@@ -20,7 +20,10 @@ export default function WeekVolume() {
   );
 
   const primary = groups.filter(g => g.primarySets > 0).sort((a, b) => b.primarySets - a.primarySets);
-  const secondary = groups.filter(g => g.secondarySets > 0).sort((a, b) => b.secondarySets - a.secondarySets);
+  // A group that's a prime mover anywhere this week shows ONLY under Primary — never
+  // also under Secondary (e.g. triceps, primary in reverse planche, shouldn't appear
+  // in both). Secondary lists groups that were *only ever* synergists this week.
+  const secondary = groups.filter(g => g.secondarySets > 0 && g.primarySets === 0).sort((a, b) => b.secondarySets - a.secondarySets);
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
