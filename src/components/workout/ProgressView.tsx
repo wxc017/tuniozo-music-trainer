@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ScatterChart, Scatter, ZAxis } from "recharts";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useWorkoutData, exerciseHistory, loggedExerciseIndex, exerciseClips, isCwAssisted } from "@/lib/workoutStore";
 import { resolveClipUrl } from "@/lib/workoutDrive";
+import Workout3D from "./Workout3D";
 
 // Progress — its own tab. Pick any exercise you've logged and see its load /
 // RPE / volume trend, plus a "form over time" strip of its clips.
@@ -55,23 +56,11 @@ export default function ProgressView() {
         </div>
         <div className="text-[11px] wl-muted mb-2">{active?.name} — {metricLabel}</div>
         {metric === "combo" ? (
-          // 3-dimensional view: X = date, Y = counterweight (or load), bubble SIZE =
-          // volume (reps / hold). One bubble per session — see assistance dropping
-          // toward 0 while the bubbles (volume) stay big or grow. For assisted work
-          // the Y axis is reversed, so "up + big" = the best sessions.
-          <ResponsiveContainer width="100%" height={260}>
-            <ScatterChart margin={{ top: 12, right: 12, bottom: 0, left: -20 }}>
-              <CartesianGrid stroke="#2a2c36" />
-              <XAxis dataKey="date" tick={{ fill: "#6b6e7a", fontSize: 10 }} stroke="#2a2c36" />
-              <YAxis dataKey="topWeight" reversed={assisted}
-                domain={assisted ? [0, "auto"] : ["auto", "auto"]}
-                tick={{ fill: "#6b6e7a", fontSize: 10 }} stroke="#2a2c36" />
-              <ZAxis dataKey="volume" range={[60, 520]} name="Volume" />
-              <Tooltip cursor={{ strokeDasharray: "3 3" }}
-                contentStyle={{ background: "#16171d", border: "1px solid #2a2c36", borderRadius: 10, fontSize: 12 }} labelStyle={{ color: ACCENT }} />
-              <Scatter data={data.filter(d => d.topWeight != null)} fill={ACCENT} fillOpacity={0.55} stroke={ACCENT} />
-            </ScatterChart>
-          </ResponsiveContainer>
+          // True 3D scatter: X = time, Y = counterweight (or load), Z = volume.
+          <Workout3D
+            points={data.map(d => ({ date: d.date, cw: d.topWeight, volume: d.volume }))}
+            cwLabel={assisted ? "Counterweight" : "Load"}
+          />
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={data} margin={{ top: 5, right: 8, bottom: 0, left: -20 }}>
