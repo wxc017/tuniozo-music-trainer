@@ -197,7 +197,6 @@ export function weeklyVolume(start: string, end: string): {
     a[kind]++;
     a.byEx.set(exName, (a.byEx.get(exName) ?? 0) + 1);
     acc.set(g, a);
-    if (kind === "primary") totalPrimary++; else totalSecondary++;
   };
 
   for (const w of getWorkouts()) {
@@ -222,6 +221,10 @@ export function weeklyVolume(start: string, end: string): {
         touched = true;
         for (const g of primaryGroups) bump(g, "primary", ex.name);
         for (const g of secondaryGroups) bump(g, "secondary", ex.name);
+        // Totals count each SET once — not once per muscle group it works. (A set
+        // of an exercise with 3 primary groups is 1 primary set, not 3.)
+        if (primaryGroups.length) totalPrimary++;
+        if (secondaryGroups.length) totalSecondary++;
       }
     }
     if (touched) workouts++;
