@@ -1485,7 +1485,16 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     for (const src of SHAPE_TONES[type]) {
       const tones = src.offs.map(o => d + o);
       for (let inv = 0; inv < tones.length; inv++) {
-        out.push({ label: INV_SHORT[inv], steps: voiceChord(rotateUp(tones, inv), v) });
+        const steps = voiceChord(rotateUp(tones, inv), v);
+        // Label by the ACTUAL bass (lowest voice), not the pre-drop close-position
+        // inversion. A drop / double-drop moves a different chord tone into the bass,
+        // so a chord the close voicing calls "root" can really be an inversion —
+        // "root position" means the ROOT is in the bass. Reduce the bass to its
+        // scale-step offset from the root and find which chord tone that is.
+        const bassOff = (((Math.min(...steps) - d) % 7) + 7) % 7;
+        const bi = src.offs.findIndex(o => (((o % 7) + 7) % 7) === bassOff);
+        const invIdx = bi >= 0 && bi < INV_SHORT.length ? bi : inv;
+        out.push({ label: INV_SHORT[invIdx], steps });
       }
     }
     return out;
