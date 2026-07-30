@@ -203,7 +203,11 @@ export default function ScoringMode({ lockedInstrument, onActiveEdo, solfege, on
               >
                 {INSTRUMENT_LABELS[inst]}
               </span>
-              {p.setup.barCount} bars · {p.setup.defaultTimeSig.num}/{p.setup.defaultTimeSig.den}
+              {/* A cycle-mode score has neither bars nor a metre — calling its
+                  cycles "2 bars · 4/4" describes something it deliberately isn't. */}
+              {p.cycleMode
+                ? `${p.setup.barCount} cycle${p.setup.barCount === 1 ? "" : "s"}`
+                : `${p.setup.barCount} bars · ${p.setup.defaultTimeSig.num}/${p.setup.defaultTimeSig.den}`}
               {inst === "harmonic" ? ` · ${p.setup.clef} clef` : ""}
               {" · "}
               {new Date(p.createdAt).toLocaleDateString()}
@@ -245,7 +249,10 @@ export default function ScoringMode({ lockedInstrument, onActiveEdo, solfege, on
   };
 
   return (
-    <div className="px-4 py-6 max-w-3xl mx-auto w-full">
+    // h-full + own scroll: the mode slot clips overflow, and this view had no
+    // scroll container, so a list longer than the viewport simply couldn't be
+    // reached.  Harmless if the ancestor is unbounded — h-full collapses to auto.
+    <div className="px-4 py-6 max-w-3xl mx-auto w-full h-full overflow-y-auto">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-base font-semibold text-white">{lockedInstrument ? MODE_HEADINGS[lockedInstrument] : "Scoring"}</h2>
         <div className="flex items-center gap-2">

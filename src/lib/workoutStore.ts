@@ -17,7 +17,7 @@ import {
   type TrackingMode, type CustomExercise, type MuscleGroup,
   DEFAULT_PREFS,
 } from "./workoutTypes";
-import { SKILLS } from "./calisthenicsData";
+import { SKILLS } from "./staticsData";
 import { SEED_EXERCISES } from "./workoutSeed";
 
 const LOG_KEY = "lt_workout_log";

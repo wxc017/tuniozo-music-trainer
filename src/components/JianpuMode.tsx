@@ -15,14 +15,14 @@ import {
   NoteData, NoteEntryProject, Duration, MeasureTimeSig,
   DURATION_ORDER, DURATION_NAMES, DURATION_SLOTS,
   measureSlots, noteSlots,
-  loadProjects, saveProject,
+  loadProjects, saveProject, generateJianpuMusicXML,
 } from "@/lib/noteEntryData";
 import {
   jianpuToPitch, jianpuGlyphFor, edoNoteLabel, regularSolfaSyllable, minorLowersDegree,
   NOTATION_SYSTEM_LABELS, type NotationSystem,
 } from "@/lib/jianpu";
 import { MOVABLE_DO } from "@/lib/notationLabels";
-import { exportToPdf } from "@/lib/exportPdf";
+import { exportToPdf, downloadMusicXml } from "@/lib/exportPdf";
 import ClefReference from "./ClefReference";
 
 // ── Layout constants ─────────────────────────────────────────────────────────
@@ -73,6 +73,17 @@ const TS_PAD       = 22;   // extra bottom gap on a row carrying a time-signatur
 const CHORD_DY     = 24;   // vertical gap between stacked chord numbers
 const CHORD_PAD    = 24;   // extra top gap on a row that carries the italic chord lane
 const CHORD_LANE_DY = 44;  // chord-lane baseline above the bar top (above the "+ note" line)
+// The reference line every bar width is scaled against: four 4/4 bars = 128 slots.
+// A row fills to this budget, so it holds eight 2/4 bars, four 4/4 bars, or two
+// 15/8 bars — whatever actually fits, rather than a fixed number of bars.
+const REF_BARS     = 4;
+const GROUP_PAD    = 40;   // extra top gap on a row carrying grouping brackets
+                           // (the end ticks now extend ABOVE the lane as well)
+// The bracket needs to clear everything that already lives above the numeral:
+// octave-up dots stack from ~font+2 above the baseline (barTop is only 18 above
+// it) and an accent sits above those again, so a short lane collided with both.
+const GROUP_LANE_DY = 30;  // grouping bracket sits this far above the bar top
+const GROUP_TICK   = 5;    // length of the bracket's downward end ticks
 const MIN_VOICES   = 2;    // always at least two voices (EOP-style)
 const MAX_VOICES   = 6;
 const WHITE        = "#ffffff";  // pure white so PDF export recolours → black
@@ -144,17 +155,15 @@ function restShape(dur: Duration, cx: number, cy: number, key: string): React.Re
     return els;
   }
   if (dur === "q") {
-    // Quarter rest (𝄽).  The zig-zag descends from the UPPER RIGHT, alternating
-    // down-left / down-right, and finishes with a crescent tail that bulges right
-    // before tipping back left.  Split into two sub-paths so the straight run
-    // keeps crisp mitred corners (butt caps — round ones bloat the tips into a
-    // blob at this size) while only the tail carries a rounded end.
-    els.push(<path key={`${key}-q`} fill="none" stroke={WHITE} strokeWidth={2.2}
-      strokeLinejoin="miter" strokeLinecap="butt"
-      d={`M ${cx + 3.2} ${cy - 9.5} L ${cx - 2.4} ${cy - 4.6} L ${cx + 2.8} ${cy - 0.6} L ${cx - 3.2} ${cy + 4.4}`} />);
-    els.push(<path key={`${key}-qt`} fill="none" stroke={WHITE} strokeWidth={1.9}
-      strokeLinecap="round"
-      d={`M ${cx - 3.2} ${cy + 4.4} C ${cx + 1.6} ${cy + 3.4} ${cx + 3.6} ${cy + 6.8} ${cx + 0.8} ${cy + 9.8}`} />);
+    // Standard quarter rest (𝄽): three angular zig-zag strokes down, then a
+    // small curled tail at the bottom — reads as a proper rest, not a squiggle.
+    // This is the original f7ea1ab drawing.  It was later "improved" — zig-zag
+    // reversed to start upper-RIGHT, stroke thinned 2.6 → 2.2, split into two
+    // paths with butt caps — and every one of those made it worse.  Leave it be.
+    els.push(<path key={`${key}-q`} fill="none" stroke={WHITE} strokeWidth={2.6}
+      strokeLinejoin="miter" strokeLinecap="round"
+      d={`M ${cx - 2.5} ${cy - 9} L ${cx + 3} ${cy - 4} L ${cx - 2.5} ${cy - 1} L ${cx + 3.5} ${cy + 3.5} `
+        + `C ${cx + 0.5} ${cy + 2.5} ${cx - 2} ${cy + 5} ${cx + 1.5} ${cy + 9}`} />);
     return els;
   }
   // Eighth / 16th / 32nd — a slanted stroke with 1 / 2 / 3 flag dots.
@@ -258,6 +267,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     ro.observe(el);
     return () => ro.disconnect();
   }, [project]);
+
 
   const persist = useCallback((nextNotes: NoteData[], nextProject?: NoteEntryProject) => {
     const base = nextProject ?? project;
@@ -364,12 +374,40 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (per) for (let k = measure, first = groupStartOf(measure); k >= first; k--) if (per[k]) return per[k];
     return setup?.defaultTimeSig ?? { num: 4, den: 4 };
   }, [setup, groupStartOf]);
+  // ── Cycle mode ────────────────────────────────────────────────────────────
+  // Time signatures off entirely: the grid is a constant eighth-note stream and a
+  // "bar" is a CYCLE whose length is wherever the user ended it (Enter).  A cycle
+  // with no stored length is OPEN — it grows to hold whatever is entered, so you
+  // never run out of bar and never have to declare a metre first.
+  const cycleMode = !!project?.cycleMode;
+  const CYCLE_MIN_SLOTS = EIGHTH_SLOTS;   // an empty cycle still shows one cell to type into
+  // End of the last note in a bar (0 when empty) — what an open cycle grows to hold.
+  const barFillOf = useCallback((measure: number): number => {
+    let end = 0;
+    for (const n of notes) if (n.measure === measure) end = Math.max(end, n.startSlot + noteSlots(n));
+    return end;
+  }, [notes]);
   const totalSlotsOf = useCallback((measure: number): number => {
     if (!setup) return 32;
+    if (cycleMode) {
+      const closed = setup.perBarCycleSlots?.[measure];
+      // A closed cycle keeps its length even if a note overruns it (the overrun
+      // is visible rather than silently restretching the bar you just fixed).
+      if (closed != null) return Math.max(EIGHTH_SLOTS, closed);
+      // Open: EXACTLY the music in it.  This used to reserve a spare cell to type
+      // into, which made every open cycle read one beat longer than it sounded —
+      // a lone quarter (2 eighths) showed as 3.  The spare isn't needed: an open
+      // cycle's cursor doesn't wrap, so entry extends the bar on its own.
+      return Math.max(CYCLE_MIN_SLOTS, barFillOf(measure));
+    }
     return measureSlots(effectiveTs(measure));
-  }, [setup, effectiveTs]);
+  }, [setup, effectiveTs, cycleMode, barFillOf, CYCLE_MIN_SLOTS]);
 
-  MPR = 4;   // four measures per line; break early with the per-measure cut button
+  // The line is sized by SLOTS, not by a bar count: a row holds as many bars as
+  // fit the reference width, so eight 2/4 bars fill a line exactly as four 4/4
+  // bars do (both are 128 slots).  MPR is now only a sanity ceiling for very
+  // short bars, and the fallback used before the layout runs.
+  MPR = 16;
 
   // Row + size layout.  A bar opens a new row when it starts a section, carries a
   // manual break, or the current row already holds MPR bars.  All bars share one
@@ -383,12 +421,28 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const braceFor = (s: number) => project?.perSectionPianoBrace?.[s] ?? !!project?.pianoBrace;
     const breakAt   = (m: number) => !!project?.setup.perBarBreakBefore?.[m];
     const sectionAt = (m: number) => !!sectionLabels?.[m]?.trim();
-    // Rows: break on a section label, a manual cut, or a full row (MPR).
+    // Rows: break on a section label, a manual cut, a full row (MPR), or when the
+    // row's SLOTS would overrun the reference line.  MPR alone isn't enough — bar
+    // width is slot-proportional (below), so four 15/8 bars come to 240 slots
+    // against a 128-slot reference line and the row runs ~1.9x past the container.
+    // Budgeting by slots keeps 4/4 at four bars a row while letting a long meter
+    // take as many as actually fit (15/8 → two).  Short meters still stop short of
+    // the full width — MPR remains the cap, so a 2/4 line ends halfway as intended.
+    const ROW_SLOT_BUDGET = REF_BARS * measureSlots({ num: 4, den: 4 });
     const rowsArr: number[][] = [];
+    let rowSlots = 0;
     for (let m = 0; m < barCount; m++) {
       const last = rowsArr[rowsArr.length - 1];
-      if (m === 0 || breakAt(m) || sectionAt(m) || !last || last.length >= MPR) rowsArr.push([m]);
-      else last.push(m);
+      const slots = totalSlotsOf(m);
+      // A bar wider than a whole line still gets its own row rather than none.
+      const overruns = !!last && last.length > 0 && rowSlots + slots > ROW_SLOT_BUDGET;
+      if (m === 0 || breakAt(m) || sectionAt(m) || !last || last.length >= MPR || overruns) {
+        rowsArr.push([m]);
+        rowSlots = slots;
+      } else {
+        last.push(m);
+        rowSlots += slots;
+      }
     }
     if (!rowsArr.length) rowsArr.push([0]);
     // Section start of each bar — a group starts at bar 0, a section label, or a
@@ -407,13 +461,13 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     // Uniform pixels-per-slot across the whole score: every bar's width is just
     // its slot count × a constant, so a 2/4 bar is exactly half a 4/4 bar and any
     // two same-meter bars line up.  The constant is pinned to a FIXED reference —
-    // a full line of MPR 4/4 bars fills the container — NOT to whatever the
-    // widest row happens to hold.  Stretching to the actual content made meter
-    // invisible: a line of four 2/4 bars was blown up to fill the same width as a
-    // line of four 4/4 bars, so a short bar looked exactly like a long one.  Now
-    // a 2/4 line simply stops halfway across, which is the point.
+    // REF_BARS 4/4 bars fill the container — NOT to whatever the widest row
+    // happens to hold.  Stretching to the actual content made meter invisible: a
+    // line of four 2/4 bars was blown up to fill the same width as a line of four
+    // 4/4 bars, so a short bar looked exactly like a long one.  Short bars keep
+    // their true width; the ROW just fits more of them (eight 2/4 to a line).
     const cell = system === "solfa" ? 34 : CELL_W;
-    const REF_ROW_SLOTS = MPR * measureSlots({ num: 4, den: 4 });
+    const REF_ROW_SLOTS = REF_BARS * measureSlots({ num: 4, den: 4 });
     const availW = Math.max(0, containerW - LEFT_PAD * 2 - 32);
     const pxPerSlot = Math.max(cell / EIGHTH_SLOTS, availW > 0 ? availW / REF_ROW_SLOTS : 0);
     // Grid cell PER GROUP, never coarser than an EIGHTH: the finest of the 8th
@@ -454,7 +508,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     // and accumulate their own widths.  Canvas width = the widest row.
     const rowW = rowsArr.map(row => row.reduce((s, m) => s + wArr[m], 0));
     const maxRowW = Math.max(...rowW);
-    const hasTsLabel = (m: number) => m === startOf[m] || !!project?.setup.perBarTimeSig?.[m];
+    // Cycle mode prints a cycle length under every bar instead of a metre, so the
+    // label lane is reserved unconditionally there.
+    const hasTsLabel = (m: number) => cycleMode || m === startOf[m] || !!project?.setup.perBarTimeSig?.[m];
     const rowOfArr: number[] = [], colOfArr: number[] = [], rowTop: number[] = [], xArr: number[] = [];
     let y = HEADER_H;
     const rowCut: number[] = [];   // clean page-break y at the top of each row's block
@@ -465,6 +521,9 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       if (sectionAt(row[0]) || breakAt(row[0])) y += SECTION_PAD;
       // Reserve a line above the bar for the italic chord lane when this row uses it.
       if (row.some(m => Object.keys(project?.setup.perChord?.[m] ?? {}).length > 0)) y += CHORD_PAD;
+      // …and a lane for cycle-mode grouping brackets when any bar in the row has them.
+      if (row.some(m => notes.some(n => n.measure === m && n.groupEnd)
+                        || (project?.setup.perBarGroupEnds?.[m]?.length ?? 0) > 0)) y += GROUP_PAD;
       rowTop[r] = y;
       let x = LEFT_PAD;   // far-left
       row.forEach((m, c) => { rowOfArr[m] = r; colOfArr[m] = c; xArr[m] = x; x += wArr[m]; });
@@ -560,6 +619,12 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   const advanceCursor = useCallback((voice: number, measure: number, nextSlot: number) => {
     if (!project) return;
     const total = totalSlotsOf(measure);
+    // An OPEN cycle never wraps — it grows instead, so entry just keeps flowing
+    // and only Enter decides where the cycle ends.  A CLOSED one wraps as a bar does.
+    if (cycleMode && project.setup.perBarCycleSlots?.[measure] == null) {
+      setCursor({ voice, measure, slot: Math.max(0, nextSlot) });
+      return;
+    }
     if (nextSlot >= total) {
       const nm = Math.min(project.setup.barCount - 1, measure + 1);
       // Clamp so a long entry duration in a short bar can't push the slot
@@ -568,7 +633,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     } else {
       setCursor({ voice, measure, slot: Math.max(0, nextSlot) });
     }
-  }, [project, totalSlotsOf, gridSnap]);
+  }, [project, totalSlotsOf, gridSnap, cycleMode]);
 
   // ── Note construction ─────────────────────────────────────────────────────
   const makeNote = useCallback((degree: number, isRest: boolean, dur: Duration, dot: boolean,
@@ -636,6 +701,73 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     }
     placeNote(degree, isRest);
   }, [cursor, selectedIds, notes, commit, placeNote, project?.solfaStyle, movableDo]);
+
+  // ── Range select / copy / paste ───────────────────────────────────────────
+  // Click a note (parks the cursor), then Shift+click another: everything from
+  // the cursor to that note is selected.  Works in sol-fa too — plain clicking
+  // still only moves the cursor there, so the cursor-driven model is intact and
+  // Shift is the only thing that ever selects.
+  const posKey = (m: number, s: number) => m * 100000 + s;
+  const selectRangeTo = useCallback((n: NoteData) => {
+    const a = posKey(cursor.measure, cursor.slot), b = posKey(n.measure, n.startSlot);
+    const lo = Math.min(a, b), hi = Math.max(a, b);
+    // Span the voices between the two ends, so a same-line drag picks one line
+    // and a cross-line one picks both hands, without needing a separate gesture.
+    const vA = cursor.voice, vB = n.voice ?? 0;
+    const vLo = Math.min(vA, vB), vHi = Math.max(vA, vB);
+    setSelectedIds(notes.filter(x => {
+      const k = posKey(x.measure, x.startSlot), v = x.voice ?? 0;
+      return k >= lo && k <= hi && v >= vLo && v <= vHi;
+    }).map(x => x.id));
+  }, [cursor, notes]);
+
+  const clipRef = useRef<NoteData[]>([]);
+  const copySelection = useCallback(() => {
+    if (!selectedIds.length) return;
+    clipRef.current = notes.filter(n => selectedIds.includes(n.id))
+      .sort((a, b) => a.measure - b.measure || a.startSlot - b.startSlot || (a.voice ?? 0) - (b.voice ?? 0))
+      .map(n => ({ ...n }));
+  }, [notes, selectedIds]);
+
+  // Paste at the cursor, keeping every note's offset from the first copied one.
+  // Slots FLOW across bars rather than being clamped, so a passage copied out of
+  // a 15-beat cycle still lands correctly in bars of a different length.
+  const pasteClipboard = useCallback(() => {
+    if (!project || !clipRef.current.length) return;
+    const clip = clipRef.current, base = clip[0];
+    const out: NoteData[] = [];
+    let maxM = project.setup.barCount - 1;
+    for (const n of clip) {
+      let m = cursor.measure + (n.measure - base.measure);
+      let s = cursor.slot + (n.startSlot - base.startSlot);
+      // Flow past the end of a bar instead of clamping, so a passage copied from
+      // one bar length lands correctly in another.  Bounded purely as a runaway
+      // guard — running off the END of the sheet is handled by growing it below.
+      for (let guard = 0; s >= totalSlotsOf(m) && guard < 512; guard++) { s -= totalSlotsOf(m); m++; }
+      if (m < 0 || s < 0) continue;
+      maxM = Math.max(maxM, m);
+      out.push({ ...n, id: crypto.randomUUID(), measure: m, startSlot: s,
+                 voice: Math.max(0, cursor.voice + ((n.voice ?? 0) - (base.voice ?? 0))) });
+    }
+    if (!out.length) return;
+    // Pasting several bars' worth into one bar GROWS the sheet to hold it rather
+    // than dropping the overflow — silently losing half a copied phrase is worse
+    // than adding the bars it needs.  64 is the editor's existing hard ceiling.
+    const barCount = Math.min(64, Math.max(project.setup.barCount, maxM + 1));
+    const kept = out.filter(n => n.measure < barCount);
+    if (!kept.length) return;
+    // Whatever already sat on a pasted (voice, measure, slot) is replaced — else
+    // the old note and the pasted one would stack into an accidental chord.
+    const key = (n: NoteData) => `${n.voice ?? 0}:${n.measure}:${n.startSlot}`;
+    const taken = new Set(kept.map(key));
+    const next = [...notes.filter(n => !taken.has(key(n))), ...kept]
+      .sort((a, b) => a.measure - b.measure || (a.voice ?? 0) - (b.voice ?? 0) || a.startSlot - b.startSlot);
+    // One write: notes and the grown bar count together, or the second save would
+    // rebuild from a stale project and undo the first.
+    const u: NoteEntryProject = { ...project, notes: next, setup: { ...project.setup, barCount } };
+    setNotes(next); saveProject(u); setProject(u);
+    setSelectedIds(kept.map(n => n.id));
+  }, [project, cursor, notes, totalSlotsOf]);
 
   const deleteSelectedOrCursor = useCallback(() => {
     if (selectedIds.length) {
@@ -773,6 +905,14 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     perBarTimeSig[m] = { num, den };
     updateSetup({ perBarTimeSig });
   }, [project, updateSetup]);
+  // Cycle mode is a per-project switch.  Turning it OFF leaves the stored cycle
+  // lengths alone so the time signatures (and the cycles) both survive a toggle
+  // back and forth — neither view destroys the other's data.
+  const toggleCycleMode = useCallback(() => {
+    if (!project) return;
+    const u = { ...project, cycleMode: !project.cycleMode, notes };
+    saveProject(u); setProject(u);
+  }, [project, notes]);
   const commitBars = useCallback(() => {
     const n = parseInt(barsText, 10);
     updateSetup({ barCount: Math.max(1, Math.min(64, Number.isNaN(n) ? 8 : n)) });
@@ -811,6 +951,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
         perBarSection: shift(project.setup.perBarSection),
         perBarBreakBefore: shift(project.setup.perBarBreakBefore),
         perBarTimeSig: shift(project.setup.perBarTimeSig),
+        perBarCycleSlots: shift(project.setup.perBarCycleSlots),
         perBarVolta: shift(project.setup.perBarVolta),
       },
     };
@@ -849,6 +990,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
         perBarSection: shift(project.setup.perBarSection),
         perBarBreakBefore: shift(project.setup.perBarBreakBefore),
         perBarTimeSig: shift(project.setup.perBarTimeSig),
+        perBarCycleSlots: shift(project.setup.perBarCycleSlots),
         perBarVolta: shift(project.setup.perBarVolta),
       },
     };
@@ -1061,6 +1203,78 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     commit(notes.map(n => ids.includes(n.id) && !n.isRest ? { ...n, staccato: anyOff || undefined } : n));
   }, [targetIds, notes, commit]);
 
+  // Toggle accent (a ">" above the number) on the target note(s).  Mirrors
+  // toggleStaccato — the two are independent, so a note can carry both.
+  const toggleAccent = useCallback(() => {
+    const ids = targetIds();
+    if (!ids.length) return;
+    const anyOff = notes.some(n => ids.includes(n.id) && !n.isRest && !n.accent);
+    commit(notes.map(n => ids.includes(n.id) && !n.isRest ? { ...n, accent: anyOff || undefined } : n));
+  }, [targetIds, notes, commit]);
+
+  // Cycle mode: close the current cycle AT THE CURSOR and open the next one.
+  // Length = everything before the cursor, so you type until the cycle sounds
+  // finished and press Enter — no metre declared up front.  On the last cycle a
+  // new one is appended so Enter always has somewhere to go.
+  const endCycle = useCallback(() => {
+    if (!project || !cycleMode) return;
+    const { voice, measure, slot } = cursor;
+    // Cursor on the downbeat means "close where the notes actually stop"; that's
+    // what you get pressing Enter straight after entering the last note of a cycle.
+    const len = Math.max(EIGHTH_SLOTS, slot > 0 ? slot : barFillOf(measure));
+    // ONE write.  Setting the length and appending the next cycle separately meant
+    // the append rebuilt the project from a stale closure and threw the length
+    // away — ending the last cycle looked like it did nothing.  Appending at the
+    // END needs no per-bar re-indexing (no existing bar's index moves), so a plain
+    // barCount bump is enough.
+    const needBar = measure + 1 >= project.setup.barCount;
+    const u: NoteEntryProject = {
+      ...project,
+      notes,
+      setup: {
+        ...project.setup,
+        perBarCycleSlots: { ...(project.setup.perBarCycleSlots ?? {}), [measure]: len },
+        barCount: project.setup.barCount + (needBar ? 1 : 0),
+      },
+    };
+    saveProject(u); setProject(u);
+    setCursor({ voice, measure: measure + 1, slot: 0 });
+  }, [project, cycleMode, cursor, barFillOf, notes]);
+
+  // Shorten / lengthen the cursor's cycle by one eighth.  Reads the CURRENT length
+  // (open cycles included) so the first nudge starts from what's on screen.
+  const nudgeCycle = useCallback((dir: 1 | -1) => {
+    if (!project || !cycleMode) return;
+    // The selected note's cycle when there is a selection, else the cursor's —
+    // "the cycle I'm in" is whichever one you're actually pointing at.  Only that
+    // one key is written; every other cycle keeps its own length.
+    const sel = selectedIds.length ? notes.find(n => selectedIds.includes(n.id)) : undefined;
+    const m = sel ? sel.measure : cursor.measure;
+    const next = Math.max(EIGHTH_SLOTS, totalSlotsOf(m) + dir * EIGHTH_SLOTS);
+    updateSetup({ perBarCycleSlots: { ...(project.setup.perBarCycleSlots ?? {}), [m]: next } });
+  }, [project, cycleMode, cursor.measure, selectedIds, notes, totalSlotsOf, updateSetup]);
+
+  // Mark/unmark a grouping boundary.  On a note it rides the note (so the bracket
+  // follows it through inserts/deletes); on an EMPTY slot it's stored per bar by
+  // position, because laying out 5+5+3+2 before writing any notes is the normal
+  // order of work and used to be impossible.
+  const toggleGroupEnd = useCallback(() => {
+    const ids = targetIds();
+    if (ids.length) {
+      const anyOff = notes.some(n => ids.includes(n.id) && !n.isRest && !n.groupEnd);
+      commit(notes.map(n => ids.includes(n.id) && !n.isRest ? { ...n, groupEnd: anyOff || undefined } : n));
+      return;
+    }
+    if (!project) return;
+    const { measure, slot } = cursor;
+    if (slot <= 0) return;                       // a boundary at 0 isn't a boundary
+    const cur = project.setup.perBarGroupEnds?.[measure] ?? [];
+    const next = cur.includes(slot) ? cur.filter(s => s !== slot) : [...cur, slot].sort((a, b) => a - b);
+    const map = { ...(project.setup.perBarGroupEnds ?? {}) };
+    if (next.length) map[measure] = next; else delete map[measure];
+    updateSetup({ perBarGroupEnds: map });
+  }, [targetIds, notes, commit, project, cursor, updateSetup]);
+
   const toggleDot = useCallback(() => {
     // Toggle relative to the TARGET's own state when there is one, not to the
     // entry default — otherwise pressing `t` on a note whose dot already matches
@@ -1093,6 +1307,8 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
 
     // Undo (Ctrl/⌘+Z) — handled before the modifier guard below.
     if ((e.ctrlKey || e.metaKey) && (k === "z" || k === "Z")) { e.preventDefault(); undo(); return; }
+    if ((e.ctrlKey || e.metaKey) && (k === "c" || k === "C")) { e.preventDefault(); copySelection(); return; }
+    if ((e.ctrlKey || e.metaKey) && (k === "v" || k === "V")) { e.preventDefault(); pasteClipboard(); return; }
 
     // ── Arrows (handled before the modifier guard so Ctrl/Shift work) ──
     // ←→  Ctrl/⌘ + arrow MOVES the selected note; plain/Shift just move the
@@ -1134,7 +1350,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
 
     // Quick-access modifiers on the letter row directly below the numbers:
     //   q/w = octave −/+   e/r = duration shorter/longer   t = dot
-    //   u = underline (eighth)   o = staccato   . / , = alteration up / down
+    //   u = underline (eighth)   o = staccato   a = accent   . / , = alteration up / down
     //   [ / ] = snap grid coarser / finer   - = held "–" continuation
     // Each edits the note under the cursor (and sets the entry default) — no
     // modifier needed.  `,`/`.` accept their shifted forms `<`/`>` too, so the
@@ -1149,6 +1365,19 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (key === "t")                               { e.preventDefault(); toggleDot(); return; }
     if (key === "u")                               { e.preventDefault(); toggleUnderline(); return; }  // eighth-note underline
     if (key === "o")                               { e.preventDefault(); toggleStaccato(); return; }   // staccato dot
+    if (key === "a")                               { e.preventDefault(); toggleAccent(); return; }     // accent ">" (marks odd-meter groupings)
+    // Enter ends a cycle (cycle mode only — there's nothing to end otherwise).
+    if (key === "Enter" && cycleMode)               { e.preventDefault(); endCycle(); return; }
+    // ' marks a grouping bracket's last note.  NOT gated on cycle mode: showing
+    // the grouping of an odd metre (15/8 as 4+4+4+3) is exactly as useful in a
+    // time-signatured bar, which is where the need came up first.
+    if (key === "'")                                { e.preventDefault(); toggleGroupEnd(); return; }
+    // h / j shorten / lengthen THIS cycle by one eighth.  Deliberately nowhere near
+    // [ ] — those change the snap grid, which is global, so a mis-hit silently
+    // re-cells every bar in the score and reads as "it changed all the cycles".
+    // Setting a length also closes an open cycle: you've now stated where it ends.
+    if (key === "h" && cycleMode)                   { e.preventDefault(); nudgeCycle(-1); return; }
+    if (key === "j" && cycleMode)                   { e.preventDefault(); nudgeCycle(1); return; }
     if (key === "." || key === ">")                { e.preventDefault(); alter(1); return; }   // alteration up
     if (key === "," || key === "<")                { e.preventDefault(); alter(-1); return; }  // alteration down
     if (key === "p")                               { e.preventDefault(); togglePianoBrace(); return; }
@@ -1198,7 +1427,8 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     if (key === "Escape")        { e.preventDefault(); if (showClefRef) setShowClefRef(false); else setSelectedIds([]); return; }
   }, [project, selectedIds, cursor, notes, showClefRef, inputDigit, moveSelected, moveCursorH, extendSelect, navVoice, addVoiceAbove, addVoiceBelow,
       removeVoiceAt, toggleBreakBefore, addMeasure, deleteMeasure, undo, placeHeld,
-      stepDuration, stepGrid, toggleDot, toggleUnderline, toggleStaccato, alter, deleteSelectedOrCursor, bumpOctave, togglePianoBrace, toggleUnderlines]);
+      stepDuration, stepGrid, toggleDot, toggleUnderline, toggleStaccato, toggleAccent, alter, deleteSelectedOrCursor, bumpOctave, togglePianoBrace, toggleUnderlines,
+      cycleMode, endCycle, toggleGroupEnd, nudgeCycle, copySelection, pasteClipboard]);
 
   const handleKeyRef = useRef(handleKey);
   handleKeyRef.current = handleKey;
@@ -1276,6 +1506,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
           underlines: glyph.underlines, sideDashes, sideTick, dot: glyph.dot, duration: n.duration,
           measure: first.measure, startSlot: first.startSlot, total, cellSlots: cellS, font,
           decorate: i === 0, separate: !!first.separateUnderline, staccato: !!n.staccato,
+          accent: !!n.accent,
         });
       });
     }
@@ -1329,6 +1560,16 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     await exportToPdf([{ title: project.title, element: scoreRef.current }],
       project.title.replace(/\s+/g, "_"), { showTitles: true, splitSections: false, orientation: "portrait", cutYs });
   }, [project, layout]);
+
+  // MusicXML export.  Sol-fa had only a PDF button, so the numbered/sol-fa data
+  // could never leave the app in a form another notation program could open.
+  // Cycle-mode scores carry their derived (and, when grouped, additive Balkan)
+  // time signatures through `generateJianpuMusicXML`.
+  const handleExportXml = useCallback(() => {
+    if (!project) return;
+    const name = (project.title || "score").replace(/\s+/g, "_");
+    downloadMusicXml(generateJianpuMusicXML({ ...project, notes }), name);
+  }, [project, notes]);
 
   // ── Pointer interaction (click / drag-select) ───────────────────────────────
   const localXY = (e: { clientX: number; clientY: number }) => {
@@ -1395,13 +1636,22 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     const { x, y } = localXY(e);
     const moved = Math.abs(x - s.x) + Math.abs(y - s.y);
     if (noSelect) {
-      // Sol-fa: a click only ever parks the cursor — on the note's head if you
-      // hit one, otherwise on the cell you clicked.  Nothing is ever selected.
+      // Sol-fa: a plain click only ever parks the cursor — on the note's head if
+      // you hit one, otherwise on the cell you clicked.  SHIFT+click is the one
+      // exception: it selects from the cursor to the note you hit, which is what
+      // makes copy/paste reachable without giving up the cursor-driven model.
       const hit = noteAt(x, y);
       const n = hit ? notes.find(nn => nn.id === hit) : undefined;
+      if (n && e.shiftKey) { selectRangeTo(n); return; }
+      setSelectedIds([]);
       if (n) setCursor({ voice: n.voice ?? 0, measure: n.measure, slot: n.startSlot });
       else positionCursorAt(x, y);
       return;
+    }
+    if (moved <= 5 && e.shiftKey) {
+      const hit = noteAt(x, y);
+      const n = hit ? notes.find(nn => nn.id === hit) : undefined;
+      if (n) { selectRangeTo(n); return; }
     }
     if (moved > 5) {
       const x1 = Math.min(s.x, x), x2 = Math.max(s.x, x);
@@ -1472,6 +1722,16 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       const above = it.octave > 0 ? it.y - it.font - 2 - (Math.abs(it.octave) - 1) * 6 - 6 : it.y - it.font - 6;
       els.push(<circle key={`${it.id}-st`} cx={it.x} cy={above} r={1.8} fill={WHITE} />);
     }
+    // Accent — a ">" above the number, stacked clear of the octave dots AND of a
+    // staccato dot so a note can carry both.  Drawn as two strokes rather than a
+    // glyph so it exports to PDF like the rest of the marks.
+    if (it.accent) {
+      const octTop = it.octave > 0 ? it.y - it.font - 2 - (Math.abs(it.octave) - 1) * 6 - 6 : it.y - it.font - 6;
+      const cy = (it.staccato ? octTop - 6 : octTop) - 1;
+      const hw = 3.4, vh = 2.6;
+      els.push(<polyline key={`${it.id}-ac`} points={`${it.x - hw},${cy - vh} ${it.x + hw},${cy} ${it.x - hw},${cy + vh}`}
+        fill="none" stroke={WHITE} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />);
+    }
     if (it.decorate) {
       // Only `separate` notes draw their own underline; a contiguous run of 8ths
       // is joined into one continuous beam instead (see `beams` above).
@@ -1514,11 +1774,73 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   const svgSystems: React.ReactNode[] = [];
   const barTop = (m: number) => baselineY(0, m) - BAR_TOP_PAD;
   const barBot = (m: number) => baselineY(vcOf(m) - 1, m) + BAR_BOT_PAD;
+  // Everything that prints ABOVE a bar (title, mid-bar notes, chord lane, section
+  // heading) has to clear the grouping brackets when the bar has any, or they
+  // land on top of each other.  One lift, applied to every lane.
+  const groupLift = (m: number) =>
+    (notes.some(n => n.measure === m && n.groupEnd) || (project.setup.perBarGroupEnds?.[m]?.length ?? 0) > 0) ? GROUP_PAD : 0;
   for (let m = 0; m < project.setup.barCount; m++) {
     const left = measureLeftX(m);
     const right = left + measureWidth(m);
     svgSystems.push(<line key={`bar-${m}`} x1={right} x2={right}
       y1={barTop(m)} y2={barBot(m)} stroke={WHITE} strokeWidth={1.2} />);
+    // ── Cycle-mode grouping brackets ────────────────────────────────────────
+    // Spans are DERIVED from the `groupEnd` marks rather than stored: walk the
+    // bar's onsets in order and close a bracket on every marked note, so adding
+    // or removing a note keeps each bracket around the notes it was drawn around.
+    // A trailing run with no mark gets no bracket — an unfinished group is left
+    // unbracketed rather than guessed at.
+    {
+      const totalB = totalSlotsOf(m);
+      const cellB = cellSlotsOf(m);
+      // Everything reduces to a set of BOUNDARY slots, so the same code draws a
+      // grouping whether it hangs off notes or was laid out on an empty bar.
+      // Notes across ALL voices — grouping is rhythmic and prints once above the
+      // system, so restricting it to voice 0 would lose marks made elsewhere.
+      const inBar = notes.filter(n => n.measure === m);
+      // A flagged note ends its group where the note STOPS, not one cell past its
+      // head: a quarter sits in one column but occupies two eighths.
+      const spanAt = (s: number) => Math.max(cellB, ...inBar.filter(n => n.startSlot === s && !n.isRest).map(n => noteSlots(n)));
+      const bounds = [...new Set([
+        ...inBar.filter(n => n.groupEnd).map(n => n.startSlot + spanAt(n.startSlot)),
+        ...(project.setup.perBarGroupEnds?.[m] ?? []),
+      ])].filter(b => b > 0 && b <= totalB).sort((a, b) => a - b);
+      if (bounds.length) {
+        // Close the final group at the bar end so a fully-marked bar reads as a
+        // complete additive metre (5+5+3+2) rather than losing its last group.
+        if (bounds[bounds.length - 1] < totalB) bounds.push(totalB);
+        const gy = barTop(m) - GROUP_LANE_DY;
+        let from = 0;
+        bounds.forEach((to, gi) => {
+          const x1 = slotToX(m, from, totalB) + 2;
+          const x2 = slotToX(m, to, totalB) - 2;
+          // Tuplet-style bracket: a solid vertical tick at each end, a DOTTED run
+          // along the top broken in the middle, and the count sitting inline in
+          // that break rather than floating above the line.
+          const label = String(Math.round((to - from) / EIGHTH_SLOTS));
+          const cx = (x1 + x2) / 2;
+          const gap = 3 + label.length * 3.2;   // half-width of the hole for the numeral
+          // Mirrored about the dotted line — the stroke passes through it rather
+          // than stopping dead where the two meet.
+          const tick = (x: number, k: string) =>
+            <line key={`grpt-${m}-${gi}-${k}`} x1={x} y1={gy - GROUP_TICK} x2={x} y2={gy + GROUP_TICK}
+              stroke={WHITE} strokeWidth={1.1} strokeLinecap="round" />;
+          const run = (a: number, b: number, k: string) => b - a > 1 ? (
+            <line key={`grpr-${m}-${gi}-${k}`} x1={a} y1={gy} x2={b} y2={gy}
+              stroke={WHITE} strokeWidth={1.1} strokeDasharray="2 3" strokeLinecap="butt" />
+          ) : null;
+          svgSystems.push(tick(x1, "l"), tick(x2, "r"));
+          const left = run(x1, cx - gap, "a"), right = run(cx + gap, x2, "b");
+          if (left) svgSystems.push(left);
+          if (right) svgSystems.push(right);
+          // The group's length in EIGHTHS — the "4" of a 4+4+4+3.  Beats, not
+          // note-heads: a quarter plus two eighths is 4, not 3.
+          svgSystems.push(<text key={`grpn-${m}-${gi}`} x={cx} y={gy} fill={WHITE}
+            fontSize={10} fontFamily={JIANPU_FONT} textAnchor="middle" dominantBaseline="central">{label}</text>);
+          from = to;
+        });
+      }
+    }
     // Faint dotted grid (like the drum-notation X-ray): a vertical guide at
     // every cell boundary for THIS bar's resolution, so every note/dash reads as
     // sitting in its own symmetric column.  Not pure #ffffff, so PDF export
@@ -1544,19 +1866,19 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       fontSize={10} fontFamily="Helvetica, Arial, sans-serif">{layout.numLabel[m] ?? m + 1}</text>);
     // per-measure title / note, drawn above the bar (also captured on export)
     const barTitle = project.setup.perBarTitle?.[m];
-    if (barTitle) svgSystems.push(<text key={`bt-${m}`} x={left} y={barTop(m) - 25} fill={WHITE}
+    if (barTitle) svgSystems.push(<text key={`bt-${m}`} x={left} y={barTop(m) - 25 - groupLift(m)} fill={WHITE}
       fontSize={12} fontFamily="Helvetica, Arial, sans-serif">{barTitle}</text>);
     // Mid-bar notes share that line, each starting at ITS OWN slot — so a chord
     // change half-way through the bar sits over the beat it lands on.
     for (const [slotKey, text] of Object.entries(project.setup.perSlotNote?.[m] ?? {})) {
       const slot = +slotKey;
-      svgSystems.push(<text key={`sn-${m}-${slot}`} x={slotToX(m, slot, totalSlotsOf(m))} y={barTop(m) - 25}
+      svgSystems.push(<text key={`sn-${m}-${slot}`} x={slotToX(m, slot, totalSlotsOf(m))} y={barTop(m) - 25 - groupLift(m)}
         fill={WHITE} fontSize={12} fontFamily="Helvetica, Arial, sans-serif">{text}</text>);
     }
     // Dedicated CHORD LANE — italic, on its own line above the note-annotation line.
     for (const [slotKey, text] of Object.entries(project.setup.perChord?.[m] ?? {})) {
       const slot = +slotKey;
-      svgSystems.push(<text key={`ch-${m}-${slot}`} x={slotToX(m, slot, totalSlotsOf(m))} y={barTop(m) - CHORD_LANE_DY}
+      svgSystems.push(<text key={`ch-${m}-${slot}`} x={slotToX(m, slot, totalSlotsOf(m))} y={barTop(m) - CHORD_LANE_DY - groupLift(m)}
         fill={WHITE} fontSize={12} fontStyle="italic" fontFamily="Helvetica, Arial, sans-serif">{text}</text>);
     }
     // Section heading — large, bold, lifted into the row's extra top padding so
@@ -1564,15 +1886,26 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     // a new row, so there's room above it).
     const section = project.setup.perBarSection?.[m];
     if (section?.trim()) {
-      // Lift the heading above the chord lane when this bar also carries chords.
-      const secDy = SECTION_LABEL_DY + (Object.keys(project.setup.perChord?.[m] ?? {}).length > 0 ? CHORD_PAD : 0);
+      // Lift the heading above the chord lane and the grouping lane when this bar
+      // carries them, so the three never stack on top of each other.
+      const secDy = SECTION_LABEL_DY
+        + (Object.keys(project.setup.perChord?.[m] ?? {}).length > 0 ? CHORD_PAD : 0)
+        + groupLift(m);
       svgSystems.push(<text key={`sec-${m}`} x={left} y={barTop(m) - secDy} fill={WHITE}
         fontSize={18} fontWeight="bold" fontFamily="Helvetica, Arial, sans-serif">{section}</text>);
     }
     // Time signature — drawn under the bar, left-aligned to the measure start so
     // it lines up with the number / title.  Shown at each group start (its meter)
     // and wherever a meter is explicitly set.  Also captured on export.
-    if (layout.startOf[m] === m || project.setup.perBarTimeSig?.[m]) {
+    if (cycleMode) {
+      // Cycle mode has no metre to print.  What's worth knowing instead is the
+      // cycle's LENGTH in eighths, and whether it's still open (no end marked).
+      const closed = project.setup.perBarCycleSlots?.[m] != null;
+      const eighths = Math.round(totalSlotsOf(m) / EIGHTH_SLOTS);
+      svgSystems.push(<text key={`cyc-${m}`} x={left} y={barBot(m) + 16} fill={WHITE}
+        fontSize={13} fontWeight="bold" fontFamily="Helvetica, Arial, sans-serif"
+        opacity={closed ? 1 : 0.45}>{closed ? `⟳${eighths}` : `⟳${eighths}…`}</text>);
+    } else if (layout.startOf[m] === m || project.setup.perBarTimeSig?.[m]) {
       const eff = effectiveTs(m);
       svgSystems.push(<text key={`ts-${m}`} x={left} y={barBot(m) + 16} fill={WHITE}
         fontSize={13} fontWeight="bold" fontFamily="Helvetica, Arial, sans-serif">{eff.num}/{eff.den}</text>);
@@ -1621,6 +1954,65 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   const btnOn = "bg-[#7173e618] border-[#7173e6] text-[#9999ee]";
   const btnOff = "bg-[#1a1a1a] border-[#2a2a2a] text-[#888] hover:text-[#ccc] hover:border-[#3a3a3a]";
 
+  // Key legend — ONE definition, rendered twice (the single-line bar and the panel
+  // that opens upward), so the two can never drift apart.
+  const keyHints = (
+    <>
+      {/* Current entry defaults (what the next note gets). */}
+      <span className="flex items-center gap-2 text-[11px] shrink-0">
+        <span className="px-1.5 py-0.5 rounded bg-[#16162a] border border-[#3a3a6a] text-[#9a9cf8]">
+          oct {octave > 0 ? `+${octave}` : octave}
+        </span>
+        <span className="px-1.5 py-0.5 rounded bg-[#16162a] border border-[#3a3a6a] text-[#9a9cf8]">
+          {DURATION_NAMES[duration]}{dotted ? " ·" : ""}
+        </span>
+        <span className="px-1.5 py-0.5 rounded bg-[#16221a] border border-[#356a3a] text-[#8ff0a0]" title="Snap grid — the columns notes lock onto ([ / ] to change)">
+          grid {DURATION_NAMES[gridDur]}
+        </span>
+      </span>
+      <Sep />
+      <Hint keys={["1–7"]} label="pitch" />
+      <Hint keys={["0"]} label="rest" />
+      <Sep />
+      <Hint keys={["q", "w"]} label="octave" />
+      <Hint keys={["e", "r"]} label="duration" />
+      <Hint keys={["[", "]"]} label="snap grid" />
+      <Hint keys={["t"]} label="dot" />
+      <Hint keys={["-"]} label="hold –" />
+      <Hint keys={["u"]} label="underline" />
+      <Hint keys={["o"]} label="staccato" />
+      <Hint keys={["a"]} label="accent >" />
+      <Hint keys={["'"]} label="group end" />
+      <Hint keys={[",", "."]} label="alter" />
+      {/* Cycle keys are listed even when the mode is off — otherwise the only way
+          to learn they exist is to have already found the toggle. */}
+      <Sep />
+      <span className={`text-[10px] uppercase tracking-wider shrink-0 ${cycleMode ? "text-[#9a9cf8]" : "text-[#4a4a4a]"}`}>⟳ cycles</span>
+      <Hint keys={["Enter"]} label="end cycle" />
+      <Hint keys={["h", "j"]} label="beat −/+" />
+      <Sep />
+      <Hint keys={["←", "→"]} label="move" />
+      <Hint keys={["↑", "↓"]} label="row" />
+      <Hint keys={["Shift + ↑↓"]} label="add voice" />
+      <Hint keys={["Shift + ⌫"]} label="del voice" />
+      {!noSelect && <Hint keys={["Space"]} label="select" />}
+      <Hint keys={["Shift + click"]} label="select range" />
+      <Hint keys={["Ctrl + C", "Ctrl + V"]} label="copy / paste" />
+      {!embedded && <>
+        <Sep />
+        <Hint keys={["p"]} label="piano brace" />
+        <Hint keys={["n"]} label="note at cursor" />
+        <Hint keys={["s"]} label="title / section" />
+        <Hint keys={["b"]} label="cut line" />
+        <Hint keys={["m"]} label="add bar" />
+        <Hint keys={["Shift + M"]} label="del bar" />
+        {!cycleMode && <Hint keys={["g"]} label="time sig" />}
+        <Hint keys={["c"]} label="clef ref" />
+        <Hint keys={["Ctrl + Z"]} label="undo" />
+      </>}
+    </>
+  );
+
   return (
     <div className={`flex flex-col ${embedded ? "" : "h-full"}`}>
       {/* Header — action row (hidden when embedded) */}
@@ -1630,6 +2022,8 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
         <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)"
           className={`${btn} ${canUndo ? btnOff : "bg-[#141414] border-[#1e1e1e] text-[#444] cursor-not-allowed"}`}>↶ Undo</button>
         <button onClick={handleExportPdf} className={`${btn} ${btnOff}`}>Export PDF</button>
+        <button onClick={handleExportXml} title="MusicXML — opens in MuseScore / Sibelius / Finale"
+          className={`${btn} ${btnOff}`}>Export XML</button>
       </div>}
 
       {/* Header — editable title block (edit on the go; hidden when embedded) */}
@@ -1669,6 +2063,14 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
                 onKeyDown={e => { if (e.key === "Enter") { commitBars(); (e.target as HTMLInputElement).blur(); } }}
                 className="bg-transparent text-[#aaa] outline-none w-8 placeholder-[#555]" />
             </label>
+            {/* Cycle mode — drops time signatures entirely; bars become cycles you
+                close with Enter.  For music that changes metre often enough that a
+                signature per bar is noise. */}
+            <button onClick={toggleCycleMode}
+              title="Cycle mode: no time signatures — a constant eighth-note grid, Enter ends a cycle, ' marks a grouping bracket"
+              className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider border transition-colors ${
+                cycleMode ? "bg-[#20204a] border-[#5a5cc8] text-[#b9baf5]" : "bg-transparent border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
+              }`}>⟳ Cycles</button>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
@@ -1705,10 +2107,19 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
       {/* Duration / octave / alteration are driven by the keybinds shown in the
           footer (e/r duration, t dot, q/w octave, ,/. alter) — no toolbar. */}
 
+      {/* Key legend, pinned at the TOP.  It lived at the bottom and kept getting
+          cut off: the window's client area runs under the Windows task bar, so the
+          last row was physically off-screen however it was positioned.  Up here
+          there is nothing below it to lose. */}
+      <div className="shrink-0 border-b border-[#1a1a1a] bg-[#0d0d0d] px-4 py-1.5">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">{keyHints}</div>
+      </div>
+
       {/* Score area (grows with content when embedded; scrolls when full-page) */}
       <div ref={scoreAreaRef}
         onScroll={() => { const a = document.activeElement as HTMLElement | null; if (a && a.tagName === "INPUT" && a.id?.startsWith("jp-")) a.blur(); }}
-        className={`${embedded ? "overflow-x-auto" : "flex-1 overflow-x-hidden overflow-y-auto"} p-4 outline-none select-none`} style={{ background: "#0b0b0b" }}>
+        className={`${embedded ? "overflow-x-auto" : "flex-1 min-h-0 overflow-x-hidden overflow-y-auto"} p-4 outline-none select-none`}
+        style={{ background: "#0b0b0b" }}>
         <div
           ref={scoreRef}
           style={{ position: "relative", width: dispW, height: dispH, userSelect: "none", touchAction: "none" }}
@@ -1725,7 +2136,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
 
           {/* Transient overlay — never captured by PDF export */}
           <svg width={dispW} height={dispH} viewBox={`0 0 ${width} ${height}`} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
-            {!noSelect && selectedIds.map(id => {
+            {selectedIds.map(id => {
               const p = rendered.positions.find(pp => pp.id === id);
               if (!p) return null;
               return <rect key={id} x={p.x - 13} y={p.y - NUM_FONT - 2} width={26} height={NUM_FONT + 10}
@@ -1763,7 +2174,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
               const box = (x: number, w: number) => ({
                 position: "absolute" as const,
                 left: x * scale,
-                top: (barTop(m) - 25 - 11) * scale,
+                top: (barTop(m) - 25 - groupLift(m) - 11) * scale,
                 width: Math.max(12, w - 6) * scale,
                 height: 16 * scale,
                 fontSize: 12 * scale,
@@ -1826,7 +2237,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
                       })}
                       onPointerDown={e => e.stopPropagation()}
                       onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") (e.target as HTMLInputElement).blur(); }}
-                      style={{ ...box(slotToX(m, slot, total), 90), top: (barTop(m) - CHORD_LANE_DY - 11) * scale, fontStyle: "italic" as const }}
+                      style={{ ...box(slotToX(m, slot, total), 90), top: (barTop(m) - CHORD_LANE_DY - groupLift(m) - 11) * scale, fontStyle: "italic" as const }}
                     />
                   ))}
                 </div>
@@ -1861,7 +2272,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
                   style={{
                     position: "absolute",
                     left: left * scale,
-                    top: (barTop(m) - SECTION_LABEL_DY - 14) * scale,
+                    top: (barTop(m) - SECTION_LABEL_DY - groupLift(m) - 14) * scale,
                     width: (measureWidth(m) - 6) * scale,
                     height: 20 * scale,
                     fontSize: 18 * scale,
@@ -1965,7 +2376,7 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
               the `g` keybind (or click an existing change) and type "n/d".  Empty
               inputs are click-through; the SVG draws the visible label. */}
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-            {Array.from({ length: project.setup.barCount }, (_, m) => {
+            {(cycleMode ? [] : Array.from({ length: project.setup.barCount }, (_, i) => i)).map(m => {
               const left = measureLeftX(m);
               const editing = tsEdit?.m === m;
               const eff = effectiveTs(m);
@@ -2020,53 +2431,6 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
         </div>
       </div>
 
-      {/* Footer legend */}
-      <div className="border-t border-[#1a1a1a] bg-[#0d0d0d] px-4 py-2.5">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          {/* Current entry defaults (what the next note gets). */}
-          <span className="flex items-center gap-2 text-[11px]">
-            <span className="px-1.5 py-0.5 rounded bg-[#16162a] border border-[#3a3a6a] text-[#9a9cf8]">
-              oct {octave > 0 ? `+${octave}` : octave}
-            </span>
-            <span className="px-1.5 py-0.5 rounded bg-[#16162a] border border-[#3a3a6a] text-[#9a9cf8]">
-              {DURATION_NAMES[duration]}{dotted ? " ·" : ""}
-            </span>
-            <span className="px-1.5 py-0.5 rounded bg-[#16221a] border border-[#356a3a] text-[#8ff0a0]" title="Snap grid — the columns notes lock onto ([ / ] to change)">
-              grid {DURATION_NAMES[gridDur]}
-            </span>
-          </span>
-          <Sep />
-          <Hint keys={["1–7"]} label="pitch" />
-          <Hint keys={["0"]} label="rest" />
-          <Sep />
-          <Hint keys={["q", "w"]} label="octave" />
-          <Hint keys={["e", "r"]} label="duration" />
-          <Hint keys={["[", "]"]} label="snap grid" />
-          <Hint keys={["t"]} label="dot" />
-          <Hint keys={["-"]} label="hold –" />
-          <Hint keys={["u"]} label="underline" />
-          <Hint keys={["o"]} label="staccato" />
-          <Hint keys={[",", "."]} label="alter" />
-          <Sep />
-          <Hint keys={["←", "→"]} label="move" />
-          <Hint keys={["↑", "↓"]} label="row" />
-          <Hint keys={["Shift + ↑↓"]} label="add voice" />
-          <Hint keys={["Shift + ⌫"]} label="del voice" />
-          {!noSelect && <Hint keys={["Space"]} label="select" />}
-          {!embedded && <>
-            <Sep />
-            <Hint keys={["p"]} label="piano brace" />
-            <Hint keys={["n"]} label="note at cursor" />
-            <Hint keys={["s"]} label="title / section" />
-            <Hint keys={["b"]} label="cut line" />
-            <Hint keys={["m"]} label="add bar" />
-            <Hint keys={["Shift + M"]} label="del bar" />
-            <Hint keys={["g"]} label="time sig" />
-            <Hint keys={["c"]} label="clef ref" />
-            <Hint keys={["Ctrl + Z"]} label="undo" />
-          </>}
-        </div>
-      </div>
 
       {showClefRef && (
         <ClefReference
@@ -2092,15 +2456,15 @@ function Kbd({ children }: { children: React.ReactNode }) {
 
 function Hint({ keys, label }: { keys: string[]; label: string }) {
   return (
-    <span className="flex items-center gap-1.5">
+    <span className="flex items-center gap-1.5 shrink-0">
       <span className="flex gap-0.5">{keys.map((k, i) => <Kbd key={i}>{k}</Kbd>)}</span>
-      <span className="text-[11px] text-[#888]">{label}</span>
+      <span className="text-[11px] text-[#888] whitespace-nowrap">{label}</span>
     </span>
   );
 }
 
 function Sep() {
-  return <span className="w-px h-4 bg-[#222]" />;
+  return <span className="w-px h-4 bg-[#222] shrink-0" />;
 }
 
 interface Beam { x1: number; x2: number; y: number; }
@@ -2110,5 +2474,5 @@ interface RenderItem {
   octave: number; accidental?: string;   // alteration prefix (♯/♭/^/v)
   underlines: number; sideDashes: number; sideTick: boolean; dot: boolean; duration: Duration;
   measure: number; startSlot: number; total: number; cellSlots: number; font: number;
-  decorate: boolean; separate: boolean; staccato?: boolean;
+  decorate: boolean; separate: boolean; staccato?: boolean; accent?: boolean;
 }

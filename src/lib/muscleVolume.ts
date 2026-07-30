@@ -2,14 +2,14 @@
 // Weekly training volume by muscle group.
 //
 // Every logged exercise is resolved to the specific muscles it trains — first
-// by its catalog skillId, then by matching its name against the calisthenics
+// by its catalog skillId, then by matching its name against the statics
 // SKILLS list, then (for anything free-text) by a rigorous keyword table that
 // covers common movements. Volume is reported the way lifters actually track
 // it: WORKING SETS per muscle per week, with total reps and hold-seconds as
 // supporting detail. A set counts toward every muscle the movement trains.
 // ─────────────────────────────────────────────────────────────────────────
 
-import { SKILLS, MUSCLE_META, type MuscleKey } from "./calisthenicsData";
+import { SKILLS, MUSCLE_META, type MuscleKey } from "./staticsData";
 import { getWorkouts, getCustomExercises } from "./workoutStore";
 import { type MuscleGroup, GROUP_LABEL, GROUP_ORDER } from "./muscleGroups";
 import type { WorkoutSet } from "./workoutTypes";

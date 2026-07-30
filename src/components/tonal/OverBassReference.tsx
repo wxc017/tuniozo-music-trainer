@@ -6,64 +6,80 @@
 import { useState } from "react";
 import { THREE_PART, FOUR_PART, obDegree, type StructFamily, type ChordStruct } from "@/lib/overBassStructures";
 
-const GRID = "34px 132px 1fr auto";
+const GRID = "34px 190px 1fr auto";
 
-function DegBadge({ children, color }: { children: React.ReactNode; color: string }) {
-  return (
-    <span className="italic font-mono font-bold text-[11px] px-1.5 py-[2px] rounded-md leading-none"
-          style={{ color, background: color + "18", border: `1px solid ${color}3a` }}>
-      {children}
-    </span>
-  );
+// Rows are numbered ①②③ rather than I·II·III.  A roman numeral means a scale
+// DEGREE everywhere else in the app; using it here for "the third entry in this
+// family" was the same symbol saying something completely different.
+const CIRCLED = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫"];
+
+/** "1" → "1st", "♭3" → "3rd", "13" → "13th".
+ *  Accidentals are deliberately DROPPED.  The point of this vocabulary is to say
+ *  which member of the stack a tone is without committing to a quality — ♭3 and 3
+ *  are both "the 3rd", which stays true in any scale or EDO, where "♭3" and the
+ *  quality words built on it ("min7 shell") quietly assume a major-scale reading. */
+function ordinal(deg: string): string {
+  const n = parseInt(deg.replace(/[^0-9]/g, ""), 10);
+  if (!Number.isFinite(n)) return deg;
+  const suffix = n % 100 >= 11 && n % 100 <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
+  return `${n}${suffix}`;
 }
 
 function Degrees({ degs, gold }: { degs: string[]; gold?: boolean }) {
   return (
-    <span className="font-mono text-[15px] tabular-nums tracking-tight">
+    <span className="italic font-mono text-[14px] tabular-nums tracking-tight">
       {degs.map((d, i) => (
         <span key={i}>
-          {i > 0 && <span className="text-[#464646]"> · </span>}
-          <span style={{ color: gold && i === 0 ? "#e6c674" : "#dcdcdc", fontWeight: gold && i === 0 ? 800 : 700 }}>{d}</span>
+          {i > 0 && <span className="not-italic text-[#464646]"> · </span>}
+          <span style={{ color: gold && i === 0 ? "#e6c674" : "#dcdcdc", fontWeight: gold && i === 0 ? 800 : 700 }}>
+            {ordinal(d.trim())}
+          </span>
         </span>
       ))}
     </span>
   );
 }
 
-function MemberRow({ m, color }: { m: ChordStruct; color: string }) {
-  const nameTag = (
-    <span className="justify-self-end text-[10.5px] font-medium px-2.5 py-[2px] rounded-full whitespace-nowrap"
-          style={{ color, background: color + "14" }}>{m.name}</span>
+function MemberRow({ m, color, index }: { m: ChordStruct; color: string; index: number }) {
+  const numTag = (
+    <span className="w-[34px] text-center font-mono text-[22px] leading-none py-[1px]" style={{ color }}>
+      {CIRCLED[index] ?? index + 1}
+    </span>
   );
 
   if (m.over) {
     const upDegs = m.upper.map(obDegree);
     return (
       <div className="grid items-center gap-x-4 py-[9px]" style={{ gridTemplateColumns: GRID }}>
-        <span className="w-[34px] text-center italic font-mono font-bold text-[11px] rounded-md py-[3px]"
-              style={{ color, background: color + "16", border: `1px solid ${color}3a` }}>{m.roman}</span>
-        {/* voicing: bass + upper degrees */}
-        <span className="font-mono text-[15px] tabular-nums tracking-tight whitespace-nowrap">
-          <span style={{ color: "#e6c674", fontWeight: 800 }}>1</span>
-          <span className="text-[#5f5f5f] px-1.5">+</span>
-          {upDegs.map((d, i) => <span key={i}>{i > 0 && <span className="text-[#464646]"> · </span>}<span className="text-[#dcdcdc] font-bold">{d}</span></span>)}
+        {numTag}
+        {/* voicing: bass + upper members, all as ordinals */}
+        <span className="italic font-mono text-[14px] tabular-nums tracking-tight whitespace-nowrap">
+          <span style={{ color: "#e6c674", fontWeight: 800 }}>1st</span>
+          <span className="not-italic text-[#5f5f5f] px-1.5">+</span>
+          {upDegs.map((d, i) => (
+            <span key={i}>
+              {i > 0 && <span className="not-italic text-[#464646]"> · </span>}
+              <span className="text-[#dcdcdc] font-bold">{ordinal(d)}</span>
+            </span>
+          ))}
         </span>
-        {/* structure it re-roots to + the degree it's built on */}
-        <span className="flex items-center gap-2">
-          <span className="font-mono font-bold text-[13px] tabular-nums" style={{ color }}>{(m.local ?? []).join(" · ")}</span>
-          <DegBadge color={color}>{m.at}</DegBadge>
+        {/* the structure it re-roots to, named by member only — no quality word,
+            no scale-degree roman: both said more than this vocabulary intends. */}
+        <span className="italic font-mono font-bold text-[13px] tabular-nums" style={{ color }}>
+          {(m.local ?? []).map(d => ordinal(d)).join(" · ")}
         </span>
-        {nameTag}
+        <span aria-hidden />
       </div>
     );
   }
 
   return (
     <div className="grid items-center gap-x-4 py-[9px]" style={{ gridTemplateColumns: GRID }}>
-      <span aria-hidden />
+      {numTag}
       <span className="whitespace-nowrap"><Degrees degs={(m.degFull ?? "").split("·")} gold /></span>
       <span aria-hidden />
-      {nameTag}
+      <span className="justify-self-end text-[10.5px] font-medium px-2.5 py-[2px] rounded-full whitespace-nowrap"
+            style={{ color, background: color + "14" }}>{m.name}</span>
     </div>
   );
 }
@@ -80,7 +96,7 @@ function FamilyCard({ fam }: { fam: StructFamily }) {
               style={{ background: fam.color + "12" }}>{fam.members.length}</span>
       </div>
       <div className="px-4 py-1 divide-y divide-[#16181e]">
-        {fam.members.map(m => <MemberRow key={m.id} m={m} color={fam.color} />)}
+        {fam.members.map((m, i) => <MemberRow key={m.id} m={m} color={fam.color} index={i} />)}
       </div>
     </div>
   );

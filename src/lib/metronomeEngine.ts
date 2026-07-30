@@ -66,6 +66,12 @@ export interface VoiceConfig {
 
 export interface MetronomeConfig {
   bpm: number;
+  /** What ONE beat of the measure is worth, as a division of the BPM's quarter:
+   *  1 = quarter, 2 = eighth, 4 = sixteenth.  Additive groupings (5+5+3+2) are
+   *  counted in short values, so this lets the printed BPM stay a comfortable
+   *  quarter-note pulse while the beats themselves run at 16ths.  Absent → 1,
+   *  which is the old behaviour exactly. */
+  beatUnit?: number;
   volume: number;
   /** One entry per beat in the measure. */
   beats: BeatConfig[];
@@ -112,6 +118,7 @@ export function defaultConfig(beatsPerMeasure = 4): MetronomeConfig {
   if (beats[0]) beats[0].accent = true;
   return {
     bpm: 120,
+    beatUnit: 1,
     volume: 0.8,
     beats,
     silence: {
@@ -408,7 +415,7 @@ export class MetronomeEngine {
       const count = beats.length;
       if (count === 0) {
         // No beats configured — idle but keep the clock moving.
-        this.nextBeatTime += 60 / Math.max(1, this.config.bpm);
+        this.nextBeatTime += 60 / Math.max(1, this.config.bpm) / Math.max(1, this.config.beatUnit ?? 1);
         continue;
       }
 
@@ -420,7 +427,7 @@ export class MetronomeEngine {
       const beatIdx = this.beatInMeasure;
       const beat = beats[beatIdx];
       const measure = this.measureIndex;
-      const secPerBeat = 60 / Math.max(1, this.config.bpm);
+      const secPerBeat = 60 / Math.max(1, this.config.bpm) / Math.max(1, this.config.beatUnit ?? 1);
       const beatTime = this.nextBeatTime;
 
       // On entering a new measure, take this measure's plan (pre-computed

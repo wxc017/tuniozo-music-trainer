@@ -22,7 +22,9 @@ import {
 const CFG_KEY = "lt_metronome_cfg";
 const MIN_BPM = 20;
 const MAX_BPM = 300;
-const MAX_BEATS = 12;
+// Mixed groupings mean long bars: 5+5+3+2 is 15, 3+3+5+7 is 18.  A 12 cap made
+// those impossible to build at all.
+const MAX_BEATS = 32;
 const MAX_SUBDIV = 16;
 
 const MODE_LABELS: Record<SubdivMode, string> = {
@@ -74,7 +76,11 @@ export default function MetronomeMode() {
     };
   }, []);
 
-  const beatDurationMs = useMemo(() => 60000 / Math.max(1, config.bpm), [config.bpm]);
+  // Divided by the beat unit too, or the pulse animation would run four times
+  // slower than the clicks once a grouping puts the beat on 16ths.
+  const beatDurationMs = useMemo(
+    () => 60000 / Math.max(1, config.bpm) / Math.max(1, config.beatUnit ?? 1),
+    [config.bpm, config.beatUnit]);
 
   async function toggleRun() {
     const engine = engineRef.current!;
@@ -119,6 +125,62 @@ export default function MetronomeMode() {
     setSelected(s => (s !== null && s >= count ? null : s));
   }
 
+  // ── Accent groupings ──────────────────────────────────────────────────
+  // An additive bar written the way players actually count it: "5+5+3+2" is 15
+  // beats grouped 5·5·3·2, with an ACCENT on each group's first beat.  This is
+  // deliberately not a subdivision — the beat stays one beat; the grouping only
+  // decides which beats are stressed.  Per-beat subdivisions layer on top
+  // independently, so you can drill 3+3+5+7 with, say, triplets on beat 1.
+  const groupingText = useMemo(() => {
+    const sizes: number[] = [];
+    config.beats.forEach((b, i) => {
+      if (i === 0 || b.accent) sizes.push(1);
+      else sizes[sizes.length - 1]++;
+    });
+    return sizes.join("+");
+  }, [config.beats]);
+  const [groupDraft, setGroupDraft] = useState<string | null>(null);
+
+  // The beat indices belonging to each group, derived from the accents — the
+  // layout reads back from the same source the grouping field writes to, so
+  // toggling an accent by hand re-flows the blocks with no extra state.
+  const groupSpans = useMemo(() => {
+    const out: number[][] = [];
+    config.beats.forEach((b, i) => {
+      if (i === 0 || b.accent) out.push([i]);
+      else out[out.length - 1].push(i);
+    });
+    return out;
+  }, [config.beats]);
+
+  function applyGrouping(text: string) {
+    const sizes = text.split(/[+\s,]+/).map(t => parseInt(t, 10)).filter(n => Number.isFinite(n) && n > 0);
+    if (!sizes.length) return;
+    let total = sizes.reduce((a, b) => a + b, 0);
+    // Trim from the end rather than refusing outright, so an over-long entry
+    // still gives you something to play instead of silently doing nothing.
+    while (total > MAX_BEATS && sizes.length > 1) total -= sizes.pop()!;
+    if (total > MAX_BEATS) return;
+    const starts = new Set<number>();
+    let at = 0;
+    for (const s of sizes) { starts.add(at); at += s; }
+    setConfig(prev => {
+      const beats: BeatConfig[] = [];
+      for (let i = 0; i < total; i++) {
+        // Keep whatever subdivision each existing beat already had — retyping a
+        // grouping shouldn't wipe the subdivision work underneath it.
+        const base = prev.beats[i] ?? defaultBeat(1);
+        beats.push({ ...base, accent: starts.has(i) });
+      }
+      // Additive metres are counted in SHORT values — 5+5+3+2 is fifteen 16ths,
+      // not fifteen quarters.  Setting a grouping therefore switches the beat to
+      // a 16th so the displayed BPM stays a comfortable quarter-note pulse
+      // instead of having to be dialled down to a quarter of itself.
+      return { ...prev, beats, beatUnit: 4 };
+    });
+    setSelected(s => (s !== null && s >= total ? null : s));
+  }
+
   function setBpm(v: number) {
     if (isNaN(v)) return;
     patchConfig({ bpm: Math.max(MIN_BPM, Math.min(MAX_BPM, Math.round(v))) });
@@ -153,8 +215,10 @@ export default function MetronomeMode() {
   );
   const view = running && plan && plan.length === config.beats.length ? plan : preview;
 
+  // 1088px = the old max-w-4xl (896) plus 96px — one inch — reclaimed from the
+  // margin on each side, so a 15-beat grouping has room to lay out.
   return (
-    <div className="max-w-4xl mx-auto py-4 space-y-4">
+    <div className="max-w-[1088px] mx-auto py-4 space-y-4">
       <style>{PULSE_CSS}</style>
 
       {/* ── Header / transport ── */}
@@ -208,6 +272,45 @@ export default function MetronomeMode() {
         <span className="text-[10px] text-[#555]">click a beat to edit its subdivision</span>
       </div>
 
+      {/* ── Accent groupings (additive metre) ── */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-xs text-[#666]">Grouping</span>
+        <input
+          value={groupDraft ?? groupingText}
+          onChange={e => setGroupDraft(e.target.value.replace(/[^0-9+\s,]/g, ""))}
+          onBlur={() => { if (groupDraft !== null) { applyGrouping(groupDraft); setGroupDraft(null); } }}
+          onKeyDown={e => {
+            if (e.key === "Enter") { applyGrouping(groupDraft ?? groupingText); setGroupDraft(null); (e.target as HTMLInputElement).blur(); }
+            if (e.key === "Escape") { setGroupDraft(null); (e.target as HTMLInputElement).blur(); }
+          }}
+          placeholder="5+5+3+2"
+          title="Additive metre — accents the first beat of each group. 5+5+3+2 gives 15 beats; the beat itself is unchanged."
+          className="bg-[#141414] border border-[#2a2a2a] rounded px-2 py-1 text-sm font-mono text-white w-40 outline-none focus:border-[#7173e6]" />
+        <span className="text-[10px] text-[#555]">
+          {config.beats.length} beat{config.beats.length === 1 ? "" : "s"} — accents each group's first beat, not a subdivision
+        </span>
+        {/* What one beat is worth.  Setting a grouping picks 16ths, since that's
+            how additive metres are counted — but it stays changeable. */}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-[#555]">beat =</span>
+          {([[1, "♩"], [2, "♪"], [4, "♬"]] as const).map(([u, glyph]) => (
+            <button key={u} onClick={() => patchConfig({ beatUnit: u })}
+              title={u === 1 ? "Quarter — beat equals the BPM" : u === 2 ? "Eighth — two beats per BPM click" : "16th — four beats per BPM click"}
+              className={`px-1.5 h-6 text-[11px] rounded border transition-colors ${
+                (config.beatUnit ?? 1) === u
+                  ? "bg-[#1a1a2a] border-[#5a5a8a] text-[#9999ee]"
+                  : "bg-[#111] border-[#1e1e1e] text-[#555] hover:text-[#aaa]"
+              }`}>{glyph}</button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          {["5+5+3+2", "3+3+5+7", "3+2+2", "2+2+3", "4+4+4+3"].map(g => (
+            <button key={g} onClick={() => { setGroupDraft(null); applyGrouping(g); }}
+              className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#141414] border border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#3a3a3a]">{g}</button>
+          ))}
+        </div>
+      </div>
+
       {/* ── Randomize placement ── */}
       <div className="flex items-center gap-3 flex-wrap">
         <Toggle
@@ -231,27 +334,42 @@ export default function MetronomeMode() {
         />
       </div>
 
-      {/* ── Beat grid ── */}
-      <div className="flex flex-wrap gap-2">
-        {config.beats.map((beat, i) => {
-          const isActive = running && active?.beat === i;
-          const isSel = selected === i;
-          const v = view[i] ?? { sub: previewSub(beat), muted: beat.muted };
-          return (
-            <BeatNode
-              key={i}
-              index={i}
-              beat={beat}
-              displaySub={v.sub}
-              displayMuted={v.muted || beat.muted}
-              active={isActive}
-              activeMeasure={active?.measure ?? 0}
-              selected={isSel}
-              beatDurationMs={beatDurationMs}
-              onClick={() => setSelected(isSel ? null : i)}
-            />
-          );
-        })}
+      {/* ── Beat grid, laid out BY GROUP ──
+          15 identical tiles in a row don't show a grouping at all — you have to
+          count accent triangles to find where 5+5+3+2 falls.  Each group is now
+          its own bordered block with its size in the corner, so the shape of the
+          bar is visible before you play a note.  Beats stay individually
+          clickable and keep their own subdivision editors. */}
+      <div className="flex flex-wrap items-start gap-2">
+        {groupSpans.map((span, gi) => (
+          <div key={gi} className="rounded-lg border border-[#242424] bg-[#0e0e0e] px-1.5 pt-1 pb-1.5">
+            <div className="flex items-center justify-between gap-3 mb-1 px-0.5">
+              <span className="text-[10px] font-mono text-[#7173e6]">{span.length}</span>
+              <span className="text-[9px] text-[#3a3a3a] tracking-wider">{gi + 1}</span>
+            </div>
+            <div className="flex gap-1">
+              {span.map(i => {
+                const beat = config.beats[i];
+                const v = view[i] ?? { sub: previewSub(beat), muted: beat.muted };
+                const isSel = selected === i;
+                return (
+                  <BeatNode
+                    key={i}
+                    index={i}
+                    beat={beat}
+                    displaySub={v.sub}
+                    displayMuted={v.muted || beat.muted}
+                    active={running && active?.beat === i}
+                    activeMeasure={active?.measure ?? 0}
+                    selected={isSel}
+                    beatDurationMs={beatDurationMs}
+                    onClick={() => setSelected(isSel ? null : i)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* ── Selected-beat editor ── */}
@@ -321,7 +439,7 @@ function BeatNode({
     <button
       onClick={onClick}
       style={{ borderColor, background: bg }}
-      className={`relative flex flex-col items-center gap-2 w-24 px-3 py-3 rounded-lg border-[1.5px] transition-colors ${
+      className={`relative flex flex-col items-center gap-1 w-14 px-1 py-1.5 rounded-md border transition-colors ${
         displayMuted ? "opacity-50" : ""
       }`}
     >
@@ -336,12 +454,12 @@ function BeatNode({
       </div>
 
       {/* big subdivision number — the value this measure actually plays */}
-      <div className={`text-2xl font-bold leading-none ${beat.accent ? "text-[#e6c078]" : "text-[#ccc]"}`}>
+      <div className={`text-lg font-bold leading-none ${beat.accent ? "text-[#e6c078]" : "text-[#ccc]"}`}>
         {displaySub}
       </div>
 
       {/* subdivision dots */}
-      <div className="flex items-center justify-center gap-1 flex-wrap min-h-[8px]" style={{ maxWidth: 72 }}>
+      <div className="flex items-center justify-center gap-[3px] flex-wrap min-h-[6px]" style={{ maxWidth: 44 }}>
         {Array.from({ length: dots }).map((_, d) => (
           <span
             key={active ? `${activeMeasure}-${d}` : `s-${d}`}
@@ -361,7 +479,6 @@ function BeatNode({
         ))}
       </div>
 
-      <span className="text-[9px] text-[#555]">{MODE_LABELS[beat.mode]}</span>
     </button>
   );
 }

@@ -126,6 +126,14 @@ export interface NoteData {
   separateUnderline?: boolean;
   /** Jianpu-only: staccato — a dot drawn above the number/syllable. */
   staccato?: boolean;
+  /** Jianpu/Sol-fa: accent — a ">" drawn above the number/syllable.  Its main
+   *  use here is marking the grouping of an odd meter (15/8 as 4+4+4+3 puts one
+   *  on each group's first note), which jianpu has no beaming to show. */
+  accent?: boolean;
+  /** Jianpu/Sol-fa CYCLE MODE: a grouping bracket ends ON this note.  Brackets
+   *  are derived from these marks rather than stored as spans, so inserting or
+   *  deleting notes keeps each bracket around the notes it was drawn around. */
+  groupEnd?: boolean;
   /** Sol-fa (12-EDO) movable-do mode baked in at input time: "major" (Do Re Mi…)
    *  or "minor" (Do Re Me…).  Absent → the universal Spectrum-ege syllable.
    *  Stored per note so later changing the entry default never rewrites it. */
@@ -181,6 +189,16 @@ export interface ScoreSetup {
    *  row regardless of MEASURES_PER_ROW.  Bar 0 is always a row
    *  start so this flag is ignored on it. */
   perBarBreakBefore?: Record<number, boolean>;
+  /** CYCLE MODE only: the bar's length in slots, set when the user ends the
+   *  cycle rather than derived from a time signature.  A bar with no entry is
+   *  an OPEN cycle — it grows as notes are entered — so a piece that changes
+   *  metre never needs a time signature at all.  Ignored when cycleMode is off. */
+  perBarCycleSlots?: Record<number, number>;
+  /** Grouping boundaries that DON'T hang off a note: slot positions in a bar
+   *  where one group ends and the next begins.  Notes carry their own `groupEnd`
+   *  flag, but you have to be able to lay out 5+5+3+2 on an empty bar before
+   *  writing anything into it — that's the normal order of work. */
+  perBarGroupEnds?: Record<number, number[]>;
 }
 
 export interface SyncPoint {
@@ -209,6 +227,11 @@ export interface NoteEntryProject {
   /** Jianpu-only display system: numbered ("jianpu") or tonic sol-fa
    *  ("solfa").  Display-only — the underlying degree data is identical. */
   displaySystem?: "jianpu" | "solfa";
+  /** Jianpu/Sol-fa CYCLE MODE: drop time signatures entirely.  The grid is a
+   *  constant stream of eighth-note cells and a "bar" becomes a CYCLE whose
+   *  length is wherever the user ended it — for music that changes metre often
+   *  enough that writing a signature per bar is noise rather than information. */
+  cycleMode?: boolean;
   /** Sol-fa syllable style (12-EDO): "spectrum" (region-centered Da/Na/Fa,
    *  default), "major" (Do Re Mi Fa Sol La Ti), or "minor" (Do Re Me Fa Sol Le
    *  Te).  Only remaps how degrees 1–7 read. */
@@ -461,6 +484,75 @@ function drumNoteheadFor(pitch: string, notehead?: NoteheadType): string | null 
   return null;
 }
 
+/** Slots in bar `m`: the cycle's own length in cycle mode, else the metre's.
+ *  Mirrors the editor's `totalSlotsOf` so export and screen never disagree. */
+export function barSlots(project: NoteEntryProject, m: number): number {
+  const setup = project.setup;
+  if (project.cycleMode) {
+    const closed = setup.perBarCycleSlots?.[m];
+    if (closed != null) return Math.max(DURATION_SLOTS["8"], closed);
+    let end = 0;
+    for (const n of project.notes) if (n.measure === m) end = Math.max(end, n.startSlot + noteSlots(n));
+    return Math.max(DURATION_SLOTS["8"], end);
+  }
+  return measureSlots(setup.perBarTimeSig?.[m] ?? setup.defaultTimeSig);
+}
+
+/** The time signature a bar EXPORTS as.  A cycle has no metre by design, but
+ *  MusicXML has no way to say "no metre" — so one is derived from the cycle's
+ *  length: a 15-eighth cycle becomes 15/8.  The denominator is the coarsest that
+ *  divides the cycle exactly, so a cycle holding 16ths exports as /16 rather than
+ *  being rounded to a wrong number of eighths. */
+export function barTimeSig(project: NoteEntryProject, m: number): MeasureTimeSig {
+  if (!project.cycleMode) return project.setup.perBarTimeSig?.[m] ?? project.setup.defaultTimeSig;
+  const slots = barSlots(project, m);
+  for (const den of [8, 16, 32]) {
+    const unit = 32 / den;
+    if (slots % unit === 0) return { num: slots / unit, den };
+  }
+  return { num: slots, den: 32 };
+}
+
+/** A bar's grouping spans in SLOTS, derived the same way the editor draws its
+ *  brackets (note `groupEnd` flags ∪ the per-bar boundary marks).  Empty when the
+ *  bar carries no grouping. */
+export function barGroups(project: NoteEntryProject, m: number): number[] {
+  const total = barSlots(project, m);
+  const inBar = project.notes.filter(n => n.measure === m);
+  const cell = DURATION_SLOTS["8"];
+  const spanAt = (s: number) => {
+    const lens = inBar.filter(n => n.startSlot === s && !n.isRest).map(n => noteSlots(n));
+    return lens.length ? Math.max(cell, ...lens) : cell;
+  };
+  const bounds = [...new Set([
+    ...inBar.filter(n => n.groupEnd).map(n => n.startSlot + spanAt(n.startSlot)),
+    ...(project.setup.perBarGroupEnds?.[m] ?? []),
+  ])].filter(b => b > 0 && b <= total).sort((a, b) => a - b);
+  if (!bounds.length) return [];
+  if (bounds[bounds.length - 1] < total) bounds.push(total);
+  const out: number[] = [];
+  let from = 0;
+  for (const to of bounds) { out.push(to - from); from = to; }
+  return out;
+}
+
+/** The `<time>` element for a bar.  A grouped CYCLE exports in Balkan/aksak
+ *  additive form — 4+4+4+3 over 8 rather than a flat 15/8 — which MusicXML
+ *  writes as repeated <beats>/<beat-type> pairs inside one <time>.  That's the
+ *  whole point of the notation: 15/8 says how long the bar is, (4+4+4+3)/8 says
+ *  how it moves.  Metred bars keep their plain signature. */
+export function barTimeXml(project: NoteEntryProject, m: number): string {
+  const ts = barTimeSig(project, m);
+  const plain = `<time><beats>${ts.num}</beats><beat-type>${ts.den}</beat-type></time>`;
+  if (!project.cycleMode) return plain;
+  const unit = 32 / ts.den;
+  const groups = barGroups(project, m);
+  // Only additive when the grouping divides exactly into the export unit —
+  // otherwise the parts wouldn't sum back to the bar and the file would be wrong.
+  if (groups.length < 2 || !groups.every(g => g % unit === 0)) return plain;
+  return `<time>${groups.map(g => `<beats>${g / unit}</beats><beat-type>${ts.den}</beat-type>`).join("")}</time>`;
+}
+
 export function generateMusicXML(project: NoteEntryProject): string {
   // Drum projects use a different export path: percussion clef and
   // <unpitched> notes instead of <pitch>, plus notehead glyphs for
@@ -621,8 +713,9 @@ export function generateJianpuMusicXML(project: NoteEntryProject): string {
   const voicePart = (voice: number, clefSign: string, clefLine: number): string => {
     let part = "";
     for (let m = 0; m < barCount; m++) {
-      const ts = setup.perBarTimeSig?.[m] ?? defaultTimeSig;
-      const totalSlots = measureSlots(ts);
+      // Cycle mode has no metre; barTimeSig derives one from the cycle's length.
+      const ts = barTimeSig(project, m);
+      const totalSlots = barSlots(project, m);
       const mNotes = notes
         .filter(n => n.measure === m && (n.voice ?? 0) === voice)
         .sort((a, b) => a.startSlot - b.startSlot);
@@ -632,13 +725,15 @@ export function generateJianpuMusicXML(project: NoteEntryProject): string {
         part += `      <attributes>\n`;
         part += `        <divisions>${DIV}</divisions>\n`;
         part += `        <key><fifths>${keySignature}</fifths></key>\n`;
-        part += `        <time><beats>${ts.num}</beats><beat-type>${ts.den}</beat-type></time>\n`;
+        part += `        ${barTimeXml(project, m)}\n`;
         part += `        <clef><sign>${clefSign}</sign><line>${clefLine}</line></clef>\n`;
         part += `      </attributes>\n`;
       } else {
-        const prevTs = setup.perBarTimeSig?.[m - 1] ?? defaultTimeSig;
-        if (ts.num !== prevTs.num || ts.den !== prevTs.den) {
-          part += `      <attributes><time><beats>${ts.num}</beats><beat-type>${ts.den}</beat-type></time></attributes>\n`;
+        // Compare the rendered element, not just num/den: re-grouping a cycle
+        // (4+4+4+3 → 5+5+5) is a real signature change at the very same length.
+        const timeXml = barTimeXml(project, m);
+        if (timeXml !== barTimeXml(project, m - 1)) {
+          part += `      <attributes>${timeXml}</attributes>\n`;
         }
       }
 
@@ -658,6 +753,12 @@ export function generateJianpuMusicXML(project: NoteEntryProject): string {
           part += `      <note>\n`;
           part += `        ${pitchXml(n)}\n`;
           part += `        <duration>${dotDur}</duration><type>${type}</type>${n.dotted ? "<dot/>" : ""}\n`;
+          // Marks the sol-fa editor can put on a note were being dropped on the
+          // way out, so an exported file lost the accents that carry the grouping.
+          const artic: string[] = [];
+          if (n.accent) artic.push("<accent/>");
+          if (n.staccato) artic.push("<staccato/>");
+          if (artic.length) part += `        <notations><articulations>${artic.join("")}</articulations></notations>\n`;
           part += `      </note>\n`;
         }
         cursor = n.startSlot + noteSlots(n);

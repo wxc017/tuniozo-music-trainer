@@ -1,16 +1,16 @@
 import { useMemo, useState } from "react";
-import MuscleMap from "@/components/calisthenics/MuscleMap";
-import SkillPose3D from "@/components/calisthenics/SkillPose3D";
-import { getPose, getAnimation } from "@/lib/calisthenicsPoses";
+import MuscleMap from "@/components/statics/MuscleMap";
+import SkillPose3D from "@/components/statics/SkillPose3D";
+import { getPose, getAnimation } from "@/lib/staticsPoses";
 import {
   SKILLS, CATEGORY_ORDER, CATEGORY_LABELS, MUSCLE_META, ALL_MUSCLES,
   TIER_COLORS,
-  type CaliSkill, type MuscleKey, type SkillCategory,
-} from "@/lib/calisthenicsData";
+  type StaticSkill, type MuscleKey, type SkillCategory,
+} from "@/lib/staticsData";
 
 type SortMode = "family" | "muscle";
 
-export default function CalisthenicsTab() {
+export default function StaticsTab() {
   const [selectedId, setSelectedId] = useState<string>(SKILLS[0]?.id ?? "");
   const [sortMode, setSortMode] = useState<SortMode>("family");
   const [muscleFilter, setMuscleFilter] = useState<MuscleKey | null>(null);
@@ -22,7 +22,7 @@ export default function CalisthenicsTab() {
   );
 
   const q = query.trim().toLowerCase();
-  const matches = (s: CaliSkill) =>
+  const matches = (s: StaticSkill) =>
     (!q || s.name.toLowerCase().includes(q)) &&
     (!muscleFilter || s.muscles.includes(muscleFilter));
 
@@ -121,6 +121,28 @@ export default function CalisthenicsTab() {
               {CATEGORY_LABELS[selected.category]}
             </div>
             <p className="text-[#bbb] mt-3 leading-relaxed">{selected.desc}</p>
+
+            {/* Position chain — what you actually have to hold on the way through.
+                A single-entry chain is a pure hold, so there's nothing to show. */}
+            {selected.chain && selected.chain.length > 1 && (
+              <div className="mt-4 flex items-center gap-2 flex-wrap">
+                {selected.chain.map((step, i) => (
+                  <span key={i} className="flex items-center gap-2">
+                    {i > 0 && <span className="text-[#555] text-sm">→</span>}
+                    <span
+                      title={step.via ? "Passed through, not held" : "Held position"}
+                      className={`text-[13px] px-2.5 py-1 rounded-md border ${
+                        step.via
+                          ? "border-dashed border-[#3a3a3a] text-[#8a8a8a] bg-transparent italic"
+                          : "border-[#2e2e46] text-[#dcdcdc] bg-[#16162a]"
+                      }`}>
+                      {step.pos}
+                    </span>
+                  </span>
+                ))}
+                <span className="text-[10px] text-[#555] ml-1">dashed = passed through</span>
+              </div>
+            )}
 
             <div className="mt-6 grid xl:grid-cols-2 gap-8 items-start">
             {/* ── Section 1: Muscle map ── */}

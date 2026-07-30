@@ -36,7 +36,7 @@ import VocalPercussion from "@/components/VocalPercussion";
 import MixedGroups from "@/components/MixedGroups";
 import ScoringMode from "@/components/ScoringMode";
 import PhraseDecomposition from "@/components/PhraseDecomposition";
-import CalisthenicsTab from "@/components/tabs/CalisthenicsTab";
+import StaticsTab from "@/components/tabs/StaticsTab";
 import WorkoutLog from "@/components/WorkoutLog";
 // Academic mode components — gitignored, only present in local dev
 const academicModules = import.meta.glob([
@@ -499,10 +499,11 @@ export default function App() {
   const [navHidden, setNavHidden] = useLS<boolean>("lt_nav_hidden", false);
   // Permutations mode subtab (Split Permutations ↔ Paradiddle Orchestrations).
   const [permSubtab, setPermSubtab] = useLS<"split" | "paradiddle">("lt_app_perm_subtab", "split");
-  // Migrate the old section id so a persisted "split-permutations" still lands
-  // on the renamed "permutations" mode.
+  // Migrate old section ids so a persisted "split-permutations" still lands on
+  // the renamed "permutations" mode, and "calisthenics" on "statics".
   useEffect(() => {
     if (section === "split-permutations") setSection("permutations");
+    if (section === "calisthenics") setSection("statics");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // When user enters Scalar Explorations from a non-Meantone EDO (41 / 53
@@ -1030,9 +1031,13 @@ export default function App() {
     </>
   );
 
+  // 100dvh, not 100vh: dvh tracks the actually-visible viewport, so the last row
+  // can't end up underneath the OS task bar.  The three scoring editors join the
+  // self-bounding list — they scroll internally and own a pinned footer, so
+  // letting the PAGE scroll as well just pushed that footer off the bottom.
   return (
     <div
-      className={`bg-[#0d0d0d] text-white flex flex-col ${(section === "reading-workflow" || section === "temperament-explorer" || section === "math-lab" || section === "calisthenics" || section === "workout-log") ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}
+      className={`bg-[#0d0d0d] text-white flex flex-col h-[100dvh] ${(section === "reading-workflow" || section === "temperament-explorer" || section === "math-lab" || section === "statics" || section === "workout-log" || section === "sol-fa" || section === "note-entry" || section === "drum-notation") ? "overflow-hidden" : "overflow-y-auto"}`}
       style={{ "--metro-h": "0px" } as React.CSSProperties}
     >
       {/* ── Header ── */}
@@ -1098,7 +1103,7 @@ export default function App() {
                   { id: "metronome",            label: "Metronome",            group: "Rhythmic Studies" },
                   // Interval Spectrum sits last in Spectrum Research, after Metronome (per direct user direction).
                   { id: "interval-spectrum",    label: "Interval Spectrum",      group: "Spectrum Research" },
-                  { id: "calisthenics",         label: "Calisthenics",         group: "Fitness" },
+                  { id: "statics",              label: "Statics",              group: "Fitness" },
                   { id: "workout-log",          label: "Workout Log",          group: "Fitness" },
                 ];
                 const visible = SECTION_BUTTONS.filter(b => !b.beta || betaMode);
@@ -1734,17 +1739,17 @@ export default function App() {
 
       {/* ── Scoring — split into three modes: Sheet Music / Drum Notation / Sol-fa ── */}
       {section === "note-entry" && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <ScoringMode lockedInstrument="harmonic" />
         </div>
       )}
       {section === "drum-notation" && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <ScoringMode lockedInstrument="drum" />
         </div>
       )}
       {section === "sol-fa" && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <ScoringMode lockedInstrument="jianpu" onActiveEdo={setEdo} solfege={solfegeByEdo} />
         </div>
       )}
@@ -1765,42 +1770,42 @@ export default function App() {
 
       {/* ── Interval Browser ── */}
       {section === "interval-browser" && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <IntervalBrowser />
         </div>
       )}
 
       {/* ── Microwave Mode ── */}
       {section === "microwave" && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <MicrowaveMode edo={edo} />
         </div>
       )}
 
       {/* ── Temperament Explorer ── */}
       {section === "temperament-explorer" && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <TemperamentExplorer />
         </div>
       )}
 
       {/* ── Math Lab ── */}
       {section === "math-lab" && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <MathLab />
         </div>
       )}
 
-      {/* ── Calisthenics ── */}
-      {section === "calisthenics" && (
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <CalisthenicsTab />
+      {/* ── Statics ── */}
+      {section === "statics" && (
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <StaticsTab />
         </div>
       )}
 
       {/* ── Workout Log ── */}
       {section === "workout-log" && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <WorkoutLog />
         </div>
       )}
@@ -1835,14 +1840,14 @@ export default function App() {
 
       {/* ── Note Writing (Academic) ── */}
       {section === "note-writing" && academicComps.NoteWriting && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <academicComps.NoteWriting />
         </div>
       )}
 
       {/* ── Simple Doc (Academic) ── */}
       {section === "simple-doc" && academicComps.SimpleDoc && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <academicComps.SimpleDoc />
         </div>
       )}

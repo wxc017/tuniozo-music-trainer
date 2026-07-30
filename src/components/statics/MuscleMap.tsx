@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import Model, { type IExerciseData, type IMuscleStats, type Muscle } from "react-body-highlighter";
-import type { MuscleKey } from "@/lib/calisthenicsData";
-import { MUSCLE_META, ALL_MUSCLES } from "@/lib/calisthenicsData";
+import type { MuscleKey } from "@/lib/staticsData";
+import { MUSCLE_META, ALL_MUSCLES } from "@/lib/staticsData";
 
 const ACCENT = "#7173e6";
 const BODY = "#2c2c33";

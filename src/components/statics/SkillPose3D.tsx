@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import type { Pose, Vec3 } from "@/lib/calisthenicsPoses";
+import type { Pose, Vec3 } from "@/lib/staticsPoses";
 
 // ── Skeleton proportions (metres) ──────────────────────────────────────────
 const SEG = {

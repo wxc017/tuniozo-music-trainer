@@ -49,7 +49,7 @@ export interface WorkoutSet {
   /** Reps performed (dynamic movements). */
   reps?: number;
   /** Hold duration in seconds (static holds — the bread and butter of the
-   *  calisthenics skill catalog: levers, planche, cross, etc.). */
+   *  statics skill catalog: levers, planche, cross, etc.). */
   holdSec?: number;
   /** Added/assistance load. Sign convention: positive = added weight,
    *  negative = assistance (e.g. band). Unit is the log-wide `unit`. */
@@ -75,7 +75,7 @@ export interface WorkoutSet {
 /** An exercise as it appears inside one workout, with its sets. */
 export interface LoggedExercise {
   id: string;
-  /** Links back to the SKILLS catalog (calisthenicsData.ts) when picked from
+  /** Links back to the SKILLS catalog (staticsData.ts) when picked from
    *  it — lets the log show the muscle map / 3D pose. Absent for free-text. */
   skillId?: string;
   name: string;

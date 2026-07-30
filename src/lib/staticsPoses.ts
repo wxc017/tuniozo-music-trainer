@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────
-// 3D pose definitions for the calisthenics skill viewer.
+// 3D pose definitions for the statics skill viewer.
 //
 // A pose is a set of joint rotations (Euler XYZ, DEGREES here — converted to
 // radians by the viewer) applied to a shared articulated humanoid, plus the

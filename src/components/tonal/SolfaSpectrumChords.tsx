@@ -76,30 +76,35 @@ type ChordType = "triad" | "quartal3" | "cluster3" | "no3" | "no5" | "seventh" |
 interface OverBassMember { id: ChordType; roman: string; deg: string; up: string[]; name: string; }
 interface OverBassFamily { key: string; label: string; color: string; desc: string; members: OverBassMember[]; }
 const OVERBASS_FAMILIES: OverBassFamily[] = [
+  // Upper structures are named by which MEMBERS they contain (1st·3rd·5th), not
+  // by a quality word.  "min7 shell" / "dom7 shell" / "m7♭5 shell" presume a
+  // major-scale reading; the same three notes are a different quality in another
+  // scale or EDO, while "1st·3rd·7th" stays true in all of them.  The trailing
+  // "on the Nth" is positional, not quality, so it stays.
   { key: "TBN", label: "TBN", color: "#79a4ff", desc: "triad over bass", members: [
-    { id: "tbn1", roman: "I",   deg: "1·5·7·9",   up: ["G","B","D"], name: "major triad · on the 5th" },
-    { id: "tbn2", roman: "II",  deg: "1·7·9·11",  up: ["B","D","F"], name: "diminished triad · on the 7th" },
-    { id: "tbn3", roman: "III", deg: "1·9·11·13", up: ["D","F","A"], name: "minor triad · on the 9th" },
+    { id: "tbn1", roman: "I",   deg: "1·5·7·9",   up: ["G","B","D"], name: "1st·3rd·5th · on the 5th" },
+    { id: "tbn2", roman: "II",  deg: "1·7·9·11",  up: ["B","D","F"], name: "1st·3rd·5th · on the 7th" },
+    { id: "tbn3", roman: "III", deg: "1·9·11·13", up: ["D","F","A"], name: "1st·3rd·5th · on the 9th" },
   ] },
   { key: "QBN", label: "QBN", color: "#40cfb0", desc: "quartal trichord over bass", members: [
-    { id: "qbn1", roman: "I",   deg: "1·3·9·13", up: ["E","A","D"], name: "quartal · on the 3rd" },
-    { id: "qbn2", roman: "II",  deg: "1·5·9·13", up: ["A","D","G"], name: "quartal · on the 6th" },
-    { id: "qbn3", roman: "III", deg: "1·3·7·13", up: ["B","E","A"], name: "quartal · on the 7th" },
+    { id: "qbn1", roman: "I",   deg: "1·3·9·13", up: ["E","A","D"], name: "1st·4th·7th · on the 3rd" },
+    { id: "qbn2", roman: "II",  deg: "1·5·9·13", up: ["A","D","G"], name: "1st·4th·7th · on the 6th" },
+    { id: "qbn3", roman: "III", deg: "1·3·7·13", up: ["B","E","A"], name: "1st·4th·7th · on the 7th" },
   ] },
   { key: "SBN", label: "SBN", color: "#f0a15b", desc: "7th-shell over bass", members: [
-    { id: "sbn1", roman: "I",    deg: "1·3·5·9",   up: ["E","G","D"], name: "min7 shell · 1-♭3-♭7" },
-    { id: "sbn2", roman: "II",   deg: "1·3·7·9",   up: ["E","B","D"], name: "min7 shell · 1-5-♭7" },
-    { id: "sbn3", roman: "III",  deg: "1·5·9·11",  up: ["G","D","F"], name: "dom7 shell · 1-5-♭7" },
-    { id: "sbn4", roman: "IV",   deg: "1·7·9·13",  up: ["B","D","A"], name: "min7 shell · 1-♭3-♭7" },
-    { id: "sbn5", roman: "V",    deg: "1·3·11·13", up: ["F","A","E"], name: "maj7 shell · 1-3-7" },
-    { id: "sbn6", roman: "VI",   deg: "1·3·5·13",  up: ["A","E","G"], name: "min7 shell · 1-5-♭7" },
-    { id: "sbn7", roman: "VII",  deg: "1·5·7·11",  up: ["G","B","F"], name: "dom7 shell · 1-3-♭7" },
-    { id: "sbn8", roman: "VIII", deg: "1·7·11·13", up: ["B","F","A"], name: "m7♭5 shell · 1-♭5-♭7" },
+    { id: "sbn1", roman: "I",    deg: "1·3·5·9",   up: ["E","G","D"], name: "1st·3rd·7th" },
+    { id: "sbn2", roman: "II",   deg: "1·3·7·9",   up: ["E","B","D"], name: "1st·5th·7th" },
+    { id: "sbn3", roman: "III",  deg: "1·5·9·11",  up: ["G","D","F"], name: "1st·5th·7th" },
+    { id: "sbn4", roman: "IV",   deg: "1·7·9·13",  up: ["B","D","A"], name: "1st·3rd·7th" },
+    { id: "sbn5", roman: "V",    deg: "1·3·11·13", up: ["F","A","E"], name: "1st·3rd·7th" },
+    { id: "sbn6", roman: "VI",   deg: "1·3·5·13",  up: ["A","E","G"], name: "1st·5th·7th" },
+    { id: "sbn7", roman: "VII",  deg: "1·5·7·11",  up: ["G","B","F"], name: "1st·3rd·7th" },
+    { id: "sbn8", roman: "VIII", deg: "1·7·11·13", up: ["B","F","A"], name: "1st·5th·7th" },
   ] },
   { key: "CBN", label: "CBN", color: "#dc86cd", desc: "cluster over bass", members: [
-    { id: "cbn1", roman: "I",   deg: "1·3·5·11",  up: ["E","F","G"], name: "cluster · on the 3rd" },
-    { id: "cbn2", roman: "II",  deg: "1·5·11·13", up: ["F","G","A"], name: "cluster · on the 4th" },
-    { id: "cbn3", roman: "III", deg: "1·5·7·13",  up: ["G","A","B"], name: "cluster · on the 5th" },
+    { id: "cbn1", roman: "I",   deg: "1·3·5·11",  up: ["E","F","G"], name: "1st·2nd·3rd · on the 3rd" },
+    { id: "cbn2", roman: "II",  deg: "1·5·11·13", up: ["F","G","A"], name: "1st·2nd·3rd · on the 4th" },
+    { id: "cbn3", roman: "III", deg: "1·5·7·13",  up: ["G","A","B"], name: "1st·2nd·3rd · on the 5th" },
   ] },
 ];
 const CHORD_GROUPS: { group: string; items: { id: ChordType; label: string; title: string }[] }[] = [
@@ -566,7 +571,7 @@ const MODE_FAMILIES: { label: string; ids: ModeId[] }[] = [
   { label: "Maqam",        ids: ["rast", "bayati", "sikah", "huzam"] },
 ];
 // The picker's own left-to-right reading order, used to order the multi-scale
-// n / m cycle so it walks the chips as they're laid out.
+// ↑ / ↓ cycle so it walks the chips as they're laid out.
 const PICKER_ORDER: ModeId[] = MODE_FAMILIES.flatMap(f => f.ids);
 // A degree's sub-band [lo,hi] for a region, tolerating regions without the
 // small/center/large split (neutral regions) by using their full span.
@@ -726,8 +731,15 @@ const subBandOf = (centsFromTonic: number): number => {
   const c = ((centsFromTonic % 1200) + 1200) % 1200;
   const r = MAIN_REGIONS.find(rg => c >= rg.lo && c <= rg.hi);
   if (!r?.subs) return 1;
-  const i = r.subs.findIndex(s => c >= s.lo - 0.01 && c <= s.hi + 0.01);
-  return i < 0 ? 1 : Math.min(i, 2);
+  // The three sub-bands SHARE their boundaries (small.hi === middle.lo), and every
+  // 12-EDO degree lands exactly ON one: 200 / 900 / 1100 sit at middle.lo, and
+  // 300 / 800 / 1000 at middle.hi.  A plain findIndex resolves a boundary to
+  // whichever band is listed first, so half the 12-EDO scale used to read "small"
+  // (↓II ↓VI ↓VII).  12-EDO is the CENTRE tuning by definition — every one of its
+  // notes is central — so test middle FIRST and a boundary always lands there.
+  const [sm, mid] = r.subs;
+  if (c >= mid.lo - 0.01 && c <= mid.hi + 0.01) return 1;
+  return c <= sm.hi + 0.01 ? 0 : 2;
 };
 // Sized Roman numeral with the band arrow taken from the ACTUAL sub-band (↓ small ·
 // bare center · ↑ large) — so a center major-3rd root reads "III", not "↓III".
@@ -760,6 +772,47 @@ const romanForDegree = (mSemis: number[], dd: number, chordSemis: number[], root
   const b = subBandOf(rootCents);
   const arrow = b === 0 ? "↓" : b === 2 ? "↑" : "";
   return arrow + acc + (isMinor ? ROMAN_UP[dd].toLowerCase() : ROMAN_UP[dd]) + sym;
+};
+// Same numeral, for a chord given in CENTS: `rootCents` above the tonic, `toneCents`
+// its pitch-classes, `scale` the mode's raw cents.  Case and the °/ø/+ symbol come
+// from the CHORD's own third / fifth / seventh.  `romanBandArrow` (via sizedRoman)
+// reads case off the size of the ROOT's interval to the tonic instead, which is a
+// different question entirely — that's why minor's v rendered "V" (root a perfect
+// 5th → uppercase) and major's iii / vi / vii° rendered "III" / "VI" / "VII".
+const romanForChordCents = (rootCents: number, toneCents: number[], scale: number[]): string => {
+  const wrap = (x: number) => ((x % 1200) + 1200) % 1200;
+  const R = wrap(rootCents);
+  const dd = scale.findIndex(c => Math.abs(wrap(c) - R) < 1);
+  if (dd < 0) return romanBandArrow(rootCents);   // off-scale root: no degree to number
+  // Pick chord members by interval RANGE, not by sorted index — a 9th chord's
+  // pitch-classes sort to [0, 200, 400, 700, 1000], where index 1 is the 9th.
+  const iv = toneCents.map(t => wrap(t - R)).sort((a, b) => a - b);
+  const inRange = (lo: number, hi: number) => iv.find(x => x >= lo && x <= hi);
+  const third = inRange(250, 500) ?? 400;
+  const fifth = inRange(550, 850) ?? 700;
+  const seventh = inRange(850, 1150) ?? null;
+  const isMinor = third < 350;
+  // ° on its own and with a diminished 7th, ø when the 7th is minor (minor's iiø).
+  const sym = isMinor && fifth <= 650 ? (seventh !== null && Math.abs(seventh - 900) > 50 ? "ø" : "°")
+    : !isMinor && fifth >= 750 ? "+" : "";
+  const alt = Math.round((wrap(scale[dd]) - MAJOR_REF[dd] * 100) / 100);
+  const acc = alt === -1 ? "♭" : alt === 1 ? "♯" : alt === -2 ? "♭♭" : alt === 2 ? "♯♯" : "";
+  const b = subBandOf(R);
+  return (b === 0 ? "↓" : b === 2 ? "↑" : "") + acc + (isMinor ? ROMAN_UP[dd].toLowerCase() : ROMAN_UP[dd]) + sym;
+};
+// Inversion as a SLASH plus the chord member in the bass, named by its ORDINAL:
+//   I/3rd  = first inversion (the chord's 3rd is underneath)
+//   I/5th  = second inversion,  I/7th = third,  I/9th when a 9th is in the bass.
+// Root position stays bare.  The numeral keeps carrying the chord's own quality
+// through its case (I major, i minor); the ordinal names WHICH tone is in the
+// bass, not that tone's own quality — the chord already told you that.
+// Read off the real bass tone rather than the row's nominal inversion, so a drop
+// voicing that moves a different voice to the bottom is labelled by what you
+// actually hear down there.
+const INV_ORDINAL: Record<number, string> = { 0: "", 9: "/9th", 3: "/3rd", 5: "/5th", 7: "/7th" };
+const inversionSlash = (rootCents: number, bassCents: number): string => {
+  const b = ((((bassCents - rootCents) % 1200) + 1200) % 1200);
+  return INV_ORDINAL[b < 60 || b > 1170 ? 0 : b < 250 ? 9 : b < 520 ? 3 : b < 860 ? 5 : 7];
 };
 const REGION_BY_NAME = new Map(REGIONS.filter(r => r.subs && r.subs.length === 3).map(r => [r.name, r]));
 function bandRange(regionName: string | null, band: Band, t?: EdoTuning): [number, number] {
@@ -1016,14 +1069,14 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // its own section (one small, one center, one large — never three of a kind).
   const [singModes, setSingModes] = useState<Set<ModeId>>(new Set(["maj"]));
   // Multi-scale: every SELECTED mode is generated, but only ONE is on screen at a
-  // time — n / m cycle which.  Everything (patterns, chords, cycles, drone,
+  // time — ↑ / ↓ cycle which.  Everything (patterns, chords, cycles, drone,
   // spectrum, pitch targets) flips to that scale at once, and because the other
   // scales stay generated the cycle is instant and the exercise list underneath
   // doesn't re-randomize — so the same pattern can be compared across scales.
   const [activeMode, setActiveMode] = useState<ModeId>("maj");
   const [singBands, setSingBands] = useState<Set<Band>>(new Set([0, 1, 2]));
   // Cycle order follows the PICKER's left-to-right order, not the order the chips
-  // were clicked, so n / m walk the rows you're looking at.
+  // were clicked, so ↑ / ↓ walk the rows you're looking at.
   const cycleModes = PICKER_ORDER.filter(id => singModes.has(id));
   const cycleModesRef = useRef<ModeId[]>(cycleModes);
   cycleModesRef.current = cycleModes;
@@ -2254,8 +2307,10 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         else if (k === "p") { e.preventDefault(); setPitchOpen(o => !o); }                    // pitch trainer
         else if (k === "e") { e.preventDefault(); setEchoOpen(o => !o); }                     // echo call-and-response
         else if (k === "b") { e.preventDefault(); setBandsOpen(o => !o); }                     // spectrum band editor
-        else if (k === "n") { e.preventDefault(); stepMode(-1); }                              // previous selected scale
-        else if (k === "m") { e.preventDefault(); stepMode(1); }                               // next selected scale
+        // Scale changing on ↑ / ↓ — left/right stay with the walking drone (which
+        // claims them earlier in this handler), so both can be live at once.
+        else if (k === "arrowdown") { e.preventDefault(); stepMode(-1); }                      // previous selected scale
+        else if (k === "arrowup") { e.preventDefault(); stepMode(1); }                         // next selected scale
         else if (k === "l") { e.preventDefault(); setLogOpen(o => !o); }                       // logbook
         else if (k === "o") { e.preventDefault(); setDroneOpen(o => !o); }                      // drone panel
         else if (k === "r") { e.preventDefault(); setPatRetro(o => !o); }                     // retrograde (r+i = retrograde-inversion)
@@ -2289,7 +2344,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       on ? "bg-[#7173e6] text-white border-[#7173e6]"
          : "bg-[#1a1a1a] text-[#aaa] border-[#2a2a2a] hover:text-white hover:border-[#3a3a5a]"}`;
   // Scale chips carry THREE states, not two: filled = the scale on screen now,
-  // outlined = selected and in the n / m cycle, plain = off.
+  // outlined = selected and in the ↑ / ↓ cycle, plain = off.
   const scaleChip = (on: boolean, act: boolean) =>
     `px-2.5 py-0.5 rounded text-[11px] font-medium border transition-colors ${
       act ? "bg-[#7173e6] text-white border-[#7173e6]"
@@ -2552,7 +2607,12 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     // the ↓/↑ band arrow (Solfège-chart convention: ↓ small · bare center · ↑
     // large), e.g. "↓iii", not an interval code.
     const romanDeg = ROMAN_NUMERALS.indexOf(seq.label);
-    const rowCode = romanDeg >= 0 ? romanBandArrow(rawScale[romanDeg]) : null;
+    // Case/quality from the row's actual chord (its inversions all share one
+    // pitch-class set, so card 0 is enough); the bare numeral only as a fallback.
+    const rowTones = seq.kind === "chords" ? seq.chords[0]?.tones : undefined;
+    const rowCode = romanDeg < 0 ? null
+      : rowTones?.length ? romanForChordCents(rawScale[romanDeg], rowTones.map(t => t.cents), rawScale)
+      : romanBandArrow(rawScale[romanDeg]);
     // Modal-interchange rows carry the `mi` flag — tint them apart.
     const isMI = seq.kind === "chords" && !!seq.mi;
     return (
@@ -2564,8 +2624,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       <div className={`text-[10px] font-mono flex items-center gap-2 rounded px-1 -mx-1 cursor-pointer select-none ${logSel.has(logId) ? "ring-1 ring-[#7173e6] bg-[#7173e6]/10" : ""}`}
         onMouseDown={() => selectDown(logId)} onMouseEnter={() => selectEnter(logId)}>
         {rowCode
-          ? <span className="text-sm font-semibold" style={{ color: bandColorForCents(rawScale[romanDeg]) }}>{rowCode}</span>
-          : <span className={seq.kind === "chords" ? "text-sm font-semibold" : ""} style={{ color: isMI ? MI_TINT : "#9a9a9a" }}>{seq.label}</span>}
+          ? <span className="text-sm font-normal" style={{ color: bandColorForCents(rawScale[romanDeg]) }}>{rowCode}</span>
+          : <span className={seq.kind === "chords" ? "text-sm font-normal" : ""} style={{ color: isMI ? MI_TINT : "#9a9a9a" }}>{seq.label}</span>}
         {/* ▶ to the RIGHT of the label (chord/cycle rows only); line rows keep a ▶ per note-row. */}
         {seq.kind === "chords" && (
           <button onMouseDown={e => e.stopPropagation()} onClick={() => playFrames(seq.chords.map(c => c.tones.map(t => t.abs)))} title="Hear all voicings (one-shot)"
@@ -2614,9 +2674,20 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
               const isInvLabel = INV_SHORT.includes(ch.label ?? "");
               const isCycleCard = !isInvLabel && (isMI || ROMAN_NUMERALS.includes(ch.label ?? ""));
               const cardRootTone = isCycleCard ? ch.tones.find(t => t.root) : undefined;
+              // A cycle card's stored label is the BARE uppercase numeral ("VII"),
+              // only ever a fallback.  When the root-tone flag doesn't match (a
+              // voicing can move the flagged tone), fall back to the label's scale
+              // DEGREE and re-derive from there — never print the raw numeral,
+              // which is how major's vii° was showing up as a capital VII.
+              const cardDeg = isCycleCard && !isMI ? ROMAN_NUMERALS.indexOf(ch.label ?? "") : -1;
+              const cardRootCents = cardRootTone ? cardRootTone.cents
+                : cardDeg >= 0 ? rawScale[cardDeg] : null;
+              // Inversion rides the numeral as a slash (I/3rd = first inversion),
+              // taken from the card's real bass tone (ch.tones is abs-sorted).
+              const cardInv = cardRootCents != null && ch.tones.length ? inversionSlash(cardRootCents, ch.tones[0].cents) : "";
               const cardRomanCode = isInvLabel ? null
-                : isMI ? (ch.label ?? null)
-                : (cardRootTone ? romanBandArrow(cardRootTone.cents) : null);
+                : isMI ? (ch.label != null ? ch.label + cardInv : null)
+                : (cardRootCents != null ? romanForChordCents(cardRootCents, ch.tones.map(t => t.cents), rawScale) + cardInv : null);
               // Only the BORROWED card is tinted — the diatonic half of an A/B pair
               // stays neutral so the swap reads at a glance.
               const isBorrowed = isMI && !!ch.borrowed;
@@ -2627,7 +2698,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                 className={`flex flex-col items-center gap-0 rounded-md border px-1.5 py-1 min-w-[42px] cursor-pointer transition-colors ${cardOn ? "border-[#e0b060] ring-2 ring-[#e0b060]/50" : isBorrowed ? "border-[#7a5a2a] bg-[#191309] hover:border-[#d08a3a]" : "border-[#2a2a3a] bg-[#14141c] hover:border-[#7173e6]/60"}`}>
                 {/* Card drones the whole chord; hovering a solfège underlines it and clicking drones just that note. */}
                 {cardRomanCode
-                  ? <span className="text-[11px] leading-none mb-0.5 font-semibold" style={{ color: bandColorForCents(cardRootTone!.cents) }}>{cardRomanCode}</span>
+                  ? <span className="text-[11px] leading-none mb-0.5 font-normal" style={{ color: bandColorForCents(cardRootCents ?? 0) }}>{cardRomanCode}</span>
                   : <span className="text-[8px] leading-none mb-0.5 text-[#777]">{ch.label || (cardOn ? "●" : "▶")}</span>}
                 {[...ch.tones].reverse().map((t, k) => {
                   const noteId = `${cardId}:n${k}`;
@@ -2942,7 +3013,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                     const act = on && activeMode === m.id;
                     return (
                       <button key={m.id} className={scaleChip(on, act)}
-                        title={on ? (act ? "Showing — click to drop" : "Selected — click to show (n / m)") : "Add to the cycle"}
+                        title={on ? (act ? "Showing — click to drop" : "Selected — click to show (↑ / ↓)") : "Add to the cycle"}
                         // Unselected → add it AND show it.  Selected but not shown →
                         // jump to it.  Showing → drop it (never below one).
                         onClick={() => {
@@ -2955,7 +3026,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                     );
                   })}
                 </>,
-                fi === 0 ? "Pick any number of scales — n / m cycle which one the whole page shows (filled chip)." : undefined,
+                fi === 0 ? "Pick any number of scales — ↑ / ↓ cycle which one the whole page shows (filled chip)." : undefined,
               );
             })}
             {/* Per-degree microtuning is only meaningful for the small/center/large
@@ -3123,15 +3194,15 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
               ))}
             </div>
             {/* Which of the selected scales is on screen — click the arrows or hit
-                n / m.  Hidden when only one scale is selected (nothing to cycle). */}
+                ↑ / ↓.  Hidden when only one scale is selected (nothing to cycle). */}
             {cycleModes.length > 1 && (
               <div className="inline-flex items-center gap-1.5 rounded-lg border border-[#4a4ba8] bg-[#141433] px-2 py-1">
-                <button onClick={() => stepMode(-1)} title="Previous scale (n)"
-                  className="px-1.5 rounded bg-[#20204a] text-[#b9baf5] hover:bg-[#2b2b63] text-xs leading-none py-0.5">◀ <span className="opacity-60 font-mono">n</span></button>
+                <button onClick={() => stepMode(-1)} title="Previous scale (↓)"
+                  className="px-1.5 rounded bg-[#20204a] text-[#b9baf5] hover:bg-[#2b2b63] text-xs leading-none py-0.5">◀ <span className="opacity-60 font-mono">↓</span></button>
                 <span className="text-xs font-semibold text-white">{MODE_BY_ID.get(activeMode)?.label ?? activeMode}</span>
                 <span className="text-[10px] text-[#8a8ad0] font-mono">{cycleModes.indexOf(activeMode) + 1}/{cycleModes.length}</span>
-                <button onClick={() => stepMode(1)} title="Next scale (m)"
-                  className="px-1.5 rounded bg-[#20204a] text-[#b9baf5] hover:bg-[#2b2b63] text-xs leading-none py-0.5"><span className="opacity-60 font-mono">m</span> ▶</button>
+                <button onClick={() => stepMode(1)} title="Next scale (↑)"
+                  className="px-1.5 rounded bg-[#20204a] text-[#b9baf5] hover:bg-[#2b2b63] text-xs leading-none py-0.5"><span className="opacity-60 font-mono">↑</span> ▶</button>
               </div>
             )}
             {/* Spectrum (z) · Gamut (x) · Pitch (p) · Echo (e) and degree show/hide
@@ -3405,7 +3476,10 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                       return (
                         <button key={d} onClick={() => { if (!sec) return; const abs = SHAPE_TONES[droneChordType][0].offs.map(o => stepNote(sec.rawScale, d + o).abs + octShift); if (on || droningId === null) toggleDrone(`drrom:${d}`, abs); else abs.forEach(a => playOne(a)); }}
                           className={`px-2 py-1 rounded text-xs font-serif italic border transition-colors ${on ? "bg-[#e0b060]/25 border-[#e0b060] text-[#e6d3a0]" : "bg-[#141414] border-[#242424] text-[#c8c8c8] hover:border-[#4a9ac7]"}`}>
-                          {romanBandArrow(sec ? sec.rawScale[d] : d * 2)}
+                          {sec
+                            ? romanForChordCents(sec.rawScale[d],
+                                SHAPE_TONES[droneChordType][0].offs.map(o => sec.rawScale[mod(d + o, 7)]), sec.rawScale)
+                            : romanBandArrow(d * 2)}
                         </button>
                       );
                     })}
