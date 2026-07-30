@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useWorkoutData, exerciseHistory, loggedExerciseIndex, exerciseClips, isCwAssisted } from "@/lib/workoutStore";
 import { resolveClipUrl } from "@/lib/workoutDrive";
-import Workout3D from "./Workout3D";
 
 // Progress — its own tab. Pick any exercise you've logged and see its load /
 // RPE / volume trend, plus a "form over time" strip of its clips.
@@ -13,7 +12,7 @@ export default function ProgressView() {
   const { workouts } = useWorkoutData();
   const index = useMemo(() => loggedExerciseIndex(), [workouts]);
   const [sel, setSel] = useState<string>("");
-  const [metric, setMetric] = useState<"bestRpe" | "topWeight" | "volume" | "combo">("topWeight");
+  const [metric, setMetric] = useState<"bestRpe" | "topWeight" | "volume">("topWeight");
 
   const active = index.find(e => e.key === sel) ?? index[0];
   const assisted = isCwAssisted(active?.name ?? "");
@@ -26,14 +25,6 @@ export default function ProgressView() {
       volume: p.totalReps || Math.round(p.totalHoldSec) || null,
     }));
   }, [active, assisted]);
-  // Z-axis label for the 3D view: hold-based skills read seconds, rep-based read reps.
-  const zLabel = useMemo(() => {
-    if (!active) return "Volume";
-    const h = exerciseHistory({ skillId: active.skillId, name: active.name });
-    const anyHold = h.some(p => p.totalHoldSec > 0);
-    const anyReps = h.some(p => p.totalReps > 0);
-    return anyHold && !anyReps ? "Hold (s)" : anyReps && !anyHold ? "Reps" : "Volume";
-  }, [active]);
 
   if (index.length === 0) {
     return <div className="max-w-3xl mx-auto text-sm wl-faint text-center py-10">Log some sets to see progress charts.</div>;
@@ -42,7 +33,6 @@ export default function ProgressView() {
   const reverseY = metric === "topWeight" && assisted;
   const metricLabel = metric === "bestRpe" ? "Best RPE"
     : metric === "volume" ? "Volume (reps / hold s)"
-    : metric === "combo" ? `Each session: date × ${assisted ? "counterweight" : "load"} × volume (bubble size = reps / hold)`
     : assisted ? "Counterweight (0 = unassisted — higher is better)" : "Top load";
 
   return (
@@ -55,36 +45,27 @@ export default function ProgressView() {
             {index.map(e => <option key={e.key} value={e.key}>{e.name} · {e.count}</option>)}
           </select>
           <div className="wl-seg ml-auto">
-            {(["topWeight", "bestRpe", "volume", "combo"] as const).map(m => (
+            {(["topWeight", "bestRpe", "volume"] as const).map(m => (
               <button key={m} data-on={metric === m} onClick={() => setMetric(m)}>
-                {m === "topWeight" ? (assisted ? "Assist" : "Load") : m === "bestRpe" ? "RPE" : m === "volume" ? "Vol" : "3D"}
+                {m === "topWeight" ? (assisted ? "Assist" : "Load") : m === "bestRpe" ? "RPE" : "Vol"}
               </button>
             ))}
           </div>
         </div>
         <div className="text-[11px] wl-muted mb-2">{active?.name} — {metricLabel}</div>
-        {metric === "combo" ? (
-          // True 3D scatter: X = time, Y = counterweight (or load), Z = volume.
-          <Workout3D
-            points={data.map(d => ({ date: d.date, cw: d.topWeight, volume: d.volume }))}
-            cwLabel={assisted ? "Counterweight" : "Load"}
-            zLabel={zLabel}
-          />
-        ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={data} margin={{ top: 5, right: 8, bottom: 0, left: -20 }}>
-              <CartesianGrid stroke="#2a2c36" />
-              <XAxis dataKey="date" tick={{ fill: "#6b6e7a", fontSize: 10 }} stroke="#2a2c36" />
-              <YAxis tick={{ fill: "#6b6e7a", fontSize: 10 }} stroke="#2a2c36"
-                reversed={reverseY}
-                domain={metric === "bestRpe" ? [5, 10] : reverseY ? [0, "auto"] : ["auto", "auto"]} />
-              <Tooltip contentStyle={{ background: "#16171d", border: "1px solid #2a2c36", borderRadius: 10, fontSize: 12 }} labelStyle={{ color: ACCENT }} />
-              <Line type="monotone" dataKey={metric}
-                name={metric === "bestRpe" ? "Best RPE" : metric === "volume" ? "Volume" : assisted ? "Counterweight" : "Top load"}
-                stroke={ACCENT} strokeWidth={2} dot={{ r: 3, fill: ACCENT }} connectNulls />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={data} margin={{ top: 5, right: 8, bottom: 0, left: -20 }}>
+            <CartesianGrid stroke="#2a2c36" />
+            <XAxis dataKey="date" tick={{ fill: "#6b6e7a", fontSize: 10 }} stroke="#2a2c36" />
+            <YAxis tick={{ fill: "#6b6e7a", fontSize: 10 }} stroke="#2a2c36"
+              reversed={reverseY}
+              domain={metric === "bestRpe" ? [5, 10] : reverseY ? [0, "auto"] : ["auto", "auto"]} />
+            <Tooltip contentStyle={{ background: "#16171d", border: "1px solid #2a2c36", borderRadius: 10, fontSize: 12 }} labelStyle={{ color: ACCENT }} />
+            <Line type="monotone" dataKey={metric}
+              name={metric === "bestRpe" ? "Best RPE" : metric === "volume" ? "Volume" : assisted ? "Counterweight" : "Top load"}
+              stroke={ACCENT} strokeWidth={2} dot={{ r: 3, fill: ACCENT }} connectNulls />
+          </LineChart>
+        </ResponsiveContainer>
 
         {active && <FormTimeline match={{ skillId: active.skillId, name: active.name }} />}
       </div>
