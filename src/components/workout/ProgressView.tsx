@@ -26,6 +26,14 @@ export default function ProgressView() {
       volume: p.totalReps || Math.round(p.totalHoldSec) || null,
     }));
   }, [active, assisted]);
+  // Z-axis label for the 3D view: hold-based skills read seconds, rep-based read reps.
+  const zLabel = useMemo(() => {
+    if (!active) return "Volume";
+    const h = exerciseHistory({ skillId: active.skillId, name: active.name });
+    const anyHold = h.some(p => p.totalHoldSec > 0);
+    const anyReps = h.some(p => p.totalReps > 0);
+    return anyHold && !anyReps ? "Hold (s)" : anyReps && !anyHold ? "Reps" : "Volume";
+  }, [active]);
 
   if (index.length === 0) {
     return <div className="max-w-3xl mx-auto text-sm wl-faint text-center py-10">Log some sets to see progress charts.</div>;
@@ -60,6 +68,7 @@ export default function ProgressView() {
           <Workout3D
             points={data.map(d => ({ date: d.date, cw: d.topWeight, volume: d.volume }))}
             cwLabel={assisted ? "Counterweight" : "Load"}
+            zLabel={zLabel}
           />
         ) : (
           <ResponsiveContainer width="100%" height={220}>
