@@ -160,6 +160,16 @@ def apply_pose(rig, pose):
     reset_pose(rig)
     segs = pose["segments"]
 
+    # AIM the spine before bending it. Every limb is aimed absolutely, but the
+    # trunk was only ever given a bend, so it kept whatever direction the rest
+    # pose left it with — and the rest pose is a standing human, with a lumbar
+    # curve. The torso therefore leaned a few degrees off the body axis in every
+    # position, the legs were aimed from a pelvis that had drifted, and the line
+    # from head to ankle bowed 8 cm through the hips. A planche is judged on
+    # that line above all else.
+    for name in SPINE:
+        aim_world(rig, name, Vector((0, 0, 1)))
+
     curve = math.radians(pose.get("spine_curve", 0.0))
     lumbar = math.radians(float(pose.get("pelvic_tilt", 0.0)))
     share = {SPINE[0]: 0.38, SPINE[1]: 0.36, SPINE[2]: 0.26}
@@ -167,6 +177,26 @@ def apply_pose(rig, pose):
     for name in SPINE:
         rotate_world(rig, name, Vector((1, 0, 0)),
                      -(curve * share[name] + lumbar * extra[name]))
+
+    # Curving the trunk also TURNS it: three bones each rotated by a share of
+    # the curve leave the top of the chain rotated by the whole of it, so the
+    # head swings off the body axis and the line from head to ankle bows. The
+    # cues are meant to be shape, not direction — a flatter lumbar, a rounder
+    # back — so measure where the trunk actually ended up pointing and put the
+    # direction back, spreading the correction over the chain so the shape it
+    # just acquired survives.
+    if NECKB and NECKB[0] in rig.pose.bones and abs(curve) + abs(lumbar) > 1e-6:
+        for _ in range(2):
+            W = rig.matrix_world
+            cur = ((W @ rig.pose.bones[NECKB[0]].head)
+                   - (W @ rig.pose.bones[ROOT].head))
+            if cur.length < 1e-4:
+                break
+            q = cur.normalized().rotation_difference(Vector((0, 0, 1)))
+            if abs(q.angle) < math.radians(0.15):
+                break
+            for name in SPINE:
+                rotate_world(rig, name, q.axis, q.angle / len(SPINE))
 
     scap = float(pose.get("scapula", 0.0))
     depr = float(pose.get("depression", 0.0))
@@ -344,7 +374,13 @@ def set_grip_pose(rig, side, support=False, yaw_deg=0.0, body_axis=None):
             tt = tt - h * tt.dot(h)
         if tt.length > 0.20:
             n2 = h.cross(tt.normalized()).normalized()
-            if (n2.dot(up) > 0.0) == bool(support):
+            # ALWAYS palm-down. The ring hangs and the hand rests on top of its
+            # lowest point — in a hang exactly as much as in a support, the same
+            # way a hand sits on top of a pull-up bar with the fingers curled
+            # under. `support` used to flip this, which is why the iron cross
+            # and the inverted cross, two positions with identical hands, came
+            # out mirrored.
+            if n2.dot(up) > 0.0:
                 n2 = -n2
     if n2 is None:
         n2 = up - h * up.dot(h)

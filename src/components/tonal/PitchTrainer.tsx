@@ -44,7 +44,11 @@ const BAND_NAMES = ["small", "center", "large"] as const;
 const regionOf = (cents: number) => MAIN.find(r => cents >= r.lo && cents <= r.hi);
 
 interface Target { cents: number; syl: string; band: number; }
-const BAND_EDO = ["50", "12", "39"] as const;   // small / center / large tunings
+const BAND_EDO = ["31", "12", "39"] as const;   // small / center / large tunings
+                                               // (mirrors BAND_TUNINGS in
+                                               // SolfaSpectrumChords — the target
+                                               // pitches come from there, this is
+                                               // only the lock-button label)
 
 const vowelColor = (syl: string) => {
   const v = syl.slice(-1).toLowerCase();
