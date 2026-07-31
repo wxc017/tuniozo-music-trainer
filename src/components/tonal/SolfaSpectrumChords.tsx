@@ -24,6 +24,7 @@ import { audioEngine, AudioEngine, DRONE_INSTRUMENTS, type DroneInstrument } fro
 import { lsGet, lsSet } from "@/lib/storage";
 import { customSolfege } from "@/lib/customSolfege";
 import { degreeToEdoStep, edoStepCents, jianpuToPitch } from "@/lib/jianpu";
+import { pentatonicSubsets } from "@/lib/pentatonicSubsets";
 import JianpuMode from "@/components/JianpuMode";
 import SolfegeGamutAside from "@/components/tonal/SolfegeGamutAside";
 import PitchTrainer from "@/components/tonal/PitchTrainer";
@@ -432,13 +433,13 @@ const BAND_COLORS = ["#3f9bc4", "#7173e6", "#e0a040"] as const;   // small / cen
 // tuning's fifth (NOT a nearest-step snap of each interval), so the third's
 // size is whatever the generating fifth makes it.  Ordered by that third size
 // so the slots still read small → centre → large:
-//   50-EDO  meantone   generator 29\50 (696¢) → major 3rd ~384¢  (small)
+//   31-EDO  meantone   generator 18\31 (697¢) → major 3rd ~387¢  (small)
 //   12-EDO             generator  7\12 (700¢) → major 3rd 400¢   (centre)
 //   39-EDO  superpyth  generator 23\39 (708¢) → major 3rd ~431¢  (large)
 type BandSystem = "spectrum" | "edo";
 type EdoTuning = { edo: number; gen: number };   // gen = generating fifth, in EDO steps
 const BAND_TUNINGS: readonly EdoTuning[] = [
-  { edo: 50, gen: 29 },   // small  — meantone
+  { edo: 31, gen: 18 },   // small  — meantone
   { edo: 12, gen: 7 },    // centre — 12-TET
   { edo: 39, gen: 23 },   // large  — superpyth
 ] as const;
@@ -451,7 +452,7 @@ const BAND_SYSTEM_KEY = "lt_spectrumBandSystem";
 const FIFTHS_FOR_PC = [0, -5, 2, -3, 4, -1, 6, 1, -4, 3, -2, 5] as const;
 // Diatonic-MOS cents of pitch-class `pc` in a tuning: walk `pc`'s fifths from
 // the tonic using the tuning's GENERATING fifth, then octave-reduce.  pc 4
-// (+4 fifths) → ~431¢ in 39-EDO (large), ~384¢ in 50-EDO (small), 400¢ in 12.
+// (+4 fifths) → ~431¢ in 39-EDO (large), ~387¢ in 31-EDO (small), 400¢ in 12.
 const mosCents = (pc: number, t: EdoTuning): number => {
   const p = ((pc % 12) + 12) % 12;
   const step = (((FIFTHS_FOR_PC[p] * t.gen) % t.edo) + t.edo) % t.edo;
@@ -482,6 +483,8 @@ const SCALAR_SUBS: { id: ScalarSub; label: string }[] = [
   { id: "angular", label: "Angular" }, { id: "chromatic", label: "Chromatic" }, { id: "resolution", label: "Resolution" },
   { id: "triadpairs", label: "Triad Pairs" },
 ];
+// `parent` is an optional outer collapsible (a pentatonic FRAMEWORK, holding its
+// five rotations); most groups are flat and leave it unset.
 interface SingGroup { title: string; seqs: SingSeq[]; cat: SingCat; sub?: ScalarSub; parent?: string; }
 interface SingSection { band: Band; mode: ModeId; scaleLabel: string; scale: SingNote[]; rawScale: number[]; groups: SingGroup[]; }
 
@@ -596,12 +599,29 @@ const bandWindow = (r: { lo: number; hi: number; subs?: { lo: number; hi: number
   const half = Math.max(0, Math.min(jitter, (s.hi - s.lo) / 2));
   return [mid[band] - half, mid[band] + half];
 };
+// The four regions that lie OUTSIDE the chain of fifths.  `mosCents` walks
+// fifths, so it can never land on one — asked for a neutral 3rd it hands back
+// whatever shares that pc slot, i.e. the MINOR 3rd, silently turning every maqam
+// into a plain minor mode.  They need snapping to the region's own centre.
+const NEUTRAL_REGIONS: ReadonlySet<string> = new Set([RG.n2, RG.n3, RG.n6, RG.n7]);
 // EDO mode collapses a region to a single point: `pc`'s diatonic-MOS pitch in
 // the tuning `t` (a zero-width window, so the downstream random pick returns it
 // exactly).  Spectrum mode falls through to the sub-band window.
 const regionBand = (name: string, band: Band, t?: EdoTuning): [number, number] => {
-  if (t) { const pc = REGION_PC[name]; if (pc != null) { const c = mosCents(pc, t); return [c, c]; } }
   const r = REGION_ANY.get(name);
+  if (t) {
+    // Neutral degrees snap to the nearest step of the EDO to the region centre.
+    // 31-EDO (38.7¢) and 39-EDO (30.8¢) both land inside the neutral band; 12-EDO
+    // has no neutral interval at all, so a maqam simply cannot be rendered there
+    // — that's a property of 12-EDO, not something to paper over.
+    if (r && NEUTRAL_REGIONS.has(name)) {
+      const step = 1200 / t.edo;
+      const c = Math.round((r.lo + r.hi) / 2 / step) * step;
+      return [c, c];
+    }
+    const pc = REGION_PC[name];
+    if (pc != null) { const c = mosCents(pc, t); return [c, c]; }
+  }
   if (!r) return [0, 0];
   return bandWindow(r, band);
 };
@@ -864,7 +884,7 @@ const intervalPairs = (L: number, k: number): number[] =>
 // octaves, so ONE cell sequences over a 5-note pentatonic, a 6-note whole-tone,
 // or an 8-note octatonic exactly as the diatonic cells run over 7.  The pcs are
 // mapped through the band-tuned 12-note chroma at build time, so every structure
-// inherits the 50/12/39-EDO spectrum — structures, pentatonics, symmetric
+// inherits the 31/12/39-EDO spectrum — structures, pentatonics, symmetric
 // scales, chords and cycles are all the same idea applied to different note-sets.
 const scPc = (scale: number[], i: number): number =>
   scale[mod(i, scale.length)] + 12 * Math.floor(i / scale.length);
@@ -877,34 +897,91 @@ const seqCell = (cell: number[], n: number): number[] =>
 const rollGroups = (n: number, g: number): number[] =>
   Array.from({ length: n }, (_, r) => Array.from({ length: g }, (_, j) => r + j)).flat();
 
-// Major / minor pentatonic as pc structures (semitones from the pentatonic's own
-// root), and the singable cells run over them.
-const MAJ_PENT = [0, 2, 4, 7, 9];
-const MIN_PENT = [0, 3, 5, 7, 10];
-const PENTA_CELLS: { label: string; cell: number[] }[] = [
-  { label: "up · down",    cell: upDownIdx(5) },
-  { label: "3rds",         cell: intervalPairs(5, 2) },
-  { label: "4ths",         cell: intervalPairs(5, 3) },
-  { label: "5ths",         cell: intervalPairs(5, 4) },
-  { label: "groups of 3",  cell: seqCell([0, 1, 2], 5) },
-  { label: "groups of 4",  cell: seqCell([0, 1, 2, 3], 5) },
-  { label: "↓ groups of 3", cell: seqCell([2, 1, 0], 5) },
-  { label: "1·3·5 triads", cell: seqCell([0, 2, 4], 5) },
-  { label: "4th↑ 2nd↓",    cell: seqCell([0, 3, 1], 5) },
-  // Wide-leap cells that exploit the minor-3rd gaps — the pentatonic's whole
-  // point (Potter "fours & sixes"), not just stepwise motion.
-  { label: "wide 1·4·2·5", cell: seqCell([0, 3, 1, 4], 5) },
-  { label: "skip 1·2·4·5", cell: seqCell([0, 1, 3, 4], 5) },
-  { label: "1·5·3·2",      cell: seqCell([0, 4, 2, 1], 5) },
+// The singable cells that run over a pentatonic.  The shapes themselves are no
+// longer hard-coded here — pentaGroups derives every in-key pentatonic from the
+// selected scale (see pentatonicSubsets), so one cell set covers all of them.
+// Interval names below count PENTATONIC degrees, matching "3rds/4ths/5ths"
+// above: +2 indices is a 3rd, +3 a 4th, +4 a 5th.  Because the scale is gapped,
+// each of these lands on a different chromatic interval depending on where in
+// the shape it starts — which is exactly what makes them worth internalising
+// separately rather than deriving one from another.
+// ONE naming format for every pattern: ORDINALS naming which notes OF THE
+// PENTATONIC the cell visits — "1st·4th·2nd·5th" — sequenced from each degree in
+// turn.  Ordinals, not bare digits, because the digits would collide with the
+// key-degree spelling in the group title: in "Minor · 1 ♭3 4 5 ♭7" the
+// pentatonic's 3rd note is the key's 4th, so a pattern written "1·3·2" reads as
+// key degrees when it means positions.  Counting continues past the octave
+// (6th = the 1st an octave up), the way 9ths and 13ths do.
+//
+// Labels are DERIVED from the cell, so a label can never drift from what it
+// plays, and no pattern needs an adjective — "wide" vs "skip" implied a
+// distinction between two cells of exactly the same kind.
+const ordinal = (n: number): string =>
+  `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd"
+    : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"}`;
+const degLabel = (cell: number[]): string => cell.map(i => ordinal(i + 1)).join("·");
+// Run a cell from every degree until it rotates back to the 1 — that IS what the
+// ordinal notation means, so every ordinal-labelled pattern gets all five reps,
+// no exceptions.  A note that would just repeat the previous one is skipped, so
+// 1st·3rd·2nd runs 1 3 2 4 3 5 … (the classic "in 3rds") instead of stuttering
+// 1 3 2 · 2 4 3 at every group boundary.
+const runCell = (cell: number[]): number[] => {
+  const out: number[] = [];
+  for (let r = 0; r < 5; r++) for (const o of cell) {
+    const i = r + o;
+    if (!out.length || out[out.length - 1] !== i) out.push(i);
+  }
+  return out;
+};
+// Patterns stated ONCE, not repeated from each degree.  They already visit all
+// five notes, so they'd only rotate — and the 1–7 start-degree keys give the
+// rotations already.  They deliberately DON'T use the ordinal notation, which
+// would falsely imply a per-degree sequence.
+const PENTA_STATEMENTS: { label: string; cell: number[] }[] = [
+  { label: "Stepwise Scale", cell: upDownIdx(5) },
+  { label: "Stacked 3rds",   cell: [0, 2, 4, 1, 3] },
+  { label: "Stacked 4ths",   cell: [0, 3, 1, 4, 2] },
 ];
-// Degree spelling of a pentatonic FROM ITS OWN ROOT (root = 1), so each base's
-// shape is legible: major pentatonic reads "1 2 3 5 6", minor "1 ♭3 4 5 ♭7".
-const DEG_NAMES = ["1", "♭2", "2", "♭3", "3", "4", "♯4", "5", "♭6", "6", "♭7", "7"] as const;
-// Spell a pentatonic's notes as KEY degrees, in the pentatonic's own order from
-// its root (root = chromatic offset from the tonic).  e.g. min pent on 2 →
-// 2 4 5 6 1; maj pent on 5 → 5 6 7 2 3.
-const pentaDegrees = (root: number, struct: number[]): string =>
-  struct.map(pc => DEG_NAMES[mod(root + pc, 12)]).join(" ");
+// Cells repeated from every degree, named by the ordinals they visit.  Two-note
+// cells are the plain interval pairs — the shape read in 3rds, 4ths, 5ths.
+// Three-note cells add a fall-back, which is what makes them intervallic
+// FRAMEWORKS rather than just an interval.
+//
+// A two-note cell and the three-note cell that returns to the next degree are
+// the SAME line (1st·3rd runs 1 3 2 4 3 5 …, and so does "1st·3rd·2nd"), so only
+// the shorter name is listed — it's the honest one.  1st·2nd is omitted for the
+// same reason: it collapses to the stepwise scale.
+const PENTA_ORDERS: number[][] = [
+  // Interval pairs — the shape in 3rds / 4ths / 5ths
+  [0, 2], [0, 3], [0, 4],
+  // Runs and broken triads
+  [0, 1, 2], [2, 1, 0], [0, 2, 4], [4, 2, 0],
+  // Weaves — up a 4th / 5th, fall back by each smaller interval in turn
+  [0, 3, 2], [0, 4, 2], [0, 4, 3],
+  // Step-then-leap, the inversions of the weaves
+  [0, 1, 3], [0, 2, 3], [0, 3, 4],
+  // Four-note cells
+  [0, 1, 2, 3], [0, 1, 3, 4], [0, 3, 1, 4], [0, 4, 2, 1], [0, 2, 1, 3],
+];
+// Angular — leaps that break past the octave instead of staying inside the
+// shape.  A pentatonic's gaps already make its "steps" wide, so angular here
+// means stacking those leaps in one direction, or crossing the octave and
+// falling back.  Same idea as the diatonic ANGULAR groups above.
+const PENTA_ANGULAR_ORDERS: number[][] = [
+  [0, 6],                            // the shape in 7ths — the widest pair
+  [0, 2, 4, 6],                      // stacked 3rds, climbing past the octave
+  [0, 3, 6],                         // stacked 4ths — the quartal climb
+  [0, 4, 8],                         // stacked 5ths
+  [0, 3, 6, 9],                      // 4ths straight through two octaves
+  [0, 5, 2],                         // over the octave, fall a 4th
+  [0, 5, 3],                         // over the octave, fall a 3rd
+  [0, 6, 2],                         // 7th up, fall a 5th
+  [0, 4, 1, 5],                      // 5th up, 4th down, 5th up
+  [0, 5, 1, 6],                      // octave leaps in pairs
+];
+const mkCells = (orders: number[][]) => orders.map(c => ({ label: degLabel(c), cell: runCell(c) }));
+const PENTA_CELLS = [...PENTA_STATEMENTS, ...mkCells(PENTA_ORDERS)];
+const PENTA_ANGULAR_CELLS = mkCells(PENTA_ANGULAR_ORDERS);
 
 // Symmetric (non-diatonic) scales don't fit the 7-region diatonic MOS, so they
 // live in the MODES list as `sym` scales (selectable under Harmonic minor) and
@@ -1100,14 +1177,14 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const [specBand4, setSpecBand4] = useState<Set<Band>>(new Set([1]));   // 4th — its own control
   const [specBand5, setSpecBand5] = useState<Set<Band>>(new Set([1]));   // 5th — its own control
   // Band system: "spectrum" (small/center/large sub-bands) or "edo" (the three
-  // slots become the 50/12/39-EDO diatonic-MOS tunings).  Persisted.
+  // slots become the 31/12/39-EDO diatonic-MOS tunings).  Persisted.
   const [bandSystem, setBandSystem] = useState<BandSystem>(() => lsGet<BandSystem>(BAND_SYSTEM_KEY, "spectrum"));
   useEffect(() => { lsSet(BAND_SYSTEM_KEY, bandSystem); }, [bandSystem]);
   // The EDO tuning a band slot resolves to (undefined in spectrum → sub-band pick).
   const edoForBand = (b: Band): EdoTuning | undefined => bandSystem === "edo" ? BAND_TUNINGS[b] : undefined;
   // Display label for a band slot in the current system.
   const bandLabelOf = (b: Band): string => bandSystem === "edo" ? BAND_EDO_LABELS[b] : BAND_LABELS[b];
-  // Longer label for section headers ("50-EDO" vs "center").
+  // Longer label for section headers ("31-EDO" vs "center").
   const bandTitleOf = (b: Band): string => bandSystem === "edo" ? `${BAND_TUNINGS[b].edo}-EDO` : BAND_LABELS[b];
   // Allowed bands for scale-degree index d (1-6): 4th/5th get their own control,
   // everything else uses the universal set.  Shared by Chords and Sing.  In EDO
@@ -1412,17 +1489,27 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     // EDO mode: the whole 12-note chromatic is the fifth-generated MOS of this
     // tuning — every pc is `mosCents`, so the 5 chromatic pitches are the proper
     // meantone sharps/flats (diatonic-chromatic equivalence), not random spreads.
-    if (edo) return Array.from({ length: 12 }, (_, pc) => mosCents(pc, edo));
-    const chroma = new Array(12).fill(0);
+    // That's the BASE; the diatonic loop below then re-tunes any NEUTRAL degree,
+    // which no chain of fifths can reach.
+    const chroma = edo
+      ? Array.from({ length: 12 }, (_, pc) => mosCents(pc, edo))
+      : new Array(12).fill(0);
     const dia = new Set([0]);
     for (let d = 1; d < 7; d++) {
-      const pc = REGION_PC[regions[d]] ?? d;
+      const region = regions[d];
+      const pc = REGION_PC[region] ?? d;
       dia.add(pc);
-      if (d === 1) { chroma[pc] = c2; continue; }   // 2nd — shared across all bands
-      if (d === 3) { chroma[pc] = c4; continue; }   // 4th — shared
-      if (d === 4) { chroma[pc] = c5; continue; }   // 5th — shared
-      const [lo, hi] = regionBand(regions[d], band, edo);
-      chroma[pc] = spreadPick(`singm_${regions[d]}_b${band}`, lo, hi);
+      // The 2nd/4th/5th are shared across bands so they never smear — but only
+      // when this mode uses the ordinary region there.  Bayati/Sikah/Huzam have a
+      // NEUTRAL 2nd, which has to come from its own region or it reverts to the
+      // major 2nd and the maqam loses the interval that defines it.
+      if (!NEUTRAL_REGIONS.has(region)) {
+        if (d === 1) { chroma[pc] = c2; continue; }   // 2nd — shared across all bands
+        if (d === 3) { chroma[pc] = c4; continue; }   // 4th — shared
+        if (d === 4) { chroma[pc] = c5; continue; }   // 5th — shared
+      }
+      const [lo, hi] = regionBand(region, band, edo);
+      chroma[pc] = spreadPick(`singm_${region}_b${band}`, lo, hi);
     }
     for (let pc = 1; pc < 12; pc++) {
       if (dia.has(pc)) continue;
@@ -1895,38 +1982,35 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     return { band, mode: modeId, scaleLabel, scale: scale.map((_, i) => stepNote(scale, i)), rawScale: scale, groups: kept };
   };
 
-  // Pentatonic superimposition, split into two collapsible families:
-  //   • TONIC-RELATIVE — one shape re-rooted at fixed chromatic offsets from the
-  //     key tonic (on 1, off 5, off ♭7, side-slip …).  Context-free colour study.
-  //   • CHORD-RELATIVE — a pentatonic rooted on EACH scale degree (the chord
-  //     roots), quality matched to that degree's own third — pentatonic-per-chord.
-  // Plus the 4-note pentatonic Melodic Structures (all 24) on the home shape.
+  // The pentatonics of the selected scale — five of its degree slots, rooted on
+  // degree 1, and only the ones a living practice actually named.  Two
+  // deliberate restrictions:
+  //
+  //   • ROOTED ON 1.  Starting the same five notes from 2/3/4/5/6/7 is a
+  //     rotation of one shape, not a second pentatonic to internalise.
+  //   • NAMED ONLY.  A shape gets in when it has a real name — Ritusen,
+  //     Hirajoshi, Iwato, In-sen, Ryukyu, Man Gong …  The other diatonic subsets
+  //     have no name in any literature worth trusting, and a systematic label
+  //     ("Min9 5" for a shape whose 3rd is major) misleads more than it helps.
+  //
+  // How many exist is a property of the MODE, not a fixed list: Lydian has one,
+  // Dorian and Phrygian have five.  All 14 names are reachable across the seven
+  // modes, so the full set comes from working through the modes.
   const pentaGroups = (chroma: number[], diaPcs: number[]): SingGroup[] => {
-    const scaleSet = new Set(diaPcs.map(pc => mod(pc, 12)));
-    const inKey = (root: number, struct: number[]): boolean => struct.every(pc => scaleSet.has(mod(root + pc, 12)));
-    const cellsFor = (root: number, struct: number[]): SingSeq[] =>
-      PENTA_CELLS.map(c => chromSeq(c.label, endOnTonicCents(scPcs(struct, c.cell).map(pc => chromaCents(chroma, root + pc)))));
-    // TONIC-RELATIVE — every major / minor pentatonic that stays ENTIRELY in the
-    // key.  This is how pentatonics are actually catalogued: in C major, maj pent
-    // on I/IV/V and min pent on ii/iii/vi — three collections, six roots — not the
-    // five modal rotations of one collection.
-    // Every major / minor pentatonic that stays ENTIRELY inside the selected
-    // scale — the pentatonic subsets you're internalising.  (Superimposition
-    // proper needs out-of-scale notes, so it doesn't belong in this mode; in-key,
-    // "tonic-relative" and "chord-relative" are the same six pentatonics.)  Each
-    // is spelled in the key's own degrees from its root: min on 2 → 2 4 5 6 1.
-    const groups: SingGroup[] = [];
-    diaPcs.forEach((rootPc, d) => {
-      ([["maj", MAJ_PENT], ["min", MIN_PENT]] as const).forEach(([q, struct]) => {
-        if (!inKey(rootPc, struct)) return;
-        groups.push({
-          cat: "scalar", sub: "pentatonic", parent: "IN-KEY PENTATONICS",
-          title: `${q} pent on ${d + 1} · ${pentaDegrees(rootPc, struct)}`,
-          seqs: cellsFor(rootPc, struct),
-        });
+    const cellsFor = (root: number, struct: number[], cells: typeof PENTA_CELLS): SingSeq[] =>
+      cells.map(c => chromSeq(c.label, endOnTonicCents(scPcs(struct, c.cell).map(pc => chromaCents(chroma, root + pc)))));
+    return pentatonicSubsets(diaPcs.map(pc => mod(pc, 12)), 12)
+      .filter(p => p.rootSlot === 1 && p.traditional)
+      .flatMap(p => {
+        // Rooted on 1, the shape's own order IS the ascending key spelling, so
+        // slotLabel says it all: "Hirajoshi · 1 2 ♭3 5 ♭6".  Each pentatonic then
+        // splits into the two collapsible halves of its vocabulary.
+        const g = { cat: "scalar" as SingCat, sub: "pentatonic" as ScalarSub, parent: `${p.name} · ${p.slotLabel}` };
+        return [
+          { ...g, title: "Non-angular", seqs: cellsFor(p.rootPc, p.struct, PENTA_CELLS) },
+          { ...g, title: "Angular",     seqs: cellsFor(p.rootPc, p.struct, PENTA_ANGULAR_CELLS) },
+        ];
       });
-    });
-    return groups;
   };
 
   // A symmetric scale (whole-tone / augmented / octatonic) doesn't fit the
@@ -2408,7 +2492,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       for (const n of sec.scale) {
         const c = ((n.cents % 1200) + 1200) % 1200;
         // Keep band-specific targets (dedupe only within the same band) so the
-        // Pitch trainer can LOCK to one band (small/center/large = 50/12/39-EDO)
+        // Pitch trainer can LOCK to one band (small/center/large = 31/12/39-EDO)
         // instead of snapping to the nearest across all three.
         if (!out.some(o => o.band === sec.band && (Math.abs(o.cents - c) < 4 || Math.abs(o.cents - c) > 1196)))
           out.push({ cents: c, syl: n.syl, band: sec.band });
@@ -2851,11 +2935,11 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
           </div>
         )}
         {/* Band system — the three slots are either Schulter sub-bands
-            (small/center/large) or the 50/12/39-EDO diatonic-MOS tunings. */}
+            (small/center/large) or the 31/12/39-EDO diatonic-MOS tunings. */}
         <div className="ml-auto flex items-center gap-1.5">
           <span className="text-[10px] text-[#555] font-semibold tracking-wider">BANDS</span>
           <div className="inline-flex rounded-lg border border-[#242424] bg-[#0b0b0b] p-0.5 gap-0.5">
-            {([["spectrum", "Spectrum"], ["edo", "50·12·39 EDO"]] as const).map(([id, text]) => (
+            {([["spectrum", "Spectrum"], ["edo", "31·12·39 EDO"]] as const).map(([id, text]) => (
               <button key={id} onClick={() => setBandSystem(id)}
                 title={id === "edo"
                   ? "Three slots become the 50 / 12 / 39-EDO diatonic scales (each the MOS generated by that tuning's fifth: small / center / large 3rds)"
@@ -3312,10 +3396,10 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                     <div className="space-y-3">
                       {groups.length === 0 && <div className="text-[11px] text-[#555]">Nothing selected for this tab.</div>}
                       {(() => {
-                        // Some groups belong to a collapsible PARENT family (e.g. the
-                        // Tonic-relative / Chord-relative pentatonic split).  Render a
-                        // parent header at each transition and hide its children when
-                        // the parent is collapsed.
+                        // Some groups belong to a collapsible PARENT family (the
+                        // pentatonic frameworks, whose five rotations sit under one
+                        // header).  Render a parent header at each transition and hide
+                        // its children when the parent is collapsed.
                         const out: ReactNode[] = [];
                         let curParent: string | undefined;
                         groups.forEach((g, gi) => {
@@ -3331,10 +3415,16 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                           }
                           if (!g.parent) curParent = undefined;
                           if (g.parent && !expandedGroups.has(g.parent)) return;   // hidden under collapsed parent
-                          const collapsed = !expandedGroups.has(g.title);
+                          // Grouped children key on the PATH, since titles like
+                          // "Angular" repeat under every parent and would otherwise
+                          // all toggle at once.  Top-level groups keep their bare
+                          // title, which is what expands the small/center/large band
+                          // columns in lockstep.
+                          const gKey = g.parent ? `${g.parent}▸${g.title}` : g.title;
+                          const collapsed = !expandedGroups.has(gKey);
                           out.push(
                             <div key={gi} className={`space-y-1.5 ${g.parent ? "pl-2 border-l border-[#1e1e2a] ml-1" : ""}`}>
-                              <button onClick={() => toggleGroupExpanded(g.title)}
+                              <button onClick={() => toggleGroupExpanded(gKey)}
                                 className="flex items-center gap-1 text-[10px] text-[#666] hover:text-[#aaa] font-semibold tracking-wider transition-colors">
                                 <span className="text-[8px] w-2 inline-block">{collapsed ? "▶" : "▼"}</span>{g.title}
                               </button>
@@ -3392,7 +3482,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                 }
               };
               // Set the tuning band for EVERY degree at once (small/center/large =
-              // 50/12/39-EDO), re-voicing a held degree drone to match.
+              // 31/12/39-EDO), re-voicing a held degree drone to match.
               const setAllBands = (b: Band) => {
                 setDroneDegBand(Array(7).fill(b));
                 const h = droneHoldRef.current;
@@ -3435,7 +3525,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                     <select value={droneDegBand[1]} onChange={e => setAllBands(Number(e.target.value) as Band)}
                       title="Tune every drone degree to one band / EDO"
                       className="bg-[#141414] border border-[#242424] rounded text-[11px] text-[#bbb] px-1 py-0.5">
-                      <option value={0}>small · 50-EDO</option>
+                      <option value={0}>small · 31-EDO</option>
                       <option value={1}>center · 12-EDO</option>
                       <option value={2}>large · 39-EDO</option>
                     </select>
@@ -3557,8 +3647,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
           <span><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">o</kbd> drone</span>
           {cycleModes.length > 1 && (
             <span className="text-[#b9baf5]">
-              <kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">n</kbd>
-              <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">m</kbd> scale
+              <kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">↑</kbd>
+              <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">↓</kbd> scale
               · {MODE_BY_ID.get(activeMode)?.label ?? activeMode} ({cycleModes.indexOf(activeMode) + 1}/{cycleModes.length})
             </span>
           )}

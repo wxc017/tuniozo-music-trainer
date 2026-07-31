@@ -27,7 +27,7 @@ const GUIDE_SHAPER_CURVE = (() => {
 })();
 
 const TOL_CENTS = 8;         // you're "on the note" inside ±this many cents. Kept tight on
-                             // purpose: the bands (50/12/39-EDO) sit only ~10-25¢ apart, so a
+                             // purpose: the bands (31/12/39-EDO) sit only ~10-25¢ apart, so a
                              // wide window would read "on" for the WRONG band and defeat the
                              // microtonal training. Precision is the point — narrow it, don't
                              // widen it. (Loosen only to warm up.)
@@ -81,7 +81,7 @@ interface Reading { cents: number; freq: number; nearest: number; offset: number
 
 export default function PitchTrainer({ rootCents, targets }: { rootCents: number; targets: Target[] }) {
   const [on, setOn] = useState(false);
-  // Lock detection to ONE band (0 small/50 · 1 center/12 · 2 large/39) so it
+  // Lock detection to ONE band (0 small/31 · 1 center/12 · 2 large/39) so it
   // stops snapping to a neighbouring tuning ~30¢ away; null = auto-nearest.
   const [lockBand, setLockBand] = useState<number | null>(null);
   const lockBandRef = useRef<number | null>(null);
@@ -285,7 +285,7 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
     };
   }, [on]);
 
-  // Keybinds while listening: h/j/k lock to small/center/large (50/12/39-EDO),
+  // Keybinds while listening: h/j/k lock to small/center/large (31/12/39-EDO),
   // g returns to auto-nearest. (1–7 stay the parent's "start on degree".)
   useEffect(() => {
     if (!on) return;

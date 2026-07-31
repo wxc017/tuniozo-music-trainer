@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import MuscleMap from "@/components/statics/MuscleMap";
-import SkillPose3D from "@/components/statics/SkillPose3D";
 import { getPose, getAnimation } from "@/lib/staticsPoses";
+import { chainRenders, POSITION_NOTE, POSITION_CUES } from "@/lib/staticsRenders";
+import GymnastPose3D from "@/components/statics/GymnastPose3D";
 import {
   SKILLS, CATEGORY_ORDER, CATEGORY_LABELS, MUSCLE_META, ALL_MUSCLES,
   TIER_COLORS,
@@ -15,6 +16,8 @@ export default function StaticsTab() {
   const [sortMode, setSortMode] = useState<SortMode>("family");
   const [muscleFilter, setMuscleFilter] = useState<MuscleKey | null>(null);
   const [query, setQuery] = useState("");
+  // which position of a transition's chain is on screen; reset when the skill does
+  const [step, setStep] = useState(0);
 
   const selected = useMemo(
     () => SKILLS.find(s => s.id === selectedId) ?? null,
@@ -92,7 +95,7 @@ export default function StaticsTab() {
                 const on = s.id === selectedId;
                 return (
                   <button key={s.id + g.key}
-                    onClick={() => setSelectedId(s.id)}
+                    onClick={() => { setSelectedId(s.id); setStep(0); }}
                     className={`w-full text-left px-3 py-2 flex items-center gap-2 border-b border-[#161616] transition-colors ${
                       on ? "bg-[#1c1c2e]" : "hover:bg-[#141414]"
                     }`}>
@@ -170,29 +173,88 @@ export default function StaticsTab() {
               </div>
             </section>
 
-            {/* ── Section 2: 3D view / positioning ── */}
+            {/* ── Section 2: rendered positions ── */}
             {(() => {
               const anim = getAnimation(selected.id, selected.name, selected.category);
               const frames = anim ?? [getPose(selected.id, selected.name, selected.category)];
               const cuePose = frames[frames.length - 1];
+              const steps = chainRenders(selected.chain);
+              const idx = Math.min(step, Math.max(0, steps.length - 1));
+              const shown = steps[idx];
               return (
                 <section>
                   <div className="text-xs font-semibold uppercase tracking-wide text-[#7173e6] mb-3 border-b border-[#1e1e1e] pb-1.5 flex items-center gap-2">
-                    3D View &amp; Positioning
-                    {anim
-                      ? <span className="text-[10px] normal-case font-normal text-[#c98a2b]">Animated transition</span>
+                    Position
+                    {steps.length > 1
+                      ? <span className="text-[10px] normal-case font-normal text-[#c98a2b]">
+                          {steps.length}-position sequence
+                        </span>
                       : <span className="text-[10px] normal-case font-normal text-[#3b8f5a]">Static hold</span>}
-                    {!cuePose.tuned && (
-                      <span className="text-[10px] normal-case font-normal text-[#777]">· pose approximate</span>
-                    )}
                   </div>
 
                   <div className="flex flex-col gap-4">
-                    <SkillPose3D frames={frames} animated={!!anim} />
+                    {shown ? (
+                      <>
+                        <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg p-3">
+                          <div className="max-w-[30rem] mx-auto">
+                            <GymnastPose3D key={shown.key} poseKey={shown.key} />
+                          </div>
+                          <div className="mt-2 text-center">
+                            <div className="text-sm text-white capitalize">
+                              {shown.pos}
+                              {shown.via && (
+                                <span className="ml-2 text-[10px] uppercase tracking-wide text-[#8a8a8a] italic">
+                                  passed through
+                                </span>
+                              )}
+                            </div>
+                            {POSITION_NOTE[shown.key] && (
+                              <p className="text-xs text-[#999] mt-1 leading-relaxed max-w-[28rem] mx-auto">
+                                {POSITION_NOTE[shown.key]}
+                              </p>
+                            )}
+                          </div>
+                        </div>
 
+                        {/* thumbnails: step through the positions of a transition */}
+                        {steps.length > 1 && (
+                          <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                            {steps.map((s, i) => (
+                              <span key={s.key + i} className="flex items-center gap-1.5">
+                                {i > 0 && <span className="text-[#555] text-sm">→</span>}
+                                <button
+                                  onClick={() => setStep(i)}
+                                  title={s.pos}
+                                  className={`rounded-md border p-0.5 transition-colors ${
+                                    i === idx
+                                      ? "border-[#7173e6] bg-[#16162a]"
+                                      : s.via
+                                        ? "border-dashed border-[#3a3a3a] hover:border-[#555]"
+                                        : "border-[#2a2a2a] hover:border-[#555]"
+                                  }`}>
+                                  <img src={s.src} alt={s.pos} width={64} height={64}
+                                       loading="lazy" className="w-16 h-16 block" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg p-6 text-sm text-[#666]">
+                        No render for this position yet.
+                      </div>
+                    )}
+
+                    {/* Cues for the POSITION on screen where we have them —
+                        these are the same numbers that drive the shoulder
+                        girdle and forearm rotation in the render, so the text
+                        and the picture cannot disagree. */}
                     <div className="grid sm:grid-cols-3 gap-3">
-                      <Cue label="Scapular position" text={cuePose.cue.scapula} />
-                      <Cue label="Grip / ring placement" text={cuePose.cue.grip} />
+                      <Cue label="Scapular position"
+                           text={(shown && POSITION_CUES[shown.key]?.scapula) || cuePose.cue.scapula} />
+                      <Cue label="Grip / ring placement"
+                           text={(shown && POSITION_CUES[shown.key]?.grip) || cuePose.cue.grip} />
                       <Cue label="Body line" text={cuePose.cue.line} />
                     </div>
                   </div>

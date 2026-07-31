@@ -355,7 +355,7 @@ export function isCwAssisted(name: string): boolean {
 
 /** Every video clip logged for one exercise, oldest → newest, for a form
  *  timeline (watch how form changed over time). */
-export interface ExerciseClip { date: string; videoId?: string; driveFileId?: string; setId: string; workoutId: string }
+export interface ExerciseClip { date: string; videoId?: string; driveFileId?: string; setId: string; workoutId: string; trimIn?: number; trimOut?: number }
 export function exerciseClips(match: { skillId?: string; name: string }): ExerciseClip[] {
   const out: ExerciseClip[] = [];
   for (const w of getWorkouts()) {
@@ -363,7 +363,7 @@ export function exerciseClips(match: { skillId?: string; name: string }): Exerci
       const same = match.skillId ? ex.skillId === match.skillId : ex.name.toLowerCase() === match.name.toLowerCase();
       if (!same) continue;
       for (const s of ex.sets) {
-        if (s.videoId || s.driveFileId) out.push({ date: w.date, videoId: s.videoId, driveFileId: s.driveFileId, setId: s.id, workoutId: w.id });
+        if (s.videoId || s.driveFileId) out.push({ date: w.date, videoId: s.videoId, driveFileId: s.driveFileId, setId: s.id, workoutId: w.id, trimIn: s.trimIn, trimOut: s.trimOut });
       }
     }
   }

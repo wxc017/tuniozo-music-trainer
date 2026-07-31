@@ -40,3 +40,6 @@ public/transcriptions/bluesvocal.json
 
 # stress-test output artifact
 stress-report.txt
+
+# Claude Code local state (worktrees are large; settings are per-machine)
+.claude/

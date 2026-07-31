@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useWorkoutData, exerciseHistory, loggedExerciseIndex, exerciseClips, isCwAssisted } from "@/lib/workoutStore";
 import { resolveClipUrl } from "@/lib/workoutDrive";
+import { TrimmedVideo } from "./SetVideo";
 
 // Progress — its own tab. Pick any exercise you've logged and see its load /
 // RPE / volume trend, plus a "form over time" strip of its clips.
@@ -119,7 +120,8 @@ function FormTimeline({ match }: { match: { skillId?: string; name: string } }) 
           return (
             <div key={key} className="flex-shrink-0" style={{ width: 170, scrollSnapAlign: "start" }}>
               {st.phase === "ready" && st.url ? (
-                <video src={st.url} controls playsInline preload="metadata"
+                <TrimmedVideo src={st.url} trimIn={c.trimIn} trimOut={c.trimOut}
+                  controls playsInline preload="metadata"
                   className="rounded bg-black w-full" style={{ maxHeight: 260 }} />
               ) : (
                 <div className="rounded bg-black w-full flex flex-col items-center justify-center gap-2 text-center px-2"

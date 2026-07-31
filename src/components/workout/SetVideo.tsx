@@ -79,6 +79,68 @@ export function VideoRowButton({ set, workoutId, onChange, onOpen }: {
   );
 }
 
+// ── Trim-aware player ──────────────────────────────────────────────────────
+// Trimming is non-destructive: the blob is still the full recording and only
+// `trimIn`/`trimOut` say which slice counts. Every player OUTSIDE the editor
+// has to honour those bounds itself, or you get the whole take back.
+
+export function TrimmedVideo({ src, trimIn, trimOut, videoRef, ...rest }: {
+  src: string; trimIn?: number; trimOut?: number;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
+} & React.VideoHTMLAttributes<HTMLVideoElement>) {
+  const ownRef = useRef<HTMLVideoElement>(null);
+  const ref = videoRef ?? ownRef;
+
+  const tIn = trimIn != null && trimIn > 0 ? trimIn : 0;
+  const tOut = trimOut != null && trimOut > tIn + 0.05 ? trimOut : 0; // 0 → no end bound
+  const trimmed = tIn > 0 || tOut > 0;
+
+  // A media fragment gets the poster/preload frame right (and lets browsers
+  // that support it stop natively); the handlers below are the real guarantee.
+  const base = src.split("#")[0];
+  const fragSrc = trimmed ? `${base}#t=${tIn}${tOut ? `,${tOut}` : ""}` : src;
+
+  const clampIn = () => {
+    const v = ref.current;
+    if (!v || !tIn) return;
+    if (v.currentTime < tIn - 0.05) v.currentTime = tIn;
+  };
+
+  const onLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    clampIn();
+    rest.onLoadedMetadata?.(e);
+  };
+
+  const onTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const v = ref.current;
+    if (v) {
+      const mediaEnd = isFinite(v.duration) && v.duration > 0 ? v.duration : Infinity;
+      if (tOut && tOut < mediaEnd - 0.05 && v.currentTime >= tOut) { v.pause(); v.currentTime = tOut; }
+      else if (!v.seeking) clampIn();
+    }
+    rest.onTimeUpdate?.(e);
+  };
+
+  const onPlay = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const v = ref.current;
+    // Replay from the in-point instead of resuming past the out-point.
+    if (v && tOut && v.currentTime >= tOut - 0.05) v.currentTime = tIn;
+    else clampIn();
+    rest.onPlay?.(e);
+  };
+
+  const onSeeked = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const v = ref.current;
+    if (v) { if (tOut && v.currentTime > tOut) v.currentTime = tOut; else clampIn(); }
+    rest.onSeeked?.(e);
+  };
+
+  return (
+    <video {...rest} ref={ref} src={fragSrc}
+      onLoadedMetadata={onLoadedMetadata} onTimeUpdate={onTimeUpdate} onPlay={onPlay} onSeeked={onSeeked} />
+  );
+}
+
 // ── Bottom thumbnail (small inline player + numbered circle) ───────────────
 
 type Phase = "idle" | "loading" | "ready" | "failed";
@@ -129,7 +191,8 @@ export function VideoThumb({ set, index }: {
   return (
     <div className="flex-shrink-0 flex flex-col items-center gap-1.5" style={{ width: 116, scrollSnapAlign: "start" }}>
       {phase === "ready" && url ? (
-        <video ref={videoRef} src={url} controls playsInline preload="metadata" className="rounded bg-black w-full" style={{ maxHeight: 200 }} />
+        <TrimmedVideo videoRef={videoRef} src={url} trimIn={set.trimIn} trimOut={set.trimOut}
+          controls playsInline preload="metadata" className="rounded bg-black w-full" style={{ maxHeight: 200 }} />
       ) : (
         <div className="rounded bg-black w-full flex flex-col items-center justify-center gap-1.5 text-center px-1"
           style={{ height: 160, color: "var(--wl-faint)", fontSize: 10 }}>

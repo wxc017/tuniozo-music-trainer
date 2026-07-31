@@ -127,6 +127,17 @@ function setBrief(s: WorkoutSet, unit: string): string {
   return parts.join(" · ") || "—";
 }
 
+// Keeps exported clips inside their trim marks, for browsers that ignore the
+// `#t=` media fragment (and after the viewer scrubs outside the selection).
+const trimScript =
+  `<script>document.querySelectorAll("video[data-in]").forEach(function(v){` +
+  `var i=parseFloat(v.dataset.in)||0,o=parseFloat(v.dataset.out)||0;if(!i&&!o)return;` +
+  `function c(){if(i&&v.currentTime<i-0.05)v.currentTime=i}` +
+  `v.addEventListener("loadedmetadata",c);` +
+  `v.addEventListener("play",function(){if(o&&v.currentTime>=o-0.05)v.currentTime=i;else c()});` +
+  `v.addEventListener("timeupdate",function(){if(o&&v.currentTime>=o){v.pause();v.currentTime=o}else if(!v.seeking)c()});` +
+  `v.addEventListener("seeked",function(){if(o&&v.currentTime>o)v.currentTime=o;else c()})});<\/script>`;
+
 /** Build the self-contained HTML string for a session. */
 export async function buildWorkoutHtml(workout: Workout): Promise<{ html: string; videoCount: number }> {
   const unit = getPrefs().unit;
@@ -156,7 +167,12 @@ export async function buildWorkoutHtml(workout: Workout): Promise<{ html: string
       const s = sets[i];
       setCount++;
       const uri = (s.videoId || s.driveFileId) ? await clipDataUri(s) : "";
-      const vid = uri ? (videoCount++, `<video controls playsinline preload="metadata" src="${uri}"></video>`) : "";
+      // Trim marks are non-destructive, so the exported blob is the full take:
+      // carry the bounds over as a media fragment + data attrs (see trimScript).
+      const tIn = s.trimIn != null && s.trimIn > 0 ? s.trimIn : 0;
+      const tOut = s.trimOut != null && s.trimOut > tIn + 0.05 ? s.trimOut : 0;
+      const frag = tIn || tOut ? `#t=${tIn}${tOut ? `,${tOut}` : ""}` : "";
+      const vid = uri ? (videoCount++, `<video controls playsinline preload="metadata" data-in="${tIn}" data-out="${tOut}" src="${uri}${frag}"></video>`) : "";
       rows.push(
         `<div class="set"><div class="set-top">` +
         `<span class="n">Set ${i + 1}</span>${statPills(s, unit)}${formStars(s.form)}` +
@@ -189,7 +205,7 @@ export async function buildWorkoutHtml(workout: Workout): Promise<{ html: string
     `</div>` +
     overview +
     sections.join("") +
-    `<footer>Exported from <b>Tunizo</b> Workout Log</footer></div></body></html>`;
+    `<footer>Exported from <b>Tunizo</b> Workout Log</footer></div>${trimScript}</body></html>`;
   return { html, videoCount };
 }
 

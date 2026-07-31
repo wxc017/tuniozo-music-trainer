@@ -1,0 +1,2473 @@
+[
+ {
+  "key": "iron_cross",
+  "label": "Iron Cross",
+  "description": "Body vertical and motionless between the rings, hanging from two straight arms abducted straight out to the sides. Each hand grips a ring level with its own shoulder, so shoulder-shoulder-hand forms one horizontal bar and the vertical straps rise directly above the hands.",
+  "body_up": [
+   0,
+   0,
+   1
+  ],
+  "body_front": [
+   0,
+   -1,
+   0
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.9986,
+    0.0523,
+    0
+   ],
+   "forearm_L": [
+    0.9986,
+    0.0523,
+    0
+   ],
+   "hand_L": [
+    0.9986,
+    0.0523,
+    0
+   ],
+   "upper_arm_R": [
+    -0.9986,
+    0.0523,
+    0
+   ],
+   "forearm_R": [
+    -0.9986,
+    0.0523,
+    0
+   ],
+   "hand_R": [
+    -0.9986,
+    0.0523,
+    0
+   ],
+   "thigh_L": [
+    0,
+    0.0349,
+    -0.9994
+   ],
+   "shin_L": [
+    0,
+    0.0349,
+    -0.9994
+   ],
+   "foot_L": [
+    0,
+    0.0349,
+    -0.9994
+   ],
+   "thigh_R": [
+    0,
+    0.0349,
+    -0.9994
+   ],
+   "shin_R": [
+    0,
+    0.0349,
+    -0.9994
+   ],
+   "foot_R": [
+    0,
+    0.0349,
+    -0.9994
+   ],
+   "head": [
+    0,
+    0.0349,
+    0.9994
+   ]
+  },
+  "spine_curve": 6,
+  "camera": "front",
+  "rationale": "Cross-family anchor and it holds up against the rest of the set. Its arm has body-Z exactly 0.0, i.e. exactly perpendicular to the long axis, and so do inverted_cross, l_cross and v_cross - the four crosses share one signature (arms square to the body) and differ only in body placement and hip angle, which is right. It must NOT match maltese/victorian_cross: those two hang the body horizontally, so their arms have to sweep ~42 deg foot-ward to keep the grip over the COM, whereas here the body hangs vertically under the hand line and no sweep is required. Anterior tilt 3 deg is the smallest of the vertical-body crosses (3 < v_cross 6 < l_cross 8), correctly ordered by how far the legs carry the mass forward. Straight-arm equality exact, mirroring exact, hands at one world height. Unchanged apart from emitting integer components as floats.",
+  "scapula": -0.15,
+  "depression": 0.9,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Depress and set; slight retraction holds the adduction",
+  "cue_grip": "Rings turned out, arms locked level",
+  "support": false,
+  "pelvic_tilt": 3.0
+ },
+ {
+  "key": "inverted_cross",
+  "label": "Inverted Cross",
+  "description": "The cross shape turned upside down and held above the rings: the head hangs down between the two rings, torso, hips and legs stack vertically upward above shoulder height, and the arms are still locked straight and abducted out to the sides with the hands at shoulder level.",
+  "body_up": [
+   0,
+   0,
+   -1
+  ],
+  "body_front": [
+   0,
+   -1,
+   0
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.9994,
+    0.0349,
+    0
+   ],
+   "forearm_L": [
+    0.9994,
+    0.0349,
+    0
+   ],
+   "hand_L": [
+    0.9994,
+    0.0349,
+    0
+   ],
+   "upper_arm_R": [
+    -0.9994,
+    0.0349,
+    0
+   ],
+   "forearm_R": [
+    -0.9994,
+    0.0349,
+    0
+   ],
+   "hand_R": [
+    -0.9994,
+    0.0349,
+    0
+   ],
+   "thigh_L": [
+    0,
+    0.0175,
+    -0.9998
+   ],
+   "shin_L": [
+    0,
+    0.0175,
+    -0.9998
+   ],
+   "foot_L": [
+    0,
+    0.0175,
+    -0.9998
+   ],
+   "thigh_R": [
+    0,
+    0.0175,
+    -0.9998
+   ],
+   "shin_R": [
+    0,
+    0.0175,
+    -0.9998
+   ],
+   "foot_R": [
+    0,
+    0.0175,
+    -0.9998
+   ],
+   "head": [
+    0,
+    -0.0349,
+    0.9994
+   ]
+  },
+  "spine_curve": 3,
+  "camera": "front",
+  "rationale": "Checked against the other two inverted records and they are emphatically distinct where it matters - the arm. inverted_cross arm is [0.999,0.035,0.0] (pure lateral, perpendicular to the body); handstand arm is [0.087,0,0.996] (head-ward, so the hands finish lowest); inverted_hang arm is [0.139,0,-0.99] (foot-ward, so the rings finish at hip height). Three genuinely different shoulder positions sharing one body placement, which is exactly the intended relationship. Inversion is carried by body_up=[0,0,-1] alone and the body-frame legs stay caudal, so the figure is not folded in half. Arms square to the body (z=0.0) keeps it in the cross family with iron_cross. No defect.",
+  "scapula": 0.1,
+  "depression": -0.65,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Upward rotation and elevation \u2014 press tall, inverted",
+  "cue_grip": "Arms rotated through 180\u00b0 \u2014 wrists rest ON TOP of the rings",
+  "support": true
+ },
+ {
+  "key": "l_cross",
+  "label": "L-Cross",
+  "description": "An iron cross held with an L-sit: torso vertical, both arms locked and horizontal out to the sides at ring height, both legs pressed together and lifted forward to exactly horizontal so the hip angle closes to 90 degrees, toes pointed away from the body.",
+  "body_up": [
+   0,
+   0,
+   1
+  ],
+  "body_front": [
+   0,
+   -1,
+   0
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.9903,
+    0.1392,
+    0
+   ],
+   "forearm_L": [
+    0.9903,
+    0.1392,
+    0
+   ],
+   "hand_L": [
+    0.9903,
+    0.1392,
+    0
+   ],
+   "upper_arm_R": [
+    -0.9903,
+    0.1392,
+    0
+   ],
+   "forearm_R": [
+    -0.9903,
+    0.1392,
+    0
+   ],
+   "hand_R": [
+    -0.9903,
+    0.1392,
+    0
+   ],
+   "thigh_L": [
+    0,
+    1,
+    0
+   ],
+   "shin_L": [
+    0,
+    1,
+    0
+   ],
+   "foot_L": [
+    0,
+    1,
+    0
+   ],
+   "thigh_R": [
+    0,
+    1,
+    0
+   ],
+   "shin_R": [
+    0,
+    1,
+    0
+   ],
+   "foot_R": [
+    0,
+    1,
+    0
+   ],
+   "head": [
+    0,
+    0.0523,
+    0.9986
+   ]
+  },
+  "spine_curve": 10,
+  "camera": "three_quarter",
+  "rationale": "Sit/cross pairing verified. Hip angle 90.0 deg here against l_sit's 92.3 deg - a 2.3 deg difference, which is the l_sit author deliberately parking the legs just above horizontal to stay on the legal side of the FIG line; both read as the same L and the discrepancy is far inside rendering noise, so no change. V is higher than L in both families by the same amount (v_cross 135.0 / v_sit 135.0 against l_cross 90.0 / l_sit 92.3), so the four records form a consistent 2x2. Arm anterior tilt 0.139 is the largest of the vertical-body crosses and v_cross's 0.105 is smaller, matching the shorter anterior lever of raised legs - the same ordering l_sit (0.19) / v_sit (0.14) shows, so the two families agree. Arms still exactly perpendicular to the body, so it stays in the cross family. Leg vectors emitted as floats.",
+  "scapula": -0.15,
+  "depression": 0.9,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Cross depression held while the hips compress",
+  "cue_grip": "Rings turned out, arms level",
+  "support": false
+ },
+ {
+  "key": "v_cross",
+  "label": "V-Cross",
+  "description": "An iron cross with the legs carried past the L into a V: torso vertical, arms locked straight and horizontal out to the sides, legs together and straight and raised about 45 degrees above horizontal, the body forming a narrow V opening upward and forward from the hips.",
+  "body_up": [
+   0,
+   0,
+   1
+  ],
+  "body_front": [
+   0,
+   -1,
+   0
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.9945,
+    0.1045,
+    0
+   ],
+   "forearm_L": [
+    0.9945,
+    0.1045,
+    0
+   ],
+   "hand_L": [
+    0.9945,
+    0.1045,
+    0
+   ],
+   "upper_arm_R": [
+    -0.9945,
+    0.1045,
+    0
+   ],
+   "forearm_R": [
+    -0.9945,
+    0.1045,
+    0
+   ],
+   "hand_R": [
+    -0.9945,
+    0.1045,
+    0
+   ],
+   "thigh_L": [
+    0,
+    0.7071,
+    0.7071
+   ],
+   "shin_L": [
+    0,
+    0.7071,
+    0.7071
+   ],
+   "foot_L": [
+    0,
+    0.7071,
+    0.7071
+   ],
+   "thigh_R": [
+    0,
+    0.7071,
+    0.7071
+   ],
+   "shin_R": [
+    0,
+    0.7071,
+    0.7071
+   ],
+   "foot_R": [
+    0,
+    0.7071,
+    0.7071
+   ],
+   "head": [
+    0,
+    0.0523,
+    0.9986
+   ]
+  },
+  "spine_curve": 16,
+  "camera": "three_quarter",
+  "rationale": "Leg angle is 135.0 deg of hip flexion, identical to v_sit's 135.0 deg - the V pair matches exactly across sit and cross, and both sit 45 deg above their L counterparts. Arm anterior 0.105 is correctly between iron_cross (0.052) and l_cross (0.139): raising the legs to 45 deg shortens their anterior lever by cos45, so the hands need less forward travel than in the L but more than with legs hanging. Arms remain exactly perpendicular to the body (z=0.0), the shared cross-family signature. spine +16 > l_cross +10 mirrors v_sit +12 > l_sit +8, so the compression ordering is consistent across both families. No defect.",
+  "scapula": -0.15,
+  "depression": 0.9,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Cross depression held through a deeper compression",
+  "cue_grip": "Rings turned out, arms level",
+  "support": false
+ },
+ {
+  "key": "planche",
+  "label": "Planche",
+  "description": "Full planche on rings: a completely rigid, horizontal, face-down body held roughly an arm's length above the ring line on locked straight arms, with the hands directly beneath the hips/lower abdomen and the shoulders driven well out in front of the hands.",
+  "body_up": [
+   -1,
+   0,
+   0
+  ],
+  "body_front": [
+   0,
+   0,
+   -1
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.215,
+    0.5,
+    -0.839
+   ],
+   "forearm_L": [
+    0.215,
+    0.5,
+    -0.839
+   ],
+   "hand_L": [
+    0.215,
+    0.5,
+    -0.839
+   ],
+   "upper_arm_R": [
+    -0.215,
+    0.5,
+    -0.839
+   ],
+   "forearm_R": [
+    -0.215,
+    0.5,
+    -0.839
+   ],
+   "hand_R": [
+    -0.215,
+    0.5,
+    -0.839
+   ],
+   "thigh_L": [
+    -0.02,
+    0,
+    -0.9998
+   ],
+   "shin_L": [
+    -0.02,
+    0,
+    -0.9998
+   ],
+   "foot_L": [
+    -0.02,
+    0,
+    -0.9998
+   ],
+   "thigh_R": [
+    0.02,
+    0,
+    -0.9998
+   ],
+   "shin_R": [
+    0.02,
+    0,
+    -0.9998
+   ],
+   "foot_R": [
+    0.02,
+    0,
+    -0.9998
+   ],
+   "head": [
+    0,
+    -0.1,
+    0.995
+   ]
+  },
+  "spine_curve": 5,
+  "camera": "side",
+  "rationale": "The planche / maltese / pelican_planche_bottom triangle resolves cleanly. All three are body_up=[-1,0,0], body_front=[0,0,-1] and all three carry the same ~0.68-0.70 foot-ward component demanded by grip-over-COM, so they differ only in the remaining two axes, which is exactly right: planche [0.12, +0.702, -0.702] puts the arm ANTERIOR (rings below the body, shoulders out in front); pelican_planche_bottom [0.16, -0.717, -0.678] puts it POSTERIOR (rings above and behind - shoulder extension, the opposite side of the joint); maltese [0.735, -0.05, -0.676] puts it LATERAL with essentially no anterior/posterior offset (body at ring height). Three orthogonal answers on the same body placement - no ambiguity. planche is likewise distinct from back_lever, the other face-down horizontal hold, whose arm is [0.08,-0.795,-0.6] with the hands above the body instead of below. Also confirmed distinct from reverse_planche, its face-up mirror, which flips the anterior component and keeps the foot-ward one. No defect.",
+  "scapula": 1.0,
+  "depression": 0.85,
+  "forearm_rot": 0.0,
+  "cue_scapula": "MAXIMAL protraction + depression, with posterior pelvic tilt \u2014 no arch anywhere in the line",
+  "cue_grip": "Supinated \u2014 biceps turned out, wrists gripping over the rings",
+  "support": true,
+  "pelvic_tilt": 12.0
+ },
+ {
+  "key": "maltese",
+  "label": "Maltese",
+  "description": "Maltese cross ('swallow'): straight horizontal body face down, hovering level with the rings, held on locked straight arms spread wide to the sides and swept slightly back so the hands finish out beyond and slightly behind the hips.",
+  "body_up": [
+   -1,
+   0,
+   0
+  ],
+  "body_front": [
+   0,
+   0,
+   -1
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.735,
+    -0.05,
+    -0.676
+   ],
+   "forearm_L": [
+    0.735,
+    -0.05,
+    -0.676
+   ],
+   "hand_L": [
+    0.741,
+    -0.02,
+    -0.671
+   ],
+   "upper_arm_R": [
+    -0.735,
+    -0.05,
+    -0.676
+   ],
+   "forearm_R": [
+    -0.735,
+    -0.05,
+    -0.676
+   ],
+   "hand_R": [
+    -0.741,
+    -0.02,
+    -0.671
+   ],
+   "thigh_L": [
+    -0.02,
+    0,
+    -0.9998
+   ],
+   "shin_L": [
+    -0.02,
+    0,
+    -0.9998
+   ],
+   "foot_L": [
+    -0.02,
+    0,
+    -0.9998
+   ],
+   "thigh_R": [
+    0.02,
+    0,
+    -0.9998
+   ],
+   "shin_R": [
+    0.02,
+    0,
+    -0.9998
+   ],
+   "foot_R": [
+    0.02,
+    0,
+    -0.9998
+   ],
+   "head": [
+    0,
+    -0.1,
+    0.995
+   ]
+  },
+  "spine_curve": 4,
+  "camera": "three_quarter",
+  "rationale": "Kept as the reference for the maltese/Victorian mirror pair; victorian_cross was moved onto it rather than the other way round, because this record's 0.676 foot-ward component gives a grip 0.452 m caudal of the shoulder against a computed COM offset of 0.432 m, and it already agrees with planche (0.702), reverse_planche (0.706) and pelican_planche_bottom (0.678) - four of the horizontal straight-arm holds in one band. Against iron_cross the difference is correct and necessary: same wide lateral dominance, but the cross has zero foot-ward sweep because its body hangs vertically beneath the hand line, while this body is horizontal and must have the grip 42.5 deg back along its own axis. So the answer to 'should the three crosses have identical arms?' is no - maltese and victorian_cross must match each other, and both must sweep foot-ward relative to iron_cross. Straight-arm equality exact, hand 2.4 deg off for ring turn-out, hands at one world height. Unchanged.",
+  "scapula": 0.85,
+  "depression": 0.95,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Extreme protraction + depression, arms driven wide",
+  "cue_grip": "Rings wide, low and turned strongly out",
+  "support": true,
+  "pelvic_tilt": 10.0
+ },
+ {
+  "key": "reverse_planche",
+  "label": "Reverse Planche",
+  "description": "Reverse (back) planche: straight body horizontal and FACE UP, riding above the ring line, held on locked straight arms that press down and back so the hands end up just outside and below the hips in deep shoulder extension.",
+  "body_up": [
+   -1,
+   0,
+   0
+  ],
+  "body_front": [
+   0,
+   0,
+   1
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.08,
+    -0.703,
+    -0.706
+   ],
+   "forearm_L": [
+    0.08,
+    -0.703,
+    -0.706
+   ],
+   "hand_L": [
+    0.08,
+    -0.675,
+    -0.733
+   ],
+   "upper_arm_R": [
+    -0.08,
+    -0.703,
+    -0.706
+   ],
+   "forearm_R": [
+    -0.08,
+    -0.703,
+    -0.706
+   ],
+   "hand_R": [
+    -0.08,
+    -0.675,
+    -0.733
+   ],
+   "thigh_L": [
+    -0.02,
+    0,
+    -0.9998
+   ],
+   "shin_L": [
+    -0.02,
+    0,
+    -0.9998
+   ],
+   "foot_L": [
+    -0.02,
+    0,
+    -0.9998
+   ],
+   "thigh_R": [
+    0.02,
+    0,
+    -0.9998
+   ],
+   "shin_R": [
+    0.02,
+    0,
+    -0.9998
+   ],
+   "foot_R": [
+    0.02,
+    0,
+    -0.9998
+   ],
+   "head": [
+    0,
+    0.08,
+    0.997
+   ]
+  },
+  "spine_curve": 3,
+  "camera": "side",
+  "rationale": "Verified as an exact frontal-plane mirror of the planche: foot-ward component preserved (0.706 vs planche 0.702, 0.3 deg apart) and anterior component flipped (-0.703 vs +0.702). That is precisely the relationship maltese/victorian_cross should have had and did not, which is how the victorian defect surfaced. Also checked against the other face-up horizontal records: front_lever's arm is anterior (hands above the body), victorian_cross's is lateral, front_lever_touch's is bent - reverse_planche is the only one with the arm posterior AND the hands below the body, so it occupies its own corner. In world the arm resolves to [0.706, 0.080, -0.703], hands below and foot-ward, which is what 'body riding above the ring line' requires. Distinct from back_lever too: same body-frame extension direction, but back_lever is face down so its hands come out ABOVE the body. No defect.",
+  "scapula": -0.6,
+  "depression": 0.7,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Retraction with deep shoulder extension",
+  "cue_grip": "Rings rotated 90\u00b0, pressing down and back past the hips",
+  "support": true,
+  "pelvic_tilt": 6.0
+ },
+ {
+  "key": "victorian_cross",
+  "label": "Victorian Cross",
+  "description": "A supine (face-up) horizontal body held at ring height with locked straight arms spread wide to the sides, the rings level with the torso and sitting roughly at hip height along the body line. It is the face-up mirror of the maltese/swallow, and the shoulders are in extreme abduction plus extension under the athlete's full weight.",
+  "body_up": [
+   -1,
+   0,
+   0
+  ],
+  "body_front": [
+   0,
+   0,
+   1
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.735,
+    0.05,
+    -0.676
+   ],
+   "forearm_L": [
+    0.735,
+    0.05,
+    -0.676
+   ],
+   "hand_L": [
+    0.735,
+    0.05,
+    -0.676
+   ],
+   "upper_arm_R": [
+    -0.735,
+    0.05,
+    -0.676
+   ],
+   "forearm_R": [
+    -0.735,
+    0.05,
+    -0.676
+   ],
+   "hand_R": [
+    -0.735,
+    0.05,
+    -0.676
+   ],
+   "thigh_L": [
+    0,
+    0,
+    -1
+   ],
+   "shin_L": [
+    0,
+    0,
+    -1
+   ],
+   "foot_L": [
+    0,
+    0,
+    -1
+   ],
+   "thigh_R": [
+    0,
+    0,
+    -1
+   ],
+   "shin_R": [
+    0,
+    0,
+    -1
+   ],
+   "foot_R": [
+    0,
+    0,
+    -1
+   ],
+   "head": [
+    0,
+    0.06,
+    0.998
+   ]
+  },
+  "spine_curve": 4,
+  "camera": "three_quarter",
+  "rationale": "Arm set to the exact frontal-plane mirror of the maltese: lateral 0.735 unchanged in magnitude, foot-ward 0.676 adopted, anterior sign +0.05 (face-up, so the hands still finish a touch above the shoulders in world, same as the maltese's -0.05 with anterior pointing down). Grip now lands 0.452 m caudal of the shoulder against a 0.432 m COM offset, so the vertical straps pass through the COM and the rings sit at hip level as the description says. This makes the three-way comparison read correctly: iron_cross, maltese and victorian_cross all put the arm dominantly lateral, but only the two horizontal ones sweep foot-ward, and they now sweep by the same amount, so the ONLY difference between maltese and Victorian is body_front - face down versus face up, which is the actual definition of the pair. Against front_lever (the other face-up horizontal hold) the distinction is unmistakable and is purely the arm: front_lever [0.09, 0.795, -0.6] reaches anteriorly up to rings above the chest, this reaches laterally to rings out at the sides. Straight-arm rule exact (forearm = hand = upper arm), mirroring exact, both hands at world height +0.05. Legs, head, spine and camera untouched.",
+  "scapula": -0.95,
+  "depression": 0.9,
+  "forearm_rot": 0.0,
+  "cue_scapula": "MAXIMAL retraction + depression \u2014 the defining cue",
+  "cue_grip": "Rings rotated 90\u00b0, the body resting on them face up",
+  "support": true,
+  "pelvic_tilt": 8.0
+ },
+ {
+  "key": "front_lever",
+  "label": "Front Lever",
+  "description": "The body hangs horizontally below the rings, face up, in a rigid straight line from head to pointed toes, with both arms locked straight and reaching from the shoulders up the anterior side of the body to the rings. The lats and posterior shoulder hold the torso from rotating feet-downward around the hands.",
+  "body_up": [
+   -1,
+   0,
+   0
+  ],
+  "body_front": [
+   0,
+   0,
+   1
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.09,
+    0.795,
+    -0.6
+   ],
+   "forearm_L": [
+    0.09,
+    0.795,
+    -0.6
+   ],
+   "hand_L": [
+    0.09,
+    0.795,
+    -0.6
+   ],
+   "upper_arm_R": [
+    -0.09,
+    0.795,
+    -0.6
+   ],
+   "forearm_R": [
+    -0.09,
+    0.795,
+    -0.6
+   ],
+   "hand_R": [
+    -0.09,
+    0.795,
+    -0.6
+   ],
+   "thigh_L": [
+    0,
+    0,
+    -1
+   ],
+   "shin_L": [
+    0,
+    0,
+    -1
+   ],
+   "foot_L": [
+    0,
+    0,
+    -1
+   ],
+   "thigh_R": [
+    0,
+    0,
+    -1
+   ],
+   "shin_R": [
+    0,
+    0,
+    -1
+   ],
+   "foot_R": [
+    0,
+    0,
+    -1
+   ],
+   "head": [
+    0,
+    0.1,
+    0.995
+   ]
+  },
+  "spine_curve": 8,
+  "camera": "front",
+  "rationale": "The front_lever / victorian_cross distinction is present and is exactly the intended one: identical body placement ([-1,0,0] / [0,0,1], face-up horizontal), identical straight legs, and the entire difference is the arm - 0.09 lateral / 0.795 anterior here versus 0.735 lateral / 0.05 anterior in the corrected Victorian. Same shoulder joint, opposite corner of its range. Note the arms are NOT perpendicular to the body and must not be: the grip has to sit over the COM, so it is displaced 0.6 x 0.668 = 0.40 m foot-ward (36.9 deg), against a computed requirement of 0.432 m - inside tolerance and identical to its mirror back_lever, so the lever pair is self-consistent. The set as a whole carries two slightly different balance solutions, 0.60 for the levers and 0.68-0.71 for the planche/maltese family; both bracket the 0.647 ideal within 4 deg, and since each family is internally consistent I left them. Straight-arm equality exact, hands level at world +0.795. Legs emitted as floats.",
+  "scapula": -0.35,
+  "depression": 0.9,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Depression + slight retraction; lat-driven",
+  "cue_grip": "Undergrip (supinated), rings above the shoulders",
+  "support": false,
+  "pelvic_tilt": 8.0
+ },
+ {
+  "key": "back_lever",
+  "label": "Back Lever",
+  "description": "The body hangs horizontally face down, straight from head to pointed toes, with the arms locked straight behind the body in deep shoulder extension so the rings sit up and behind the hips. Typically held on a supinated grip, with the biceps tendon and anterior shoulder under maximum stretch load.",
+  "body_up": [
+   -1,
+   0,
+   0
+  ],
+  "body_front": [
+   0,
+   0,
+   -1
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.08,
+    -0.795,
+    -0.6
+   ],
+   "forearm_L": [
+    0.08,
+    -0.795,
+    -0.6
+   ],
+   "hand_L": [
+    0.08,
+    -0.795,
+    -0.6
+   ],
+   "upper_arm_R": [
+    -0.08,
+    -0.795,
+    -0.6
+   ],
+   "forearm_R": [
+    -0.08,
+    -0.795,
+    -0.6
+   ],
+   "hand_R": [
+    -0.08,
+    -0.795,
+    -0.6
+   ],
+   "thigh_L": [
+    0,
+    0,
+    -1
+   ],
+   "shin_L": [
+    0,
+    0,
+    -1
+   ],
+   "foot_L": [
+    0,
+    0,
+    -1
+   ],
+   "thigh_R": [
+    0,
+    0,
+    -1
+   ],
+   "shin_R": [
+    0,
+    0,
+    -1
+   ],
+   "foot_R": [
+    0,
+    0,
+    -1
+   ],
+   "head": [
+    0,
+    -0.14,
+    0.99
+   ]
+  },
+  "spine_curve": -3,
+  "camera": "front",
+  "rationale": "back_lever versus planche: both are face-down horizontal ([-1,0,0] / [0,0,-1]) and the arms are cleanly opposed - planche [0.12, +0.702, -0.702] reaches anteriorly so the rings end up BELOW the body and the body rides above them; this one reaches posteriorly (-0.795) so the rings end up ABOVE and behind the hips and the body hangs beneath them. In world the two arms come out as [0.702,-0.120,-0.702] and [0.600,-0.080,+0.795], i.e. opposite in vertical sign. Not confusable. It is also an exact mirror of front_lever (anterior component flipped, foot-ward 0.6 preserved), matching how planche/reverse_planche relate, so both lever/planche mirror pairs are consistent. spine -3 is the only negative value in the horizontal group and it is the right sign for end-range shoulder extension pulling the thoracic spine into a small arch. Straight-arm equality exact, hands level. Unchanged.",
+  "scapula": -0.5,
+  "depression": 0.8,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Retraction + depression against shoulder extension",
+  "cue_grip": "Supinated grip, rings behind the hips",
+  "support": false,
+  "pelvic_tilt": 6.0
+ },
+ {
+  "key": "front_lever_touch",
+  "label": "Front Lever Touch",
+  "description": "A horizontal, face-up front lever pulled maximally into the rings and held there: the elbows are driven back and below the body while the rings are rowed all the way in to touch the front of the hips, with the hips pressed up toward the strap line so the body stays flat.",
+  "body_up": [
+   -1,
+   0,
+   0
+  ],
+  "body_front": [
+   0,
+   0,
+   1
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.366,
+    -0.351,
+    -0.862
+   ],
+   "forearm_L": [
+    -0.199,
+    0.848,
+    -0.492
+   ],
+   "hand_L": [
+    -0.17,
+    0.87,
+    -0.46
+   ],
+   "upper_arm_R": [
+    -0.366,
+    -0.351,
+    -0.862
+   ],
+   "forearm_R": [
+    0.199,
+    0.848,
+    -0.492
+   ],
+   "hand_R": [
+    0.17,
+    0.87,
+    -0.46
+   ],
+   "thigh_L": [
+    0,
+    0.14,
+    -0.99
+   ],
+   "shin_L": [
+    0,
+    0.14,
+    -0.99
+   ],
+   "foot_L": [
+    0,
+    0.14,
+    -0.99
+   ],
+   "thigh_R": [
+    0,
+    0.14,
+    -0.99
+   ],
+   "shin_R": [
+    0,
+    0.14,
+    -0.99
+   ],
+   "foot_R": [
+    0,
+    0.14,
+    -0.99
+   ],
+   "head": [
+    0,
+    0.22,
+    0.975
+   ]
+  },
+  "spine_curve": 14,
+  "camera": "side",
+  "rationale": "Re-solved the bent arm so the ring lands where equilibrium puts it. With a 0.31 m humerus and 0.27 m forearm the new chain places the wrist at [0.060, 0.120, -0.400] relative to the shoulder: 0.40 m caudal (grip centre ~0.43 m, matching the COM offset), 0.12 m anterior so it is pressed against the front of the hip, and 0.06 m lateral for ring width. Included elbow angle is 93.1 deg, now measured the same way as planche_pushup_bottom (93.4) and maltese_pushup_bottom (110.0) so the three bent-arm records are comparable. Shape is preserved and improved: the humerus still drives posteriorly (-0.351, which is world-DOWN on a face-up body, elbow below the back plane) and hard foot-ward (-0.862), and the forearm still runs anteriorly (+0.848 = world up) into the vertical strap where the reaction acts. Mirroring exact, all vectors unit within 0.002, both wrists at world height +0.120 so the straps hang level, legs one locked pointed line, hip flexion 8 deg. This keeps it clearly distinct from front_lever (straight arms, rings above the chest) - the difference is still the row, just a legal one. Description updated from 'lower chest/ribs' to the hips to match.",
+  "scapula": -0.85,
+  "depression": 0.7,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Deep retraction \u2014 the rings are rowed to the ribs",
+  "cue_grip": "Rings pulled in to the body, elbows down and back",
+  "support": false,
+  "pelvic_tilt": 8.0
+ },
+ {
+  "key": "one_arm_front_lever",
+  "label": "One-Arm Front Lever",
+  "description": "A full straight-body front lever held on the left arm alone: the body hangs horizontal and face up beneath a single ring, rolled about 20 deg with the supporting side lifted toward the strap, while the free right arm is folded across the chest.",
+  "body_up": [
+   -1,
+   0,
+   0
+  ],
+  "body_front": [
+   0,
+   -0.342,
+   0.94
+  ],
+  "segments": {
+   "upper_arm_L": [
+    -0.03,
+    0.764,
+    -0.645
+   ],
+   "forearm_L": [
+    -0.03,
+    0.764,
+    -0.645
+   ],
+   "hand_L": [
+    -0.02,
+    0.78,
+    -0.625
+   ],
+   "upper_arm_R": [
+    -0.965,
+    0.12,
+    -0.232
+   ],
+   "forearm_R": [
+    -0.965,
+    0.12,
+    -0.232
+   ],
+   "hand_R": [
+    -0.96,
+    0.15,
+    -0.235
+   ],
+   "thigh_L": [
+    0.05,
+    0.08,
+    -0.995
+   ],
+   "shin_L": [
+    0.05,
+    0.08,
+    -0.995
+   ],
+   "foot_L": [
+    0.05,
+    0.08,
+    -0.995
+   ],
+   "thigh_R": [
+    0.05,
+    0.08,
+    -0.995
+   ],
+   "shin_R": [
+    0.05,
+    0.08,
+    -0.995
+   ],
+   "foot_R": [
+    0.05,
+    0.08,
+    -0.995
+   ],
+   "head": [
+    0.1,
+    0.06,
+    0.993
+   ]
+  },
+  "spine_curve": 8,
+  "camera": "three_quarter",
+  "rationale": "Re-derived the roll sign from scratch because the earlier pass flipped it, and the value as it now stands is right. The anatomical triple (left, anterior, superior) is LEFT-handed, so the character's left axis is body_up x body_front, not body_front x body_up; with body_front = [0,-0.342,0.94] that gives left = [0, 0.94, 0.342] - the supporting left side lifted 20 deg toward the strap, matching the description. It also closes the statics: world up expressed in body frame is [0.342, 0.94, 0], and with the left shoulder 0.19 m out on body +X, a 0.62 m straight arm along [-0.03, 0.764, -0.645] puts the hand within 0.001 m of the vertical line through a COM 0.40 m caudal on the midline. The opposite sign misses by 0.32 m. Supporting arm is 40.2 deg foot-ward, consistent with the two-arm front_lever's 36.9 deg once the single off-midline grip is accounted for. Straight-arm rule honoured on the loaded side (forearm = upper arm exactly, hand 1.6 deg off); the unloaded right arm is legitimately folded at 134 deg across the chest; mirror symmetry deliberately does not apply. Unchanged.",
+  "scapula": -0.4,
+  "depression": 0.9,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Depression + retraction on the supporting side",
+  "cue_grip": "Single supinated grip, free arm tucked in",
+  "support": false,
+  "pelvic_tilt": 8.0
+ },
+ {
+  "key": "manna",
+  "label": "Manna",
+  "description": "A seated support with straight arms locked in deep shoulder extension, hands pressing the rings down beside the hips, the trunk reclined about 52 deg from vertical and the straight legs folded to roughly 150 deg of hip flexion so the feet pass the vertical and finish above and beyond the head.",
+  "body_up": [
+   -0.788,
+   0,
+   0.616
+  ],
+  "body_front": [
+   0.616,
+   0,
+   0.788
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.1715,
+    -0.5561,
+    -0.8132
+   ],
+   "forearm_L": [
+    0.1715,
+    -0.5561,
+    -0.8132
+   ],
+   "hand_L": [
+    0.1741,
+    -0.5101,
+    -0.8423
+   ],
+   "upper_arm_R": [
+    -0.1715,
+    -0.5561,
+    -0.8132
+   ],
+   "forearm_R": [
+    -0.1715,
+    -0.5561,
+    -0.8132
+   ],
+   "hand_R": [
+    -0.1741,
+    -0.5101,
+    -0.8423
+   ],
+   "thigh_L": [
+    0,
+    0.5,
+    0.866
+   ],
+   "shin_L": [
+    0,
+    0.5,
+    0.866
+   ],
+   "foot_L": [
+    0,
+    0.5,
+    0.866
+   ],
+   "thigh_R": [
+    0,
+    0.5,
+    0.866
+   ],
+   "shin_R": [
+    0,
+    0.5,
+    0.866
+   ],
+   "foot_R": [
+    0,
+    0.5,
+    0.866
+   ],
+   "head": [
+    0,
+    -0.12,
+    0.993
+   ]
+  },
+  "spine_curve": 22,
+  "camera": "side",
+  "rationale": "Sits correctly at the top of the compression ladder that runs through the set: hip flexion 90 (l_sit/l_cross) -> 135 (v_sit/v_cross) -> 140 (tuck_hang) -> 150 here, and spine_curve 8/10 -> 12/16 -> 22 -> 22, so the leg fold and the trunk rounding scale together across all the piked records. Re-derived the world leg direction as [-0.374, 0, 0.9275] and the head-top position, confirming the feet finish above the head - the shape that separates manna from v_sit, which shares the vertical-strap support and straight legs but keeps the trunk upright and the legs only 45 deg up. Arm is 55.6 deg foot-ward, the deepest of the support-type holds (support 84.9, l_sit 76.9, v_sit 79.1), which is right because the reclined trunk carries the COM far behind the hip and the hands must chase it. Straight-arm equality exact, hands level, legs one locked line. Unchanged.",
+  "scapula": 0.3,
+  "depression": 1.0,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Maximal depression; huge anterior compression",
+  "cue_grip": "Pronated, wrists loaded in extension beside the hips",
+  "support": true
+ },
+ {
+  "key": "dead_hang",
+  "label": "Dead Hang",
+  "description": "The gymnast hangs at full stretch below the rings: body vertical and head-up, arms locked straight overhead, shoulders relaxed into elevation, legs together and straight down with pointed toes.",
+  "body_up": [
+   0,
+   0,
+   1
+  ],
+  "body_front": [
+   0,
+   -1,
+   0
+  ],
+  "segments": {
+   "upper_arm_L": [
+    -0.0353,
+    0.0,
+    0.9994
+   ],
+   "forearm_L": [
+    -0.0353,
+    0.0,
+    0.9994
+   ],
+   "hand_L": [
+    -0.0351,
+    0.06,
+    0.9976
+   ],
+   "upper_arm_R": [
+    0.0353,
+    0.0,
+    0.9994
+   ],
+   "forearm_R": [
+    0.0353,
+    0.0,
+    0.9994
+   ],
+   "hand_R": [
+    0.0351,
+    0.06,
+    0.9976
+   ],
+   "thigh_L": [
+    0,
+    0,
+    -1
+   ],
+   "shin_L": [
+    0,
+    0,
+    -1
+   ],
+   "foot_L": [
+    0,
+    0,
+    -1
+   ],
+   "thigh_R": [
+    0,
+    0,
+    -1
+   ],
+   "shin_R": [
+    0,
+    0,
+    -1
+   ],
+   "foot_R": [
+    0,
+    0,
+    -1
+   ],
+   "head": [
+    0,
+    0,
+    1
+   ]
+  },
+  "spine_curve": 4,
+  "camera": "front",
+  "rationale": "The automated duplicate sweep flagged dead_hang and handstand as the closest pair in the set - body-frame segments agree to 0.035 - so I checked it deliberately. It is not an accidental duplicate: the two share a body-frame arm because a handstand and a hang are the same maximal shoulder flexion, and they are separated entirely and correctly by body_up ([0,0,1] here versus [0,0,-1]), which sends the hands to world +Z here and world -Z there. The two world poses are opposite. The same relationship holds between support and inverted_hang at the other end of the joint range, and the four together form a coherent 2x2 (flexed/extended shoulder x upright/inverted). Straight-arm equality exact, 3 deg abduction to ring width, hands level, legs and head in line. Unchanged.",
+  "scapula": -0.1,
+  "depression": -0.3,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Active but not maximally depressed shoulders",
+  "cue_grip": "Neutral grip, straight arms overhead",
+  "support": false
+ },
+ {
+  "key": "inverted_hang",
+  "label": "Inverted Hang",
+  "description": "A straight-body inverted hang: the figure is upside down under the rings with feet stacked vertically above and head pointing at the floor, arms straight and pressed alongside the torso so the rings sit at hip/waist height.",
+  "body_up": [
+   0,
+   0,
+   -1
+  ],
+  "body_front": [
+   0,
+   -1,
+   0
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.2248,
+    0.0,
+    -0.9744
+   ],
+   "forearm_L": [
+    0.2248,
+    0.0,
+    -0.9744
+   ],
+   "hand_L": [
+    0.2247,
+    0.05,
+    -0.9732
+   ],
+   "upper_arm_R": [
+    -0.2248,
+    0.0,
+    -0.9744
+   ],
+   "forearm_R": [
+    -0.2248,
+    0.0,
+    -0.9744
+   ],
+   "hand_R": [
+    -0.2247,
+    0.05,
+    -0.9732
+   ],
+   "thigh_L": [
+    0,
+    0,
+    -1
+   ],
+   "shin_L": [
+    0,
+    0,
+    -1
+   ],
+   "foot_L": [
+    0,
+    0,
+    -1
+   ],
+   "thigh_R": [
+    0,
+    0,
+    -1
+   ],
+   "shin_R": [
+    0,
+    0,
+    -1
+   ],
+   "foot_R": [
+    0,
+    0,
+    -1
+   ],
+   "head": [
+    0,
+    0,
+    1
+   ]
+  },
+  "spine_curve": 3,
+  "camera": "front",
+  "rationale": "The three inverted records are properly separated by the arm alone: inverted_hang [0.139, 0, -0.99] (humerus foot-ward, so the rings finish at hip height and the head hangs well below them), handstand [0.087, 0, +0.996] (humerus head-ward, so the hands finish lowest and the whole body stacks above them), inverted_cross [0.999, 0.035, 0] (humerus lateral, hands at shoulder height). No two are confusable. It is also the correct entry shape for backward_roll, which continues the arm from this alongside-the-body position 45 deg toward the cross. Its 8 deg abduction is the widest of the arms-along-the-trunk group (support 5.0, handstand 5.0) because the arms must clear the thighs on the way past; that implies ~57 cm ring separation against ~50 cm elsewhere, about 1 deg of strap tilt, which is negligible. Straight-arm equality exact, hands level. Unchanged.",
+  "scapula": 0.0,
+  "depression": 0.0,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Neutral girdle, ribs down",
+  "cue_grip": "Near-neutral grip, rings at hip height",
+  "support": false
+ },
+ {
+  "key": "support",
+  "label": "Support Hold",
+  "description": "The basic ring support: the gymnast is upright above the rings, body vertical and hollow, arms locked straight and pressed down beside the hips with rings turned out, shoulders actively depressed, legs straight and together with toes pointed.",
+  "body_up": [
+   0,
+   0,
+   1
+  ],
+  "body_front": [
+   0,
+   -1,
+   0
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.3214,
+    0.0,
+    -0.9469
+   ],
+   "forearm_L": [
+    0.3214,
+    0.0,
+    -0.9469
+   ],
+   "hand_L": [
+    0.3212,
+    0.0513,
+    -0.9456
+   ],
+   "upper_arm_R": [
+    -0.3214,
+    0.0,
+    -0.9469
+   ],
+   "forearm_R": [
+    -0.3214,
+    0.0,
+    -0.9469
+   ],
+   "hand_R": [
+    -0.3212,
+    0.0513,
+    -0.9456
+   ],
+   "thigh_L": [
+    0,
+    0.07,
+    -0.998
+   ],
+   "shin_L": [
+    0,
+    0.07,
+    -0.998
+   ],
+   "foot_L": [
+    0,
+    0.07,
+    -0.998
+   ],
+   "thigh_R": [
+    0,
+    0.07,
+    -0.998
+   ],
+   "shin_R": [
+    0,
+    0.07,
+    -0.998
+   ],
+   "foot_R": [
+    0,
+    0.07,
+    -0.998
+   ],
+   "head": [
+    0,
+    0.05,
+    0.999
+   ]
+  },
+  "spine_curve": 8,
+  "camera": "front",
+  "rationale": "Anchors the support family and is consistent with it: support (arm anterior 0.000, legs down), l_sit (0.190, legs horizontal), v_sit (0.140, legs 45 deg up) - the anterior lean grows when the legs go out to horizontal and shrinks again when they lift, which is exactly what moving the COM forward then back demands, and it matches the same ordering in the cross family (iron_cross 0.052 < v_cross 0.105 < l_cross 0.139). Distinct from inverted_hang, which shares the alongside-the-trunk humerus but is inverted, and from dead_hang/handstand, which use the opposite end of the shoulder range. Straight-arm equality exact, 5 deg abduction puts the straps just outside the shoulders, hands level, knees locked and toes pointed. Unchanged.",
+  "scapula": 0.2,
+  "depression": 1.0,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Strong depression \u2014 push the rings down and away",
+  "cue_grip": "Rings turned out, stacked under the shoulders",
+  "support": true,
+  "pelvic_tilt": 5.0
+ },
+ {
+  "key": "handstand",
+  "label": "Handstand on Rings",
+  "description": "A fully inverted straight-line handstand on the rings: hands on the rings pressing down, arms locked, shoulders stacked directly over the hands, hips over the shoulders and feet over everything, body vertical and inverted with a minimal hollow.",
+  "body_up": [
+   0,
+   0,
+   -1
+  ],
+  "body_front": [
+   0,
+   -1,
+   0
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.087,
+    0,
+    0.996
+   ],
+   "forearm_L": [
+    0.087,
+    0,
+    0.996
+   ],
+   "hand_L": [
+    0.087,
+    0.05,
+    0.995
+   ],
+   "upper_arm_R": [
+    -0.087,
+    0,
+    0.996
+   ],
+   "forearm_R": [
+    -0.087,
+    0,
+    0.996
+   ],
+   "hand_R": [
+    -0.087,
+    0.05,
+    0.995
+   ],
+   "thigh_L": [
+    0,
+    0,
+    -1
+   ],
+   "shin_L": [
+    0,
+    0,
+    -1
+   ],
+   "foot_L": [
+    0,
+    0,
+    -1
+   ],
+   "thigh_R": [
+    0,
+    0,
+    -1
+   ],
+   "shin_R": [
+    0,
+    0,
+    -1
+   ],
+   "foot_R": [
+    0,
+    0,
+    -1
+   ],
+   "head": [
+    0,
+    0,
+    1
+   ]
+  },
+  "spine_curve": 5,
+  "camera": "side",
+  "rationale": "Closest record in the set to another (dead_hang, body-frame segments within 0.035) and correctly so - same maximal shoulder flexion, inverted by body_up alone, giving opposite world poses with the hands lowest here and highest there. Verified the head does not end up in the floor: head = body +Z = world down, so the skull top sits ~0.25 m below the neck while the hands sit ~0.62 m below the shoulders, leaving the head above ring level between the arms. Against the other two inverted records the arm is unmistakable: handstand hands below the shoulders, inverted_hang hands above them at hip height, inverted_cross hands out level with them. Straight-arm equality exact, 5 deg abduction matching support, hands level, body stacked on one line. Unchanged.",
+  "scapula": 0.05,
+  "depression": -0.9,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Elevation and upward rotation \u2014 stack and push tall",
+  "cue_grip": "Rings turned slightly in for balance",
+  "support": true,
+  "pelvic_tilt": 4.0
+ },
+ {
+  "key": "swinging_hang",
+  "label": "Swinging Hang",
+  "description": "A straight-arm hang at the front end of a long swing: the body is one line from hands to toes, angled about 35 degrees forward off vertical with a slight arch, feet carried up in front by momentum.",
+  "body_up": [
+   -0.574,
+   0,
+   0.819
+  ],
+  "body_front": [
+   0.819,
+   0,
+   0.574
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.0002,
+    -0.087,
+    0.9962
+   ],
+   "forearm_L": [
+    0.0002,
+    -0.087,
+    0.9962
+   ],
+   "hand_L": [
+    0.0002,
+    -0.087,
+    0.9962
+   ],
+   "upper_arm_R": [
+    -0.0002,
+    -0.087,
+    0.9962
+   ],
+   "forearm_R": [
+    -0.0002,
+    -0.087,
+    0.9962
+   ],
+   "hand_R": [
+    -0.0002,
+    -0.087,
+    0.9962
+   ],
+   "thigh_L": [
+    -0.035,
+    -0.087,
+    -0.995
+   ],
+   "shin_L": [
+    -0.035,
+    -0.087,
+    -0.995
+   ],
+   "foot_L": [
+    -0.035,
+    -0.087,
+    -0.995
+   ],
+   "thigh_R": [
+    0.035,
+    -0.087,
+    -0.995
+   ],
+   "shin_R": [
+    0.035,
+    -0.087,
+    -0.995
+   ],
+   "foot_R": [
+    0.035,
+    -0.087,
+    -0.995
+   ],
+   "head": [
+    0,
+    0.05,
+    0.999
+   ]
+  },
+  "spine_curve": -10,
+  "camera": "side",
+  "rationale": "Confirmed as a rigid 35 deg pitch of the dead_hang frame about the medio-lateral axis: the body-left axis computes to [0,1,0], horizontal, so both hands still land at identical world height and 'side' really is the sagittal view. Its arm (5 deg off overhead, 5 deg of extension) is the dead_hang arm with a small posterior trail, which is the right relationship - a swinging hang is a dead hang with momentum, not a different shoulder position. In world the arm resolves to [-0.641, 0.087, 0.763]: hands above and BEHIND the shoulders, so the body is swung out in front of the rings, the correct front-of-swing geometry and clearly different from uprise_forward, the other dynamic record, where the hands come out ahead of the shoulders at [0.327, 0.150, 0.933]. One of only two negative spine values in the set (-10 here, -3 in back_lever), and the arch is right for a swing. Unchanged.",
+  "scapula": -0.1,
+  "depression": -0.2,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Shoulders open, girdle relaxed into the swing",
+  "cue_grip": "Neutral grip, straight arms overhead",
+  "support": false
+ },
+ {
+  "key": "backward_roll",
+  "label": "Backward Roll",
+  "description": "The instant mid-Azarian: the gymnast is just past upside-down, piked hard at the hips with straight legs, both arms straight and abducting out toward the cross while they carry the whole body weight through the rotation.",
+  "body_up": [
+   0,
+   -0.423,
+   -0.906
+  ],
+  "body_front": [
+   0,
+   0.906,
+   -0.423
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.7,
+    0.1,
+    -0.707
+   ],
+   "forearm_L": [
+    0.7,
+    0.1,
+    -0.707
+   ],
+   "hand_L": [
+    0.7,
+    0.1,
+    -0.707
+   ],
+   "upper_arm_R": [
+    -0.7,
+    0.1,
+    -0.707
+   ],
+   "forearm_R": [
+    -0.7,
+    0.1,
+    -0.707
+   ],
+   "hand_R": [
+    -0.7,
+    0.1,
+    -0.707
+   ],
+   "thigh_L": [
+    -0.03,
+    0.984,
+    0.174
+   ],
+   "shin_L": [
+    -0.03,
+    0.984,
+    0.174
+   ],
+   "foot_L": [
+    -0.03,
+    0.984,
+    0.174
+   ],
+   "thigh_R": [
+    0.03,
+    0.984,
+    0.174
+   ],
+   "shin_R": [
+    0.03,
+    0.984,
+    0.174
+   ],
+   "foot_R": [
+    0.03,
+    0.984,
+    0.174
+   ],
+   "head": [
+    0,
+    0.174,
+    0.985
+   ]
+  },
+  "spine_curve": 20,
+  "camera": "three_quarter",
+  "rationale": "Reconstructed the rotation to check the placement is a real instant of a real roll, not an arbitrary tilt. Rotating about the ring line (world X) from inverted with the character's left at world +X, the family is body_up = [0, sin(phi), -cos(phi)], body_front = [0, cos(phi), sin(phi)]; this record is exactly phi = -25 deg, and the derivative at phi = 0 shows negative phi carries the head toward the body's posterior - a BACKWARD rotation, ending at phi = -180 deg in the upright iron_cross facing the camera. So the record is 25 deg into the correct rotation and its left axis [1,0,0] agrees with iron_cross's, i.e. the endpoint of the skill. The arm is likewise the halfway point of the travel: 45 deg from inverted_hang's alongside-the-body [0,0,-1] toward iron_cross's [1,0,0], plus 6 deg anterior. World arm [0.700, 0.390, 0.598] puts the hands above the shoulders, correct until the cross is reached. Straight-arm equality exact, hands level, knees locked through a 100 deg pike. Unchanged.",
+  "scapula": -0.3,
+  "depression": 0.35,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Retracting as the roll loads the shoulders",
+  "cue_grip": "Grip rotating out through the roll",
+  "support": false
+ },
+ {
+  "key": "uprise_forward",
+  "label": "Forward Uprise",
+  "description": "The passing shape of a forward uprise: the body stretched through roughly horizontal and face UP, head to the viewer's left, straight arms pulling the rings down past the shoulders toward the hips as the gymnast rises out of the forward swing toward the hold.",
+  "body_up": [
+   -0.985,
+   0,
+   0.174
+  ],
+  "body_front": [
+   0.174,
+   0,
+   0.985
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.1635,
+    0.9756,
+    -0.1464
+   ],
+   "forearm_L": [
+    0.1635,
+    0.9756,
+    -0.1464
+   ],
+   "hand_L": [
+    0.1635,
+    0.9756,
+    -0.1464
+   ],
+   "upper_arm_R": [
+    -0.1635,
+    0.9756,
+    -0.1464
+   ],
+   "forearm_R": [
+    -0.1635,
+    0.9756,
+    -0.1464
+   ],
+   "hand_R": [
+    -0.1635,
+    0.9756,
+    -0.1464
+   ],
+   "thigh_L": [
+    -0.03,
+    0.139,
+    -0.99
+   ],
+   "shin_L": [
+    -0.03,
+    0.139,
+    -0.99
+   ],
+   "foot_L": [
+    -0.03,
+    0.139,
+    -0.99
+   ],
+   "thigh_R": [
+    0.03,
+    0.139,
+    -0.99
+   ],
+   "shin_R": [
+    0.03,
+    0.139,
+    -0.99
+   ],
+   "foot_R": [
+    0.03,
+    0.139,
+    -0.99
+   ],
+   "head": [
+    0,
+    0.12,
+    0.993
+   ]
+  },
+  "spine_curve": 12,
+  "camera": "side",
+  "rationale": "Verified the placement is a rigid 10 deg rotation of the canonical face-up horizontal pair about the same medio-lateral axis swinging_hang uses, so the two dynamic records live in one swing plane (world X-Z) and both give a true sagittal 'side' view with hands level. The two are correctly differentiated by where the hands sit relative to the shoulders in world: swinging_hang [-0.641, ...] hands behind, uprise_forward [0.327, 0.150, 0.933] hands ahead and high, which is the pulling geometry of a rise rather than a passive hang. Its 9.2 deg foot-ward arm is by far the shallowest of the horizontal-body records (the static holds run 30-45 deg) and that is legitimate - this is the one horizontal record that is not a static hold, so grip-over-COM does not bind and the arm is set by the pull instead. Straight-arm equality exact, legs locked and together, spine +12 the hollow held through the pull. Unchanged.",
+  "scapula": -0.4,
+  "depression": 0.5,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Retraction as the pull begins",
+  "cue_grip": "Grip turning out as the body rises",
+  "support": false
+ },
+ {
+  "key": "planche_pushup_bottom",
+  "label": "Bottom of a Ring Planche Pushup",
+  "description": "A straight, horizontal, face-down body held just above ring height on bent arms: elbows flexed to roughly 90 degrees and driven back past the ribs, upper arms trailing foot-ward and slightly above the body plane, forearms dropping almost vertically onto the rings, which sit level with the hips.",
+  "body_up": [
+   -1,
+   0,
+   0
+  ],
+  "body_front": [
+   0,
+   0,
+   -1
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.215,
+    0.64,
+    -0.737
+   ],
+   "forearm_L": [
+    0.215,
+    0.64,
+    -0.737
+   ],
+   "hand_L": [
+    0.215,
+    0.64,
+    -0.737
+   ],
+   "upper_arm_R": [
+    -0.215,
+    0.64,
+    -0.737
+   ],
+   "forearm_R": [
+    -0.215,
+    0.64,
+    -0.737
+   ],
+   "hand_R": [
+    -0.215,
+    0.64,
+    -0.737
+   ],
+   "thigh_L": [
+    -0.03,
+    0,
+    -0.9995
+   ],
+   "shin_L": [
+    -0.03,
+    0,
+    -0.9995
+   ],
+   "foot_L": [
+    -0.03,
+    0,
+    -0.9995
+   ],
+   "thigh_R": [
+    0.03,
+    0,
+    -0.9995
+   ],
+   "shin_R": [
+    0.03,
+    0,
+    -0.9995
+   ],
+   "foot_R": [
+    0.03,
+    0,
+    -0.9995
+   ],
+   "head": [
+    0,
+    -0.14,
+    0.99
+   ]
+  },
+  "spine_curve": 6,
+  "camera": "side",
+  "rationale": "One of three bent-arm records; the included elbow angle recomputes to 93.4 deg, which is the same convention as maltese_pushup_bottom (110.0) and, after this audit's correction, front_lever_touch (93.1), so the three are now measured alike and ordered sensibly. Its 12.1 deg abduction against maltese_pushup_bottom's 45.7 deg reproduces, in the pushup pair, exactly the narrow-versus-wide split that planche and maltese have in the straight-arm pair - the two families are consistent with each other. Physics checks: shoulder-to-ring works out to 0.436 m foot-ward and 0.176 m below the shoulder, so the strap resultant passes over the 0.42-0.43 m COM offset the whole set uses and the body sits just above ring height. Mirroring exact, legs one locked pointed line, hands level. Unchanged.",
+  "scapula": 0.55,
+  "depression": 0.55,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Protraction reduces as the chest lowers",
+  "cue_grip": "Rings turned out, elbows tracking back",
+  "support": true,
+  "pelvic_tilt": 11.0
+ },
+ {
+  "key": "maltese_pushup_bottom",
+  "label": "Bottom of a Ring Maltese Pushup",
+  "description": "Body straight and horizontal, face down, chest sunk between two wide-set rings that now sit slightly above shoulder level; the elbows are bent to roughly 110 degrees and flared out and a little below the body plane, with the forearms angling up-and-back to the rings at the hips.",
+  "body_up": [
+   -1,
+   0,
+   0
+  ],
+  "body_front": [
+   0,
+   0,
+   -1
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.716,
+    0.357,
+    -0.601
+   ],
+   "forearm_L": [
+    0.237,
+    -0.681,
+    -0.693
+   ],
+   "hand_L": [
+    0.32,
+    -0.605,
+    -0.73
+   ],
+   "upper_arm_R": [
+    -0.716,
+    0.357,
+    -0.601
+   ],
+   "forearm_R": [
+    -0.237,
+    -0.681,
+    -0.693
+   ],
+   "hand_R": [
+    -0.32,
+    -0.605,
+    -0.73
+   ],
+   "thigh_L": [
+    -0.03,
+    0,
+    -0.9995
+   ],
+   "shin_L": [
+    -0.03,
+    0,
+    -0.9995
+   ],
+   "foot_L": [
+    -0.03,
+    0,
+    -0.9995
+   ],
+   "thigh_R": [
+    0.03,
+    0,
+    -0.9995
+   ],
+   "shin_R": [
+    0.03,
+    0,
+    -0.9995
+   ],
+   "foot_R": [
+    0.03,
+    0,
+    -0.9995
+   ],
+   "head": [
+    0,
+    -0.12,
+    0.993
+   ]
+  },
+  "spine_curve": 5,
+  "camera": "three_quarter",
+  "rationale": "Included elbow angle 110.0 deg, the shallowest of the three bent-arm records (planche pushup 93.4, front lever touch 93.1 after correction) - correct, because a wide fly-type bottom cannot fold as deep as a narrow one. Its 0.716 lateral component against planche_pushup_bottom's 0.210 mirrors the 0.735-versus-0.120 split between maltese and planche, so the wide/narrow distinction is carried identically in the straight-arm and bent-arm families. Elbow anterior (+0.357 = toward the floor on a prone body) and forearm dorsal (-0.681 = up in world) puts the rings 0.125 m above the shoulder with the chest sunk between them, which is the opposite vertical relationship from the planche pushup's rings-below-shoulder and keeps the two unmistakable. Shoulder-to-ring 0.426 m foot-ward matches the 0.42-0.43 m COM offset used throughout. Mirroring exact, hands level, legs locked. Unchanged.",
+  "scapula": 0.5,
+  "depression": 0.65,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Protraction reduces at the bottom of the press",
+  "cue_grip": "Rings wide and turned out",
+  "support": true,
+  "pelvic_tilt": 10.0
+ },
+ {
+  "key": "pelican_bottom",
+  "label": "Pelican Bottom",
+  "description": "Prone, straight-bodied and near-horizontal with the feet tipped slightly low, hanging forward off the rings with fully straight arms swept far back and slightly wide, so the rings end up above and behind the hips and the shoulder joint is driven into roughly 60 degrees of extension - the deepest anterior-shoulder position of the set.",
+  "body_up": [
+   -0.978,
+   0,
+   0.208
+  ],
+  "body_front": [
+   -0.208,
+   0,
+   -0.978
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.3327,
+    -0.8121,
+    -0.4793
+   ],
+   "forearm_L": [
+    0.3327,
+    -0.8121,
+    -0.4793
+   ],
+   "hand_L": [
+    0.3441,
+    -0.7998,
+    -0.4918
+   ],
+   "upper_arm_R": [
+    -0.3327,
+    -0.8121,
+    -0.4793
+   ],
+   "forearm_R": [
+    -0.3327,
+    -0.8121,
+    -0.4793
+   ],
+   "hand_R": [
+    -0.3441,
+    -0.7998,
+    -0.4918
+   ],
+   "thigh_L": [
+    -0.03,
+    0,
+    -0.9995
+   ],
+   "shin_L": [
+    -0.03,
+    0,
+    -0.9995
+   ],
+   "foot_L": [
+    -0.03,
+    0,
+    -0.9995
+   ],
+   "thigh_R": [
+    0.03,
+    0,
+    -0.9995
+   ],
+   "shin_R": [
+    0.03,
+    0,
+    -0.9995
+   ],
+   "foot_R": [
+    0.03,
+    0,
+    -0.9995
+   ],
+   "head": [
+    0,
+    0.14,
+    0.99
+   ]
+  },
+  "spine_curve": 4,
+  "camera": "side",
+  "rationale": "Checked against pelican_planche_bottom because the two are the closest same-family pair. In BODY frame they are properly distinct - 59.6 deg of shoulder extension here versus 47.3 deg there, and 0.29 lateral versus 0.16 - and the body placements differ by a 12 deg feet-low pitch. In WORLD their arms land close together ([0.665,-0.290,0.690] versus [0.678,-0.160,0.717]), which is not a fault but a confirmation: both must put the ring over the same COM offset with the strap plumb, so the extra 12 deg of shoulder extension here is exactly bought back by the 12 deg body tilt. The two records therefore encode a genuine difference (body line and ring width) rather than an accidental near-duplicate. Frame verified as a rigid 12 deg rotation of the prone pair with body_front still negative in world Z, i.e. still face down. Straight-arm equality exact, hand 1.2 deg off, hands level, legs locked. Unchanged.",
+  "scapula": -0.7,
+  "depression": 0.45,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Retraction into the deepest shoulder extension here",
+  "cue_grip": "Rings turned strongly out, arms swept far behind",
+  "support": true
+ },
+ {
+  "key": "pelican_planche_bottom",
+  "label": "Pelican Planche Bottom",
+  "description": "The same swept-back straight-arm pelican shape but held on a rigid horizontal planche line: body dead level, face down, shoulders driven forward of the rings, arms straight and narrow, carried back into roughly 47 degrees of shoulder extension with the rings above hip level.",
+  "body_up": [
+   -1,
+   0,
+   0
+  ],
+  "body_front": [
+   0,
+   0,
+   -1
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.215,
+    -0.56,
+    -0.8
+   ],
+   "forearm_L": [
+    0.215,
+    -0.56,
+    -0.8
+   ],
+   "hand_L": [
+    0.215,
+    -0.56,
+    -0.8
+   ],
+   "upper_arm_R": [
+    -0.215,
+    -0.56,
+    -0.8
+   ],
+   "forearm_R": [
+    -0.215,
+    -0.56,
+    -0.8
+   ],
+   "hand_R": [
+    -0.215,
+    -0.56,
+    -0.8
+   ],
+   "thigh_L": [
+    -0.03,
+    0,
+    -0.9995
+   ],
+   "shin_L": [
+    -0.03,
+    0,
+    -0.9995
+   ],
+   "foot_L": [
+    -0.03,
+    0,
+    -0.9995
+   ],
+   "thigh_R": [
+    0.03,
+    0,
+    -0.9995
+   ],
+   "shin_R": [
+    0.03,
+    0,
+    -0.9995
+   ],
+   "foot_R": [
+    0.03,
+    0,
+    -0.9995
+   ],
+   "head": [
+    0,
+    -0.1,
+    0.995
+   ]
+  },
+  "spine_curve": 7,
+  "camera": "side",
+  "rationale": "Resolves the planche / maltese / pelican_planche_bottom question. All three share body_up=[-1,0,0], body_front=[0,0,-1] and all three share the ~0.68-0.70 foot-ward component that grip-over-COM forces, so the only thing separating them is the direction the arm takes in the remaining plane, and the three answers are mutually orthogonal: planche anterior (+0.702, rings below), this one posterior (-0.717, rings 0.465 m above the shoulder - the pelican direction), maltese lateral (0.735 with essentially no fore/aft offset). Genuinely distinct, correct relationship, no overlap. Its 0.678 foot-ward matches maltese 0.676 and planche 0.702 to within 2 deg, so the family is internally consistent, and 0.678 x 0.62 m = 0.42 m lands on the same COM offset the rest of the set uses. Distinct from pelican_bottom by 12 deg of shoulder extension and ring width, and from planche_pushup_bottom, whose ring sits 0.176 m BELOW the shoulder rather than 0.465 m above. Unchanged.",
+  "scapula": -0.45,
+  "depression": 0.55,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Retraction under deep extension at planche height",
+  "cue_grip": "Rings turned out, arms swept behind the torso",
+  "support": true,
+  "pelvic_tilt": 11.0
+ },
+ {
+  "key": "l_sit",
+  "label": "L-sit (rings support)",
+  "description": "A straight-arm support on the rings with the trunk vertical, both straight legs lifted forward to horizontal so trunk and legs form a 90-degree L. Hands press down on the rings just outside the hips, rings turned out, toes pointed.",
+  "body_up": [
+   0,
+   0,
+   1
+  ],
+  "body_front": [
+   0,
+   -1,
+   0
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.3197,
+    0.1954,
+    -0.9271
+   ],
+   "forearm_L": [
+    0.3197,
+    0.1954,
+    -0.9271
+   ],
+   "hand_L": [
+    0.3197,
+    0.1954,
+    -0.9271
+   ],
+   "upper_arm_R": [
+    -0.3197,
+    0.1954,
+    -0.9271
+   ],
+   "forearm_R": [
+    -0.3197,
+    0.1954,
+    -0.9271
+   ],
+   "hand_R": [
+    -0.3197,
+    0.1954,
+    -0.9271
+   ],
+   "thigh_L": [
+    -0.03,
+    0.999,
+    0.04
+   ],
+   "shin_L": [
+    -0.03,
+    0.999,
+    0.04
+   ],
+   "foot_L": [
+    -0.03,
+    0.999,
+    0.04
+   ],
+   "thigh_R": [
+    0.03,
+    0.999,
+    0.04
+   ],
+   "shin_R": [
+    0.03,
+    0.999,
+    0.04
+   ],
+   "foot_R": [
+    0.03,
+    0.999,
+    0.04
+   ],
+   "head": [
+    0,
+    0.05,
+    0.999
+   ]
+  },
+  "spine_curve": 8,
+  "camera": "side",
+  "rationale": "Sit/cross cross-check: hip angle 92.3 deg here against l_cross's 90.0 deg - a 2.3 deg gap from this record deliberately parking the legs just above horizontal to clear the FIG line, which is legitimate and visually indistinguishable, so both are left as authored; the V pair matches exactly at 135.0/135.0, and V is higher than L in both families. Arm lean ordering is consistent across families too: l_sit 0.19 > v_sit 0.14 anterior, exactly as l_cross 0.139 > v_cross 0.105, both reflecting the shorter anterior leg lever once the legs lift to 45 deg. spine +8 / v_sit +12 parallels l_cross +10 / v_cross +16. Only change is cosmetic: hand_L/hand_R were 1.7 deg off the arm line while the other three members of the L/V quartet keep hand exactly on it, so I aligned them for consistency; the ring turn-out is not readable at that magnitude anyway. Straight-arm equality exact, hands level.",
+  "scapula": 0.2,
+  "depression": 1.0,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Strong depression \u2014 press down to lift the hips clear",
+  "cue_grip": "Rings turned out, pressed down at the hips",
+  "support": true
+ },
+ {
+  "key": "v_sit",
+  "label": "V-sit (rings support)",
+  "description": "A straight-arm support with the trunk vertical and both straight legs raised roughly 45 degrees above horizontal, so trunk and legs form a narrow V. The hands press down beside the hips on turned-out rings and the toes are pointed.",
+  "body_up": [
+   0,
+   0,
+   1
+  ],
+  "body_front": [
+   0,
+   -1,
+   0
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.321,
+    0.1441,
+    -0.9361
+   ],
+   "forearm_L": [
+    0.321,
+    0.1441,
+    -0.9361
+   ],
+   "hand_L": [
+    0.321,
+    0.1441,
+    -0.9361
+   ],
+   "upper_arm_R": [
+    -0.321,
+    0.1441,
+    -0.9361
+   ],
+   "forearm_R": [
+    -0.321,
+    0.1441,
+    -0.9361
+   ],
+   "hand_R": [
+    -0.321,
+    0.1441,
+    -0.9361
+   ],
+   "thigh_L": [
+    -0.03,
+    0.706,
+    0.707
+   ],
+   "shin_L": [
+    -0.03,
+    0.706,
+    0.707
+   ],
+   "foot_L": [
+    -0.03,
+    0.706,
+    0.707
+   ],
+   "thigh_R": [
+    0.03,
+    0.706,
+    0.707
+   ],
+   "shin_R": [
+    0.03,
+    0.706,
+    0.707
+   ],
+   "foot_R": [
+    0.03,
+    0.706,
+    0.707
+   ],
+   "head": [
+    0,
+    0.04,
+    0.999
+   ]
+  },
+  "spine_curve": 12,
+  "camera": "side",
+  "rationale": "Hip angle 135.0 deg, matching v_cross's 135.0 deg exactly, so the V pair is identical across sit and cross and both sit a clean 45 deg above their L counterparts. The arm is LESS forward than l_sit's (0.14 against 0.19), which is the correct direction - raising the legs shortens their horizontal lever and pulls the COM back toward the trunk - and it reproduces the same ordering the cross family shows (v_cross 0.105 < l_cross 0.139). Distinct from manna, the other reclined/piked support: manna adds a 52 deg trunk recline and 150 deg of hip flexion so the feet pass the head, while this keeps the trunk vertical. Only change is cosmetic: hand aligned exactly with the arm line to match l_cross/v_cross, which keep hand on the arm; the previous 1.7 deg offset is below the readable threshold. Straight-arm equality exact, hands level, knees locked and toes pointed.",
+  "scapula": 0.2,
+  "depression": 1.0,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Strong depression through a deeper compression",
+  "cue_grip": "Rings turned out, pressed down at the hips",
+  "support": true
+ },
+ {
+  "key": "tuck_hang",
+  "label": "Tucked hang",
+  "description": "A dead-vertical hang from straight arms on the rings with hips and knees folded tight, knees drawn up in front of the chest and the shins hanging down under them. This is the entry and the easiest progression step for tucked front and back lever work.",
+  "body_up": [
+   0,
+   0,
+   1
+  ],
+  "body_front": [
+   0,
+   -1,
+   0
+  ],
+  "segments": {
+   "upper_arm_L": [
+    0.0132,
+    0.09,
+    0.9959
+   ],
+   "forearm_L": [
+    0.0132,
+    0.09,
+    0.9959
+   ],
+   "hand_L": [
+    -0.027,
+    0.07,
+    0.9972
+   ],
+   "upper_arm_R": [
+    -0.0132,
+    0.09,
+    0.9959
+   ],
+   "forearm_R": [
+    -0.0132,
+    0.09,
+    0.9959
+   ],
+   "hand_R": [
+    0.027,
+    0.07,
+    0.9972
+   ],
+   "thigh_L": [
+    0,
+    0.643,
+    0.766
+   ],
+   "shin_L": [
+    0,
+    -0.09,
+    -0.996
+   ],
+   "foot_L": [
+    0,
+    -0.16,
+    -0.987
+   ],
+   "thigh_R": [
+    0,
+    0.643,
+    0.766
+   ],
+   "shin_R": [
+    0,
+    -0.09,
+    -0.996
+   ],
+   "foot_R": [
+    0,
+    -0.16,
+    -0.987
+   ],
+   "head": [
+    0,
+    0.1,
+    0.995
+   ]
+  },
+  "spine_curve": 22,
+  "camera": "side",
+  "rationale": "The only record that legitimately breaks the shin = thigh = foot rule, and it should: it is an explicitly tucked element, so the 145 deg knee fold is required rather than a defect, and the sweep confirmed every other record in the set holds knee and ankle at 0.0 deg. Slots correctly into the compression ladder - hip flexion 90 (L pair) < 135 (V pair) < 140 here < 150 (manna) - and its spine +22 matches manna's +22 as the two most compressed shapes. Shares the vertical-hang placement with dead_hang but is unmistakably different: dead_hang legs [0,0,-1] straight down, these folded to the chest with the shins hanging back down within 5 deg of world vertical, where gravity puts an unloaded shin. Arm anterior 0.09 is the small forward lean the tucked mass requires under vertical straps, consistent with the same reasoning used in l_sit/v_sit. Straight-arm equality exact, hands level. Unchanged.",
+  "scapula": -0.1,
+  "depression": -0.2,
+  "forearm_rot": 0.0,
+  "cue_scapula": "Shoulders active, girdle neutral",
+  "cue_grip": "Neutral grip, straight arms overhead",
+  "support": false
+ }
+]
