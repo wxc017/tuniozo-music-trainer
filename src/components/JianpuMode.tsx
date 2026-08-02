@@ -908,6 +908,57 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
   // Cycle mode is a per-project switch.  Turning it OFF leaves the stored cycle
   // lengths alone so the time signatures (and the cycles) both survive a toggle
   // back and forth — neither view destroys the other's data.
+  // ── Written cycle groupings ─────────────────────────────────────────
+  // Marking a bracket note-by-note with ' is fine once, but re-doing a grouping
+  // after the cycle changes means hunting down every boundary again.  Typing
+  // "4+4+4+3" states the whole thing at once, and every cycle gets its own field
+  // so you can retype any of them without moving the cursor there first.
+  // Figures are in EIGHTHS — the unit the cycle grid is built on.
+  const groupingOf = useCallback((m: number): string => {
+    if (!project) return "";
+    const total = totalSlotsOf(m);
+    const ends = new Set<number>(project.setup.perBarGroupEnds?.[m] ?? []);
+    for (const n of notes) if (n.measure === m && n.groupEnd) ends.add(n.startSlot + noteSlots(n));
+    const cuts = [...[...ends].filter(x => x > 0 && x < total).sort((a, b) => a - b), total];
+    const out: string[] = [];
+    let prev = 0;
+    for (const c of cuts) {
+      const e = (c - prev) / EIGHTH_SLOTS;
+      out.push(Number.isInteger(e) ? String(e) : e.toFixed(2).replace(/0+$/, ""));
+      prev = c;
+    }
+    return out.join("+");
+  }, [project, notes, totalSlotsOf]);
+  // In-progress text per cycle; committed on Enter/blur, reverted on Escape.
+  const [groupDraft, setGroupDraft] = useState<Record<number, string>>({});
+  // Writing a grouping is AUTHORITATIVE: it sets the boundaries, resizes the
+  // cycle to the figure's total, and clears any note-level ' marks in that bar,
+  // so what you typed is exactly what shows.  Notes + setup save in ONE write —
+  // updateSetup closes over the old `notes`, so committing separately would
+  // persist the stale array back over the cleared one.
+  const applyGrouping = useCallback((m: number, text: string) => {
+    setGroupDraft(d => { const nx = { ...d }; delete nx[m]; return nx; });
+    if (!project) return;
+    const parts = text.split(/[^0-9.]+/).filter(Boolean).map(Number).filter(x => x > 0);
+    if (!parts.length) return;
+    const slots = parts.map(x => Math.max(1, Math.round(x * EIGHTH_SLOTS)));
+    const bounds: number[] = [];
+    let acc = 0;
+    for (let i = 0; i < slots.length - 1; i++) { acc += slots[i]; bounds.push(acc); }
+    const groupEnds = { ...(project.setup.perBarGroupEnds ?? {}) };
+    if (bounds.length) groupEnds[m] = bounds; else delete groupEnds[m];
+    const cleared = notes.map(n => n.measure === m && n.groupEnd ? { ...n, groupEnd: undefined } : n);
+    setNotes(cleared);
+    persist(cleared, {
+      ...project,
+      setup: {
+        ...project.setup,
+        perBarGroupEnds: groupEnds,
+        perBarCycleSlots: { ...(project.setup.perBarCycleSlots ?? {}), [m]: slots.reduce((a, b) => a + b, 0) },
+      },
+    });
+  }, [project, notes, persist]);
+
   const toggleCycleMode = useCallback(() => {
     if (!project) return;
     const u = { ...project, cycleMode: !project.cycleMode, notes };
@@ -2071,7 +2122,35 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
               className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider border transition-colors ${
                 cycleMode ? "bg-[#20204a] border-[#5a5cc8] text-[#b9baf5]" : "bg-transparent border-[#2a2a2a] text-[#666] hover:text-[#aaa]"
               }`}>⟳ Cycles</button>
+
           </div>
+          {/* One grouping field per cycle.  Marking brackets with ' works a note
+              at a time; this states a whole cycle at once and lets you retype any
+              of them without moving the cursor into that bar first. */}
+          {cycleMode && (
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <span className="text-[10px] text-[#666] uppercase tracking-wider shrink-0"
+                title="Grouping per cycle, in eighths — type 4+4+4+3 (or 4 4 4 3). Sets the brackets AND the cycle length, replacing any ' marks in that bar.">
+                Groups
+              </span>
+              {Array.from({ length: project.setup.barCount ?? 1 }, (_, m) => (
+                <label key={`grp-${m}`} className="flex items-baseline gap-1 shrink-0">
+                  <span className="text-[9px] text-[#555] font-mono">{m + 1}</span>
+                  <input type="text"
+                    value={groupDraft[m] ?? groupingOf(m)}
+                    onChange={e => setGroupDraft(d => ({ ...d, [m]: e.target.value }))}
+                    onBlur={e => applyGrouping(m, e.target.value)}
+                    onKeyDown={e => {
+                      e.stopPropagation();   // the score editor owns ' and Enter
+                      if (e.key === "Enter") { applyGrouping(m, (e.target as HTMLInputElement).value); (e.target as HTMLInputElement).blur(); }
+                      if (e.key === "Escape") { setGroupDraft(d => { const n = { ...d }; delete n[m]; return n; }); (e.target as HTMLInputElement).blur(); }
+                    }}
+                    placeholder="4+4+3"
+                    className="bg-transparent text-[#b9baf5] text-[11px] font-mono outline-none w-[64px] text-center border-b border-[#242424] focus:border-[#5a5cc8] placeholder-[#3a3a3a]" />
+                </label>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           {!solfaOnly && (
