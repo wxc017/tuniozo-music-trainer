@@ -27,9 +27,12 @@ if not exist "node_modules" (
 )
 
 REM Open the browser once the server has had a moment to come up.
-start "" /b cmd /c "timeout /t 4 >nul & start "" http://localhost:3000"
+REM Use 127.0.0.1, not localhost: Vite binds 0.0.0.0 (IPv4 only), so Windows
+REM resolves localhost to ::1 first, fails, then falls back to IPv4 -- ~240ms
+REM vs ~26ms per request, paid on every one of the app's 100+ module loads.
+start "" /b cmd /c "timeout /t 4 >nul & start "" http://127.0.0.1:3000"
 
-echo [Tunizo] Starting dev server on http://localhost:3000
+echo [Tunizo] Starting dev server on http://127.0.0.1:3000
 echo          Press Ctrl+C in this window to stop it.
 call npm run dev
 
