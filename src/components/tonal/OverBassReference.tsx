@@ -4,9 +4,32 @@
 // structure it re-roots to (its own chord formula), the scale degree it sits
 // on, and the construction name.  No interval pills, no "=".
 import { useState } from "react";
-import { THREE_PART, FOUR_PART, obDegree, type StructFamily, type ChordStruct } from "@/lib/overBassStructures";
+import {
+  THREE_PART, FOUR_PART, obDegree, obTag, obRootDegree,
+  type StructFamily, type ChordStruct,
+} from "@/lib/overBassStructures";
 
 const GRID = "34px 190px 1fr auto";
+
+/** The structure Roman: italic capital degree the root position sits on, with an
+ *  italic superscript family letter + member index.  Root-position structures
+ *  (the 3-Part catalogue) are built on the tonic, so they read I with the same
+ *  superscript.  `inv` takes the app's inversion ordinal ("/3rd") when shown. */
+export function ObRoman({ famKey, m, siblings, inv, color, size = 14 }:
+  { famKey: string; m: ChordStruct; siblings: readonly ChordStruct[]; inv?: string; color?: string; size?: number }) {
+  const tag = obTag(famKey, m, siblings);
+  if (!tag) return null;                 // plain tertian stack — no superscript
+  // Over-bass structures name the degree they re-root to; root-position ones sit
+  // on the tonic by construction.
+  const deg = obRootDegree(m.at) || "I";
+  return (
+    <span className="font-mono whitespace-nowrap tabular-nums italic" style={{ color, fontSize: size }}>
+      <span className="font-bold">{deg}</span>
+      <sup className="font-bold" style={{ fontSize: "0.62em", marginLeft: 1 }}>{tag.letter}{tag.index}</sup>
+      {inv && <span className="not-italic text-[0.8em] opacity-70">{inv}</span>}
+    </span>
+  );
+}
 
 // Rows are numbered ①②③ rather than I·II·III.  A roman numeral means a scale
 // DEGREE everywhere else in the app; using it here for "the third entry in this
@@ -40,7 +63,8 @@ function Degrees({ degs, gold }: { degs: string[]; gold?: boolean }) {
   );
 }
 
-function MemberRow({ m, color, index }: { m: ChordStruct; color: string; index: number }) {
+function MemberRow({ m, color, index, famKey, siblings }:
+  { m: ChordStruct; color: string; index: number; famKey: string; siblings: readonly ChordStruct[] }) {
   const numTag = (
     <span className="w-[34px] text-center font-mono text-[22px] leading-none py-[1px]" style={{ color }}>
       {CIRCLED[index] ?? index + 1}
@@ -68,7 +92,7 @@ function MemberRow({ m, color, index }: { m: ChordStruct; color: string; index: 
         <span className="italic font-mono font-bold text-[13px] tabular-nums" style={{ color }}>
           {(m.local ?? []).map(d => ordinal(d)).join(" · ")}
         </span>
-        <span aria-hidden />
+        <span className="justify-self-end pr-1"><ObRoman famKey={famKey} m={m} siblings={siblings} color={color} /></span>
       </div>
     );
   }
@@ -77,7 +101,7 @@ function MemberRow({ m, color, index }: { m: ChordStruct; color: string; index: 
     <div className="grid items-center gap-x-4 py-[9px]" style={{ gridTemplateColumns: GRID }}>
       {numTag}
       <span className="whitespace-nowrap"><Degrees degs={(m.degFull ?? "").split("·")} gold /></span>
-      <span aria-hidden />
+      <span><ObRoman famKey={famKey} m={m} siblings={siblings} color={color} /></span>
       <span className="justify-self-end text-[10.5px] font-medium px-2.5 py-[2px] rounded-full whitespace-nowrap"
             style={{ color, background: color + "14" }}>{m.name}</span>
     </div>
@@ -96,7 +120,7 @@ function FamilyCard({ fam }: { fam: StructFamily }) {
               style={{ background: fam.color + "12" }}>{fam.members.length}</span>
       </div>
       <div className="px-4 py-1 divide-y divide-[#16181e]">
-        {fam.members.map((m, i) => <MemberRow key={m.id} m={m} color={fam.color} index={i} />)}
+        {fam.members.map((m, i) => <MemberRow key={m.id} m={m} color={fam.color} index={i} famKey={fam.key} siblings={fam.members} />)}
       </div>
     </div>
   );

@@ -113,11 +113,18 @@ export function romanForChordCents(rootCents: number, toneCents: number[], scale
 }
 
 /** Inversion as a slash plus the chord member in the bass, by ordinal:
- *  I/3rd = first inversion, I/5th = second, I/7th = third, I/9th for a 9th.
- *  Root position is bare.  Read from the REAL bass tone, so a drop voicing that
- *  moves a different voice to the bottom is named by what you actually hear. */
-const INV_ORDINAL: Record<number, string> = { 0: "", 9: "/9th", 3: "/3rd", 5: "/5th", 7: "/7th" };
+ *  I/3rd = first inversion, I/5th = second, I/7th = third.  Root position is
+ *  bare.  Read from the REAL bass tone, so a drop voicing that moves a
+ *  different voice to the bottom is named by what you actually hear.
+ *
+ *  The ordinal is always WITHIN the octave — never /9th, /11th, /13th.  The bass
+ *  is the lowest note by definition, so it cannot be a compound interval above
+ *  the root, however the chord is spelled in stacked form.  TBN I stacks as
+ *  1·5·7·9 but voices closed as 1·2·5·7, and its inversions are /2nd /5th /7th.
+ *  The old buckets also called a 4th in the bass a "3rd", which mislabelled
+ *  every quartal voicing. */
+const GENERIC_ORDINAL = ["", "/2nd", "/2nd", "/3rd", "/3rd", "/4th", "/4th", "/5th", "/6th", "/6th", "/7th", "/7th"];
 export function inversionSlash(rootCents: number, bassCents: number): string {
-  const b = wrap(bassCents - rootCents);
-  return INV_ORDINAL[b < 60 || b > 1170 ? 0 : b < 250 ? 9 : b < 520 ? 3 : b < 860 ? 5 : 7];
+  const semis = Math.round(wrap(bassCents - rootCents) / 100) % 12;
+  return GENERIC_ORDINAL[semis] ?? "";
 }

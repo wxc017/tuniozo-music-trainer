@@ -28,6 +28,8 @@ import { pentatonicSubsets } from "@/lib/pentatonicSubsets";
 import JianpuMode from "@/components/JianpuMode";
 import SolfegeGamutAside from "@/components/tonal/SolfegeGamutAside";
 import PitchTrainer from "@/components/tonal/PitchTrainer";
+import { OB_BY_ID, obTag } from "@/lib/overBassStructures";
+import { inversionSlash } from "@/lib/romanNumeral";
 import EchoTrainer, { type EchoPhrase, type EchoNote } from "@/components/tonal/EchoTrainer";
 import SpectrumBandsEditor from "@/components/tonal/SpectrumBandsEditor";
 import {
@@ -129,6 +131,14 @@ const CHORD_GROUPS: { group: string; items: { id: ChordType; label: string; titl
   }))) },
 ];
 const CHORD_TYPES = CHORD_GROUPS.flatMap(g => g.items);
+// Chords with four voices: the 4-part group plus every over-bass member (a bass
+// carrying a 3-note upper structure IS four voices).  Drop voicings are a
+// four-voice idea — you can't drop the 2nd voice of a triad and still have a
+// drop — so the VOICINGS row only appears when one of these is selected.
+const FOUR_PART_IDS: ReadonlySet<ChordType> = new Set<ChordType>([
+  ...(CHORD_GROUPS.find(g => g.group === "4-PART CHORDS")?.items ?? []).map(i => i.id),
+  ...OVERBASS_FAMILIES.flatMap(f => f.members.map(m => m.id)),
+]);
 // Voicings applied to the CLOSED voicing of the selected chords, generated the
 // way Goodrick tabulates them: closed + every single & pair "drop" (drop the
 // Nth voice(s) from the top down an octave) + the double-drop.  `min` = the
@@ -474,7 +484,10 @@ type ModeId = string;
 interface SingNote { syl: string; abs: number; oct: number; cents: number; root?: boolean; }
 type SingSeq =
   | { kind: "line"; label: string; notes: SingNote[]; steps?: number[] }
-  | { kind: "chords"; label: string; chords: { label?: string; tones: SingNote[]; borrowed?: boolean }[]; mi?: boolean };
+  // `structId` is the chord TYPE the cards were built from.  Over-bass and other
+// non-tertian structures render their notation on each card; a plain triad or
+// 7th has no tag and just shows its numeral.
+| { kind: "chords"; label: string; chords: { label?: string; tones: SingNote[]; borrowed?: boolean }[]; mi?: boolean; structId?: ChordType };
 type SingCat = "scalar" | "chords" | "cycles";
 // Sub-categories within the Scalar tab (own sub-tab bar) so it isn't one long list.
 type ScalarSub = "scale" | "patterns" | "pentatonic" | "blues" | "angular" | "chromatic" | "resolution" | "triadpairs";
@@ -808,8 +821,14 @@ const romanForChordCents = (rootCents: number, toneCents: number[], scale: numbe
   // pitch-classes sort to [0, 200, 400, 700, 1000], where index 1 is the 9th.
   const iv = toneCents.map(t => wrap(t - R)).sort((a, b) => a - b);
   const inRange = (lo: number, hi: number) => iv.find(x => x >= lo && x <= hi);
-  const third = inRange(250, 500) ?? 400;
-  const fifth = inRange(550, 850) ?? 700;
+  // A chord with NO third of its own inherits the mode's third at this degree —
+  // it must not default to a major 400¢.  Over-bass structures are the case that
+  // matters: TBN is 1·2·5·7, thirdless by construction, so the old default made
+  // every one of them print an uppercase numeral, and minor's i came out I.
+  // Quartal and shell voicings hit the same hole.
+  const degIvl = (steps: number) => wrap(scale[(dd + steps) % scale.length] - scale[dd]);
+  const third = inRange(250, 500) ?? degIvl(2);
+  const fifth = inRange(550, 850) ?? degIvl(4);
   const seventh = inRange(850, 1150) ?? null;
   const isMinor = third < 350;
   // ° on its own and with a diminished 7th, ø when the 7th is minor (minor's iiø).
@@ -821,19 +840,18 @@ const romanForChordCents = (rootCents: number, toneCents: number[], scale: numbe
   return (b === 0 ? "↓" : b === 2 ? "↑" : "") + acc + (isMinor ? ROMAN_UP[dd].toLowerCase() : ROMAN_UP[dd]) + sym;
 };
 // Inversion as a SLASH plus the chord member in the bass, named by its ORDINAL:
-//   I/3rd  = first inversion (the chord's 3rd is underneath)
-//   I/5th  = second inversion,  I/7th = third,  I/9th when a 9th is in the bass.
+//   I/3rd  = first inversion (the chord's 3rd is underneath),  I/5th = second …
 // Root position stays bare.  The numeral keeps carrying the chord's own quality
 // through its case (I major, i minor); the ordinal names WHICH tone is in the
 // bass, not that tone's own quality — the chord already told you that.
 // Read off the real bass tone rather than the row's nominal inversion, so a drop
 // voicing that moves a different voice to the bottom is labelled by what you
 // actually hear down there.
-const INV_ORDINAL: Record<number, string> = { 0: "", 9: "/9th", 3: "/3rd", 5: "/5th", 7: "/7th" };
-const inversionSlash = (rootCents: number, bassCents: number): string => {
-  const b = ((((bassCents - rootCents) % 1200) + 1200) % 1200);
-  return INV_ORDINAL[b < 60 || b > 1170 ? 0 : b < 250 ? 9 : b < 520 ? 3 : b < 860 ? 5 : 7];
-};
+//
+// This was a LOCAL copy that had drifted from lib/romanNumeral: it still bucketed
+// a 2nd in the bass as "/9th" (the bass can't be a compound interval) and called
+// a 4th in the bass a "/3rd", mislabelling every quartal voicing.  Importing the
+// shared one instead, so there's a single definition to fix.
 const REGION_BY_NAME = new Map(REGIONS.filter(r => r.subs && r.subs.length === 3).map(r => [r.name, r]));
 function bandRange(regionName: string | null, band: Band, t?: EdoTuning): [number, number] {
   if (!regionName) return [0, 0];
@@ -1122,6 +1140,23 @@ function Panel({ title, accent = ACCENT, children }: { title: string; accent?: s
   );
 }
 
+// ── Persisted settings ───────────────────────────────────────────────
+// Settings survive a reload; transient UI does NOT.  Open popups, the walking
+// cursor, the generated sections and the logbook selection are all deliberately
+// left in plain useState — restoring them would reopen panels you closed and
+// point the cursor at material that no longer exists.
+function usePersisted<T>(key: string, init: T) {
+  const [v, setV] = useState<T>(() => lsGet<T>(key, init));
+  useEffect(() => { lsSet(key, v); }, [key, v]);
+  return [v, setV] as [T, React.Dispatch<React.SetStateAction<T>>];
+}
+/** Same, for Sets — stored as arrays, since a Set doesn't survive JSON. */
+function usePersistedSet<T>(key: string, init: readonly T[]) {
+  const [v, setV] = useState<Set<T>>(() => new Set(lsGet<T[]>(key, [...init])));
+  useEffect(() => { lsSet(key, [...v]); }, [key, v]);
+  return [v, setV] as [Set<T>, React.Dispatch<React.SetStateAction<Set<T>>>];
+}
+
 export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCents: rootCentsProp, onRootCentsChange }: Props) {
   const [mode, setMode] = useState<Mode>("sing");
   const [qualities, setQualities] = useState<Set<Quality>>(new Set(["major"]));
@@ -1144,13 +1179,13 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const [answerShown, setAnswerShown] = useState(false);   // Show Answer reveal (chords/intervals)
   // Sing mode — pick mode(s) + which spectrum bands.  Each selected band makes
   // its own section (one small, one center, one large — never three of a kind).
-  const [singModes, setSingModes] = useState<Set<ModeId>>(new Set(["maj"]));
+  const [singModes, setSingModes] = usePersistedSet<ModeId>("lt_sing_modes", ["maj"]);
   // Multi-scale: every SELECTED mode is generated, but only ONE is on screen at a
   // time — ↑ / ↓ cycle which.  Everything (patterns, chords, cycles, drone,
   // spectrum, pitch targets) flips to that scale at once, and because the other
   // scales stay generated the cycle is instant and the exercise list underneath
   // doesn't re-randomize — so the same pattern can be compared across scales.
-  const [activeMode, setActiveMode] = useState<ModeId>("maj");
+  const [activeMode, setActiveMode] = usePersisted<ModeId>("lt_sing_activeMode", "maj");
   const [singBands, setSingBands] = useState<Set<Band>>(new Set([0, 1, 2]));
   // Cycle order follows the PICKER's left-to-right order, not the order the chips
   // were clicked, so ↑ / ↓ walk the rows you're looking at.
@@ -1172,10 +1207,10 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // Shared spectrum-band selection for BOTH Chords and Sing: one universal set
   // for the "blendable" degrees (2·3·6·7) plus dedicated fine-tune controls for
   // the perfect 4th and 5th so they never smear out of tune.
-  const [specBands, setSpecBands] = useState<Set<Band>>(new Set([1]));   // 2nd/3rd/6th/7th
-  const [specBand2, setSpecBand2] = useState<Set<Band>>(new Set([1]));   // 2nd — its own control
-  const [specBand4, setSpecBand4] = useState<Set<Band>>(new Set([1]));   // 4th — its own control
-  const [specBand5, setSpecBand5] = useState<Set<Band>>(new Set([1]));   // 5th — its own control
+  const [specBands, setSpecBands] = usePersistedSet<Band>("lt_sing_specBands", [1]);   // 2nd/3rd/6th/7th
+  const [specBand2, setSpecBand2] = usePersistedSet<Band>("lt_sing_specBand2", [1]);   // 2nd — its own control
+  const [specBand4, setSpecBand4] = usePersistedSet<Band>("lt_sing_specBand4", [1]);   // 4th — its own control
+  const [specBand5, setSpecBand5] = usePersistedSet<Band>("lt_sing_specBand5", [1]);   // 5th — its own control
   // Band system: "spectrum" (small/center/large sub-bands) or "edo" (the three
   // slots become the 31/12/39-EDO diatonic-MOS tunings).  Persisted.
   const [bandSystem, setBandSystem] = useState<BandSystem>(() => lsGet<BandSystem>(BAND_SYSTEM_KEY, "spectrum"));
@@ -1206,7 +1241,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   })();
   const [techOpen, setTechOpen] = useState(true);
   // Which chord types the Sing section generates (multi-select).
-  const [chordTypes, setChordTypes] = useState<Set<ChordType>>(new Set(["triad", "seventh"]));
+  const [chordTypes, setChordTypes] = usePersistedSet<ChordType>("lt_sing_chordTypes", ["triad", "seventh"]);
   // Over-bass compact picker: which family is expanded to show its members.
   // Clicking a family opens it for a short period (auto-collapses); hovering
   // the expanded row holds it open so the popups stay readable.
@@ -1217,21 +1252,21 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // Which card/note is currently held as a drone (null = nothing droning).  A
   // click starts its sustained drone; clicking the same target again stops it.
   const [droningId, setDroningId] = useState<string | null>(null);
-  const [singVoicings, setSingVoicings] = useState<Set<string>>(new Set(["close", "drop2"]));
-  const [singTriadVoicings, setSingTriadVoicings] = useState<Set<string>>(new Set(["close", "spread"]));
-  const [cycles, setCycles] = useState<Set<number>>(new Set());   // Almanac root cycles to show
+  const [singVoicings, setSingVoicings] = usePersistedSet<string>("lt_sing_voicings", ["close", "drop2"]);
+  const [singTriadVoicings, setSingTriadVoicings] = usePersistedSet<string>("lt_sing_triadVoicings", ["close", "spread"]);
+  const [cycles, setCycles] = usePersistedSet<number>("lt_sing_cycles", []);   // Almanac root cycles to show
   // Modal interchange laid over the diatonic cycle: which parallel modes recolor
   // each diatonic root, and whether the plain diatonic / interchange rows show.
   // Default borrow pool = the 6 non-major church modes (the full diatonic recolor).
-  const [borrowModes, setBorrowModes] = useState<Set<ModeId>>(new Set(["lyd", "mix", "dor", "min", "phr", "loc"]));
+  const [borrowModes, setBorrowModes] = usePersistedSet<ModeId>("lt_sing_borrowModes", ["lyd", "mix", "dor", "min", "phr", "loc"]);
   // Modal interchange is its OWN feature (toggle) shown in BOTH the Chords and
   // Cycles tabs — the color-characteristic borrowed chords of each picked mode.
-  const [showInterchange, setShowInterchange] = useState(false);
+  const [showInterchange, setShowInterchange] = usePersisted<boolean>("lt_sing_showInterchange", false);
   // MI part-count selection (3/4/5/6-part).  A mode's color needs its
   // characteristic tone — Lydian's ♯11 only shows at 6-part — so a picked mode
   // auto-falls back to its characteristic size if none of these reveal it.
-  const [interchangeParts, setInterchangeParts] = useState<Set<ChordType>>(new Set(["seventh"]));
-  const [singTab, setSingTab] = useState<SingCat>("scalar");      // Scalar (s) / Chords (d) / Cycles (f)
+  const [interchangeParts, setInterchangeParts] = usePersistedSet<ChordType>("lt_sing_interchangeParts", ["seventh"]);
+  const [singTab, setSingTab] = usePersisted<SingCat>("lt_sing_tab", "scalar");      // Scalar (s) / Chords (d) / Cycles (f)
   const [specOpen, setSpecOpen] = useState(false);                // spectrum popup (z)
   const [gamutOpen, setGamutOpen] = useState(false);              // solfège gamut popup (x)
   const [obSheetOpen, setObSheetOpen] = useState(false);          // over-bass structures sheet (u)
@@ -1249,14 +1284,14 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     const n = new Set(s); n.has(title) ? n.delete(title) : n.add(title); return n;
   });
   const [droneDegBand, setDroneDegBand] = useState<Band[]>([1, 1, 1, 1, 1, 1, 1]);
-  const [droneChordType, setDroneChordType] = useState<ChordType>("triad");
+  const [droneChordType, setDroneChordType] = usePersisted<ChordType>("lt_sing_droneChordType", "triad");
   const [droneOct, setDroneOct] = useState(0);   // octave shift; base scale octave is 3
   const [droneInst, setDroneInst] = useState<DroneInstrument>(() => {
     const v = lsGet<string>("lt_app_droneInstrument", "cello");
     return AudioEngine.isValidInstrument(v) ? v : "cello";
   });
   // ── Harmonization + walking drone ──
-  const [harmonize, setHarmonize] = useState<Set<HarmId>>(new Set());
+  const [harmonize, setHarmonize] = usePersistedSet<HarmId>("lt_sing_harmonize", []);
   // Walking drone: the set of "walkable line" keys currently held (index-locked so
   // all advance together 1-to-1), the shared position, and an octave shift.
   const [walk, setWalk] = useState<{ keys: string[]; index: number; oct: number }>({ keys: [], index: 0, oct: 0 });
@@ -1268,17 +1303,25 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const [patRetro, setPatRetro] = useState(false);                      // retrograde lines (r)
   const [patExpand, setPatExpand] = useState(0);                        // diatonic interval expansion (+) / contraction (−), in scale steps ([ ])
   const [patInv, setPatInv] = useState<"none" | "dia" | "chrom">("none"); // inversion: diatonic (i) / chromatic (c)
-  const [scalarSub, setScalarSub] = useState<ScalarSub>("scale");       // Scalar sub-tab (which one is VIEWED)
+  const [scalarSub, setScalarSub] = usePersisted<ScalarSub>("lt_sing_scalarSub", "scale");       // Scalar sub-tab (which one is VIEWED)
   const [scaleStart, setScaleStart] = useState(0);                      // 1-7 → scalar exercises start on this degree (0 = tonic)
   // ── Logbook ──
   const [patternLog, setPatternLog] = useState<Record<string, LogEntry>>(loadPatternLog);
   const [logOpen, setLogOpen] = useState(false);                        // logbook panel (l)
-  const [logBy, setLogBy] = useState<"day" | "cat">("day");             // group the logbook by day or category
+  const [logBy, setLogBy] = usePersisted<"day" | "cat">("lt_sing_logBy", "day");             // group the logbook by day or category
   const [logSel, setLogSel] = useState<Set<string>>(new Set());         // multi-selected pattern ids
   const dragRef = useRef<{ on: boolean; add: boolean }>({ on: false, add: true });
   // Blues is behind the beta gate for now (dev only), so it's off by default and
   // its toggle is hidden in production builds.
-  const [scalarGen, setScalarGen] = useState<Set<ScalarSub>>(new Set(SCALAR_SUBS.map(s => s.id)));  // which scalar groups are GENERATED
+  const [scalarGen, setScalarGen] = usePersistedSet<ScalarSub>("lt_sing_scalarGen", SCALAR_SUBS.map(s => s.id));
+  // Keep the VIEWED sub inside the generated set: deselecting the one you were
+  // looking at otherwise leaves the pane blank with no tab to click back to.
+  useEffect(() => {
+    if (scalarGen.size && !scalarGen.has(scalarSub)) {
+      const first = SCALAR_SUBS.find(s => scalarGen.has(s.id));
+      if (first) setScalarSub(first.id);
+    }
+  }, [scalarGen, scalarSub, setScalarSub]);  // which scalar groups are GENERATED
 
   // Root/tonic as a continuous cents position in the octave (0 = C3), shared by
   // all spectrum modes.  Click the root spectrum line or randomize it.  Controlled
@@ -1630,8 +1673,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     for (const k of dropsFromTop) { const i = s.length - k; if (i >= 0) s[i] -= 7; }
     return s;
   };
-  const chordSeq = (label: string, scale: number[], voicings: { label?: string; steps: number[]; rootStep?: number }[]): SingSeq =>
-    ({ kind: "chords", label, chords: voicings.map(v => ({
+  const chordSeq = (label: string, scale: number[], voicings: { label?: string; steps: number[]; rootStep?: number }[], structId?: ChordType): SingSeq =>
+    ({ kind: "chords", label, structId, chords: voicings.map(v => ({
       label: v.label,
       tones: v.steps.map(s => ({ ...stepNote(scale, s), root: v.rootStep !== undefined && mod(s, 7) === mod(v.rootStep, 7) })).sort((a, b) => a.abs - b.abs),
     })) });
@@ -1825,7 +1868,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         chordGroups.push({
           cat: "chords",
           title: v.id === "close" ? t.title : `${t.title} · ${v.label}`,
-          seqs: [0, 1, 2, 3, 4, 5, 6].map(d => chordSeq(ROMAN_NUMERALS[d], scale, shapeVoicings(t.id, v, d))),
+          seqs: [0, 1, 2, 3, 4, 5, 6].map(d => chordSeq(ROMAN_NUMERALS[d], scale, shapeVoicings(t.id, v, d), t.id)),
         });
       }
     }
@@ -1911,7 +1954,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
             cat: "cycles",
             title: v.id === "close" ? `CYCLE ${n} · ${t.title}` : `CYCLE ${n} · ${t.title} · ${v.label}`,
             seqs: Array.from({ length: size }, (_, inv) => chordSeq(INV_LABEL[inv], scale,
-              cycleChords(n, inv, offs).map(c => ({ ...c, steps: voiceChord(c.steps, v) })))),
+              cycleChords(n, inv, offs).map(c => ({ ...c, steps: voiceChord(c.steps, v) })), t.id)),
           });
         }
       }
@@ -2731,7 +2774,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
           {/* One ○ per voice — a "control card" using a real chord card's box model
               (same padding/label spacer, and each cell mirrors noteGlyph exactly with
               the ○ in the syllable slot) so every dot sits on its voice row. */}
-          <div className="flex flex-col items-center gap-0 rounded-md border border-transparent px-1.5 py-1 min-w-[42px] shrink-0">
+          <div className="flex flex-col items-center gap-0 rounded-md border border-transparent px-2.5 py-1 min-w-[58px] shrink-0">
             <span className={`${INV_SHORT.includes(seq.chords[0]?.label ?? "") ? "text-[8px]" : "text-[11px]"} leading-none mb-0.5 invisible`}>I</span>
             {Array.from({ length: chordVoices }, (_, vi) => (
               <span key={vi} className="text-xs font-mono leading-tight rounded-sm px-1">
@@ -2769,9 +2812,17 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
               // Inversion rides the numeral as a slash (I/3rd = first inversion),
               // taken from the card's real bass tone (ch.tones is abs-sorted).
               const cardInv = cardRootCents != null && ch.tones.length ? inversionSlash(cardRootCents, ch.tones[0].cents) : "";
+              const cardRomanBare = cardRootCents != null
+                ? romanForChordCents(cardRootCents, ch.tones.map(t => t.cents), rawScale) : null;
               const cardRomanCode = isInvLabel ? null
                 : isMI ? (ch.label != null ? ch.label + cardInv : null)
-                : (cardRootCents != null ? romanForChordCents(cardRootCents, ch.tones.map(t => t.cents), rawScale) + cardInv : null);
+                : (cardRomanBare != null ? cardRomanBare + cardInv : null);
+              // Structure tag for this card, when the chord type has one.  Plain
+              // tertian stacks (triad / 7th) return null and keep the bare numeral.
+              const structEntry = !isMI && seq.kind === "chords" && seq.structId
+                ? OB_BY_ID.get(seq.structId) : undefined;
+              const cardTag = structEntry && cardRomanBare != null
+                ? obTag(structEntry.famKey, structEntry.m, structEntry.siblings) : null;
               // Only the BORROWED card is tinted — the diatonic half of an A/B pair
               // stays neutral so the swap reads at a glance.
               const isBorrowed = isMI && !!ch.borrowed;
@@ -2779,10 +2830,19 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
               <div key={j} role="button" tabIndex={0} title="Click to drone the whole chord (click again to stop)"
                 onClick={() => toggleDrone(cardId, ch.tones.map(t => t.abs))}
                 onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleDrone(cardId, ch.tones.map(t => t.abs)); } }}
-                className={`flex flex-col items-center gap-0 rounded-md border px-1.5 py-1 min-w-[42px] cursor-pointer transition-colors ${cardOn ? "border-[#e0b060] ring-2 ring-[#e0b060]/50" : isBorrowed ? "border-[#7a5a2a] bg-[#191309] hover:border-[#d08a3a]" : "border-[#2a2a3a] bg-[#14141c] hover:border-[#7173e6]/60"}`}>
+                className={`flex flex-col items-center gap-0 rounded-md border px-2.5 py-1 min-w-[58px] cursor-pointer transition-colors ${cardOn ? "border-[#e0b060] ring-2 ring-[#e0b060]/50" : isBorrowed ? "border-[#7a5a2a] bg-[#191309] hover:border-[#d08a3a]" : "border-[#2a2a3a] bg-[#14141c] hover:border-[#7173e6]/60"}`}>
                 {/* Card drones the whole chord; hovering a solfège underlines it and clicking drones just that note. */}
                 {cardRomanCode
-                  ? <span className="text-[11px] leading-none mb-0.5 font-normal" style={{ color: bandColorForCents(cardRootCents ?? 0) }}>{cardRomanCode}</span>
+                  ? <span className="text-[11px] leading-none mb-0.5 font-normal whitespace-nowrap" style={{ color: bandColorForCents(cardRootCents ?? 0) }}>
+                      {/* The structure tag rides EACH card: the numeral is that
+                          card's own degree (it moves through the cycle) while the
+                          superscript stays constant, so a cycle of TBN I reads
+                          V-T1, VII-T1, II-T1 … with its own inversion slash. */}
+                      {cardTag
+                        ? <><span className="italic">{cardRomanBare}</span>
+                            <sup className="italic" style={{ fontSize: "0.66em" }}>{cardTag.letter}{cardTag.index}</sup>{cardInv}</>
+                        : cardRomanCode}
+                    </span>
                   : <span className="text-[8px] leading-none mb-0.5 text-[#777]">{ch.label || (cardOn ? "●" : "▶")}</span>}
                 {[...ch.tones].reverse().map((t, k) => {
                   const noteId = `${cardId}:n${k}`;
@@ -3207,7 +3267,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                   </div>
                 );
               })}
-              {fieldRow(
+              {[...chordTypes].some(id => FOUR_PART_IDS.has(id)) && fieldRow(
                 "VOICINGS",
                 VOICING_TYPES.map(v => <button key={v.id} onClick={() => toggleIn(setSingVoicings, v.id, true)} className={chip(singVoicings.has(v.id))}>{v.label}</button>),
                 "Voicings applied to the closed voicing of the selected chords. Drops need a 4-note chord.",
@@ -3296,9 +3356,11 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
           </div>
 
           {/* Scalar sub-categories — keep the long list broken into sections. */}
+          {/* Only the subs actually GENERATED get a view tab — offering a tab for
+              a sub you deselected in SCALAR GEN just opens an empty pane. */}
           {singTab === "scalar" && (
             <div className="inline-flex rounded-lg border border-[#242424] bg-[#0b0b0b] p-0.5 gap-0.5 flex-wrap">
-              {SCALAR_SUBS.map(s => (
+              {SCALAR_SUBS.filter(s => scalarGen.has(s.id)).map(s => (
                 <button key={s.id} onClick={() => setScalarSub(s.id)}
                   className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-colors ${scalarSub === s.id ? "bg-[#7173e6] text-white" : "text-[#777] hover:text-[#cfcfcf]"}`}>{s.label}</button>
               ))}
