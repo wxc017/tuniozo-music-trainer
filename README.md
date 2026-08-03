@@ -14,7 +14,7 @@ A music practice tool and statics workout log me and AI built for my own daily u
 
 * **Spectrum Audiation** — Ear trainer that randomizes pitches continuously inside each Schulter region and grades your answer in a jianpu editor.
 * **Sol-fa** — Editor for writing what you hear in my own solfège notation system.
-* **Solfège Chart** — Table of the region-centered solfège syllables and which one each EDO step falls into.
+* **Solfège Chart** — My own solfège system, built to internalize the EDOs I use: a table of the region-centered syllables and which one each EDO step falls into.
 * **3-, 4-Part Chords** — Reference catalogue of three- and four-part voicings and the structures they re-root to.
 * **Interval Spectrum** — Draws Schulter's interval regions, drops each EDO's steps onto them, and rings any of them as drones.
 
