@@ -6,7 +6,7 @@ A music practice tool and statics workout log me and AI built for my own daily u
 
 ## Ear & Feel
 
-* **Tonal Audiation** — Plays intervals, chords, or scale permutations in any EDO for you to reproduce by ear.
+* **Tonal Audiation** — Plays intervals, chords, or scale permutations in any EDO for you to reproduce by ear, built around a Lumatone visualization; I haven't touched it in a while because Spectrum Audiation is the more universal system and applies to everything.
 * **Drum Patterns** — Ostinato, accent, sticking, and independence drills read off generated drum notation.
 * **Permutations** — Splits a pulse count into groupings and orchestrates paradiddles across the kit.
 
