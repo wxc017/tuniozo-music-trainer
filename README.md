@@ -2,7 +2,7 @@
 
 **Warning: AI-assisted program.** I wish I'd written more of this myself, but I have other responsibilities.
 
-A microtonal music practice tool me and AI built for my own daily practice. Mainly uploaded as a backup, so expect rough edges and half-finished modes.
+A music practice tool and statics workout log me and AI built for my own daily use. Mainly uploaded as a backup.
 
 ## Ear & Feel
 
@@ -13,7 +13,7 @@ A microtonal music practice tool me and AI built for my own daily practice. Main
 ## Spectrum Research
 
 * **Spectrum Audiation** — Ear trainer that randomizes pitches continuously inside each Schulter region and grades your answer in a jianpu editor.
-* **Sol-fa** — Numbered-notation (jianpu / tonic sol-fa) editor for writing what you hear.
+* **Sol-fa** — Editor for writing what you hear in my own solfège notation system.
 * **Solfège Chart** — Table of the region-centered solfège syllables and which one each EDO step falls into.
 * **3-, 4-Part Chords** — Reference catalogue of three- and four-part voicings and the structures they re-root to.
 * **Interval Spectrum** — Draws Schulter's interval regions, drops each EDO's steps onto them, and rings any of them as drones.
