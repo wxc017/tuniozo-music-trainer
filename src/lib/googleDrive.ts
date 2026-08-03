@@ -338,6 +338,29 @@ export async function findFileInFolder(
   return d.files?.[0] ?? null;
 }
 
+/** Every file in a folder whose name starts with `prefix`, OLDEST FIRST.
+ *  Ordered by createdTime so a rotating backup set reads chronologically —
+ *  the name is only a tiebreaker, since Drive allows duplicate names. */
+export async function listFilesInFolder(
+  token: string, folderId: string, prefix: string,
+): Promise<{ id: string; name: string; createdTime: string; modifiedTime: string; size: number }[]> {
+  const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+  const fields = encodeURIComponent("files(id,name,createdTime,modifiedTime,size)");
+  const res = await driveGet(token, `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&orderBy=createdTime&pageSize=100`);
+  if (!res.ok) throw new Error(`List files failed: ${res.status}`);
+  const d = await res.json();
+  const files: any[] = d.files ?? [];
+  return files
+    .filter(f => typeof f.name === "string" && f.name.startsWith(prefix))
+    .map(f => ({
+      id: f.id as string, name: f.name as string,
+      createdTime: (f.createdTime ?? f.modifiedTime ?? "") as string,
+      modifiedTime: (f.modifiedTime ?? f.createdTime ?? "") as string,
+      size: Number(f.size ?? 0),
+    }))
+    .sort((a, b) => (a.createdTime.localeCompare(b.createdTime)) || a.name.localeCompare(b.name));
+}
+
 /** Replace an existing Drive file's contents (media PATCH). */
 export async function updateDriveFileMedia(token: string, id: string, blob: Blob): Promise<void> {
   const res = await driveFetch(`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`, { method: "PATCH", body: blob }, token);

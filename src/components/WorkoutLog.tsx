@@ -11,7 +11,10 @@ import { registerRestSW } from "@/lib/restNotify";
 import { initDriveDataSync } from "@/lib/workoutDrive";
 import { initTokenAutoRefresh } from "@/lib/googleDrive";
 import { pruneVideos } from "@/lib/workoutVideoDb";
-import { backupWorkoutsToDrive, restoreWorkoutsFromDrive } from "@/lib/workoutDriveBackup";
+import {
+  backupWorkoutsToDrive, restoreWorkoutsFromDrive, listWorkoutBackups,
+  KEEP_BACKUPS, type DriveBackup,
+} from "@/lib/workoutDriveBackup";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
 
@@ -49,20 +52,28 @@ export default function WorkoutLog() {
   // exercises + video clips) — a single file in a "Tunizo Workouts" folder,
   // WITHOUT the whole-app data sync.
   const [ioBusy, setIoBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
   const doExport = async () => {
     setIoBusy(true);
     try {
       const r = await backupWorkoutsToDrive();
-      window.alert(`Backed up to Google Drive — ${r.videoCount} clip${r.videoCount === 1 ? "" : "s"}, ${(r.bytes / 1e6).toFixed(1)} MB.`);
+      const pruneNote = r.pruned ? ` Oldest ${r.pruned === 1 ? "backup" : `${r.pruned} backups`} dropped.` : "";
+      window.alert(
+        `Backed up to Google Drive — ${r.videoCount} clip${r.videoCount === 1 ? "" : "s"}, ${(r.bytes / 1e6).toFixed(1)} MB.\n\n` +
+        `Keeping the last ${r.kept} backup${r.kept === 1 ? "" : "s"}.${pruneNote}`,
+      );
     } catch (e) { window.alert(`Backup failed: ${e instanceof Error ? e.message : String(e)}`); }
     finally { setIoBusy(false); }
   };
-  const doImport = async () => {
-    if (!window.confirm("Restore workouts from your Google Drive backup? It merges into what's already on this device (safe to re-run).")) return;
+  // Restore always goes through the picker now — with a rolling set of backups,
+  // silently taking the newest is exactly the wrong default when the newest is
+  // the one you just messed up.
+  const doRestore = async (b: DriveBackup) => {
+    setPicking(false);
     setIoBusy(true);
     try {
-      const r = await restoreWorkoutsFromDrive();
-      if (!r.found) { window.alert("No workout backup found on your Google Drive yet — back up first."); return; }
+      const r = await restoreWorkoutsFromDrive(b.id);
+      if (!r.found) { window.alert("That backup is no longer on your Drive — it may have been deleted from another device."); return; }
       const x = r.result!;
       window.alert(`Restored from Drive — ${x.workouts} workouts, ${x.templates} templates, ${x.exercises} exercises, ${x.videos} videos.`);
     } catch (e) { window.alert(`Restore failed: ${e instanceof Error ? e.message : String(e)}`); }
@@ -99,19 +110,109 @@ export default function WorkoutLog() {
 
           {/* Workout-only backup/restore to Google Drive — no whole-app sync needed. */}
           <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5" style={{ borderTop: "1px solid var(--wl-line)" }}>
-            <button onClick={doExport} disabled={ioBusy} className="wl-btn flex-1" title="Back up all workouts + video clips to your Google Drive">
+            <button onClick={doExport} disabled={ioBusy} className="wl-btn flex-1"
+              title={`Back up all workouts + video clips to your Google Drive (keeps the last ${KEEP_BACKUPS})`}>
               {ioBusy ? "…" : "⬆ Back up to Drive"}
             </button>
-            <button onClick={doImport} disabled={ioBusy} className="wl-btn flex-1" title="Restore workouts from your Google Drive backup (merges, safe to re-run)">
+            <button onClick={() => setPicking(true)} disabled={ioBusy} className="wl-btn flex-1"
+              title="Pick which Drive backup to restore (merges, safe to re-run)">
               ⬇ Restore from Drive
             </button>
           </div>
+          {picking && <RestorePicker onPick={doRestore} onClose={() => setPicking(false)} />}
         </div>
       )}
       {/* Floating overlays — persist across views, above the video popup. */}
       <UndoBar />
     </>
   );
+}
+
+// ── Restore picker ────────────────────────────────────────────────────────
+// Lists the rolling backup set OLDEST FIRST, numbered the way the rotation
+// works: slot 1 is the next to be dropped, the last row is the newest. Showing
+// the age matters more than the filename — "which one was before I broke it"
+// is the actual question being answered here.
+
+function RestorePicker({ onPick, onClose }: { onPick: (b: DriveBackup) => void; onClose: () => void }) {
+  const [backups, setBackups] = useState<DriveBackup[] | null>(null);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    listWorkoutBackups()
+      .then(b => { if (alive) setBackups(b); })
+      .catch(e => { if (alive) { setErr(e instanceof Error ? e.message : String(e)); setBackups([]); } });
+    return () => { alive = false; };
+  }, []);
+
+  const confirmPick = (b: DriveBackup, isNewest: boolean) => {
+    const which = isNewest ? "the newest backup" : `a backup from ${relTime(b.when)}`;
+    if (!window.confirm(`Restore ${which}?\n\nIt MERGES into what's already on this device by id — it won't delete anything you've logged since.`)) return;
+    onPick(b);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-3" style={{ background: "rgba(0,0,0,.72)" }}>
+      <div className="wl-card w-full" style={{ maxWidth: 460, padding: 0, overflow: "hidden" }}>
+        <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--wl-line)" }}>
+          <div>
+            <div className="wl-eyebrow">Restore</div>
+            <div className="wl-h2" style={{ fontSize: 15 }}>Pick a backup</div>
+          </div>
+          <button onClick={onClose} className="wl-btn ml-auto">Cancel</button>
+        </div>
+
+        <div className="p-3 space-y-2" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+          {backups === null && <div className="text-sm wl-muted text-center py-6">Loading backups…</div>}
+
+          {backups?.length === 0 && (
+            <div className="text-sm wl-muted text-center py-6 leading-relaxed">
+              {err
+                ? <>Couldn't read your Drive backups.<br /><span className="wl-mono text-[11px] wl-faint">{err}</span></>
+                : <>No backups on your Drive yet.<br />Hit <b style={{ color: "var(--wl-accent-ink)" }}>Back up to Drive</b> first.</>}
+            </div>
+          )}
+
+          {backups?.map((b, i) => {
+            const isNewest = i === backups.length - 1;
+            return (
+              <button key={b.id} onClick={() => confirmPick(b, isNewest)}
+                className="wl-card wl-card--hover w-full text-left p-3">
+                <div className="flex items-center gap-2">
+                  <span className="wl-num w-6 h-6 rounded-full text-[11px] flex items-center justify-center flex-shrink-0"
+                    style={{ border: "1px solid var(--wl-line)", background: "var(--wl-surface-2)", color: "var(--wl-accent)" }}>
+                    {i + 1}
+                  </span>
+                  <span className="wl-h2" style={{ fontSize: 14 }}>{b.when.toLocaleString()}</span>
+                  {isNewest && <span className="wl-tag ml-auto">newest</span>}
+                  {i === 0 && backups.length >= KEEP_BACKUPS && !isNewest && <span className="wl-tag ml-auto">drops next</span>}
+                </div>
+                <div className="wl-mono text-[10px] wl-faint mt-1.5">
+                  {relTime(b.when)} · {(b.bytes / 1e6).toFixed(1)} MB{b.legacy ? " · pre-rotation backup" : ""}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="px-4 py-2.5 wl-mono text-[10px] wl-faint" style={{ borderTop: "1px solid var(--wl-line)" }}>
+          Keeping the last {KEEP_BACKUPS}. Each backup adds a new one and drops the oldest.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** "3 days ago" / "just now" — the useful axis when picking a restore point. */
+function relTime(d: Date): string {
+  const mins = Math.round((Date.now() - d.getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
+  const days = Math.round(hrs / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
 function TodayView({ workouts, onOpen }: { workouts: Workout[]; onOpen: (id: string) => void }) {
