@@ -27,12 +27,15 @@ if not exist "node_modules" (
 )
 
 REM Open the browser once the server has had a moment to come up.
-REM Use 127.0.0.1, not localhost: Vite binds 0.0.0.0 (IPv4 only), so Windows
-REM resolves localhost to ::1 first, fails, then falls back to IPv4 -- ~240ms
-REM vs ~26ms per request, paid on every one of the app's 100+ module loads.
-start "" /b cmd /c "timeout /t 4 >nul & start "" http://127.0.0.1:3000"
+REM Use localhost, not 127.0.0.1: Google OAuth rejects a bare loopback IP as a
+REM JavaScript origin, so Drive sign-in fails with "400: origin_mismatch".
+REM The old reason for preferring 127.0.0.1 (Windows resolves localhost to ::1
+REM first, and an IPv4-only bind made that fail over -- ~240ms vs ~26ms per
+REM request) is gone: the dev server now binds "::" dual-stack, so ::1 answers
+REM directly. See the server.host note in vite.config.ts.
+start "" /b cmd /c "timeout /t 4 >nul & start "" http://localhost:3000"
 
-echo [Tunizo] Starting dev server on http://127.0.0.1:3000
+echo [Tunizo] Starting dev server on http://localhost:3000
 echo          Press Ctrl+C in this window to stop it.
 call npm run dev
 

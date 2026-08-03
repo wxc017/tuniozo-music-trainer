@@ -251,7 +251,17 @@ export default defineConfig({
     // from "Reconnect folder" back to "Connect a folder". Fail loudly
     // instead so the folder stays remembered across sessions.
     strictPort: true,
-    host: "0.0.0.0",
+    // "::" = dual-stack: accepts IPv6 (::1) AND IPv4 (127.0.0.1 / the LAN
+    // address, as v4-mapped). "0.0.0.0" was IPv4-only, so Windows resolving
+    // localhost to ::1 hit a refused connection and fell back to IPv4 — ~240ms
+    // vs ~26ms, paid on every one of the app's 100+ module loads. That is why
+    // the launcher used to open 127.0.0.1. It now opens localhost instead,
+    // because Google OAuth won't accept a bare loopback IP as a JavaScript
+    // origin (error 400: origin_mismatch on Drive sign-in), and dual-stack
+    // makes localhost just as fast. Origin is per-host, so DON'T flip back and
+    // forth — localStorage and IndexedDB (the workout log and video clips) do
+    // not carry across.
+    host: "::",
     allowedHosts: true,
     fs: {
       strict: true,
@@ -261,7 +271,7 @@ export default defineConfig({
   preview: {
     port,
     strictPort: true,
-    host: "0.0.0.0",
+    host: "::",
     allowedHosts: true,
   },
 });
