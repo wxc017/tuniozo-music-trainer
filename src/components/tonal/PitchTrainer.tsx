@@ -289,10 +289,20 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
     };
   }, [on]);
 
-  // Keybinds while listening: h/j/k lock to small/center/large (31/12/39-EDO),
-  // g returns to auto-nearest. (1–7 stay the parent's "start on degree".)
+  // Keybinds while listening: h/j/k jump straight to small/center/large
+  // (31/12/39-EDO), g returns to auto-nearest, and , . / step between bands.
+  // The step keys sit next to the arrows deliberately — the arrows change scale,
+  // so one hand walks both the scale and its tuning without reaching for h/j/k.
+  // Stepping wraps through the three bands; g is still the way back to auto.
+  // (1–7 stay the parent's "start on degree".)
+  //
+  // Live whenever the overlay is OPEN, not only while the mic is listening — the
+  // band buttons are clickable either way, so gating the keys on `on` meant the
+  // shortcut silently did nothing until you armed the mic.  None of these keys
+  // is bound by the parent, so nothing is swallowed from it.
   useEffect(() => {
-    if (!on) return;
+    const step = (dir: number) =>
+      setLockBand(b => (b == null ? (dir > 0 ? 0 : 2) : ((((b + dir) % 3) + 3) % 3)));
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
@@ -301,12 +311,14 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
       else if (e.key === "j") setLockBand(1);
       else if (e.key === "k") setLockBand(2);
       else if (e.key === "g") setLockBand(null);
+      else if (e.key === "," || e.key === ".") step(-1);   // , and . are one key apart
+      else if (e.key === "/") step(1);
       else hit = false;
       if (hit) { e.preventDefault(); e.stopImmediatePropagation(); }
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [on]);
+  }, []);
 
   // Same filtered set the detection loop uses, so reading.nearest indexes correctly.
   const activeTargets = lockBand == null ? targets : targets.filter(t => t.band === lockBand);
@@ -331,15 +343,19 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
         <div className="flex items-center gap-1">
           {[0, 1, 2].map(b => (
             <button key={b} onClick={() => setLockBand(lockBand === b ? null : b)}
-              title={`Lock to ${BAND_NAMES[b]} · ${BAND_EDO[b]}-EDO  (key ${["h", "j", "k"][b]})`}
+              title={`Lock to ${BAND_NAMES[b]} · ${BAND_EDO[b]}-EDO  (key ${["h", "j", "k"][b]}, or step with . and /)`}
               className="px-1.5 py-0.5 rounded text-[10px] font-mono border transition-colors"
               style={lockBand === b
                 ? { background: BAND_COLORS[b], borderColor: BAND_COLORS[b], color: "#000" }
                 : { borderColor: "#333", color: "#888" }}>{BAND_EDO[b]}</button>
           ))}
           {lockBand !== null && (
-            <button onClick={() => setLockBand(null)} title="Auto (nearest) — key 0" className="text-[9px] text-[#666] hover:text-[#aaa]">auto</button>
+            <button onClick={() => setLockBand(null)} title="Auto (nearest) — key g" className="text-[9px] text-[#666] hover:text-[#aaa]">auto</button>
           )}
+          {/* The step keys live by the arrows (which change scale), so the same
+              hand walks a scale and its tuning. */}
+          <span className="text-[9px] text-[#4a4a4a] font-mono ml-0.5"
+            title="Step between tunings — . back, / forward. h/j/k jump straight to one, g returns to auto.">./</span>
         </div>
         <span className="text-[10px] text-[#6a6a6a]" title="With speakers, the mic hears the drone and mistakes it for your voice. Headphones fix that.">🎧</span>
         {/* Guide-drone volume — 10% is the old fixed level; crank it up (limited, so it stays clean). */}

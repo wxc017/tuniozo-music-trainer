@@ -24,7 +24,7 @@ import { audioEngine, AudioEngine, DRONE_INSTRUMENTS, type DroneInstrument } fro
 import { lsGet, lsSet } from "@/lib/storage";
 import { customSolfege } from "@/lib/customSolfege";
 import { degreeToEdoStep, edoStepCents, jianpuToPitch } from "@/lib/jianpu";
-import { pentatonicSubsets } from "@/lib/pentatonicSubsets";
+import { pentatonicSubsets, hexatonicSubsets } from "@/lib/pentatonicSubsets";
 import JianpuMode from "@/components/JianpuMode";
 import SolfegeGamutAside from "@/components/tonal/SolfegeGamutAside";
 import PitchTrainer from "@/components/tonal/PitchTrainer";
@@ -490,14 +490,18 @@ type SingSeq =
 | { kind: "chords"; label: string; chords: { label?: string; tones: SingNote[]; borrowed?: boolean }[]; mi?: boolean; structId?: ChordType };
 type SingCat = "scalar" | "chords" | "cycles";
 // Sub-categories within the Scalar tab (own sub-tab bar) so it isn't one long list.
-type ScalarSub = "scale" | "patterns" | "pentatonic" | "blues" | "angular" | "chromatic" | "resolution" | "triadpairs";
+// The scale itself, its interval cycles and the melodic patterns are all the same
+// drill (a cell sequenced up the scale — the plain ascent is just the 1-step
+// cell), so they share the "patterns" sub rather than splitting across two tabs.
+type ScalarSub = "patterns" | "pentatonic" | "hexatonic" | "blues" | "angular" | "chromatic";
 const SCALAR_SUBS: { id: ScalarSub; label: string }[] = [
-  { id: "scale", label: "Scale" }, { id: "patterns", label: "Patterns" }, { id: "pentatonic", label: "Pentatonic" },
-  { id: "angular", label: "Angular" }, { id: "chromatic", label: "Chromatic" }, { id: "resolution", label: "Resolution" },
-  { id: "triadpairs", label: "Triad Pairs" },
+  { id: "patterns", label: "Scale" }, { id: "pentatonic", label: "Pentatonic" },
+  { id: "hexatonic", label: "Hexatonic" },
+  { id: "angular", label: "Angular" }, { id: "chromatic", label: "Chromatic" },
 ];
-// `parent` is an optional outer collapsible (a pentatonic FRAMEWORK, holding its
-// five rotations); most groups are flat and leave it unset.
+// `parent` is an optional outer collapsible (a pentatonic or hexatonic FRAMEWORK,
+// holding its Non-angular and Angular halves); most groups are flat and leave it
+// unset.
 interface SingGroup { title: string; seqs: SingSeq[]; cat: SingCat; sub?: ScalarSub; parent?: string; }
 interface SingSection { band: Band; mode: ModeId; scaleLabel: string; scale: SingNote[]; rawScale: number[]; groups: SingGroup[]; }
 
@@ -509,7 +513,21 @@ const RG = {
   P4: "Perfect Fourths", TT: "Tritonic Region", P5: "Perfect Fifths",
   m6: "Minor Sixths", n6: "Neutral Sixths", M6: "Major Sixths",
   m7: "Minor Sevenths", n7: "Neutral Sevenths", M7: "Major Sevenths",
+  // ── The "between" regions ──────────────────────────────────────────
+  // Schulter's transitional regions are places in the spectrum like any other,
+  // and real scales put degrees there: the superfourth (11/8) of Thaiic, the
+  // subfifth (16/11) of the Greek neutral modes, the interseptimal 4th of
+  // Sheimanic, the diesis step of the enharmonic genera.  They differ from the
+  // main regions only in having no small/centre/large split — the whole region
+  // IS the target — so a degree sitting in one is always pinned (see PIN_BETWEEN).
+  DS: "Dieses", is23: "Interseptimal (M2–m3)", is34: "Interseptimal (M3–4)",
+  S4: "Superfourths", s5: "Subfifths", is56: "Interseptimal (5–m6)",
+  is67: "Interseptimal (M6–m7)", od: "Octave less diesis", oc: "Octave less comma",
 };
+// Regions with no sub-bands: the degree is the region, so it can't take a band.
+const BETWEEN_REGIONS: ReadonlySet<string> = new Set([
+  RG.DS, RG.is23, RG.is34, RG.S4, RG.s5, RG.is56, RG.is67, RG.od, RG.oc,
+]);
 // Region name → the chromatic pitch-class it centres on (for the 12-note scale).
 const REGION_PC: Record<string, number> = {
   [RG.m2]: 1, [RG.M2]: 2, [RG.m3]: 3, [RG.M3]: 4, [RG.P4]: 5, [RG.TT]: 6,
@@ -520,8 +538,128 @@ const REGION_PC: Record<string, number> = {
   // WHICH chroma bin holds the degree; the actual cents come from the region band,
   // so a neutral 3rd parks in the m3 bin but still sounds at ~350¢.
   [RG.n2]: 1, [RG.n3]: 3, [RG.n6]: 8, [RG.n7]: 10,
+  // Between-regions get their nearest slot as a PREFERENCE only — `assignPcs`
+  // below moves any degree that collides with a neighbour, because these regions
+  // genuinely sit between two slots and which one is free depends on the scale.
+  [RG.DS]: 0, [RG.is23]: 3, [RG.is34]: 5, [RG.S4]: 5, [RG.s5]: 7,
+  [RG.is56]: 7, [RG.is67]: 10, [RG.od]: 11, [RG.oc]: 11,
 };
-const MODES: { id: ModeId; label: string; short: string; regions: string[]; sym?: number[]; arp?: number[] }[] = [
+// The 7 chroma bins a mode's degrees occupy.  A bin is a SLOT, not a pitch — the
+// cents come from the region — but the slots must be 7 distinct, ascending values
+// in 0-11 or degrees collide and the scale generates wrong (two degrees sharing a
+// bin means one silently overwrites the other).  Each degree asks for its region's
+// preferred slot; an isotonic clamp (rising pass, then a falling pass to keep the
+// tail inside 11) resolves the ties, so 1 ♭2 ♮2 4 5 ♭6 ♮6 lands on 0 1 2 5 7 8 9
+// rather than dropping its duplicated seconds and sixths.
+const assignPcs = (regions: readonly string[]): number[] => {
+  const n = regions.length;                      // 7
+  const want = regions.map((r, d) => REGION_PC[r] ?? d);
+  want[0] = 0;
+  const out = [...want];
+  for (let d = 1; d < n; d++) out[d] = Math.max(out[d], out[d - 1] + 1);
+  out[n - 1] = Math.min(out[n - 1], 11);
+  for (let d = n - 2; d >= 1; d--) out[d] = Math.min(out[d], out[d + 1] - 1);
+  return out;
+};
+
+// ── 31-EDO as a notation for the spectrum ────────────────────────────
+// The Xenharmonic Wiki writes its scales as 31-EDO step patterns (dieses), so
+// modes below can be entered that way and translated into this app's region +
+// sub-band vocabulary.  The translation is exact, and it is the INVERSE of the
+// tuning path: `regionBand` in EDO mode snaps a region's (or sub-band's) centre
+// to the nearest step of the EDO, and each of 31-EDO's 30 non-tonic steps is hit
+// by exactly one such centre — no step is unreachable and none is ambiguous.
+// That's the fact behind "these are just places in the regions": the transitional
+// regions carry the steps the main ones don't (12 → interseptimal 4th, 14 →
+// superfourth, 17 → subfifth, 19 → interseptimal 6th, 1 → diesis, 30 → octave
+// less diesis), so every 31-EDO scale on that page is expressible here.
+const S31 = 1200 / 31;
+const STEP31: ({ region: string; band: Band | null } | null)[] = (() => {
+  const out: ({ region: string; band: Band | null } | null)[] = Array.from({ length: 31 }, () => null);
+  const snap = (c: number) => Math.round(c / S31);
+  const put = (k: number, region: string, band: Band | null) => {
+    if (k >= 1 && k <= 30 && !out[k]) out[k] = { region, band };
+  };
+  const mains = REGIONS.filter(r => r.kind === "main");
+  // 1 — the sub-band that both CONTAINS the step and snaps back to it (the usual
+  //     case: 271¢ is Minor Thirds · small and small's centre snaps to 271¢).
+  for (const r of mains) for (const b of [0, 1, 2] as Band[]) {
+    const s = r.subs?.[b]; if (!s) continue;
+    const k = snap((s.lo + s.hi) / 2);
+    if (k * S31 >= s.lo - 0.01 && k * S31 <= s.hi + 0.01) put(k, r.name, b);
+  }
+  // 2 — the transitional regions, which own the gaps between the main ones.  They
+  //     go BEFORE the fallback below, or a main region's outer sub-band reaches
+  //     across the gap and claims their step: the interseptimal 4th (465¢) would
+  //     be named a narrow perfect fourth, and the interseptimal 6th (735¢) a wide
+  //     fifth.  Same pitch in 31-EDO, wrong region everywhere else.
+  for (const r of REGIONS) if (r.kind !== "main") put(snap((r.lo + r.hi) / 2), r.name, null);
+  // 3 — a sub-band that snaps to the step from just outside it.  31-EDO's 15th
+  //     step (581¢) sits 4¢ over the tritone's small band but is still the step
+  //     that band reaches, and no region of any kind else reaches it.
+  for (const r of mains) for (const b of [0, 1, 2] as Band[]) {
+    const s = r.subs?.[b]; if (!s) continue;
+    put(snap((s.lo + s.hi) / 2), r.name, b);
+  }
+  return out;
+})();
+// The step each region reaches WITHOUT a pin — i.e. by the ordinary tuning path,
+// which for a main region is the meantone chain of fifths (31-EDO's generator is
+// 18\31) and for a neutral region is its centre snapped to a step.  A degree that
+// uses this step is the region's plain reading and keeps following the band
+// column; a degree that uses the region's OTHER 31-EDO step is the sub / super
+// variant and has to be pinned to hold its identity.  This is why entering the
+// major scale as 5 5 3 5 5 5 3 produces no pins at all, while the septimal minor
+// 5 2 6 5 2 5 6 pins exactly its 3rd, 6th and 7th.
+const T31: EdoTuning = { edo: 31, gen: 18 };
+const DEFAULT31: Record<string, number> = (() => {
+  const out: Record<string, number> = {};
+  for (const [name, pc] of Object.entries(REGION_PC))
+    if (!BETWEEN_REGIONS.has(name)) out[name] = Math.round(mosCents(pc, T31) / S31);
+  for (const name of [RG.n2, RG.n3, RG.n6, RG.n7]) {
+    const r = REGIONS.find(x => x.name === name)!;
+    out[name] = Math.round((r.lo + r.hi) / 2 / S31);
+  }
+  return out;
+})();
+/** A mode written as its 31-EDO step pattern (7 dieses summing to 31), translated
+ *  into the region-per-degree + sub-band-pin form the generator works in. */
+const mode31 = (steps: readonly number[]): { regions: string[]; pin: (Band | null)[] } => {
+  const regions: string[] = [""], pin: (Band | null)[] = [null], bands: (Band | null)[] = [null];
+  let k = 0;
+  for (let i = 0; i < steps.length - 1; i++) {
+    k += steps[i];
+    const e = STEP31[k];
+    if (!e) { regions.push(RG.P5); pin.push(null); bands.push(null); continue; }   // unreachable: every step is mapped
+    regions.push(e.region);
+    bands.push(e.band);
+    // Between-regions have no band to follow, so they always pin; a main region
+    // pins only when this scale wants its non-default step.
+    pin.push(e.band === null ? 1 : DEFAULT31[e.region] === k ? null : e.band);
+  }
+  // A region used TWICE (the enharmonic genera stack two major thirds, two major
+  // sevenths, two tritones a diesis apart) must pin both, or the one that was
+  // left following the band column lands on top of the pinned one whenever the
+  // column happens to be its band — two degrees, one pitch.
+  const seen = new Map<string, number>();
+  for (let d = 1; d < regions.length; d++) seen.set(regions[d], (seen.get(regions[d]) ?? 0) + 1);
+  for (let d = 1; d < regions.length; d++)
+    if ((seen.get(regions[d]) ?? 0) > 1 && pin[d] == null) pin[d] = bands[d] ?? 1;
+  return { regions, pin };
+};
+// A mode is given EITHER as a region per degree (readable for the modes whose
+// identity is the region — the church modes, the maqamat) OR as a 31-EDO step
+// pattern (`steps`, how the Xenharmonic Wiki writes them), which mode31 turns
+// into the same thing.  Both forms produce `pin`: the sub-band a degree is fixed
+// to regardless of which band column the section is in — see singChroma — which
+// is how a SUBMINOR or SUPERMAJOR degree is expressed here: not a new region, but
+// the small / large sub-band of the ordinary one.
+interface RawMode {
+  id: ModeId; label: string; short: string;
+  regions?: string[]; steps?: readonly number[]; pin?: readonly (Band | null)[];
+  sym?: number[]; arp?: number[];
+}
+const RAW_MODES: RawMode[] = [
   { id: "amb", label: "Ambiguous",  short: "~",   regions: ["", RG.n2, RG.n3, RG.P4, RG.P5, RG.n6, RG.n7] },
   { id: "lyd", label: "Lydian",     short: "lyd", regions: ["", RG.M2, RG.M3, RG.TT, RG.P5, RG.M6, RG.M7] },
   { id: "maj", label: "Major",      short: "maj", regions: ["", RG.M2, RG.M3, RG.P4, RG.P5, RG.M6, RG.M7] },
@@ -560,9 +698,46 @@ const MODES: { id: ModeId; label: string; short: string; regions: string[]; sym?
   //   Huzam  0 · ~150 · ~350 · 500 · 700 · 800 · 1100   (Sikah with a hijaz upper)
   { id: "rast",  label: "Rast",   short: "rast",  regions: ["", RG.M2, RG.n3, RG.P4, RG.P5, RG.M6, RG.n7] },
   { id: "bayati", label: "Bayati", short: "bayati", regions: ["", RG.n2, RG.m3, RG.P4, RG.P5, RG.m6, RG.m7] },
-  { id: "sikah", label: "Sikah",  short: "sikah", regions: ["", RG.n2, RG.n3, RG.P4, RG.P5, RG.n6, RG.n7] },
+  // Sikah's region pattern IS the sLsLsLs neutral MOS (Bish), so both names sit on
+  // one chip rather than two chips generating identical content.
+  { id: "sikah", label: "Sikah · Bish",  short: "sikah", regions: ["", RG.n2, RG.n3, RG.P4, RG.P5, RG.n6, RG.n7] },
   { id: "huzam", label: "Huzam",  short: "huzam", regions: ["", RG.n2, RG.n3, RG.P4, RG.P5, RG.m6, RG.M7] },
+  // ── Neutral heptatonic MOS — named by their L/s step pattern rather than by a
+  // repertoire.  Kleeth is LssLsLs: 1 2 ~3 4 5 ~6 ~7, a neutral scale with a
+  // MAJOR 2nd, which no maqam here has (Rast is 1 2 ~3 4 5 6 ~7 — major 6th, not
+  // neutral).  Bish (sLsLsLs) has no entry of its own — it's the same scale as
+  // Sikah above, which carries both names on one chip.
+  { id: "kleeth", label: "Kleeth", short: "kleeth", regions: ["", RG.M2, RG.n3, RG.P4, RG.P5, RG.n6, RG.n7] },
+  // ── Heptatonics from the Xenharmonic Wiki's "31edo modes" list, entered as
+  // their own step patterns in dieses.  Names are the page's, verbatim where they
+  // fit on a chip.  mode31 derives the regions and the sub-band pins, so a
+  // scale's septimal / neutral degrees hold their identity in every band column
+  // while its ordinary degrees still follow it — entering the major scale as
+  // 5 5 3 5 5 5 3 yields no pins at all.
+  //
+  // Septimal — the SUBMINOR / SUPERMAJOR scales.  7/6 (271¢) is Minor Thirds ·
+  // small, 9/7 (426¢) is Major Thirds · large, so the roman-numeral ↓/↑ arrows
+  // keep reading right: the degree really is a minor / major third, at its edge.
+  { id: "septmin",     label: "Septimal Minor",  short: "s-min",  steps: [5, 2, 6, 5, 2, 5, 6] },
+  { id: "harrisonmaj", label: "Harrison Major",  short: "S-maj",  steps: [5, 6, 2, 5, 5, 6, 2] },
+  { id: "phrygharm",   label: "Phrygian Harm",   short: "phr7",   steps: [2, 8, 3, 5, 2, 5, 6] },
+  { id: "subalt",      label: "Subminor Alt",    short: "s-alt",  steps: [2, 5, 3, 5, 5, 5, 6] },
+  { id: "harmmaj",     label: "Harmonic Major",  short: "hM",     steps: [5, 5, 3, 5, 3, 7, 3] },
+  { id: "turkmaj",     label: "Turkish Major",   short: "turk",   steps: [5, 5, 3, 5, 4, 5, 4] },
+  { id: "altdor",      label: "Altered Dorian",  short: "dor♮7",  steps: [5, 3, 5, 5, 5, 4, 4] },
+  { id: "altneap",     label: "Altered Neap",    short: "neap",   steps: [3, 5, 5, 5, 5, 4, 4] },
 ];
+// Resolve every mode to the generator's form: regions per degree, the sub-band
+// pins, and the 7 chroma bins the degrees occupy.  `pcs` used to be recomputed
+// as `REGION_PC[region] ?? d` at half a dozen call sites, which silently broke
+// down whenever two degrees wanted the same bin (a scale with both a subminor
+// and a neutral 3rd, or with a degree in a transitional region that has no bin
+// of its own) — resolving it once here means every consumer agrees.
+const MODES = RAW_MODES.map(m => {
+  const built = m.steps ? mode31(m.steps) : null;
+  const regions = m.regions ?? built!.regions;
+  return { ...m, regions, pin: m.pin ?? built?.pin, pcs: assignPcs(regions) };
+});
 const MODE_BY_ID = new Map(MODES.map(m => [m.id, m]));
 // Each mode's CHARACTERISTIC tone — the semitone-from-tonic that gives the mode
 // its colour (Lydian's ♯4, Mixolydian's ♭7, Dorian's ♮6, …).  Modal-interchange
@@ -575,6 +750,30 @@ const CHAR_SEMI: Record<string, number> = {
   harmmin: 11, phrygdom: 1, ukrdor: 6, lyds2: 3,
   // Maqamat — the neutral degree IS the colour tone.
   rast: 3, bayati: 1, sikah: 3, huzam: 3,
+  kleeth: 3,
+  // Septimal — the pinned degree IS the colour tone (subminor 3rd / supermajor
+  // 3rd / subminor 2nd).  These are semitone SLOTS, so a subminor 3rd is still 3.
+  septmin: 3, harrisonmaj: 4, phrygharm: 1, subalt: 3,
+  harmmaj: 8, turkmaj: 8, altdor: 10, altneap: 1,
+};
+/** A mode's characteristic tone.  Hand-set above where there's a name for it;
+ *  otherwise the scale's own most distinctive degree — the bin furthest from the
+ *  major scale, preferring the upper structure (3rd/6th/7th) on a tie, and never
+ *  the tonic.  The old `?? 6` fallback named a tone that most of these scales
+ *  don't contain, which built a "characteristic" chord out of a pitch the mode
+ *  never plays. */
+const MAJOR_PCS = [0, 2, 4, 5, 7, 9, 11];
+const charSemiOf = (id: ModeId): number => {
+  const hand = CHAR_SEMI[id];
+  if (hand != null) return hand;
+  const pcs = MODE_BY_ID.get(id)?.pcs;
+  if (!pcs) return 6;
+  let best = pcs[2], bestScore = -1;
+  for (const d of [2, 6, 5, 1, 3, 4]) {                 // 3rd, 7th, 6th, 2nd, 4th, 5th
+    const score = MAJOR_PCS.includes(pcs[d]) ? 0 : 1;
+    if (score > bestScore) { bestScore = score; best = pcs[d]; }
+  }
+  return best;
 };
 const COLOR_MODES = MODES.filter(m => m.id !== "amb");   // selectable colours (amb = deselected)
 // Modes grouped by parent scale (brightest → darkest within each) so the picker
@@ -582,9 +781,15 @@ const COLOR_MODES = MODES.filter(m => m.id !== "amb");   // selectable colours (
 const MODE_FAMILIES: { label: string; ids: ModeId[] }[] = [
   { label: "Church",       ids: ["lyd", "maj", "mix", "dor", "min", "phr", "loc"] },
   { label: "Melodic min",  ids: ["melmin", "lyddom", "mixb6", "dorb2", "locn2", "alt", "lydaug"] },
-  { label: "Harmonic min", ids: ["harmmin", "phrygdom", "ukrdor", "lyds2"] },
+  // "Harmonic" rather than "Harmonic min": Harmonic Major is a different parent
+  // scale, not a mode of harmonic minor, so the old label would have been a lie.
+  { label: "Harmonic",     ids: ["harmmin", "phrygdom", "ukrdor", "lyds2", "harmmaj"] },
   { label: "Symmetric",    ids: ["wholetone", "augment6", "octWH", "octHW"] },
   { label: "Maqam",        ids: ["rast", "bayati", "sikah", "huzam"] },
+  { label: "Septimal",     ids: ["septmin", "harrisonmaj", "phrygharm", "subalt"] },
+  // Was "Neutral MOS" — Kleeth is a MOS, but the MODMOS added beside it are not,
+  // so the family is named for what they share (the neutral degrees).
+  { label: "Neutral",      ids: ["kleeth", "turkmaj", "altdor", "altneap"] },
 ];
 // The picker's own left-to-right reading order, used to order the multi-scale
 // ↑ / ↓ cycle so it walks the chips as they're laid out.
@@ -620,16 +825,24 @@ const NEUTRAL_REGIONS: ReadonlySet<string> = new Set([RG.n2, RG.n3, RG.n6, RG.n7
 // EDO mode collapses a region to a single point: `pc`'s diatonic-MOS pitch in
 // the tuning `t` (a zero-width window, so the downstream random pick returns it
 // exactly).  Spectrum mode falls through to the sub-band window.
-const regionBand = (name: string, band: Band, t?: EdoTuning): [number, number] => {
+const regionBand = (name: string, band: Band, t?: EdoTuning, pinned = false): [number, number] => {
   const r = REGION_ANY.get(name);
   if (t) {
     // Neutral degrees snap to the nearest step of the EDO to the region centre.
     // 31-EDO (38.7¢) and 39-EDO (30.8¢) both land inside the neutral band; 12-EDO
     // has no neutral interval at all, so a maqam simply cannot be rendered there
     // — that's a property of 12-EDO, not something to paper over.
-    if (r && NEUTRAL_REGIONS.has(name)) {
+    //
+    // PINNED degrees (subminor / supermajor) snap the same way, but to the centre
+    // of their SUB-band: walking fifths can't reach them either in every tuning,
+    // and asked for pc 3 it would hand back the ordinary minor third, silently
+    // turning the septimal scales back into plain minor/major.  31-EDO lands the
+    // subminor 3rd on 7 steps (271¢ ≈ 7/6) and the supermajor 3rd on 11 (426¢ ≈
+    // 9/7); 12-EDO has neither, so they collapse to m3/M3 — again, honestly.
+    if (r && (NEUTRAL_REGIONS.has(name) || pinned)) {
       const step = 1200 / t.edo;
-      const c = Math.round((r.lo + r.hi) / 2 / step) * step;
+      const [wlo, whi] = pinned ? bandWindow(r, band) : [r.lo, r.hi];
+      const c = Math.round((wlo + whi) / 2 / step) * step;
       return [c, c];
     }
     const pc = REGION_PC[name];
@@ -939,13 +1152,14 @@ const ordinal = (n: number): string =>
     : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"}`;
 const degLabel = (cell: number[]): string => cell.map(i => ordinal(i + 1)).join("·");
 // Run a cell from every degree until it rotates back to the 1 — that IS what the
-// ordinal notation means, so every ordinal-labelled pattern gets all five reps,
+// ordinal notation means, so every ordinal-labelled pattern gets all `n` reps,
 // no exceptions.  A note that would just repeat the previous one is skipped, so
 // 1st·3rd·2nd runs 1 3 2 4 3 5 … (the classic "in 3rds") instead of stuttering
-// 1 3 2 · 2 4 3 at every group boundary.
-const runCell = (cell: number[]): number[] => {
+// 1 3 2 · 2 4 3 at every group boundary.  `n` is the shape's note count — 5 for
+// a pentatonic, 6 for a hexatonic — so the reps close on the octave either way.
+const runCell = (cell: number[], n = 5): number[] => {
   const out: number[] = [];
-  for (let r = 0; r < 5; r++) for (const o of cell) {
+  for (let r = 0; r < n; r++) for (const o of cell) {
     const i = r + o;
     if (!out.length || out[out.length - 1] !== i) out.push(i);
   }
@@ -997,9 +1211,57 @@ const PENTA_ANGULAR_ORDERS: number[][] = [
   [0, 4, 1, 5],                      // 5th up, 4th down, 5th up
   [0, 5, 1, 6],                      // octave leaps in pairs
 ];
-const mkCells = (orders: number[][]) => orders.map(c => ({ label: degLabel(c), cell: runCell(c) }));
+const mkCells = (orders: number[][], n = 5) => orders.map(c => ({ label: degLabel(c), cell: runCell(c, n) }));
 const PENTA_CELLS = [...PENTA_STATEMENTS, ...mkCells(PENTA_ORDERS)];
 const PENTA_ANGULAR_CELLS = mkCells(PENTA_ANGULAR_ORDERS);
+
+// ── The same vocabulary at six notes ─────────────────────────────────
+// A cell is an index structure, so the pentatonic cells above would RUN over a
+// hexatonic unchanged — but two of them would stop meaning what they say, which
+// is why this is a parallel list rather than a reuse.
+//
+//   • The stacked statements close differently.  Over five notes gcd(2,5)=1, so
+//     stacking 3rds cycles through all five and "Stacked 3rds" is one chain.
+//     Over six, gcd(2,6)=2 — the chain closes after three notes (1st·3rd·5th)
+//     and needs its second cycle to finish the shape.  Same for 4ths, gcd(3,6)=3.
+//     The cells below state both cycles, so the label stays literally true.
+//   • Angular is indexed off the OCTAVE, which moves.  In a pentatonic index 5 is
+//     the octave, so PENTA_ANGULAR's [0,6] is a leap past it; in a hexatonic index
+//     5 is still the 6th note and 6 is the octave, so the same cell would just be
+//     an octave.  Every angular order here is re-derived so it breaks past index
+//     6 — the intent (leave the shape, don't sit inside it) carried over, not the
+//     numbers.
+const HEXA_STATEMENTS: { label: string; cell: number[] }[] = [
+  { label: "Stepwise Scale", cell: upDownIdx(6) },
+  { label: "Stacked 3rds",   cell: [0, 2, 4, 1, 3, 5] },
+  { label: "Stacked 4ths",   cell: [0, 3, 1, 4, 2, 5] },
+];
+const HEXA_ORDERS: number[][] = [
+  // Interval pairs — the shape in 3rds / 4ths / 5ths / 6ths
+  [0, 2], [0, 3], [0, 4], [0, 5],
+  // Runs and broken triads
+  [0, 1, 2], [2, 1, 0], [0, 2, 4], [4, 2, 0],
+  // Weaves — up a 4th / 5th / 6th, fall back by each smaller interval in turn
+  [0, 3, 2], [0, 4, 2], [0, 4, 3], [0, 5, 3], [0, 5, 4],
+  // Step-then-leap, the inversions of the weaves
+  [0, 1, 3], [0, 2, 3], [0, 3, 4], [0, 4, 5],
+  // Four-note cells
+  [0, 1, 2, 3], [0, 1, 3, 4], [0, 3, 1, 4], [0, 4, 2, 1], [0, 2, 1, 3], [0, 2, 4, 1],
+];
+const HEXA_ANGULAR_ORDERS: number[][] = [
+  [0, 7],                            // the widest pair — over the octave and one more
+  [0, 2, 4, 6, 8],                   // stacked 3rds, climbing past the octave
+  [0, 3, 6, 9],                      // stacked 4ths — the quartal climb
+  [0, 4, 8],                         // stacked 5ths
+  [0, 5, 10],                        // stacked 6ths
+  [0, 6, 3],                         // octave up, fall a 4th
+  [0, 6, 4],                         // octave up, fall a 3rd
+  [0, 7, 3],                         // over the octave, fall a 5th
+  [0, 5, 1, 6],                      // 6th up, 5th down, 6th up
+  [0, 6, 1, 7],                      // octave leaps in pairs
+];
+const HEXA_CELLS = [...HEXA_STATEMENTS, ...mkCells(HEXA_ORDERS, 6)];
+const HEXA_ANGULAR_CELLS = mkCells(HEXA_ANGULAR_ORDERS, 6);
 
 // Symmetric (non-diatonic) scales don't fit the 7-region diatonic MOS, so they
 // live in the MODES list as `sym` scales (selectable under Harmonic minor) and
@@ -1048,16 +1310,6 @@ const BLUES_CELLS: { label: string; cell: number[] }[] = [
   { label: "1·3·2·4", cell: [0, 2, 1, 3] },
   { label: "1·4·3·2", cell: [0, 3, 2, 1] },
   { label: "1·3·5·3", cell: [0, 2, 4, 2] },
-];
-
-// ── Triad pairs — two triads a scale-step apart, played as one hexatonic unit
-// (Campbell / Bergonzi Vol 7).  Built for EVERY degree of the scale. ──
-// Curated to the distinct shapes: the "down·" orderings are just retrogrades of
-// these (get them live with r), so drilling all six is production fluency.
-const TRIAD_PAIR_PATTERNS: { label: string; make: (d: number) => number[] }[] = [
-  { label: "up · up",     make: d => [d, d + 2, d + 4, d + 1, d + 3, d + 5] },
-  { label: "up · down",   make: d => [d, d + 2, d + 4, d + 5, d + 3, d + 1] },
-  { label: "interlocked", make: d => [d, d + 1, d + 2, d + 3, d + 4, d + 5] },
 ];
 
 // Common just-intonation landmarks (cents) shown as reference ticks on the
@@ -1303,8 +1555,24 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const [patRetro, setPatRetro] = useState(false);                      // retrograde lines (r)
   const [patExpand, setPatExpand] = useState(0);                        // diatonic interval expansion (+) / contraction (−), in scale steps ([ ])
   const [patInv, setPatInv] = useState<"none" | "dia" | "chrom">("none"); // inversion: diatonic (i) / chromatic (c)
-  const [scalarSub, setScalarSub] = usePersisted<ScalarSub>("lt_sing_scalarSub", "scale");       // Scalar sub-tab (which one is VIEWED)
+  const [scalarSub, setScalarSub] = usePersisted<ScalarSub>("lt_sing_scalarSub", "patterns");    // Scalar sub-tab (which one is VIEWED)
   const [scaleStart, setScaleStart] = useState(0);                      // 1-7 → scalar exercises start on this degree (0 = tonic)
+  // Measured height of the fixed keybind bar, so the page can reserve exactly
+  // that much room at the bottom.  It wraps to two or three rows on a narrow
+  // window and grows when a contextual hint appears, so a hard-coded padding
+  // would be wrong most of the time.
+  const hotbarRef = useRef<HTMLDivElement>(null);
+  const [hotbarH, setHotbarH] = useState(0);
+  useEffect(() => {
+    const el = hotbarRef.current;
+    if (!el) { setHotbarH(0); return; }
+    const ro = new ResizeObserver(() => setHotbarH(el.offsetHeight));
+    ro.observe(el);
+    setHotbarH(el.offsetHeight);
+    return () => ro.disconnect();
+    // Only re-subscribe when the bar mounts / unmounts — the observer already
+    // reports every resize, including the ones from its own content changing.
+  }, [mode]);
   // ── Logbook ──
   const [patternLog, setPatternLog] = useState<Record<string, LogEntry>>(loadPatternLog);
   const [logOpen, setLogOpen] = useState(false);                        // logbook panel (l)
@@ -1313,12 +1581,19 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const dragRef = useRef<{ on: boolean; add: boolean }>({ on: false, add: true });
   // Blues is behind the beta gate for now (dev only), so it's off by default and
   // its toggle is hidden in production builds.
-  const [scalarGen, setScalarGen] = usePersistedSet<ScalarSub>("lt_sing_scalarGen", SCALAR_SUBS.map(s => s.id));
+  // Key bumped when Hexatonic was added: a stored set from before it existed would
+  // leave the new sub permanently off AND hidden (the sub-tab bar only lists what's
+  // generated), so it would look like the feature never shipped.  Bumped again
+  // when Scale merged into Patterns and Resolution / Triad Pairs were dropped: a
+  // set persisted from before could name only retired subs, which would generate
+  // nothing at all and show an empty pane with no tab to recover from.
+  const [scalarGen, setScalarGen] = usePersistedSet<ScalarSub>("lt_sing_scalarGen3", SCALAR_SUBS.map(s => s.id));
   // Keep the VIEWED sub inside the generated set: deselecting the one you were
   // looking at otherwise leaves the pane blank with no tab to click back to.
   useEffect(() => {
-    if (scalarGen.size && !scalarGen.has(scalarSub)) {
-      const first = SCALAR_SUBS.find(s => scalarGen.has(s.id));
+    const visible = SCALAR_SUBS.some(s => s.id === scalarSub);
+    if (scalarGen.size && (!visible || !scalarGen.has(scalarSub))) {
+      const first = SCALAR_SUBS.find(s => scalarGen.has(s.id)) ?? SCALAR_SUBS[0];
       if (first) setScalarSub(first.id);
     }
   }, [scalarGen, scalarSub, setScalarSub]);  // which scalar groups are GENERATED
@@ -1528,7 +1803,16 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // pitch-class 0-11), band-tuned.  The mode's diatonic degrees follow their band
   // controls (4th/5th fixed via c4/c5); the 5 chromatic pitches get their OWN
   // region-band tuning so they're distinct pitches, not fixed semitone offsets.
-  const singChroma = (regions: string[], band: Band, c2: number, c4: number, c5: number, edo?: EdoTuning): number[] => {
+  //
+  // `bandPin` fixes individual degrees to a sub-band regardless of the column.
+  // That's what a SUBMINOR or SUPERMAJOR degree is in this app's model: not a new
+  // region, but the small / large sub-band of the ordinary one (7/6 at 267¢ sits
+  // in Minor Thirds · small; 9/7 at 435¢ in Major Thirds · large).  Inventing
+  // regions for them would contradict intervalSpectrum.ts, which already places
+  // them — so the mode pins the band instead, and the ↓/↑ roman-numeral arrows
+  // keep reading correctly because the degree really is a minor/major third.
+  const singChroma = (regions: string[], band: Band, c2: number, c4: number, c5: number, edo?: EdoTuning,
+    bandPin?: readonly (Band | null)[], modePcs?: readonly number[]): number[] => {
     // EDO mode: the whole 12-note chromatic is the fifth-generated MOS of this
     // tuning — every pc is `mosCents`, so the 5 chromatic pitches are the proper
     // meantone sharps/flats (diatonic-chromatic equivalence), not random spreads.
@@ -1538,21 +1822,34 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       ? Array.from({ length: 12 }, (_, pc) => mosCents(pc, edo))
       : new Array(12).fill(0);
     const dia = new Set([0]);
+    // `modePcs` is the mode's resolved bin per degree.  Falling back to the raw
+    // region lookup here would put two degrees in one bin for any scale that has
+    // two thirds, or a degree in a transitional region, and the second would
+    // overwrite the first — so the resolved list is the one to trust.
+    const pcs = modePcs ?? assignPcs(regions);
     for (let d = 1; d < 7; d++) {
       const region = regions[d];
-      const pc = REGION_PC[region] ?? d;
+      const pc = pcs[d];
       dia.add(pc);
       // The 2nd/4th/5th are shared across bands so they never smear — but only
       // when this mode uses the ordinary region there.  Bayati/Sikah/Huzam have a
       // NEUTRAL 2nd, which has to come from its own region or it reverts to the
       // major 2nd and the maqam loses the interval that defines it.
-      if (!NEUTRAL_REGIONS.has(region)) {
+      // A PINNED degree is excluded for the same reason: the shared 2nd/4th/5th
+      // follow the TUNING controls, which would override the pin (a supermajor
+      // 2nd would revert to whatever the 2nd's band says).
+      const pin = bandPin?.[d] ?? null;
+      if (!NEUTRAL_REGIONS.has(region) && pin == null) {
         if (d === 1) { chroma[pc] = c2; continue; }   // 2nd — shared across all bands
         if (d === 3) { chroma[pc] = c4; continue; }   // 4th — shared
         if (d === 4) { chroma[pc] = c5; continue; }   // 5th — shared
       }
-      const [lo, hi] = regionBand(region, band, edo);
-      chroma[pc] = spreadPick(`singm_${region}_b${band}`, lo, hi);
+      const b = pin ?? band;
+      const [lo, hi] = regionBand(region, b, edo, pin != null);
+      // The pin marker keeps a pinned degree's pick separate from an unpinned one
+      // in the same region — they can share a band value without being the same
+      // degree.  Unpinned keys are unchanged, so ordinary modes tune as before.
+      chroma[pc] = spreadPick(`singm_${region}_b${b}${pin != null ? "p" : ""}`, lo, hi);
     }
     for (let pc = 1; pc < 12; pc++) {
       if (dia.has(pc)) continue;
@@ -1564,8 +1861,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     return chroma;
   };
   // The mode's diatonic 7-note scale, read from the shared 12-note chroma.
-  const scaleFromChroma = (regions: string[], chroma: number[]): number[] =>
-    [0, ...Array.from({ length: 6 }, (_, i) => chroma[REGION_PC[regions[i + 1]] ?? (i + 1)])];
+  const scaleFromChroma = (pcs: readonly number[], chroma: number[]): number[] =>
+    [0, ...Array.from({ length: 6 }, (_, i) => chroma[pcs[i + 1]])];
   // One shared cents value for the 4th/5th — random within its band, computed
   // ONCE per generation so all three band-scales use the same tuning.
   const perfectCents = (region: string, bandSet: Set<Band>, edo?: EdoTuning): number => {
@@ -1582,11 +1879,11 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     ({ kind: "line", label, steps, notes: steps.map(s => stepNote(scale, s)) });
   // Start-degree shift for a scalar line (keys 1–7): diatonic lines (with steps)
   // rotate WITHIN the scale by scaleStart; chromatic lines (cents only) transpose
-  // by the start degree's cents.  Resolution is exempt (must land on the tonic).
+  // by the start degree's cents.
   // Shared by the on-screen rows AND the Echo phrase pool so both start alike.
-  const applyStartShift = (seq: SingSeq, rawScale: number[], sub?: ScalarSub): SingNote[] => {
+  const applyStartShift = (seq: SingSeq, rawScale: number[], _sub?: ScalarSub): SingNote[] => {
     if (seq.kind !== "line") return [];
-    if (!scaleStart || sub === "resolution") return seq.notes;
+    if (!scaleStart) return seq.notes;
     return seq.steps
       ? seq.steps.map(s => stepNote(rawScale, s + scaleStart))
       : seq.notes.map(n => centsNote((n.abs + 1200 - rootCents) + rawScale[scaleStart]));
@@ -1625,12 +1922,6 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   };
   // Enclose each target: whole-step above, chromatic below, then the target.
   const enclosureLine = (chroma: number[], targetPcs: number[]): number[] => targetPcs.flatMap(P => [chromaCents(chroma, P + 2), chromaCents(chroma, P - 1), chromaCents(chroma, P)]);
-  // Every one of the six tritones resolving INWARD to a major 3rd (arpeggiated).
-  const tritoneResLine = (chroma: number[]): number[] => {
-    const out: number[] = [];
-    for (let a = 0; a < 6; a++) out.push(chromaCents(chroma, a), chromaCents(chroma, a + 6), chromaCents(chroma, a + 1), chromaCents(chroma, a + 5));
-    return out;
-  };
   // Scale "in Nths": stack the interval UP through the octaves (no wrapping), so
   // it moves outside one octave and lands back on the tonic — e.g. thirds =
   // Da Mo Sa To Ra• Fa• Lo• Da•• (over two octaves).
@@ -1773,7 +2064,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // The shape's tertian offsets read against a mode's semitones, transposed to a
   // diatonic root pc and voiced from the band-tuned `chroma`.
   const modeStackAt = (mId: ModeId, R: number, chroma: number[], offs: number[]): number[] => {
-    const ms = [0, ...MODE_BY_ID.get(mId)!.regions.slice(1).map(r => REGION_PC[r] ?? 0)];
+    const ms = MODE_BY_ID.get(mId)!.pcs;
     return offs.map(o => chromaCents(chroma, R + ms[mod(o, 7)] + 12 * Math.floor(o / 7))).sort((a, b) => a - b);
   };
   // Voice `cents` (octave shift + inversion) to move the fewest cents off `ref`.
@@ -1791,8 +2082,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // diatonic chord is followed immediately by its recoloring through `borrowId`,
   // voiced right on top of it — so you audiate the swap chord by chord.
   const cyclePairMode = (n: number, homeId: ModeId, borrowId: ModeId, homeDiaPcs: number[], chroma: number[], offs: number[], startInv: number) => {
-    const homeSemis = [0, ...MODE_BY_ID.get(homeId)!.regions.slice(1).map(r => REGION_PC[r] ?? 0)];
-    const borSemis = [0, ...MODE_BY_ID.get(borrowId)!.regions.slice(1).map(r => REGION_PC[r] ?? 0)];
+    const homeSemis = MODE_BY_ID.get(homeId)!.pcs;
+    const borSemis = MODE_BY_ID.get(borrowId)!.pcs;
     const out: { label?: string; cents: number[]; rootPc1200: number; borrowed?: boolean }[] = [];
     let prevDia: number[] | null = null;
     for (const rStep of cycleRoots(n)) {
@@ -1842,18 +2133,16 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // Build every exercise for one band-locked scale of one mode.
   const buildSection = (band: Band, modeId: ModeId, scaleLabel: string, scale: number[], chroma: number[]): SingSection => {
     const regions = MODE_BY_ID.get(modeId)!.regions;
-    const diaPcs = [0, ...regions.slice(1).map(r => REGION_PC[r] ?? 0)];   // 7 diatonic pcs
+    const diaPcs = MODE_BY_ID.get(modeId)!.pcs;                             // 7 diatonic pcs
+    // 1-based slots whose degree doesn't mean what its bin says.  `diaPcs` are
+    // bins — a neutral 3rd parks in the m3 bin so the pc machinery has a slot —
+    // so anything that reads a NAME or a CHORD QUALITY off those pcs needs to
+    // know which ones are lying.  Three ways a slot lies: a neutral region, a
+    // transitional region (a superfourth borrowing the 4th's bin), and a degree
+    // `assignPcs` had to move off its preferred bin to avoid a collision.
+    const neutralSlots = regions.map((r, i) =>
+      (NEUTRAL_REGIONS.has(r) || BETWEEN_REGIONS.has(r) || (i > 0 && REGION_PC[r] !== diaPcs[i]) ? i + 1 : 0)).filter(Boolean);
     const triadPcs = [0, diaPcs[2], diaPcs[4], 12];                        // 1·3·5·8
-    // Every non-diatonic (chromatic) pitch resolving to its nearest diatonic
-    // neighbour below AND above — the exhaustive chromatic tension→resolution map.
-    const diaSet = new Set(diaPcs.map(pc => mod(pc, 12)));
-    const chromRes: number[] = [];
-    for (let pc = 1; pc < 12; pc++) {
-      if (diaSet.has(pc)) continue;
-      let lo = pc - 1; while (!diaSet.has(mod(lo, 12))) lo--;
-      let hi = pc + 1; while (!diaSet.has(mod(hi, 12))) hi++;
-      chromRes.push(chromaCents(chroma, pc), chromaCents(chroma, lo), chromaCents(chroma, pc), chromaCents(chroma, hi));
-    }
     // One CHORDS section per selected (chord shape × voicing); a row per degree.
     const vs = VOICING_TYPES.filter(v => singVoicings.has(v.id));
     const triadVs = TRIAD_VOICINGS.filter(v => singTriadVoicings.has(v.id));
@@ -1887,10 +2176,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       ? [...borrowModes].map(id => MODE_BY_ID.get(id)).filter((m): m is NonNullable<typeof m> => !!m && m.id !== modeId)
       : [];
     // Semitones-from-tonic of the chord `offs` stacked from degree `dd` of a mode.
-    const degChord = (rgs: string[], dd: number, offs: number[]): number[] => {
-      const ms = [0, ...rgs.slice(1).map(r => REGION_PC[r] ?? 0)];
-      return offs.map(o => ms[mod(dd + o, 7)] + 12 * Math.floor((dd + o) / 7));
-    };
+    const degChord = (ms: readonly number[], dd: number, offs: number[]): number[] =>
+      offs.map(o => ms[mod(dd + o, 7)] + 12 * Math.floor((dd + o) / 7));
     const pcSig = (semis: number[]) => [...new Set(semis.map(s => mod(s, 12)))].sort((a, b) => a - b).join(",");
     // Characteristic-tone-biased tonic chord for a mode at `parts` voices.
     const charChord = (mSemis: number[], charSemi: number, parts: number): number[] => {
@@ -1905,9 +2192,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     // the 3rd and the ♯4 chord are both there.  Plus the tonic characteristic chord
     // (colour-tone biased: 1·3·♯4) as its own row.
     if (showInterchange) for (const m of borrowList) {
-      const mRegions = MODE_BY_ID.get(m.id)!.regions;
-      const mSemis = [0, ...mRegions.slice(1).map(r => REGION_PC[r] ?? 0)];
-      const charSemi = CHAR_SEMI[m.id] ?? 6;
+      const mSemis = MODE_BY_ID.get(m.id)!.pcs;
+      const charSemi = charSemiOf(m.id);
       for (const sizeId of miSizes) {
         const offs = SHAPE_TONES[sizeId][0].offs, parts = offs.length;
         const t = CHORD_TYPES.find(c => c.id === sizeId)!;
@@ -1926,7 +2212,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
           // degree with its own roman and root→3rd inversions.  No diatonic pairing
           // here — A/B stays a cycles-only thing.
           const seqs: SingSeq[] = [0, 1, 2, 3, 4, 5, 6].map(dd => {
-            const semis = degChord(mRegions, dd, offs);
+            const semis = degChord(mSemis, dd, offs);
             const root = chromaCents(chroma, mSemis[dd]);
             return chordSeqCents(romanForDegree(mSemis, dd, semis, root), invCards(semis, root));
           });
@@ -1978,11 +2264,11 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       }
     }
     const groups: SingGroup[] = [
-      { cat: "scalar", sub: "scale", title: "SCALE", seqs: [
+      { cat: "scalar", sub: "patterns", title: "SCALE", seqs: [
         lineSeq("up", scale, [0, 1, 2, 3, 4, 5, 6, 7]),
         lineSeq("down", scale, [7, 6, 5, 4, 3, 2, 1, 0]),
       ] },
-      { cat: "scalar", sub: "scale", title: "SCALE IN INTERVALS (3rds–7ths)", seqs: [
+      { cat: "scalar", sub: "patterns", title: "SCALE IN INTERVALS (3rds–7ths)", seqs: [
         lineSeq("3rds", scale, intervalPairs(7, 2)),
         lineSeq("4ths", scale, intervalPairs(7, 3)),
         lineSeq("5ths", scale, intervalPairs(7, 4)),
@@ -1990,7 +2276,8 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         lineSeq("7ths", scale, intervalPairs(7, 6)),
       ] },
       ...PATTERN_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "patterns" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(seqPattern(p.cell)))) })),
-      ...pentaGroups(chroma, diaPcs),
+      ...pentaGroups(chroma, diaPcs, neutralSlots),
+      ...hexaGroups(chroma, diaPcs, neutralSlots),
       ...ANGULAR_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "angular" as ScalarSub, title: g.title, seqs: g.items.map(p => lineSeq(p.label, scale, endOnTonic(p.steps))) })),
       { cat: "scalar", sub: "chromatic", title: "CHROMATIC", seqs: [
         chromSeq("12-note chromatic", endOnTonicCents(chromaticScaleLine(chroma))),
@@ -2001,21 +2288,6 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         chromSeq("enclosure (all)", endOnTonicCents(enclosureLine(chroma, [...diaPcs, 12]))),
         chromSeq("triadic chromatic (Garzone)", endOnTonicCents(triadicChromaticLine())),
       ] },
-      { cat: "scalar", sub: "resolution", title: "RESOLUTION", seqs: [
-        // Exhaustive MELODIC resolution — every label is literally what plays.  No
-        // suspensions/cadences: those need harmony (they live in the Chords tab).
-        lineSeq("every active tone → its rest", scale, endOnTonic([1, 0, 1, 2, 3, 2, 3, 4, 5, 4, 6, 7])),  // Re-Do Re-Mi Fa-Mi Fa-So La-So Ti-Do
-        chromSeq("every chromatic tone → its neighbour", endOnTonicCents(chromRes)),
-        lineSeq("upper & lower neighbours (all)", scale, endOnTonic([0, 1, 0, -1, 0, 2, 3, 2, 1, 2, 4, 5, 4, 3, 4, 6, 7, 6, 5, 6])),
-        chromSeq("every tritone → its 3rd (inward)", endOnTonicCents(tritoneResLine(chroma))),
-      ] },
-      // Triad pairs (Campbell / Bergonzi Vol 7) — two triads a step apart as a
-      // hexatonic unit; their own tab now that the permutation drills are cut.
-      ...[0, 1, 2, 3, 4, 5, 6].map(d => ({
-        cat: "scalar" as SingCat, sub: "triadpairs" as ScalarSub,
-        title: `TRIAD PAIR ${mod(d, 7) + 1}·${mod(d + 2, 7) + 1}·${mod(d + 4, 7) + 1} + ${mod(d + 1, 7) + 1}·${mod(d + 3, 7) + 1}·${mod(d + 5, 7) + 1}`,
-        seqs: TRIAD_PAIR_PATTERNS.map(tp => lineSeq(tp.label, scale, endOnTonic(tp.make(d)))),
-      })),
       ...chordGroups,
       ...cycleGroups,
     ];
@@ -2039,19 +2311,84 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // How many exist is a property of the MODE, not a fixed list: Lydian has one,
   // Dorian and Phrygian have five.  All 14 names are reachable across the seven
   // modes, so the full set comes from working through the modes.
-  const pentaGroups = (chroma: number[], diaPcs: number[]): SingGroup[] => {
+  const pentaGroups = (chroma: number[], diaPcs: number[], neutral: number[]): SingGroup[] => {
     const cellsFor = (root: number, struct: number[], cells: typeof PENTA_CELLS): SingSeq[] =>
       cells.map(c => chromSeq(c.label, endOnTonicCents(scPcs(struct, c.cell).map(pc => chromaCents(chroma, root + pc)))));
-    return pentatonicSubsets(diaPcs.map(pc => mod(pc, 12)), 12)
-      .filter(p => p.rootSlot === 1 && p.traditional)
+    return pentatonicSubsets(diaPcs.map(pc => mod(pc, 12)), 12, { neutral })
+      // NAMED ONLY — except for the neutral shapes, which are kept precisely
+      // BECAUSE they can't be named.  A maqam's pentatonics are real, singable
+      // and the whole reason the neutral regions exist; dropping them for want of
+      // a catalogue entry would leave Rast and Sikah with an almost empty tab.
+      // They show under their spelling alone, which is the honest label.
+      .filter(p => p.rootSlot === 1 && (p.traditional || p.hasNeutral))
       .flatMap(p => {
         // Rooted on 1, the shape's own order IS the ascending key spelling, so
         // slotLabel says it all: "Hirajoshi · 1 2 ♭3 5 ♭6".  Each pentatonic then
         // splits into the two collapsible halves of its vocabulary.
-        const g = { cat: "scalar" as SingCat, sub: "pentatonic" as ScalarSub, parent: `${p.name} · ${p.slotLabel}` };
+        const g = { cat: "scalar" as SingCat, sub: "pentatonic" as ScalarSub,
+          parent: p.traditional ? `${p.name} · ${p.slotLabel}` : p.slotLabel };
         return [
           { ...g, title: "Non-angular", seqs: cellsFor(p.rootPc, p.struct, PENTA_CELLS) },
           { ...g, title: "Angular",     seqs: cellsFor(p.rootPc, p.struct, PENTA_ANGULAR_CELLS) },
+        ];
+      });
+  };
+
+  // The hexatonics of the selected scale — six of its degree slots, rooted on
+  // degree 1.  Same two halves as the pentatonics, and the same ROOTED ON 1
+  // restriction for the same reason (the other rootings are rotations of one
+  // shape, not new shapes).
+  //
+  // NAMED BY THEIR TRIAD PAIR, because that name is EXACT rather than chosen.
+  // Omitting slot k leaves slots k+1 … k+6, which is precisely the union of the
+  // triads on k+1 and k+2 — so every hexatonic of a 7-note mode IS a triad pair
+  // (Goodrick's generic modality compression; the same pairs the Triad Pairs sub
+  // builds, read as a scale instead of as two chords).  This is checked, not
+  // assumed: it holds for all 138 frameworks across the app's 23 heptatonic
+  // modes.  The alternative names are all worse — "no ♭6" is subtractive and says
+  // nothing about content, and "⟨pentatonic⟩ + ⟨note⟩" isn't unique (1 2 3 5 6 7
+  // is Major + 7, Hamsadhwani + 6 AND Ardha Shankar + 2, with no principled way
+  // to pick).  A triad pair is one name per shape.
+  //
+  // KEPT WHEN NEITHER TRIAD IS DIMINISHED.  This is the hexatonic answer to the
+  // pentatonics' `traditional` filter — a cut that leaves the vocabulary a
+  // practice actually uses instead of every subset that exists.  A diminished
+  // triad has no stable root, so the pair stops reading as two chords and the
+  // shape is just a gapped scale with a tritone in it.  Augmented is KEPT: it
+  // projects a root perfectly well and it's the characteristic colour of melodic
+  // minor and Lydian augmented, so cutting it would gut exactly the modes that
+  // need the vocabulary most (it takes them from 3/6 down to 1/6).
+  //
+  // Leaves 83 of 138 — 4-5 per church mode, 2-3 per altered mode.
+  const hexaGroups = (chroma: number[], diaPcs: number[], neutral: number[]): SingGroup[] => {
+    const pcs = diaPcs.map(pc => mod(pc, 12));
+    // The triad on 0-based degree `d`, root-first: romanForDegree reduces these
+    // mod 12 against the root, so they need the right order, not the right octave.
+    const triad = (d: number): number[] => [0, 2, 4].map(x => pcs[mod(d + x, 7)]);
+    const diminished = (d: number): boolean => mod(pcs[mod(d + 4, 7)] - pcs[d], 12) === 6;
+    // A triad whose 3rd or 5th lands on a NEUTRAL degree is neither major nor
+    // minor, and romanForDegree would read the bin and print a case that lies
+    // (Rast's tonic would come out "i" off a ~350¢ third).  Those get the bare
+    // uppercase numeral plus this app's neutral mark instead of a false quality.
+    const neutralTriad = (d: number): boolean =>
+      [2, 4].some(x => neutral.includes(mod(d + x, 7) + 1));
+    const numeral = (d: number): string => neutralTriad(d)
+      ? `${ROMAN_UP[d]}~`
+      : romanForDegree(pcs, d, triad(d), pcs[d] * 100);
+    const cellsFor = (root: number, struct: number[], cells: typeof HEXA_CELLS): SingSeq[] =>
+      cells.map(c => chromSeq(c.label, endOnTonicCents(scPcs(struct, c.cell).map(pc => chromaCents(chroma, root + pc)))));
+    return hexatonicSubsets(pcs, 12, { neutral })
+      .filter(p => p.rootSlot === 1)
+      .flatMap(p => {
+        const k = p.omitted[0] - 1;                        // 0-based omitted degree
+        const [a, b] = [mod(k + 1, 7), mod(k + 2, 7)];     // the pair it compresses to
+        if (diminished(a) || diminished(b)) return [];
+        // "V + vi · 1 2 3 5 6 7" — what it's built from, then how the key spells it.
+        const g = { cat: "scalar" as SingCat, sub: "hexatonic" as ScalarSub,
+          parent: `${numeral(a)} + ${numeral(b)} · ${p.slotLabel}` };
+        return [
+          { ...g, title: "Non-angular", seqs: cellsFor(p.rootPc, p.struct, HEXA_CELLS) },
+          { ...g, title: "Angular",     seqs: cellsFor(p.rootPc, p.struct, HEXA_ANGULAR_CELLS) },
         ];
       });
   };
@@ -2071,14 +2408,12 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     // Sequence a cell from every degree of the N-note scale (structure over scale).
     const seqN = (cell: number[]): number[] => { const s: number[] = []; for (let r = 0; r < N; r++) for (const o of cell) s.push(r + o); return s; };
     const scaleCents = [...sc, 1200];
-    const res: number[] = [];
-    for (let d = 0; d < N; d++) res.push(d, d - 1, d, d + 1);   // each tone ↔ its neighbours
 
     const groups: SingGroup[] = [
-      { cat: "scalar", sub: "scale", title: `${L} SCALE`, seqs: [
+      { cat: "scalar", sub: "patterns", title: `${L} SCALE`, seqs: [
         chromSeq("up", scaleCents), chromSeq("down", [...scaleCents].reverse()),
       ] },
-      { cat: "scalar", sub: "scale", title: `${L} IN INTERVALS`,
+      { cat: "scalar", sub: "patterns", title: `${L} IN INTERVALS`,
         seqs: Array.from({ length: Math.max(0, N - 2) }, (_, i) => i + 2).map(k => line(`+${k} steps`, intervalPairs(N, k))) },
       ...PATTERN_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "patterns" as ScalarSub, title: g.title, seqs: g.items.map(p => line(p.label, seqN(p.cell))) })),
       { cat: "scalar", sub: "patterns", title: `${L} ARPS`, seqs: [line(N > 6 ? "dim7 arps" : "aug arps", seqN(m.arp))] },
@@ -2086,55 +2421,52 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       // over a symmetric scale) and no chromatic (a symmetric scale already IS
       // half-chromatic, so approach tones just land on other scale tones).
       ...ANGULAR_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "angular" as ScalarSub, title: g.title, seqs: g.items.map(p => line(p.label, p.steps)) })),
-      { cat: "scalar", sub: "resolution", title: "RESOLUTION", seqs: [
-        line("each tone ↔ its neighbours", res),
-      ] },
-      ...Array.from({ length: N }, (_, d) => ({
-        cat: "scalar" as SingCat, sub: "triadpairs" as ScalarSub,
-        title: `TRIAD PAIR ${mod(d, N) + 1}·${mod(d + 2, N) + 1}·${mod(d + 4, N) + 1}`,
-        seqs: TRIAD_PAIR_PATTERNS.map(tp => line(tp.label, tp.make(d))),
-      })),
     ];
     const kept = groups.filter(g => scalarGen.has(g.sub!));
     return { band, mode: modeId, scaleLabel: m.label, scale: scaleCents.map(centsNote), rawScale: scaleCents, groups: kept };
   };
 
-  // Generate one section per selected band, for each selected mode.
-  const generateSing = () => {
+  // The three band sections for ONE mode.  Split out of generateSing so a scale
+  // added to the cycle can be built on its own — see the effect below — without
+  // touching the sections already on screen.
+  const sectionsForMode = (modeId: ModeId): SingSection[] => {
     const bands: Band[] = [0, 1, 2];   // always small · center · large
-    const modes = singModes.size ? [...singModes] : (["maj"] as ModeId[]);
     const majRegions = MODE_BY_ID.get("maj")!.regions;   // neutral 12-note tuning reference
     const sections: SingSection[] = [];
-    for (const modeId of modes) {
-      const symMode = MODE_BY_ID.get(modeId);
-      if (symMode?.sym) {
-        for (const band of bands) {
-          const edo = edoForBand(band);
-          const c2 = perfectCents(majRegions[1], specBand2, edo);
-          const c4 = perfectCents(majRegions[3], specBand4, edo);
-          const c5 = perfectCents(majRegions[4], specBand5, edo);
-          const chroma = singChroma(majRegions, band, c2, c4, c5, edo);
-          sections.push(buildSymSection(band, modeId, { label: symMode.label, sym: symMode.sym, arp: symMode.arp! }, chroma));
-        }
-        continue;
-      }
-      const m = MODE_BY_ID.get(modeId)!;
-      // Spectrum: the 2nd/4th/5th are shared across all three bands so they never
-      // smear.  EDO: each section is a distinct tuning, so they take that
-      // tuning's MOS 2nd/4th/5th per-band.
-      const c2s = perfectCents(m.regions[1], specBand2);
-      const c4s = perfectCents(m.regions[3], specBand4);
-      const c5s = perfectCents(m.regions[4], specBand5);
+    const symMode = MODE_BY_ID.get(modeId);
+    if (symMode?.sym) {
       for (const band of bands) {
         const edo = edoForBand(band);
-        const c2 = edo != null ? perfectCents(m.regions[1], specBand2, edo) : c2s;
-        const c4 = edo != null ? perfectCents(m.regions[3], specBand4, edo) : c4s;
-        const c5 = edo != null ? perfectCents(m.regions[4], specBand5, edo) : c5s;
-        const chroma = singChroma(m.regions, band, c2, c4, c5, edo);
-        sections.push(buildSection(band, modeId, m.label, scaleFromChroma(m.regions, chroma), chroma));
+        const c2 = perfectCents(majRegions[1], specBand2, edo);
+        const c4 = perfectCents(majRegions[3], specBand4, edo);
+        const c5 = perfectCents(majRegions[4], specBand5, edo);
+        const chroma = singChroma(majRegions, band, c2, c4, c5, edo);
+        sections.push(buildSymSection(band, modeId, { label: symMode.label, sym: symMode.sym, arp: symMode.arp! }, chroma));
       }
+      return sections;
     }
-    setSingSections(sections);
+    const m = MODE_BY_ID.get(modeId)!;
+    // Spectrum: the 2nd/4th/5th are shared across all three bands so they never
+    // smear.  EDO: each section is a distinct tuning, so they take that
+    // tuning's MOS 2nd/4th/5th per-band.
+    const c2s = perfectCents(m.regions[1], specBand2);
+    const c4s = perfectCents(m.regions[3], specBand4);
+    const c5s = perfectCents(m.regions[4], specBand5);
+    for (const band of bands) {
+      const edo = edoForBand(band);
+      const c2 = edo != null ? perfectCents(m.regions[1], specBand2, edo) : c2s;
+      const c4 = edo != null ? perfectCents(m.regions[3], specBand4, edo) : c4s;
+      const c5 = edo != null ? perfectCents(m.regions[4], specBand5, edo) : c5s;
+      const chroma = singChroma(m.regions, band, c2, c4, c5, edo, m.pin, m.pcs);
+      sections.push(buildSection(band, modeId, m.label, scaleFromChroma(m.pcs, chroma), chroma));
+    }
+    return sections;
+  };
+
+  // Generate one section per selected band, for each selected mode.
+  const generateSing = () => {
+    const modes = singModes.size ? [...singModes] : (["maj"] as ModeId[]);
+    setSingSections(modes.flatMap(sectionsForMode));
     setProgression([]);        // no jianpu answer / grading in Sing
   };
 
@@ -2296,6 +2628,20 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     if ((mode === "sing" || mode === "echo") && singSections.length > 0) generateSing();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bandSystem]);
+  // A scale added to the cycle has no sections until it's generated, and
+  // activeSections then falls back to the FIRST generated scale's columns — which
+  // reads as the new scale's name over the old scale's degrees (Turkish Major
+  // labelling Major's Ro Mo Fa Sa Lo To instead of its neutral Ga / Wa).  Build
+  // the missing scale on the spot; the ones already on screen keep their material
+  // so cycling back to them still doesn't re-randomize.
+  useEffect(() => {
+    if (mode !== "sing" && mode !== "echo") return;
+    if (singSections.length === 0) return;          // nothing generated yet — Generate does it
+    if (singSections.some(s => s.mode === activeMode)) return;
+    setSingSections(prev =>
+      prev.some(s => s.mode === activeMode) ? prev : [...prev, ...sectionsForMode(activeMode)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMode, singSections, mode]);
 
   const play = useCallback(async () => {
     if (mode === "sing" || mode === "echo") { generateSing(); return; }
@@ -2501,8 +2847,11 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     </div>
   );
   // One aligned control row: right-aligned label column + wrapping controls.
-  const fieldRow = (lbl: string, children: ReactNode, title?: string) => (
-    <div className="flex items-baseline gap-2.5 py-[3px]">
+  // `key` is only needed at the call sites that map over a list — React warns
+  // "each child in a list should have a unique key" otherwise, and the row has no
+  // stable identity of its own for React to fall back on.
+  const fieldRow = (lbl: string, children: ReactNode, title?: string, key?: string) => (
+    <div key={key} className="flex items-baseline gap-2.5 py-[3px]">
       <span title={title} className="w-[92px] shrink-0 text-right text-[10px] text-[#666] font-semibold tracking-wider leading-5 whitespace-nowrap">{lbl}</span>
       <div className="flex flex-wrap items-center gap-1">{children}</div>
     </div>
@@ -2553,7 +2902,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       for (const g of sec.groups) {
         // Category used by the Echo pool toggles: scalar sub-name, or chords /
         // cycles / interchange (modal-interchange rows carry it in their title).
-        const cat = g.cat === "scalar" ? (g.sub ?? "scale") : /INTERCHANGE/.test(g.title) ? "interchange" : g.cat;
+        const cat = g.cat === "scalar" ? (g.sub ?? "patterns") : /INTERCHANGE/.test(g.title) ? "interchange" : g.cat;
         for (const seq of g.seqs) {
           const label = `${bandTitleOf(sec.band)} · ${seq.label}`;
           if (seq.kind === "line" && seq.notes.length)
@@ -2977,7 +3326,11 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   );
 
   return (
-    <div className="space-y-4">
+    // The keybind bar below is fixed to the viewport bottom, so the page has to
+    // reserve its height or it sits on top of whatever the content ends with —
+    // which was the Generate button, half-covered.  The bar wraps, so its height
+    // isn't a constant: measure it and pad by that much.
+    <div className="space-y-4" style={{ paddingBottom: mode === "sing" ? hotbarH + 12 : undefined }}>
       {/* Mode selector — Sing / Echo up front; Chords & Intervals behind a beta toggle. */}
       <div className="flex items-center gap-2">
         <div className="inline-flex rounded-lg border border-[#242424] bg-[#0b0b0b] p-0.5 gap-0.5">
@@ -3171,6 +3524,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                   })}
                 </>,
                 fi === 0 ? "Pick any number of scales — ↑ / ↓ cycle which one the whole page shows (filled chip)." : undefined,
+                fam.label,
               );
             })}
             {/* Per-degree microtuning is only meaningful for the small/center/large
@@ -3695,7 +4049,12 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       )}
       {/* Always-visible keybind help bar (Sing mode). */}
       {mode === "sing" && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0a0a0a]/95 border-t border-[#1e1e1e] px-4 py-1.5 flex items-center justify-center gap-4 text-[10px] text-[#888]">
+        // `flex-wrap` so the hints spill onto another row instead of running off
+        // the right edge (the last few were simply unreadable at narrow widths);
+        // `gap-y` keeps the rows apart, and the measured height above makes the
+        // page reserve room for however many rows it ends up being.
+        <div ref={hotbarRef}
+          className="fixed bottom-0 left-0 right-0 z-40 bg-[#0a0a0a]/95 border-t border-[#1e1e1e] px-4 py-1.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-[#888]">
           {[["a", "Generate"], ["s", "Scalar"], ["d", "Chords"], ["f", "Cycles"], ["z", "Spectrum"], ["x", "Gamut"], ["p", "Pitch"], ["e", "Echo"]].map(([k, t]) => (
             <span key={k}><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">{k}</kbd> {t}</span>
           ))}
@@ -3714,7 +4073,21 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
               · {MODE_BY_ID.get(activeMode)?.label ?? activeMode} ({cycleModes.indexOf(activeMode) + 1}/{cycleModes.length})
             </span>
           )}
-          {singTab === "scalar" && <span><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">1–7</kbd> start on degree{scaleStart > 0 && <span className="text-[#cfe6cf]"> · {scaleStart + 1}{scalarSub === "resolution" ? " (resolution exempt)" : ""}</span>}</span>}
+          {singTab === "scalar" && <span><kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">1–7</kbd> start on degree{scaleStart > 0 && <span className="text-[#cfe6cf]"> · {scaleStart + 1}</span>}</span>}
+          {/* Pitch-trainer tuning lock — shown only while its overlay is open,
+              since that's the only time these keys do anything. */}
+          {pitchOpen && (
+            <span className="text-[#9ac9a0]">
+              <kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">.</kbd>
+              <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">/</kbd> tuning
+              <span className="text-[#5a5a5a]"> · </span>
+              <kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">h</kbd>
+              <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">j</kbd>
+              <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">k</kbd> 31·12·39
+              <span className="text-[#5a5a5a]"> · </span>
+              <kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">g</kbd> auto
+            </span>
+          )}
         </div>
       )}
 

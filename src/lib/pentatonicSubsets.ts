@@ -131,6 +131,8 @@ const NAMES: Record<string, PentName> = {
 };
 
 export interface PentSubset {
+  /** How many slots this framework keeps — 5 for a pentatonic, 6 for a hexatonic. */
+  size: number;
   /** The framework: 1-based degree slots of the key, ascending. e.g. [1,3,4,6,7] */
   slots: number[];
   /** Stable identity of the framework across every mode and key: "1·3·4·6·7". */
@@ -139,8 +141,10 @@ export interface PentSubset {
   slotLabel: string;
   /** The subset's pcs, ascending from the KEY tonic. */
   slotPcs: number[];
-  /** The two slots this framework leaves out. */
+  /** The slots this framework leaves out — two for a pentatonic, one for a hexatonic. */
   omitted: number[];
+  /** Those slots spelled as the mode makes them: "♭6", or "2 ♭6" when two are gone. */
+  omittedLabel: string;
   /** Which slot this realisation is rooted on (1-based). */
   rootSlot: number;
   /** 0-based index of that root within the parent scale. */
@@ -159,6 +163,8 @@ export interface PentSubset {
   mode: number;
   /** True when `name` is an established name, false when it's "<Family> <n>". */
   traditional: boolean;
+  /** True when a KEPT slot is a neutral degree, so no 12-EDO name can describe it. */
+  hasNeutral: boolean;
   /** Degree formula from its own root, e.g. "1 2 ♭3 5 ♭6". */
   formula: string;
   /** How many adjacencies are a single semitone — the hemitonic grade. */
@@ -171,9 +177,17 @@ export interface PentSubset {
 
 /** Spell pcs as KEY degrees against their slots, so the accidental is the one
  *  the mode actually produces: slot 4 at a tritone is ♯4 (Lydian), slot 5 at a
- *  tritone is ♭5 (Locrian).  `slots` and `pcs` are parallel. */
-export function slotDegrees(slots: number[], pcs: number[]): string {
+ *  tritone is ♭5 (Locrian).  `slots` and `pcs` are parallel.
+ *
+ *  `neutral` lists slots (1-based) whose degree is a NEUTRAL interval.  Those
+ *  can't take a ♭/♯ — a neutral 3rd is not a flat 3rd, it sits between the two —
+ *  so they spell "~3", matching the `~` this app already uses for neutral
+ *  elsewhere.  This matters because a maqam's pcs are BINS: Rast's neutral 3rd
+ *  parks in the m3 bin so the rest of the pc machinery has a slot to use, and
+ *  without this it would print "♭3" and claim a minor third the mode never has. */
+export function slotDegrees(slots: number[], pcs: number[], neutral: readonly number[] = []): string {
   return slots.map((slot, i) => {
+    if (neutral.includes(slot)) return `~${slot}`;
     const delta = mod(pcs[i] - MAJOR_PCS[slot - 1] + 6, 12) - 6;
     const acc = delta < 0 ? "♭".repeat(-delta) : delta > 0 ? "♯".repeat(delta) : "";
     return acc + slot;
@@ -196,25 +210,31 @@ const isGapped = (omitted: number[], n: number): boolean =>
   omitted.length === 2 && (omitted[1] - omitted[0] === 1 || (omitted[0] === 1 && omitted[1] === n));
 
 /**
- * Every 5-slot framework of `scalePcs`, realised in that scale and rooted on
+ * Every `size`-slot framework of `scalePcs`, realised in that scale and rooted on
  * each of its own slots.
  *
  * `scalePcs` is the selected mode as ascending pcs from its tonic — so the SAME
- * framework yields Lydian's `1 3 ♯4 6 7` and minor's `1 ♭3 4 ♭6 ♭7`.  A
+ * framework yields Lydian's `1 3 ♯4 6 7` and minor's `1 ♭3 4 ♭6 ♭7`.  At size 5 a
  * heptatonic parent gives 14 frameworks × 5 roots = 70 realisations by default;
  * `includeGapped` adds the 7 pentachord-with-a-hole frameworks back.  Sorted by
  * framework then by root slot, so one framework's realisations are contiguous.
+ *
+ * Only size 5 has a name catalogue.  Everything else in here — slots, spelling,
+ * necklaces, the gapped test — is about the SHAPE, not the count, so it carries
+ * to any size unchanged.
  */
-export function pentatonicSubsets(
-  scalePcs: number[], edo = 12, opts: { includeGapped?: boolean } = {},
+export function scaleSubsets(
+  scalePcs: number[], size: number, edo = 12,
+  opts: { includeGapped?: boolean; neutral?: readonly number[] } = {},
 ): PentSubset[] {
+  const neutral = opts.neutral ?? [];
   const n = scalePcs.length;
-  if (n < 5) return [];
+  if (n < size || size < 2) return [];
 
-  // All 5-element subsets of the parent's degree slots.
+  // All `size`-element subsets of the parent's degree slots.
   const frameworks: number[][] = [];
   const pick = (start: number, acc: number[]) => {
-    if (acc.length === 5) { frameworks.push([...acc]); return; }
+    if (acc.length === size) { frameworks.push([...acc]); return; }
     for (let i = start; i < n; i++) { acc.push(i); pick(i + 1, acc); acc.pop(); }
   };
   pick(0, []);
@@ -226,23 +246,35 @@ export function pentatonicSubsets(
     const omitted = Array.from({ length: n }, (_, i) => i + 1).filter(d => !slots.includes(d));
     if (!opts.includeGapped && isGapped(omitted, n)) continue;
     const slotPcs = fw.map(i => mod(scalePcs[i], edo));
-    if (new Set(slotPcs).size !== 5) continue;             // degenerate at this EDO
+    if (new Set(slotPcs).size !== size) continue;          // degenerate at this EDO
     const slotKey = slots.join("·");
-    const slotLabel = edo === 12 && n === 7 ? slotDegrees(slots, slotPcs) : slotKey;
+    const spellable = edo === 12 && n === 7;
+    const slotLabel = spellable ? slotDegrees(slots, slotPcs, neutral) : slotKey;
+    // The omitted slots spelled the same way the kept ones are, so a hexatonic
+    // can be named by what it drops ("no ♭6") rather than by a catalogue.
+    const omittedLabel = spellable
+      ? slotDegrees(omitted, omitted.map(d => mod(scalePcs[d - 1], edo)), neutral)
+      : omitted.join("·");
+    // A shape holding a neutral degree is not the 12-EDO shape its bins spell.
+    // Rast's 1 2 ~3 5 6 keys to the same pcs as Kumoi and is NOT Kumoi — its 3rd
+    // is ~350¢.  Naming it from the catalogue would teach a falsehood, so the
+    // lookup is skipped and it falls back to its own formula.
+    const hasNeutral = slots.some(s => neutral.includes(s));
 
     for (const rootIdx of fw) {
       const rootPc = mod(scalePcs[rootIdx], edo);
       const struct = slotPcs.map(pc => mod(pc - rootPc, edo)).sort((a, b) => a - b);
-      const steps = struct.map((v, i) => mod(struct[(i + 1) % 5] - v, edo));
+      const steps = struct.map((v, i) => mod(struct[(i + 1) % size] - v, edo));
       const necklace = steps
         .map((_, r) => [...steps.slice(r), ...steps.slice(0, r)].join("-"))
         .sort()[0];
       const formula = pentFormula(struct, edo);
-      // Gapped shapes are outside the named catalogue; they fall back to formula.
-      const nm = NAMES[struct.join(",")]
-        ?? { name: formula, family: formula, mode: 1, traditional: false };
+      // Sizes without a catalogue — and gapped shapes, which are outside the one
+      // we have — fall back to the formula.
+      const nm = (size === 5 && !hasNeutral ? NAMES[struct.join(",")] : undefined)
+        ?? { name: hasNeutral ? slotLabel : formula, family: formula, mode: 1, traditional: false };
       out.push({
-        slots, slotKey, slotLabel, slotPcs, omitted,
+        size, slots, slotKey, slotLabel, slotPcs, omitted, omittedLabel, hasNeutral,
         rootSlot: rootIdx + 1, rootIdx, rootPc,
         struct, steps, necklace,
         family: nm.family, mode: nm.mode, traditional: nm.traditional, name: nm.name,
@@ -253,8 +285,29 @@ export function pentatonicSubsets(
     }
   }
 
-  // Framework order, then by the slot it's rooted on — so all five realisations
-  // of one framework sit together under one header.
+  // Framework order, then by the slot it's rooted on — so all realisations of one
+  // framework sit together under one header.
   return out.sort((a, b) =>
     a.slots.join(",").localeCompare(b.slots.join(",")) || a.rootSlot - b.rootSlot);
 }
+
+/** The 5-slot frameworks — the named pentatonic catalogue above. */
+export const pentatonicSubsets = (
+  scalePcs: number[], edo = 12, opts: { includeGapped?: boolean; neutral?: readonly number[] } = {},
+): PentSubset[] => scaleSubsets(scalePcs,5, edo, opts);
+
+/**
+ * The 6-slot frameworks — a heptatonic key minus ONE degree, so seven of them,
+ * six of which contain the tonic and can be rooted on it.
+ *
+ * Two things fall out of `size` alone and need no special-casing.  `isGapped`
+ * tests for two ADJACENT omitted slots, so with only one gone it never fires:
+ * every hexatonic framework of a 7-note key is a real gapped scale, not a
+ * hexachord with a hole.  And there is no name catalogue at this size — the
+ * shapes are named by the degree they drop, which is both honest and unambiguous
+ * in a way a systematic pentatonic name ("Min9 5" for a shape with a major 3rd)
+ * is not.
+ */
+export const hexatonicSubsets = (
+  scalePcs: number[], edo = 12, opts: { includeGapped?: boolean; neutral?: readonly number[] } = {},
+): PentSubset[] => scaleSubsets(scalePcs,6, edo, opts);
