@@ -6,7 +6,7 @@ A music practice tool and statics workout log me and AI built for my own daily u
 
 ## Ear & Feel
 
-* **Tonal Audiation** — Plays intervals, chords, or scale permutations in any EDO to reproduce by ear, on a Lumatone visualization. On the shelf — my own view is that Spectrum Audiation is the more universal system.
+* **Tonal Audiation** — Plays intervals, chords, or scale permutations in any EDO to reproduce by ear, on a Lumatone visualization. On the shelf, since my own view is that Spectrum Audiation is the more universal system.
 * **Drum Patterns** — Ostinato, accent, sticking, and independence drills read off generated drum notation.
 * **Permutations** — Splits a pulse count into groupings and orchestrates paradiddles across the kit.
 
@@ -23,7 +23,7 @@ A music practice tool and statics workout log me and AI built for my own daily u
 * **Chord Chart** — Quickly build and read chord charts and lead sheets.
 * **Transcription** — Waveform player with pitch-preserving slowdown, A/B loops, and checkpoints.
 * **Sheet Music** — Staff notation editor with MusicXML and PDF export.
-* **Drum Notation** — The same editor for drum kit.
+* **Drum Notation** — The same editor for drum kit, inspired by Aered.
 
 ## Analytical
 
