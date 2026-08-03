@@ -57,6 +57,7 @@ const CURATED: Record<string, ExMuscles> = {
   "planche pushup":         { primary: ["ant_delts", "pecs", "triceps"], secondary: ["biceps", "serratus", "abs"] },
   "reverse planche":        { primary: ["rear_delts", "lats", "triceps"], secondary: ["erectors", "glutes"] },
   "victorian cross":        { primary: ["lats", "rear_delts", "biceps"], secondary: ["teres", "rhomboids"] },
+  "caruso":                 { primary: ["lats", "rear_delts", "biceps"], secondary: ["teres", "rhomboids", "abs", "glutes"] },
   "front lever":            { primary: ["lats", "biceps"], secondary: ["teres", "rhomboids", "abs", "rear_delts"] },
   "front lever pullup":     { primary: ["lats", "biceps"], secondary: ["rhomboids", "abs", "teres"] },
   "front lever raise":      { primary: ["lats", "abs"], secondary: ["biceps", "rhomboids"] },

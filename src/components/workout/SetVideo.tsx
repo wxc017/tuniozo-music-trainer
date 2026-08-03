@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
-  putVideo, getVideo, deleteVideo, releaseVideoUrl, newVideoId,
+  putVideo, getVideo, deleteVideo, releaseVideoUrl, newVideoId, getVideoUrl,
 } from "@/lib/workoutVideoDb";
 import { cutFromElement, canCutVideo, primeSeekable } from "@/lib/workoutVideoCut";
 import { resolveClipUrl, releaseClipUrl, isDriveConnected, uploadVideoToDrive, deleteDriveVideo } from "@/lib/workoutDrive";
@@ -273,17 +273,20 @@ export function SetVideoEditor({ set, workoutId, onChange, onClose }: {
     if (isFinite(d) && d > 0) { setDuration(d); if (set.trimOut == null) onChange({ trimOut: d }); }
   };
 
-  const offloadToDrive = useCallback(async () => {
+  // `vidId` overrides set.videoId — a cut mints a NEW id and has to offload THAT
+  // one, since the `set` in this closure is still the pre-cut render's copy.
+  const offloadToDrive = useCallback(async (vidId?: string) => {
     if (!dirtyRef.current) return;
-    if (!set.videoId || set.driveFileId || !isDriveConnected()) return;
-    const stored = await getVideo(set.videoId);
+    const id = typeof vidId === "string" ? vidId : set.videoId;
+    if (!id || set.driveFileId || !isDriveConnected()) return;
+    const stored = await getVideo(id);
     if (!stored) return;
     setUploading(true);
     try {
       const ext = /mp4/i.test(stored.mime) ? "mp4" : /webm/i.test(stored.mime) ? "webm" : "mp4";
       const fileId = await uploadVideoToDrive(stored.blob, `${set.id}.${ext}`);
-      await deleteVideo(set.videoId);
-      releaseVideoUrl(set.videoId);
+      await deleteVideo(id);
+      releaseVideoUrl(id);
       dirtyRef.current = false;
       onChange({ videoId: undefined, driveFileId: fileId });
     } catch (err) {
@@ -316,7 +319,8 @@ export function SetVideoEditor({ set, workoutId, onChange, onClose }: {
 
   const canCut = !onDrive && tOut - tIn > 0.2 && tOut - tIn < dur - 0.05;
   const cut = useCallback(async () => {
-    if (!set.videoId) return;
+    const oldId = set.videoId;
+    if (!oldId) return;
     const v = videoRef.current;
     if (!v) return;
     if (!canCutVideo()) { window.alert("Cutting isn't supported in this browser. Trim in your gallery app, then re-upload."); return; }
@@ -324,13 +328,21 @@ export function SetVideoEditor({ set, workoutId, onChange, onClose }: {
     try {
       const trimmed = await cutFromElement(v, tIn, tOut, f => setCutPct(Math.round(f * 100)));
       const newDur = Math.max(0.1, tOut - tIn);
-      await putVideo({ id: set.videoId, blob: trimmed, mime: trimmed.type || "video/webm", durationSec: newDur, createdAt: Date.now(), setId: set.id, workoutId });
-      releaseVideoUrl(set.videoId);
+      // The cut clip gets a NEW videoId — it must not reuse the old one. Every
+      // embed (thumbnail strip, Progress "form over time") resolves its object
+      // URL once and re-resolves ONLY when videoId changes, so overwriting the
+      // blob in place left them all playing the ORIGINAL take while the trim
+      // marks reset to 0 — i.e. the full video from its start, not the cut.
+      const newId = newVideoId();
+      await putVideo({ id: newId, blob: trimmed, mime: trimmed.type || "video/webm", durationSec: newDur, createdAt: Date.now(), setId: set.id, workoutId });
       dirtyRef.current = true;
-      onChange({ trimIn: 0, trimOut: newDur });
+      onChange({ videoId: newId, driveFileId: undefined, trimIn: 0, trimOut: newDur });
+      await deleteVideo(oldId);
+      releaseVideoUrl(oldId);
+      setUrl(await getVideoUrl(newId));
       setDuration(newDur);
       setCutPct(null);
-      await offloadToDrive();
+      await offloadToDrive(newId);
       onClose();
     } catch (err) {
       window.alert(`Couldn't cut the clip: ${err instanceof Error ? err.message : String(err)}`);

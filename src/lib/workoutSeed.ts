@@ -19,6 +19,7 @@ type Item = [string, boolean];
 
 const RING: Item[] = [
   ["Victorian Cross", false],
+  ["Caruso", true],
   ["Reverse Planche", false],
   ["Planche", false],
   ["Planche Pushup", true],
