@@ -11,6 +11,7 @@
 
 import { jsPDF } from "jspdf";
 import { svg2pdf } from "svg2pdf.js";
+import { pdfSafeText } from "./exportPdf";
 
 export interface VerovioPdfSection {
   title?: string;
@@ -131,7 +132,7 @@ export async function exportToPdfViaVerovio(
       if (options.showTitles && section.title && p === 1) {
         doc.setFont("Helvetica", "bold");
         doc.setFontSize(20);
-        doc.text(section.title, PAGE_W / 2, yCursor + 16, { align: "center" });
+        doc.text(pdfSafeText(section.title), PAGE_W / 2, yCursor + 16, { align: "center" });
         yCursor += 36;
       }
 
@@ -139,6 +140,16 @@ export async function exportToPdfViaVerovio(
       const parser = new DOMParser();
       const svgDoc = parser.parseFromString(svgString, "image/svg+xml");
       const svg = svgDoc.documentElement as unknown as SVGSVGElement;
+
+      // Same cp1252 limit as the VexFlow path (see pdfSafeText). Verovio's
+      // NOTATION is <use> refs to path symbols and is unaffected, but anything
+      // it sets as real text — lyrics, chord symbols, tempo and rehearsal marks
+      // — would mojibake exactly like the sol-fa cycle label did.
+      const walker = svgDoc.createTreeWalker(svg, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const safe = pdfSafeText(n.nodeValue ?? "");
+        if (safe !== n.nodeValue) n.nodeValue = safe;
+      }
 
       // Verovio's SVG width/height come back in mm (e.g. "297mm").  The
       // viewBox carries the unitless coordinate system svg2pdf actually

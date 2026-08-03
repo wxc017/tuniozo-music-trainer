@@ -13,6 +13,43 @@ export interface PdfSection {
   element: HTMLElement;
 }
 
+// ── Text sanitising for the PDF's built-in fonts ─────────────────────────
+//
+// svg2pdf hands <text> straight to jsPDF, whose standard-14 fonts (Helvetica &
+// co) are cp1252 — one BYTE per character. A codepoint above U+00FF is written
+// as its two UTF-16 bytes instead of being rejected, so each one prints as a
+// pair of unrelated Latin-1 characters:
+//
+//   "⟳" U+27F3 → 0x27 0xF3 → "'ó"     ← the cycle-length label in sol-fa/jianpu
+//   "…" U+2026 → 0x20 0x26 → " &"
+//
+// So anything outside Latin-1 has to be transliterated BEFORE it reaches the
+// PDF. Latin-1 itself (U+0000–U+00FF) maps one-to-one and is left alone. This
+// is export-only — the on-screen SVG keeps the real glyphs.
+
+const PDF_TEXT_SUBS: Record<string, string> = {
+  "⟳": "cyc ", "⟲": "cyc ", "↺": "cyc ", "↻": "cyc ",   // cycle-mode length label
+  "…": "...",
+  "♯": "#", "♭": "b", "♮": "n",
+  "–": "-", "—": "-", "−": "-",
+  "‘": "'", "’": "'", "“": '"', "”": '"',
+  "→": "->", "←": "<-", "↑": "^", "↓": "v",
+  "≤": "<=", "≥": ">=", "≠": "!=",
+  "•": "-", "‰": "o/oo", "″": '"', "′": "'",
+};
+
+/** Make a string safe for jsPDF's cp1252 fonts. Latin-1 passes through; known
+ *  symbols transliterate; anything else left would print as mojibake, so it
+ *  becomes "?" — visibly wrong beats silently wrong. */
+export function pdfSafeText(s: string): string {
+  let out = "";
+  for (const ch of s) {
+    if (ch.codePointAt(0)! <= 0xff) { out += ch; continue; }
+    out += PDF_TEXT_SUBS[ch] ?? "?";
+  }
+  return out;
+}
+
 export interface PdfOptions {
   showTitles: boolean;
   splitSections: boolean;
@@ -53,6 +90,14 @@ function clonePrintableSvg(orig: SVGSVGElement): SVGSVGElement {
   };
   recolour(svg);
   svg.querySelectorAll("*").forEach(recolour);
+
+  // Transliterate every text node — see PDF_TEXT_SUBS. Done on the CLONE so the
+  // live score keeps its real glyphs.
+  const walker = svg.ownerDocument.createTreeWalker(svg, NodeFilter.SHOW_TEXT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const safe = pdfSafeText(n.nodeValue ?? "");
+    if (safe !== n.nodeValue) n.nodeValue = safe;
+  }
   return svg;
 }
 
@@ -128,7 +173,7 @@ export async function exportToPdf(
       if (pageNumWithinSection === 0 && options.showTitles && item.title) {
         doc.setFont("Helvetica", "bold");
         doc.setFontSize(20);
-        doc.text(item.title, PAGE_W / 2, yCursor + 16, { align: "center" });
+        doc.text(pdfSafeText(item.title), PAGE_W / 2, yCursor + 16, { align: "center" });
         yCursor += 36;
       }
 
