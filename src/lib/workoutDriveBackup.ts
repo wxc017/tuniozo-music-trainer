@@ -19,7 +19,10 @@ import {
   getSavedToken, findOrCreateFolder, listFilesInFolder,
   uploadDriveFile, getDriveFileBlob, deleteDriveFile,
 } from "./googleDrive";
-import { buildBackupZip, importBackupFromFile, type ImportResult } from "./workoutBackup";
+import {
+  buildBackupZip, readBackupFile, diffBackup, applyBackupDiff,
+  type ImportResult, type BackupDiff, type ApplyOptions,
+} from "./workoutBackup";
 import { dlog } from "./driveDebug";
 
 const FOLDER_NAME = "Tunizo Workouts";
@@ -113,8 +116,17 @@ export async function backupWorkoutsToDrive(): Promise<{
   return { videoCount, bytes: blob.size, kept, pruned };
 }
 
-/** Restore one backup by id, or the NEWEST if no id is given. */
-export async function restoreWorkoutsFromDrive(fileId?: string): Promise<{ found: boolean; result?: ImportResult }> {
+/** A downloaded backup plus what restoring it would change here. Held between
+ *  the preview and the apply so the zip is fetched and unzipped exactly once. */
+export interface RestorePreview {
+  name: string;
+  parsed: Awaited<ReturnType<typeof readBackupFile>>;
+  diff: BackupDiff;
+}
+
+/** Download a backup (by id, or the NEWEST if omitted) and work out what it
+ *  would actually change — WITHOUT writing anything. */
+export async function previewWorkoutRestore(fileId?: string): Promise<{ found: boolean; preview?: RestorePreview }> {
   const token = getSavedToken();
   if (!token) throw new Error("Not signed in to Google Drive.");
 
@@ -122,7 +134,8 @@ export async function restoreWorkoutsFromDrive(fileId?: string): Promise<{ found
   let name = "backup.zip";
   if (id) {
     const match = (await listWorkoutBackups()).find(b => b.id === id);
-    if (match) name = match.name;
+    if (!match) { dlog(`workout restore: backup ${id} is gone from Drive`); return { found: false }; }
+    name = match.name;
   } else {
     const all = await listWorkoutBackups();
     const newest = all[all.length - 1];
@@ -131,8 +144,18 @@ export async function restoreWorkoutsFromDrive(fileId?: string): Promise<{ found
   }
 
   const blob = await getDriveFileBlob(token, id);
-  const file = new File([blob], name, { type: "application/zip" });
-  const result = await importBackupFromFile(file);
-  dlog(`workout restore: imported ${name} — ${result.workouts} workouts, ${result.videos} video(s)`);
-  return { found: true, result };
+  const parsed = await readBackupFile(new File([blob], name, { type: "application/zip" }));
+  const diff = await diffBackup(parsed);
+  dlog(
+    `workout restore preview: ${name} — workouts +${diff.workouts.added.length}/~${diff.workouts.changed.length}/=${diff.workouts.same}, ` +
+    `videos +${diff.videos.added.length}/=${diff.videos.same}`,
+  );
+  return { found: true, preview: { name, parsed, diff } };
+}
+
+/** Write a previewed restore. Additive unless `includeChanged` is set. */
+export async function applyWorkoutRestore(preview: RestorePreview, opts: ApplyOptions = {}): Promise<ImportResult> {
+  const result = await applyBackupDiff(preview.parsed, preview.diff, opts);
+  dlog(`workout restore: applied ${preview.name} — ${result.workouts} workouts, ${result.videos} video(s) written`);
+  return result;
 }

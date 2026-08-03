@@ -12,8 +12,8 @@ import { initDriveDataSync } from "@/lib/workoutDrive";
 import { initTokenAutoRefresh } from "@/lib/googleDrive";
 import { pruneVideos } from "@/lib/workoutVideoDb";
 import {
-  backupWorkoutsToDrive, restoreWorkoutsFromDrive, listWorkoutBackups,
-  KEEP_BACKUPS, type DriveBackup,
+  backupWorkoutsToDrive, previewWorkoutRestore, applyWorkoutRestore, listWorkoutBackups,
+  KEEP_BACKUPS, type DriveBackup, type RestorePreview,
 } from "@/lib/workoutDriveBackup";
 import { localToday } from "@/lib/storage";
 import type { Workout } from "@/lib/workoutTypes";
@@ -67,15 +67,29 @@ export default function WorkoutLog() {
   };
   // Restore always goes through the picker now — with a rolling set of backups,
   // silently taking the newest is exactly the wrong default when the newest is
-  // the one you just messed up.
-  const doRestore = async (b: DriveBackup) => {
+  // the one you just messed up. Picking a backup only DOWNLOADS and diffs it;
+  // nothing is written until the diff has been shown and confirmed.
+  const [preview, setPreview] = useState<RestorePreview | null>(null);
+  const doPreview = async (b: DriveBackup) => {
     setPicking(false);
     setIoBusy(true);
     try {
-      const r = await restoreWorkoutsFromDrive(b.id);
+      const r = await previewWorkoutRestore(b.id);
       if (!r.found) { window.alert("That backup is no longer on your Drive — it may have been deleted from another device."); return; }
-      const x = r.result!;
-      window.alert(`Restored from Drive — ${x.workouts} workouts, ${x.templates} templates, ${x.exercises} exercises, ${x.videos} videos.`);
+      setPreview(r.preview!);
+    } catch (e) { window.alert(`Couldn't read that backup: ${e instanceof Error ? e.message : String(e)}`); }
+    finally { setIoBusy(false); }
+  };
+  const doApply = async (p: RestorePreview, includeChanged: boolean) => {
+    setPreview(null);
+    setIoBusy(true);
+    try {
+      const x = await applyWorkoutRestore(p, { includeChanged });
+      const skipped = p.diff.videos.same;
+      window.alert(
+        `Restored — ${x.workouts} workouts, ${x.templates} templates, ${x.exercises} exercises, ${x.videos} clips written.` +
+        (skipped ? `\n\n${skipped} clip${skipped === 1 ? "" : "s"} already here, left untouched.` : ""),
+      );
     } catch (e) { window.alert(`Restore failed: ${e instanceof Error ? e.message : String(e)}`); }
     finally { setIoBusy(false); }
   };
@@ -119,7 +133,8 @@ export default function WorkoutLog() {
               ⬇ Restore from Drive
             </button>
           </div>
-          {picking && <RestorePicker onPick={doRestore} onClose={() => setPicking(false)} />}
+          {picking && <RestorePicker onPick={doPreview} onClose={() => setPicking(false)} />}
+          {preview && <RestoreDiff preview={preview} onApply={doApply} onClose={() => setPreview(null)} />}
         </div>
       )}
       {/* Floating overlays — persist across views, above the video popup. */}
@@ -146,11 +161,8 @@ function RestorePicker({ onPick, onClose }: { onPick: (b: DriveBackup) => void; 
     return () => { alive = false; };
   }, []);
 
-  const confirmPick = (b: DriveBackup, isNewest: boolean) => {
-    const which = isNewest ? "the newest backup" : `a backup from ${relTime(b.when)}`;
-    if (!window.confirm(`Restore ${which}?\n\nIt MERGES into what's already on this device by id — it won't delete anything you've logged since.`)) return;
-    onPick(b);
-  };
+  // No confirm here — picking only downloads and diffs. The RestoreDiff sheet
+  // is where the user commits, once they can see what would actually change.
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-3" style={{ background: "rgba(0,0,0,.72)" }}>
@@ -177,7 +189,7 @@ function RestorePicker({ onPick, onClose }: { onPick: (b: DriveBackup) => void; 
           {backups?.map((b, i) => {
             const isNewest = i === backups.length - 1;
             return (
-              <button key={b.id} onClick={() => confirmPick(b, isNewest)}
+              <button key={b.id} onClick={() => onPick(b)}
                 className="wl-card wl-card--hover w-full text-left p-3">
                 <div className="flex items-center gap-2">
                   <span className="wl-num w-6 h-6 rounded-full text-[11px] flex items-center justify-center flex-shrink-0"
@@ -199,6 +211,95 @@ function RestorePicker({ onPick, onClose }: { onPick: (b: DriveBackup) => void; 
         <div className="px-4 py-2.5 wl-mono text-[10px] wl-faint" style={{ borderTop: "1px solid var(--wl-line)" }}>
           Keeping the last {KEEP_BACKUPS}. Each backup adds a new one and drops the oldest.
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Restore diff sheet ────────────────────────────────────────────────────
+// Shown after a backup is downloaded, BEFORE anything is written. Restoring is
+// additive by default — it brings back what's missing and leaves records you've
+// edited since alone. Overwriting those is a separate, explicit button, because
+// it's the only part of a restore that can actually lose work.
+
+function RestoreDiff({ preview, onApply, onClose }: {
+  preview: RestorePreview;
+  onApply: (p: RestorePreview, includeChanged: boolean) => void;
+  onClose: () => void;
+}) {
+  const d = preview.diff;
+  const added = d.workouts.added.length + d.templates.added.length + d.exercises.added.length + d.videos.added.length;
+  const changed = d.workouts.changed.length + d.templates.changed.length + d.exercises.changed.length;
+
+  const rows: { label: string; add: number; chg: number; same: number }[] = [
+    { label: "Workouts", add: d.workouts.added.length, chg: d.workouts.changed.length, same: d.workouts.same },
+    { label: "Templates", add: d.templates.added.length, chg: d.templates.changed.length, same: d.templates.same },
+    { label: "Exercises", add: d.exercises.added.length, chg: d.exercises.changed.length, same: d.exercises.same },
+    { label: "Video clips", add: d.videos.added.length, chg: 0, same: d.videos.same },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-3" style={{ background: "rgba(0,0,0,.72)" }}>
+      <div className="wl-card w-full" style={{ maxWidth: 460, padding: 0, overflow: "hidden" }}>
+        <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--wl-line)" }}>
+          <div>
+            <div className="wl-eyebrow">Restore</div>
+            <div className="wl-h2" style={{ fontSize: 15 }}>What this would change</div>
+          </div>
+          <button onClick={onClose} className="wl-btn ml-auto">Cancel</button>
+        </div>
+
+        <div className="p-3" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+          {d.empty ? (
+            <div className="text-sm wl-muted text-center py-6 leading-relaxed">
+              Nothing to restore — this backup matches what's already on this device.
+            </div>
+          ) : (
+            <>
+              <div className="wl-card p-0" style={{ overflow: "hidden" }}>
+                {rows.map((r, i) => (
+                  <div key={r.label} className="flex items-center gap-2 px-3 py-2.5"
+                    style={i ? { borderTop: "1px solid var(--wl-line)" } : undefined}>
+                    <span className="text-[13px]" style={{ color: "var(--wl-text)" }}>{r.label}</span>
+                    <span className="wl-mono text-[11px] ml-auto flex items-center gap-2.5">
+                      <span style={{ color: r.add ? "var(--wl-good)" : "var(--wl-faint)" }}>+{r.add} new</span>
+                      {r.label !== "Video clips" && (
+                        <span style={{ color: r.chg ? "var(--wl-accent)" : "var(--wl-faint)" }}>~{r.chg} changed</span>
+                      )}
+                      <span className="wl-faint">={r.same} same</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-[11px] wl-muted mt-2.5 leading-relaxed px-1">
+                <b style={{ color: "var(--wl-good)" }}>new</b> is missing here and gets restored.{" "}
+                <b className="wl-faint">same</b> is already identical and is skipped — nothing rewritten.{" "}
+                {changed > 0 && (
+                  <>
+                    <b style={{ color: "var(--wl-accent)" }}>changed</b> exists here too but differs, so restoring it
+                    replaces your current version{d.prefsDiffer ? " (and resets log settings)" : ""}.
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {!d.empty && (
+          <div className="flex flex-col gap-1.5 p-3" style={{ borderTop: "1px solid var(--wl-line)" }}>
+            <button onClick={() => onApply(preview, false)} disabled={!added} className="wl-btn wl-btn--primary"
+              title="Restore only what's missing here — nothing you've edited since is touched">
+              {added ? `Bring back ${added} missing item${added === 1 ? "" : "s"}` : "Nothing missing to bring back"}
+            </button>
+            {changed > 0 && (
+              <button onClick={() => onApply(preview, true)} className="wl-btn"
+                title="Also replace records that exist here but differ from the backup">
+                Also overwrite {changed} changed item{changed === 1 ? "" : "s"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
