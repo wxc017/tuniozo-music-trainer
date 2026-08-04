@@ -296,7 +296,10 @@ function OverBassSheet() {
 // Almanac root cycles (Goodrick) the settings can turn on — chord roots move by
 // this interval through the scale (a 2nd … a 7th).
 const CYCLE_INTERVALS = [2, 3, 4, 5, 6, 7];
-const ROMAN_NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII"];
+// Eight entries: the octatonic scales have an eighth degree.  Everything that
+// indexes this by a diatonic degree passes 0-6 explicitly, so the extra entry is
+// only ever reached by a symmetric scale's cycle.
+const ROMAN_NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
 // Melodic-line sequence patterns musicians actually drill — each is a short
 // "cell" of scale-step offsets, applied from every scale degree ascending until
 // the cell would leave the octave.  Stepwise runs are named by grouping size
@@ -332,19 +335,6 @@ const PATTERN_GROUPS: { title: string; items: { label: string; cell: number[] }[
     { label: "3rd↑ 3rd↑ 3rd↓", cell: [0, 2, 4, 2] },
     { label: "3rd↑ 3rd↓ (1·3·1)", cell: [0, 2, 0] },
     { label: "3rd↑ 2nd↓ 3rd↑ (1·3·2·4)", cell: [0, 2, 1, 3] },
-  ] },
-  { title: "DIGITAL CELLS (Coker)", items: [
-    { label: "1·2·3·5", cell: [0, 1, 2, 4] },
-    { label: "1·2·4·5", cell: [0, 1, 3, 4] },
-    { label: "1·3·4·5", cell: [0, 2, 3, 4] },
-    { label: "1·3·5·4", cell: [0, 2, 4, 3] },
-    { label: "1·2·4·3", cell: [0, 1, 3, 2] },
-    { label: "1·4·3·2", cell: [0, 3, 2, 1] },
-    { label: "1·3·2·5", cell: [0, 2, 1, 4] },
-    { label: "1·2·5·3", cell: [0, 1, 4, 2] },
-    { label: "1·5·4·3", cell: [0, 4, 3, 2] },
-    { label: "3·2·1·5", cell: [2, 1, 0, 4] },
-    { label: "5·3·2·1", cell: [4, 2, 1, 0] },
   ] },
   // Triadic cells — arpeggio shapes sequenced up the scale (distinct from the
   // Angular spread arpeggios, which leap across octaves).
@@ -648,7 +638,7 @@ const mode31 = (steps: readonly number[]): { regions: string[]; pin: (Band | nul
   return { regions, pin };
 };
 // A mode is given EITHER as a region per degree (readable for the modes whose
-// identity is the region — the church modes, the maqamat) OR as a 31-EDO step
+// identity is the region — the diatonic modes, the neutral ones) OR as a 31-EDO step
 // pattern (`steps`, how the Xenharmonic Wiki writes them), which mode31 turns
 // into the same thing.  Both forms produce `pin`: the sub-band a degree is fixed
 // to regardless of which band column the section is in — see singChroma — which
@@ -688,25 +678,8 @@ const RAW_MODES: RawMode[] = [
   { id: "augment6",  label: "Augmented",   short: "aug",  regions: ["", RG.M2, RG.M3, RG.P4, RG.P5, RG.M6, RG.M7], sym: [0, 3, 4, 7, 8, 11],       arp: [0, 2, 4] },
   { id: "octWH",     label: "Octatonic °",  short: "oct°", regions: ["", RG.M2, RG.M3, RG.P4, RG.P5, RG.M6, RG.M7], sym: [0, 2, 3, 5, 6, 8, 9, 11], arp: [0, 2, 4, 6] },
   { id: "octHW",     label: "Octatonic 7",  short: "oct7", regions: ["", RG.M2, RG.M3, RG.P4, RG.P5, RG.M6, RG.M7], sym: [0, 1, 3, 4, 6, 7, 9, 10], arp: [0, 2, 4, 6] },
-  // ── Maqamat — the scales the NEUTRAL regions actually exist for.  Given in
-  // their common ascending forms (maqam intonation varies by region and by
-  // performer; the neutral degrees here sit in the Schulter neutral bands rather
-  // than at an exact 24-EDO quarter-tone).
-  //   Rast   0 · 200 · ~350 · 500 · 700 · 900 · ~1050   (neutral 3rd & 7th)
-  //   Bayati 0 · ~150 · 300 · 500 · 700 · 800 · 1000    (neutral 2nd)
-  //   Sikah  0 · ~150 · ~350 · 500 · 700 · ~850 · ~1050 (neutral 2nd/3rd/6th/7th)
-  //   Huzam  0 · ~150 · ~350 · 500 · 700 · 800 · 1100   (Sikah with a hijaz upper)
-  { id: "rast",  label: "Rast",   short: "rast",  regions: ["", RG.M2, RG.n3, RG.P4, RG.P5, RG.M6, RG.n7] },
-  { id: "bayati", label: "Bayati", short: "bayati", regions: ["", RG.n2, RG.m3, RG.P4, RG.P5, RG.m6, RG.m7] },
-  // Sikah's region pattern IS the sLsLsLs neutral MOS (Bish), so both names sit on
-  // one chip rather than two chips generating identical content.
-  { id: "sikah", label: "Sikah · Bish",  short: "sikah", regions: ["", RG.n2, RG.n3, RG.P4, RG.P5, RG.n6, RG.n7] },
-  { id: "huzam", label: "Huzam",  short: "huzam", regions: ["", RG.n2, RG.n3, RG.P4, RG.P5, RG.m6, RG.M7] },
-  // ── Neutral heptatonic MOS — named by their L/s step pattern rather than by a
-  // repertoire.  Kleeth is LssLsLs: 1 2 ~3 4 5 ~6 ~7, a neutral scale with a
-  // MAJOR 2nd, which no maqam here has (Rast is 1 2 ~3 4 5 6 ~7 — major 6th, not
-  // neutral).  Bish (sLsLsLs) has no entry of its own — it's the same scale as
-  // Sikah above, which carries both names on one chip.
+  // ── Neutral heptatonic MOS — named by its L/s step pattern rather than by a
+  // repertoire.  Kleeth is LssLsLs: 1 2 ~3 4 5 ~6 ~7.
   { id: "kleeth", label: "Kleeth", short: "kleeth", regions: ["", RG.M2, RG.n3, RG.P4, RG.P5, RG.n6, RG.n7] },
   // ── Heptatonics from the Xenharmonic Wiki's "31edo modes" list, entered as
   // their own step patterns in dieses.  Names are the page's, verbatim where they
@@ -748,8 +721,7 @@ const CHAR_SEMI: Record<string, number> = {
   lyd: 6, maj: 11, mix: 10, dor: 9, min: 8, phr: 1, loc: 6,
   melmin: 9, lyddom: 6, mixb6: 8, dorb2: 1, locn2: 6, alt: 6, lydaug: 8,
   harmmin: 11, phrygdom: 1, ukrdor: 6, lyds2: 3,
-  // Maqamat — the neutral degree IS the colour tone.
-  rast: 3, bayati: 1, sikah: 3, huzam: 3,
+  // Neutral — the neutral degree IS the colour tone.
   kleeth: 3,
   // Septimal — the pinned degree IS the colour tone (subminor 3rd / supermajor
   // 3rd / subminor 2nd).  These are semitone SLOTS, so a subminor 3rd is still 3.
@@ -779,13 +751,12 @@ const COLOR_MODES = MODES.filter(m => m.id !== "amb");   // selectable colours (
 // Modes grouped by parent scale (brightest → darkest within each) so the picker
 // reads as three tidy families instead of one long jarring row.
 const MODE_FAMILIES: { label: string; ids: ModeId[] }[] = [
-  { label: "Church",       ids: ["lyd", "maj", "mix", "dor", "min", "phr", "loc"] },
+  { label: "Diatonic Major", ids: ["lyd", "maj", "mix", "dor", "min", "phr", "loc"] },
   { label: "Melodic min",  ids: ["melmin", "lyddom", "mixb6", "dorb2", "locn2", "alt", "lydaug"] },
   // "Harmonic" rather than "Harmonic min": Harmonic Major is a different parent
   // scale, not a mode of harmonic minor, so the old label would have been a lie.
   { label: "Harmonic",     ids: ["harmmin", "phrygdom", "ukrdor", "lyds2", "harmmaj"] },
   { label: "Symmetric",    ids: ["wholetone", "augment6", "octWH", "octHW"] },
-  { label: "Maqam",        ids: ["rast", "bayati", "sikah", "huzam"] },
   { label: "Septimal",     ids: ["septmin", "harrisonmaj", "phrygharm", "subalt"] },
   // Was "Neutral MOS" — Kleeth is a MOS, but the MODMOS added beside it are not,
   // so the family is named for what they share (the neutral degrees).
@@ -819,8 +790,8 @@ const bandWindow = (r: { lo: number; hi: number; subs?: { lo: number; hi: number
 };
 // The four regions that lie OUTSIDE the chain of fifths.  `mosCents` walks
 // fifths, so it can never land on one — asked for a neutral 3rd it hands back
-// whatever shares that pc slot, i.e. the MINOR 3rd, silently turning every maqam
-// into a plain minor mode.  They need snapping to the region's own centre.
+// whatever shares that pc slot, i.e. the MINOR 3rd, silently turning every neutral
+// scale into a plain minor mode.  They need snapping to the region's own centre.
 const NEUTRAL_REGIONS: ReadonlySet<string> = new Set([RG.n2, RG.n3, RG.n6, RG.n7]);
 // EDO mode collapses a region to a single point: `pc`'s diatonic-MOS pitch in
 // the tuning `t` (a zero-width window, so the downstream random pick returns it
@@ -830,7 +801,7 @@ const regionBand = (name: string, band: Band, t?: EdoTuning, pinned = false): [n
   if (t) {
     // Neutral degrees snap to the nearest step of the EDO to the region centre.
     // 31-EDO (38.7¢) and 39-EDO (30.8¢) both land inside the neutral band; 12-EDO
-    // has no neutral interval at all, so a maqam simply cannot be rendered there
+    // has no neutral interval at all, so a neutral scale simply cannot be rendered there
     // — that's a property of 12-EDO, not something to paper over.
     //
     // PINNED degrees (subminor / supermajor) snap the same way, but to the centre
@@ -1832,9 +1803,9 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       const pc = pcs[d];
       dia.add(pc);
       // The 2nd/4th/5th are shared across bands so they never smear — but only
-      // when this mode uses the ordinary region there.  Bayati/Sikah/Huzam have a
-      // NEUTRAL 2nd, which has to come from its own region or it reverts to the
-      // major 2nd and the maqam loses the interval that defines it.
+      // when this mode uses the ordinary region there.  A mode with a NEUTRAL 2nd
+      // has to take it from that region or it reverts to the major 2nd and loses
+      // the interval that defines it.
       // A PINNED degree is excluded for the same reason: the shared 2nd/4th/5th
       // follow the TUNING controls, which would override the pin (a supermajor
       // 2nd would revert to whatever the 2nd's band says).
@@ -1869,10 +1840,14 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     const [lo, hi] = regionBand(region, pick([...bandSet]) ?? 1, edo);
     return lo + Math.random() * (hi - lo);   // hi===lo in EDO mode → the exact MOS step
   };
-  // Scale-step index (0 = tonic, 7 = octave, negatives below) → a playable note.
-  // Octave is tracked so patterns/voicings show dot notation above/below.
+  // Scale-step index (0 = tonic, N = octave, negatives below) → a playable note.
+  // Octave is tracked so patterns/voicings show dot notation above/below.  N is
+  // the scale's OWN length, not a hardcoded 7: the symmetric scales are 6- and
+  // 8-note, and everything downstream of here (chords, voicings, cycles) has to
+  // count octaves in their steps or a "triad" comes out as a random spread.
   const stepNote = (scale: number[], s: number): SingNote => {
-    const deg = mod(s, 7), oct = Math.floor(s / 7);
+    const N = scale.length || 7;
+    const deg = mod(s, N), oct = Math.floor(s / N);
     return { syl: sylOf(scale[deg]), abs: scale[deg] + 1200 * oct - 1200 + rootCents, oct, cents: mod(scale[deg], 1200) };
   };
   const lineSeq = (label: string, scale: number[], steps: number[]): SingSeq =>
@@ -1959,15 +1934,15 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // (counted from the TOP) down an octave (same as Tonal Audiation's chord
   // voicings); open triad lifts the middle voice up an octave.
   const rotateUp = (steps: number[], k: number) => { const s = [...steps]; for (let i = 0; i < k; i++) s.push(s.shift()! + 7); return s; };
-  const applyDrop = (close: number[], dropsFromTop: number[]): number[] => {
+  const applyDrop = (close: number[], dropsFromTop: number[], N = 7): number[] => {
     const s = [...close].sort((a, b) => a - b);
-    for (const k of dropsFromTop) { const i = s.length - k; if (i >= 0) s[i] -= 7; }
+    for (const k of dropsFromTop) { const i = s.length - k; if (i >= 0) s[i] -= N; }
     return s;
   };
   const chordSeq = (label: string, scale: number[], voicings: { label?: string; steps: number[]; rootStep?: number }[], structId?: ChordType): SingSeq =>
     ({ kind: "chords", label, structId, chords: voicings.map(v => ({
       label: v.label,
-      tones: v.steps.map(s => ({ ...stepNote(scale, s), root: v.rootStep !== undefined && mod(s, 7) === mod(v.rootStep, 7) })).sort((a, b) => a.abs - b.abs),
+      tones: v.steps.map(s => ({ ...stepNote(scale, s), root: v.rootStep !== undefined && mod(s, scale.length || 7) === mod(v.rootStep, scale.length || 7) })).sort((a, b) => a.abs - b.abs),
     })) });
 
   // Full names for cycle ROW headers; shorthand for the (narrow) chord-card captions.
@@ -1976,32 +1951,32 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // Apply a voicing to a close-position chord (scale steps).  Drops move voices
   // from the TOP down an octave (double drop = 2nd voice two octaves, 3rd voice
   // one) — the same logic as Tonal Audiation's chord voicings.
-  const voiceChord = (close: number[], v: VoicingDef): number[] => {
+  const voiceChord = (close: number[], v: VoicingDef, N = 7): number[] => {
     if (v.spread || v.octave) {
       const s = [...close].sort((a, b) => a - b);
-      if (v.spread && s.length >= 3) s[1] += 7;    // spread: 2nd voice up an octave (1-5-3 open)
-      if (v.octave && s.length >= 2) s[0] -= 7;    // octave-insertion: bass down an octave
+      if (v.spread && s.length >= 3) s[1] += N;    // spread: 2nd voice up an octave (1-5-3 open)
+      if (v.octave && s.length >= 2) s[0] -= N;    // octave-insertion: bass down an octave
       return s;
     }
-    if (v.double) { const s = [...close].sort((a, b) => a - b); const n = s.length; if (n >= 2) s[n - 2] -= 14; if (n >= 3) s[n - 3] -= 7; return s; }
+    if (v.double) { const s = [...close].sort((a, b) => a - b); const n = s.length; if (n >= 2) s[n - 2] -= 2 * N; if (n >= 3) s[n - 3] -= N; return s; }
     if (!v.drops.length) return close;
-    return applyDrop(close, v.drops);
+    return applyDrop(close, v.drops, N);
   };
   // Every (shape × selected voicing) at one degree, across all inversions.  A
   // shape may yield several source chords (TBN I/II); each is voiced & inverted.
-  const shapeVoicings = (type: ChordType, v: VoicingDef, d: number): { label?: string; steps: number[] }[] => {
+  const shapeVoicings = (type: ChordType, v: VoicingDef, d: number, N = 7): { label?: string; steps: number[] }[] => {
     const out: { label?: string; steps: number[] }[] = [];
     for (const src of SHAPE_TONES[type]) {
       const tones = src.offs.map(o => d + o);
       for (let inv = 0; inv < tones.length; inv++) {
-        const steps = voiceChord(rotateUp(tones, inv), v);
+        const steps = voiceChord(rotateUp(tones, inv), v, N);
         // Label by the ACTUAL bass (lowest voice), not the pre-drop close-position
         // inversion. A drop / double-drop moves a different chord tone into the bass,
         // so a chord the close voicing calls "root" can really be an inversion —
         // "root position" means the ROOT is in the bass. Reduce the bass to its
         // scale-step offset from the root and find which chord tone that is.
-        const bassOff = (((Math.min(...steps) - d) % 7) + 7) % 7;
-        const bi = src.offs.findIndex(o => (((o % 7) + 7) % 7) === bassOff);
+        const bassOff = mod(Math.min(...steps) - d, N);
+        const bi = src.offs.findIndex(o => mod(o, N) === bassOff);
         const invIdx = bi >= 0 && bi < INV_SHORT.length ? bi : inv;
         out.push({ label: INV_SHORT[invIdx], steps });
       }
@@ -2023,14 +1998,14 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // Diatonic root steps of cycle `n` (2nd…7th): walk by that interval through the
   // scale, covering every degree and returning home.  Shared by the diatonic and
   // modal-interchange cycles so both trace the same root path.
-  const cycleRoots = (n: number): number[] => {
-    const inc = (n - 1) % 7;
+  const cycleRoots = (n: number, N = 7): number[] => {
+    const inc = (n - 1) % N;
     const roots = [0]; let cur = 0;
-    for (let i = 0; i < 7; i++) { cur = mod(cur + inc, 7); roots.push(cur); if (cur === 0) break; }
+    for (let i = 0; i < N; i++) { cur = mod(cur + inc, N); roots.push(cur); if (cur === 0) break; }
     return roots;
   };
-  const cycleChords = (n: number, startInv: number, offs: number[]): { label?: string; steps: number[]; rootStep?: number }[] => {
-    const roots = cycleRoots(n);
+  const cycleChords = (n: number, startInv: number, offs: number[], N = 7): { label?: string; steps: number[]; rootStep?: number }[] => {
+    const roots = cycleRoots(n, N);
     const size = offs.length;
     const out: { label?: string; steps: number[]; rootStep?: number }[] = [];
     let prev: number[] | null = null;
@@ -2039,7 +2014,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       let close = rotateUp(base, Math.min(startInv, size - 1));
       if (prev) {
         let bestCost = Infinity;
-        for (let inv = 0; inv < size; inv++) for (const oct of [-7, 0, 7]) {
+        for (let inv = 0; inv < size; inv++) for (const oct of [-N, 0, N]) {
           const voiced = rotateUp(base, inv).map(x => x + oct);
           const cost = voiceCost(prev, voiced);
           if (cost < bestCost) { bestCost = cost; close = voiced; }
@@ -2316,9 +2291,9 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       cells.map(c => chromSeq(c.label, endOnTonicCents(scPcs(struct, c.cell).map(pc => chromaCents(chroma, root + pc)))));
     return pentatonicSubsets(diaPcs.map(pc => mod(pc, 12)), 12, { neutral })
       // NAMED ONLY — except for the neutral shapes, which are kept precisely
-      // BECAUSE they can't be named.  A maqam's pentatonics are real, singable
-      // and the whole reason the neutral regions exist; dropping them for want of
-      // a catalogue entry would leave Rast and Sikah with an almost empty tab.
+      // BECAUSE they can't be named.  A neutral scale's pentatonics are real,
+      // singable and the whole reason the neutral regions exist; dropping them for
+      // want of a catalogue entry would leave those modes with an almost empty tab.
       // They show under their spelling alone, which is the honest label.
       .filter(p => p.rootSlot === 1 && (p.traditional || p.hasNeutral))
       .flatMap(p => {
@@ -2368,7 +2343,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     const diminished = (d: number): boolean => mod(pcs[mod(d + 4, 7)] - pcs[d], 12) === 6;
     // A triad whose 3rd or 5th lands on a NEUTRAL degree is neither major nor
     // minor, and romanForDegree would read the bin and print a case that lies
-    // (Rast's tonic would come out "i" off a ~350¢ third).  Those get the bare
+    // (a neutral tonic triad would come out "i" off a ~350¢ third).  Those get the bare
     // uppercase numeral plus this app's neutral mark instead of a false quality.
     const neutralTriad = (d: number): boolean =>
       [2, 4].some(x => neutral.includes(mod(d + x, 7) + 1));
@@ -3510,12 +3485,15 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                     const act = on && activeMode === m.id;
                     return (
                       <button key={m.id} className={scaleChip(on, act)}
-                        title={on ? (act ? "Showing — click to drop" : "Selected — click to show (↑ / ↓)") : "Add to the cycle"}
-                        // Unselected → add it AND show it.  Selected but not shown →
-                        // jump to it.  Showing → drop it (never below one).
+                        title={on ? "Selected — click to drop" : "Add to the cycle"}
+                        // A plain toggle: unselected → add it AND show it, selected →
+                        // drop it (never below one).  It used to take TWO clicks to
+                        // drop a chip that was selected but not currently shown — the
+                        // first only moved the view to it — which reads as the button
+                        // ignoring you.  Focusing a selected mode without dropping it
+                        // is what ↑ / ↓ (and the cycle readout) are for.
                         onClick={() => {
                           if (!on) { toggleIn(setSingModes, m.id); setActiveMode(m.id); }
-                          else if (!act) setActiveMode(m.id);
                           else toggleIn(setSingModes, m.id, true);
                         }}>
                         {m.label}
