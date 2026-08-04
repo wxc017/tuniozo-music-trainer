@@ -24,7 +24,7 @@ import { audioEngine, AudioEngine, DRONE_INSTRUMENTS, type DroneInstrument } fro
 import { lsGet, lsSet } from "@/lib/storage";
 import { customSolfege } from "@/lib/customSolfege";
 import { degreeToEdoStep, edoStepCents, jianpuToPitch } from "@/lib/jianpu";
-import { pentatonicSubsets, hexatonicSubsets } from "@/lib/pentatonicSubsets";
+import { pentatonicSubsets, hexatonicSubsets, scaleSubsets } from "@/lib/pentatonicSubsets";
 import JianpuMode from "@/components/JianpuMode";
 import SolfegeGamutAside from "@/components/tonal/SolfegeGamutAside";
 import PitchTrainer from "@/components/tonal/PitchTrainer";
@@ -2399,12 +2399,101 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       });
   };
 
-  // A symmetric scale (whole-tone / augmented / octatonic) doesn't fit the
-  // 7-region diatonic HARMONY (chords/cycles), but every scalar pattern is just a
-  // structure — a list of scale-step indices — so the whole scalar vocabulary
-  // runs over it once we index by the scale's own length N (octave = +N) instead
-  // of a hardcoded 7.  `deg` reads the N-note cents scale with octave carry; the
-  // module cells (patterns, angular, permutations, triad pairs) are reused as-is.
+  // ── Symmetric-scale subsets ────────────────────────────────────────
+  // The diatonic pentatonic/hexatonic derivation gives a symmetric scale almost
+  // nothing.  It names pentatonics from a catalogue keyed on 12-EDO structs, and
+  // no five-note subset of the whole-tone or augmented scale is in it — both came
+  // out completely empty — while the hexatonics are named by omitting one slot of
+  // a SEVEN-note key, which a 6- or 8-note scale has no analogue for.
+  //
+  // What these scales do have, and what the literature actually teaches over
+  // them, is triad content: the whole-tone scale is two augmented triads a tone
+  // apart, the augmented scale two augmented triads a semitone apart (plus three
+  // major and three minor triads), and each octatonic four each of major, minor
+  // and diminished.  So a subset is KEPT when it is exactly the union of two
+  // triads lying inside the scale, and NAMED by that pair — the same principle
+  // the heptatonic hexatonics already use, applied to a symmetric parent and to
+  // five notes as well as six.  That keeps 5 of 5 pentatonics and the single
+  // hexatonic of the augmented scale, and 20 of 35 / 15 of 15 for each octatonic.
+  // The whole-tone scale keeps its one hexatonic (itself — the augmented pair)
+  // and no pentatonic, because it genuinely has none: every five-note subset is
+  // the scale minus a note, and none is two triads.
+  const TRIAD_SHAPES = [
+    { iv: [0, 4, 7], minor: false, sym: "" },    // major
+    { iv: [0, 3, 7], minor: true,  sym: "" },    // minor
+    { iv: [0, 4, 8], minor: false, sym: "+" },   // augmented
+    { iv: [0, 3, 6], minor: true,  sym: "°" },   // diminished
+  ];
+  interface ScaleTriad { deg: number; label: string; set: number[]; symmetric: boolean }
+  // Every triad that lies wholly inside `pcs`, rooted on one of its own degrees.
+  const inScaleTriads = (pcs: readonly number[]): ScaleTriad[] => {
+    const inScale = new Set(pcs.map(p => mod(p, 12)));
+    const out: ScaleTriad[] = [];
+    pcs.forEach((r, deg) => {
+      for (const t of TRIAD_SHAPES) {
+        const set = t.iv.map(x => mod(r + x, 12));
+        if (!set.every(x => inScale.has(x))) continue;
+        const num = t.minor ? ROMAN_NUMERALS[deg].toLowerCase() : ROMAN_NUMERALS[deg];
+        // An augmented or diminished triad is its own transposition by its own
+        // interval, so it has three (or four) equally true roots.  Flagged so the
+        // pair search prefers a decomposition into triads that project a root.
+        out.push({ deg, label: num + t.sym, set, symmetric: t.sym !== "" });
+      }
+    });
+    return out;
+  };
+  // The two in-scale triads whose union is exactly `target`, or null.  Prefers the
+  // pair with fewer symmetric triads (C + E reads as a triad pair; "iii + III+" is
+  // the same five notes named less usefully), then the lowest roots.
+  const triadPairFor = (target: readonly number[], triads: ScaleTriad[]): [ScaleTriad, ScaleTriad] | null => {
+    const want = new Set(target.map(p => mod(p, 12)));
+    let best: [ScaleTriad, ScaleTriad] | null = null, bestScore = Infinity;
+    for (let i = 0; i < triads.length; i++) for (let j = i + 1; j < triads.length; j++) {
+      const u = new Set([...triads[i].set, ...triads[j].set]);
+      if (u.size !== want.size || ![...u].every(x => want.has(x))) continue;
+      const score = (triads[i].symmetric ? 10 : 0) + (triads[j].symmetric ? 10 : 0)
+        + triads[i].deg + triads[j].deg;
+      if (score < bestScore) { bestScore = score; best = [triads[i], triads[j]]; }
+    }
+    return best;
+  };
+  const symSubsetGroups = (chroma: number[], pcs: number[], size: 5 | 6, sub: ScalarSub,
+    cells: typeof PENTA_CELLS, angularCells: typeof PENTA_CELLS): SingGroup[] => {
+    const triads = inScaleTriads(pcs);
+    const cellsFor = (root: number, struct: number[], cs: typeof PENTA_CELLS): SingSeq[] =>
+      cs.map(c => chromSeq(c.label, endOnTonicCents(scPcs(struct, c.cell).map(pc => chromaCents(chroma, root + pc)))));
+    const rooted = scaleSubsets(pcs.map(pc => mod(pc, 12)), size, 12).filter(p => p.rootSlot === 1);
+    const pairs = rooted.map(p => triadPairFor(p.slotPcs, triads));
+    // The triad-pair filter only applies where triad pairs EXIST at this size.
+    // The whole-tone scale's only in-scale triads are augmented, and two of those
+    // either coincide or fill all six notes, so a five-note triad pair cannot
+    // exist in it — that's a fact about the scale, not a near miss.  Its
+    // pentatonics are still real and singable (each is the scale minus one note),
+    // so when a size yields no pairs at all they show under their own spelling
+    // instead of leaving the tab empty.
+    const anyPair = pairs.some(Boolean);
+    return rooted.flatMap((p, i) => {
+      const pair = pairs[i];
+      if (anyPair && !pair) return [];
+      // Rooted on slot 1, `formula` IS the ascending spelling from the tonic, so
+      // "I + III · 1 3 5 ♭6 7" reads as what it's built from, then how it sounds.
+      // (`slotLabel` degrades to slot numbers here — it only spells 7-note keys.)
+      const g = { cat: "scalar" as SingCat, sub,
+        parent: pair ? `${pair[0].label} + ${pair[1].label} · ${p.formula}` : p.formula };
+      return [
+        { ...g, title: "Non-angular", seqs: cellsFor(p.rootPc, p.struct, cells) },
+        { ...g, title: "Angular",     seqs: cellsFor(p.rootPc, p.struct, angularCells) },
+      ];
+    });
+  };
+
+  // A symmetric scale (whole-tone / augmented / octatonic) has no 7-region
+  // diatonic spelling, but every scalar pattern is just a structure — a list of
+  // scale-step indices — so the whole scalar vocabulary runs over it once we index
+  // by the scale's own length N (octave = +N) instead of a hardcoded 7.  `deg`
+  // reads the N-note cents scale with octave carry; the module cells (patterns,
+  // angular, permutations) are reused as-is, and so are the chord cycles, which
+  // stack and voice-lead in the same step space.
   const buildSymSection = (band: Band, modeId: ModeId, m: { label: string; sym: number[]; arp: number[] }, chroma: number[]): SingSection => {
     const sc = m.sym.map(pc => chromaCents(chroma, pc));   // within-octave cents, length N
     const N = sc.length;
@@ -2415,6 +2504,36 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
     const seqN = (cell: number[]): number[] => { const s: number[] = []; for (let r = 0; r < N; r++) for (const o of cell) s.push(r + o); return s; };
     const scaleCents = [...sc, 1200];
 
+    // Chord cycles over the symmetric scale.  Same construction as the diatonic
+    // ones — tertian stacks of the selected shapes, roots walking by the selected
+    // interval, voice-led to the nearest inversion — counted in this scale's own
+    // step space (N per octave) rather than 7.  The Cycles tab was simply empty
+    // for these scales before; every part of the machinery generalises, it was
+    // only ever the hardcoded 7 that stopped it.  `sc` is the N-note cents scale,
+    // so chordSeq's stepNote reads it directly.
+    const symCycleGroups: SingGroup[] = [];
+    for (const n of [...cycles].sort((a, b) => a - b)) {
+      // Cycle 7 over a 6-note scale steps by 6 ≡ 0 — the "cycle" is one chord
+      // repeated.  A cycle whose step shares a factor with N covers only part of
+      // the scale, which is real and worth hearing; a step of 0 is not.
+      if ((n - 1) % N === 0) continue;
+      for (const t of CHORD_TYPES) {
+        if (!chordTypes.has(t.id)) continue;
+        const offs = SHAPE_TONES[t.id][0].offs;
+        const size = offs.length;
+        for (const v of (t.id === "triad" ? TRIAD_VOICINGS.filter(x => singTriadVoicings.has(x.id))
+          : VOICING_TYPES.filter(x => singVoicings.has(x.id)))) {
+          if (size < v.min) continue;
+          symCycleGroups.push({
+            cat: "cycles",
+            title: v.id === "close" ? `CYCLE ${n} · ${t.title}` : `CYCLE ${n} · ${t.title} · ${v.label}`,
+            seqs: Array.from({ length: size }, (_, inv) => chordSeq(INV_LABEL[inv], sc,
+              cycleChords(n, inv, offs, N).map(c => ({ ...c, steps: voiceChord(c.steps, v, N) })), t.id)),
+          });
+        }
+      }
+    }
+
     const groups: SingGroup[] = [
       { cat: "scalar", sub: "patterns", title: `${L} SCALE`, seqs: [
         chromSeq("up", scaleCents), chromSeq("down", [...scaleCents].reverse()),
@@ -2423,12 +2542,15 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         seqs: Array.from({ length: Math.max(0, N - 2) }, (_, i) => i + 2).map(k => line(`+${k} steps`, intervalPairs(N, k))) },
       ...PATTERN_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "patterns" as ScalarSub, title: g.title, seqs: g.items.map(p => line(p.label, seqN(p.cell))) })),
       { cat: "scalar", sub: "patterns", title: `${L} ARPS`, seqs: [line(N > 6 ? "dim7 arps" : "aug arps", seqN(m.arp))] },
-      // No pentatonic (superimposition is a functional-harmony device — meaningless
-      // over a symmetric scale) and no chromatic (a symmetric scale already IS
-      // half-chromatic, so approach tones just land on other scale tones).
+      // Pentatonic / hexatonic: the triad-pair subsets of THIS scale (see
+      // symSubsetGroups).  No chromatic — a symmetric scale is already
+      // half-chromatic, so approach tones just land on other scale tones.
+      ...symSubsetGroups(chroma, m.sym, 5, "pentatonic", PENTA_CELLS, PENTA_ANGULAR_CELLS),
+      ...symSubsetGroups(chroma, m.sym, 6, "hexatonic", HEXA_CELLS, HEXA_ANGULAR_CELLS),
       ...ANGULAR_GROUPS.map(g => ({ cat: "scalar" as SingCat, sub: "angular" as ScalarSub, title: g.title, seqs: g.items.map(p => line(p.label, p.steps)) })),
+      ...symCycleGroups,
     ];
-    const kept = groups.filter(g => scalarGen.has(g.sub!));
+    const kept = groups.filter(g => g.cat !== "scalar" || scalarGen.has(g.sub!));
     return { band, mode: modeId, scaleLabel: m.label, scale: scaleCents.map(centsNote), rawScale: scaleCents, groups: kept };
   };
 

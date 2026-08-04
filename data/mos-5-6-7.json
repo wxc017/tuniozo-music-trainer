@@ -1,0 +1,7479 @@
+{
+  "$schema": "tunizo/mos-reference@1",
+  "description": "5-, 6- and 7-note MOS (moment-of-symmetry / well-formed) scale families and their concrete instantiations in 12, 22 and 31 EDO, plus notable non-MOS structures. Step patterns are given as EDO step counts and are the BRIGHTEST mode (the raw bright-generator stack); all rotations are listed under `modes`.",
+  "conventions": {
+    "generatorRange": "Open interval, as a fraction of the PERIOD. EDO n supports a family iff some integer k satisfies genLo*P < k < genHi*P, where P = n/periods steps.",
+    "contrast": "L/s. Near 1 = near-equal/bland; ~1.5-3 = idiomatic scale contrast; >4 = cluster-plus-gap.",
+    "lopsided": "true when L/s > 4 — the shape reads as a cluster plus a large gap rather than as a scale. Note 22edo's superpyth diatonic sits exactly at 4 and is NOT flagged."
+  },
+  "families": [
+    {
+      "pattern": "1L4s",
+      "name": "Pedal",
+      "notes": 5,
+      "large": 1,
+      "small": 4,
+      "periods": 1,
+      "periodCents": 1200,
+      "generatorRangeOfPeriod": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          5
+        ]
+      ],
+      "generatorRangeCents": [
+        0,
+        240
+      ]
+    },
+    {
+      "pattern": "4L1s",
+      "name": "Manual",
+      "notes": 5,
+      "large": 4,
+      "small": 1,
+      "periods": 1,
+      "periodCents": 1200,
+      "generatorRangeOfPeriod": [
+        [
+          1,
+          5
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "generatorRangeCents": [
+        240,
+        300
+      ]
+    },
+    {
+      "pattern": "3L2s",
+      "name": "Antipentic",
+      "notes": 5,
+      "large": 3,
+      "small": 2,
+      "periods": 1,
+      "periodCents": 1200,
+      "generatorRangeOfPeriod": [
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "generatorRangeCents": [
+        400,
+        480
+      ]
+    },
+    {
+      "pattern": "2L3s",
+      "name": "Pentic",
+      "notes": 5,
+      "large": 2,
+      "small": 3,
+      "periods": 1,
+      "periodCents": 1200,
+      "generatorRangeOfPeriod": [
+        [
+          2,
+          5
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "generatorRangeCents": [
+        480,
+        600
+      ]
+    },
+    {
+      "pattern": "1L5s",
+      "name": "Antimachinoid",
+      "notes": 6,
+      "large": 1,
+      "small": 5,
+      "periods": 1,
+      "periodCents": 1200,
+      "generatorRangeOfPeriod": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          6
+        ]
+      ],
+      "generatorRangeCents": [
+        0,
+        200
+      ]
+    },
+    {
+      "pattern": "5L1s",
+      "name": "Machinoid",
+      "notes": 6,
+      "large": 5,
+      "small": 1,
+      "periods": 1,
+      "periodCents": 1200,
+      "generatorRangeOfPeriod": [
+        [
+          1,
+          6
+        ],
+        [
+          1,
+          5
+        ]
+      ],
+      "generatorRangeCents": [
+        200,
+        240
+      ]
+    },
+    {
+      "pattern": "2L4s",
+      "name": "Malic",
+      "notes": 6,
+      "large": 2,
+      "small": 4,
+      "periods": 2,
+      "periodCents": 600,
+      "generatorRangeOfPeriod": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          3
+        ]
+      ],
+      "generatorRangeCents": [
+        0,
+        200
+      ]
+    },
+    {
+      "pattern": "4L2s",
+      "name": "Citric",
+      "notes": 6,
+      "large": 4,
+      "small": 2,
+      "periods": 2,
+      "periodCents": 600,
+      "generatorRangeOfPeriod": [
+        [
+          1,
+          3
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "generatorRangeCents": [
+        200,
+        300
+      ]
+    },
+    {
+      "pattern": "3L3s",
+      "name": "Triwood",
+      "notes": 6,
+      "large": 3,
+      "small": 3,
+      "periods": 3,
+      "periodCents": 400,
+      "generatorRangeOfPeriod": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "generatorRangeCents": [
+        0,
+        200
+      ]
+    },
+    {
+      "pattern": "1L6s",
+      "name": "Onyx",
+      "notes": 7,
+      "large": 1,
+      "small": 6,
+      "periods": 1,
+      "periodCents": 1200,
+      "generatorRangeOfPeriod": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          7
+        ]
+      ],
+      "generatorRangeCents": [
+        0,
+        171.43
+      ]
+    },
+    {
+      "pattern": "6L1s",
+      "name": "Archeotonic",
+      "notes": 7,
+      "large": 6,
+      "small": 1,
+      "periods": 1,
+      "periodCents": 1200,
+      "generatorRangeOfPeriod": [
+        [
+          1,
+          7
+        ],
+        [
+          1,
+          6
+        ]
+      ],
+      "generatorRangeCents": [
+        171.43,
+        200
+      ]
+    },
+    {
+      "pattern": "4L3s",
+      "name": "Smitonic",
+      "notes": 7,
+      "large": 4,
+      "small": 3,
+      "periods": 1,
+      "periodCents": 1200,
+      "generatorRangeOfPeriod": [
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          7
+        ]
+      ],
+      "generatorRangeCents": [
+        300,
+        342.86
+      ]
+    },
+    {
+      "pattern": "3L4s",
+      "name": "Mosh",
+      "notes": 7,
+      "large": 3,
+      "small": 4,
+      "periods": 1,
+      "periodCents": 1200,
+      "generatorRangeOfPeriod": [
+        [
+          2,
+          7
+        ],
+        [
+          1,
+          3
+        ]
+      ],
+      "generatorRangeCents": [
+        342.86,
+        400
+      ]
+    },
+    {
+      "pattern": "2L5s",
+      "name": "Antidiatonic",
+      "notes": 7,
+      "large": 2,
+      "small": 5,
+      "periods": 1,
+      "periodCents": 1200,
+      "generatorRangeOfPeriod": [
+        [
+          1,
+          2
+        ],
+        [
+          4,
+          7
+        ]
+      ],
+      "generatorRangeCents": [
+        600,
+        685.71
+      ]
+    },
+    {
+      "pattern": "5L2s",
+      "name": "Diatonic",
+      "notes": 7,
+      "large": 5,
+      "small": 2,
+      "periods": 1,
+      "periodCents": 1200,
+      "generatorRangeOfPeriod": [
+        [
+          4,
+          7
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "generatorRangeCents": [
+        685.71,
+        720
+      ]
+    }
+  ],
+  "edos": {
+    "12": {
+      "edo": 12,
+      "stepCents": 100,
+      "bestFifth": {
+        "steps": 7,
+        "cents": 700,
+        "errorCents": -1.96
+      },
+      "supportedFamilies": [
+        "1L4s",
+        "2L3s",
+        "1L5s",
+        "2L4s",
+        "3L3s",
+        "1L6s",
+        "5L2s"
+      ],
+      "unsupportedFamilies": [
+        {
+          "pattern": "4L1s",
+          "reason": "no integer generator in (240c, 300c)"
+        },
+        {
+          "pattern": "3L2s",
+          "reason": "no integer generator in (400c, 480c)"
+        },
+        {
+          "pattern": "5L1s",
+          "reason": "no integer generator in (200c, 240c)"
+        },
+        {
+          "pattern": "4L2s",
+          "reason": "no integer generator in (200c, 300c)"
+        },
+        {
+          "pattern": "6L1s",
+          "reason": "no integer generator in (171.43c, 200c)"
+        },
+        {
+          "pattern": "4L3s",
+          "reason": "no integer generator in (300c, 342.86c)"
+        },
+        {
+          "pattern": "3L4s",
+          "reason": "no integer generator in (342.86c, 400c)"
+        },
+        {
+          "pattern": "2L5s",
+          "reason": "no integer generator in (600c, 685.71c)"
+        }
+      ],
+      "scales": [
+        {
+          "pattern": "1L4s",
+          "name": "Pedal",
+          "notes": 5,
+          "generatorSteps": 1,
+          "generatorCents": 100,
+          "generatorNearestJI": {
+            "ratio": "16/15",
+            "justCents": 111.73,
+            "errorCents": -11.7
+          },
+          "periods": 1,
+          "L": 8,
+          "s": 1,
+          "contrast": 8,
+          "lopsided": true,
+          "stepPattern": [
+            1,
+            1,
+            1,
+            1,
+            8
+          ],
+          "degrees": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "cents": [
+            0,
+            100,
+            200,
+            300,
+            400
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                8
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                1,
+                1,
+                8,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                1,
+                8,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                8,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                8,
+                1,
+                1,
+                1,
+                1
+              ]
+            }
+          ],
+          "note": "Semitone cluster + large gap. Structurally a MOS, not idiomatic as a scale."
+        },
+        {
+          "pattern": "1L4s",
+          "name": "Pedal",
+          "notes": 5,
+          "generatorSteps": 2,
+          "generatorCents": 200,
+          "generatorNearestJI": {
+            "ratio": "9/8",
+            "justCents": 203.91,
+            "errorCents": -3.9
+          },
+          "periods": 1,
+          "L": 4,
+          "s": 2,
+          "contrast": 2,
+          "lopsided": false,
+          "stepPattern": [
+            2,
+            2,
+            2,
+            2,
+            4
+          ],
+          "degrees": [
+            0,
+            2,
+            4,
+            6,
+            8
+          ],
+          "cents": [
+            0,
+            200,
+            400,
+            600,
+            800
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                4
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                2,
+                2,
+                2,
+                4,
+                2
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                2,
+                2,
+                4,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                2,
+                4,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                4,
+                2,
+                2,
+                2,
+                2
+              ]
+            }
+          ],
+          "note": "Whole-tone tetrachord + 400c gap. Lopsided but usable as a colour."
+        },
+        {
+          "pattern": "2L3s",
+          "name": "Pentic",
+          "notes": 5,
+          "generatorSteps": 5,
+          "generatorCents": 500,
+          "generatorNearestJI": {
+            "ratio": "4/3",
+            "justCents": 498.04,
+            "errorCents": 2
+          },
+          "periods": 1,
+          "L": 3,
+          "s": 2,
+          "contrast": 1.5,
+          "lopsided": false,
+          "stepPattern": [
+            3,
+            2,
+            3,
+            2,
+            2
+          ],
+          "degrees": [
+            0,
+            3,
+            5,
+            8,
+            10
+          ],
+          "cents": [
+            0,
+            300,
+            500,
+            800,
+            1000
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                3,
+                2,
+                3,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                2,
+                3,
+                2,
+                2,
+                3
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                3,
+                2,
+                2,
+                3,
+                2
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                2,
+                2,
+                3,
+                2,
+                3
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                2,
+                3,
+                2,
+                3,
+                2
+              ]
+            }
+          ],
+          "note": "The standard anhemitonic pentatonic. 5-limit."
+        },
+        {
+          "pattern": "1L5s",
+          "name": "Antimachinoid",
+          "notes": 6,
+          "generatorSteps": 1,
+          "generatorCents": 100,
+          "generatorNearestJI": {
+            "ratio": "16/15",
+            "justCents": 111.73,
+            "errorCents": -11.7
+          },
+          "periods": 1,
+          "L": 7,
+          "s": 1,
+          "contrast": 7,
+          "lopsided": true,
+          "stepPattern": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            7
+          ],
+          "degrees": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "cents": [
+            0,
+            100,
+            200,
+            300,
+            400,
+            500
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                7
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                7,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                1,
+                1,
+                7,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                1,
+                7,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                1,
+                7,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                7,
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            }
+          ],
+          "note": "Chromatic cluster + gap. Degenerate in practice."
+        },
+        {
+          "pattern": "2L4s",
+          "name": "Malic",
+          "notes": 6,
+          "generatorSteps": 1,
+          "generatorCents": 100,
+          "generatorNearestJI": {
+            "ratio": "16/15",
+            "justCents": 111.73,
+            "errorCents": -11.7
+          },
+          "periods": 2,
+          "L": 4,
+          "s": 1,
+          "contrast": 4,
+          "lopsided": false,
+          "stepPattern": [
+            1,
+            1,
+            4,
+            1,
+            1,
+            4
+          ],
+          "degrees": [
+            0,
+            1,
+            2,
+            6,
+            7,
+            8
+          ],
+          "cents": [
+            0,
+            100,
+            200,
+            600,
+            700,
+            800
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                1,
+                4,
+                1,
+                1,
+                4
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                4,
+                1,
+                1,
+                4,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                4,
+                1,
+                1,
+                4,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                1,
+                4,
+                1,
+                1,
+                4
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                1,
+                4,
+                1,
+                1,
+                4,
+                1
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                4,
+                1,
+                1,
+                4,
+                1,
+                1
+              ]
+            }
+          ],
+          "note": "Two semitone clusters a tritone apart (half-octave period)."
+        },
+        {
+          "pattern": "3L3s",
+          "name": "Triwood",
+          "notes": 6,
+          "generatorSteps": 1,
+          "generatorCents": 100,
+          "generatorNearestJI": {
+            "ratio": "16/15",
+            "justCents": 111.73,
+            "errorCents": -11.7
+          },
+          "periods": 3,
+          "L": 3,
+          "s": 1,
+          "contrast": 3,
+          "lopsided": false,
+          "stepPattern": [
+            1,
+            3,
+            1,
+            3,
+            1,
+            3
+          ],
+          "degrees": [
+            0,
+            1,
+            4,
+            5,
+            8,
+            9
+          ],
+          "cents": [
+            0,
+            100,
+            400,
+            500,
+            800,
+            900
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                3,
+                1,
+                3,
+                1,
+                3
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                3,
+                1,
+                3,
+                1,
+                3,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                3,
+                1,
+                3,
+                1,
+                3
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                3,
+                1,
+                3,
+                1,
+                3,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                1,
+                3,
+                1,
+                3,
+                1,
+                3
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                3,
+                1,
+                3,
+                1,
+                3,
+                1
+              ]
+            }
+          ],
+          "note": "The augmented / hexatonic scale (1 3 1 3 1 3)."
+        },
+        {
+          "pattern": "1L6s",
+          "name": "Onyx",
+          "notes": 7,
+          "generatorSteps": 1,
+          "generatorCents": 100,
+          "generatorNearestJI": {
+            "ratio": "16/15",
+            "justCents": 111.73,
+            "errorCents": -11.7
+          },
+          "periods": 1,
+          "L": 6,
+          "s": 1,
+          "contrast": 6,
+          "lopsided": true,
+          "stepPattern": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            6
+          ],
+          "degrees": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "cents": [
+            0,
+            100,
+            200,
+            300,
+            400,
+            500,
+            600
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                6
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                6,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                6,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                1,
+                1,
+                6,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                1,
+                1,
+                6,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                1,
+                6,
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                6,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            }
+          ],
+          "note": "Chromatic hexachord + gap. Degenerate in practice."
+        },
+        {
+          "pattern": "5L2s",
+          "name": "Diatonic",
+          "notes": 7,
+          "generatorSteps": 7,
+          "generatorCents": 700,
+          "generatorNearestJI": {
+            "ratio": "3/2",
+            "justCents": 701.96,
+            "errorCents": -2
+          },
+          "periods": 1,
+          "L": 2,
+          "s": 1,
+          "contrast": 2,
+          "lopsided": false,
+          "stepPattern": [
+            2,
+            2,
+            2,
+            1,
+            2,
+            2,
+            1
+          ],
+          "degrees": [
+            0,
+            2,
+            4,
+            6,
+            7,
+            9,
+            11
+          ],
+          "cents": [
+            0,
+            200,
+            400,
+            600,
+            700,
+            900,
+            1100
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                2,
+                2,
+                1,
+                2,
+                2,
+                1
+              ],
+              "name": "Lydian"
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                2,
+                2,
+                1,
+                2,
+                2,
+                1,
+                2
+              ],
+              "name": "Mixolydian"
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                2,
+                1,
+                2,
+                2,
+                1,
+                2,
+                2
+              ],
+              "name": "Aeolian"
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                2,
+                2,
+                1,
+                2,
+                2,
+                2
+              ],
+              "name": "Locrian"
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                2,
+                2,
+                1,
+                2,
+                2,
+                2,
+                1
+              ],
+              "name": "Ionian"
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                2,
+                1,
+                2,
+                2,
+                2,
+                1,
+                2
+              ],
+              "name": "Dorian"
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                1,
+                2,
+                2,
+                2,
+                1,
+                2,
+                2
+              ],
+              "name": "Phrygian"
+            }
+          ],
+          "note": "The diatonic scale. 12edo's fifth is 2c sharp of 3/2 (Pythagorean-ish)."
+        }
+      ],
+      "nonMosStructures": [
+        {
+          "name": "Whole tone",
+          "size": 6,
+          "degrees": [
+            0,
+            2,
+            4,
+            6,
+            8,
+            10
+          ],
+          "kind": "equal (6edo subset)",
+          "note": "Only exists where 6 | edo.",
+          "stepPattern": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "cents": [
+            0,
+            200,
+            400,
+            600,
+            800,
+            1000
+          ]
+        },
+        {
+          "name": "Blues hexatonic",
+          "size": 6,
+          "degrees": [
+            0,
+            3,
+            5,
+            6,
+            7,
+            10
+          ],
+          "kind": "pentatonic + blue note",
+          "note": "Minor pentatonic with the b5 passing tone.",
+          "stepPattern": [
+            3,
+            2,
+            1,
+            1,
+            3,
+            2
+          ],
+          "cents": [
+            0,
+            300,
+            500,
+            600,
+            700,
+            1000
+          ]
+        },
+        {
+          "name": "Harmonic minor",
+          "size": 7,
+          "degrees": [
+            0,
+            2,
+            3,
+            5,
+            7,
+            8,
+            11
+          ],
+          "kind": "MODMOS of 5L2s",
+          "note": "Diatonic with one note raised; inherits diatonic's EDO coverage.",
+          "stepPattern": [
+            2,
+            1,
+            2,
+            2,
+            1,
+            3,
+            1
+          ],
+          "cents": [
+            0,
+            200,
+            300,
+            500,
+            700,
+            800,
+            1100
+          ]
+        }
+      ]
+    },
+    "22": {
+      "edo": 22,
+      "stepCents": 54.55,
+      "bestFifth": {
+        "steps": 13,
+        "cents": 709.09,
+        "errorCents": 7.14
+      },
+      "supportedFamilies": [
+        "1L4s",
+        "2L3s",
+        "3L2s",
+        "4L1s",
+        "1L5s",
+        "2L4s",
+        "4L2s",
+        "5L1s",
+        "1L6s",
+        "2L5s",
+        "3L4s",
+        "4L3s",
+        "5L2s"
+      ],
+      "unsupportedFamilies": [
+        {
+          "pattern": "3L3s",
+          "reason": "22 is not divisible by 3 periods"
+        },
+        {
+          "pattern": "6L1s",
+          "reason": "no integer generator in (171.43c, 200c)"
+        }
+      ],
+      "scales": [
+        {
+          "pattern": "1L4s",
+          "name": "Pedal",
+          "notes": 5,
+          "generatorSteps": 1,
+          "generatorCents": 54.55,
+          "generatorNearestJI": null,
+          "periods": 1,
+          "L": 18,
+          "s": 1,
+          "contrast": 18,
+          "lopsided": true,
+          "stepPattern": [
+            1,
+            1,
+            1,
+            1,
+            18
+          ],
+          "degrees": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "cents": [
+            0,
+            54.55,
+            109.09,
+            163.64,
+            218.18
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                18
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                1,
+                1,
+                18,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                1,
+                18,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                18,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                18,
+                1,
+                1,
+                1,
+                1
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L4s",
+          "name": "Pedal",
+          "notes": 5,
+          "generatorSteps": 2,
+          "generatorCents": 109.09,
+          "generatorNearestJI": {
+            "ratio": "16/15",
+            "justCents": 111.73,
+            "errorCents": -2.6
+          },
+          "periods": 1,
+          "L": 14,
+          "s": 2,
+          "contrast": 7,
+          "lopsided": true,
+          "stepPattern": [
+            2,
+            2,
+            2,
+            2,
+            14
+          ],
+          "degrees": [
+            0,
+            2,
+            4,
+            6,
+            8
+          ],
+          "cents": [
+            0,
+            109.09,
+            218.18,
+            327.27,
+            436.36
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                14
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                2,
+                2,
+                2,
+                14,
+                2
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                2,
+                2,
+                14,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                2,
+                14,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                14,
+                2,
+                2,
+                2,
+                2
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L4s",
+          "name": "Pedal",
+          "notes": 5,
+          "generatorSteps": 3,
+          "generatorCents": 163.64,
+          "generatorNearestJI": {
+            "ratio": "11/10",
+            "justCents": 165,
+            "errorCents": -1.4
+          },
+          "periods": 1,
+          "L": 10,
+          "s": 3,
+          "contrast": 3.33,
+          "lopsided": false,
+          "stepPattern": [
+            3,
+            3,
+            3,
+            3,
+            10
+          ],
+          "degrees": [
+            0,
+            3,
+            6,
+            9,
+            12
+          ],
+          "cents": [
+            0,
+            163.64,
+            327.27,
+            490.91,
+            654.55
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                3,
+                3,
+                3,
+                3,
+                10
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                3,
+                3,
+                3,
+                10,
+                3
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                3,
+                3,
+                10,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                3,
+                10,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                10,
+                3,
+                3,
+                3,
+                3
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L4s",
+          "name": "Pedal",
+          "notes": 5,
+          "generatorSteps": 4,
+          "generatorCents": 218.18,
+          "generatorNearestJI": {
+            "ratio": "8/7",
+            "justCents": 231.17,
+            "errorCents": -13
+          },
+          "periods": 1,
+          "L": 6,
+          "s": 4,
+          "contrast": 1.5,
+          "lopsided": false,
+          "stepPattern": [
+            4,
+            4,
+            4,
+            4,
+            6
+          ],
+          "degrees": [
+            0,
+            4,
+            8,
+            12,
+            16
+          ],
+          "cents": [
+            0,
+            218.18,
+            436.36,
+            654.55,
+            872.73
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                4,
+                4,
+                4,
+                4,
+                6
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                4,
+                4,
+                4,
+                6,
+                4
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                4,
+                4,
+                6,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                4,
+                6,
+                4,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                6,
+                4,
+                4,
+                4,
+                4
+              ]
+            }
+          ],
+          "note": "Near-equipentatonic; 218c generator is 22edo's 8/7 (13c flat of just)."
+        },
+        {
+          "pattern": "2L3s",
+          "name": "Pentic",
+          "notes": 5,
+          "generatorSteps": 9,
+          "generatorCents": 490.91,
+          "generatorNearestJI": {
+            "ratio": "4/3",
+            "justCents": 498.04,
+            "errorCents": -7.1
+          },
+          "periods": 1,
+          "L": 5,
+          "s": 4,
+          "contrast": 1.25,
+          "lopsided": false,
+          "stepPattern": [
+            5,
+            4,
+            5,
+            4,
+            4
+          ],
+          "degrees": [
+            0,
+            5,
+            9,
+            14,
+            18
+          ],
+          "cents": [
+            0,
+            272.73,
+            490.91,
+            763.64,
+            981.82
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                5,
+                4,
+                5,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                4,
+                5,
+                4,
+                4,
+                5
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                5,
+                4,
+                4,
+                5,
+                4
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                4,
+                4,
+                5,
+                4,
+                5
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                4,
+                5,
+                4,
+                5,
+                4
+              ]
+            }
+          ],
+          "note": "The pentatonic proper (complement of the 709c superpyth fifth)."
+        },
+        {
+          "pattern": "2L3s",
+          "name": "Pentic",
+          "notes": 5,
+          "generatorSteps": 10,
+          "generatorCents": 545.45,
+          "generatorNearestJI": {
+            "ratio": "11/8",
+            "justCents": 551.32,
+            "errorCents": -5.9
+          },
+          "periods": 1,
+          "L": 8,
+          "s": 2,
+          "contrast": 4,
+          "lopsided": false,
+          "stepPattern": [
+            8,
+            2,
+            8,
+            2,
+            2
+          ],
+          "degrees": [
+            0,
+            8,
+            10,
+            18,
+            20
+          ],
+          "cents": [
+            0,
+            436.36,
+            545.45,
+            981.82,
+            1090.91
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                8,
+                2,
+                8,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                2,
+                8,
+                2,
+                2,
+                8
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                8,
+                2,
+                2,
+                8,
+                2
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                2,
+                2,
+                8,
+                2,
+                8
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                2,
+                8,
+                2,
+                8,
+                2
+              ]
+            }
+          ],
+          "note": "Hard-contrast pentatonic on a 545c 11/8-ish generator."
+        },
+        {
+          "pattern": "3L2s",
+          "name": "Antipentic",
+          "notes": 5,
+          "generatorSteps": 8,
+          "generatorCents": 436.36,
+          "generatorNearestJI": {
+            "ratio": "9/7",
+            "justCents": 435.08,
+            "errorCents": 1.3
+          },
+          "periods": 1,
+          "L": 6,
+          "s": 2,
+          "contrast": 3,
+          "lopsided": false,
+          "stepPattern": [
+            2,
+            6,
+            2,
+            6,
+            6
+          ],
+          "degrees": [
+            0,
+            2,
+            8,
+            10,
+            16
+          ],
+          "cents": [
+            0,
+            109.09,
+            436.36,
+            545.45,
+            872.73
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                6,
+                2,
+                6,
+                6
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                6,
+                2,
+                6,
+                6,
+                2
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                2,
+                6,
+                6,
+                2,
+                6
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                6,
+                6,
+                2,
+                6,
+                2
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                6,
+                2,
+                6,
+                2,
+                6
+              ]
+            }
+          ],
+          "note": "Antipentic on 436c = 22edo's 9/7 septimal major third. Strongly septimal."
+        },
+        {
+          "pattern": "4L1s",
+          "name": "Manual",
+          "notes": 5,
+          "generatorSteps": 5,
+          "generatorCents": 272.73,
+          "generatorNearestJI": {
+            "ratio": "7/6",
+            "justCents": 266.87,
+            "errorCents": 5.9
+          },
+          "periods": 1,
+          "L": 5,
+          "s": 2,
+          "contrast": 2.5,
+          "lopsided": false,
+          "stepPattern": [
+            5,
+            5,
+            5,
+            5,
+            2
+          ],
+          "degrees": [
+            0,
+            5,
+            10,
+            15,
+            20
+          ],
+          "cents": [
+            0,
+            272.73,
+            545.45,
+            818.18,
+            1090.91
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                5,
+                5,
+                5,
+                5,
+                2
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                5,
+                5,
+                5,
+                2,
+                5
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                5,
+                5,
+                2,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                5,
+                2,
+                5,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                2,
+                5,
+                5,
+                5,
+                5
+              ]
+            }
+          ],
+          "note": "Manual pentatonic on a 273c (7/6-ish) generator."
+        },
+        {
+          "pattern": "1L5s",
+          "name": "Antimachinoid",
+          "notes": 6,
+          "generatorSteps": 1,
+          "generatorCents": 54.55,
+          "generatorNearestJI": null,
+          "periods": 1,
+          "L": 17,
+          "s": 1,
+          "contrast": 17,
+          "lopsided": true,
+          "stepPattern": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            17
+          ],
+          "degrees": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "cents": [
+            0,
+            54.55,
+            109.09,
+            163.64,
+            218.18,
+            272.73
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                17
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                17,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                1,
+                1,
+                17,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                1,
+                17,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                1,
+                17,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                17,
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L5s",
+          "name": "Antimachinoid",
+          "notes": 6,
+          "generatorSteps": 2,
+          "generatorCents": 109.09,
+          "generatorNearestJI": {
+            "ratio": "16/15",
+            "justCents": 111.73,
+            "errorCents": -2.6
+          },
+          "periods": 1,
+          "L": 12,
+          "s": 2,
+          "contrast": 6,
+          "lopsided": true,
+          "stepPattern": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            12
+          ],
+          "degrees": [
+            0,
+            2,
+            4,
+            6,
+            8,
+            10
+          ],
+          "cents": [
+            0,
+            109.09,
+            218.18,
+            327.27,
+            436.36,
+            545.45
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                2,
+                12
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                12,
+                2
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                2,
+                2,
+                2,
+                12,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                2,
+                2,
+                12,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                2,
+                12,
+                2,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                12,
+                2,
+                2,
+                2,
+                2,
+                2
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L5s",
+          "name": "Antimachinoid",
+          "notes": 6,
+          "generatorSteps": 3,
+          "generatorCents": 163.64,
+          "generatorNearestJI": {
+            "ratio": "11/10",
+            "justCents": 165,
+            "errorCents": -1.4
+          },
+          "periods": 1,
+          "L": 7,
+          "s": 3,
+          "contrast": 2.33,
+          "lopsided": false,
+          "stepPattern": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            7
+          ],
+          "degrees": [
+            0,
+            3,
+            6,
+            9,
+            12,
+            15
+          ],
+          "cents": [
+            0,
+            163.64,
+            327.27,
+            490.91,
+            654.55,
+            818.18
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                3,
+                3,
+                3,
+                3,
+                3,
+                7
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                3,
+                3,
+                3,
+                3,
+                7,
+                3
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                3,
+                3,
+                3,
+                7,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                3,
+                3,
+                7,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                3,
+                7,
+                3,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                7,
+                3,
+                3,
+                3,
+                3,
+                3
+              ]
+            }
+          ],
+          "note": "Porcupine[6] — 164c generator ~ 10/9. Septimal."
+        },
+        {
+          "pattern": "2L4s",
+          "name": "Malic",
+          "notes": 6,
+          "generatorSteps": 1,
+          "generatorCents": 54.55,
+          "generatorNearestJI": null,
+          "periods": 2,
+          "L": 9,
+          "s": 1,
+          "contrast": 9,
+          "lopsided": true,
+          "stepPattern": [
+            1,
+            1,
+            9,
+            1,
+            1,
+            9
+          ],
+          "degrees": [
+            0,
+            1,
+            2,
+            11,
+            12,
+            13
+          ],
+          "cents": [
+            0,
+            54.55,
+            109.09,
+            600,
+            654.55,
+            709.09
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                1,
+                9,
+                1,
+                1,
+                9
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                9,
+                1,
+                1,
+                9,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                9,
+                1,
+                1,
+                9,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                1,
+                9,
+                1,
+                1,
+                9
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                1,
+                9,
+                1,
+                1,
+                9,
+                1
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                9,
+                1,
+                1,
+                9,
+                1,
+                1
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "2L4s",
+          "name": "Malic",
+          "notes": 6,
+          "generatorSteps": 2,
+          "generatorCents": 109.09,
+          "generatorNearestJI": {
+            "ratio": "16/15",
+            "justCents": 111.73,
+            "errorCents": -2.6
+          },
+          "periods": 2,
+          "L": 7,
+          "s": 2,
+          "contrast": 3.5,
+          "lopsided": false,
+          "stepPattern": [
+            2,
+            2,
+            7,
+            2,
+            2,
+            7
+          ],
+          "degrees": [
+            0,
+            2,
+            4,
+            11,
+            13,
+            15
+          ],
+          "cents": [
+            0,
+            109.09,
+            218.18,
+            600,
+            709.09,
+            818.18
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                2,
+                7,
+                2,
+                2,
+                7
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                2,
+                7,
+                2,
+                2,
+                7,
+                2
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                7,
+                2,
+                2,
+                7,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                2,
+                2,
+                7,
+                2,
+                2,
+                7
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                2,
+                7,
+                2,
+                2,
+                7,
+                2
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                7,
+                2,
+                2,
+                7,
+                2,
+                2
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "2L4s",
+          "name": "Malic",
+          "notes": 6,
+          "generatorSteps": 3,
+          "generatorCents": 163.64,
+          "generatorNearestJI": {
+            "ratio": "11/10",
+            "justCents": 165,
+            "errorCents": -1.4
+          },
+          "periods": 2,
+          "L": 5,
+          "s": 3,
+          "contrast": 1.67,
+          "lopsided": false,
+          "stepPattern": [
+            3,
+            3,
+            5,
+            3,
+            3,
+            5
+          ],
+          "degrees": [
+            0,
+            3,
+            6,
+            11,
+            14,
+            17
+          ],
+          "cents": [
+            0,
+            163.64,
+            327.27,
+            600,
+            763.64,
+            927.27
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                3,
+                3,
+                5,
+                3,
+                3,
+                5
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                3,
+                5,
+                3,
+                3,
+                5,
+                3
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                5,
+                3,
+                3,
+                5,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                3,
+                3,
+                5,
+                3,
+                3,
+                5
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                3,
+                5,
+                3,
+                3,
+                5,
+                3
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                5,
+                3,
+                3,
+                5,
+                3,
+                3
+              ]
+            }
+          ],
+          "note": "Half-octave period; pajara/srutal territory."
+        },
+        {
+          "pattern": "4L2s",
+          "name": "Citric",
+          "notes": 6,
+          "generatorSteps": 4,
+          "generatorCents": 218.18,
+          "generatorNearestJI": {
+            "ratio": "8/7",
+            "justCents": 231.17,
+            "errorCents": -13
+          },
+          "periods": 2,
+          "L": 4,
+          "s": 3,
+          "contrast": 1.33,
+          "lopsided": false,
+          "stepPattern": [
+            4,
+            4,
+            3,
+            4,
+            4,
+            3
+          ],
+          "degrees": [
+            0,
+            4,
+            8,
+            11,
+            15,
+            19
+          ],
+          "cents": [
+            0,
+            218.18,
+            436.36,
+            600,
+            818.18,
+            1036.36
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                4,
+                4,
+                3,
+                4,
+                4,
+                3
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                4,
+                3,
+                4,
+                4,
+                3,
+                4
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                3,
+                4,
+                4,
+                3,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                4,
+                4,
+                3,
+                4,
+                4,
+                3
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                4,
+                3,
+                4,
+                4,
+                3,
+                4
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                3,
+                4,
+                4,
+                3,
+                4,
+                4
+              ]
+            }
+          ],
+          "note": "Half-octave period, near-equal (4 4 3 4 4 3)."
+        },
+        {
+          "pattern": "4L2s",
+          "name": "Citric",
+          "notes": 6,
+          "generatorSteps": 5,
+          "generatorCents": 272.73,
+          "generatorNearestJI": {
+            "ratio": "7/6",
+            "justCents": 266.87,
+            "errorCents": 5.9
+          },
+          "periods": 2,
+          "L": 5,
+          "s": 1,
+          "contrast": 5,
+          "lopsided": true,
+          "stepPattern": [
+            5,
+            5,
+            1,
+            5,
+            5,
+            1
+          ],
+          "degrees": [
+            0,
+            5,
+            10,
+            11,
+            16,
+            21
+          ],
+          "cents": [
+            0,
+            272.73,
+            545.45,
+            600,
+            872.73,
+            1145.45
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                5,
+                5,
+                1,
+                5,
+                5,
+                1
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                5,
+                1,
+                5,
+                5,
+                1,
+                5
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                5,
+                5,
+                1,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                5,
+                5,
+                1,
+                5,
+                5,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                5,
+                1,
+                5,
+                5,
+                1,
+                5
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                1,
+                5,
+                5,
+                1,
+                5,
+                5
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "5L1s",
+          "name": "Machinoid",
+          "notes": 6,
+          "generatorSteps": 4,
+          "generatorCents": 218.18,
+          "generatorNearestJI": {
+            "ratio": "8/7",
+            "justCents": 231.17,
+            "errorCents": -13
+          },
+          "periods": 1,
+          "L": 4,
+          "s": 2,
+          "contrast": 2,
+          "lopsided": false,
+          "stepPattern": [
+            4,
+            4,
+            4,
+            4,
+            4,
+            2
+          ],
+          "degrees": [
+            0,
+            4,
+            8,
+            12,
+            16,
+            20
+          ],
+          "cents": [
+            0,
+            218.18,
+            436.36,
+            654.55,
+            872.73,
+            1090.91
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                4,
+                4,
+                4,
+                4,
+                4,
+                2
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                4,
+                4,
+                4,
+                4,
+                2,
+                4
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                4,
+                4,
+                4,
+                2,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                4,
+                4,
+                2,
+                4,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                4,
+                2,
+                4,
+                4,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                2,
+                4,
+                4,
+                4,
+                4,
+                4
+              ]
+            }
+          ],
+          "note": "Machine[6] — near-equal, approximates 8:9:10:11:12:13. Septimal."
+        },
+        {
+          "pattern": "1L6s",
+          "name": "Onyx",
+          "notes": 7,
+          "generatorSteps": 1,
+          "generatorCents": 54.55,
+          "generatorNearestJI": null,
+          "periods": 1,
+          "L": 16,
+          "s": 1,
+          "contrast": 16,
+          "lopsided": true,
+          "stepPattern": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            16
+          ],
+          "degrees": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "cents": [
+            0,
+            54.55,
+            109.09,
+            163.64,
+            218.18,
+            272.73,
+            327.27
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                16
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                16,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                16,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                1,
+                1,
+                16,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                1,
+                1,
+                16,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                1,
+                16,
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                16,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L6s",
+          "name": "Onyx",
+          "notes": 7,
+          "generatorSteps": 2,
+          "generatorCents": 109.09,
+          "generatorNearestJI": {
+            "ratio": "16/15",
+            "justCents": 111.73,
+            "errorCents": -2.6
+          },
+          "periods": 1,
+          "L": 10,
+          "s": 2,
+          "contrast": 5,
+          "lopsided": true,
+          "stepPattern": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            10
+          ],
+          "degrees": [
+            0,
+            2,
+            4,
+            6,
+            8,
+            10,
+            12
+          ],
+          "cents": [
+            0,
+            109.09,
+            218.18,
+            327.27,
+            436.36,
+            545.45,
+            654.55
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                2,
+                2,
+                10
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                2,
+                10,
+                2
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                10,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                2,
+                2,
+                2,
+                10,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                2,
+                2,
+                10,
+                2,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                2,
+                10,
+                2,
+                2,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                10,
+                2,
+                2,
+                2,
+                2,
+                2,
+                2
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L6s",
+          "name": "Onyx",
+          "notes": 7,
+          "generatorSteps": 3,
+          "generatorCents": 163.64,
+          "generatorNearestJI": {
+            "ratio": "11/10",
+            "justCents": 165,
+            "errorCents": -1.4
+          },
+          "periods": 1,
+          "L": 4,
+          "s": 3,
+          "contrast": 1.33,
+          "lopsided": false,
+          "stepPattern": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            4
+          ],
+          "degrees": [
+            0,
+            3,
+            6,
+            9,
+            12,
+            15,
+            18
+          ],
+          "cents": [
+            0,
+            163.64,
+            327.27,
+            490.91,
+            654.55,
+            818.18,
+            981.82
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                3,
+                3,
+                3,
+                3,
+                3,
+                3,
+                4
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                3,
+                3,
+                3,
+                3,
+                3,
+                4,
+                3
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                3,
+                3,
+                3,
+                3,
+                4,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                3,
+                3,
+                3,
+                4,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                3,
+                3,
+                4,
+                3,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                3,
+                4,
+                3,
+                3,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                4,
+                3,
+                3,
+                3,
+                3,
+                3,
+                3
+              ]
+            }
+          ],
+          "note": "PORCUPINE[7] — the flagship 22edo heptatonic (3 3 3 3 3 3 4). Septimal."
+        },
+        {
+          "pattern": "2L5s",
+          "name": "Antidiatonic",
+          "notes": 7,
+          "generatorSteps": 12,
+          "generatorCents": 654.55,
+          "generatorNearestJI": {
+            "ratio": "16/11",
+            "justCents": 648.68,
+            "errorCents": 5.9
+          },
+          "periods": 1,
+          "L": 6,
+          "s": 2,
+          "contrast": 3,
+          "lopsided": false,
+          "stepPattern": [
+            2,
+            2,
+            2,
+            6,
+            2,
+            2,
+            6
+          ],
+          "degrees": [
+            0,
+            2,
+            4,
+            6,
+            12,
+            14,
+            16
+          ],
+          "cents": [
+            0,
+            109.09,
+            218.18,
+            327.27,
+            654.55,
+            763.64,
+            872.73
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                2,
+                2,
+                6,
+                2,
+                2,
+                6
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                2,
+                2,
+                6,
+                2,
+                2,
+                6,
+                2
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                2,
+                6,
+                2,
+                2,
+                6,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                6,
+                2,
+                2,
+                6,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                2,
+                2,
+                6,
+                2,
+                2,
+                2,
+                6
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                2,
+                6,
+                2,
+                2,
+                2,
+                6,
+                2
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                6,
+                2,
+                2,
+                2,
+                6,
+                2,
+                2
+              ]
+            }
+          ],
+          "note": "Antidiatonic (mavila-flavoured) on a very flat 655c fifth."
+        },
+        {
+          "pattern": "3L4s",
+          "name": "Mosh",
+          "notes": 7,
+          "generatorSteps": 7,
+          "generatorCents": 381.82,
+          "generatorNearestJI": {
+            "ratio": "5/4",
+            "justCents": 386.31,
+            "errorCents": -4.5
+          },
+          "periods": 1,
+          "L": 6,
+          "s": 1,
+          "contrast": 6,
+          "lopsided": true,
+          "stepPattern": [
+            6,
+            1,
+            6,
+            1,
+            6,
+            1,
+            1
+          ],
+          "degrees": [
+            0,
+            6,
+            7,
+            13,
+            14,
+            20,
+            21
+          ],
+          "cents": [
+            0,
+            327.27,
+            381.82,
+            709.09,
+            763.64,
+            1090.91,
+            1145.45
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                6,
+                1,
+                6,
+                1,
+                6,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                6,
+                1,
+                6,
+                1,
+                1,
+                6
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                6,
+                1,
+                6,
+                1,
+                1,
+                6,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                6,
+                1,
+                1,
+                6,
+                1,
+                6
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                6,
+                1,
+                1,
+                6,
+                1,
+                6,
+                1
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                1,
+                1,
+                6,
+                1,
+                6,
+                1,
+                6
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                1,
+                6,
+                1,
+                6,
+                1,
+                6,
+                1
+              ]
+            }
+          ],
+          "note": "Mosh, but 22edo's 382c generator is a 5/4, NOT a neutral third — this is not a neutral scale in 22."
+        },
+        {
+          "pattern": "4L3s",
+          "name": "Smitonic",
+          "notes": 7,
+          "generatorSteps": 6,
+          "generatorCents": 327.27,
+          "generatorNearestJI": {
+            "ratio": "6/5",
+            "justCents": 315.64,
+            "errorCents": 11.6
+          },
+          "periods": 1,
+          "L": 4,
+          "s": 2,
+          "contrast": 2,
+          "lopsided": false,
+          "stepPattern": [
+            2,
+            4,
+            2,
+            4,
+            2,
+            4,
+            4
+          ],
+          "degrees": [
+            0,
+            2,
+            6,
+            8,
+            12,
+            14,
+            18
+          ],
+          "cents": [
+            0,
+            109.09,
+            327.27,
+            436.36,
+            654.55,
+            763.64,
+            981.82
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                4,
+                2,
+                4,
+                2,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                4,
+                2,
+                4,
+                2,
+                4,
+                4,
+                2
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                2,
+                4,
+                2,
+                4,
+                4,
+                2,
+                4
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                4,
+                2,
+                4,
+                4,
+                2,
+                4,
+                2
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                2,
+                4,
+                4,
+                2,
+                4,
+                2,
+                4
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                4,
+                4,
+                2,
+                4,
+                2,
+                4,
+                2
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                4,
+                2,
+                4,
+                2,
+                4,
+                2,
+                4
+              ]
+            }
+          ],
+          "note": "Smitonic on a 327c ~6/5 generator (hanson-like)."
+        },
+        {
+          "pattern": "5L2s",
+          "name": "Diatonic",
+          "notes": 7,
+          "generatorSteps": 13,
+          "generatorCents": 709.09,
+          "generatorNearestJI": {
+            "ratio": "3/2",
+            "justCents": 701.96,
+            "errorCents": 7.1
+          },
+          "periods": 1,
+          "L": 4,
+          "s": 1,
+          "contrast": 4,
+          "lopsided": false,
+          "stepPattern": [
+            4,
+            4,
+            4,
+            1,
+            4,
+            4,
+            1
+          ],
+          "degrees": [
+            0,
+            4,
+            8,
+            12,
+            13,
+            17,
+            21
+          ],
+          "cents": [
+            0,
+            218.18,
+            436.36,
+            654.55,
+            709.09,
+            927.27,
+            1145.45
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                4,
+                4,
+                4,
+                1,
+                4,
+                4,
+                1
+              ],
+              "name": "Lydian"
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                4,
+                4,
+                1,
+                4,
+                4,
+                1,
+                4
+              ],
+              "name": "Mixolydian"
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                4,
+                1,
+                4,
+                4,
+                1,
+                4,
+                4
+              ],
+              "name": "Aeolian"
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                4,
+                4,
+                1,
+                4,
+                4,
+                4
+              ],
+              "name": "Locrian"
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                4,
+                4,
+                1,
+                4,
+                4,
+                4,
+                1
+              ],
+              "name": "Ionian"
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                4,
+                1,
+                4,
+                4,
+                4,
+                1,
+                4
+              ],
+              "name": "Dorian"
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                1,
+                4,
+                4,
+                4,
+                1,
+                4,
+                4
+              ],
+              "name": "Phrygian"
+            }
+          ],
+          "note": "SUPERPYTH diatonic — 709c fifth. Its diatonic major third is 8\\22 = 436c = 9/7, so the major triad is a septimal SUPERMAJOR 14:18:21 and the minor triad is a SUBMINOR 6:7:9 (5\\22 = 7/6). The just 5/4 (7\\22) is NOT a diatonic degree — 4:5:6:7 needs a chromatic note."
+        }
+      ],
+      "nonMosStructures": [
+        {
+          "name": "Hexany (1·3·5·7)",
+          "size": 6,
+          "degrees": [
+            0,
+            5,
+            7,
+            12,
+            16,
+            18
+          ],
+          "kind": "7-limit CPS",
+          "note": "1/1 7/6 5/4 35/24 5/3 7/4. 35/24 and 5/4 are near-exact; 5/3 is 12c flat and 7/4 is 13c sharp.",
+          "stepPattern": [
+            5,
+            2,
+            5,
+            4,
+            2,
+            4
+          ],
+          "cents": [
+            0,
+            272.73,
+            381.82,
+            654.55,
+            872.73,
+            981.82
+          ]
+        },
+        {
+          "name": "Otonal 8:9:10:11:12:13:14",
+          "size": 7,
+          "degrees": [
+            0,
+            4,
+            7,
+            10,
+            13,
+            15,
+            18
+          ],
+          "kind": "harmonic segment",
+          "note": "22's 11/8 (10\\22, -6c) and 5/4 (7\\22, -5c) are excellent; the 9th (+14c), 13th (-22c) and 7th (+13c) are the weak links.",
+          "stepPattern": [
+            4,
+            3,
+            3,
+            3,
+            2,
+            3,
+            4
+          ],
+          "cents": [
+            0,
+            218.18,
+            381.82,
+            545.45,
+            709.09,
+            818.18,
+            981.82
+          ]
+        },
+        {
+          "name": "Superpyth harmonic minor",
+          "size": 7,
+          "degrees": [
+            0,
+            4,
+            5,
+            9,
+            13,
+            14,
+            21
+          ],
+          "kind": "MODMOS of 5L2s",
+          "note": "Aeolian (4 1 4 4 1 4 4) with the 7th raised by the chroma L-s = 3 steps.",
+          "stepPattern": [
+            4,
+            1,
+            4,
+            4,
+            1,
+            7,
+            1
+          ],
+          "cents": [
+            0,
+            218.18,
+            272.73,
+            490.91,
+            709.09,
+            763.64,
+            1145.45
+          ]
+        }
+      ]
+    },
+    "31": {
+      "edo": 31,
+      "stepCents": 38.71,
+      "bestFifth": {
+        "steps": 18,
+        "cents": 696.77,
+        "errorCents": -5.18
+      },
+      "supportedFamilies": [
+        "1L4s",
+        "2L3s",
+        "3L2s",
+        "4L1s",
+        "1L5s",
+        "5L1s",
+        "1L6s",
+        "2L5s",
+        "3L4s",
+        "4L3s",
+        "5L2s",
+        "6L1s"
+      ],
+      "unsupportedFamilies": [
+        {
+          "pattern": "2L4s",
+          "reason": "31 is not divisible by 2 periods"
+        },
+        {
+          "pattern": "4L2s",
+          "reason": "31 is not divisible by 2 periods"
+        },
+        {
+          "pattern": "3L3s",
+          "reason": "31 is not divisible by 3 periods"
+        }
+      ],
+      "scales": [
+        {
+          "pattern": "1L4s",
+          "name": "Pedal",
+          "notes": 5,
+          "generatorSteps": 1,
+          "generatorCents": 38.71,
+          "generatorNearestJI": null,
+          "periods": 1,
+          "L": 27,
+          "s": 1,
+          "contrast": 27,
+          "lopsided": true,
+          "stepPattern": [
+            1,
+            1,
+            1,
+            1,
+            27
+          ],
+          "degrees": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "cents": [
+            0,
+            38.71,
+            77.42,
+            116.13,
+            154.84
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                27
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                1,
+                1,
+                27,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                1,
+                27,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                27,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                27,
+                1,
+                1,
+                1,
+                1
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L4s",
+          "name": "Pedal",
+          "notes": 5,
+          "generatorSteps": 2,
+          "generatorCents": 77.42,
+          "generatorNearestJI": null,
+          "periods": 1,
+          "L": 23,
+          "s": 2,
+          "contrast": 11.5,
+          "lopsided": true,
+          "stepPattern": [
+            2,
+            2,
+            2,
+            2,
+            23
+          ],
+          "degrees": [
+            0,
+            2,
+            4,
+            6,
+            8
+          ],
+          "cents": [
+            0,
+            77.42,
+            154.84,
+            232.26,
+            309.68
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                23
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                2,
+                2,
+                2,
+                23,
+                2
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                2,
+                2,
+                23,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                2,
+                23,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                23,
+                2,
+                2,
+                2,
+                2
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L4s",
+          "name": "Pedal",
+          "notes": 5,
+          "generatorSteps": 3,
+          "generatorCents": 116.13,
+          "generatorNearestJI": {
+            "ratio": "16/15",
+            "justCents": 111.73,
+            "errorCents": 4.4
+          },
+          "periods": 1,
+          "L": 19,
+          "s": 3,
+          "contrast": 6.33,
+          "lopsided": true,
+          "stepPattern": [
+            3,
+            3,
+            3,
+            3,
+            19
+          ],
+          "degrees": [
+            0,
+            3,
+            6,
+            9,
+            12
+          ],
+          "cents": [
+            0,
+            116.13,
+            232.26,
+            348.39,
+            464.52
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                3,
+                3,
+                3,
+                3,
+                19
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                3,
+                3,
+                3,
+                19,
+                3
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                3,
+                3,
+                19,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                3,
+                19,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                19,
+                3,
+                3,
+                3,
+                3
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L4s",
+          "name": "Pedal",
+          "notes": 5,
+          "generatorSteps": 4,
+          "generatorCents": 154.84,
+          "generatorNearestJI": {
+            "ratio": "12/11",
+            "justCents": 150.64,
+            "errorCents": 4.2
+          },
+          "periods": 1,
+          "L": 15,
+          "s": 4,
+          "contrast": 3.75,
+          "lopsided": false,
+          "stepPattern": [
+            4,
+            4,
+            4,
+            4,
+            15
+          ],
+          "degrees": [
+            0,
+            4,
+            8,
+            12,
+            16
+          ],
+          "cents": [
+            0,
+            154.84,
+            309.68,
+            464.52,
+            619.35
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                4,
+                4,
+                4,
+                4,
+                15
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                4,
+                4,
+                4,
+                15,
+                4
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                4,
+                4,
+                15,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                4,
+                15,
+                4,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                15,
+                4,
+                4,
+                4,
+                4
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L4s",
+          "name": "Pedal",
+          "notes": 5,
+          "generatorSteps": 5,
+          "generatorCents": 193.55,
+          "generatorNearestJI": {
+            "ratio": "9/8",
+            "justCents": 203.91,
+            "errorCents": -10.4
+          },
+          "periods": 1,
+          "L": 11,
+          "s": 5,
+          "contrast": 2.2,
+          "lopsided": false,
+          "stepPattern": [
+            5,
+            5,
+            5,
+            5,
+            11
+          ],
+          "degrees": [
+            0,
+            5,
+            10,
+            15,
+            20
+          ],
+          "cents": [
+            0,
+            193.55,
+            387.1,
+            580.65,
+            774.19
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                5,
+                5,
+                5,
+                5,
+                11
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                5,
+                5,
+                5,
+                11,
+                5
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                5,
+                5,
+                11,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                5,
+                11,
+                5,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                11,
+                5,
+                5,
+                5,
+                5
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L4s",
+          "name": "Pedal",
+          "notes": 5,
+          "generatorSteps": 6,
+          "generatorCents": 232.26,
+          "generatorNearestJI": {
+            "ratio": "8/7",
+            "justCents": 231.17,
+            "errorCents": 1.1
+          },
+          "periods": 1,
+          "L": 7,
+          "s": 6,
+          "contrast": 1.17,
+          "lopsided": false,
+          "stepPattern": [
+            6,
+            6,
+            6,
+            6,
+            7
+          ],
+          "degrees": [
+            0,
+            6,
+            12,
+            18,
+            24
+          ],
+          "cents": [
+            0,
+            232.26,
+            464.52,
+            696.77,
+            929.03
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                6,
+                6,
+                6,
+                6,
+                7
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                6,
+                6,
+                6,
+                7,
+                6
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                6,
+                6,
+                7,
+                6,
+                6
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                6,
+                7,
+                6,
+                6,
+                6
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                7,
+                6,
+                6,
+                6,
+                6
+              ]
+            }
+          ],
+          "note": "SLENDRIC[5] — 232c generator = a near-just 8/7. Slendro-like. Septimal."
+        },
+        {
+          "pattern": "2L3s",
+          "name": "Pentic",
+          "notes": 5,
+          "generatorSteps": 13,
+          "generatorCents": 503.23,
+          "generatorNearestJI": {
+            "ratio": "4/3",
+            "justCents": 498.04,
+            "errorCents": 5.2
+          },
+          "periods": 1,
+          "L": 8,
+          "s": 5,
+          "contrast": 1.6,
+          "lopsided": false,
+          "stepPattern": [
+            8,
+            5,
+            8,
+            5,
+            5
+          ],
+          "degrees": [
+            0,
+            8,
+            13,
+            21,
+            26
+          ],
+          "cents": [
+            0,
+            309.68,
+            503.23,
+            812.9,
+            1006.45
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                8,
+                5,
+                8,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                5,
+                8,
+                5,
+                5,
+                8
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                8,
+                5,
+                5,
+                8,
+                5
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                5,
+                5,
+                8,
+                5,
+                8
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                5,
+                8,
+                5,
+                8,
+                5
+              ]
+            }
+          ],
+          "note": "The meantone pentatonic (4/3 generator)."
+        },
+        {
+          "pattern": "2L3s",
+          "name": "Pentic",
+          "notes": 5,
+          "generatorSteps": 14,
+          "generatorCents": 541.94,
+          "generatorNearestJI": {
+            "ratio": "11/8",
+            "justCents": 551.32,
+            "errorCents": -9.4
+          },
+          "periods": 1,
+          "L": 11,
+          "s": 3,
+          "contrast": 3.67,
+          "lopsided": false,
+          "stepPattern": [
+            11,
+            3,
+            11,
+            3,
+            3
+          ],
+          "degrees": [
+            0,
+            11,
+            14,
+            25,
+            28
+          ],
+          "cents": [
+            0,
+            425.81,
+            541.94,
+            967.74,
+            1083.87
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                11,
+                3,
+                11,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                3,
+                11,
+                3,
+                3,
+                11
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                11,
+                3,
+                3,
+                11,
+                3
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                3,
+                3,
+                11,
+                3,
+                11
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                3,
+                11,
+                3,
+                11,
+                3
+              ]
+            }
+          ],
+          "note": "Hard pentatonic on a 542c 11/8 generator. Undecimal."
+        },
+        {
+          "pattern": "2L3s",
+          "name": "Pentic",
+          "notes": 5,
+          "generatorSteps": 15,
+          "generatorCents": 580.65,
+          "generatorNearestJI": {
+            "ratio": "7/5",
+            "justCents": 582.51,
+            "errorCents": -1.9
+          },
+          "periods": 1,
+          "L": 14,
+          "s": 1,
+          "contrast": 14,
+          "lopsided": true,
+          "stepPattern": [
+            14,
+            1,
+            14,
+            1,
+            1
+          ],
+          "degrees": [
+            0,
+            14,
+            15,
+            29,
+            30
+          ],
+          "cents": [
+            0,
+            541.94,
+            580.65,
+            1122.58,
+            1161.29
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                14,
+                1,
+                14,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                14,
+                1,
+                1,
+                14
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                14,
+                1,
+                1,
+                14,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                1,
+                14,
+                1,
+                14
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                1,
+                14,
+                1,
+                14,
+                1
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "3L2s",
+          "name": "Antipentic",
+          "notes": 5,
+          "generatorSteps": 11,
+          "generatorCents": 425.81,
+          "generatorNearestJI": {
+            "ratio": "9/7",
+            "justCents": 435.08,
+            "errorCents": -9.3
+          },
+          "periods": 1,
+          "L": 9,
+          "s": 2,
+          "contrast": 4.5,
+          "lopsided": true,
+          "stepPattern": [
+            2,
+            9,
+            2,
+            9,
+            9
+          ],
+          "degrees": [
+            0,
+            2,
+            11,
+            13,
+            22
+          ],
+          "cents": [
+            0,
+            77.42,
+            425.81,
+            503.23,
+            851.61
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                9,
+                2,
+                9,
+                9
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                9,
+                2,
+                9,
+                9,
+                2
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                2,
+                9,
+                9,
+                2,
+                9
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                9,
+                9,
+                2,
+                9,
+                2
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                9,
+                2,
+                9,
+                2,
+                9
+              ]
+            }
+          ],
+          "note": "Antipentic on 426c ~ 9/7. Septimal."
+        },
+        {
+          "pattern": "3L2s",
+          "name": "Antipentic",
+          "notes": 5,
+          "generatorSteps": 12,
+          "generatorCents": 464.52,
+          "generatorNearestJI": {
+            "ratio": "21/16",
+            "justCents": 470.78,
+            "errorCents": -6.3
+          },
+          "periods": 1,
+          "L": 7,
+          "s": 5,
+          "contrast": 1.4,
+          "lopsided": false,
+          "stepPattern": [
+            5,
+            7,
+            5,
+            7,
+            7
+          ],
+          "degrees": [
+            0,
+            5,
+            12,
+            17,
+            24
+          ],
+          "cents": [
+            0,
+            193.55,
+            464.52,
+            658.06,
+            929.03
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                5,
+                7,
+                5,
+                7,
+                7
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                7,
+                5,
+                7,
+                7,
+                5
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                5,
+                7,
+                7,
+                5,
+                7
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                7,
+                7,
+                5,
+                7,
+                5
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                7,
+                5,
+                7,
+                5,
+                7
+              ]
+            }
+          ],
+          "note": "Antipentic on 465c ~ 21/16."
+        },
+        {
+          "pattern": "4L1s",
+          "name": "Manual",
+          "notes": 5,
+          "generatorSteps": 7,
+          "generatorCents": 270.97,
+          "generatorNearestJI": {
+            "ratio": "7/6",
+            "justCents": 266.87,
+            "errorCents": 4.1
+          },
+          "periods": 1,
+          "L": 7,
+          "s": 3,
+          "contrast": 2.33,
+          "lopsided": false,
+          "stepPattern": [
+            7,
+            7,
+            7,
+            7,
+            3
+          ],
+          "degrees": [
+            0,
+            7,
+            14,
+            21,
+            28
+          ],
+          "cents": [
+            0,
+            270.97,
+            541.94,
+            812.9,
+            1083.87
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                7,
+                7,
+                7,
+                7,
+                3
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                7,
+                7,
+                7,
+                3,
+                7
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                7,
+                7,
+                3,
+                7,
+                7
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                7,
+                3,
+                7,
+                7,
+                7
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                3,
+                7,
+                7,
+                7,
+                7
+              ]
+            }
+          ],
+          "note": "Manual pentatonic on a 271c ~7/6 generator. Septimal."
+        },
+        {
+          "pattern": "1L5s",
+          "name": "Antimachinoid",
+          "notes": 6,
+          "generatorSteps": 1,
+          "generatorCents": 38.71,
+          "generatorNearestJI": null,
+          "periods": 1,
+          "L": 26,
+          "s": 1,
+          "contrast": 26,
+          "lopsided": true,
+          "stepPattern": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            26
+          ],
+          "degrees": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "cents": [
+            0,
+            38.71,
+            77.42,
+            116.13,
+            154.84,
+            193.55
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                26
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                26,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                1,
+                1,
+                26,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                1,
+                26,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                1,
+                26,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                26,
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L5s",
+          "name": "Antimachinoid",
+          "notes": 6,
+          "generatorSteps": 2,
+          "generatorCents": 77.42,
+          "generatorNearestJI": null,
+          "periods": 1,
+          "L": 21,
+          "s": 2,
+          "contrast": 10.5,
+          "lopsided": true,
+          "stepPattern": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            21
+          ],
+          "degrees": [
+            0,
+            2,
+            4,
+            6,
+            8,
+            10
+          ],
+          "cents": [
+            0,
+            77.42,
+            154.84,
+            232.26,
+            309.68,
+            387.1
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                2,
+                21
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                21,
+                2
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                2,
+                2,
+                2,
+                21,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                2,
+                2,
+                21,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                2,
+                21,
+                2,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                21,
+                2,
+                2,
+                2,
+                2,
+                2
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L5s",
+          "name": "Antimachinoid",
+          "notes": 6,
+          "generatorSteps": 3,
+          "generatorCents": 116.13,
+          "generatorNearestJI": {
+            "ratio": "16/15",
+            "justCents": 111.73,
+            "errorCents": 4.4
+          },
+          "periods": 1,
+          "L": 16,
+          "s": 3,
+          "contrast": 5.33,
+          "lopsided": true,
+          "stepPattern": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            16
+          ],
+          "degrees": [
+            0,
+            3,
+            6,
+            9,
+            12,
+            15
+          ],
+          "cents": [
+            0,
+            116.13,
+            232.26,
+            348.39,
+            464.52,
+            580.65
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                3,
+                3,
+                3,
+                3,
+                3,
+                16
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                3,
+                3,
+                3,
+                3,
+                16,
+                3
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                3,
+                3,
+                3,
+                16,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                3,
+                3,
+                16,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                3,
+                16,
+                3,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                16,
+                3,
+                3,
+                3,
+                3,
+                3
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L5s",
+          "name": "Antimachinoid",
+          "notes": 6,
+          "generatorSteps": 4,
+          "generatorCents": 154.84,
+          "generatorNearestJI": {
+            "ratio": "12/11",
+            "justCents": 150.64,
+            "errorCents": 4.2
+          },
+          "periods": 1,
+          "L": 11,
+          "s": 4,
+          "contrast": 2.75,
+          "lopsided": false,
+          "stepPattern": [
+            4,
+            4,
+            4,
+            4,
+            4,
+            11
+          ],
+          "degrees": [
+            0,
+            4,
+            8,
+            12,
+            16,
+            20
+          ],
+          "cents": [
+            0,
+            154.84,
+            309.68,
+            464.52,
+            619.35,
+            774.19
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                4,
+                4,
+                4,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                4,
+                4,
+                4,
+                4,
+                11,
+                4
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                4,
+                4,
+                4,
+                11,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                4,
+                4,
+                11,
+                4,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                4,
+                11,
+                4,
+                4,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                11,
+                4,
+                4,
+                4,
+                4,
+                4
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L5s",
+          "name": "Antimachinoid",
+          "notes": 6,
+          "generatorSteps": 5,
+          "generatorCents": 193.55,
+          "generatorNearestJI": {
+            "ratio": "9/8",
+            "justCents": 203.91,
+            "errorCents": -10.4
+          },
+          "periods": 1,
+          "L": 6,
+          "s": 5,
+          "contrast": 1.2,
+          "lopsided": false,
+          "stepPattern": [
+            5,
+            5,
+            5,
+            5,
+            5,
+            6
+          ],
+          "degrees": [
+            0,
+            5,
+            10,
+            15,
+            20,
+            25
+          ],
+          "cents": [
+            0,
+            193.55,
+            387.1,
+            580.65,
+            774.19,
+            967.74
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                5,
+                5,
+                5,
+                5,
+                5,
+                6
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                5,
+                5,
+                5,
+                5,
+                6,
+                5
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                5,
+                5,
+                5,
+                6,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                5,
+                5,
+                6,
+                5,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                5,
+                6,
+                5,
+                5,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                6,
+                5,
+                5,
+                5,
+                5,
+                5
+              ]
+            }
+          ],
+          "note": "Near-equal hexatonic (five 194c steps + one 232c)."
+        },
+        {
+          "pattern": "5L1s",
+          "name": "Machinoid",
+          "notes": 6,
+          "generatorSteps": 6,
+          "generatorCents": 232.26,
+          "generatorNearestJI": {
+            "ratio": "8/7",
+            "justCents": 231.17,
+            "errorCents": 1.1
+          },
+          "periods": 1,
+          "L": 6,
+          "s": 1,
+          "contrast": 6,
+          "lopsided": true,
+          "stepPattern": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            1
+          ],
+          "degrees": [
+            0,
+            6,
+            12,
+            18,
+            24,
+            30
+          ],
+          "cents": [
+            0,
+            232.26,
+            464.52,
+            696.77,
+            929.03,
+            1161.29
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                6,
+                6,
+                6,
+                6,
+                6,
+                1
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                6,
+                6,
+                6,
+                6,
+                1,
+                6
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                6,
+                6,
+                6,
+                1,
+                6,
+                6
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                6,
+                6,
+                1,
+                6,
+                6,
+                6
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                6,
+                1,
+                6,
+                6,
+                6,
+                6
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                1,
+                6,
+                6,
+                6,
+                6,
+                6
+              ]
+            }
+          ],
+          "note": "Slendric[6] — six 8/7s, one small step. Septimal."
+        },
+        {
+          "pattern": "1L6s",
+          "name": "Onyx",
+          "notes": 7,
+          "generatorSteps": 1,
+          "generatorCents": 38.71,
+          "generatorNearestJI": null,
+          "periods": 1,
+          "L": 25,
+          "s": 1,
+          "contrast": 25,
+          "lopsided": true,
+          "stepPattern": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            25
+          ],
+          "degrees": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "cents": [
+            0,
+            38.71,
+            77.42,
+            116.13,
+            154.84,
+            193.55,
+            232.26
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                25
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                25,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                1,
+                1,
+                1,
+                25,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                1,
+                1,
+                25,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                1,
+                1,
+                25,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                1,
+                25,
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                25,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L6s",
+          "name": "Onyx",
+          "notes": 7,
+          "generatorSteps": 2,
+          "generatorCents": 77.42,
+          "generatorNearestJI": null,
+          "periods": 1,
+          "L": 19,
+          "s": 2,
+          "contrast": 9.5,
+          "lopsided": true,
+          "stepPattern": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            19
+          ],
+          "degrees": [
+            0,
+            2,
+            4,
+            6,
+            8,
+            10,
+            12
+          ],
+          "cents": [
+            0,
+            77.42,
+            154.84,
+            232.26,
+            309.68,
+            387.1,
+            464.52
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                2,
+                2,
+                19
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                2,
+                19,
+                2
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                2,
+                2,
+                2,
+                2,
+                19,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                2,
+                2,
+                2,
+                19,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                2,
+                2,
+                19,
+                2,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                2,
+                19,
+                2,
+                2,
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                19,
+                2,
+                2,
+                2,
+                2,
+                2,
+                2
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L6s",
+          "name": "Onyx",
+          "notes": 7,
+          "generatorSteps": 3,
+          "generatorCents": 116.13,
+          "generatorNearestJI": {
+            "ratio": "16/15",
+            "justCents": 111.73,
+            "errorCents": 4.4
+          },
+          "periods": 1,
+          "L": 13,
+          "s": 3,
+          "contrast": 4.33,
+          "lopsided": true,
+          "stepPattern": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            13
+          ],
+          "degrees": [
+            0,
+            3,
+            6,
+            9,
+            12,
+            15,
+            18
+          ],
+          "cents": [
+            0,
+            116.13,
+            232.26,
+            348.39,
+            464.52,
+            580.65,
+            696.77
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                3,
+                3,
+                3,
+                3,
+                3,
+                3,
+                13
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                3,
+                3,
+                3,
+                3,
+                3,
+                13,
+                3
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                3,
+                3,
+                3,
+                3,
+                13,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                3,
+                3,
+                3,
+                13,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                3,
+                3,
+                13,
+                3,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                3,
+                13,
+                3,
+                3,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                13,
+                3,
+                3,
+                3,
+                3,
+                3,
+                3
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "1L6s",
+          "name": "Onyx",
+          "notes": 7,
+          "generatorSteps": 4,
+          "generatorCents": 154.84,
+          "generatorNearestJI": {
+            "ratio": "12/11",
+            "justCents": 150.64,
+            "errorCents": 4.2
+          },
+          "periods": 1,
+          "L": 7,
+          "s": 4,
+          "contrast": 1.75,
+          "lopsided": false,
+          "stepPattern": [
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            7
+          ],
+          "degrees": [
+            0,
+            4,
+            8,
+            12,
+            16,
+            20,
+            24
+          ],
+          "cents": [
+            0,
+            154.84,
+            309.68,
+            464.52,
+            619.35,
+            774.19,
+            929.03
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                4,
+                4,
+                4,
+                4,
+                4,
+                4,
+                7
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                4,
+                4,
+                4,
+                4,
+                4,
+                7,
+                4
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                4,
+                4,
+                4,
+                4,
+                7,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                4,
+                4,
+                4,
+                7,
+                4,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                4,
+                4,
+                7,
+                4,
+                4,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                4,
+                7,
+                4,
+                4,
+                4,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                7,
+                4,
+                4,
+                4,
+                4,
+                4,
+                4
+              ]
+            }
+          ],
+          "note": "Porcupine[7] shape, but 155c is a poor porcupine generator in 31."
+        },
+        {
+          "pattern": "2L5s",
+          "name": "Antidiatonic",
+          "notes": 7,
+          "generatorSteps": 16,
+          "generatorCents": 619.35,
+          "generatorNearestJI": {
+            "ratio": "10/7",
+            "justCents": 617.49,
+            "errorCents": 1.9
+          },
+          "periods": 1,
+          "L": 13,
+          "s": 1,
+          "contrast": 13,
+          "lopsided": true,
+          "stepPattern": [
+            1,
+            1,
+            1,
+            13,
+            1,
+            1,
+            13
+          ],
+          "degrees": [
+            0,
+            1,
+            2,
+            3,
+            16,
+            17,
+            18
+          ],
+          "cents": [
+            0,
+            38.71,
+            77.42,
+            116.13,
+            619.35,
+            658.06,
+            696.77
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                1,
+                1,
+                13,
+                1,
+                1,
+                13
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                1,
+                13,
+                1,
+                1,
+                13,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                13,
+                1,
+                1,
+                13,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                13,
+                1,
+                1,
+                13,
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                1,
+                1,
+                13,
+                1,
+                1,
+                1,
+                13
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                1,
+                13,
+                1,
+                1,
+                1,
+                13,
+                1
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                13,
+                1,
+                1,
+                1,
+                13,
+                1,
+                1
+              ]
+            }
+          ],
+          "note": null
+        },
+        {
+          "pattern": "2L5s",
+          "name": "Antidiatonic",
+          "notes": 7,
+          "generatorSteps": 17,
+          "generatorCents": 658.06,
+          "generatorNearestJI": {
+            "ratio": "16/11",
+            "justCents": 648.68,
+            "errorCents": 9.4
+          },
+          "periods": 1,
+          "L": 8,
+          "s": 3,
+          "contrast": 2.67,
+          "lopsided": false,
+          "stepPattern": [
+            3,
+            3,
+            3,
+            8,
+            3,
+            3,
+            8
+          ],
+          "degrees": [
+            0,
+            3,
+            6,
+            9,
+            17,
+            20,
+            23
+          ],
+          "cents": [
+            0,
+            116.13,
+            232.26,
+            348.39,
+            658.06,
+            774.19,
+            890.32
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                3,
+                3,
+                3,
+                8,
+                3,
+                3,
+                8
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                3,
+                3,
+                8,
+                3,
+                3,
+                8,
+                3
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                3,
+                8,
+                3,
+                3,
+                8,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                8,
+                3,
+                3,
+                8,
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                3,
+                3,
+                8,
+                3,
+                3,
+                3,
+                8
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                3,
+                8,
+                3,
+                3,
+                3,
+                8,
+                3
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                8,
+                3,
+                3,
+                3,
+                8,
+                3,
+                3
+              ]
+            }
+          ],
+          "note": "Antidiatonic on a 658c fifth — very flat mavila."
+        },
+        {
+          "pattern": "3L4s",
+          "name": "Mosh",
+          "notes": 7,
+          "generatorSteps": 9,
+          "generatorCents": 348.39,
+          "generatorNearestJI": {
+            "ratio": "11/9",
+            "justCents": 347.41,
+            "errorCents": 1
+          },
+          "periods": 1,
+          "L": 5,
+          "s": 4,
+          "contrast": 1.25,
+          "lopsided": false,
+          "stepPattern": [
+            5,
+            4,
+            5,
+            4,
+            5,
+            4,
+            4
+          ],
+          "degrees": [
+            0,
+            5,
+            9,
+            14,
+            18,
+            23,
+            27
+          ],
+          "cents": [
+            0,
+            193.55,
+            348.39,
+            541.94,
+            696.77,
+            890.32,
+            1045.16
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                5,
+                4,
+                5,
+                4,
+                5,
+                4,
+                4
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                4,
+                5,
+                4,
+                5,
+                4,
+                4,
+                5
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                5,
+                4,
+                5,
+                4,
+                4,
+                5,
+                4
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                4,
+                5,
+                4,
+                4,
+                5,
+                4,
+                5
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                5,
+                4,
+                4,
+                5,
+                4,
+                5,
+                4
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                4,
+                4,
+                5,
+                4,
+                5,
+                4,
+                5
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                4,
+                5,
+                4,
+                5,
+                4,
+                5,
+                4
+              ]
+            }
+          ],
+          "note": "MOHAJIRA[7] — 348c generator = a near-just 11/9 NEUTRAL third. The principal neutral heptatonic."
+        },
+        {
+          "pattern": "3L4s",
+          "name": "Mosh",
+          "notes": 7,
+          "generatorSteps": 10,
+          "generatorCents": 387.1,
+          "generatorNearestJI": {
+            "ratio": "5/4",
+            "justCents": 386.31,
+            "errorCents": 0.8
+          },
+          "periods": 1,
+          "L": 9,
+          "s": 1,
+          "contrast": 9,
+          "lopsided": true,
+          "stepPattern": [
+            9,
+            1,
+            9,
+            1,
+            9,
+            1,
+            1
+          ],
+          "degrees": [
+            0,
+            9,
+            10,
+            19,
+            20,
+            29,
+            30
+          ],
+          "cents": [
+            0,
+            348.39,
+            387.1,
+            735.48,
+            774.19,
+            1122.58,
+            1161.29
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                9,
+                1,
+                9,
+                1,
+                9,
+                1,
+                1
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                1,
+                9,
+                1,
+                9,
+                1,
+                1,
+                9
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                9,
+                1,
+                9,
+                1,
+                1,
+                9,
+                1
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                1,
+                9,
+                1,
+                1,
+                9,
+                1,
+                9
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                9,
+                1,
+                1,
+                9,
+                1,
+                9,
+                1
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                1,
+                1,
+                9,
+                1,
+                9,
+                1,
+                9
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                1,
+                9,
+                1,
+                9,
+                1,
+                9,
+                1
+              ]
+            }
+          ],
+          "note": "Same family on a 387c 5/4 generator — lopsided, not neutral."
+        },
+        {
+          "pattern": "4L3s",
+          "name": "Smitonic",
+          "notes": 7,
+          "generatorSteps": 8,
+          "generatorCents": 309.68,
+          "generatorNearestJI": {
+            "ratio": "6/5",
+            "justCents": 315.64,
+            "errorCents": -6
+          },
+          "periods": 1,
+          "L": 7,
+          "s": 1,
+          "contrast": 7,
+          "lopsided": true,
+          "stepPattern": [
+            1,
+            7,
+            1,
+            7,
+            1,
+            7,
+            7
+          ],
+          "degrees": [
+            0,
+            1,
+            8,
+            9,
+            16,
+            17,
+            24
+          ],
+          "cents": [
+            0,
+            38.71,
+            309.68,
+            348.39,
+            619.35,
+            658.06,
+            929.03
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                1,
+                7,
+                1,
+                7,
+                1,
+                7,
+                7
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                7,
+                1,
+                7,
+                1,
+                7,
+                7,
+                1
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                1,
+                7,
+                1,
+                7,
+                7,
+                1,
+                7
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                7,
+                1,
+                7,
+                7,
+                1,
+                7,
+                1
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                1,
+                7,
+                7,
+                1,
+                7,
+                1,
+                7
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                7,
+                7,
+                1,
+                7,
+                1,
+                7,
+                1
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                7,
+                1,
+                7,
+                1,
+                7,
+                1,
+                7
+              ]
+            }
+          ],
+          "note": "HANSON/KLEISMIC[7] — 310c generator ~ 6/5."
+        },
+        {
+          "pattern": "5L2s",
+          "name": "Diatonic",
+          "notes": 7,
+          "generatorSteps": 18,
+          "generatorCents": 696.77,
+          "generatorNearestJI": {
+            "ratio": "3/2",
+            "justCents": 701.96,
+            "errorCents": -5.2
+          },
+          "periods": 1,
+          "L": 5,
+          "s": 3,
+          "contrast": 1.67,
+          "lopsided": false,
+          "stepPattern": [
+            5,
+            5,
+            5,
+            3,
+            5,
+            5,
+            3
+          ],
+          "degrees": [
+            0,
+            5,
+            10,
+            15,
+            18,
+            23,
+            28
+          ],
+          "cents": [
+            0,
+            193.55,
+            387.1,
+            580.65,
+            696.77,
+            890.32,
+            1083.87
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                5,
+                5,
+                5,
+                3,
+                5,
+                5,
+                3
+              ],
+              "name": "Lydian"
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                5,
+                5,
+                3,
+                5,
+                5,
+                3,
+                5
+              ],
+              "name": "Mixolydian"
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                5,
+                3,
+                5,
+                5,
+                3,
+                5,
+                5
+              ],
+              "name": "Aeolian"
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                3,
+                5,
+                5,
+                3,
+                5,
+                5,
+                5
+              ],
+              "name": "Locrian"
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                5,
+                5,
+                3,
+                5,
+                5,
+                5,
+                3
+              ],
+              "name": "Ionian"
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                5,
+                3,
+                5,
+                5,
+                5,
+                3,
+                5
+              ],
+              "name": "Dorian"
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                3,
+                5,
+                5,
+                5,
+                3,
+                5,
+                5
+              ],
+              "name": "Phrygian"
+            }
+          ],
+          "note": "MEANTONE diatonic — 696.8c fifth is essentially exact 1/4-comma meantone."
+        },
+        {
+          "pattern": "6L1s",
+          "name": "Archeotonic",
+          "notes": 7,
+          "generatorSteps": 5,
+          "generatorCents": 193.55,
+          "generatorNearestJI": {
+            "ratio": "9/8",
+            "justCents": 203.91,
+            "errorCents": -10.4
+          },
+          "periods": 1,
+          "L": 5,
+          "s": 1,
+          "contrast": 5,
+          "lopsided": true,
+          "stepPattern": [
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            1
+          ],
+          "degrees": [
+            0,
+            5,
+            10,
+            15,
+            20,
+            25,
+            30
+          ],
+          "cents": [
+            0,
+            193.55,
+            387.1,
+            580.65,
+            774.19,
+            967.74,
+            1161.29
+          ],
+          "modes": [
+            {
+              "rotation": 0,
+              "steps": [
+                5,
+                5,
+                5,
+                5,
+                5,
+                5,
+                1
+              ]
+            },
+            {
+              "rotation": 1,
+              "steps": [
+                5,
+                5,
+                5,
+                5,
+                5,
+                1,
+                5
+              ]
+            },
+            {
+              "rotation": 2,
+              "steps": [
+                5,
+                5,
+                5,
+                5,
+                1,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 3,
+              "steps": [
+                5,
+                5,
+                5,
+                1,
+                5,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 4,
+              "steps": [
+                5,
+                5,
+                1,
+                5,
+                5,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 5,
+              "steps": [
+                5,
+                1,
+                5,
+                5,
+                5,
+                5,
+                5
+              ]
+            },
+            {
+              "rotation": 6,
+              "steps": [
+                1,
+                5,
+                5,
+                5,
+                5,
+                5,
+                5
+              ]
+            }
+          ],
+          "note": "Near-equiheptatonic (six 194c steps + one 39c)."
+        }
+      ],
+      "nonMosStructures": [
+        {
+          "name": "Hexany (1·3·5·7)",
+          "size": 6,
+          "degrees": [
+            0,
+            7,
+            10,
+            17,
+            23,
+            25
+          ],
+          "kind": "7-limit CPS",
+          "note": "1/1 7/6 5/4 35/24 5/3 7/4. 31edo is one of the best 7-limit EDOs — this sings.",
+          "stepPattern": [
+            7,
+            3,
+            7,
+            6,
+            2,
+            6
+          ],
+          "cents": [
+            0,
+            270.97,
+            387.1,
+            658.06,
+            890.32,
+            967.74
+          ]
+        },
+        {
+          "name": "Otonal 8:9:10:11:12:13:14",
+          "size": 7,
+          "degrees": [
+            0,
+            5,
+            10,
+            14,
+            18,
+            22,
+            25
+          ],
+          "kind": "harmonic segment",
+          "note": "All seven harmonics within ~11c.",
+          "stepPattern": [
+            5,
+            5,
+            4,
+            4,
+            4,
+            3,
+            6
+          ],
+          "cents": [
+            0,
+            193.55,
+            387.1,
+            541.94,
+            696.77,
+            851.61,
+            967.74
+          ]
+        },
+        {
+          "name": "Maqam Rast",
+          "size": 7,
+          "degrees": [
+            0,
+            5,
+            9,
+            13,
+            18,
+            23,
+            27
+          ],
+          "kind": "MODMOS of 3L4s",
+          "note": "Same step multiset as mohajira (3 large / 4 small) but arranged L s s L L s s — NOT a MOS rotation.",
+          "stepPattern": [
+            5,
+            4,
+            4,
+            5,
+            5,
+            4,
+            4
+          ],
+          "cents": [
+            0,
+            193.55,
+            348.39,
+            503.23,
+            696.77,
+            890.32,
+            1045.16
+          ]
+        },
+        {
+          "name": "Neutral pentatonic",
+          "size": 5,
+          "degrees": [
+            0,
+            9,
+            13,
+            18,
+            27
+          ],
+          "kind": "subset of mohajira",
+          "note": "Two neutral thirds framing the fifth.",
+          "stepPattern": [
+            9,
+            4,
+            5,
+            9,
+            4
+          ],
+          "cents": [
+            0,
+            348.39,
+            503.23,
+            696.77,
+            1045.16
+          ]
+        }
+      ]
+    }
+  }
+}
