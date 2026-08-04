@@ -14,7 +14,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   NoteData, NoteEntryProject, Duration, MeasureTimeSig,
   DURATION_ORDER, DURATION_NAMES, DURATION_SLOTS,
-  measureSlots, noteSlots,
+  measureSlots, noteSlots, slotsToTimeSig,
   loadProjects, saveProject, generateJianpuMusicXML,
 } from "@/lib/noteEntryData";
 import {
@@ -1949,13 +1949,18 @@ export default function JianpuMode({ controlledActiveId, onBack, embedded = fals
     // it lines up with the number / title.  Shown at each group start (its meter)
     // and wherever a meter is explicitly set.  Also captured on export.
     if (cycleMode) {
-      // Cycle mode has no metre to print.  What's worth knowing instead is the
-      // cycle's LENGTH in eighths, and whether it's still open (no end marked).
+      // A cycle has no metre by design, but the partition it spells is the useful
+      // thing to read under the bar — and it's exactly what the bar EXPORTS as, so
+      // the page, the PDF and the MusicXML all agree.  Derived from the live slot
+      // count (not the saved project, whose notes lag the edit buffer) via the
+      // same rule the exporter uses, so a cycle holding 16ths prints /16 instead
+      // of being rounded to a wrong number of eighths.  Still open (no end
+      // marked) → dimmed and trailed off, since the length can still grow.
       const closed = project.setup.perBarCycleSlots?.[m] != null;
-      const eighths = Math.round(totalSlotsOf(m) / EIGHTH_SLOTS);
+      const ts = slotsToTimeSig(totalSlotsOf(m));
       svgSystems.push(<text key={`cyc-${m}`} x={left} y={barBot(m) + 16} fill={WHITE}
         fontSize={13} fontWeight="bold" fontFamily="Helvetica, Arial, sans-serif"
-        opacity={closed ? 1 : 0.45}>{closed ? `⟳${eighths}` : `⟳${eighths}…`}</text>);
+        opacity={closed ? 1 : 0.45}>{`${ts.num}/${ts.den}${closed ? "" : "…"}`}</text>);
     } else if (layout.startOf[m] === m || project.setup.perBarTimeSig?.[m]) {
       const eff = effectiveTs(m);
       svgSystems.push(<text key={`ts-${m}`} x={left} y={barBot(m) + 16} fill={WHITE}

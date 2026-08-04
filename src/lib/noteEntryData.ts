@@ -505,7 +505,14 @@ export function barSlots(project: NoteEntryProject, m: number): number {
  *  being rounded to a wrong number of eighths. */
 export function barTimeSig(project: NoteEntryProject, m: number): MeasureTimeSig {
   if (!project.cycleMode) return project.setup.perBarTimeSig?.[m] ?? project.setup.defaultTimeSig;
-  const slots = barSlots(project, m);
+  return slotsToTimeSig(barSlots(project, m));
+}
+
+/** Slots → the metre they spell, coarsest denominator that divides exactly.
+ *  Split out of `barTimeSig` so the editor can PRINT the same signature a bar
+ *  will EXPORT as, without having to go through the saved project (its notes
+ *  lag the live edit buffer, which would show a stale length for open cycles). */
+export function slotsToTimeSig(slots: number): MeasureTimeSig {
   for (const den of [8, 16, 32]) {
     const unit = 32 / den;
     if (slots % unit === 0) return { num: slots / unit, den };
