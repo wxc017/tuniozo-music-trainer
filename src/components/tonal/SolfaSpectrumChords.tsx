@@ -678,27 +678,33 @@ const RAW_MODES: RawMode[] = [
   { id: "augment6",  label: "Augmented",   short: "aug",  regions: ["", RG.M2, RG.M3, RG.P4, RG.P5, RG.M6, RG.M7], sym: [0, 3, 4, 7, 8, 11],       arp: [0, 2, 4] },
   { id: "octWH",     label: "Octatonic °",  short: "oct°", regions: ["", RG.M2, RG.M3, RG.P4, RG.P5, RG.M6, RG.M7], sym: [0, 2, 3, 5, 6, 8, 9, 11], arp: [0, 2, 4, 6] },
   { id: "octHW",     label: "Octatonic 7",  short: "oct7", regions: ["", RG.M2, RG.M3, RG.P4, RG.P5, RG.M6, RG.M7], sym: [0, 1, 3, 4, 6, 7, 9, 10], arp: [0, 2, 4, 6] },
-  // ── Neutral heptatonic MOS — named by its L/s step pattern rather than by a
-  // repertoire.  Kleeth is LssLsLs: 1 2 ~3 4 5 ~6 ~7.
-  { id: "kleeth", label: "Kleeth", short: "kleeth", regions: ["", RG.M2, RG.n3, RG.P4, RG.P5, RG.n6, RG.n7] },
-  // ── Heptatonics from the Xenharmonic Wiki's "31edo modes" list, entered as
-  // their own step patterns in dieses.  Names are the page's, verbatim where they
-  // fit on a chip.  mode31 derives the regions and the sub-band pins, so a
-  // scale's septimal / neutral degrees hold their identity in every band column
-  // while its ordinary degrees still follow it — entering the major scale as
-  // 5 5 3 5 5 5 3 yields no pins at all.
+  // ── The four PARENT diatonics of the septimal / neutral families, entered as
+  // their step patterns in dieses (31-EDO).  mode31 derives the regions and the
+  // sub-band pins, so a scale's septimal / neutral degrees hold their identity in
+  // every band column while its ordinary degrees still follow it — entering the
+  // major scale as 5 5 3 5 5 5 3 yields no pins at all.
   //
-  // Septimal — the SUBMINOR / SUPERMAJOR scales.  7/6 (271¢) is Minor Thirds ·
-  // small, 9/7 (426¢) is Major Thirds · large, so the roman-numeral ↓/↑ arrows
-  // keep reading right: the degree really is a minor / major third, at its edge.
-  { id: "septmin",     label: "Septimal Minor",  short: "s-min",  steps: [5, 2, 6, 5, 2, 5, 6] },
-  { id: "harrisonmaj", label: "Harrison Major",  short: "S-maj",  steps: [5, 6, 2, 5, 5, 6, 2] },
-  { id: "phrygharm",   label: "Phrygian Harm",   short: "phr7",   steps: [2, 8, 3, 5, 2, 5, 6] },
-  { id: "subalt",      label: "Subminor Alt",    short: "s-alt",  steps: [2, 5, 3, 5, 5, 5, 6] },
+  // Only the parents are offered.  The Xenharmonic-Wiki rotations that used to sit
+  // here (Harrison Major, Phrygian Harm, Subminor Alt, Kleeth, Turkish Major,
+  // Altered Dorian, Altered Neap) were modes of these same scales under names that
+  // carry no tonality content of their own, so they showed an almost empty
+  // vocabulary while crowding the picker.
+  //
+  // Septimal — SUBMINOR and SUPERMAJOR.  7/6 (271¢) is Minor Thirds · small, 9/7
+  // (426¢) is Major Thirds · large, so the roman-numeral ↓/↑ arrows keep reading
+  // right: the degree really is a minor / major third, at its edge.
+  //   Subminor    0 194 271 503 697 774 968     1 2 ↓3 4 5 ↓6 ↓7
+  //   Supermajor  0 194 426 503 697 929 1123    1 2 ↑3 4 5 ↑6 ↑7
+  { id: "septmin",     label: "Subminor Diatonic",   short: "sub",  steps: [5, 2, 6, 5, 2, 5, 6] },
+  { id: "supmaj",      label: "Supermajor Diatonic", short: "sup",  steps: [5, 6, 2, 5, 6, 5, 2] },
   { id: "harmmaj",     label: "Harmonic Major",  short: "hM",     steps: [5, 5, 3, 5, 3, 7, 3] },
-  { id: "turkmaj",     label: "Turkish Major",   short: "turk",   steps: [5, 5, 3, 5, 4, 5, 4] },
-  { id: "altdor",      label: "Altered Dorian",  short: "dor♮7",  steps: [5, 3, 5, 5, 5, 4, 4] },
-  { id: "altneap",     label: "Altered Neap",    short: "neap",   steps: [3, 5, 5, 5, 5, 4, 4] },
+  // Neutral — the 11-limit parent (1 2 ~3 4 5 ~6 ~7) and its neutral-2nd variant,
+  // which is the only rotation that changes the scale's character rather than just
+  // its starting note.
+  //   Neutral     0 194 348 503 697 852 1045    1 2 ~3 4 5 ~6 ~7
+  //   Neutral n2  0 155 348 503 697 852 1045    1 ~2 ~3 4 5 ~6 ~7
+  { id: "neudia",      label: "Neutral Diatonic",    short: "neu",  steps: [5, 4, 4, 5, 4, 5, 4] },
+  { id: "neudia2",     label: "Neutral Diatonic n2", short: "neu2", steps: [4, 5, 4, 5, 4, 5, 4] },
 ];
 // Resolve every mode to the generator's form: regions per degree, the sub-band
 // pins, and the 7 chroma bins the degrees occupy.  `pcs` used to be recomputed
@@ -721,12 +727,13 @@ const CHAR_SEMI: Record<string, number> = {
   lyd: 6, maj: 11, mix: 10, dor: 9, min: 8, phr: 1, loc: 6,
   melmin: 9, lyddom: 6, mixb6: 8, dorb2: 1, locn2: 6, alt: 6, lydaug: 8,
   harmmin: 11, phrygdom: 1, ukrdor: 6, lyds2: 3,
-  // Neutral — the neutral degree IS the colour tone.
-  kleeth: 3,
+  // Neutral — the neutral degree IS the colour tone.  For the n2 variant it's the
+  // 2nd, since that's the only degree separating it from the plain parent.
+  neudia: 3, neudia2: 1,
   // Septimal — the pinned degree IS the colour tone (subminor 3rd / supermajor
-  // 3rd / subminor 2nd).  These are semitone SLOTS, so a subminor 3rd is still 3.
-  septmin: 3, harrisonmaj: 4, phrygharm: 1, subalt: 3,
-  harmmaj: 8, turkmaj: 8, altdor: 10, altneap: 1,
+  // 3rd).  These are semitone SLOTS, so a subminor 3rd is still 3.
+  septmin: 3, supmaj: 4,
+  harmmaj: 8,
 };
 /** A mode's characteristic tone.  Hand-set above where there's a name for it;
  *  otherwise the scale's own most distinctive degree — the bin furthest from the
@@ -757,10 +764,11 @@ const MODE_FAMILIES: { label: string; ids: ModeId[] }[] = [
   // scale, not a mode of harmonic minor, so the old label would have been a lie.
   { label: "Harmonic",     ids: ["harmmin", "phrygdom", "ukrdor", "lyds2", "harmmaj"] },
   { label: "Symmetric",    ids: ["wholetone", "augment6", "octWH", "octHW"] },
-  { label: "Septimal",     ids: ["septmin", "harrisonmaj", "phrygharm", "subalt"] },
-  // Was "Neutral MOS" — Kleeth is a MOS, but the MODMOS added beside it are not,
-  // so the family is named for what they share (the neutral degrees).
-  { label: "Neutral",      ids: ["kleeth", "turkmaj", "altdor", "altneap"] },
+  // Both rows carry PARENT scales only — one chip per distinct tonality, not per
+  // rotation.  The wiki-named modes that used to fill them out were rotations of
+  // these same four, so they added chips without adding vocabulary.
+  { label: "Septimal",     ids: ["septmin", "supmaj"] },
+  { label: "Neutral",      ids: ["neudia", "neudia2"] },
 ];
 // The picker's own left-to-right reading order, used to order the multi-scale
 // ↑ / ↓ cycle so it walks the chips as they're laid out.
@@ -1416,8 +1424,13 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const cycleModesRef = useRef<ModeId[]>(cycleModes);
   cycleModesRef.current = cycleModes;
   // Keep the shown scale valid: dropping the active one falls to the first left.
+  // Also covers an activeMode that no longer EXISTS — the stored value outlives
+  // the mode list, and a removed scale is still "selected" as far as the stored
+  // set is concerned, so `has` alone wouldn't rescue it.
   useEffect(() => {
-    if (!singModes.has(activeMode)) setActiveMode(cycleModesRef.current[0] ?? "maj");
+    if (!singModes.has(activeMode) || !MODE_BY_ID.has(activeMode)) {
+      setActiveMode(cycleModesRef.current[0] ?? "maj");
+    }
   }, [singModes, activeMode]);
   const stepMode = useCallback((dir: number) => {
     const list = cycleModesRef.current;
@@ -2452,7 +2465,11 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
 
   // Generate one section per selected band, for each selected mode.
   const generateSing = () => {
-    const modes = singModes.size ? [...singModes] : (["maj"] as ModeId[]);
+    // Filter to modes that still EXIST — the stored set outlives the mode list,
+    // so a scale that has since been removed would otherwise be generated from an
+    // undefined definition.
+    const live = [...singModes].filter(id => MODE_BY_ID.has(id));
+    const modes = live.length ? live : (["maj"] as ModeId[]);
     setSingSections(modes.flatMap(sectionsForMode));
     setProgression([]);        // no jianpu answer / grading in Sing
   };
