@@ -1437,10 +1437,14 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // Band system: "spectrum" (small/center/large sub-bands) or "edo" (the three
   // slots become the 31/12/39-EDO diatonic-MOS tunings).  Persisted.
   // EDO is the supported path; Spectrum bands are BETA (their septimal / neutral
-  // scales don't fill their tonality lists yet), so they sit behind the same
-  // beta reveal the Chords/Intervals modes use and are no longer the default.
-  const [bandSystem, setBandSystem] = useState<BandSystem>(() => lsGet<BandSystem>(BAND_SYSTEM_KEY, "edo"));
-  useEffect(() => { lsSet(BAND_SYSTEM_KEY, bandSystem); }, [bandSystem]);
+  // scales don't fill their tonality lists yet), so they sit behind the beta
+  // reveal the Chords/Intervals modes use.  Never RESTORED into: a session always
+  // starts on EDO and reaching Spectrum takes an explicit trip through the
+  // reveal, so a setting saved before it went beta doesn't quietly persist.
+  const [bandSystem, setBandSystem] = useState<BandSystem>("edo");
+  // Deliberately NOT persisted while Spectrum is beta — nothing reads it back,
+  // and saving a choice that's discarded on the next load only misleads. Restore
+  // this (and the lsGet above) when Spectrum leaves beta.
   // The EDO tuning a band slot resolves to (undefined in spectrum → sub-band pick).
   const edoForBand = (b: Band): EdoTuning | undefined => bandSystem === "edo" ? BAND_TUNINGS[b] : undefined;
   // Display label for a band slot in the current system.
@@ -1525,11 +1529,11 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const walkStateRef = useRef(walk);
   walkStateRef.current = walk;
   const [betaOpen, setBetaOpen] = useState(false);                // reveal Chords/Intervals (beta) modes
-  // Reveal the beta Spectrum band system.  Starts open when the persisted choice
-  // IS Spectrum, so an existing selection stays visible and changeable instead of
-  // being silently reverted; closing it snaps back to EDO so the setting can
-  // never be left active behind a hidden control.
-  const [bandsBeta, setBandsBeta] = useState(() => lsGet<BandSystem>(BAND_SYSTEM_KEY, "edo") === "spectrum");
+  // Reveal the beta Spectrum band system.  Always starts CLOSED — pairing with a
+  // bandSystem that always starts on EDO, that's what makes the BANDS row read as
+  // EDO-only until the beta toggle is opened.  Closing it snaps back to EDO so
+  // the beta system can never be left active behind a hidden control.
+  const [bandsBeta, setBandsBeta] = useState(false);
   const [hiddenDeg, setHiddenDeg] = useState<Set<number>>(new Set());   // 1-7 hide degrees (chords tab)
   const [patRetro, setPatRetro] = useState(false);                      // retrograde lines (r)
   const [patExpand, setPatExpand] = useState(0);                        // diatonic interval expansion (+) / contraction (−), in scale steps ([ ])
