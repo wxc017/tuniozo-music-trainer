@@ -435,24 +435,27 @@ const BAND_COLORS = ["#3f9bc4", "#7173e6", "#e0a040"] as const;   // small / cen
 // so the slots still read small → centre → large:
 //   31-EDO  meantone   generator 18\31 (697¢) → major 3rd ~387¢  (small)
 //   12-EDO             generator  7\12 (700¢) → major 3rd 400¢   (centre)
-//   39-EDO  superpyth  generator 23\39 (708¢) → major 3rd ~431¢  (large)
+//   22-EDO  superpyth  generator 13\22 (709¢) → major 3rd ~436¢  (large)
+// The large slot is 22 rather than 39: its major 3rd lands on 436¢, which is 9/7
+// (435¢) to within a cent, so the slot sounds the septimal third it stands for
+// instead of 39-EDO's 431¢ approximation of it.
 type BandSystem = "spectrum" | "edo";
 type EdoTuning = { edo: number; gen: number };   // gen = generating fifth, in EDO steps
 const BAND_TUNINGS: readonly EdoTuning[] = [
   { edo: 31, gen: 18 },   // small  — meantone
   { edo: 12, gen: 7 },    // centre — 12-TET
-  { edo: 39, gen: 23 },   // large  — superpyth
+  { edo: 22, gen: 13 },   // large  — superpyth
 ] as const;
 const BAND_EDO_LABELS = BAND_TUNINGS.map(t => String(t.edo));   // slot → button text
 const BAND_SYSTEM_KEY = "lt_spectrumBandSystem";
 // Each chromatic pitch-class's position on the chain of fifths (meantone
 // spelling): Do=0, Sol=+1, Re=+2, La=+3, Mi=+4, Ti=+5, Fi=+6; Fa=−1, Te=−2,
 // Me=−3, Le=−4, Ra=−5.  Stacking the GENERATING fifth this many times makes a
-// proper diatonic MOS — which is why 39-EDO keeps its large 3rd.
+// proper diatonic MOS — which is why 22-EDO keeps its large 3rd.
 const FIFTHS_FOR_PC = [0, -5, 2, -3, 4, -1, 6, 1, -4, 3, -2, 5] as const;
 // Diatonic-MOS cents of pitch-class `pc` in a tuning: walk `pc`'s fifths from
 // the tonic using the tuning's GENERATING fifth, then octave-reduce.  pc 4
-// (+4 fifths) → ~431¢ in 39-EDO (large), ~387¢ in 31-EDO (small), 400¢ in 12.
+// (+4 fifths) → ~436¢ in 22-EDO (large), ~387¢ in 31-EDO (small), 400¢ in 12.
 const mosCents = (pc: number, t: EdoTuning): number => {
   const p = ((pc % 12) + 12) % 12;
   const step = (((FIFTHS_FOR_PC[p] * t.gen) % t.edo) + t.edo) % t.edo;
@@ -808,9 +811,12 @@ const regionBand = (name: string, band: Band, t?: EdoTuning, pinned = false): [n
   const r = REGION_ANY.get(name);
   if (t) {
     // Neutral degrees snap to the nearest step of the EDO to the region centre.
-    // 31-EDO (38.7¢) and 39-EDO (30.8¢) both land inside the neutral band; 12-EDO
-    // has no neutral interval at all, so a neutral scale simply cannot be rendered there
-    // — that's a property of 12-EDO, not something to paper over.
+    // 31-EDO (38.7¢) lands on them almost exactly (±5¢).  22-EDO (54.5¢) is much
+    // coarser and MISSES: its nearest steps to the neutral 3rd and 6th are 327¢
+    // and 873¢, ~22-24¢ off centre, which reads as a small minor 3rd / large major
+    // 6th rather than a neutral one.  So the large band renders a neutral scale
+    // approximately — a property of a 22-step grid, not something to paper over.
+    // 12-EDO has no neutral interval at all and cannot render one whatsoever.
     //
     // PINNED degrees (subminor / supermajor) snap the same way, but to the centre
     // of their SUB-band: walking fifths can't reach them either in every tuning,
@@ -1094,7 +1100,7 @@ const intervalPairs = (L: number, k: number): number[] =>
 // octaves, so ONE cell sequences over a 5-note pentatonic, a 6-note whole-tone,
 // or an 8-note octatonic exactly as the diatonic cells run over 7.  The pcs are
 // mapped through the band-tuned 12-note chroma at build time, so every structure
-// inherits the 31/12/39-EDO spectrum — structures, pentatonics, symmetric
+// inherits the 31/12/22-EDO spectrum — structures, pentatonics, symmetric
 // scales, chords and cycles are all the same idea applied to different note-sets.
 const scPc = (scale: number[], i: number): number =>
   scale[mod(i, scale.length)] + 12 * Math.floor(i / scale.length);
@@ -1448,7 +1454,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   const [specBand4, setSpecBand4] = usePersistedSet<Band>("lt_sing_specBand4", [1]);   // 4th — its own control
   const [specBand5, setSpecBand5] = usePersistedSet<Band>("lt_sing_specBand5", [1]);   // 5th — its own control
   // Band system: "spectrum" (small/center/large sub-bands) or "edo" (the three
-  // slots become the 31/12/39-EDO diatonic-MOS tunings).  Persisted.
+  // slots become the 31/12/22-EDO diatonic-MOS tunings).  Persisted.
   // EDO is the supported path; Spectrum bands are BETA (their septimal / neutral
   // scales don't fill their tonality lists yet), so they sit behind the beta
   // reveal the Chords/Intervals modes use.  Never RESTORED into: a session always
@@ -2625,7 +2631,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   useEffect(() => { stopSpecDrones(); setDroningId(null); walkStop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [singTab, rootCents, chordTypes, singVoicings, singTriadVoicings, cycles, interchangeParts, borrowModes, showInterchange, singModes, singBands]);
-  // Flipping the band system (spectrum ↔ 12/50/39-EDO) retunes everything, so
+  // Flipping the band system (spectrum ↔ 31/12/22-EDO) retunes everything, so
   // regenerate the on-screen Sing/Echo material immediately rather than leaving
   // it labelled one way but sounding the other until the next Generate.
   useEffect(() => {
@@ -2888,7 +2894,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
       for (const n of sec.scale) {
         const c = ((n.cents % 1200) + 1200) % 1200;
         // Keep band-specific targets (dedupe only within the same band) so the
-        // Pitch trainer can LOCK to one band (small/center/large = 31/12/39-EDO)
+        // Pitch trainer can LOCK to one band (small/center/large = 31/12/22-EDO)
         // instead of snapping to the nearest across all three.
         if (!out.some(o => o.band === sec.band && (Math.abs(o.cents - c) < 4 || Math.abs(o.cents - c) > 1196)))
           out.push({ cents: c, syl: n.syl, band: sec.band });
@@ -3351,17 +3357,17 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
             {modeBtn("intervals", "Intervals")}
           </div>
         )}
-        {/* Band system — the three slots are the 31/12/39-EDO diatonic-MOS
+        {/* Band system — the three slots are the 31/12/22-EDO diatonic-MOS
             tunings.  Schulter sub-bands (Spectrum) are BETA and hidden until
             the beta toggle beside them is opened. */}
         <div className="ml-auto flex items-center gap-1.5">
           <span className="text-[10px] text-[#555] font-semibold tracking-wider">BANDS</span>
           <div className="inline-flex rounded-lg border border-[#242424] bg-[#0b0b0b] p-0.5 gap-0.5">
-            {(bandsBeta ? ([["spectrum", "Spectrum"], ["edo", "31·12·39 EDO"]] as const)
-                        : ([["edo", "31·12·39 EDO"]] as const)).map(([id, text]) => (
+            {(bandsBeta ? ([["spectrum", "Spectrum"], ["edo", "31·12·22 EDO"]] as const)
+                        : ([["edo", "31·12·22 EDO"]] as const)).map(([id, text]) => (
               <button key={id} onClick={() => setBandSystem(id)}
                 title={id === "edo"
-                  ? "Three slots become the 50 / 12 / 39-EDO diatonic scales (each the MOS generated by that tuning's fifth: small / center / large 3rds)"
+                  ? "Three slots become the 31 / 12 / 22-EDO diatonic scales (each the MOS generated by that tuning's fifth: small / center / large 3rds)"
                   : "BETA — three slots are the small / center / large Schulter sub-bands"}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                   bandSystem === id ? "bg-[#7173e6] text-white shadow-[0_1px_6px_rgba(113,115,230,0.4)]" : "text-[#777] hover:text-[#cfcfcf]"}`}>
@@ -3471,7 +3477,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
           </Panel>
         </div>
 
-        <Panel title={bandSystem === "edo" ? "TUNING · 50 / 12 / 39-EDO" : "SPECTRUM · SMALL / CENTER / LARGE"} accent={BAND_COLORS[1]}>{bandControls}</Panel>
+        <Panel title={bandSystem === "edo" ? "TUNING · 31 / 12 / 22-EDO" : "SPECTRUM · SMALL / CENTER / LARGE"} accent={BAND_COLORS[1]}>{bandControls}</Panel>
       </>)}
 
       {mode === "intervals" && (<>
@@ -3915,7 +3921,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                 }
               };
               // Set the tuning band for EVERY degree at once (small/center/large =
-              // 31/12/39-EDO), re-voicing a held degree drone to match.
+              // 31/12/22-EDO), re-voicing a held degree drone to match.
               const setAllBands = (b: Band) => {
                 setDroneDegBand(Array(7).fill(b));
                 const h = droneHoldRef.current;
@@ -3960,7 +3966,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
                       className="bg-[#141414] border border-[#242424] rounded text-[11px] text-[#bbb] px-1 py-0.5">
                       <option value={0}>small · 31-EDO</option>
                       <option value={1}>center · 12-EDO</option>
-                      <option value={2}>large · 39-EDO</option>
+                      <option value={2}>large · 22-EDO</option>
                     </select>
                   </div>
                   <div className="flex items-start gap-2 flex-wrap">
@@ -4100,7 +4106,7 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
               <span className="text-[#5a5a5a]"> · </span>
               <kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">h</kbd>
               <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">j</kbd>
-              <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">k</kbd> 31·12·39
+              <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">k</kbd> 31·12·22
               <span className="text-[#5a5a5a]"> · </span>
               <kbd className="px-1.5 py-0.5 rounded bg-[#1e1e1e] border border-[#333] text-[#cfe6ff] font-mono">g</kbd> auto
             </span>

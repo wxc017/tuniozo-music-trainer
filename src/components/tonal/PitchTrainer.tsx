@@ -27,7 +27,7 @@ const GUIDE_SHAPER_CURVE = (() => {
 })();
 
 const TOL_CENTS = 8;         // you're "on the note" inside ±this many cents. Kept tight on
-                             // purpose: the bands (31/12/39-EDO) sit only ~10-25¢ apart, so a
+                             // purpose: the bands (31/12/22-EDO) sit only ~10-25¢ apart, so a
                              // wide window would read "on" for the WRONG band and defeat the
                              // microtonal training. Precision is the point — narrow it, don't
                              // widen it. (Loosen only to warm up.)
@@ -44,7 +44,7 @@ const BAND_NAMES = ["small", "center", "large"] as const;
 const regionOf = (cents: number) => MAIN.find(r => cents >= r.lo && cents <= r.hi);
 
 interface Target { cents: number; syl: string; band: number; }
-const BAND_EDO = ["31", "12", "39"] as const;   // small / center / large tunings
+const BAND_EDO = ["31", "12", "22"] as const;   // small / center / large tunings
                                                // (mirrors BAND_TUNINGS in
                                                // SolfaSpectrumChords — the target
                                                // pitches come from there, this is
@@ -290,7 +290,7 @@ export default function PitchTrainer({ rootCents, targets }: { rootCents: number
   }, [on]);
 
   // Keybinds while listening: h/j/k jump straight to small/center/large
-  // (31/12/39-EDO), g returns to auto-nearest, and , . / step between bands.
+  // (31/12/22-EDO), g returns to auto-nearest, and , . / step between bands.
   // The step keys sit next to the arrows deliberately — the arrows change scale,
   // so one hand walks both the scale and its tuning without reaching for h/j/k.
   // Stepping wraps through the three bands; g is still the way back to auto.
