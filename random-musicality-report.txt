@@ -1,44 +1,44 @@
 
 ══════════════════════════════════════════════════════════════════════
-  RANDOM-GROOVE MUSICALITY RATING — 10,000 random grooves in 286.1s
+  RANDOM-GROOVE MUSICALITY RATING — 10,000 random grooves in 308.7s
   library entries: 19,453  ·  reference batch (real generator): 500
 ══════════════════════════════════════════════════════════════════════
 
 ── 1. MUSICAL SCORE  scoreGroove(a, "musical") ───────────────────────
-  RANDOM     mean 380.7  sd 114.6
-    min -191.0  p5 222.2  p25 296.6  median 368.4  p75 454.0  p95 582.8  max 880.2
-  GENERATOR  mean 650.7  sd 118.7   (median 628.3)
-    min 436.8  p5 492.7  median 628.3  p95 845.2  max 963.6
-  random grooves scoring ≥ generator median: 2.35%
+  RANDOM     mean 380.8  sd 112.7
+    min -161.5  p5 224.4  p25 299.1  median 368.8  p75 453.7  p95 579.6  max 881.0
+  GENERATOR  mean 659.2  sd 117.3   (median 631.7)
+    min 421.5  p5 501.5  median 631.7  p95 856.5  max 960.9
+  random grooves scoring ≥ generator median: 2.18%
 
 ── 2. "SOUNDS LIKE A GROOVE?" GATE (no empty pulse · low collision · backbeat · kick) ─
-  RANDOM    pass: 5.41%
+  RANDOM    pass: 5.43%
   GENERATOR pass: 84.40%
 
 ── 3. FEATURE PROFILE (mean over batch — what the score is made of) ──
   feature         random   generator   (higher better, except* )
-  backbeat         0.250     0.831   
-  kickAnchor       0.251     0.718   
-  interlock        0.858     1.000   
-  syncopation      0.436     0.888   
-  ghostPlacement   0.521     0.973   
-  density          0.219     0.907   
-  hatSteadiness    0.624     0.911   
+  backbeat         0.245     0.782   
+  kickAnchor       0.248     0.731   
+  interlock        0.859     1.000   
+  syncopation      0.437     0.880   
+  ghostPlacement   0.522     0.979   
+  density          0.225     0.905   
+  hatSteadiness    0.619     0.910   
   hasEmptyPulse    0.011     0.000   *lower better
-  collision        0.070     0.000   *lower better
+  collision        0.069     0.000   *lower better
 
 ── 4. RANDOM SCORE BY CYCLE LENGTH ───────────────────────────────────
   slots    n        mean      p95
-    8      1317      435.6     662.7
-   12      2455      443.1     602.8
-   16      1237      447.6     613.7
-   20      1339      328.5     470.4
-   24      2415      312.4     454.9
-   32      1237      321.6     461.5
+    8      1239      438.7     652.3
+   12      2484      440.8     595.1
+   16      1280      450.1     623.0
+   20      1278      323.2     461.9
+   24      2432      311.1     451.7
+   32      1287      328.8     463.9
 
 ── 5. NEAREST REAL GROOVE TO A RANDOM PATTERN (sample) ───────────────
-  sample size: 477   had a non-zero nearest match: 100.00%
-  best random→real similarity in sample: 1.000  (Wahda)
+  sample size: 490   had a non-zero nearest match: 100.00%
+  best random→real similarity in sample: 1.000  (Cinquillo (rotation 7))
 
-  best random groove score: 880.2  [cycle 4-4]   ·   degenerate (all-rest) resamples: 0
+  best random groove score: 881.0  [cycle 4-4]   ·   degenerate (all-rest) resamples: 0
 ══════════════════════════════════════════════════════════════════════
