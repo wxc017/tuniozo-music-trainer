@@ -51,41 +51,46 @@ export const ASSIST_SUFFIX: Record<AssistKind, string> = {
  *  An empty assistance list means the skill is trained unassisted only. */
 type Entry = [skill: string, dyn: boolean, assists: AssistKind[]];
 
-const CW: AssistKind[] = ["cw"];
-/** Inverted balances: both ways of holding you up, neither of them a hang. */
+/** A counterweight and the Halver deload the same kinds of hold — one pulls up
+ *  from overhead, the other takes weight off the waist through a 2:1 — so
+ *  anything trained on one is trained on the other. */
+const DELOADED: AssistKind[] = ["cw", "halver"];
+/** Inverted balances: both ways of holding you UP, neither of them a hang.  No
+ *  counterweight, because there's nothing to counterweight against. */
 const INVERTED: AssistKind[] = ["halver", "bungee"];
 
 const RING: Entry[] = [
-  ["Victorian Cross", false, CW],
-  ["Caruso", true, CW],
-  ["Reverse Planche", false, CW],
-  ["Planche", false, CW],
-  ["Planche Pushup", true, CW],
-  ["Pelican Planche Pushup", true, CW],
-  ["Front Lever", false, CW],
-  ["Front Lever Pullup", true, CW],
-  ["Iron Cross", false, CW],
+  ["Victorian Cross", false, DELOADED],
+  ["Caruso", true, DELOADED],
+  ["Reverse Planche", false, DELOADED],
+  ["Planche", false, DELOADED],
+  ["Planche Pushup", true, DELOADED],
+  ["Pelican Planche Pushup", true, DELOADED],
+  ["Front Lever", false, DELOADED],
+  ["Front Lever Pullup", true, DELOADED],
+  ["Iron Cross", false, DELOADED],
   ["Handstand", false, INVERTED],
-  ["Handstand Pushup", true, CW],
+  ["Handstand Pushup", true, DELOADED],
 ];
 
 const STATIC_BAR: Entry[] = [
-  ["Front Lever", false, CW],
-  ["Front Lever Pullup", true, CW],
-  ["SAT", true, CW],
-  ["Front Lever Touch", false, CW],
-  ["Planche", false, CW],
-  ["Planche Pushup", true, CW],
+  ["Front Lever", false, DELOADED],
+  ["Front Lever Pullup", true, DELOADED],
+  ["SAT", true, DELOADED],
+  ["Front Lever Touch", false, DELOADED],
+  ["Planche", false, DELOADED],
+  ["Planche Pushup", true, DELOADED],
 ];
 
 const PARALLETTES: Entry[] = [
-  ["Reverse Planche", false, CW],
-  ["Planche", false, CW],
-  ["Planche Pushup", true, CW],
+  ["Reverse Planche", false, DELOADED],
+  ["Planche", false, DELOADED],
+  ["Planche Pushup", true, DELOADED],
   ["Handstand", false, INVERTED],
   ["One Arm Handstand", false, INVERTED],
   // No counterweight rig on parallettes, and neither a 2:1 nor a cord helps a
-  // press — so this one is unassisted only.
+  // press — so this one is unassisted only.  (It's the one skill with no
+  // assistance at all, which is why it isn't in DELOADED.)
   ["Handstand Pushup", true, []],
 ];
 
@@ -93,7 +98,7 @@ const PARALLETTES: Entry[] = [
 const FLOOR: Entry[] = [
   ["Handstand", false, INVERTED],
   ["One Arm Handstand", false, INVERTED],
-  ["Handstand Pushup", true, CW],
+  ["Handstand Pushup", true, DELOADED],
 ];
 
 /** One skill → its unassisted variant plus one per assistance kind. */
