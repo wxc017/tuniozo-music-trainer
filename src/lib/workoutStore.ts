@@ -57,12 +57,34 @@ const cexSlug = (name: string) => name.trim().toLowerCase().replace(/[^a-z0-9]+/
 const BUILTIN_EXERCISES: CustomExercise[] = SEED_EXERCISES.map(s => ({
   id: `cex_builtin_${cexSlug(s.name)}`, name: s.name, mode: s.mode, createdAt: 0,
 }));
-const BUILTIN_NAMES = new Set(BUILTIN_EXERCISES.map(e => e.name.toLowerCase()));
+/** Compare names the way a human would: case, surrounding/repeated whitespace and
+ *  which dash was typed are all noise.  A stored copy written with a hyphen
+ *  ("Ring Planche - CW assisted") is the same exercise as the em-dash built-in. */
+const cexKey = (name: string) => name.trim().toLowerCase()
+  .replace(/[‐-―]/g, "-").replace(/\s+/g, " ");
+const BUILTIN_NAMES = new Set(BUILTIN_EXERCISES.map(e => cexKey(e.name)));
+// Names that USED to be built-ins and no longer are.  Older builds copied the
+// starter list into storage, so a device that ever ran one — or that syncs with
+// one — still holds those rows.  They're no longer in BUILTIN_NAMES, so without
+// this list the prune below leaves them alone and they come back in the picker as
+// "user exercises": a retired variant reappears under the heading it was moved
+// out of, and the change looks like it never happened.  Add a name here whenever
+// SEED_EXERCISES drops or renames one.
+const RETIRED_BUILTIN_NAMES = new Set([
+  // Ring handstands moved off the counterweight onto the inverted-balance rigs.
+  // (The "— Bungee assisted" names briefly retired here are built-ins again now
+  // that Bungee is its own assistance kind, so they belong in neither list.)
+  "Ring Handstand — CW assisted",
+].map(cexKey));
+const isRetiredOrBuiltin = (name: string) => {
+  const k = cexKey(name);
+  return BUILTIN_NAMES.has(k) || RETIRED_BUILTIN_NAMES.has(k);
+};
 export function isBuiltinExerciseId(id: string): boolean { return id.startsWith("cex_builtin_"); }
 /** Built-in starter list ∪ the user's own stored exercises (built-in wins on a name
  *  clash). This is what the picker shows; storage/sync hold ONLY user exercises. */
 export function getAllExercises(): CustomExercise[] {
-  const user = getCustomExercises().filter(e => !BUILTIN_NAMES.has(e.name.trim().toLowerCase()));
+  const user = getCustomExercises().filter(e => !isRetiredOrBuiltin(e.name));
   return [...BUILTIN_EXERCISES, ...user];
 }
 
@@ -109,7 +131,7 @@ const SEED_FLAG = "lt_workout_seeded_v1";
 export function pruneStoredBuiltins(): void {
   try {
     const list = getCustomExercises();
-    const kept = list.filter(e => !BUILTIN_NAMES.has(e.name.trim().toLowerCase()));
+    const kept = list.filter(e => !isRetiredOrBuiltin(e.name));
     if (kept.length !== list.length) { rev++; writeCustomExercises(kept); }
     localStorage.removeItem(SEED_FLAG);   // the old one-time seed guard is now obsolete
   } catch { /* storage unavailable */ }
@@ -348,9 +370,21 @@ export function exerciseHistory(match: { skillId?: string; name: string }): Exer
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/** Whether an exercise is counterweight-assisted (progress = weight → 0). */
-export function isCwAssisted(name: string): boolean {
-  return /cw assisted/i.test(name);
+/** Whether an exercise is ASSISTED — counterweight or bungee.  Both mean progress
+ *  runs the load DOWN toward zero rather than up, which is why the progress chart
+ *  plots the minimum weight for these and the maximum for everything else.  A
+ *  bungee-assisted handstand is exactly as much "assistance → 0" as a
+ *  counterweighted cross, so it has to be in here too or its chart reads the
+ *  wrong way round. */
+export function isAssisted(name: string): boolean {
+  return /(cw|halver|bungee)\s+assisted/i.test(name);
+}
+/** Whether the assistance is the 2:1 waist Halver specifically.  Only the Halver
+ *  takes load in two independent places — plates on its rings and weight worn at
+ *  the waist — so only it needs two weight boxes.  A counterweight is one number,
+ *  and giving it a second empty column would just be clutter. */
+export function isHalverAssisted(name: string): boolean {
+  return /halver\s+assisted/i.test(name);
 }
 
 /** Every video clip logged for one exercise, oldest → newest, for a form

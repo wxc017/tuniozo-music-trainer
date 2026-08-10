@@ -5,7 +5,7 @@ import ExercisePicker, { type PickedExercise } from "./ExercisePicker";
 import { exportWorkoutSession } from "@/lib/workoutExport";
 import {
   upsertWorkout, makeExercise, makeSet, deleteWorkout,
-  templateFromWorkout, saveTemplate, useWorkoutData, captureUndo, lastNoteForExercise,
+  templateFromWorkout, saveTemplate, useWorkoutData, captureUndo, lastNoteForExercise, isHalverAssisted,
 } from "@/lib/workoutStore";
 import {
   type Workout, type LoggedExercise, type WorkoutSet, type WeightUnit, type TrackingMode,
@@ -21,7 +21,9 @@ interface Props { workoutId: string; onClose: () => void }
 export default function SessionLogger({ workoutId, onClose }: Props) {
   const { workouts, prefs } = useWorkoutData();
   const workout = useMemo(() => workouts.find(w => w.id === workoutId), [workouts, workoutId]);
-  const [picking, setPicking] = useState(false);
+  // The picker sheet, in one of two jobs: appending a new exercise, or
+  // RE-LABELLING one already in the session (`exId` set).
+  const [picking, setPicking] = useState<{ exId?: string } | null>(null);
   const [sharing, setSharing] = useState(false);
   const [shareMenu, setShareMenu] = useState(false);
 
@@ -33,7 +35,29 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
 
   const addExercise = (c: PickedExercise) => {
     patch(w => { w.exercises.push(makeExercise(c.name, c.mode, c.skillId)); return w; });
-    setPicking(false);
+    setPicking(null);
+  };
+  // Re-label an exercise that's already logged: only the IDENTITY changes (name,
+  // catalog link, tracking mode).  `sets` is left alone, and since a set is where
+  // the video, the trim marks and the per-set note live, all of that survives —
+  // that's the whole point of editing in place instead of deleting and re-adding.
+  // The mode follows the new exercise (a hold mislabelled as reps needs the time
+  // column), and nothing is deleted when it changes: every set keeps its stored
+  // reps / hold / weight, so switching the mode back brings the numbers with it.
+  const retargetExercise = (exId: string, c: PickedExercise) => {
+    captureUndo("exercise");
+    patch(w => {
+      const ex = w.exercises.find(e => e.id === exId);
+      if (ex) {
+        ex.name = c.name;
+        ex.mode = c.mode;
+        // Clear a stale catalog link — keeping it would show the "skill" tag and
+        // the muscle map of the exercise this ISN'T any more.
+        if (c.skillId) ex.skillId = c.skillId; else delete ex.skillId;
+      }
+      return w;
+    });
+    setPicking(null);
   };
   const removeExercise = (exId: string) => { captureUndo("exercise"); patch(w => { w.exercises = w.exercises.filter(e => e.id !== exId); return w; }); };
   const setMode = (exId: string, mode: TrackingMode) =>
@@ -43,7 +67,7 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
       const ex = w.exercises.find(e => e.id === exId);
       if (ex) {
         const last = ex.sets[ex.sets.length - 1];
-        ex.sets.push(makeSet(last ? { reps: last.reps, holdSec: last.holdSec, weight: last.weight, rpe: last.rpe, restSec: last.restSec } : undefined));
+        ex.sets.push(makeSet(last ? { reps: last.reps, holdSec: last.holdSec, weight: last.weight, waistWeight: last.waistWeight, rpe: last.rpe, restSec: last.restSec } : undefined));
       }
       return w;
     });
@@ -93,11 +117,12 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
         {workout.exercises.map(ex => (
           <ExerciseCard key={ex.id} ex={ex} unit={prefs.unit} workoutId={workout.id}
             onRemove={() => removeExercise(ex.id)} onSetMode={m => setMode(ex.id, m)}
+            onRetarget={() => setPicking({ exId: ex.id })}
             onAddSet={() => addSet(ex.id)} onRemoveSet={sid => removeSet(ex.id, sid)}
             onPatchSet={(sid, sp) => patchSet(ex.id, sid, sp)} />
         ))}
 
-        <button onClick={() => setPicking(true)} className="wl-add">+ Add exercise</button>
+        <button onClick={() => setPicking({})} className="wl-add">+ Add exercise</button>
 
         <div className="flex flex-wrap gap-2 pt-2">
           <button onClick={saveAsTemplate} className="wl-btn flex-1">Save as template</button>
@@ -123,7 +148,12 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
         </div>
       </div>
 
-      {picking && <ExercisePicker onPick={addExercise} onCancel={() => setPicking(false)} />}
+      {picking && (
+        <ExercisePicker
+          replacing={picking.exId ? workout.exercises.find(e => e.id === picking.exId)?.name : undefined}
+          onPick={c => (picking.exId ? retargetExercise(picking.exId, c) : addExercise(c))}
+          onCancel={() => setPicking(null)} />
+      )}
     </div>
   );
 }
@@ -131,6 +161,7 @@ export default function SessionLogger({ workoutId, onClose }: Props) {
 function ExerciseCard(props: {
   ex: LoggedExercise; unit: WeightUnit; workoutId: string;
   onRemove: () => void; onSetMode: (m: TrackingMode) => void;
+  onRetarget: () => void;
   onAddSet: () => void; onRemoveSet: (setId: string) => void;
   onPatchSet: (setId: string, patch: Partial<WorkoutSet>) => void;
 }) {
@@ -143,14 +174,21 @@ function ExerciseCard(props: {
   // Sets whose note field is expanded (auto-open any set that already has one).
   const [openNotes, setOpenNotes] = useState<Set<string>>(() => new Set(ex.sets.filter(s => s.note).map(s => s.id)));
   const toggleNote = (id: string) => setOpenNotes(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const cols = columnsFor(ex.mode, unit);
+  // Read off the NAME, the same place the picker and the progress chart read it,
+  // so a re-labelled exercise picks up the right columns.
+  const cols = columnsFor(ex.mode, unit, isHalverAssisted(ex.name));
   // "Keep in mind" — the last note logged for this exercise in a previous session.
   const reminder = useMemo(() => lastNoteForExercise({ skillId: ex.skillId, name: ex.name }, props.workoutId), [ex.skillId, ex.name, props.workoutId]);
 
   return (
     <div className="wl-card" style={{ borderRadius: 14 }}>
       <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: "1px solid var(--wl-line)" }}>
-        <span className="text-sm font-medium" style={{ color: "var(--wl-text)" }}>{ex.name}</span>
+        {/* The name is the "change exercise" control — tap it to re-label this
+            entry without touching its sets, clips or notes. */}
+        <button onClick={props.onRetarget} className="text-sm font-medium text-left hover:brightness-125"
+          style={{ color: "var(--wl-text)" }} title="Change which exercise this is (keeps sets, videos and notes)">
+          {ex.name} <span className="wl-faint" style={{ fontSize: 11 }}>✎</span>
+        </button>
         {ex.skillId && <span className="wl-tag">skill</span>}
         {/* mode switcher */}
         <div className="relative ml-auto">
@@ -187,7 +225,7 @@ function ExerciseCard(props: {
       {/* column header */}
       <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
         <span className="wl-collabel" style={{ width: "1.75rem" }}>#</span>
-        {cols.map(c => <span key={c.key} className="wl-collabel flex-1 text-center">{c.label}</span>)}
+        {cols.map(c => <span key={c.key} title={c.title} className="wl-collabel flex-1 text-center">{c.label}</span>)}
         <span className="wl-collabel" style={{ width: "3.1rem", textAlign: "center" }}>RPE</span>
         <span style={{ width: "1.6rem" }} />
         <span className="wl-collabel flex-1 text-center">Form</span>
@@ -256,10 +294,21 @@ function ExerciseCard(props: {
   );
 }
 
-interface Col { key: string; label: string; allowNeg?: boolean; get: (s: WorkoutSet) => number | undefined; set: (v: number | undefined) => Partial<WorkoutSet> }
-function columnsFor(mode: TrackingMode, unit: WeightUnit): Col[] {
+interface Col { key: string; label: string; title?: string; allowNeg?: boolean; get: (s: WorkoutSet) => number | undefined; set: (v: number | undefined) => Partial<WorkoutSet> }
+function columnsFor(mode: TrackingMode, unit: WeightUnit, halver: boolean): Col[] {
   const cols: Col[] = [];
-  if (modeShowsWeight(mode)) cols.push({ key: "w", label: `±${unit}`, allowNeg: true, get: s => s.weight, set: v => ({ weight: v }) });
+  if (modeShowsWeight(mode)) {
+    // The Halver is the only rig that takes load in two independent places —
+    // plates on its rings and weight worn at the waist — and they pull opposite
+    // ways, so one signed box can't hold both. Everything else, counterweight
+    // included, is a single number and gets the single ± column.
+    if (halver) {
+      cols.push({ key: "w", label: `rings ${unit}`, title: "Load on the Halver's rings. More = easier.", get: s => s.weight, set: v => ({ weight: v }) });
+      cols.push({ key: "ww", label: `waist ${unit}`, title: "Weight worn at the waist. More = harder.", get: s => s.waistWeight, set: v => ({ waistWeight: v }) });
+    } else {
+      cols.push({ key: "w", label: `±${unit}`, allowNeg: true, get: s => s.weight, set: v => ({ weight: v }) });
+    }
+  }
   if (modeShowsReps(mode)) cols.push({ key: "r", label: "Reps", get: s => s.reps, set: v => ({ reps: v }) });
   if (modeShowsTime(mode)) cols.push({ key: "t", label: "Hold s", get: s => s.holdSec, set: v => ({ holdSec: v }) });
   return cols;

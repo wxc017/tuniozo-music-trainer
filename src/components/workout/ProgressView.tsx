@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { useWorkoutData, exerciseHistory, loggedExerciseIndex, exerciseClips, isCwAssisted } from "@/lib/workoutStore";
+import { useWorkoutData, exerciseHistory, loggedExerciseIndex, exerciseClips, isAssisted } from "@/lib/workoutStore";
 import { resolveClipUrl } from "@/lib/workoutDrive";
 import { TrimmedVideo } from "./SetVideo";
 
@@ -16,7 +16,7 @@ export default function ProgressView() {
   const [metric, setMetric] = useState<"bestRpe" | "topWeight" | "volume">("topWeight");
 
   const active = index.find(e => e.key === sel) ?? index[0];
-  const assisted = isCwAssisted(active?.name ?? "");
+  const assisted = isAssisted(active?.name ?? "");
   const data = useMemo(() => {
     if (!active) return [];
     return exerciseHistory({ skillId: active.skillId, name: active.name }).map(p => ({

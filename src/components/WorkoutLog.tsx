@@ -53,17 +53,39 @@ export default function WorkoutLog() {
   // WITHOUT the whole-app data sync.
   const [ioBusy, setIoBusy] = useState(false);
   const [picking, setPicking] = useState(false);
+  // Live line for whatever the backup is doing. Without this the button just sat
+  // there disabled for minutes with nothing to show, which is why a working
+  // upload was indistinguishable from a hung one.
+  const [ioNote, setIoNote] = useState("");
   const doExport = async () => {
     setIoBusy(true);
+    setIoNote("Checking Drive…");
     try {
-      const r = await backupWorkoutsToDrive();
+      const r = await backupWorkoutsToDrive({
+        onProgress: p => {
+          if (p.phase === "scanning") setIoNote("Checking what Drive already has…");
+          else if (p.phase === "clips") {
+            if (!p.total) setIoNote("No new clips to send");
+            else setIoNote(
+              `Clip ${Math.min(p.done + 1, p.total)}/${p.total} — ` +
+              `${(p.sentBytes / 1e6).toFixed(1)} of ${(p.totalBytes / 1e6).toFixed(1)} MB` +
+              (p.totalBytes ? ` (${Math.round((p.sentBytes / p.totalBytes) * 100)}%)` : ""),
+            );
+          } else if (p.phase === "manifest") setIoNote("Writing the log…");
+          else setIoNote("Tidying old backups…");
+        },
+      });
       const pruneNote = r.pruned ? ` Oldest ${r.pruned === 1 ? "backup" : `${r.pruned} backups`} dropped.` : "";
+      const clipNote = r.uploadedClips
+        ? `${r.uploadedClips} new clip${r.uploadedClips === 1 ? "" : "s"} uploaded (${(r.bytes / 1e6).toFixed(1)} MB)`
+        : "no new clips — everything was already there";
       window.alert(
-        `Backed up to Google Drive — ${r.videoCount} clip${r.videoCount === 1 ? "" : "s"}, ${(r.bytes / 1e6).toFixed(1)} MB.\n\n` +
+        `Backed up to Google Drive — ${clipNote}.\n\n` +
+        `${r.videoCount} clip${r.videoCount === 1 ? "" : "s"} in this backup. ` +
         `Keeping the last ${r.kept} backup${r.kept === 1 ? "" : "s"}.${pruneNote}`,
       );
     } catch (e) { window.alert(`Backup failed: ${e instanceof Error ? e.message : String(e)}`); }
-    finally { setIoBusy(false); }
+    finally { setIoBusy(false); setIoNote(""); }
   };
   // Restore always goes through the picker now — with a rolling set of backups,
   // silently taking the newest is exactly the wrong default when the newest is
@@ -123,15 +145,20 @@ export default function WorkoutLog() {
           </div>
 
           {/* Workout-only backup/restore to Google Drive — no whole-app sync needed. */}
-          <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5" style={{ borderTop: "1px solid var(--wl-line)" }}>
-            <button onClick={doExport} disabled={ioBusy} className="wl-btn flex-1"
-              title={`Back up all workouts + video clips to your Google Drive (keeps the last ${KEEP_BACKUPS})`}>
-              {ioBusy ? "…" : "⬆ Back up to Drive"}
-            </button>
-            <button onClick={() => setPicking(true)} disabled={ioBusy} className="wl-btn flex-1"
-              title="Pick which Drive backup to restore (merges, safe to re-run)">
-              ⬇ Restore from Drive
-            </button>
+          <div className="flex-shrink-0 px-4 py-2.5" style={{ borderTop: "1px solid var(--wl-line)" }}>
+            <div className="flex items-center gap-2">
+              <button onClick={doExport} disabled={ioBusy} className="wl-btn flex-1"
+                title={`Back up all workouts + video clips to your Google Drive (keeps the last ${KEEP_BACKUPS})`}>
+                {ioBusy ? "…" : "⬆ Back up to Drive"}
+              </button>
+              <button onClick={() => setPicking(true)} disabled={ioBusy} className="wl-btn flex-1"
+                title="Pick which Drive backup to restore (merges, safe to re-run)">
+                ⬇ Restore from Drive
+              </button>
+            </div>
+            {ioNote && (
+              <div className="wl-mono mt-1.5 text-[11px]" style={{ color: "var(--wl-accent-ink)" }}>{ioNote}</div>
+            )}
           </div>
           {picking && <RestorePicker onPick={doPreview} onClose={() => setPicking(false)} />}
           {preview && <RestoreDiff preview={preview} onApply={doApply} onClose={() => setPreview(null)} />}

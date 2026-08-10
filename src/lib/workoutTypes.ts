@@ -52,8 +52,18 @@ export interface WorkoutSet {
    *  statics skill catalog: levers, planche, cross, etc.). */
   holdSec?: number;
   /** Added/assistance load. Sign convention: positive = added weight,
-   *  negative = assistance (e.g. band). Unit is the log-wide `unit`. */
+   *  negative = assistance (e.g. band). Unit is the log-wide `unit`.
+   *  On an ASSISTED variant this is the load on the RIG side — the counterweight,
+   *  or the plates hung on the Halver's rings — so more of it makes the set
+   *  easier and progress runs it toward zero (see isAssisted / ProgressView). */
   weight?: number;
+  /** Weight worn at the WAIST, on an assisted variant only. The two loads pull
+   *  opposite ways on the same set — rig-side weight takes bodyweight off you,
+   *  waist weight puts it back — and they're set independently by different
+   *  hardware, so collapsing them into one signed number would lose which is
+   *  which. Kept separate rather than folded into `weight` so no existing log
+   *  needs reinterpreting: `weight` still means exactly what it meant. */
+  waistWeight?: number;
   /** Rate of Perceived Exertion, 1–10 in 0.5 steps. */
   rpe?: number;
   /** Self-rated movement quality for this set, 1 (sloppy) – 5 (clean). */

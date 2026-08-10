@@ -40,6 +40,11 @@ function statPills(s: WorkoutSet, unit: string): string {
     const sign = s.weight > 0 ? "+" : "";
     pills.push(`<span class="pill">${sign}${esc(s.weight)} ${esc(unit)}${s.weight < 0 ? " assist" : ""}</span>`);
   }
+  // Waist-worn weight on an assisted variant — its own pill, since it pulls the
+  // opposite way to the rig load beside it.
+  if (s.waistWeight != null && s.waistWeight !== 0) {
+    pills.push(`<span class="pill">${esc(s.waistWeight)} ${esc(unit)} waist</span>`);
+  }
   if (s.reps != null) pills.push(`<span class="pill">${esc(s.reps)}<span class="u">reps</span></span>`);
   if (s.holdSec != null) pills.push(`<span class="pill">${esc(s.holdSec)}<span class="u">s hold</span></span>`);
   if (s.rpe != null) pills.push(`<span class="pill pill--rpe">RPE ${esc(s.rpe)}</span>`);
@@ -113,7 +118,7 @@ footer b{color:var(--gold)}
 /** Whether a set carries any logged content (so empty placeholder sets/exercises
  *  are left out of the export). */
 function setHasData(s: WorkoutSet): boolean {
-  return !!(s.done || s.reps != null || s.holdSec != null || s.weight != null
+  return !!(s.done || s.reps != null || s.holdSec != null || s.weight != null || s.waistWeight != null
     || s.rpe != null || s.form != null || s.note || s.videoId || s.driveFileId);
 }
 
@@ -121,6 +126,7 @@ function setHasData(s: WorkoutSet): boolean {
 function setBrief(s: WorkoutSet, unit: string): string {
   const parts: string[] = [];
   if (s.weight != null && s.weight !== 0) parts.push(`${s.weight > 0 ? "+" : ""}${esc(s.weight)}${esc(unit)}`);
+  if (s.waistWeight != null && s.waistWeight !== 0) parts.push(`${esc(s.waistWeight)}${esc(unit)} waist`);
   if (s.reps != null) parts.push(`${esc(s.reps)} reps`);
   if (s.holdSec != null) parts.push(`${esc(s.holdSec)}s`);
   if (s.rpe != null) parts.push(`RPE ${esc(s.rpe)}`);

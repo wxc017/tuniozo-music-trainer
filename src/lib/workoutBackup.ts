@@ -21,9 +21,30 @@ function extFor(mime: string): string {
 
 export interface BackupResult { blob: Blob; filename: string; videoCount: number }
 
-/** Build the backup zip: workout-log.json + videos/<id>.<ext>. */
-export async function buildBackupZip(): Promise<BackupResult> {
-  const manifest = {
+export interface BackupManifest {
+  type: string; version: number; exported: string;
+  workouts: Workout[]; templates: WorkoutTemplate[];
+  customExercises: CustomExercise[]; prefs: WorkoutPrefs;
+  videos: { id: string; file: string; mime: string; durationSec: number }[];
+}
+
+/** The backup's data half — everything except the clip bytes.
+ *
+ *  Split out from buildBackupZip because the Drive path needs the manifest
+ *  WITHOUT reading a single video into memory: it uploads clips individually and
+ *  only the ones that are missing.  `file` is kept for zip compatibility (old
+ *  backups and the local export both use it); the Drive path keys off `id`.
+ *
+ *  Only clips still REFERENCED by a set are listed, so deleting a set's video
+ *  eventually drops it from the backup instead of carrying it forever. */
+export async function buildManifest(): Promise<BackupManifest> {
+  const videos: BackupManifest["videos"] = [];
+  for (const id of [...referencedVideoIds()].sort()) {
+    const v = await getVideo(id);
+    if (!v) continue;                       // referenced but gone locally
+    videos.push({ id, file: `videos/${id}.${extFor(v.mime)}`, mime: v.mime, durationSec: v.durationSec });
+  }
+  return {
     type: "tunizo-workout-backup",
     version: 1,
     exported: new Date().toISOString(),
@@ -31,17 +52,19 @@ export async function buildBackupZip(): Promise<BackupResult> {
     templates: getTemplates(),
     customExercises: getCustomExercises(),
     prefs: getPrefs(),
-    videos: [] as { id: string; file: string; mime: string; durationSec: number }[],
+    videos,
   };
+}
+
+/** Build the backup zip: workout-log.json + videos/<id>.<ext>. */
+export async function buildBackupZip(): Promise<BackupResult> {
+  const manifest = await buildManifest();
 
   const files: Record<string, Uint8Array> = {};
-  const ids = referencedVideoIds();
-  for (const id of ids) {
-    const v = await getVideo(id);
-    if (!v) continue;
-    const file = `videos/${id}.${extFor(v.mime)}`;
-    files[file] = new Uint8Array(await v.blob.arrayBuffer());
-    manifest.videos.push({ id, file, mime: v.mime, durationSec: v.durationSec });
+  for (const v of manifest.videos) {
+    const stored = await getVideo(v.id);
+    if (!stored) continue;
+    files[v.file] = new Uint8Array(await stored.blob.arrayBuffer());
   }
   files["workout-log.json"] = strToU8(JSON.stringify(manifest, null, 2));
 
@@ -124,9 +147,34 @@ export interface BackupDiff {
   empty: boolean;
 }
 
-interface ParsedBackup {
+/** One clip as the manifest describes it. */
+export interface BackupVideoRef { id: string; file: string; mime: string; durationSec?: number }
+
+/** A backup opened for reading, WITHOUT its clip bytes in memory.
+ *
+ *  The zip path used to hand the diff/apply layer a `Record<path, Uint8Array>` —
+ *  every clip fully decoded up front.  That's fine for a local file you already
+ *  hold, and hopeless for the Drive path, where the whole point is to download
+ *  only the clips this device is missing.  So the bytes are fetched through a
+ *  callback and both sources satisfy the same interface. */
+export interface ParsedBackup {
   manifest: any;
-  entries: Record<string, Uint8Array>;
+  /** Whether this backup can actually supply that clip's bytes. */
+  hasVideo: (v: BackupVideoRef) => boolean;
+  /** The clip's bytes — read out of the zip, or downloaded on demand. */
+  readVideo: (v: BackupVideoRef) => Promise<Uint8Array | null>;
+}
+
+/** Wrap a manifest whose clips live somewhere else (one Drive file each). */
+export function parsedFromManifest(
+  manifest: any,
+  clips: { has: (id: string) => boolean; read: (id: string) => Promise<Uint8Array | null> },
+): ParsedBackup {
+  return {
+    manifest,
+    hasVideo: v => clips.has(v.id),
+    readVideo: v => clips.read(v.id),
+  };
 }
 
 /** Unzip + validate. Kept separate so a restore can diff, show the user what
@@ -143,7 +191,13 @@ export async function readBackupFile(file: File): Promise<ParsedBackup> {
   try { manifest = JSON.parse(strFromU8(jsonU8)); }
   catch { throw new Error("Backup data is corrupt."); }
   if (manifest?.type !== "tunizo-workout-backup") throw new Error("Unrecognized backup file.");
-  return { manifest, entries };
+  return {
+    manifest,
+    hasVideo: v => !!entries[v.file],
+    // .slice() detaches a copy backed by a real ArrayBuffer, which is what Blob
+    // wants; handing it the shared view risks a zero-length blob.
+    readVideo: async v => (entries[v.file] ? entries[v.file].slice() : null),
+  };
 }
 
 function bucket<T>(incoming: T[], local: T[], key: (t: T) => string): DiffBucket<T> {
@@ -171,8 +225,8 @@ export async function diffBackup(parsed: ParsedBackup): Promise<BackupDiff> {
   );
 
   const have = new Set(await allVideoIds());
-  const incomingVideos = (m.videos ?? []) as { id: string; file: string }[];
-  const addedVideos = incomingVideos.filter(v => !have.has(v.id) && parsed.entries[v.file]);
+  const incomingVideos = (m.videos ?? []) as BackupVideoRef[];
+  const addedVideos = incomingVideos.filter(v => !have.has(v.id) && parsed.hasVideo(v));
   const videos = { added: addedVideos.map(v => v.id), same: incomingVideos.length - addedVideos.length };
 
   const prefsDiffer = !!m.prefs && !same({ ...getPrefs(), ...m.prefs }, getPrefs());
@@ -188,6 +242,9 @@ export async function diffBackup(parsed: ParsedBackup): Promise<BackupDiff> {
 export interface ApplyOptions {
   /** Overwrite records that exist here but differ. Off = additive only. */
   includeChanged?: boolean;
+  /** Called before each clip is fetched, so a restore that has to pull clips one
+   *  at a time off Drive can say which one it's on instead of freezing. */
+  onVideo?: (done: number, total: number) => void;
 }
 
 /** Apply a diff. Counts reflect what was WRITTEN, not what was in the file. */
@@ -200,16 +257,19 @@ export async function applyBackupDiff(
   // Only the missing ones — re-writing blobs already in IndexedDB is the single
   // most expensive thing a restore can do, and it buys nothing.
   const wanted = new Set(diff.videos.added);
+  const todo = ((parsed.manifest.videos ?? []) as BackupVideoRef[]).filter(v => wanted.has(v.id));
   let videos = 0;
-  for (const v of (parsed.manifest.videos ?? []) as { id: string; file: string; mime: string; durationSec?: number }[]) {
-    if (!wanted.has(v.id)) continue;
-    const data = parsed.entries[v.file];
+  for (const v of todo) {
+    opts.onVideo?.(videos, todo.length);
+    const data = await parsed.readVideo(v);
     if (!data) continue;
-    // .slice() yields a Uint8Array backed by a real ArrayBuffer (valid BlobPart).
-    const blob = new Blob([data.slice()], { type: v.mime || "video/webm" });
+    // The cast keeps TS happy about SharedArrayBuffer-backed views; every source
+    // here hands back a plain ArrayBuffer-backed copy.
+    const blob = new Blob([data as unknown as ArrayBufferView<ArrayBuffer>], { type: v.mime || "video/webm" });
     await putVideo({ id: v.id, blob, mime: v.mime || "video/webm", durationSec: v.durationSec ?? 0, createdAt: Date.now() });
     videos++;
   }
+  opts.onVideo?.(videos, todo.length);
 
   const workouts = withChanged(diff.workouts);
   for (const w of workouts) upsertWorkout(w);

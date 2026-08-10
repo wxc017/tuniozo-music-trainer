@@ -316,6 +316,76 @@ export async function uploadDriveFile(
   return (await res.json()).id as string;
 }
 
+// ── Resumable upload ─────────────────────────────────────────────────
+// `uploadDriveFile` above sends the whole body in ONE multipart request. Google
+// documents that path for small payloads; past a few MB it's the wrong tool —
+// there's no progress to report, no way to resume, and a single dropped
+// connection means starting over from zero. A video clip is comfortably past
+// that line, so clips go through this instead.
+//
+// The protocol: POST the metadata to get a session URI, then PUT the bytes in
+// chunks with a Content-Range header. 308 means "chunk stored, keep going";
+// 200/201 means the file is complete. Chunk length must be a multiple of 256 KiB
+// except for the final one.
+const CHUNK_BYTES = 8 * 1024 * 1024;   // 8 MiB — a multiple of 256 KiB
+
+/** Upload `blob` as a new Drive file, in resumable chunks.  `onProgress` is
+ *  called after each chunk with bytes sent so far, so callers can show real
+ *  movement instead of an indefinite spinner. */
+export async function uploadDriveFileResumable(
+  token: string,
+  meta: { name: string; mimeType: string; parents?: string[] },
+  blob: Blob,
+  onProgress?: (sent: number, total: number) => void,
+): Promise<string> {
+  const start = await driveFetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8", "X-Upload-Content-Type": meta.mimeType },
+      body: JSON.stringify({ name: meta.name, mimeType: meta.mimeType, ...(meta.parents ? { parents: meta.parents } : {}) }),
+    },
+    token,
+  );
+  if (!start.ok) throw new Error(`Drive upload could not start: ${start.status}`);
+  const session = start.headers.get("Location");
+  if (!session) throw new Error("Drive upload could not start: no session URI returned.");
+
+  const total = blob.size;
+  let sent = 0;
+  onProgress?.(0, total);
+  // A zero-byte body still has to be PUT once, or the file is never finalised.
+  while (sent < total || total === 0) {
+    const end = Math.min(sent + CHUNK_BYTES, total);
+    const chunk = blob.slice(sent, end);
+    const res = await fetch(session, {
+      method: "PUT",
+      headers: {
+        // Drive wants the range of THIS chunk against the whole file. An empty
+        // file has no byte range at all, which is spelled "bytes *\/0".
+        "Content-Range": total === 0 ? "bytes */0" : `bytes ${sent}-${end - 1}/${total}`,
+      },
+      body: chunk,
+    });
+    if (res.status === 308) {
+      // Trust Drive's own accounting over ours: if it stored less than we sent
+      // (a truncated chunk), the Range header says where to resume from.
+      const range = res.headers.get("Range");
+      const got = range ? Number(range.split("-")[1]) + 1 : end;
+      sent = Number.isFinite(got) ? got : end;
+      onProgress?.(sent, total);
+      continue;
+    }
+    if (res.ok) {
+      onProgress?.(total, total);
+      const d = await res.json().catch(() => ({}));
+      return (d as { id?: string }).id ?? "";
+    }
+    throw new Error(`Drive upload failed at ${sent}/${total} bytes: ${res.status}`);
+  }
+  throw new Error("Drive upload ended without a completed file.");
+}
+
 export async function getDriveFileBlob(token: string, id: string): Promise<Blob> {
   const res = await driveGet(token, `https://www.googleapis.com/drive/v3/files/${id}?alt=media`);
   if (!res.ok) throw new Error(`Drive download failed: ${res.status}`);
