@@ -2413,18 +2413,31 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
   // and diminished.  So a subset is KEPT when it is exactly the union of two
   // triads lying inside the scale, and NAMED by that pair — the same principle
   // the heptatonic hexatonics already use, applied to a symmetric parent and to
-  // five notes as well as six.  That keeps 5 of 5 pentatonics and the single
-  // hexatonic of the augmented scale, and 20 of 35 / 15 of 15 for each octatonic.
-  // The whole-tone scale keeps its one hexatonic (itself — the augmented pair)
-  // and no pentatonic, because it genuinely has none: every five-note subset is
-  // the scale minus a note, and none is two triads.
+  // five notes as well as six.
+  //
+  // NEITHER TRIAD MAY BE DIMINISHED, exactly as hexaGroups requires above and for
+  // the same reason: a diminished triad has no stable root, so the pair stops
+  // reading as two chords.  It matters far more here than there — an octatonic
+  // has a diminished triad on EVERY degree, eight of its sixteen, and admitting
+  // them turned an enumeration into the vocabulary (35 subsets → 20 "pairs" at
+  // five notes, most of them a dim triad plus whatever completed the set).
+  // Excluding them leaves 5 pentatonics and 9 hexatonics per octatonic, and what
+  // survives is the vocabulary that is actually taught over these scales: major
+  // triads a minor 3rd apart (I + III over the half-whole = C and E♭) and pairs a
+  // tritone apart (I + V).  Augmented is KEPT, again as above, because it does
+  // project a root — and without it the whole-tone and augmented scales, whose
+  // only pairs are augmented, would have nothing at all.
+  //
+  // Net: whole-tone 5 pentatonics (see the fallback below) and 1 hexatonic,
+  // augmented 5 and 1, each octatonic 5 and 9 — the same order as the 4-5 per
+  // church mode the diatonic side produces.
   const TRIAD_SHAPES = [
-    { iv: [0, 4, 7], minor: false, sym: "" },    // major
-    { iv: [0, 3, 7], minor: true,  sym: "" },    // minor
-    { iv: [0, 4, 8], minor: false, sym: "+" },   // augmented
-    { iv: [0, 3, 6], minor: true,  sym: "°" },   // diminished
+    { iv: [0, 4, 7], minor: false, sym: "",  dim: false },   // major
+    { iv: [0, 3, 7], minor: true,  sym: "",  dim: false },   // minor
+    { iv: [0, 4, 8], minor: false, sym: "+", dim: false },   // augmented
+    { iv: [0, 3, 6], minor: true,  sym: "°", dim: true  },   // diminished
   ];
-  interface ScaleTriad { deg: number; label: string; set: number[]; symmetric: boolean }
+  interface ScaleTriad { deg: number; label: string; set: number[]; symmetric: boolean; dim: boolean }
   // Every triad that lies wholly inside `pcs`, rooted on one of its own degrees.
   const inScaleTriads = (pcs: readonly number[]): ScaleTriad[] => {
     const inScale = new Set(pcs.map(p => mod(p, 12)));
@@ -2437,18 +2450,20 @@ export default function SolfaSpectrumChords({ ensureAudio, playVol = 0.6, rootCe
         // An augmented or diminished triad is its own transposition by its own
         // interval, so it has three (or four) equally true roots.  Flagged so the
         // pair search prefers a decomposition into triads that project a root.
-        out.push({ deg, label: num + t.sym, set, symmetric: t.sym !== "" });
+        out.push({ deg, label: num + t.sym, set, symmetric: t.sym !== "", dim: t.dim });
       }
     });
     return out;
   };
-  // The two in-scale triads whose union is exactly `target`, or null.  Prefers the
-  // pair with fewer symmetric triads (C + E reads as a triad pair; "iii + III+" is
-  // the same five notes named less usefully), then the lowest roots.
+  // The two in-scale triads whose union is exactly `target`, or null.  Neither may
+  // be diminished (see above).  Among what's left, prefers the pair with fewer
+  // symmetric triads (C + E reads as a triad pair; "iii + III+" is the same five
+  // notes named less usefully), then the lowest roots.
   const triadPairFor = (target: readonly number[], triads: ScaleTriad[]): [ScaleTriad, ScaleTriad] | null => {
     const want = new Set(target.map(p => mod(p, 12)));
     let best: [ScaleTriad, ScaleTriad] | null = null, bestScore = Infinity;
     for (let i = 0; i < triads.length; i++) for (let j = i + 1; j < triads.length; j++) {
+      if (triads[i].dim || triads[j].dim) continue;
       const u = new Set([...triads[i].set, ...triads[j].set]);
       if (u.size !== want.size || ![...u].every(x => want.has(x))) continue;
       const score = (triads[i].symmetric ? 10 : 0) + (triads[j].symmetric ? 10 : 0)
